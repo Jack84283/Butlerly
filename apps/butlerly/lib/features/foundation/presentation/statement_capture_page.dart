@@ -63,12 +63,14 @@ class StatementCapturePage extends StatefulWidget {
     this.pickImage,
     this.pickFile,
     this.ocrRecognizer,
+    this.initialStatementId,
     super.key,
   });
 
   final Future<XFile?> Function(ImageSource source)? pickImage;
   final Future<XFile?> Function()? pickFile;
   final OcrRecognizer? ocrRecognizer;
+  final String? initialStatementId;
   @override
   State<StatementCapturePage> createState() => _StatementCapturePageState();
 }
@@ -137,7 +139,14 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
   @override
   void initState() {
     super.initState();
-    _reload();
+    _reload().then((_) {
+      final statementId = widget.initialStatementId;
+      if (!mounted || statementId == null) return;
+      final item = _statements
+          .where((value) => value.id == statementId)
+          .firstOrNull;
+      if (item != null) _open(item);
+    });
   }
 
   @override
@@ -740,6 +749,8 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
               '${context.l10n.text('aggregateAmount')}: ${assessment.currency} ${assessment.aggregateAmount}',
             '${context.l10n.text('statementNeedsReview')}: ${assessment.lowConfidenceCount}',
             '${context.l10n.text('possibleDuplicates')}: ${assessment.possibleDuplicateCount}',
+            if (assessment.duplicateCheckUnavailableCount > 0)
+              '${context.l10n.text('possibleDuplicatesUnavailable')}: ${assessment.duplicateCheckUnavailableCount}',
             '${context.l10n.text('unresolvedRows')}: ${assessment.invalidCount}',
           ].join('\n'),
         ),

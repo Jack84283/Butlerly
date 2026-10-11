@@ -636,11 +636,16 @@ class _ReviewPageState extends State<ReviewPage> {
                               ),
                               subtitle: Text(
                                 issue.reason?.trim().isNotEmpty == true
-                                    ? issue.reason!
+                                    ? _statementReviewReasonLabel(
+                                        context,
+                                        issue.reason!,
+                                      )
                                     : context.l10n.text('unresolvedRows'),
                               ),
                               trailing: const Icon(Icons.chevron_right),
-                              onTap: () => context.push('/statements'),
+                              onTap: () => context.push(
+                                '/statements?statementId=${Uri.encodeQueryComponent(issue.statementId)}',
+                              ),
                             ),
                           ),
                         ),
@@ -1189,6 +1194,15 @@ String _reason(String value, BuildContext context) => switch (value) {
   'merchantNeedsReview' => context.l10n.text('merchantNeedsReview'),
   _ => context.l10n.text('needsReview'),
 };
+
+String _statementReviewReasonLabel(BuildContext context, String reason) {
+  return switch (reason) {
+    'statementInvalidRow' ||
+    'statementDuplicateCandidate' ||
+    'statementDuplicateCheckUnavailable' => context.l10n.text(reason),
+    _ => reason,
+  };
+}
 
 String _localizedReviewDetail(ReviewItemDto item, BuildContext context) {
   if (item.reason == ReviewIssueReason.merchantNeedsReview.name) {

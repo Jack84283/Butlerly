@@ -16,6 +16,7 @@ export 'src/entities/payment_settlement.dart';
 export 'src/entities/provenance.dart';
 export 'src/entities/reconciliation_candidate.dart';
 export 'src/entities/reconciliation_link.dart';
+export 'src/entities/recurring_pattern_decision.dart';
 export 'src/entities/reference_data.dart';
 export 'src/entities/review_issue.dart';
 export 'src/entities/statement.dart';

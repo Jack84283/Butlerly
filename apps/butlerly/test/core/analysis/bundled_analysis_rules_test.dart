@@ -44,7 +44,7 @@ void main() {
         InstallBuiltInRules(repository),
       );
       expect(result.diagnostics, isEmpty);
-      expect(result.installed, hasLength(20));
+      expect(result.installed, hasLength(22));
       final expected = {
         for (final rule in result.installed)
           rule.identity.value:

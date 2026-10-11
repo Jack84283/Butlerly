@@ -120,6 +120,9 @@ void configureDependencies({
       ),
       statements: statements,
       duplicateGroups: duplicateGroups,
+      recurringPatternDecisions: SqliteRecurringPatternDecisionRepository(
+        database.persistenceDatabase,
+      ),
       paymentSettlements: SqlitePaymentSettlementRepository(
         database.persistenceDatabase,
       ),

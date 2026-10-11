@@ -29,6 +29,57 @@ void main() {
       'id': 'merchant-1',
       'name': 'Private merchant',
     });
+    for (final id in ['selected-duplicate', 'other-duplicate']) {
+      await database.database.insert('transactions', {
+        'id': id,
+        'occurred_at': '2026-08-09T18:00:00.000Z',
+        'amount_coefficient': '25',
+        'amount_scale': 0,
+        'currency': 'USD',
+        'direction': 'expense',
+        'source_type': 'manual',
+        'status': 'active',
+        'created_at': '2026-08-09T18:00:00.000Z',
+        'updated_at': '2026-08-09T18:00:00.000Z',
+        'transaction_date': '2026-08-09',
+      });
+    }
+    const duplicateGroupId = 'duplicate:2026-08-09|25|USD|expense';
+    await database.database.insert('duplicate_candidate_groups', {
+      'id': duplicateGroupId,
+      'transaction_date': '2026-08-09',
+      'amount_coefficient': '25',
+      'amount_scale': 0,
+      'currency': 'USD',
+      'direction': 'expense',
+      'status': 'consolidated',
+      'selected_transaction_id': 'selected-duplicate',
+      'created_at': '2026-08-09T18:00:00.000Z',
+      'updated_at': '2026-08-09T18:00:00.000Z',
+    });
+    for (final id in ['selected-duplicate', 'other-duplicate']) {
+      await database.database.insert('duplicate_candidate_group_transactions', {
+        'group_id': duplicateGroupId,
+        'transaction_id': id,
+      });
+    }
+    await database.database.insert('reconciliation_candidates', {
+      'id': 'candidate-1',
+      'receipt_transaction_id': 'selected-duplicate',
+      'payment_transaction_id': 'other-duplicate',
+      'score': 0.9,
+      'reasons_json': '[]',
+      'status': 'proposed',
+      'created_at': '2026-08-09T18:00:00.000Z',
+      'updated_at': '2026-08-09T18:00:00.000Z',
+    });
+    await database.database.insert('reconciliation_links', {
+      'id': 'link-1',
+      'candidate_id': 'candidate-1',
+      'receipt_transaction_id': 'selected-duplicate',
+      'payment_transaction_id': 'other-duplicate',
+      'created_at': '2026-08-09T18:00:00.000Z',
+    });
     await File(path.join(evidence.path, 'receipt.bin')).writeAsBytes([1, 2, 3]);
     final manager = LocalDataManager(
       database,

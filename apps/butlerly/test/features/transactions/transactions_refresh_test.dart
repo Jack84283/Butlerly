@@ -4,6 +4,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/foundation.dart' hide Category;
 import 'package:flutter/material.dart';
@@ -79,12 +80,56 @@ void main() {
       debugDefaultTargetPlatformOverride = null;
     },
   );
+
+  testWidgets('transaction-id drill-through bypasses the default period', (
+    tester,
+  ) async {
+    final transactions = _ControllableTransactionRepository();
+    services.registerSingleton<FinanceServices>(
+      FinanceServices(
+        transactions,
+        _EmptyPaymentSourceRepository(),
+        _EmptyMerchantRepository(),
+        _EmptyCategoryRepository(),
+        _EmptyTagRepository(),
+        _UnusedEvidenceRepository(),
+        _UnusedUserPreferenceRepository(),
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: TransactionsPage(
+          query: ListTransactionsQuery(
+            transactionIds: const ['old-transaction'],
+            from: DateTime.utc(2026, 10, 1),
+            to: DateTime.utc(2026, 10, 31),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(transactions.lastQuery?.transactionIds, [
+      TransactionId('old-transaction'),
+    ]);
+    expect(transactions.lastQuery?.from, isNull);
+    expect(transactions.lastQuery?.to, isNull);
+  });
 }
 
 final class _ControllableTransactionRepository
     implements TransactionRepository {
   final _refresh = Completer<List<Transaction>>();
   int queryCount = 0;
+  TransactionRepositoryQuery? lastQuery;
 
   void completeRefresh() {
     if (!_refresh.isCompleted) {
@@ -94,6 +139,7 @@ final class _ControllableTransactionRepository
 
   @override
   Future<List<Transaction>> query(TransactionRepositoryQuery query) {
+    lastQuery = query;
     queryCount++;
     if (queryCount == 1) {
       return Future.value(const <Transaction>[]);

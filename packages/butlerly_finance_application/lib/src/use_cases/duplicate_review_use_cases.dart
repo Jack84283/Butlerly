@@ -23,13 +23,23 @@ final class ScanExistingTransactionsForDuplicates {
           final id = _groupId(match);
           activeIds.add(id);
           final previous = existingById[id];
-          final transactionIds = _sortedIds(match.transactionIds);
+          final transactionIds = _mergeHistoricalIds(
+            previous?.transactionIds ?? const [],
+            match.transactionIds,
+          );
+          final membershipUnchanged =
+              previous != null &&
+              _sameIds(previous.transactionIds, transactionIds);
           final group = DuplicateCandidateGroup(
             id: id,
             transactionIds: transactionIds,
             duplicateKey: match.duplicateKey,
-            status: DuplicateCandidateGroupStatus.unresolved,
-            selectedTransactionId: null,
+            status: membershipUnchanged
+                ? previous.status
+                : DuplicateCandidateGroupStatus.unresolved,
+            selectedTransactionId: membershipUnchanged
+                ? previous.selectedTransactionId
+                : null,
             createdAt: previous?.createdAt ?? clock.now(),
             updatedAt: clock.now(),
           );
@@ -49,10 +59,6 @@ final class ScanExistingTransactionsForDuplicates {
   String _groupId(DuplicateTransactionGroupMatch match) {
     return 'duplicate:${match.duplicateKey.canonical}';
   }
-
-  List<TransactionId> _sortedIds(List<TransactionId> ids) => List.unmodifiable(
-    ids.toList()..sort((a, b) => a.value.compareTo(b.value)),
-  );
 }
 
 /// Rebuilds derived duplicate-review state after restore without reopening
@@ -75,9 +81,9 @@ final class RebuildDuplicateGroupsAfterRestore {
           final id = 'duplicate:${match.duplicateKey.canonical}';
           activeIds.add(id);
           final previous = existingById[id];
-          final transactionIds = List<TransactionId>.unmodifiable(
-            match.transactionIds.toList()
-              ..sort((left, right) => left.value.compareTo(right.value)),
+          final transactionIds = _mergeHistoricalIds(
+            previous?.transactionIds ?? const [],
+            match.transactionIds,
           );
           final membershipUnchanged =
               previous != null &&
@@ -106,14 +112,6 @@ final class RebuildDuplicateGroupsAfterRestore {
         }
         return result;
       });
-
-  bool _sameIds(List<TransactionId> left, List<TransactionId> right) {
-    if (left.length != right.length) return false;
-    for (var index = 0; index < left.length; index++) {
-      if (left[index] != right[index]) return false;
-    }
-    return true;
-  }
 }
 
 /// Refreshes only the duplicate key(s) affected by one transaction mutation.
@@ -142,29 +140,42 @@ final class RefreshDuplicateGroupForTransaction {
     final existing = await groups.list();
     final existingById = {for (final group in existing) group.id: group};
     for (final key in keys.values) {
-      await _refreshKey(key, existingById);
+      await _refreshKey(
+        key,
+        existingById,
+        preserveHistoricalMembership:
+            current == null || current.status == TransactionStatus.archived,
+      );
     }
   });
 
   Future<void> _refreshKey(
     DuplicateTransactionKey key,
-    Map<String, DuplicateCandidateGroup> existingById,
-  ) async {
+    Map<String, DuplicateCandidateGroup> existingById, {
+    required bool preserveHistoricalMembership,
+  }) async {
     final groupId = 'duplicate:${key.canonical}';
     final previous = existingById[groupId];
     final transactionIds = (await groups.findActiveTransactionIdsForKey(key))
       ..sort((left, right) => left.value.compareTo(right.value));
 
     if (transactionIds.length < 2) {
-      if (previous?.isUnresolved ?? false) await groups.remove(groupId);
+      if (preserveHistoricalMembership) return;
+      if (previous != null && previous.isUnresolved) {
+        await groups.remove(groupId);
+      }
       return;
     }
-
+    final effectiveTransactionIds = _mergeHistoricalIds(
+      previous?.transactionIds ?? const [],
+      transactionIds,
+    );
     final membershipUnchanged =
-        previous != null && _sameIds(previous.transactionIds, transactionIds);
+        previous != null &&
+        _sameIds(previous.transactionIds, effectiveTransactionIds);
     final group = DuplicateCandidateGroup(
       id: groupId,
-      transactionIds: transactionIds,
+      transactionIds: effectiveTransactionIds,
       duplicateKey: key,
       status: membershipUnchanged
           ? previous.status
@@ -177,14 +188,23 @@ final class RefreshDuplicateGroupForTransaction {
     );
     await groups.save(group);
   }
+}
 
-  bool _sameIds(List<TransactionId> left, List<TransactionId> right) {
-    if (left.length != right.length) return false;
-    for (var index = 0; index < left.length; index++) {
-      if (left[index] != right[index]) return false;
-    }
-    return true;
+List<TransactionId> _mergeHistoricalIds(
+  List<TransactionId> historical,
+  List<TransactionId> active,
+) {
+  final ids = {...historical, ...active}.toList()
+    ..sort((left, right) => left.value.compareTo(right.value));
+  return List.unmodifiable(ids);
+}
+
+bool _sameIds(List<TransactionId> left, List<TransactionId> right) {
+  if (left.length != right.length) return false;
+  for (var index = 0; index < left.length; index++) {
+    if (left[index] != right[index]) return false;
   }
+  return true;
 }
 
 final class ListDuplicateCandidateGroups {
@@ -196,14 +216,36 @@ final class ListDuplicateCandidateGroups {
   Future<ApplicationResult<List<DuplicateCandidateGroup>>> call({
     ReviewPeriodScope scope = const ReviewPeriodScope.unscoped(),
   }) => runApplication('list possible duplicate groups', () async {
-    final groups = await repository.list(
-      status: DuplicateCandidateGroupStatus.unresolved,
-    );
+    final groups = (await repository.list())
+        .where((group) => group.isUnresolved || group.integrityIssue != null)
+        .toList(growable: false);
     final eligibleIds = await _eligibleTransactionIds(scope);
+    final activeIdsByGroup = eligibleIds == null && transactions != null
+        ? {
+            for (final group in groups)
+              group.id: (await repository.findActiveTransactionIdsForKey(
+                group.duplicateKey,
+              )).toSet(),
+          }
+        : const <String, Set<TransactionId>>{};
     return groups
-        .where((group) => group.transactionIds.length > 1)
         .where(
           (group) =>
+              group.integrityIssue != null ||
+              (eligibleIds == null && transactions == null
+                  ? group.transactionIds.length > 1
+                  : group.transactionIds
+                            .where(
+                              (id) =>
+                                  (eligibleIds ?? activeIdsByGroup[group.id]!)
+                                      .contains(id),
+                            )
+                            .length >
+                        1),
+        )
+        .where(
+          (group) =>
+              group.integrityIssue != null ||
               eligibleIds == null ||
               group.transactionIds.any(eligibleIds.contains),
         )

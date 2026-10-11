@@ -29,8 +29,55 @@ void main() {
     expect((manifest['backupId']! as String), isNotEmpty);
     expect(manifest['appVersion'], '1.0.0');
     expect(manifest['appBuild'], '1');
-    expect(manifest['schemaVersion'], 11);
+    expect(manifest['schemaVersion'], 12);
   });
+
+  test('new builds restore schema 11 backups without newer tables', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    await fixture.insertTransaction('tx-schema-11');
+    final backup = File(
+      path.join(fixture.root.path, 'schema-11.butlerlybackup'),
+    );
+    await fixture.manager.createBackup(backup);
+    await _downgradeBackupToV11(backup);
+
+    await fixture.manager.restore(backup, mode: LocalRestoreMode.replace);
+
+    expect(await _ids(fixture, 'transactions'), contains('tx-schema-11'));
+    expect(await _ids(fixture, 'recurring_pattern_decisions'), isEmpty);
+  });
+
+  test(
+    'replace restore clears recurring decisions absent from the backup',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.insertTransaction('tx-source');
+      final backup = File(
+        path.join(
+          fixture.root.path,
+          'without-recurring-decision.butlerlybackup',
+        ),
+      );
+      await fixture.manager.createBackup(backup);
+      await fixture.database.database.insert('recurring_pattern_decisions', {
+        'id': 'stale-decision',
+        'pattern_key': 'unrelated|expense|USD||',
+        'status': 'confirmed',
+        'cadence': 'monthly',
+        'interval_days': 30,
+        'expected_amount_coefficient': '1000',
+        'expected_amount_scale': 2,
+        'created_at': DateTime.utc(2026, 9, 1).toIso8601String(),
+        'updated_at': DateTime.utc(2026, 9, 1).toIso8601String(),
+      });
+
+      await fixture.manager.restore(backup, mode: LocalRestoreMode.replace);
+
+      expect(await _ids(fixture, 'recurring_pattern_decisions'), isEmpty);
+    },
+  );
 
   test(
     'replace creates a safety backup that can recover prior state',
@@ -168,6 +215,17 @@ void main() {
         status: 'keepBoth',
         now: now,
       );
+      await fixture.database.database.insert('recurring_pattern_decisions', {
+        'id': 'recurring-decision-backup',
+        'pattern_key': 'merchant|expense|USD||',
+        'status': 'corrected',
+        'cadence': 'monthly',
+        'interval_days': 31,
+        'expected_amount_coefficient': '4250',
+        'expected_amount_scale': 2,
+        'created_at': now,
+        'updated_at': now,
+      });
       final backup = File(
         path.join(fixture.root.path, 'workflow.butlerlybackup'),
       );
@@ -206,6 +264,10 @@ void main() {
       expect(
         await _ids(fixture, 'duplicate_candidate_groups'),
         isNot(contains('duplicate-open')),
+      );
+      expect(
+        await _ids(fixture, 'recurring_pattern_decisions'),
+        contains('recurring-decision-backup'),
       );
     },
   );
@@ -273,6 +335,31 @@ Future<Map<String, Object?>> _readManifest(File file) async {
   } finally {
     await handle.close();
   }
+}
+
+Future<void> _downgradeBackupToV11(File backup) async {
+  final bytes = await backup.readAsBytes();
+  final magic = utf8.encode('BUTLERLYBACKUP2');
+  final metadataLength = int64FromBytes(
+    bytes.sublist(magic.length, magic.length + 8),
+  );
+  final metadataStart = magic.length + 8 + 64;
+  final metadataEnd = metadataStart + metadataLength;
+  final metadata =
+      jsonDecode(utf8.decode(bytes.sublist(metadataStart, metadataEnd)))
+          as Map<String, Object?>;
+  final manifest = (metadata['manifest']! as Map).cast<String, Object?>();
+  final tables = (metadata['tables']! as Map).cast<String, Object?>();
+  manifest['schemaVersion'] = 11;
+  tables.remove('recurring_pattern_decisions');
+  final encoded = utf8.encode(jsonEncode(metadata));
+  await backup.writeAsBytes([
+    ...magic,
+    ...int64Bytes(encoded.length),
+    ...ascii.encode(sha256Bytes(encoded)),
+    ...encoded,
+    ...bytes.sublist(metadataEnd),
+  ], flush: true);
 }
 
 final class _Fixture {

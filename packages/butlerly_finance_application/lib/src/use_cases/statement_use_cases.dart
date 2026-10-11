@@ -46,6 +46,7 @@ final class StatementImportAssessment {
     required this.currency,
     required this.lowConfidenceCount,
     required this.possibleDuplicateCount,
+    required this.duplicateCheckUnavailableCount,
     required this.invalidCount,
   });
   final int candidateCount;
@@ -53,6 +54,7 @@ final class StatementImportAssessment {
   final String? currency;
   final int lowConfidenceCount;
   final int possibleDuplicateCount;
+  final int duplicateCheckUnavailableCount;
   final int invalidCount;
 }
 
@@ -102,7 +104,10 @@ final class StatementServices {
         message: 'The selected payment source does not match the statement.',
       );
     }
-    var duplicates = 0;
+    final possibleDuplicateRowIds = <String>{
+      ..._sameBatchDuplicateRowIds(rows),
+    };
+    var duplicateCheckUnavailableCount = 0;
     for (final row in rows) {
       if (row.amount == null ||
           row.currency == null ||
@@ -110,11 +115,17 @@ final class StatementServices {
           row.direction == null) {
         continue;
       }
-      final result = await this.duplicates(row);
+      final result = await duplicates(
+        row,
+        excludeTransactionId: _transactionIdForRow(row),
+      );
       if (result case ApplicationSuccess<DuplicateTransactionCheckResult>(
         value: final value,
       ) when value.candidates.isNotEmpty) {
-        duplicates++;
+        possibleDuplicateRowIds.add(row.id);
+      } else if (result
+          is ApplicationFailure<DuplicateTransactionCheckResult>) {
+        duplicateCheckUnavailableCount++;
       }
     }
     final valid = rows.where(
@@ -140,7 +151,8 @@ final class StatementServices {
       lowConfidenceCount: rows
           .where((row) => intakePolicy.needsConfidenceReview(row.confidence))
           .length,
-      possibleDuplicateCount: duplicates,
+      possibleDuplicateCount: possibleDuplicateRowIds.length,
+      duplicateCheckUnavailableCount: duplicateCheckUnavailableCount,
       invalidCount: rows.length - valid.length,
     );
   });
@@ -162,6 +174,14 @@ final class StatementServices {
     var needsReview = 0;
     var possibleDuplicates = 0;
     var failed = 0;
+    final duplicateRowIds = <String>{};
+    final duplicateMetadataRowIds = <String>{};
+    final exceptionReasons = <String, String>{};
+    final sameBatchDuplicateRows = _sameBatchDuplicateRowIds(rows);
+    final persistedRows = {
+      for (final value in await statements.listRows(statement.id))
+        value.id: value,
+    };
     final prepared = <StatementRowTransaction>[];
     for (final row in rows) {
       if (row.amount == null ||
@@ -169,48 +189,104 @@ final class StatementServices {
           row.transactionDate == null ||
           row.direction == null) {
         failed++;
+        exceptionReasons[row.id] = 'statementInvalidRow';
         continue;
       }
       final transactionId = _transactionIdForRow(row);
+      final persisted = persistedRows[row.id];
+      final existingTransactionId =
+          persisted?.transactionId ??
+          ((row.status == StatementRowStatus.saved ||
+                  row.status == StatementRowStatus.linked)
+              ? row.transactionId
+              : null) ??
+          transactionId;
       final existing = await transactions.findById(
-        TransactionId(transactionId),
+        TransactionId(existingTransactionId),
       );
-      if (existing == null) {
-        final transaction = await _prepareTransaction(
-          row,
-          paymentSourceId,
-          allowCreateNew: true,
-        );
-        final now = clock.now();
-        prepared.add(
-          StatementRowTransaction(
-            row: _copy(
-              row,
-              status: StatementRowStatus.saved,
-              transactionId: transaction.value.id.value,
-              dispositionReason: 'createNew',
-              updatedAt: now,
-            ),
-            transaction: transaction.value,
+      if (existing != null) {
+        // A retry of a committed row is idempotent even if a newer matching
+        // transaction now exists. Repair only the duplicate metadata; never
+        // reopen the statement row or overwrite the user's corrections.
+        duplicateMetadataRowIds.add(row.id);
+        continue;
+      }
+      if (sameBatchDuplicateRows.contains(row.id)) {
+        possibleDuplicates++;
+        duplicateRowIds.add(row.id);
+        exceptionReasons[row.id] = 'statementDuplicateCandidate';
+        continue;
+      }
+      final duplicateResult = await duplicates(
+        row,
+        excludeTransactionId: transactionId,
+      );
+      if (duplicateResult
+          case ApplicationSuccess<DuplicateTransactionCheckResult>(
+            value: final duplicate,
+          ) when duplicate.candidates.isNotEmpty) {
+        // Batch import is exception-first. A suspected duplicate remains a
+        // pending statement row until the user explicitly links it or chooses
+        // to create a separate transaction from the row review flow.
+        possibleDuplicates++;
+        duplicateRowIds.add(row.id);
+        exceptionReasons[row.id] = 'statementDuplicateCandidate';
+        continue;
+      }
+      if (duplicateResult
+          is ApplicationFailure<DuplicateTransactionCheckResult>) {
+        failed++;
+        exceptionReasons[row.id] = 'statementDuplicateCheckUnavailable';
+        continue;
+      }
+      final transaction = await _prepareTransaction(
+        row,
+        paymentSourceId,
+        allowCreateNew: true,
+      );
+      final now = clock.now();
+      prepared.add(
+        StatementRowTransaction(
+          row: _copy(
+            row,
+            status: StatementRowStatus.saved,
+            transactionId: transaction.value.id.value,
+            dispositionReason: 'createNew',
+            updatedAt: now,
           ),
-        );
-        imported++;
-        if (intakePolicy.needsConfidenceReview(row.confidence) ||
-            row.status == StatementRowStatus.unresolved) {
-          needsReview++;
-        }
+          transaction: transaction.value,
+        ),
+      );
+      imported++;
+      if (intakePolicy.needsConfidenceReview(row.confidence) ||
+          row.status == StatementRowStatus.unresolved) {
+        needsReview++;
       }
     }
     await workflow.saveRowTransactions(prepared);
+    for (final entry in exceptionReasons.entries) {
+      final row = rows.where((value) => value.id == entry.key).firstOrNull;
+      if (row == null) continue;
+      try {
+        await _markStatementException(row, entry.value);
+      } on Object {
+        // Keep the committed summary, but surface that the exception marker
+        // itself could not be persisted for a later retry.
+        failed++;
+      }
+    }
     for (final row in rows) {
-      if (row.amount == null ||
-          row.currency == null ||
-          row.transactionDate == null ||
-          row.direction == null) {
+      if (!duplicateRowIds.contains(row.id) &&
+          !duplicateMetadataRowIds.contains(row.id)) {
         continue;
       }
-      if (await _repairDuplicateReview(row)) {
-        possibleDuplicates++;
+      try {
+        await _repairDuplicateReview(row);
+      } on Object {
+        // Valid rows have already been committed. Return their summary and
+        // expose this metadata failure instead of hiding committed work in an
+        // application failure that invites an unsafe retry.
+        failed++;
       }
     }
     return StatementImportSummary(
@@ -228,8 +304,9 @@ final class StatementServices {
   ) => importBatch(statement, rows, paymentSourceId);
 
   Future<ApplicationResult<DuplicateTransactionCheckResult>> duplicates(
-    StatementRow row,
-  ) async {
+    StatementRow row, {
+    String? excludeTransactionId,
+  }) async {
     if (row.amount == null ||
         row.currency == null ||
         row.transactionDate == null ||
@@ -247,6 +324,7 @@ final class StatementServices {
         direction: _directionForRow(row),
         paymentSourceId: row.paymentSourceId,
         merchantId: row.merchantId,
+        excludeTransactionId: excludeTransactionId,
       ),
     );
   }
@@ -620,24 +698,21 @@ final class StatementServices {
   }
 
   Future<bool> _repairDuplicateReview(StatementRow row) async {
-    final key = DuplicateTransactionKey(
-      transactionDate: row.transactionDate!.toIso8601String().substring(0, 10),
-      amount: DecimalValue.parse(row.amount!),
-      currency: row.currency!,
-      direction: _directionForRow(row).name,
-    );
-    final transactionIds = await duplicateGroups.findActiveTransactionIdsForKey(
-      key,
-    );
+    final key = _duplicateKeyForRow(row);
     final id = 'duplicate:${key.canonical}';
     final existing = (await duplicateGroups.list())
         .where((group) => group.id == id)
         .firstOrNull;
+    final activeTransactionIds = await duplicateGroups
+        .findActiveTransactionIdsForKey(key);
+    final transactionIds = <TransactionId>{
+      ...?existing?.transactionIds,
+      ...activeTransactionIds,
+    }.toList()..sort((left, right) => left.value.compareTo(right.value));
     if (transactionIds.length < 2) {
       if (existing?.isUnresolved ?? false) await duplicateGroups.remove(id);
       return false;
     }
-    transactionIds.sort((left, right) => left.value.compareTo(right.value));
     final membershipUnchanged =
         existing != null &&
         existing.transactionIds.length == transactionIds.length &&
@@ -664,13 +739,54 @@ final class StatementServices {
     return true;
   }
 
+  Future<void> _markStatementException(StatementRow row, String reason) =>
+      statements.updateRow(
+        _copy(
+          row,
+          status: StatementRowStatus.unresolved,
+          reviewReason: reason,
+          dispositionReason: 'needsReview',
+          updatedAt: clock.now(),
+        ),
+      );
+
   static String _transactionIdForRow(StatementRow row) =>
       'statement-${row.statementId}-${row.id}';
+
+  static DuplicateTransactionKey _duplicateKeyForRow(StatementRow row) =>
+      DuplicateTransactionKey(
+        transactionDate: row.transactionDate!.toIso8601String().substring(
+          0,
+          10,
+        ),
+        amount: DecimalValue.parse(row.amount!),
+        currency: row.currency!,
+        direction: _directionForRow(row).name,
+      );
+
+  static Set<String> _sameBatchDuplicateRowIds(Iterable<StatementRow> rows) {
+    final rowsByDuplicateKey = <String, List<String>>{};
+    for (final row in rows) {
+      if (row.amount == null ||
+          row.currency == null ||
+          row.transactionDate == null ||
+          row.direction == null) {
+        continue;
+      }
+      final key = _duplicateKeyForRow(row);
+      rowsByDuplicateKey.putIfAbsent(key.canonical, () => []).add(row.id);
+    }
+    return rowsByDuplicateKey.values
+        .where((ids) => ids.length > 1)
+        .expand((ids) => ids)
+        .toSet();
+  }
 
   static StatementRow _copy(
     StatementRow row, {
     required StatementRowStatus status,
     String? transactionId,
+    String? reviewReason,
     String? dispositionReason,
     StatementRowStatus? statusBeforeSkip,
     bool clearStatusBeforeSkip = false,
@@ -697,7 +813,7 @@ final class StatementServices {
     tagIds: row.tagIds,
     paymentSourceId: row.paymentSourceId,
     sourceReferenceId: row.sourceReferenceId,
-    reviewReason: row.reviewReason,
+    reviewReason: reviewReason ?? row.reviewReason,
     dispositionReason: dispositionReason ?? row.dispositionReason,
     statusBeforeSkip: clearStatusBeforeSkip
         ? null

@@ -1,0 +1,16 @@
+schemaVersion: "1.0.0"
+ruleId: ANL-R012
+ruleVersion: "1.0.0"
+enabled: true
+surface: spending
+type: metric
+nameKey: analysis.rule.r012.name
+descriptionKey: analysis.rule.r012.description
+period: selected_period
+grouping: subcategory
+measure:
+  operation: sum
+  field: amount
+  currencyBasis: baseCurrency
+filters:
+  direction: expense

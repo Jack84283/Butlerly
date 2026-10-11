@@ -30,6 +30,7 @@ final class FinanceServices {
     AnalysisRuleResultRepository? analysisResults,
     StatementRepository? statements,
     DuplicateCandidateGroupRepository? duplicateGroups,
+    RecurringPatternDecisionRepository? recurringPatternDecisions,
     PaymentSettlementRepository? paymentSettlements,
     MerchantAliasRepository? merchantAliases,
     MerchantNormalizationPatternRepository? merchantNormalizationPatterns,
@@ -287,6 +288,7 @@ final class FinanceServices {
                  preferences,
                  reconciliationLinks,
                  candidates: reconciliationCandidates,
+                 duplicateGroups: duplicateGroups,
                ),
                const AnalysisRuleEngine(),
                findings: analysisFindings,
@@ -300,6 +302,7 @@ final class FinanceServices {
                  preferences,
                  reconciliationLinks,
                  candidates: reconciliationCandidates,
+                 duplicateGroups: duplicateGroups,
                ),
                analysisRules,
                const AnalysisRuleEngine(),
@@ -314,14 +317,31 @@ final class FinanceServices {
                    preferences,
                    reconciliationLinks,
                    candidates: reconciliationCandidates,
+                   duplicateGroups: duplicateGroups,
                  ),
                  const AnalysisRuleEngine(),
                  findings: analysisFindings,
                  results: analysisResults,
                ),
              ),
+       detectRecurringPatterns = DetectRecurringPatterns(
+         transactions,
+         preferences: preferences,
+         links: reconciliationLinks,
+         duplicateGroups: duplicateGroups,
+         decisions: recurringPatternDecisions,
+       ),
+       saveRecurringPatternDecision = recurringPatternDecisions == null
+           ? null
+           : SaveRecurringPatternDecision(
+               recurringPatternDecisions,
+               const SystemApplicationClock(),
+             ),
        queryTransactionsForFinancialDate = QueryTransactionsForFinancialDate(
          transactions,
+         preferences: preferences,
+         links: reconciliationLinks,
+         duplicateGroups: duplicateGroups,
        ),
        statementServices = statements == null || duplicateGroups == null
            ? null
@@ -530,6 +550,15 @@ final class FinanceServices {
   late final CalculateMonthlySpendingTrend? calculateMonthlySpendingTrend;
   final CalculateAnalysisCalendar? calculateAnalysisCalendar;
   final CalculateInsights? calculateInsights;
+  final DetectRecurringPatterns detectRecurringPatterns;
+  final SaveRecurringPatternDecision? saveRecurringPatternDecision;
+  late final CalculatePeriodicFinancialReport?
+  calculatePeriodicFinancialReport = calculateAnalysisOverview == null
+      ? null
+      : CalculatePeriodicFinancialReport(
+          calculateAnalysisOverview!,
+          detectRecurringPatterns,
+        );
   late final GetHomeOverview loadHomeOverview;
   final QueryTransactionsForFinancialDate queryTransactionsForFinancialDate;
   final UpdateFindingLifecycle? updateAnalysisFindingLifecycle;

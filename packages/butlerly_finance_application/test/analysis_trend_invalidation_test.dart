@@ -441,7 +441,10 @@ void main() {
             .singleWhere((value) => value.rule.identity.value == 'ANL-R002')
             .metric!
             .value,
-        DecimalValue.parse('200'),
+        // Archived records remain part of historical Analysis totals; only
+        // Review, Uncategorized, and candidate-generation populations are
+        // Active-only.
+        DecimalValue.parse('700'),
       );
 
       transactions.values[1] = transactions.values[1].restore(now);

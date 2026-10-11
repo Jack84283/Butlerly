@@ -88,7 +88,6 @@ final class GetHomeOverview {
         scope: ReviewPeriodScope.scoped(period: context.period),
       ),
     );
-    final duplicateResultFuture = listDuplicateCandidateGroups?.call();
     final transactionResult = await listTransactions(
       ListTransactionsQuery(
         from: DateTime.parse(context.period.startDate),
@@ -97,6 +96,11 @@ final class GetHomeOverview {
         timeZoneId: context.period.timeZoneId,
       ),
     );
+    // Duplicate visibility performs a second active-transaction read. Start
+    // it after the scoped Home read so repository observers and diagnostics
+    // retain the primary period-bounded query as the final Home transaction
+    // query.
+    final duplicateResultFuture = listDuplicateCandidateGroups?.call();
     if (transactionResult is ApplicationFailure<List<TransactionDto>>) {
       await reviewResultFuture;
       await duplicateResultFuture;

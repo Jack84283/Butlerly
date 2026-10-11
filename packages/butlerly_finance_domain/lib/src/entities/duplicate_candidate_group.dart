@@ -51,6 +51,7 @@ final class DuplicateCandidateGroup {
     required this.duplicateKey,
     required this.status,
     this.selectedTransactionId,
+    this.integrityIssue,
     required DateTime createdAt,
     required DateTime updatedAt,
   }) : transactionIds = _sortedIds(transactionIds),
@@ -65,6 +66,11 @@ final class DuplicateCandidateGroup {
   /// User-selected record for a future safe consolidation/link operation.
   /// This metadata never mutates financial records.
   final TransactionId? selectedTransactionId;
+
+  /// Non-persisted diagnostic attached when a saved derived row could not be
+  /// reconstructed exactly. The safe unresolved fallback remains usable by
+  /// historical analysis while exposing the repair-needed state.
+  final DuplicateCandidateGroupIntegrityIssue? integrityIssue;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -74,4 +80,14 @@ final class DuplicateCandidateGroup {
     final values = ids.map((id) => id.value).toList()..sort();
     return List.unmodifiable(values.map(TransactionId.new));
   }
+}
+
+final class DuplicateCandidateGroupIntegrityIssue {
+  const DuplicateCandidateGroupIntegrityIssue({
+    required this.code,
+    required this.detail,
+  });
+
+  final String code;
+  final String detail;
 }

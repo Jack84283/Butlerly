@@ -201,6 +201,12 @@ final class LocalBackupManager {
       'group_id',
       'transaction_id',
     ]),
+    _TableSpec(
+      'recurring_pattern_decisions',
+      ['id'],
+      updatedAt: 'updated_at',
+      createdAt: 'created_at',
+    ),
     _TableSpec('analysis_rule_activations', [
       'rule_id',
     ], updatedAt: 'updated_at'),
@@ -906,6 +912,8 @@ final class LocalBackupManager {
       "SELECT COUNT(*) FROM tags WHERE id NOT LIKE 'tag.%' "
           "AND id NOT LIKE 'system-tag-%' "
           "AND COALESCE(updated_at, created_at) > '$cutoff'",
+      "SELECT COUNT(*) FROM recurring_pattern_decisions "
+          "WHERE updated_at > '$cutoff'",
     ]) {
       master +=
           Sqflite.firstIntValue(await database.database.rawQuery(query)) ?? 0;
@@ -1178,6 +1186,7 @@ final class LocalBackupManager {
       'provenances',
       'analysis_rule_configurations',
       'analysis_rule_activations',
+      'recurring_pattern_decisions',
       'payment_sources',
       'user_preferences',
     ];

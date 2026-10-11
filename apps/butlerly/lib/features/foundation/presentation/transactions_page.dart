@@ -59,14 +59,20 @@ class _TransactionsPageState extends State<TransactionsPage> {
   void initState() {
     super.initState();
     final now = DateTime.now().toUtc();
+    final hasAuthoritativeTransactionIds =
+        widget.query.transactionIds?.isNotEmpty ?? false;
     _currency = widget.query.currency;
     _direction = widget.query.direction;
     _status = widget.query.status;
     _categoryId = widget.query.categoryId;
     _paymentSourceId = widget.query.paymentSourceId;
     _needsReview = widget.query.needsReview;
-    _from = widget.query.from ?? DateTime.utc(now.year, now.month - 3, 1);
-    _to = widget.query.to ?? DateTime.utc(now.year, now.month, now.day);
+    _from = hasAuthoritativeTransactionIds
+        ? null
+        : widget.query.from ?? DateTime.utc(now.year, now.month - 3, 1);
+    _to = hasAuthoritativeTransactionIds
+        ? null
+        : widget.query.to ?? DateTime.utc(now.year, now.month, now.day);
     _includeUndated = widget.query.includeUndated;
     _transactions = Future.value(const _TransactionsData([]));
     transactionChanges.addListener(_handleTransactionChange);
@@ -115,6 +121,10 @@ class _TransactionsPageState extends State<TransactionsPage> {
         _loadedLanguageCode ??
         Localizations.localeOf(context).languageCode;
     await _ensureDefaultPeriod(finance);
+    // Duplicate-group visibility may query active transactions to hide
+    // archived history. Load it before the scoped list so the page's primary
+    // query remains the final repository read and preserves its date bounds.
+    final possibleDuplicateIds = await _possibleDuplicateIds(finance);
     final result = await finance.listTransactions(_repositoryQuery());
     final values = switch (result) {
       ApplicationSuccess<List<TransactionDto>>(:final value) => value,
@@ -129,13 +139,14 @@ class _TransactionsPageState extends State<TransactionsPage> {
         languageCode: activeLanguageCode,
       ),
       paymentSourceNames: await _paymentSourceNames(finance),
-      possibleDuplicateIds: await _possibleDuplicateIds(finance),
+      possibleDuplicateIds: possibleDuplicateIds,
     );
   }
 
   Future<void> _ensureDefaultPeriod(FinanceServices finance) async {
     if (_defaultPeriodResolved) return;
     _defaultPeriodResolved = true;
+    if (widget.query.transactionIds?.isNotEmpty ?? false) return;
     if (widget.query.from != null || widget.query.to != null) return;
 
     final result = await finance.resolveHomePeriod(instant: DateTime.now());

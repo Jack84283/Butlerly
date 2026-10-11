@@ -48,22 +48,29 @@ void main() {
         final outside = zone == 'Asia/Tokyo'
             ? DateTime.utc(2026, 9, 30, 14, 30)
             : DateTime.utc(2026, 10, 1, 6, 30);
+        final outsideTransaction = _transaction(
+          id: 'outside',
+          occurredAt: outside,
+          now: now,
+        );
+        final explicitOutside = _transaction(
+          id: 'explicit-outside',
+          occurredAt: inside,
+          transactionDate: '2026-09-30',
+          now: now,
+        );
+        final unknown = _transaction(id: 'unknown', occurredAt: null, now: now);
         final values = [
           _transaction(id: 'fallback', occurredAt: inside, now: now),
-          _transaction(id: 'outside', occurredAt: outside, now: now),
+          outsideTransaction,
           _transaction(
             id: 'explicit',
             occurredAt: outside,
             transactionDate: '2026-10-01',
             now: now,
           ),
-          _transaction(
-            id: 'explicit-outside',
-            occurredAt: inside,
-            transactionDate: '2026-09-30',
-            now: now,
-          ),
-          _transaction(id: 'unknown', occurredAt: null, now: now),
+          explicitOutside,
+          unknown,
         ];
         for (final value in values) {
           await repository.save(
@@ -112,6 +119,26 @@ void main() {
               .where((q) => q.code == 'missingFinancialDate')
               .map((q) => q.transactionId!.value),
           ['unknown'],
+        );
+        final authoritativeIds = await list(
+          ListTransactionsQuery(
+            transactionIds: [
+              outsideTransaction.id.value,
+              explicitOutside.id.value,
+              unknown.id.value,
+            ],
+            from: DateTime.utc(2026, 10, 1),
+            to: DateTime.utc(2026, 10, 1),
+          ),
+        );
+        expect(
+          (authoritativeIds as ApplicationSuccess<List<TransactionDto>>).value
+              .map((value) => value.id),
+          unorderedEquals([
+            outsideTransaction.id.value,
+            explicitOutside.id.value,
+            unknown.id.value,
+          ]),
         );
         for (final bounded in [false, true]) {
           for (final include in [false, true]) {

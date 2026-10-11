@@ -25,6 +25,146 @@ void main() {
 
   tearDown(() => database.close());
 
+  test('persists recurring decisions for detector reconstruction', () async {
+    final repository = SqliteRecurringPatternDecisionRepository(database);
+    final decision = RecurringPatternDecision(
+      id: 'recurring-decision:merchant|expense|USD||',
+      patternKey: 'merchant|expense|USD||',
+      status: RecurringPatternDecisionStatus.corrected,
+      cadence: RecurringPatternDecisionCadence.monthly,
+      intervalDays: 31,
+      expectedAmount: DecimalValue.parse('42.50'),
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    await repository.save(decision);
+
+    expect(await repository.findByPatternKey(decision.patternKey), isNotNull);
+    expect((await repository.list()).single.expectedAmount.toString(), '42.5');
+    expect(
+      (await database.connection.query('recurring_pattern_decisions')).single,
+      containsPair('status', 'corrected'),
+    );
+  });
+
+  test(
+    'rejects malformed persisted recurring decisions as integrity failures',
+    () async {
+      final repository = SqliteRecurringPatternDecisionRepository(database);
+      await database.connection.insert('recurring_pattern_decisions', {
+        'id': 'malformed',
+        'pattern_key': 'malformed',
+        'status': 'corrected',
+        'cadence': 'monthly',
+        'interval_days': 31,
+        'expected_amount_coefficient': 'not-a-number',
+        'expected_amount_scale': 0,
+        'created_at': now.toIso8601String(),
+        'updated_at': now.toIso8601String(),
+      });
+
+      expect(
+        repository.list(),
+        throwsA(
+          isA<RepositoryException>().having(
+            (error) => error.code,
+            'code',
+            RepositoryFailureCode.integrity,
+          ),
+        ),
+      );
+    },
+  );
+
+  test(
+    'reconstructs malformed duplicate decisions as unresolved quality data',
+    () async {
+      final first = duplicateTransaction(now, id: 'malformed-duplicate-a');
+      final second = duplicateTransaction(now, id: 'malformed-duplicate-b');
+      await transactions.save(first);
+      await transactions.save(second);
+      const groupId = 'duplicate:2026-08-09|25|USD|expense';
+      await database.connection.insert('duplicate_candidate_groups', {
+        'id': groupId,
+        'transaction_date': '2026-08-09',
+        'amount_coefficient': '25',
+        'amount_scale': 0,
+        'currency': 'USD',
+        'direction': 'expense',
+        'status': 'not-a-status',
+        'selected_transaction_id': null,
+        'created_at': now.toIso8601String(),
+        'updated_at': now.toIso8601String(),
+      });
+      for (final id in [first.id, second.id]) {
+        await database.connection.insert(
+          'duplicate_candidate_group_transactions',
+          {'group_id': groupId, 'transaction_id': id.value},
+        );
+      }
+
+      final restored = (await SqliteDuplicateCandidateGroupRepository(
+        database,
+      ).list()).single;
+      expect(restored.status, DuplicateCandidateGroupStatus.unresolved);
+      expect(restored.integrityIssue?.code, 'malformedDuplicateGroup');
+      expect(restored.transactionIds, [first.id, second.id]);
+
+      final canonical = selectCanonicalTransactions(
+        source: [first, second],
+        duplicateGroups: [restored],
+      );
+      expect(canonical.transactions.map((value) => value.id), [first.id]);
+      expect(
+        canonical.qualityIssues.map((issue) => issue.code),
+        contains('malformedDuplicateGroup'),
+      );
+    },
+  );
+
+  test(
+    'reconstructs missing duplicate membership links and exposes quality data',
+    () async {
+      final first = duplicateTransaction(now, id: 'partial-duplicate-a');
+      final second = duplicateTransaction(now, id: 'partial-duplicate-b');
+      await transactions.save(first);
+      await transactions.save(second);
+      const groupId = 'duplicate:2026-08-09|25|USD|expense';
+      await database.connection.insert('duplicate_candidate_groups', {
+        'id': groupId,
+        'transaction_date': '2026-08-09',
+        'amount_coefficient': '25',
+        'amount_scale': 0,
+        'currency': 'USD',
+        'direction': 'expense',
+        'status': DuplicateCandidateGroupStatus.consolidated.name,
+        'selected_transaction_id': first.id.value,
+        'created_at': now.toIso8601String(),
+        'updated_at': now.toIso8601String(),
+      });
+      await database.connection.insert(
+        'duplicate_candidate_group_transactions',
+        {'group_id': groupId, 'transaction_id': first.id.value},
+      );
+
+      final restored = (await SqliteDuplicateCandidateGroupRepository(
+        database,
+      ).list()).single;
+      expect(restored.transactionIds, [first.id, second.id]);
+      expect(restored.integrityIssue?.code, 'incompleteDuplicateGroup');
+      final canonical = selectCanonicalTransactions(
+        source: [first, second],
+        duplicateGroups: [restored],
+      );
+      expect(canonical.transactions.map((value) => value.id), [first.id]);
+      expect(
+        canonical.qualityIssues.map((issue) => issue.code),
+        contains('incompleteDuplicateGroup'),
+      );
+    },
+  );
+
   test('recalculation preserves acknowledged and dismissed findings', () async {
     final repository = SqliteAnalysisFindingRepository(database);
     final rule = AnalysisRuleDefinition(
@@ -638,6 +778,71 @@ void main() {
     },
   );
 
+  test(
+    'permanent deletion clears a selected duplicate reference before removing a transaction',
+    () async {
+      final selected = duplicateTransaction(now, id: 'selected-duplicate');
+      final other = duplicateTransaction(now, id: 'other-duplicate');
+      await transactions.save(selected);
+      await transactions.save(other);
+      await database.connection.insert('duplicate_candidate_groups', {
+        'id': 'duplicate:2026-08-09|25|USD|expense',
+        'transaction_date': '2026-08-09',
+        'amount_coefficient': '25',
+        'amount_scale': 0,
+        'currency': 'USD',
+        'direction': 'expense',
+        'status': DuplicateCandidateGroupStatus.consolidated.name,
+        'selected_transaction_id': selected.id.value,
+        'created_at': now.toIso8601String(),
+        'updated_at': now.toIso8601String(),
+      });
+      for (final id in [selected.id, other.id]) {
+        await database.connection
+            .insert('duplicate_candidate_group_transactions', {
+              'group_id': 'duplicate:2026-08-09|25|USD|expense',
+              'transaction_id': id.value,
+            });
+      }
+      await database.connection.insert('reconciliation_candidates', {
+        'id': 'candidate-selected-duplicate',
+        'receipt_transaction_id': selected.id.value,
+        'payment_transaction_id': other.id.value,
+        'score': 0.9,
+        'reasons_json': '[]',
+        'status': 'proposed',
+        'created_at': now.toIso8601String(),
+        'updated_at': now.toIso8601String(),
+      });
+      await database.connection.insert('reconciliation_links', {
+        'id': 'link-selected-duplicate',
+        'candidate_id': 'candidate-selected-duplicate',
+        'receipt_transaction_id': selected.id.value,
+        'payment_transaction_id': other.id.value,
+        'created_at': now.toIso8601String(),
+      });
+
+      await transactions.removePermanently(selected.id);
+
+      expect(await transactions.findById(selected.id), isNull);
+      expect(
+        (await database.connection.query('duplicate_candidate_groups')).single,
+        containsPair('selected_transaction_id', isNull),
+      );
+      expect(await database.connection.query('reconciliation_links'), isEmpty);
+      expect(
+        await database.connection.query('reconciliation_candidates'),
+        isEmpty,
+      );
+
+      final restored = (await SqliteDuplicateCandidateGroupRepository(
+        database,
+      ).list()).single;
+      expect(restored.transactionIds, [other.id]);
+      expect(restored.integrityIssue?.code, 'incompleteDuplicateGroup');
+    },
+  );
+
   test('searches and filters transactions locally', () async {
     final paymentSource = PaymentSource(
       id: PaymentSourceId('search-source'),
@@ -825,6 +1030,21 @@ void main() {
       boundedWithUndated.map((transaction) => transaction.id),
       contains(undated.id),
     );
+
+    final uncategorized = minimalTransaction(
+      now,
+      id: 'uncategorized-transaction',
+    );
+    await transactions.save(uncategorized);
+    final authoritative = await transactions.query(
+      TransactionRepositoryQuery(
+        transactionIds: [uncategorized.id],
+        categoryId: CategoryId('uncategorized'),
+      ),
+    );
+    expect(authoritative.map((transaction) => transaction.id), [
+      uncategorized.id,
+    ]);
   });
 
   test('stores evidence links and suggestions separately', () async {
@@ -1074,6 +1294,28 @@ Transaction minimalTransaction(
   createdAt: now,
   updatedAt: now,
 );
+
+Transaction duplicateTransaction(DateTime now, {required String id}) =>
+    Transaction(
+      id: TransactionId(id),
+      timing: KnownTransactionTime(now),
+      money: Money(
+        amount: DecimalValue.parse('25'),
+        currency: CurrencyCode('USD'),
+      ),
+      direction: TransactionDirection.expense,
+      sourceType: TransactionSourceType.manual,
+      provenance: [
+        Provenance(
+          id: ProvenanceId('$id-provenance'),
+          sourceType: ProvenanceSourceType.userEntry,
+          capturedAt: now,
+        ),
+      ],
+      createdAt: now,
+      updatedAt: now,
+      transactionDate: '2026-08-09',
+    );
 
 Transaction timedTransaction({
   required String id,

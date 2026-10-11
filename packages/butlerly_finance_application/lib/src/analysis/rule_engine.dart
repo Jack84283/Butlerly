@@ -1037,8 +1037,10 @@ final class AnalysisRuleEngine {
     AnalysisContext? contextOverride,
   }) {
     final metricContext = contextOverride ?? dataset.context;
-    final selected = values
+    final measureValues = values
         .where((value) => _matchesFilters(value, measure.filters))
+        .toList(growable: false);
+    final selected = measureValues
         .where(
           (value) => measure.currencyBasis == CurrencyBasis.baseCurrency
               ? value.normalizedMoney != null ||
@@ -1046,6 +1048,13 @@ final class AnalysisRuleEngine {
               : true,
         )
         .toList(growable: false);
+    final hasMissingNormalization =
+        measure.currencyBasis == CurrencyBasis.baseCurrency &&
+        measureValues.any(
+          (value) =>
+              value.money.currency != metricContext.baseCurrency &&
+              value.normalizedMoney == null,
+        );
     final amountValues = selected
         .map(
           (value) => measure.currencyBasis == CurrencyBasis.baseCurrency
@@ -1053,6 +1062,33 @@ final class AnalysisRuleEngine {
               : value.money.amount,
         )
         .toList(growable: false);
+    final shareSourceValues = measure.operation == RuleOperation.share
+        ? _measureSourceValues(dataset, rule, contextOverride)
+              .where((value) => _matchesFilters(value, rule.filters))
+              .where((value) => _matchesFilters(value, measure.filters))
+              .toList(growable: false)
+        : const <AnalysisEconomicTransaction>[];
+    final shareAmountValues = shareSourceValues
+        .where(
+          (value) => measure.currencyBasis == CurrencyBasis.baseCurrency
+              ? value.normalizedMoney != null ||
+                    value.money.currency == metricContext.baseCurrency
+              : true,
+        )
+        .map(
+          (value) => measure.currencyBasis == CurrencyBasis.baseCurrency
+              ? (value.normalizedMoney ?? value.money).amount
+              : value.money.amount,
+        )
+        .toList(growable: false);
+    final shareHasMissingNormalization =
+        measure.operation == RuleOperation.share &&
+        measure.currencyBasis == CurrencyBasis.baseCurrency &&
+        shareSourceValues.any(
+          (value) =>
+              value.money.currency != metricContext.baseCurrency &&
+              value.normalizedMoney == null,
+        );
     final evidenceValues = _evidenceValues(
       measure.operation,
       selected,
@@ -1086,24 +1122,7 @@ final class AnalysisRuleEngine {
         scale: 0,
       ),
       RuleOperation.difference => _difference(rule, dependencies),
-      RuleOperation.share => _share(
-        amountValues,
-        _measureSourceValues(dataset, rule, contextOverride)
-            .where((value) => _matchesFilters(value, rule.filters))
-            .where((value) => _matchesFilters(value, measure.filters))
-            .where(
-              (value) => measure.currencyBasis == CurrencyBasis.baseCurrency
-                  ? value.normalizedMoney != null ||
-                        value.money.currency == metricContext.baseCurrency
-                  : true,
-            )
-            .map(
-              (value) => measure.currencyBasis == CurrencyBasis.baseCurrency
-                  ? (value.normalizedMoney ?? value.money).amount
-                  : value.money.amount,
-            )
-            .toList(growable: false),
-      ),
+      RuleOperation.share => _share(amountValues, shareAmountValues),
     };
     final monetary = {
       RuleOperation.sum,
@@ -1118,7 +1137,9 @@ final class AnalysisRuleEngine {
         : measure.currencyBasis == CurrencyBasis.baseCurrency
         ? metricContext.baseCurrency
         : (amountValues.isEmpty ? null : selected.first.money.currency);
-    final availability = selected.isNotEmpty
+    final availability = hasMissingNormalization || shareHasMissingNormalization
+        ? AnalysisDataAvailability.insufficient
+        : selected.isNotEmpty
         ? AnalysisDataAvailability.sufficient
         : values.isEmpty
         ? AnalysisDataAvailability.empty
@@ -1319,20 +1340,6 @@ AnalysisContext _contextForWindow(
 
 String _dateOnly(DateTime value) =>
     '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
-
-extension on DecimalValue {
-  DecimalValue divideBy(int divisor) {
-    if (divisor <= 0) {
-      return DecimalValue.fromParts(coefficient: BigInt.zero, scale: 0);
-    }
-    const precision = 6;
-    return DecimalValue.fromParts(
-      coefficient:
-          coefficient * BigInt.from(10).pow(precision) ~/ BigInt.from(divisor),
-      scale: scale + precision,
-    );
-  }
-}
 
 final class _ConditionEvidence {
   const _ConditionEvidence(this.values, this.selective);

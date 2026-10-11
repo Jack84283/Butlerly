@@ -541,6 +541,78 @@ void main() {
     expect(metric.transactionCount, 2);
   });
 
+  test('grouped base-currency measures reject partial FX totals', () {
+    final usd = CurrencyCode('USD');
+    final baseContext = AnalysisContext(
+      period: context.period,
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+      baseCurrency: usd,
+    );
+    final sharedMerchant = MerchantId('shared-merchant');
+    final definition = AnalysisRuleDefinition(
+      identity: RuleIdentity('ANL-R011'),
+      version: RuleVersion('1.0.0'),
+      schemaVersion: '1.0.0',
+      type: AnalysisRuleType.metric,
+      nameKey: 'merchant',
+      descriptionKey: 'merchant.description',
+      enabled: true,
+      status: AnalysisRuleStatus.active,
+      period: 'selected_period',
+      measure: const RuleMeasure(
+        operation: RuleOperation.sum,
+        field: 'amount',
+        currencyBasis: CurrencyBasis.baseCurrency,
+        filters: [
+          AnalysisFilter(
+            kind: AnalysisFilterKind.direction,
+            values: ['expense'],
+          ),
+        ],
+      ),
+      grouping: RuleGrouping.merchant,
+      baseline: RuleBaseline.none,
+      condition: const RuleCondition(operator: 'none'),
+      severity: RuleSeverity.info,
+      definitionHash: RuleDefinitionHash('3' * 64),
+      filters: const [
+        AnalysisFilter(kind: AnalysisFilterKind.direction, values: ['expense']),
+      ],
+    );
+    final dataset = AnalysisDataset(
+      context: baseContext,
+      transactions: [
+        AnalysisEconomicTransaction(
+          id: TransactionId('usd'),
+          money: Money(amount: DecimalValue.parse('10'), currency: usd),
+          direction: TransactionDirection.expense,
+          transactionDate: '2026-01-02',
+          merchantId: sharedMerchant,
+        ),
+        AnalysisEconomicTransaction(
+          id: TransactionId('eur'),
+          money: Money(
+            amount: DecimalValue.parse('20'),
+            currency: CurrencyCode('EUR'),
+          ),
+          direction: TransactionDirection.expense,
+          transactionDate: '2026-01-03',
+          merchantId: sharedMerchant,
+        ),
+      ],
+    );
+
+    final metric = const AnalysisRuleEngine()
+        .execute(dataset: dataset, definitions: [definition])
+        .single
+        .metric!;
+
+    expect(metric.value, DecimalValue.parse('10'));
+    expect(metric.transactionCount, 1);
+    expect(metric.availability, AnalysisDataAvailability.insufficient);
+  });
+
   test('measure filters apply every supported filter kind', () {
     final transaction = AnalysisEconomicTransaction(
       id: TransactionId('filtered'),

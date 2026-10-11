@@ -28,6 +28,12 @@ String analysisMoney(BuildContext context, AnalysisMetric metric) =>
     '${localizedDecimal(context, metric.value.toString())} ${metric.currency?.value ?? ''}'
         .trim();
 
+String analysisMetricMoney(BuildContext context, AnalysisMetric metric) =>
+    metric.availability == AnalysisDataAvailability.sufficient ||
+        metric.availability == AnalysisDataAvailability.empty
+    ? analysisMoney(context, metric)
+    : context.l10n.text('notAvailable');
+
 String analysisValueMoney(BuildContext context, AnalysisValue value) =>
     '${localizedDecimal(context, value.value.toString())} ${value.currency?.value ?? ''}'
         .trim();
@@ -84,9 +90,14 @@ String analysisDimension(
   TransactionMasterData? masterData,
 ) {
   final raw = analysisRawDimension(metric);
-  if (metric.rule.grouping == RuleGrouping.category) {
+  if (metric.rule.grouping == RuleGrouping.category ||
+      metric.rule.grouping == RuleGrouping.subcategory) {
     return masterData?.categoryName(raw) ??
         context.l10n.text('unavailableCategory');
+  }
+  if (metric.rule.grouping == RuleGrouping.merchant) {
+    return masterData?.merchantName(raw) ??
+        context.l10n.text('unavailableMerchant');
   }
   return raw;
 }

@@ -250,8 +250,10 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: '/statements',
-          builder: (context, _) => services.isRegistered<FinanceServices>()
-              ? const StatementCapturePage()
+          builder: (context, state) => services.isRegistered<FinanceServices>()
+              ? StatementCapturePage(
+                  initialStatementId: state.uri.queryParameters['statementId'],
+                )
               : _responsiveStateScaffold(
                   contentKey: const ValueKey(
                     'statement-storage-unavailable-content',

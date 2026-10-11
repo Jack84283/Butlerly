@@ -15,12 +15,14 @@ class AnalysisDaySummary extends StatelessWidget {
     required this.date,
     required this.result,
     required this.expense,
+    this.expenseAvailability = AnalysisDataAvailability.empty,
     required this.onTransactionTap,
     this.masterData,
   });
   final String date;
   final Future<ApplicationResult<List<TransactionDto>>>? result;
   final Money? expense;
+  final AnalysisDataAvailability expenseAvailability;
   final ValueChanged<TransactionDto> onTransactionTap;
   final TransactionMasterData? masterData;
 
@@ -64,7 +66,11 @@ class AnalysisDaySummary extends StatelessWidget {
                         child: Align(
                           alignment: AlignmentDirectional.centerEnd,
                           child: Text(
-                            _selectedDayTotalAmount(context, value.value),
+                            _selectedDayTotalAmount(
+                              context,
+                              expense,
+                              expenseAvailability,
+                            ),
                             key: const ValueKey('analysis-selected-day-amount'),
                             textAlign: TextAlign.end,
                             style: Theme.of(context).textTheme.bodySmall
@@ -115,27 +121,14 @@ class AnalysisDaySummary extends StatelessWidget {
 
 String _selectedDayTotalAmount(
   BuildContext context,
-  List<TransactionDto> transactions,
-) {
-  final totals = <String, List<DecimalValue>>{};
-  for (final transaction in transactions) {
-    final currency = transaction.currency.trim().toUpperCase();
-    if (currency.isEmpty) continue;
-    final amount = DecimalValue.parse(
-      transaction.amount.replaceFirst(RegExp(r'^[+-]'), ''),
-    );
-    totals.putIfAbsent(currency, () => []).add(amount);
-  }
-
-  final entries = totals.entries.toList(growable: false)
-    ..sort((a, b) => a.key.compareTo(b.key));
-  return entries
-      .map(
-        (entry) => localizedCompactMoney(
-          context,
-          DecimalValue.sum(entry.value).toString(),
-          entry.key,
-        ),
-      )
-      .join(' · ');
-}
+  Money? expense,
+  AnalysisDataAvailability availability,
+) => availability == AnalysisDataAvailability.insufficient
+    ? context.l10n.text('notAvailable')
+    : expense == null
+    ? context.l10n.text('noSpendingInPeriod')
+    : localizedCompactMoney(
+        context,
+        expense.amount.toString(),
+        expense.currency.value,
+      );

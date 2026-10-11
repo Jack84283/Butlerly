@@ -51,6 +51,7 @@ void main() {
         'reference_data_translations',
         'duplicate_candidate_groups',
         'duplicate_candidate_group_transactions',
+        'recurring_pattern_decisions',
         'merchant_aliases',
         'merchant_normalization_patterns',
         'transaction_rules',

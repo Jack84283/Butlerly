@@ -40,6 +40,33 @@ void main() {
     },
   );
 
+  test('assessment counts every same-batch duplicate row once', () async {
+    final result = await service.assessBatch(_statement(), [
+      _row('same-a', amount: '12'),
+      _row('same-b', amount: '12'),
+    ], 'source');
+
+    expect(
+      (result as ApplicationSuccess<StatementImportAssessment>)
+          .value
+          .possibleDuplicateCount,
+      2,
+    );
+  });
+
+  test('assessment surfaces unavailable duplicate checking', () async {
+    transactions.failQueries = true;
+
+    final result = await service.assessBatch(_statement(), [
+      _row('unavailable'),
+    ], 'source');
+
+    final assessment =
+        (result as ApplicationSuccess<StatementImportAssessment>).value;
+    expect(assessment.possibleDuplicateCount, 0);
+    expect(assessment.duplicateCheckUnavailableCount, 1);
+  });
+
   test(
     'batch import persists minimum-valid exceptions and leaves invalid rows unsaved',
     () async {
@@ -107,7 +134,7 @@ void main() {
   });
 
   test(
-    'batch import persists duplicate candidates for later Review resolution',
+    'batch import leaves suspected duplicates pending for explicit resolution',
     () async {
       transactions.values['existing'] = _transaction('existing', amount: '12');
       final rows = [
@@ -123,26 +150,141 @@ void main() {
           (await service.importBatch(_statement(), rows, 'source')
                   as ApplicationSuccess<StatementImportSummary>)
               .value;
-      expect(summary.imported, 2);
+      expect(summary.imported, 1);
       expect(summary.possibleDuplicates, 1);
-      expect(
-        transactions.values['statement-statement-row-duplicate'],
-        isNotNull,
-      );
-      expect(groups.values, hasLength(1));
-      expect(
-        groups.values.values.single.status,
-        DuplicateCandidateGroupStatus.unresolved,
-      );
-      expect(
-        groups.values.values.single.transactionIds.map((id) => id.value),
-        containsAll(['statement-statement-row-duplicate', 'existing']),
-      );
+      expect(transactions.values['statement-statement-row-duplicate'], isNull);
+      expect(groups.values, isEmpty);
     },
   );
 
-  test('retry repairs missing canonical duplicate review metadata', () async {
+  test('same-batch duplicate rows remain pending before persistence', () async {
+    final summary =
+        (await service.importBatch(_statement(), [
+                  _row('same-a', amount: '12'),
+                  _row('same-b', amount: '12'),
+                ], 'source')
+                as ApplicationSuccess<StatementImportSummary>)
+            .value;
+
+    expect(summary.imported, 0);
+    expect(summary.possibleDuplicates, 2);
+    expect(summary.failed, 0);
+    expect(transactions.values['statement-statement-row-same-a'], isNull);
+    expect(transactions.values['statement-statement-row-same-b'], isNull);
+    expect(
+      statements.rows.map((row) => row.status),
+      everyElement(StatementRowStatus.unresolved),
+    );
+    expect(
+      (await service.reviewExceptions()
+              as ApplicationSuccess<List<StatementReviewException>>)
+          .value,
+      hasLength(2),
+    );
+  });
+
+  test('retry does not reopen resolved same-batch duplicate rows', () async {
+    final rows = [_row('same-a', amount: '12'), _row('same-b', amount: '12')];
+    final first = await service.importBatch(_statement(), rows, 'source');
+    expect(
+      (first as ApplicationSuccess<StatementImportSummary>)
+          .value
+          .possibleDuplicates,
+      2,
+    );
+
+    // Resolve both exceptions by explicitly creating the transactions and
+    // keep a user correction on the persisted statement rows.
+    await service.save(
+      _row(
+        'same-a',
+        amount: '12',
+        categoryId: 'category.corrected',
+        status: StatementRowStatus.unresolved,
+      ),
+      'source',
+      allowCreateNew: true,
+    );
+    await service.save(
+      _row(
+        'same-b',
+        amount: '12',
+        categoryId: 'category.corrected',
+        status: StatementRowStatus.unresolved,
+      ),
+      'source',
+      allowCreateNew: true,
+    );
+    final transactionCount = transactions.values.length;
+
+    final retry = await service.importBatch(_statement(), rows, 'source');
+    final summary = (retry as ApplicationSuccess<StatementImportSummary>).value;
+    expect(summary.imported, 0);
+    expect(summary.possibleDuplicates, 0);
+    expect(summary.failed, 0);
+    expect(transactions.values, hasLength(transactionCount));
+    expect(
+      statements.rows,
+      everyElement(
+        predicate<StatementRow>(
+          (row) =>
+              row.status == StatementRowStatus.saved &&
+              row.dispositionReason == 'createNew' &&
+              row.reviewReason == null,
+        ),
+      ),
+    );
+    expect(
+      transactions.values['statement-statement-row-same-a']?.categoryId,
+      CategoryId('category.corrected'),
+    );
+    expect(
+      transactions.values['statement-statement-row-same-b']?.categoryId,
+      CategoryId('category.corrected'),
+    );
+  });
+
+  test('duplicate-check failure keeps the row pending', () async {
+    transactions.failQueries = true;
+
+    final summary =
+        (await service.importBatch(_statement(), [
+                  _row('unavailable'),
+                ], 'source')
+                as ApplicationSuccess<StatementImportSummary>)
+            .value;
+
+    expect(summary.imported, 0);
+    expect(summary.possibleDuplicates, 0);
+    expect(summary.failed, 1);
+    expect(transactions.values['statement-statement-row-unavailable'], isNull);
+    expect(statements.rows.single.status, StatementRowStatus.unresolved);
+    expect(
+      statements.rows.single.reviewReason,
+      'statementDuplicateCheckUnavailable',
+    );
+  });
+
+  test('duplicate metadata failure returns the committed summary', () async {
     transactions.values['existing'] = _transaction('existing', amount: '12');
+    groups.failLists = true;
+
+    final summary =
+        (await service.importBatch(_statement(), [
+                  _row('duplicate', amount: '12'),
+                  _row('valid', amount: '7'),
+                ], 'source')
+                as ApplicationSuccess<StatementImportSummary>)
+            .value;
+
+    expect(summary.imported, 1);
+    expect(summary.possibleDuplicates, 1);
+    expect(summary.failed, 1);
+    expect(transactions.values['statement-statement-row-valid'], isNotNull);
+    expect(transactions.values['statement-statement-row-duplicate'], isNull);
+  });
+
+  test('retry repairs missing canonical duplicate review metadata', () async {
     final row = _row('repair', amount: '12');
 
     final first = await service.importBatch(_statement(), [row], 'source');
@@ -150,6 +292,14 @@ void main() {
       (first as ApplicationSuccess<StatementImportSummary>).value.imported,
       1,
     );
+    transactions.values['statement-statement-row-repair'] = transactions
+        .values['statement-statement-row-repair']!
+        .assignCategory(CategoryId('user-correction'), now);
+
+    // A second record appears after the first import, while the persisted
+    // statement row remains saved. Retrying must repair the missing group
+    // metadata without creating another transaction.
+    transactions.values['existing'] = _transaction('existing', amount: '12');
 
     final key = DuplicateTransactionKey(
       transactionDate: '2026-08-20',
@@ -158,7 +308,7 @@ void main() {
       direction: TransactionDirection.expense.name,
     );
     final groupId = 'duplicate:${key.canonical}';
-    expect(groups.values[groupId], isNotNull);
+    expect(groups.values[groupId], isNull);
     groups.values.remove(groupId);
 
     final retry = await service.importBatch(_statement(), [row], 'source');
@@ -166,9 +316,68 @@ void main() {
       (retry as ApplicationSuccess<StatementImportSummary>).value.imported,
       0,
     );
-    expect(retry.value.possibleDuplicates, 1);
+    expect(retry.value.possibleDuplicates, 0);
+    expect(retry.value.failed, 0);
+    expect(
+      transactions.values['statement-statement-row-repair']?.categoryId,
+      CategoryId('user-correction'),
+    );
+    expect(statements.rows.single.status, StatementRowStatus.saved);
     expect(groups.values[groupId], isNotNull);
   });
+
+  test(
+    'retry preserves archived duplicate history and resolved decisions',
+    () async {
+      final row = _row('archived-history', amount: '12');
+      final first = await service.importBatch(_statement(), [row], 'source');
+      expect(
+        (first as ApplicationSuccess<StatementImportSummary>).value.imported,
+        1,
+      );
+      final importedId = 'statement-statement-row-archived-history';
+      transactions.values[importedId] = transactions.values[importedId]!
+          .archive(now);
+      final activeA = _transaction('active-a', amount: '12');
+      final activeB = _transaction('active-b', amount: '12');
+      transactions.values
+        ..[activeA.id.value] = activeA
+        ..[activeB.id.value] = activeB;
+      final key = DuplicateTransactionKey(
+        transactionDate: '2026-08-20',
+        amount: DecimalValue.parse('12'),
+        currency: 'USD',
+        direction: TransactionDirection.expense.name,
+      );
+      final groupId = 'duplicate:${key.canonical}';
+      groups.values[groupId] = DuplicateCandidateGroup(
+        id: groupId,
+        transactionIds: [TransactionId(importedId), activeA.id, activeB.id],
+        duplicateKey: key,
+        status: DuplicateCandidateGroupStatus.consolidated,
+        selectedTransactionId: activeA.id,
+        createdAt: now,
+        updatedAt: now,
+      );
+
+      final retry = await service.importBatch(_statement(), [row], 'source');
+
+      expect(
+        (retry as ApplicationSuccess<StatementImportSummary>).value.imported,
+        0,
+      );
+      expect(groups.values[groupId]!.transactionIds, [
+        activeA.id,
+        activeB.id,
+        TransactionId(importedId),
+      ]);
+      expect(
+        groups.values[groupId]!.status,
+        DuplicateCandidateGroupStatus.consolidated,
+      );
+      expect(groups.values[groupId]!.selectedTransactionId, activeA.id);
+    },
+  );
 
   test(
     'rejects a mismatched PaymentSource and does not re-import a saved row',
@@ -425,6 +634,7 @@ final class _RuleRepository implements TransactionRuleRepository {
 final class _Transactions implements TransactionRepository {
   final values = <String, Transaction>{}
     ..addAll({'seed': _transaction('seed', amount: '99')});
+  bool failQueries = false;
   @override
   Future<void> save(Transaction value) async => values[value.id.value] = value;
   @override
@@ -435,16 +645,23 @@ final class _Transactions implements TransactionRepository {
   Future<void> removePermanently(TransactionId id) async =>
       values.remove(id.value);
   @override
-  Future<List<Transaction>> query(TransactionRepositoryQuery query) async =>
-      values.values
-          .where(
-            (v) =>
-                v.status == query.status &&
-                v.transactionDate == '2026-08-20' &&
-                v.money.currency.value == query.currency &&
-                v.money.amount == DecimalValue.parse('12'),
-          )
-          .toList();
+  Future<List<Transaction>> query(TransactionRepositoryQuery query) async {
+    if (failQueries) {
+      throw const RepositoryException(
+        RepositoryFailureCode.unavailable,
+        'duplicate query unavailable',
+      );
+    }
+    return values.values
+        .where(
+          (v) =>
+              v.status == query.status &&
+              v.transactionDate == '2026-08-20' &&
+              v.money.currency.value == query.currency &&
+              v.money.amount == DecimalValue.parse('12'),
+        )
+        .toList();
+  }
 }
 
 final class _Statements
@@ -512,13 +729,23 @@ final class _Groups implements DuplicateCandidateGroupRepository {
 
   final _Transactions transactions;
   final values = <String, DuplicateCandidateGroup>{};
+  bool failLists = false;
   @override
   Future<void> save(DuplicateCandidateGroup group) async =>
       values[group.id] = group;
   @override
   Future<List<DuplicateCandidateGroup>> list({
     DuplicateCandidateGroupStatus? status,
-  }) async => values.values.toList();
+  }) async {
+    if (failLists) {
+      throw const RepositoryException(
+        RepositoryFailureCode.unavailable,
+        'duplicate groups unavailable',
+      );
+    }
+    return values.values.toList();
+  }
+
   @override
   Future<List<DuplicateTransactionGroupMatch>>
   findActiveDuplicateGroups() async => [];

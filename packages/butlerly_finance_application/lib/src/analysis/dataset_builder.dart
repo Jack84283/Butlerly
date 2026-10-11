@@ -1,5 +1,6 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
+import 'canonical_transactions.dart';
 import 'period_resolver.dart';
 
 final class AnalysisDatasetBuilder {
@@ -8,12 +9,14 @@ final class AnalysisDatasetBuilder {
     this.preferences,
     this.links, {
     this.candidates,
+    this.duplicateGroups,
     this.periodResolver = const AnalysisPeriodResolver(),
   });
   final TransactionRepository transactions;
   final UserPreferenceRepository preferences;
   final ReconciliationLinkRepository? links;
   final ReconciliationCandidateRepository? candidates;
+  final DuplicateCandidateGroupRepository? duplicateGroups;
   final AnalysisPeriodResolver periodResolver;
 
   Future<String> timeZoneId() async {
@@ -35,14 +38,17 @@ final class AnalysisDatasetBuilder {
     final reconciliationCandidates = candidates == null
         ? const <ReconciliationCandidate>[]
         : await candidates!.listAll();
-    final receiptIds = reconciliationLinks
-        .map((value) => value.receiptTransactionId)
-        .toSet();
+    final duplicateCandidateGroups = duplicateGroups == null
+        ? const <DuplicateCandidateGroup>[]
+        : await duplicateGroups!.list();
+    final canonical = selectCanonicalTransactions(
+      source: source,
+      links: reconciliationLinks,
+      duplicateGroups: duplicateCandidateGroups,
+    );
     final quality = <DataQualityIssue>[];
     final result = <AnalysisEconomicTransaction>[];
-    for (final transaction in source) {
-      if (receiptIds.contains(transaction.id)) continue;
-      if (transaction.status != TransactionStatus.active) continue;
+    for (final transaction in canonical.transactions) {
       final transactionDate = transactionFinancialDate(
         transaction,
         context.period.timeZoneId,
@@ -56,6 +62,9 @@ final class AnalysisDatasetBuilder {
           .firstOrNull
           ?.converted;
       final transactionQuality = <DataQualityIssue>[];
+      transactionQuality.addAll(
+        canonical.issuesByTransaction[transaction.id] ?? const [],
+      );
       if (transactionDate == null || transactionDate.isEmpty) {
         transactionQuality.add(
           DataQualityIssue(
@@ -132,8 +141,7 @@ final class AnalysisDatasetBuilder {
           : periodResolver.resolvePrimary(type: type, context: context);
       if (resolution case AnalysisPeriodResolved(:final window)) {
         primaryByPeriod[type] = _buildTransactions(
-          source,
-          reconciliationLinks,
+          canonical,
           preference.baseCurrency,
           window,
         );
@@ -146,8 +154,7 @@ final class AnalysisDatasetBuilder {
         if (baselineResolution is AnalysisPeriodResolved) {
           final baselineWindow = baselineResolution.window;
           baselineByPeriod[type] = _buildTransactions(
-            source,
-            reconciliationLinks,
+            canonical,
             preference.baseCurrency,
             baselineWindow,
           );
@@ -198,18 +205,14 @@ final class AnalysisDatasetBuilder {
   }
 
   List<AnalysisEconomicTransaction> _buildTransactions(
-    List<Transaction> source,
-    List<ReconciliationLink> links,
+    CanonicalTransactionSelection canonical,
     CurrencyCode baseCurrency,
     ResolvedAnalysisWindow window,
   ) {
-    final receiptIds = links.map((value) => value.receiptTransactionId).toSet();
-    return source
+    return canonical.transactions
         .where((transaction) {
           final date = transactionFinancialDate(transaction, window.timeZoneId);
-          return transaction.status == TransactionStatus.active &&
-              !receiptIds.contains(transaction.id) &&
-              date != null &&
+          return date != null &&
               !date.isBefore(window.start) &&
               date.isBefore(window.endExclusive);
         })
@@ -239,6 +242,8 @@ final class AnalysisDatasetBuilder {
             paymentSourceId: transaction.paymentSourceId,
             tagIds: transaction.tagIds,
             verified: transaction.reviewState == TransactionReviewState.clear,
+            dataQuality:
+                canonical.issuesByTransaction[transaction.id] ?? const [],
           );
         })
         .toList(growable: false);

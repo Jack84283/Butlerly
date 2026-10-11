@@ -112,6 +112,18 @@ CREATE TABLE duplicate_candidate_groups (
       updated_at TEXT NOT NULL
     );
 
+CREATE TABLE recurring_pattern_decisions (
+      id TEXT PRIMARY KEY NOT NULL,
+      pattern_key TEXT NOT NULL UNIQUE,
+      status TEXT NOT NULL CHECK(status IN ('confirmed', 'rejected', 'corrected')),
+      cadence TEXT NOT NULL CHECK(cadence IN ('weekly', 'biweekly', 'monthly', 'quarterly', 'irregular')),
+      interval_days INTEGER NOT NULL CHECK(interval_days > 0),
+      expected_amount_coefficient TEXT NOT NULL,
+      expected_amount_scale INTEGER NOT NULL CHECK(expected_amount_scale >= 0),
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
 CREATE TABLE evidence_items (
       id TEXT PRIMARY KEY NOT NULL,
       type TEXT NOT NULL,
@@ -508,6 +520,8 @@ CREATE INDEX idx_attachment_links_transaction ON attachment_links(transaction_id
 CREATE INDEX idx_categories_parent ON categories(parent_id);
 CREATE INDEX idx_duplicate_group_transactions_transaction ON duplicate_candidate_group_transactions(transaction_id);
 CREATE INDEX idx_duplicate_groups_status ON duplicate_candidate_groups(status);
+CREATE INDEX idx_recurring_pattern_decisions_key
+  ON recurring_pattern_decisions(pattern_key);
 CREATE INDEX idx_entity_tombstones_deleted_at ON entity_tombstones(deleted_at);
 CREATE INDEX idx_reconciliation_candidates_status ON reconciliation_candidates(status);
 CREATE INDEX idx_reconciliation_links_payment ON reconciliation_links(payment_transaction_id);

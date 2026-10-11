@@ -1,6 +1,7 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
 import '../analysis/dataset_builder.dart';
+import '../analysis/canonical_transactions.dart';
 import '../analysis/period_resolver.dart';
 import '../analysis/result_materialization.dart';
 import '../analysis/rule_engine.dart';
@@ -578,19 +579,46 @@ DecimalValue _zero() =>
     DecimalValue.fromParts(coefficient: BigInt.zero, scale: 0);
 
 final class QueryTransactionsForFinancialDate {
-  const QueryTransactionsForFinancialDate(this.repository);
+  const QueryTransactionsForFinancialDate(
+    this.repository, {
+    this.preferences,
+    this.links,
+    this.duplicateGroups,
+  });
   final TransactionRepository repository;
+  final UserPreferenceRepository? preferences;
+  final ReconciliationLinkRepository? links;
+  final DuplicateCandidateGroupRepository? duplicateGroups;
 
   Future<ApplicationResult<List<TransactionDto>>> call(String date) =>
       runApplication('query financial date transactions', () async {
         final values = await repository.listAll();
-        return values
+        final timeZone = await configuredFinancialTimeZone(preferences);
+        final canonical = selectCanonicalTransactions(
+          source: values,
+          links: links == null ? const [] : await links!.listAll(),
+          duplicateGroups: duplicateGroups == null
+              ? const []
+              : await duplicateGroups!.list(),
+        );
+        return canonical.transactions
+            .map(
+              (value) => (
+                value: value,
+                financialDate: transactionFinancialDate(value, timeZone.id),
+              ),
+            )
             .where(
               (value) =>
-                  value.transactionDate == date &&
-                  value.status == TransactionStatus.active,
+                  value.financialDate?.toIso8601String().substring(0, 10) ==
+                  date,
             )
-            .map(TransactionDto.fromDomain)
+            .map(
+              (value) => TransactionDto.fromDomain(
+                value.value,
+                financialDate: value.financialDate,
+              ),
+            )
             .toList(growable: false);
       });
 }
@@ -602,6 +630,8 @@ final class AnalysisCalendarDay {
     required this.expenseTotal,
     required this.incomeTotal,
     required this.currencyBasis,
+    this.expenseAvailability = AnalysisDataAvailability.empty,
+    this.incomeAvailability = AnalysisDataAvailability.empty,
     this.qualityIssues = const [],
     this.evidence = const [],
   });
@@ -611,6 +641,8 @@ final class AnalysisCalendarDay {
   final Money? expenseTotal;
   final Money? incomeTotal;
   final CurrencyBasis currencyBasis;
+  final AnalysisDataAvailability expenseAvailability;
+  final AnalysisDataAvailability incomeAvailability;
   final List<DataQualityIssue> qualityIssues;
   final List<EvidenceReference> evidence;
 }
@@ -684,9 +716,12 @@ final class CalculateAnalysisCalendar {
       final countMetric = named('transactionCount');
       final expenseMetric = named(AnalysisSemanticRole.expenseTotal);
       final incomeMetric = named(AnalysisSemanticRole.incomeTotal);
-      Money? money(AnalysisMetric? metric) => metric?.currency == null
+      Money? money(AnalysisMetric? metric) =>
+          metric == null ||
+              metric.availability == AnalysisDataAvailability.insufficient ||
+              metric.currency == null
           ? null
-          : Money(amount: metric!.value, currency: metric.currency!);
+          : Money(amount: metric.value, currency: metric.currency!);
       days.add(
         AnalysisCalendarDay(
           financialDate: date,
@@ -695,6 +730,10 @@ final class CalculateAnalysisCalendar {
           expenseTotal: money(expenseMetric),
           incomeTotal: money(incomeMetric),
           currencyBasis: currencyBasis,
+          expenseAvailability:
+              expenseMetric?.availability ?? AnalysisDataAvailability.empty,
+          incomeAvailability:
+              incomeMetric?.availability ?? AnalysisDataAvailability.empty,
           qualityIssues: [
             ...dataset.qualityIssues,
             ...?countMetric?.qualityIssues,
