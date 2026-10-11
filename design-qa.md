@@ -1,4 +1,11 @@
-# Butlerly smartphone UI design QA
+# Butlerly smartphone UI design QA — historical snapshot
+
+> **Historical record, not current design authority.** This QA report captures
+> the August 12, 2026 implementation and historical design comparison only.
+> Navigation, colors, button styles, layouts, simulator versions, and automated
+> test counts have changed since then. Do not use the report or older screen
+> renders as acceptance criteria for the current UI. Use current approved
+> requirements, Flutter code, and recent CI/device test results instead.
 
 Last updated: 2026-08-12
 - Source visual truth: `docs/04 Design/Screens/UI-0101 — Home — Smartphone Dark.png`

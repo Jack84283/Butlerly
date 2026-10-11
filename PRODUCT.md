@@ -52,9 +52,9 @@ Butlerly combines a personal-finance workflow with an on-device, account-free op
 
 - `README.md` documents the local-first, privacy-first product purpose, Version 1 scope, repository boundaries, and non-requirements.
 - `AGENTS.md` defines the Butlerly Company Constitution, product constraints, architecture boundaries, persistence requirements, and review rules.
-- `design-qa.md` records current visual evidence, implemented flows, localization, accessibility-related checks, and remaining visual QA work.
+- `design-qa.md` preserves an August 2026 historical UI QA snapshot; it is not current visual sign-off or design authority.
 - `docs/04 Design/` contains the Butler Design System, UX specifications, screen references, and accessibility standard.
-- `docs/design-evidence/` contains implementation screenshots and comparison evidence.
+- `docs/design-evidence/` contains historical screenshots and comparison evidence; current UI acceptance requires fresh captures.
 - `apps/butlerly/assets/branding/` and `apps/butlerly/assets/legal/` contain approved branding and legal materials.
 - The Flutter application and framework-independent domain, application, and database packages provide the current implementation evidence.
 
