@@ -46,7 +46,9 @@ final class AnalysisDatasetBuilder {
       links: reconciliationLinks,
       duplicateGroups: duplicateCandidateGroups,
     );
-    final quality = <DataQualityIssue>[];
+    final quality = <DataQualityIssue>[
+      ...canonical.qualityIssues.where((issue) => issue.transactionId == null),
+    ];
     final result = <AnalysisEconomicTransaction>[];
     for (final transaction in canonical.transactions) {
       final transactionDate = transactionFinancialDate(

@@ -336,6 +336,60 @@ void main() {
       ]);
     },
   );
+
+  test('analysis preserves persisted duplicate group quality issues', () async {
+    final database = ButlerlyDatabase(
+      factory: databaseFactoryFfi,
+      path: inMemoryDatabasePath,
+      schemaSql: await File(
+        '../butlerly_database/database/schema/v1.sql',
+      ).readAsString(),
+    );
+    await database.open();
+    addTearDown(database.close);
+    final preferences = SqliteUserPreferenceRepository(database);
+    await preferences.save(_preference('UTC'));
+    await SqliteDuplicateCandidateGroupRepository(database).save(
+      DuplicateCandidateGroup(
+        id: 'orphan-duplicate-group',
+        transactionIds: const [],
+        duplicateKey: DuplicateTransactionKey(
+          transactionDate: '2026-10-01',
+          amount: DecimalValue.parse('10'),
+          currency: 'USD',
+          direction: 'expense',
+        ),
+        status: DuplicateCandidateGroupStatus.unresolved,
+        createdAt: DateTime.utc(2026, 10, 2),
+        updatedAt: DateTime.utc(2026, 10, 2),
+      ),
+    );
+
+    final result =
+        await AnalysisDatasetBuilder(
+              SqliteTransactionRepository(database),
+              preferences,
+              null,
+              duplicateGroups: SqliteDuplicateCandidateGroupRepository(
+                database,
+              ),
+            ).build(
+              AnalysisContext(
+                period: AnalysisPeriod(
+                  startDate: '2026-10-01',
+                  endDate: '2026-10-31',
+                  timeZoneId: 'UTC',
+                ),
+                datasetMode: DatasetMode.allEligible,
+                currencyBasis: CurrencyBasis.original,
+              ),
+            )
+            as ApplicationDatasetSuccess;
+
+    expect(result.dataset.qualityIssues.map((issue) => issue.code), [
+      'incompleteDuplicateGroup',
+    ]);
+  });
 }
 
 UserPreference _preference(String timeZoneId) => UserPreference(

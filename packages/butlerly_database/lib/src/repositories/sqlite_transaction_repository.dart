@@ -351,7 +351,10 @@ final class SqliteTransactionRepository
         );
         await tx.update(
           'duplicate_candidate_groups',
-          {'selected_transaction_id': null},
+          {
+            'selected_transaction_id': null,
+            'status': DuplicateCandidateGroupStatus.unresolved.name,
+          },
           where: 'selected_transaction_id = ?',
           whereArgs: [id.value],
         );

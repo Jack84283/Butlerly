@@ -783,8 +783,10 @@ void main() {
     () async {
       final selected = duplicateTransaction(now, id: 'selected-duplicate');
       final other = duplicateTransaction(now, id: 'other-duplicate');
+      final third = duplicateTransaction(now, id: 'third-duplicate');
       await transactions.save(selected);
       await transactions.save(other);
+      await transactions.save(third);
       await database.connection.insert('duplicate_candidate_groups', {
         'id': 'duplicate:2026-08-09|25|USD|expense',
         'transaction_date': '2026-08-09',
@@ -797,7 +799,7 @@ void main() {
         'created_at': now.toIso8601String(),
         'updated_at': now.toIso8601String(),
       });
-      for (final id in [selected.id, other.id]) {
+      for (final id in [selected.id, other.id, third.id]) {
         await database.connection
             .insert('duplicate_candidate_group_transactions', {
               'group_id': 'duplicate:2026-08-09|25|USD|expense',
@@ -827,7 +829,10 @@ void main() {
       expect(await transactions.findById(selected.id), isNull);
       expect(
         (await database.connection.query('duplicate_candidate_groups')).single,
-        containsPair('selected_transaction_id', isNull),
+        allOf(
+          containsPair('selected_transaction_id', isNull),
+          containsPair('status', DuplicateCandidateGroupStatus.unresolved.name),
+        ),
       );
       expect(await database.connection.query('reconciliation_links'), isEmpty);
       expect(
@@ -838,8 +843,9 @@ void main() {
       final restored = (await SqliteDuplicateCandidateGroupRepository(
         database,
       ).list()).single;
-      expect(restored.transactionIds, [other.id]);
-      expect(restored.integrityIssue?.code, 'incompleteDuplicateGroup');
+      expect(restored.transactionIds, [other.id, third.id]);
+      expect(restored.status, DuplicateCandidateGroupStatus.unresolved);
+      expect(restored.integrityIssue, isNull);
     },
   );
 
