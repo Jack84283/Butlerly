@@ -2,9 +2,7 @@
 
 <!-- impeccable:product-schema 1 -->
 
-<!-- Generated tooling context only. AGENTS.md and the approved, versioned
-     documents under docs/ are authoritative; this file is not a competing
-     product requirements source and must defer to them. -->
+<!-- Current product guide. Keep aligned with AGENTS.md, DESIGN.md and shipping code. -->
 <!-- Product context below is derived from the current repository sources because no separate product interview answers were provided. Verify it if product strategy or audience details change. -->
 
 ## Platform
@@ -29,7 +27,7 @@ Butlerly combines a personal-finance workflow with an on-device, account-free op
 - Core workflows include Home, Transactions, transaction entry and editing, Search, Review, Settings, payment sources, master data, import and export, receipt capture, statement capture, and recovery flows.
 - Users may enter records manually or work with imported statements and captured receipts. Financial records are persisted locally and must survive reload, upgrade, and recovery paths.
 - The product supports English, Spanish, and Simplified Chinese UI localization; user-entered and source/master data are not translated as application copy.
-- The repository's approved design-system, UX, screen, and accessibility documents are the visual and interaction references for implemented surfaces.
+- `DESIGN.md` is the current visual and interaction specification; implementation status is verified against Flutter code and tests.
 
 ## Capabilities and Constraints
 
@@ -45,16 +43,16 @@ Butlerly combines a personal-finance workflow with an on-device, account-free op
 ## Brand Commitments
 
 - The product name is Butlerly.
-- Existing Butlerly branding, the Butler Design System v1.0, approved UX specifications, approved screen references, and accessibility standards are authoritative assets and references.
+- Current Butlerly branding, `DESIGN.md`, and implemented accessibility standards guide new work; superseded visual mockups are not authoritative.
 - New work must preserve established product terminology, legal content, accessibility commitments, and the approved local-first/account-free product identity.
 
 ## Evidence on Hand
 
 - `README.md` documents the local-first, privacy-first product purpose, Version 1 scope, repository boundaries, and non-requirements.
 - `AGENTS.md` defines the Butlerly Company Constitution, product constraints, architecture boundaries, persistence requirements, and review rules.
-- `design-qa.md` preserves an August 2026 historical UI QA snapshot; it is not current visual sign-off or design authority.
-- `docs/04 Design/` contains the Butler Design System, UX specifications, screen references, and accessibility standard.
-- `docs/design-evidence/` contains historical screenshots and comparison evidence; current UI acceptance requires fresh captures.
+- Historical visual QA results remain accessible through Git history; current UI behavior and validation should be established from the implementation and tests.
+- `DESIGN.md` is the maintained design reference; current widgets and shared Flutter design tokens are implementation evidence.
+- UI verification relies on current widget tests and fresh captures, not retained obsolete screenshots.
 - `apps/butlerly/assets/branding/` and `apps/butlerly/assets/legal/` contain approved branding and legal materials.
 - The Flutter application and framework-independent domain, application, and database packages provide the current implementation evidence.
 
@@ -68,4 +66,13 @@ Butlerly combines a personal-finance workflow with an on-device, account-free op
 
 ## Accessibility & Inclusion
 
-Butlerly follows the approved accessibility standard in `docs/04 Design/UI Design/UX-0009 — Butlerly Accessibility Standard v1.0.pdf` and the related design-system guidance. Interfaces must remain usable across supported device sizes, localization variants, and appearance modes; must preserve readable wrapping and hit targets; and must not communicate financial meaning through color alone. Accessibility regressions, localization breakage, and small-screen overflow are product defects.
+Butlerly follows the accessibility expectations maintained in `DESIGN.md` and enforced by relevant UI tests. Interfaces must remain usable across supported device sizes, localization variants, and appearance modes; must preserve readable wrapping and hit targets; and must not communicate financial meaning through color alone. Accessibility regressions, localization breakage, and small-screen overflow are product defects.
+
+
+## Current finance implementation invariants
+
+- Transaction creation, editing, archive/restore, search, and review run locally through application services and SQLite repositories; presentation must not query SQLite directly.
+- Payment sources are local financial instruments (account, card, cash, wallet, other), not cloud identities; their assignment and filtering must preserve stored references.
+- Receipts and other evidence are stored in an app-owned private directory using opaque filenames, with links and metadata in SQLite. Archival retains linked evidence; permanent deletion and erase-all remove both linked metadata and files. Exports include supporting evidence with structured finance data.
+- Extraction and attachment are distinct: attaching a file never means extraction succeeded. Original transaction values, provenance, and user corrections remain authoritative.
+- Financial and data-loss semantics must be verified against current implementation and tests, rather than reconstructed from retired milestone reports.
