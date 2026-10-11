@@ -799,7 +799,11 @@ final class LocalBackupManager {
       "SELECT COUNT(*) FROM reconciliation_candidates "
           "WHERE status != 'proposed' AND updated_at > ?",
       "SELECT COUNT(*) FROM duplicate_candidate_groups "
-          "WHERE status != 'unresolved' AND updated_at > ?",
+          "WHERE (status != 'unresolved' OR "
+          "(statement_rows IS NOT NULL AND statement_rows != '[]')) "
+          "AND updated_at > ?",
+      // recurring_pattern_decisions are included in the engine summary above;
+      // keep this additional-table pass disjoint so the count is not doubled.
       'SELECT COUNT(*) FROM analysis_rule_activations WHERE updated_at > ?',
       'SELECT COUNT(*) FROM analysis_rule_configurations WHERE updated_at > ?',
       'SELECT COUNT(*) FROM user_preferences WHERE updated_at > ?',

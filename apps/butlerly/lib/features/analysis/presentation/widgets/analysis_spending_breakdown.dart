@@ -37,8 +37,35 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
       );
     }
 
-    final chartValues = model.categories.take(5).toList(growable: false);
-    final remainingValue = model.categories
+    final availableCategories = model.categories
+        .where(
+          (metric) =>
+              metric.availability == AnalysisDataAvailability.sufficient,
+        )
+        .toList(growable: false);
+    final unavailableCategories = model.categories
+        .where(
+          (metric) =>
+              metric.availability != AnalysisDataAvailability.sufficient,
+        )
+        .toList(growable: false);
+    if (availableCategories.isEmpty) {
+      return ButlerlyCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ButlerlyCardHeader(title: context.l10n.text('spending')),
+            Text(context.l10n.text('notAvailable')),
+            _UnavailableCategoryList(
+              categories: unavailableCategories,
+              masterData: masterData,
+            ),
+          ],
+        ),
+      );
+    }
+    final chartValues = availableCategories.take(5).toList(growable: false);
+    final remainingValue = availableCategories
         .skip(chartValues.length)
         .map(analysisNumber)
         .fold<double>(0, (sum, value) => sum + value);
@@ -83,11 +110,18 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
                 ? null
                 : (datum) {
                     final index = chartData.indexOf(datum);
-                    if (index >= 0 && index < chartValues.length) {
+                    if (index >= 0 &&
+                        index < chartValues.length &&
+                        _canDrillThrough(chartValues[index])) {
                       onCategoryTap!(chartValues[index]);
                     }
                   },
           ),
+          if (unavailableCategories.isNotEmpty)
+            _UnavailableCategoryList(
+              categories: unavailableCategories,
+              masterData: masterData,
+            ),
           if (onViewAll != null)
             Align(
               alignment: Alignment.centerLeft,
@@ -100,6 +134,51 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
       ),
     );
   }
+
+  bool _canDrillThrough(AnalysisMetric metric) =>
+      metric.availability == AnalysisDataAvailability.sufficient &&
+      metric.evidence.isNotEmpty;
+}
+
+class _UnavailableCategoryList extends StatelessWidget {
+  const _UnavailableCategoryList({
+    required this.categories,
+    required this.masterData,
+  });
+
+  final List<AnalysisMetric> categories;
+  final TransactionMasterData? masterData;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: ButlerlySpacing.compact),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          context.l10n.text('spendingDistributionPartial'),
+          style: Theme.of(context).textTheme.labelMedium,
+        ),
+        for (final metric in categories)
+          Padding(
+            padding: const EdgeInsets.only(top: ButlerlySpacing.micro),
+            child: Row(
+              key: ValueKey('analysis-unavailable-category-${metric.id}'),
+              children: [
+                Expanded(
+                  child: Text(
+                    analysisDimension(context, metric, masterData),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: ButlerlySpacing.compact),
+                Text(context.l10n.text('notAvailable')),
+              ],
+            ),
+          ),
+      ],
+    ),
+  );
 }
 
 class _SpendingSlice {

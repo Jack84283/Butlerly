@@ -79,6 +79,25 @@ final class DecimalValue implements Comparable<DecimalValue> {
     scale: scale + other.scale,
   );
 
+  /// Divides by a positive whole number with deterministic six-place
+  /// truncation. This is sufficient for derived averages while preserving
+  /// exact decimal arithmetic and avoiding binary floating point.
+  DecimalValue divideBy(int divisor) {
+    if (divisor <= 0) {
+      invalid(
+        code: DomainErrorCode.invalidRange,
+        field: 'divisor',
+        message: 'A decimal can only be divided by a positive integer.',
+      );
+    }
+    const precision = 6;
+    return DecimalValue.fromParts(
+      coefficient:
+          coefficient * BigInt.from(10).pow(precision) ~/ BigInt.from(divisor),
+      scale: scale + precision,
+    );
+  }
+
   DecimalValue abs() =>
       DecimalValue.fromParts(coefficient: coefficient.abs(), scale: scale);
 

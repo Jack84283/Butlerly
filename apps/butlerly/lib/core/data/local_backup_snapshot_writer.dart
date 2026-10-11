@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:butlerly/core/data/backup_container_format.dart';
+import 'package:butlerly/core/data/duplicate_group_backup_policy.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly_database/butlerly_database.dart';
 import 'package:path/path.dart' as path;
@@ -41,6 +42,7 @@ final class LocalBackupSnapshotWriter {
     'attachment_links',
     'analysis_rule_activations',
     'analysis_rule_configurations',
+    'recurring_pattern_decisions',
     'user_preferences',
   ];
 
@@ -124,12 +126,43 @@ final class LocalBackupSnapshotWriter {
     tables['reconciliation_links'] = reconciliationLinks;
     recordCount += reconciliationLinks.length;
 
-    // Unresolved duplicate groups are generated from active transactions.
-    // Keep only user-resolved groups and their membership evidence.
-    final duplicateGroups = await source.query(
-      'duplicate_candidate_groups',
-      where: "status != 'unresolved'",
+    // Transaction-only unresolved groups are generated from active
+    // transactions. Preserve a group when it carries repair context (a stale
+    // member, an incomplete membership, or a newly matching record), because
+    // dropping it would make a saved decision inaccessible after restore.
+    // Statement-row candidates are durable review work and always survive.
+    final allDuplicateGroups = await source.query('duplicate_candidate_groups');
+    final allDuplicateMembers = await source.query(
+      'duplicate_candidate_group_transactions',
     );
+    final duplicateTransactions = await source.query(
+      'transactions',
+      columns: [
+        'id',
+        'transaction_date',
+        'amount_coefficient',
+        'amount_scale',
+        'currency',
+        'direction',
+        'status',
+      ],
+    );
+    final durableUnresolvedDuplicateIds =
+        DuplicateGroupBackupPolicy.durableUnresolvedGroupIds(
+          groups: allDuplicateGroups,
+          memberships: allDuplicateMembers,
+          transactions: duplicateTransactions,
+        );
+    final duplicateGroups = allDuplicateGroups
+        .where(
+          (row) =>
+              row['status'] != 'unresolved' ||
+              DuplicateGroupBackupPolicy.hasStatementEvidence(
+                row['statement_rows'],
+              ) ||
+              durableUnresolvedDuplicateIds.contains(row['id']),
+        )
+        .toList(growable: false);
     tables['duplicate_candidate_groups'] = duplicateGroups;
     recordCount += duplicateGroups.length;
     final duplicateIds = duplicateGroups

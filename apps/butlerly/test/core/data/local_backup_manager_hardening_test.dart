@@ -328,11 +328,23 @@ void main() {
       whereArgs: ['existing'],
     );
     await fixture.insertTransaction('added', future);
+    await fixture.database.database.insert('recurring_pattern_decisions', {
+      'id': 'recurring-decision-newer',
+      'pattern_key': 'newer|expense|EUR||',
+      'status': 'confirmed',
+      'cadence': 'monthly',
+      'interval_days': 30,
+      'expected_amount_coefficient': '10000',
+      'expected_amount_scale': 2,
+      'created_at': old.toIso8601String(),
+      'updated_at': future.toIso8601String(),
+    });
 
     final inspection = await fixture.manager.inspect(backup);
 
     expect(inspection.changes.transactionsAdded, 1);
     expect(inspection.changes.transactionsChanged, 1);
+    expect(inspection.changes.masterDataChanged, greaterThanOrEqualTo(1));
     expect(inspection.hasNewerLocalData, isTrue);
   });
 }

@@ -9,9 +9,12 @@ import 'package:butlerly/features/analysis/presentation/widgets/analysis_activit
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_custom_period_sheet.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_data_quality.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_insight_preview.dart';
+import 'package:butlerly/features/analysis/presentation/widgets/analysis_merchant_breakdown.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_period_selector.dart';
+import 'package:butlerly/features/analysis/presentation/widgets/analysis_recurring_patterns.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_skeleton.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_spending_breakdown.dart';
+import 'package:butlerly/features/analysis/presentation/widgets/analysis_subcategory_breakdown.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_summary.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -31,6 +34,7 @@ class AnalysisPage extends StatefulWidget {
     this.loadForPeriod,
     this.loadCalendar,
     this.loadTransactionsForDate,
+    this.loadRecurringPatterns,
     this.loadMasterData,
     this.onNavigationRequested,
     this.onTransactionRequested,
@@ -49,6 +53,8 @@ class AnalysisPage extends StatefulWidget {
   loadCalendar;
   final Future<ApplicationResult<List<TransactionDto>>> Function(String date)?
   loadTransactionsForDate;
+  final Future<ApplicationResult<List<RecurringPattern>>> Function()?
+  loadRecurringPatterns;
   final Future<TransactionMasterData> Function()? loadMasterData;
   final ValueChanged<String>? onNavigationRequested;
   final ValueChanged<TransactionDto>? onTransactionRequested;
@@ -66,6 +72,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
   DateTime? _calendarMonth;
   String? _selectedDate;
   Future<ApplicationResult<List<TransactionDto>>>? _transactions;
+  Future<ApplicationResult<List<RecurringPattern>>>? _recurringPatterns;
   TransactionMasterData? _masterData;
   String? _masterDataLocale;
   int _loadGeneration = 0;
@@ -80,6 +87,9 @@ class _AnalysisPageState extends State<AnalysisPage> {
       _period = 'selected_period';
     }
     _result = _load(_period, generation: ++_loadGeneration);
+    _recurringPatterns = widget.loadRecurringPatterns == null
+        ? null
+        : _loadRecurringPatterns();
     transactionChanges.addListener(_reload);
   }
 
@@ -129,19 +139,19 @@ class _AnalysisPageState extends State<AnalysisPage> {
       );
     }
     if (period == _defaultPeriod) {
-      return useCase.currentMonth(DateTime.now()).then((value) {
-        if (value is ApplicationSuccess<List<RuleExecutionResult>>) {
-          final context = value.value
-              .map(
-                (result) => result.metric?.context ?? result.finding?.context,
-              )
-              .whereType<AnalysisContext>()
-              .firstOrNull;
-          if (context != null && generation == _loadGeneration) {
-            _context = context;
-          }
+      return useCase.contextFor('current_month', instant: DateTime.now()).then((
+        resolved,
+      ) {
+        if (resolved is! ApplicationSuccess<AnalysisContext>) {
+          return const ApplicationFailure(
+            ApplicationFailureDetail(
+              operation: 'resolve analysis period',
+              code: ApplicationFailureCode.unavailable,
+            ),
+          );
         }
-        return value;
+        if (generation == _loadGeneration) _context = resolved.value;
+        return _calculatePeriod(resolved.value, generation);
       });
     }
     final initialMonth = widget.initialMonth;
@@ -177,8 +187,41 @@ class _AnalysisPageState extends State<AnalysisPage> {
       if (generation == _loadGeneration) {
         _context = resolved.value;
       }
-      return useCase.call(resolved.value);
+      return _calculatePeriod(resolved.value, generation);
     });
+  }
+
+  Future<ApplicationResult<List<RuleExecutionResult>>> _calculatePeriod(
+    AnalysisContext context,
+    int generation,
+  ) async {
+    final finance = services.isRegistered<FinanceServices>()
+        ? services<FinanceServices>()
+        : null;
+    final report = finance?.calculatePeriodicFinancialReport;
+    if (report != null && widget.load == null && widget.loadForPeriod == null) {
+      final result = await report(context);
+      if (result case ApplicationSuccess<PeriodicFinancialReport>(
+        value: final value,
+      )) {
+        if (generation == _loadGeneration) {
+          _recurringPatterns = Future.value(value.recurringPatternsResult);
+        }
+        return ApplicationSuccess(value.results);
+      }
+      if (result case ApplicationFailure<PeriodicFinancialReport>(
+        failure: final failure,
+      )) {
+        return ApplicationFailure(failure);
+      }
+    }
+    return finance?.calculateAnalysisOverview?.call(context) ??
+        const ApplicationFailure(
+          ApplicationFailureDetail(
+            operation: 'calculate analysis overview',
+            code: ApplicationFailureCode.unavailable,
+          ),
+        );
   }
 
   Future<ApplicationResult<AnalysisCalendarResult>>? _loadCalendar(
@@ -242,6 +285,9 @@ class _AnalysisPageState extends State<AnalysisPage> {
     }
     setState(() {
       _result = Future.value(result);
+      if (widget.loadRecurringPatterns != null) {
+        _recurringPatterns = _loadRecurringPatterns();
+      }
       _calendar = null;
       if (selected == _selectedDate) {
         _transactions = selected == null ? null : _loadTransactions(selected);
@@ -374,6 +420,51 @@ class _AnalysisPageState extends State<AnalysisPage> {
     await _reload();
   }
 
+  Future<void> _confirmRecurringPattern(RecurringPattern pattern) async {
+    final action = services.isRegistered<FinanceServices>()
+        ? services<FinanceServices>().saveRecurringPatternDecision
+        : null;
+    if (action == null) return;
+    final result = await action.confirm(pattern);
+    await _finishRecurringDecision(result);
+  }
+
+  Future<void> _rejectRecurringPattern(RecurringPattern pattern) async {
+    final action = services.isRegistered<FinanceServices>()
+        ? services<FinanceServices>().saveRecurringPatternDecision
+        : null;
+    if (action == null) return;
+    final result = await action.reject(pattern);
+    await _finishRecurringDecision(result);
+  }
+
+  Future<void> _correctRecurringPattern(
+    RecurringPattern pattern,
+    DecimalValue amount,
+  ) async {
+    final action = services.isRegistered<FinanceServices>()
+        ? services<FinanceServices>().saveRecurringPatternDecision
+        : null;
+    if (action == null) return;
+    final result = await action.correct(pattern, expectedAmount: amount);
+    await _finishRecurringDecision(result);
+  }
+
+  Future<void> _finishRecurringDecision(
+    ApplicationResult<RecurringPattern> result,
+  ) async {
+    if (!mounted) return;
+    if (result is ApplicationFailure<RecurringPattern>) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.text('dataPreserved'))),
+      );
+      return;
+    }
+    setState(() {
+      _recurringPatterns = _loadRecurringPatterns();
+    });
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     body: FutureBuilder<ApplicationResult<List<RuleExecutionResult>>>(
@@ -422,6 +513,10 @@ class _AnalysisPageState extends State<AnalysisPage> {
           calendar: _calendar,
           selectedDate: _selectedDate,
           transactions: _transactions,
+          recurringPatterns: _recurringPatterns,
+          onConfirmRecurringPattern: _confirmRecurringPattern,
+          onRejectRecurringPattern: _rejectRecurringPattern,
+          onCorrectRecurringPattern: _correctRecurringPattern,
           canPreviousMonth: analysisContext == null
               ? false
               : _canChangeCalendarMonth(analysisContext, previous: true),
@@ -445,6 +540,14 @@ class _AnalysisPageState extends State<AnalysisPage> {
     final now = DateTime.now();
     return widget.loadCalendar!(now.year, now.month);
   }
+
+  Future<ApplicationResult<List<RecurringPattern>>>? _loadRecurringPatterns() {
+    if (widget.loadRecurringPatterns != null) {
+      return widget.loadRecurringPatterns!();
+    }
+    if (!services.isRegistered<FinanceServices>()) return null;
+    return services<FinanceServices>().detectRecurringPatterns();
+  }
 }
 
 class _AnalysisContent extends StatelessWidget {
@@ -458,6 +561,10 @@ class _AnalysisContent extends StatelessWidget {
     required this.calendar,
     required this.selectedDate,
     required this.transactions,
+    required this.recurringPatterns,
+    required this.onConfirmRecurringPattern,
+    required this.onRejectRecurringPattern,
+    required this.onCorrectRecurringPattern,
     required this.onPeriodChanged,
     required this.onRefresh,
     required this.onSelectDate,
@@ -474,6 +581,13 @@ class _AnalysisContent extends StatelessWidget {
   final Future<ApplicationResult<AnalysisCalendarResult>>? calendar;
   final String? selectedDate;
   final Future<ApplicationResult<List<TransactionDto>>>? transactions;
+  final Future<ApplicationResult<List<RecurringPattern>>>? recurringPatterns;
+  final Future<void> Function(RecurringPattern pattern)
+  onConfirmRecurringPattern;
+  final Future<void> Function(RecurringPattern pattern)
+  onRejectRecurringPattern;
+  final Future<void> Function(RecurringPattern pattern, DecimalValue amount)
+  onCorrectRecurringPattern;
   final ValueChanged<String> onPeriodChanged;
   final RefreshCallback onRefresh;
   final ValueChanged<String> onSelectDate;
@@ -510,11 +624,44 @@ class _AnalysisContent extends StatelessWidget {
                   context,
                   period: analysisContext!.period,
                   category: analysisCategoryId(metric),
+                  transactionIds: _metricTransactionIds(metric),
                 ),
           onViewAll: analysisContext != null && model.categories.length > 5
-              ? () => _openSearch(context, analysisContext!.period)
+              ? () => _openTransactions(
+                  context,
+                  period: analysisContext!.period,
+                  transactionIds: _evidenceTransactionIds(
+                    model.categories.expand((metric) => metric.evidence),
+                  ),
+                )
               : null,
         ),
+        AnalysisMerchantBreakdown(
+          model: model,
+          masterData: masterData,
+          onMetricTap: (metric) => _openTransactions(
+            context,
+            period: analysisContext?.period,
+            transactionIds: _metricTransactionIds(metric),
+          ),
+        ),
+        AnalysisSubcategoryBreakdown(
+          model: model,
+          masterData: masterData,
+          onMetricTap: (metric) => _openTransactions(
+            context,
+            period: analysisContext?.period,
+            transactionIds: _metricTransactionIds(metric),
+          ),
+        ),
+        if (recurringPatterns != null)
+          AnalysisRecurringPatterns(
+            patterns: recurringPatterns!,
+            masterData: masterData,
+            onConfirm: onConfirmRecurringPattern,
+            onReject: onRejectRecurringPattern,
+            onCorrect: onCorrectRecurringPattern,
+          ),
         calendar == null
             ? AnalysisActivitySummary(metric: model.transactionCount)
             : AnalysisActivity(
@@ -581,11 +728,20 @@ class _AnalysisContent extends StatelessWidget {
     AnalysisPeriod? period,
     String? category,
     String? date,
+    List<String>? transactionIds,
   }) {
+    final hasAuthoritativeTransactionIds = transactionIds?.isNotEmpty ?? false;
     final query = <String, String>{
-      'from': date ?? period!.startDate,
-      'to': date ?? period!.endDate,
-      'category': ?category,
+      // Evidence IDs are authoritative. Do not add a date filter alongside
+      // them: occurrence-only transactions have no transaction_date and
+      // would otherwise disappear from the drill-through query.
+      if (!hasAuthoritativeTransactionIds && (date != null || period != null))
+        'from': date ?? period!.startDate,
+      if (!hasAuthoritativeTransactionIds && (date != null || period != null))
+        'to': date ?? period!.endDate,
+      if (!hasAuthoritativeTransactionIds && category != null)
+        'category': category,
+      if (hasAuthoritativeTransactionIds) 'ids': transactionIds!.join(','),
     };
     _navigate(
       context,
@@ -593,15 +749,11 @@ class _AnalysisContent extends StatelessWidget {
     );
   }
 
-  void _openSearch(BuildContext context, AnalysisPeriod period) {
-    _navigate(
-      context,
-      Uri(
-        path: '/search',
-        queryParameters: {'from': period.startDate, 'to': period.endDate},
-      ).toString(),
-    );
-  }
+  List<String> _metricTransactionIds(AnalysisMetric metric) =>
+      _evidenceTransactionIds(metric.evidence);
+
+  List<String> _evidenceTransactionIds(Iterable<EvidenceReference> evidence) =>
+      evidence.map((value) => value.transactionId.value).toSet().toList();
 }
 
 /// Match the consistent card-to-card separation used on the Home page.

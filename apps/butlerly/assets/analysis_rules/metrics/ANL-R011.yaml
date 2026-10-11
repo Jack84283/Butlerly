@@ -1,0 +1,16 @@
+schemaVersion: "1.0.0"
+ruleId: ANL-R011
+ruleVersion: "1.0.0"
+enabled: true
+surface: spending
+type: metric
+nameKey: analysis.rule.r011.name
+descriptionKey: analysis.rule.r011.description
+period: selected_period
+grouping: merchant
+measure:
+  operation: sum
+  field: amount
+  currencyBasis: baseCurrency
+filters:
+  direction: expense

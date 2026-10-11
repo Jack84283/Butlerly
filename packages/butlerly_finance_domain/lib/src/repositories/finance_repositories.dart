@@ -12,6 +12,7 @@ import '../entities/merchant_matching.dart';
 import '../entities/payment_settlement.dart';
 import '../entities/reconciliation_candidate.dart';
 import '../entities/reconciliation_link.dart';
+import '../entities/recurring_pattern_decision.dart';
 import '../entities/reference_data.dart';
 import '../entities/statement.dart';
 import '../entities/suggestion.dart';
@@ -352,4 +353,10 @@ abstract interface class ReconciliationWorkflowRepository {
 abstract interface class UserPreferenceRepository {
   Future<UserPreference?> load();
   Future<void> save(UserPreference preference);
+}
+
+abstract interface class RecurringPatternDecisionRepository {
+  Future<List<RecurringPatternDecision>> list();
+  Future<RecurringPatternDecision?> findByPatternKey(String patternKey);
+  Future<void> save(RecurringPatternDecision decision);
 }

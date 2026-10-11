@@ -20,6 +20,28 @@ class AnalysisOverview {
             .map((r) => r.metric!)
             .toList()
           ..sort((a, b) => b.value.compareTo(a.value));
+    final merchants =
+        results
+            .where(
+              (r) =>
+                  r.metric != null &&
+                  r.rule.surface == AnalysisSurface.spending &&
+                  r.rule.grouping == RuleGrouping.merchant,
+            )
+            .map((r) => r.metric!)
+            .toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+    final subcategories =
+        results
+            .where(
+              (r) =>
+                  r.metric != null &&
+                  r.rule.surface == AnalysisSurface.spending &&
+                  r.rule.grouping == RuleGrouping.subcategory,
+            )
+            .map((r) => r.metric!)
+            .toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
     final spending = metric(AnalysisSemanticRole.expenseTotal);
     final income = metric(AnalysisSemanticRole.incomeTotal);
     final savings = spending == null || income == null
@@ -98,6 +120,8 @@ class AnalysisOverview {
       ),
       trend: trend,
       categories: categories,
+      merchants: merchants,
+      subcategories: subcategories,
       categoryShares: categoryShares,
       qualityCount: quality.count,
       qualityEvaluated: results.isNotEmpty,
@@ -114,6 +138,8 @@ class AnalysisOverview {
     required this.insightUnavailable,
     required this.trend,
     required this.categories,
+    this.merchants = const [],
+    this.subcategories = const [],
     this.categoryShares = const {},
     required this.qualityCount,
     required this.qualityEvaluated,
@@ -136,6 +162,8 @@ class AnalysisOverview {
   final bool insightUnavailable;
   final List<AnalysisMetric> trend;
   final List<AnalysisMetric> categories;
+  final List<AnalysisMetric> merchants;
+  final List<AnalysisMetric> subcategories;
   final Map<String, DecimalValue> categoryShares;
   final int qualityCount;
   final bool qualityEvaluated;

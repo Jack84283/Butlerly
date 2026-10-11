@@ -16,6 +16,7 @@ enum AnalysisInvalidationReason {
   tagsChanged,
   verificationChanged,
   reconciliationChanged,
+  duplicateDecisionChanged,
   exchangeRateChanged,
   baseCurrencyChanged,
   timeZoneChanged,
@@ -56,6 +57,7 @@ final class InvalidateAnalysis {
       case AnalysisInvalidationReason.tagsChanged:
       case AnalysisInvalidationReason.verificationChanged:
       case AnalysisInvalidationReason.reconciliationChanged:
+      case AnalysisInvalidationReason.duplicateDecisionChanged:
       case AnalysisInvalidationReason.exchangeRateChanged:
       case AnalysisInvalidationReason.baseCurrencyChanged:
       case AnalysisInvalidationReason.timeZoneChanged:

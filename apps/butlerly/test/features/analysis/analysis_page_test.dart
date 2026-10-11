@@ -9,6 +9,7 @@ import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_custom_period_sheet.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_period_selector.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_skeleton.dart';
+import 'package:butlerly/features/analysis/presentation/widgets/analysis_summary.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_count_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -597,7 +598,7 @@ void main() {
     );
   });
 
-  testWidgets('category rows use localized labels and stable filter IDs', (
+  testWidgets('category rows use localized labels and authoritative evidence', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1000, 1800);
@@ -638,6 +639,9 @@ void main() {
       value: DecimalValue.parse('100'),
       dimension: 'category-id:value',
       currency: CurrencyCode('USD'),
+      evidence: [
+        EvidenceReference(transactionId: TransactionId('occurrence-only')),
+      ],
       calculatedAt: DateTime.utc(2026, 8, 31),
     );
     String? requestedNavigation;
@@ -658,9 +662,68 @@ void main() {
     expect(find.text('View all categories'), findsNothing);
     await tester.ensureVisible(find.text('Dining'));
     await tester.tap(find.text('Dining'));
-    expect(requestedNavigation, contains('from=2026-08-01'));
-    expect(requestedNavigation, contains('to=2026-08-31'));
-    expect(requestedNavigation, contains('category=category-id'));
+    expect(requestedNavigation, isNot(contains('category=')));
+    expect(requestedNavigation, contains('ids=occurrence-only'));
+    expect(requestedNavigation, isNot(contains('from=')));
+    expect(requestedNavigation, isNot(contains('to=')));
+  });
+
+  testWidgets('subcategory rows use the subcategory unavailable label', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1000, 1800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final context = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-08-01',
+        endDate: '2026-08-31',
+        timeZoneId: 'America/Los_Angeles',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+    );
+    final rule = AnalysisRuleDefinition(
+      identity: RuleIdentity('ANL-R022'),
+      version: RuleVersion('1.0.0'),
+      schemaVersion: '1.0.0',
+      type: AnalysisRuleType.metric,
+      nameKey: 'analysis.rule.r022.name',
+      descriptionKey: 'analysis.rule.r022.description',
+      enabled: true,
+      status: AnalysisRuleStatus.active,
+      period: 'selected_period',
+      measure: const RuleMeasure(operation: RuleOperation.sum, field: 'amount'),
+      grouping: RuleGrouping.subcategory,
+      surface: AnalysisSurface.spending,
+      baseline: RuleBaseline.none,
+      condition: const RuleCondition(operator: 'none'),
+      severity: RuleSeverity.info,
+      definitionHash: RuleDefinitionHash('a' * 64),
+    );
+    final metric = AnalysisMetric(
+      id: 'missing-subcategory-result',
+      rule: rule,
+      context: context,
+      value: DecimalValue.parse('100'),
+      dimension: 'subcategory-missing:value',
+      currency: CurrencyCode('USD'),
+      calculatedAt: DateTime.utc(2026, 8, 31),
+    );
+
+    await tester.pumpWidget(
+      app(
+        () async => ApplicationSuccess([
+          RuleExecutionResult(rule: rule, metric: metric),
+        ]),
+        loadMasterData: () async => const TransactionMasterData(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Unavailable subcategory'), findsOneWidget);
+    expect(find.text('Unavailable category'), findsNothing);
   });
 
   testWidgets('View all categories appears only when more than five exist', (
@@ -733,7 +796,271 @@ void main() {
     await tester.ensureVisible(find.text('View all categories'));
     expect(find.text('Other'), findsOneWidget);
     await tester.tap(find.text('View all categories'));
-    expect(requestedNavigation, '/search?from=2026-08-01&to=2026-08-31');
+    expect(requestedNavigation, '/transactions?from=2026-08-01&to=2026-08-31');
+  });
+
+  testWidgets('breakdowns do not render unavailable currency totals as zero', (
+    tester,
+  ) async {
+    final context = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-08-01',
+        endDate: '2026-08-31',
+        timeZoneId: 'America/Los_Angeles',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+    );
+    final rule = AnalysisRuleDefinition(
+      identity: RuleIdentity('ANL-R011'),
+      version: RuleVersion('1.0.0'),
+      schemaVersion: '1.0.0',
+      type: AnalysisRuleType.metric,
+      nameKey: 'analysis.rule.r011.name',
+      descriptionKey: 'analysis.rule.r011.description',
+      enabled: true,
+      status: AnalysisRuleStatus.active,
+      period: 'selected_period',
+      measure: const RuleMeasure(operation: RuleOperation.sum, field: 'amount'),
+      grouping: RuleGrouping.merchant,
+      surface: AnalysisSurface.spending,
+      baseline: RuleBaseline.none,
+      condition: const RuleCondition(operator: 'none'),
+      severity: RuleSeverity.info,
+      definitionHash: RuleDefinitionHash('e' * 64),
+    );
+    final metric = AnalysisMetric(
+      id: 'merchant-result',
+      rule: rule,
+      context: context,
+      value: DecimalValue.parse('0'),
+      dimension: 'merchant-id:value',
+      currency: CurrencyCode('USD'),
+      availability: AnalysisDataAvailability.insufficient,
+      calculatedAt: DateTime.utc(2026, 8, 31),
+    );
+    String? requestedNavigation;
+
+    await tester.pumpWidget(
+      app(
+        () async => ApplicationSuccess([
+          RuleExecutionResult(rule: rule, metric: metric),
+        ]),
+        loadMasterData: () async => const TransactionMasterData(
+          merchantNames: {'merchant-id': 'Foreign merchant'},
+        ),
+        onNavigationRequested: (path) => requestedNavigation = path,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Foreign merchant'), findsOneWidget);
+    expect(find.text('Not available'), findsOneWidget);
+    expect(find.text('0 USD'), findsNothing);
+    await tester.tap(find.text('Foreign merchant'));
+    expect(requestedNavigation, isNull);
+  });
+
+  testWidgets('summary does not render unavailable totals as zero', (
+    tester,
+  ) async {
+    final context = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-08-01',
+        endDate: '2026-08-31',
+        timeZoneId: 'UTC',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+    );
+    final rule = AnalysisRuleDefinition(
+      identity: RuleIdentity('ANL-R001'),
+      version: RuleVersion('1.0.0'),
+      schemaVersion: '1.0.0',
+      type: AnalysisRuleType.metric,
+      nameKey: 'analysis.rule.r001.name',
+      descriptionKey: 'analysis.rule.r001.description',
+      enabled: true,
+      status: AnalysisRuleStatus.active,
+      period: 'selected_period',
+      measure: const RuleMeasure(operation: RuleOperation.sum, field: 'amount'),
+      grouping: RuleGrouping.none,
+      surface: AnalysisSurface.spending,
+      baseline: RuleBaseline.none,
+      condition: const RuleCondition(operator: 'none'),
+      severity: RuleSeverity.info,
+      role: AnalysisSemanticRole.expenseTotal,
+      definitionHash: RuleDefinitionHash('f' * 64),
+    );
+    final metric = AnalysisMetric(
+      id: 'spending-total',
+      rule: rule,
+      context: context,
+      value: DecimalValue.parse('0'),
+      currency: CurrencyCode('USD'),
+      availability: AnalysisDataAvailability.insufficient,
+      calculatedAt: DateTime.utc(2026, 8, 31),
+    );
+
+    await tester.pumpWidget(
+      app(
+        () async => ApplicationSuccess([
+          RuleExecutionResult(rule: rule, metric: metric),
+        ]),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Not available'), findsOneWidget);
+    expect(find.text('0 USD'), findsNothing);
+  });
+
+  testWidgets('summary renders a valid empty total as zero', (tester) async {
+    final context = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-08-01',
+        endDate: '2026-08-31',
+        timeZoneId: 'UTC',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+    );
+    final rule = AnalysisRuleDefinition(
+      identity: RuleIdentity('ANL-R001'),
+      version: RuleVersion('1.0.0'),
+      schemaVersion: '1.0.0',
+      type: AnalysisRuleType.metric,
+      nameKey: 'analysis.rule.r001.name',
+      descriptionKey: 'analysis.rule.r001.description',
+      enabled: true,
+      status: AnalysisRuleStatus.active,
+      period: 'selected_period',
+      measure: const RuleMeasure(operation: RuleOperation.sum, field: 'amount'),
+      grouping: RuleGrouping.none,
+      surface: AnalysisSurface.spending,
+      baseline: RuleBaseline.none,
+      condition: const RuleCondition(operator: 'none'),
+      severity: RuleSeverity.info,
+      role: AnalysisSemanticRole.expenseTotal,
+      definitionHash: RuleDefinitionHash('1' * 64),
+    );
+    final metric = AnalysisMetric(
+      id: 'spending-total-empty',
+      rule: rule,
+      context: context,
+      value: DecimalValue.parse('0'),
+      currency: CurrencyCode('USD'),
+      availability: AnalysisDataAvailability.empty,
+      calculatedAt: DateTime.utc(2026, 8, 31),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: AnalysisSummary(
+          model: AnalysisOverview(
+            spending: metric,
+            insightUnavailable: false,
+            trend: const [],
+            categories: const [],
+            qualityCount: 0,
+            qualityEvaluated: false,
+            qualityLimited: false,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('USD'), findsOneWidget);
+    expect(find.text('Not available'), findsNothing);
+  });
+
+  testWidgets('category breakdown preserves unavailable categories', (
+    tester,
+  ) async {
+    final context = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-08-01',
+        endDate: '2026-08-31',
+        timeZoneId: 'UTC',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+    );
+    final rule = AnalysisRuleDefinition(
+      identity: RuleIdentity('ANL-R010'),
+      version: RuleVersion('1.0.0'),
+      schemaVersion: '1.0.0',
+      type: AnalysisRuleType.metric,
+      nameKey: 'analysis.rule.r010.name',
+      descriptionKey: 'analysis.rule.r010.description',
+      enabled: true,
+      status: AnalysisRuleStatus.active,
+      period: 'selected_period',
+      measure: const RuleMeasure(operation: RuleOperation.sum, field: 'amount'),
+      grouping: RuleGrouping.category,
+      surface: AnalysisSurface.spending,
+      baseline: RuleBaseline.none,
+      condition: const RuleCondition(operator: 'none'),
+      severity: RuleSeverity.info,
+      definitionHash: RuleDefinitionHash('a' * 64),
+    );
+    final metric = AnalysisMetric(
+      id: 'category-unavailable',
+      rule: rule,
+      context: context,
+      value: DecimalValue.parse('0'),
+      dimension: 'category-id:value',
+      currency: CurrencyCode('USD'),
+      availability: AnalysisDataAvailability.insufficient,
+      calculatedAt: DateTime.utc(2026, 8, 31),
+    );
+    final availableMetric = AnalysisMetric(
+      id: 'category-available',
+      rule: rule,
+      context: context,
+      value: DecimalValue.parse('100'),
+      dimension: 'category-available:value',
+      currency: CurrencyCode('USD'),
+      availability: AnalysisDataAvailability.sufficient,
+      calculatedAt: DateTime.utc(2026, 8, 31),
+    );
+    String? requestedNavigation;
+
+    await tester.pumpWidget(
+      app(
+        () async => ApplicationSuccess([
+          RuleExecutionResult(rule: rule, metric: metric),
+          RuleExecutionResult(rule: rule, metric: availableMetric),
+        ]),
+        loadMasterData: () async => const TransactionMasterData(
+          categoryNames: {
+            'category-id': 'Foreign category',
+            'category-available': 'Available category',
+          },
+        ),
+        onNavigationRequested: (path) => requestedNavigation = path,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Foreign category'), findsOneWidget);
+    expect(
+      find.text(
+        'Some categories are unavailable because currency normalization is missing.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Not available'), findsOneWidget);
+    expect(find.text('0 USD'), findsNothing);
+    expect(requestedNavigation, isNull);
   });
 
   testWidgets(
@@ -759,9 +1086,17 @@ void main() {
                   financialDate:
                       '$year-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}',
                   transactionCount: day == 2 ? 1 : 0,
-                  expenseTotal: null,
+                  expenseTotal: day == 2
+                      ? Money(
+                          amount: DecimalValue.parse('12'),
+                          currency: CurrencyCode('USD'),
+                        )
+                      : null,
                   incomeTotal: null,
                   currencyBasis: CurrencyBasis.baseCurrency,
+                  expenseAvailability: day == 2
+                      ? AnalysisDataAvailability.sufficient
+                      : AnalysisDataAvailability.empty,
                 ),
             ],
           ),
@@ -778,9 +1113,21 @@ void main() {
                     for (var index = 1; index <= 4; index++)
                       TransactionDto(
                         id: 'transaction-$index',
-                        amount: '12.00',
-                        currency: 'USD',
-                        direction: 'expense',
+                        amount: switch (index) {
+                          1 => '12.00',
+                          2 => '100.00',
+                          3 => '7.00',
+                          _ => '3.00',
+                        },
+                        currency: switch (index) {
+                          1 || 3 => 'USD',
+                          2 => 'EUR',
+                          _ => 'GBP',
+                        },
+                        direction: switch (index) {
+                          1 || 3 => 'expense',
+                          _ => 'income',
+                        },
                         status: 'active',
                         reviewState: 'clear',
                         transactionDate: date,
@@ -857,7 +1204,7 @@ void main() {
       final amountLabel = find.byKey(
         const ValueKey('analysis-selected-day-amount'),
       );
-      expect(tester.widget<Text>(amountLabel).data, r'$48.00');
+      expect(tester.widget<Text>(amountLabel).data, r'$12.00');
       expect(
         tester.getTopLeft(countLabel).dx,
         lessThan(tester.getTopLeft(amountLabel).dx),
@@ -894,6 +1241,89 @@ void main() {
       expect(find.text('View transactions'), findsNothing);
       expect(selectedTransaction?.id, 'transaction-4');
       expect(requestedMonths, hasLength(1));
+    },
+  );
+
+  testWidgets(
+    'calendar day summary preserves unavailable currency normalization',
+    (tester) async {
+      tester.view.physicalSize = const Size(1000, 1800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      ApplicationResult<AnalysisCalendarResult> calendar(int year, int month) {
+        final last = DateTime.utc(year, month + 1, 0).day;
+        return ApplicationSuccess(
+          AnalysisCalendarResult(
+            year: year,
+            month: month,
+            timeZoneId: 'UTC',
+            days: [
+              for (var day = 1; day <= last; day++)
+                AnalysisCalendarDay(
+                  financialDate:
+                      '$year-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}',
+                  transactionCount: day == 2 ? 1 : 0,
+                  expenseTotal: day == 2
+                      ? Money(
+                          amount: DecimalValue.parse('0'),
+                          currency: CurrencyCode('USD'),
+                        )
+                      : null,
+                  incomeTotal: null,
+                  currencyBasis: CurrencyBasis.baseCurrency,
+                  expenseAvailability: day == 2
+                      ? AnalysisDataAvailability.insufficient
+                      : AnalysisDataAvailability.empty,
+                ),
+            ],
+          ),
+        );
+      }
+
+      await tester.pumpWidget(
+        app(
+          () async => const ApplicationSuccess(<RuleExecutionResult>[]),
+          loadCalendar: (year, month) async => calendar(year, month),
+          loadTransactionsForDate: (date) async => ApplicationSuccess(
+            date.endsWith('-02')
+                ? [
+                    TransactionDto(
+                      id: 'foreign-expense',
+                      amount: '12.00',
+                      currency: 'EUR',
+                      direction: 'expense',
+                      status: 'active',
+                      reviewState: 'clear',
+                      transactionDate: date,
+                      description: 'Foreign purchase',
+                      createdAt: DateTime.utc(2026),
+                      updatedAt: DateTime.utc(2026),
+                    ),
+                  ]
+                : const [],
+          ),
+          theme: AppTheme.light,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final calendarCard = find.byKey(
+        const ValueKey('analysis-financial-calendar-card'),
+      );
+      final day = find.byWidgetPredicate(
+        (widget) =>
+            widget is InkWell &&
+            widget.key is ValueKey<String> &&
+            (widget.key! as ValueKey<String>).value.endsWith('-02'),
+      );
+      expect(day, findsOneWidget);
+      await tester.tap(day);
+      await tester.pumpAndSettle();
+      expect(calendarCard, findsOneWidget);
+      expect(find.text('Not available'), findsOneWidget);
+      expect(find.text('0 USD'), findsNothing);
     },
   );
 

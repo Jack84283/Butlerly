@@ -216,15 +216,22 @@ class AnalysisActivity extends StatelessWidget {
               ),
             ),
             if (selectedDate != null)
-              AnalysisDaySummary(
-                date: selectedDate!,
-                result: transactions,
-                expense: calendar.days
-                    .where((day) => day.financialDate == selectedDate)
-                    .firstOrNull
-                    ?.expenseTotal,
-                onTransactionTap: onTransactionTap,
-                masterData: masterData,
+              Builder(
+                builder: (context) {
+                  final selectedDay = calendar.days
+                      .where((day) => day.financialDate == selectedDate)
+                      .firstOrNull;
+                  return AnalysisDaySummary(
+                    date: selectedDate!,
+                    result: transactions,
+                    expense: selectedDay?.expenseTotal,
+                    expenseAvailability:
+                        selectedDay?.expenseAvailability ??
+                        AnalysisDataAvailability.empty,
+                    onTransactionTap: onTransactionTap,
+                    masterData: masterData,
+                  );
+                },
               ),
             const SizedBox(height: ButlerlySpacing.standard),
           ],

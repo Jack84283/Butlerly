@@ -2313,7 +2313,10 @@ final class _DuplicateGroups implements DuplicateCandidateGroupRepository {
   @override
   Future<List<TransactionId>> findActiveTransactionIdsForKey(
     DuplicateTransactionKey key,
-  ) async => const [];
+  ) async => values
+      .where((group) => group.duplicateKey.canonical == key.canonical)
+      .expand((group) => group.transactionIds)
+      .toList(growable: false);
 
   @override
   Future<void> save(DuplicateCandidateGroup group) async {

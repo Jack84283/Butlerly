@@ -3,37 +3,40 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test('explicit scan reopens Keep Both groups', () async {
-    final repository = _Groups([_match('a', '25.0'), _match('b', '25.00')]);
-    final clock = _Clock(DateTime.utc(2026, 1, 1));
-    final scan = ScanExistingTransactionsForDuplicates(repository, clock);
+  test(
+    'explicit scan preserves Keep Both groups with unchanged membership',
+    () async {
+      final repository = _Groups([_match('a', '25.0'), _match('b', '25.00')]);
+      final clock = _Clock(DateTime.utc(2026, 1, 1));
+      final scan = ScanExistingTransactionsForDuplicates(repository, clock);
 
-    final first = await scan();
-    expect(first, isA<ApplicationSuccess<List<DuplicateCandidateGroup>>>());
-    final group = (first as ApplicationSuccess<List<DuplicateCandidateGroup>>)
-        .value
-        .single;
-    expect(group.transactionIds.map((id) => id.value), ['a', 'b']);
+      final first = await scan();
+      expect(first, isA<ApplicationSuccess<List<DuplicateCandidateGroup>>>());
+      final group = (first as ApplicationSuccess<List<DuplicateCandidateGroup>>)
+          .value
+          .single;
+      expect(group.transactionIds.map((id) => id.value), ['a', 'b']);
 
-    await repository.save(
-      DuplicateCandidateGroup(
-        id: group.id,
-        transactionIds: group.transactionIds,
-        duplicateKey: group.duplicateKey,
-        status: DuplicateCandidateGroupStatus.keepBoth,
-        createdAt: group.createdAt,
-        updatedAt: clock.now(),
-      ),
-    );
-    final second = await scan();
-    final secondGroups =
-        (second as ApplicationSuccess<List<DuplicateCandidateGroup>>).value;
-    expect(
-      secondGroups.single.status,
-      DuplicateCandidateGroupStatus.unresolved,
-    );
-    expect(secondGroups.single.selectedTransactionId, isNull);
-  });
+      await repository.save(
+        DuplicateCandidateGroup(
+          id: group.id,
+          transactionIds: group.transactionIds,
+          duplicateKey: group.duplicateKey,
+          status: DuplicateCandidateGroupStatus.keepBoth,
+          createdAt: group.createdAt,
+          updatedAt: clock.now(),
+        ),
+      );
+      final second = await scan();
+      final secondGroups =
+          (second as ApplicationSuccess<List<DuplicateCandidateGroup>>).value;
+      expect(
+        secondGroups.single.status,
+        DuplicateCandidateGroupStatus.keepBoth,
+      );
+      expect(secondGroups.single.selectedTransactionId, isNull);
+    },
+  );
 
   test(
     'scoped listing returns only groups with transactions in the period',
@@ -81,32 +84,202 @@ void main() {
     },
   );
 
-  test('explicit scan reopens consolidated groups', () async {
-    final repository = _Groups([_match('a', '25'), _match('b', '25')]);
-    final clock = _Clock(DateTime.utc(2026, 1, 1));
-    final scan = ScanExistingTransactionsForDuplicates(repository, clock);
-    final first =
-        (await scan() as ApplicationSuccess<List<DuplicateCandidateGroup>>)
-            .value
-            .single;
-    await repository.save(
-      DuplicateCandidateGroup(
-        id: first.id,
-        transactionIds: first.transactionIds,
-        duplicateKey: first.duplicateKey,
-        status: DuplicateCandidateGroupStatus.consolidated,
-        selectedTransactionId: TransactionId('a'),
-        createdAt: first.createdAt,
-        updatedAt: clock.now(),
+  test('integrity-error groups remain visible for repair', () async {
+    final group = DuplicateCandidateGroup(
+      id: 'damaged-group',
+      transactionIds: [TransactionId('only-surviving-member')],
+      duplicateKey: DuplicateTransactionKey(
+        transactionDate: '2026-09-01',
+        amount: DecimalValue.parse('25'),
+        currency: 'USD',
+        direction: 'expense',
       ),
+      status: DuplicateCandidateGroupStatus.consolidated,
+      selectedTransactionId: TransactionId('only-surviving-member'),
+      integrityIssue: const DuplicateCandidateGroupIntegrityIssue(
+        code: 'incompleteDuplicateGroup',
+        detail: 'A persisted duplicate group is missing linked members.',
+      ),
+      createdAt: DateTime.utc(2026, 9, 1),
+      updatedAt: DateTime.utc(2026, 9, 1),
     );
-    final result =
-        (await scan() as ApplicationSuccess<List<DuplicateCandidateGroup>>)
-            .value
-            .single;
-    expect(result.status, DuplicateCandidateGroupStatus.unresolved);
-    expect(result.selectedTransactionId, isNull);
+
+    final result = await ListDuplicateCandidateGroups(
+      _Groups(const [], [group]),
+    )();
+
+    expect(
+      (result as ApplicationSuccess<List<DuplicateCandidateGroup>>).value,
+      [group],
+    );
   });
+
+  test(
+    'repairs malformed statement evidence without changing source records',
+    () async {
+      final group = DuplicateCandidateGroup(
+        id: 'malformed-statement-group',
+        transactionIds: [TransactionId('existing-transaction')],
+        duplicateKey: DuplicateTransactionKey(
+          transactionDate: '2026-09-01',
+          amount: DecimalValue.parse('25'),
+          currency: 'USD',
+          direction: 'expense',
+        ),
+        status: DuplicateCandidateGroupStatus.unresolved,
+        statementRows: const [
+          DuplicateCandidateStatementRow(
+            statementId: 'missing-statement',
+            rowId: 'missing-row',
+          ),
+        ],
+        integrityIssue: const DuplicateCandidateGroupIntegrityIssue(
+          code: 'malformedStatementDuplicateEvidence',
+          detail: 'The referenced statement row is unavailable.',
+        ),
+        createdAt: DateTime.utc(2026, 9, 1),
+        updatedAt: DateTime.utc(2026, 9, 1),
+      );
+      final repository = _Groups(const [], [group]);
+
+      final result = await RepairDuplicateCandidateGroup(
+        repository,
+        _Clock(DateTime.utc(2026, 9, 2)),
+      )(group.id);
+
+      expect(result, isA<ApplicationSuccess<void>>());
+      expect(repository.groups, isEmpty);
+    },
+  );
+
+  test('repairs incomplete transaction-only duplicate metadata', () async {
+    final group = DuplicateCandidateGroup(
+      id: 'incomplete-transaction-group',
+      transactionIds: [TransactionId('remaining-transaction')],
+      duplicateKey: DuplicateTransactionKey(
+        transactionDate: '2026-09-01',
+        amount: DecimalValue.parse('25'),
+        currency: 'USD',
+        direction: 'expense',
+      ),
+      status: DuplicateCandidateGroupStatus.unresolved,
+      integrityIssue: const DuplicateCandidateGroupIntegrityIssue(
+        code: 'incompleteDuplicateGroup',
+        detail: 'A deleted member left an incomplete saved group.',
+      ),
+      createdAt: DateTime.utc(2026, 9, 1),
+      updatedAt: DateTime.utc(2026, 9, 1),
+    );
+    final repository = _Groups(const [], [group]);
+
+    final result = await RepairDuplicateCandidateGroup(
+      repository,
+      _Clock(DateTime.utc(2026, 9, 2)),
+    )(group.id);
+
+    expect(result, isA<ApplicationSuccess<void>>());
+    expect(repository.groups, isEmpty);
+  });
+
+  test(
+    'repairs stale duplicate metadata without changing transactions',
+    () async {
+      final group = DuplicateCandidateGroup(
+        id: 'stale-transaction-group',
+        transactionIds: [TransactionId('edited-transaction')],
+        duplicateKey: DuplicateTransactionKey(
+          transactionDate: '2026-09-01',
+          amount: DecimalValue.parse('25'),
+          currency: 'USD',
+          direction: 'expense',
+        ),
+        status: DuplicateCandidateGroupStatus.unresolved,
+        integrityIssue: const DuplicateCandidateGroupIntegrityIssue(
+          code: 'staleDuplicateGroup',
+          detail: 'The saved relationship no longer matches current facts.',
+        ),
+        createdAt: DateTime.utc(2026, 9, 1),
+        updatedAt: DateTime.utc(2026, 9, 1),
+      );
+      final repository = _Groups(const [], [group]);
+      final invalidation = _InvalidationResults();
+
+      final result = await RepairDuplicateCandidateGroup(
+        repository,
+        _Clock(DateTime.utc(2026, 9, 2)),
+        invalidateAnalysis: InvalidateAnalysis(
+          _InvalidationFindings(),
+          results: invalidation,
+        ),
+      )(group.id);
+
+      expect(result, isA<ApplicationSuccess<void>>());
+      expect(repository.groups, isEmpty);
+      expect(invalidation.markStaleCalls, 1);
+    },
+  );
+
+  test('stale groups cannot receive an ordinary duplicate decision', () async {
+    final group = DuplicateCandidateGroup(
+      id: 'stale-decision-group',
+      transactionIds: [TransactionId('a'), TransactionId('b')],
+      duplicateKey: DuplicateTransactionKey(
+        transactionDate: '2026-09-01',
+        amount: DecimalValue.parse('25'),
+        currency: 'USD',
+        direction: 'expense',
+      ),
+      status: DuplicateCandidateGroupStatus.unresolved,
+      integrityIssue: const DuplicateCandidateGroupIntegrityIssue(
+        code: 'staleDuplicateGroup',
+        detail: 'The saved relationship no longer matches current facts.',
+      ),
+      createdAt: DateTime.utc(2026, 9, 1),
+      updatedAt: DateTime.utc(2026, 9, 1),
+    );
+    final repository = _Groups(const [], [group]);
+
+    final result = await ResolveDuplicateCandidateGroup(
+      repository,
+      _Clock(DateTime.utc(2026, 9, 2)),
+    )(group.id, DuplicateCandidateGroupStatus.keepBoth);
+
+    expect(result, isA<ApplicationFailure<void>>());
+    expect(
+      repository.groups.single.integrityIssue?.code,
+      'staleDuplicateGroup',
+    );
+  });
+
+  test(
+    'explicit scan preserves consolidated groups with unchanged membership',
+    () async {
+      final repository = _Groups([_match('a', '25'), _match('b', '25')]);
+      final clock = _Clock(DateTime.utc(2026, 1, 1));
+      final scan = ScanExistingTransactionsForDuplicates(repository, clock);
+      final first =
+          (await scan() as ApplicationSuccess<List<DuplicateCandidateGroup>>)
+              .value
+              .single;
+      await repository.save(
+        DuplicateCandidateGroup(
+          id: first.id,
+          transactionIds: first.transactionIds,
+          duplicateKey: first.duplicateKey,
+          status: DuplicateCandidateGroupStatus.consolidated,
+          selectedTransactionId: TransactionId('a'),
+          createdAt: first.createdAt,
+          updatedAt: clock.now(),
+        ),
+      );
+      final result =
+          (await scan() as ApplicationSuccess<List<DuplicateCandidateGroup>>)
+              .value
+              .single;
+      expect(result.status, DuplicateCandidateGroupStatus.consolidated);
+      expect(result.selectedTransactionId, TransactionId('a'));
+    },
+  );
 
   test(
     'restore rebuild preserves Keep Both for unchanged membership',
@@ -169,6 +342,69 @@ void main() {
 
       expect(rebuilt.status, DuplicateCandidateGroupStatus.consolidated);
       expect(rebuilt.selectedTransactionId, TransactionId('a'));
+    },
+  );
+
+  test('explicit scan preserves statement-only duplicate candidates', () async {
+    final row = const DuplicateCandidateStatementRow(
+      statementId: 'statement-scan',
+      rowId: 'row-scan',
+    );
+    final group = DuplicateCandidateGroup(
+      id: 'duplicate:2026-01-01|25|USD|expense',
+      transactionIds: [TransactionId('existing')],
+      duplicateKey: DuplicateTransactionKey(
+        transactionDate: '2026-01-01',
+        amount: DecimalValue.parse('25'),
+        currency: 'USD',
+        direction: 'expense',
+      ),
+      status: DuplicateCandidateGroupStatus.unresolved,
+      statementRows: [row],
+      createdAt: DateTime.utc(2026, 1, 1),
+      updatedAt: DateTime.utc(2026, 1, 1),
+    );
+    final repository = _Groups(const [], [group]);
+
+    final result = await ScanExistingTransactionsForDuplicates(
+      repository,
+      _Clock(DateTime.utc(2026, 1, 2)),
+    )();
+
+    expect(result, isA<ApplicationSuccess<List<DuplicateCandidateGroup>>>());
+    expect(repository.groups.single.statementRows, [row]);
+  });
+
+  test(
+    'restore rebuild preserves statement-only duplicate candidates',
+    () async {
+      final row = const DuplicateCandidateStatementRow(
+        statementId: 'statement-restore',
+        rowId: 'row-restore',
+      );
+      final group = DuplicateCandidateGroup(
+        id: 'duplicate:2026-01-01|25|USD|expense',
+        transactionIds: const [],
+        duplicateKey: DuplicateTransactionKey(
+          transactionDate: '2026-01-01',
+          amount: DecimalValue.parse('25'),
+          currency: 'USD',
+          direction: 'expense',
+        ),
+        status: DuplicateCandidateGroupStatus.unresolved,
+        statementRows: [row],
+        createdAt: DateTime.utc(2026, 1, 1),
+        updatedAt: DateTime.utc(2026, 1, 1),
+      );
+      final repository = _Groups(const [], [group]);
+
+      final result = await RebuildDuplicateGroupsAfterRestore(
+        repository,
+        _Clock(DateTime.utc(2026, 1, 2)),
+      )();
+
+      expect(result, isA<ApplicationSuccess<List<DuplicateCandidateGroup>>>());
+      expect(repository.groups.single.statementRows, [row]);
     },
   );
 
@@ -278,6 +514,39 @@ void main() {
     },
   );
 
+  test('rescan preserves integrity-marked stale groups for repair', () async {
+    final repository = _Groups(const [], [
+      DuplicateCandidateGroup(
+        id: 'stale-repair-group',
+        transactionIds: [TransactionId('a'), TransactionId('b')],
+        duplicateKey: DuplicateTransactionKey(
+          transactionDate: '2026-01-01',
+          amount: DecimalValue.parse('25'),
+          currency: 'USD',
+          direction: 'expense',
+        ),
+        status: DuplicateCandidateGroupStatus.unresolved,
+        integrityIssue: DuplicateCandidateGroupIntegrityIssue(
+          code: 'staleDuplicateGroup',
+          detail: 'The saved relationship no longer matches current facts.',
+        ),
+        createdAt: DateTime.utc(2026, 1, 1),
+        updatedAt: DateTime.utc(2026, 1, 1),
+      ),
+    ]);
+
+    await ScanExistingTransactionsForDuplicates(
+      repository,
+      _Clock(DateTime.utc(2026, 1, 2)),
+    )();
+
+    expect(repository.groups, hasLength(1));
+    expect(
+      repository.groups.single.integrityIssue?.code,
+      'staleDuplicateGroup',
+    );
+  });
+
   test(
     'consolidated resolution requires and remembers explicit selection',
     () async {
@@ -292,6 +561,82 @@ void main() {
       );
       expect(result, isA<ApplicationSuccess<void>>());
       expect(repository.groups.single.selectedTransactionId?.value, 'b');
+    },
+  );
+
+  test('Keep Both and Consolidate invalidate Analysis caches', () async {
+    for (final status in [
+      DuplicateCandidateGroupStatus.keepBoth,
+      DuplicateCandidateGroupStatus.consolidated,
+    ]) {
+      final repository = _Groups([_match('a', '25'), _match('b', '25')]);
+      final clock = _Clock(DateTime.utc(2026, 1, 1));
+      await ScanExistingTransactionsForDuplicates(repository, clock)();
+      final results = _InvalidationResults();
+      final resolved =
+          await ResolveDuplicateCandidateGroup(
+            repository,
+            clock,
+            invalidateAnalysis: InvalidateAnalysis(
+              _InvalidationFindings(),
+              results: results,
+            ),
+          )(
+            repository.groups.single.id,
+            status,
+            selectedTransactionId:
+                status == DuplicateCandidateGroupStatus.consolidated
+                ? TransactionId('b')
+                : null,
+          );
+
+      expect(resolved, isA<ApplicationSuccess<void>>());
+      expect(results.markStaleCalls, 1);
+      expect(repository.groups.single.status, status);
+    }
+  });
+
+  test(
+    'editing a duplicate-key field reopens the old resolved group',
+    () async {
+      final repository = _Groups([
+        _match('old-a', '25'),
+        _match('old-b', '25'),
+        _match('new-a', '30'),
+        _match('new-b', '30'),
+      ]);
+      final clock = _Clock(DateTime.utc(2026, 1, 1));
+      await ScanExistingTransactionsForDuplicates(repository, clock)();
+      final oldGroup = repository.groups.firstWhere(
+        (group) => group.duplicateKey.amount == DecimalValue.parse('25'),
+      );
+      await repository.save(
+        DuplicateCandidateGroup(
+          id: oldGroup.id,
+          transactionIds: oldGroup.transactionIds,
+          duplicateKey: oldGroup.duplicateKey,
+          status: DuplicateCandidateGroupStatus.consolidated,
+          selectedTransactionId: TransactionId('old-a'),
+          createdAt: oldGroup.createdAt,
+          updatedAt: oldGroup.updatedAt,
+        ),
+      );
+      repository.matches.removeWhere(
+        (match) => match.transactionIds.single.value == 'old-b',
+      );
+      repository.matches.add(_match('new-b', '30'));
+
+      await RefreshDuplicateGroupForTransaction(repository, clock)(
+        previous: _transaction('old-b', amount: '25'),
+        current: _transaction('old-b', amount: '30'),
+      );
+
+      final reopened = repository.groups.firstWhere(
+        (group) => group.id == oldGroup.id,
+      );
+      expect(reopened.status, DuplicateCandidateGroupStatus.unresolved);
+      expect(reopened.selectedTransactionId, isNull);
+      expect(reopened.transactionIds.map((id) => id.value), ['old-a', 'old-b']);
     },
   );
 
@@ -404,7 +749,7 @@ void main() {
   );
 
   test(
-    'incremental refresh reopens on add and updates membership on removal',
+    'incremental refresh reopens on add and preserves deletion history',
     () async {
       final repository = _Groups([_match('a', '25'), _match('b', '25')]);
       final clock = _Clock(DateTime.utc(2026, 1, 1));
@@ -437,6 +782,182 @@ void main() {
       );
       expect(repository.groups.single.transactionIds.map((id) => id.value), [
         'a',
+        'b',
+        'c',
+      ]);
+    },
+  );
+
+  test(
+    'incremental refresh keeps archived history when a new match arrives later',
+    () async {
+      final repository = _Groups([_match('a', '25'), _match('b', '25')]);
+      final clock = _Clock(DateTime.utc(2026, 1, 1));
+      await ScanExistingTransactionsForDuplicates(repository, clock)();
+      final existing = repository.groups.single;
+      await repository.save(
+        DuplicateCandidateGroup(
+          id: existing.id,
+          transactionIds: existing.transactionIds,
+          duplicateKey: existing.duplicateKey,
+          status: DuplicateCandidateGroupStatus.consolidated,
+          selectedTransactionId: TransactionId('a'),
+          createdAt: existing.createdAt,
+          updatedAt: clock.now(),
+        ),
+      );
+
+      repository.matches.removeWhere(
+        (match) => match.transactionIds.single.value == 'b',
+      );
+      await RefreshDuplicateGroupForTransaction(repository, clock)(
+        previous: _transaction('b'),
+        current: _transaction('b', status: TransactionStatus.archived),
+      );
+      expect(repository.groups.single.transactionIds.map((id) => id.value), [
+        'a',
+        'b',
+      ]);
+
+      repository.matches.add(_match('c', '25'));
+      await RefreshDuplicateGroupForTransaction(repository, clock)(
+        current: _transaction('c', amount: '25'),
+      );
+
+      expect(repository.groups.single.transactionIds.map((id) => id.value), [
+        'a',
+        'b',
+        'c',
+      ]);
+      expect(
+        repository.groups.single.status,
+        DuplicateCandidateGroupStatus.unresolved,
+      );
+      expect(repository.groups.single.selectedTransactionId, isNull);
+    },
+  );
+
+  test(
+    'incremental refresh preserves resolved history when a member archives',
+    () async {
+      final repository = _Groups([_match('a', '25'), _match('b', '25')]);
+      final clock = _Clock(DateTime.utc(2026, 1, 1));
+      await ScanExistingTransactionsForDuplicates(repository, clock)();
+      final existing = repository.groups.single;
+      await repository.save(
+        DuplicateCandidateGroup(
+          id: existing.id,
+          transactionIds: existing.transactionIds,
+          duplicateKey: existing.duplicateKey,
+          status: DuplicateCandidateGroupStatus.consolidated,
+          selectedTransactionId: TransactionId('a'),
+          createdAt: existing.createdAt,
+          updatedAt: clock.now(),
+        ),
+      );
+
+      repository.matches.removeWhere(
+        (match) => match.transactionIds.single.value == 'b',
+      );
+      await RefreshDuplicateGroupForTransaction(repository, clock)(
+        previous: _transaction('b'),
+        current: _transaction('b', status: TransactionStatus.archived),
+      );
+
+      expect(repository.groups, hasLength(1));
+      expect(
+        repository.groups.single.status,
+        DuplicateCandidateGroupStatus.consolidated,
+      );
+      expect(repository.groups.single.transactionIds.map((id) => id.value), [
+        'a',
+        'b',
+      ]);
+    },
+  );
+
+  test(
+    'incremental refresh preserves a pending statement candidate across archive restore',
+    () async {
+      final repository = _Groups([_match('a', '25')]);
+      final clock = _Clock(DateTime.utc(2026, 1, 1));
+      final group = DuplicateCandidateGroup(
+        id: 'duplicate:2026-01-01|25|USD|expense',
+        transactionIds: [TransactionId('a')],
+        duplicateKey: _match('a', '25').duplicateKey,
+        status: DuplicateCandidateGroupStatus.unresolved,
+        statementRows: const [
+          DuplicateCandidateStatementRow(
+            statementId: 'statement',
+            rowId: 'row',
+          ),
+        ],
+        createdAt: clock.now(),
+        updatedAt: clock.now(),
+      );
+      await repository.save(group);
+
+      repository.matches.clear();
+      await RefreshDuplicateGroupForTransaction(repository, clock)(
+        previous: _transaction('a', amount: '25'),
+        current: _transaction(
+          'a',
+          amount: '25',
+          status: TransactionStatus.archived,
+        ),
+      );
+      expect(repository.groups.single.statementRows, hasLength(1));
+
+      repository.matches.add(_match('a', '25'));
+      await RefreshDuplicateGroupForTransaction(repository, clock)(
+        current: _transaction('a', amount: '25'),
+      );
+      expect(repository.groups.single.statementRows, hasLength(1));
+    },
+  );
+
+  test(
+    'incremental refresh preserves a resolved group when one of three members archives',
+    () async {
+      final repository = _Groups([
+        _match('a', '25'),
+        _match('b', '25'),
+        _match('c', '25'),
+      ]);
+      final clock = _Clock(DateTime.utc(2026, 1, 1));
+      await ScanExistingTransactionsForDuplicates(repository, clock)();
+      final existing = repository.groups.single;
+      await repository.save(
+        DuplicateCandidateGroup(
+          id: existing.id,
+          transactionIds: existing.transactionIds,
+          duplicateKey: existing.duplicateKey,
+          status: DuplicateCandidateGroupStatus.consolidated,
+          selectedTransactionId: TransactionId('a'),
+          createdAt: existing.createdAt,
+          updatedAt: clock.now(),
+        ),
+      );
+
+      repository.matches.removeWhere(
+        (match) => match.transactionIds.single.value == 'c',
+      );
+      await RefreshDuplicateGroupForTransaction(repository, clock)(
+        previous: _transaction('c'),
+        current: _transaction('c', status: TransactionStatus.archived),
+      );
+
+      expect(
+        repository.groups.single.status,
+        DuplicateCandidateGroupStatus.consolidated,
+      );
+      expect(
+        repository.groups.single.selectedTransactionId,
+        TransactionId('a'),
+      );
+      expect(repository.groups.single.transactionIds.map((id) => id.value), [
+        'a',
+        'b',
         'c',
       ]);
     },
@@ -459,6 +980,30 @@ void main() {
   });
 
   test(
+    'transaction mutation invalidates materialized analysis at the boundary',
+    () async {
+      final repository = _Groups([_match('a', '25'), _match('b', '25')]);
+      final delegate = _Transactions();
+      final results = _InvalidationResults();
+      final wrapper = DuplicateReviewingTransactionRepository(
+        delegate,
+        RefreshDuplicateGroupForTransaction(
+          repository,
+          _Clock(DateTime.utc(2026, 1, 1)),
+        ),
+        invalidateAnalysis: InvalidateAnalysis(
+          _InvalidationFindings(),
+          results: results,
+        ),
+      );
+
+      await wrapper.save(_transaction('c', amount: '25'));
+
+      expect(results.markStaleCalls, 1);
+    },
+  );
+
+  test(
     'transaction deletion refreshes the previous duplicate key only',
     () async {
       final groups = _Groups([_match('a', '25'), _match('b', '25')]);
@@ -475,6 +1020,89 @@ void main() {
 
       expect(groups.fullScanCalls, 0);
       expect(groups.keyLookups, ['2026-01-01|25|USD|expense']);
+    },
+  );
+
+  test(
+    'transaction wrapper preserves Keep Both history across permanent deletion',
+    () async {
+      final groups = _Groups([
+        _match('a', '25'),
+        _match('b', '25'),
+        _match('c', '25'),
+      ]);
+      final clock = _Clock(DateTime.utc(2026, 1, 1));
+      await ScanExistingTransactionsForDuplicates(groups, clock)();
+      final existing = groups.groups.single;
+      await groups.save(
+        DuplicateCandidateGroup(
+          id: existing.id,
+          transactionIds: existing.transactionIds,
+          duplicateKey: existing.duplicateKey,
+          status: DuplicateCandidateGroupStatus.keepBoth,
+          createdAt: existing.createdAt,
+          updatedAt: clock.now(),
+        ),
+      );
+      groups.matches.removeWhere(
+        (match) => match.transactionIds.single.value == 'b',
+      );
+      final wrapper = DuplicateReviewingTransactionRepository(
+        _Transactions()..values['b'] = _transaction('b'),
+        RefreshDuplicateGroupForTransaction(groups, clock),
+      );
+
+      await wrapper.removePermanently(TransactionId('b'));
+
+      expect(
+        groups.groups.single.status,
+        DuplicateCandidateGroupStatus.keepBoth,
+      );
+      expect(groups.groups.single.transactionIds.map((id) => id.value), [
+        'a',
+        'b',
+        'c',
+      ]);
+    },
+  );
+
+  test(
+    'transaction wrapper preserves a consolidated selection across deleting it',
+    () async {
+      final groups = _Groups([_match('a', '25'), _match('b', '25')]);
+      final clock = _Clock(DateTime.utc(2026, 1, 1));
+      await ScanExistingTransactionsForDuplicates(groups, clock)();
+      final existing = groups.groups.single;
+      await groups.save(
+        DuplicateCandidateGroup(
+          id: existing.id,
+          transactionIds: existing.transactionIds,
+          duplicateKey: existing.duplicateKey,
+          status: DuplicateCandidateGroupStatus.consolidated,
+          selectedTransactionId: TransactionId('a'),
+          createdAt: existing.createdAt,
+          updatedAt: clock.now(),
+        ),
+      );
+      groups.matches.removeWhere(
+        (match) => match.transactionIds.single.value == 'a',
+      );
+      final wrapper = DuplicateReviewingTransactionRepository(
+        _Transactions()..values['a'] = _transaction('a'),
+        RefreshDuplicateGroupForTransaction(groups, clock),
+      );
+
+      await wrapper.removePermanently(TransactionId('a'));
+
+      expect(
+        groups.groups.single.status,
+        DuplicateCandidateGroupStatus.consolidated,
+      );
+      expect(groups.groups.single.selectedTransactionId, TransactionId('a'));
+      expect(groups.groups.single.transactionIds.map((id) => id.value), [
+        'a',
+        'b',
+      ]);
     },
   );
 }
@@ -500,6 +1128,51 @@ final class _Clock implements ApplicationClock {
   final DateTime value;
   @override
   DateTime now() => value;
+}
+
+final class _InvalidationResults implements AnalysisRuleResultRepository {
+  var markStaleCalls = 0;
+
+  @override
+  Future<List<AnalysisRuleResult>> findAll({
+    required AnalysisRuleDefinition rule,
+    required AnalysisContext context,
+    int? sourceRevision,
+  }) async => const [];
+
+  @override
+  Future<AnalysisRuleResult?> find({
+    required AnalysisRuleDefinition rule,
+    required AnalysisContext context,
+    String? dimension,
+    int? sourceRevision,
+  }) async => null;
+
+  @override
+  Future<void> save(AnalysisRuleResult result) async {}
+
+  @override
+  Future<void> markStale({
+    String? periodStart,
+    String? periodEnd,
+    Set<String>? ruleIds,
+  }) async => markStaleCalls++;
+}
+
+final class _InvalidationFindings implements AnalysisFindingRepository {
+  @override
+  Future<void> save(AnalysisFinding finding) async {}
+
+  @override
+  Future<List<AnalysisFinding>> list({FindingLifecycle? lifecycle}) async =>
+      const [];
+
+  @override
+  Future<void> updateLifecycle(
+    String id,
+    FindingLifecycle lifecycle,
+    DateTime at,
+  ) async {}
 }
 
 Transaction _transaction(

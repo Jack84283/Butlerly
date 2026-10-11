@@ -30,11 +30,13 @@ final class FinanceServices {
     AnalysisRuleResultRepository? analysisResults,
     StatementRepository? statements,
     DuplicateCandidateGroupRepository? duplicateGroups,
+    RecurringPatternDecisionRepository? recurringPatternDecisions,
     PaymentSettlementRepository? paymentSettlements,
     MerchantAliasRepository? merchantAliases,
     MerchantNormalizationPatternRepository? merchantNormalizationPatterns,
     MerchantMatchingConfigurationRepository? merchantMatchingConfiguration,
     TransactionRuleRepository? transactionRules,
+    InvalidateAnalysis? analysisInvalidation,
   }) : listTransactions = ListTransactions(
          transactions,
          preferences: preferences,
@@ -242,12 +244,16 @@ final class FinanceServices {
            : ScanExistingTransactionsForDuplicates(
                duplicateGroups,
                const SystemApplicationClock(),
+               transactions: transactions,
+               invalidateAnalysis: analysisInvalidation,
              ),
        rebuildDuplicateGroupsAfterRestore = duplicateGroups == null
            ? null
            : RebuildDuplicateGroupsAfterRestore(
                duplicateGroups,
                const SystemApplicationClock(),
+               transactions: transactions,
+               invalidateAnalysis: analysisInvalidation,
              ),
        listDuplicateCandidateGroups = duplicateGroups == null
            ? null
@@ -257,12 +263,37 @@ final class FinanceServices {
                  transactions,
                  preferences: preferences,
                ),
+               statements: statements,
              ),
        resolveDuplicateCandidateGroup = duplicateGroups == null
            ? null
            : ResolveDuplicateCandidateGroup(
                duplicateGroups,
                const SystemApplicationClock(),
+               invalidateAnalysis:
+                   analysisInvalidation ??
+                   (analysisFindings == null
+                       ? null
+                       : InvalidateAnalysis(
+                           analysisFindings,
+                           results: analysisResults,
+                           rules: analysisRules,
+                         )),
+             ),
+       repairDuplicateCandidateGroup = duplicateGroups == null
+           ? null
+           : RepairDuplicateCandidateGroup(
+               duplicateGroups,
+               const SystemApplicationClock(),
+               invalidateAnalysis:
+                   analysisInvalidation ??
+                   (analysisFindings == null
+                       ? null
+                       : InvalidateAnalysis(
+                           analysisFindings,
+                           results: analysisResults,
+                           rules: analysisRules,
+                         )),
              ),
        evaluateTransactionNormalization = EvaluateTransactionNormalization(
          transactions,
@@ -287,6 +318,7 @@ final class FinanceServices {
                  preferences,
                  reconciliationLinks,
                  candidates: reconciliationCandidates,
+                 duplicateGroups: duplicateGroups,
                ),
                const AnalysisRuleEngine(),
                findings: analysisFindings,
@@ -300,6 +332,7 @@ final class FinanceServices {
                  preferences,
                  reconciliationLinks,
                  candidates: reconciliationCandidates,
+                 duplicateGroups: duplicateGroups,
                ),
                analysisRules,
                const AnalysisRuleEngine(),
@@ -314,14 +347,31 @@ final class FinanceServices {
                    preferences,
                    reconciliationLinks,
                    candidates: reconciliationCandidates,
+                   duplicateGroups: duplicateGroups,
                  ),
                  const AnalysisRuleEngine(),
                  findings: analysisFindings,
                  results: analysisResults,
                ),
              ),
+       detectRecurringPatterns = DetectRecurringPatterns(
+         transactions,
+         preferences: preferences,
+         links: reconciliationLinks,
+         duplicateGroups: duplicateGroups,
+         decisions: recurringPatternDecisions,
+       ),
+       saveRecurringPatternDecision = recurringPatternDecisions == null
+           ? null
+           : SaveRecurringPatternDecision(
+               recurringPatternDecisions,
+               const SystemApplicationClock(),
+             ),
        queryTransactionsForFinancialDate = QueryTransactionsForFinancialDate(
          transactions,
+         preferences: preferences,
+         links: reconciliationLinks,
+         duplicateGroups: duplicateGroups,
        ),
        statementServices = statements == null || duplicateGroups == null
            ? null
@@ -332,6 +382,7 @@ final class FinanceServices {
                const SystemApplicationClock(),
                evidence: evidence,
                merchants: merchants,
+               invalidateAnalysis: analysisInvalidation,
                applyRules: transactionRules == null
                    ? null
                    : ApplyTransactionRules(
@@ -525,11 +576,21 @@ final class FinanceServices {
   final RebuildDuplicateGroupsAfterRestore? rebuildDuplicateGroupsAfterRestore;
   final ListDuplicateCandidateGroups? listDuplicateCandidateGroups;
   final ResolveDuplicateCandidateGroup? resolveDuplicateCandidateGroup;
+  final RepairDuplicateCandidateGroup? repairDuplicateCandidateGroup;
   final InstallBuiltInRules? installBuiltInRules;
   final CalculateAnalysisOverview? calculateAnalysisOverview;
   late final CalculateMonthlySpendingTrend? calculateMonthlySpendingTrend;
   final CalculateAnalysisCalendar? calculateAnalysisCalendar;
   final CalculateInsights? calculateInsights;
+  final DetectRecurringPatterns detectRecurringPatterns;
+  final SaveRecurringPatternDecision? saveRecurringPatternDecision;
+  late final CalculatePeriodicFinancialReport?
+  calculatePeriodicFinancialReport = calculateAnalysisOverview == null
+      ? null
+      : CalculatePeriodicFinancialReport(
+          calculateAnalysisOverview!,
+          detectRecurringPatterns,
+        );
   late final GetHomeOverview loadHomeOverview;
   final QueryTransactionsForFinancialDate queryTransactionsForFinancialDate;
   final UpdateFindingLifecycle? updateAnalysisFindingLifecycle;

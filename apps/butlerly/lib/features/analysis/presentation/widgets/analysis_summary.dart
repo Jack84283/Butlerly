@@ -21,7 +21,7 @@ class AnalysisSummary extends StatelessWidget {
           Text(
             model.spending == null
                 ? context.l10n.text('noSpendingInPeriod')
-                : analysisMoney(context, model.spending!),
+                : analysisMetricMoney(context, model.spending!),
             style: Theme.of(context).textTheme.displaySmall,
           ),
           Text(context.l10n.text('totalSpending')),
@@ -64,13 +64,13 @@ class _SupportingMetric extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Semantics(
     label:
-        '$label, ${metric == null ? context.l10n.text('notAvailable') : analysisMoney(context, metric!)}',
+        '$label, ${metric == null ? context.l10n.text('notAvailable') : analysisMetricMoney(context, metric!)}',
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label),
         Text(
-          metric == null ? '—' : analysisMoney(context, metric!),
+          metric == null ? '—' : analysisMetricMoney(context, metric!),
           style: Theme.of(context).textTheme.titleLarge,
         ),
       ],

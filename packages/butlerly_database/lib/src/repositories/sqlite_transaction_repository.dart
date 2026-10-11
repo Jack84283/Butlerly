@@ -110,6 +110,7 @@ final class SqliteTransactionRepository
   Future<List<Transaction>> query(TransactionRepositoryQuery query) async {
     final conditions = <String>[];
     final arguments = <Object?>[];
+    final hasAuthoritativeTransactionIds = query.transactionIds != null;
     final text = query.text?.trim().toLowerCase();
     if (query.transactionIds case final ids?) {
       if (ids.isEmpty) return const [];
@@ -159,52 +160,54 @@ final class SqliteTransactionRepository
       )''');
       arguments.addAll(List<Object?>.filled(15, '%$text%'));
     }
-    final dateConditions = <String>[];
-    if (query.from != null) {
-      dateConditions.add('TRIM(t.transaction_date) >= ?');
-      arguments.add(_dateOnly(query.from!));
-    }
-    if (query.to != null) {
-      dateConditions.add('TRIM(t.transaction_date) <= ?');
-      arguments.add(_dateOnly(query.to!));
-    }
-    if (dateConditions.isNotEmpty) {
-      final datedCondition = [
-        "TRIM(COALESCE(t.transaction_date, '')) != ''",
-        ...dateConditions,
-      ].join(' AND ');
-      final undatedCondition = "TRIM(COALESCE(t.transaction_date, '')) = ''";
-      final occurredAtConditions = <String>[];
-      if (query.occurredAtFrom != null) {
-        occurredAtConditions.add('t.occurred_at >= ?');
-        arguments.add(_utcComparisonBound(query.occurredAtFrom!));
+    if (!hasAuthoritativeTransactionIds) {
+      final dateConditions = <String>[];
+      if (query.from != null) {
+        dateConditions.add('TRIM(t.transaction_date) >= ?');
+        arguments.add(_dateOnly(query.from!));
       }
-      if (query.occurredAtToExclusive != null) {
-        occurredAtConditions.add('t.occurred_at < ?');
-        arguments.add(_utcComparisonBound(query.occurredAtToExclusive!));
+      if (query.to != null) {
+        dateConditions.add('TRIM(t.transaction_date) <= ?');
+        arguments.add(_dateOnly(query.to!));
       }
-      final occurredCondition = occurredAtConditions.isEmpty
-          ? null
-          : '($undatedCondition AND t.occurred_at IS NOT NULL AND '
-                '${occurredAtConditions.join(' AND ')})';
-      final unknownCondition = query.includeUndated
-          ? '($undatedCondition AND t.occurred_at IS NULL)'
-          : null;
-      final periodConditions = <String>['($datedCondition)'];
-      if (occurredCondition != null) periodConditions.add(occurredCondition);
-      if (unknownCondition != null) periodConditions.add(unknownCondition);
-      conditions.add('(${periodConditions.join(' OR ')})');
+      if (dateConditions.isNotEmpty) {
+        final datedCondition = [
+          "TRIM(COALESCE(t.transaction_date, '')) != ''",
+          ...dateConditions,
+        ].join(' AND ');
+        final undatedCondition = "TRIM(COALESCE(t.transaction_date, '')) = ''";
+        final occurredAtConditions = <String>[];
+        if (query.occurredAtFrom != null) {
+          occurredAtConditions.add('t.occurred_at >= ?');
+          arguments.add(_utcComparisonBound(query.occurredAtFrom!));
+        }
+        if (query.occurredAtToExclusive != null) {
+          occurredAtConditions.add('t.occurred_at < ?');
+          arguments.add(_utcComparisonBound(query.occurredAtToExclusive!));
+        }
+        final occurredCondition = occurredAtConditions.isEmpty
+            ? null
+            : '($undatedCondition AND t.occurred_at IS NOT NULL AND '
+                  '${occurredAtConditions.join(' AND ')})';
+        final unknownCondition = query.includeUndated
+            ? '($undatedCondition AND t.occurred_at IS NULL)'
+            : null;
+        final periodConditions = <String>['($datedCondition)'];
+        if (occurredCondition != null) periodConditions.add(occurredCondition);
+        if (unknownCondition != null) periodConditions.add(unknownCondition);
+        conditions.add('(${periodConditions.join(' OR ')})');
+      }
+      if (dateConditions.isEmpty && !query.includeUndated) {
+        conditions.add(
+          "(TRIM(COALESCE(t.transaction_date, '')) != '' OR t.occurred_at IS NOT NULL)",
+        );
+      }
     }
-    if (dateConditions.isEmpty && !query.includeUndated) {
-      conditions.add(
-        "(TRIM(COALESCE(t.transaction_date, '')) != '' OR t.occurred_at IS NOT NULL)",
-      );
-    }
-    if (query.categoryId != null) {
+    if (!hasAuthoritativeTransactionIds && query.categoryId != null) {
       conditions.add('t.category_id = ?');
       arguments.add(query.categoryId!.value);
     }
-    if (query.uncategorized) {
+    if (!hasAuthoritativeTransactionIds && query.uncategorized) {
       conditions.add('(t.category_id IS NULL OR c.id IS NULL)');
     }
     if (query.paymentSourceId != null) {
@@ -345,6 +348,25 @@ final class SqliteTransactionRepository
           },
           where: 'transaction_id = ?',
           whereArgs: [id.value],
+        );
+        await tx.update(
+          'duplicate_candidate_groups',
+          {
+            'selected_transaction_id': null,
+            'status': DuplicateCandidateGroupStatus.unresolved.name,
+          },
+          where: 'selected_transaction_id = ?',
+          whereArgs: [id.value],
+        );
+        await tx.delete(
+          'reconciliation_links',
+          where: 'receipt_transaction_id = ? OR payment_transaction_id = ?',
+          whereArgs: [id.value, id.value],
+        );
+        await tx.delete(
+          'reconciliation_candidates',
+          where: 'receipt_transaction_id = ? OR payment_transaction_id = ?',
+          whereArgs: [id.value, id.value],
         );
         await tx.delete('transactions', where: 'id = ?', whereArgs: [id.value]);
       });

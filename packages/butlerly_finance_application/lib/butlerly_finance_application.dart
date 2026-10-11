@@ -30,13 +30,18 @@ export 'src/analysis/rule_installation.dart';
 export 'src/analysis/invalidation.dart';
 export 'src/analysis/result_materialization.dart';
 export 'src/analysis/dataset_builder.dart';
+export 'src/analysis/canonical_transactions.dart';
 export 'src/use_cases/analysis_use_cases.dart';
 export 'src/use_cases/monthly_spending_trend_use_case.dart';
 export 'src/use_cases/merchant_management_use_cases.dart';
 export 'src/use_cases/merchant_review_use_cases.dart';
 export 'src/use_cases/transaction_rule_use_cases.dart';
+export 'src/use_cases/recurring_use_cases.dart';
+export 'src/use_cases/periodic_report_use_cases.dart';
 
 export 'src/dto/analysis_overview.dart';
+export 'src/dto/recurring_pattern.dart';
+export 'src/dto/periodic_financial_report.dart';
 export 'src/dto/analysis_value.dart';
 export 'src/dto/home_overview.dart';
 export 'src/dto/monthly_spending_trend_point.dart';
