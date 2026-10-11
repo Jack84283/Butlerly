@@ -208,7 +208,7 @@ Controls use a compact 6px radius for compact icon controls and a full pill for 
 - **Corner Style:** 16px radius (current `ButlerlyRadius.card`).
 - **Background:** `dashboardSurface` / `cardSurface` from `ButlerlySemanticColors`, selected by appearance.
 - **Shadow Strategy:** 2px card elevation at rest; use tonal separation and no decorative outline.
-- **Internal Padding:** use `ButlerlySpacing.cardPadding` (16px) for standard cards; shared inner-card components apply their own 12px rhythm.
+- **Internal Padding:** use `ButlerlySpacing.cardPadding` (16px) for standard cards; the shared `ButlerlyTransactionInnerCard` applies `ButlerlySpacing.micro` (4px) of internal padding. Parent widgets determine outer gutters and list spacing.
 
 ### Inputs / Fields
 - **Style:** filled subtle-surface background, 12px radius, and a quiet semantic border; exact surface follows the active appearance.
@@ -272,7 +272,7 @@ The compact navigation uses the existing `PrimaryBottomNavigation` component and
 The following statements describe the current shipped direction. Runtime code, shared tokens, and tests should remain aligned with them.
 
 - **Colors:** use the semantic light/dark palettes above. The default dark mode is a navy-gray canvas with layered dashboard, sheet, and elevated surfaces; the default light mode is a cool gray canvas with white dashboard cards.
-- **Cards:** use shared components, 16px outer card radius, 16px standard card padding, 12px inner rhythm where a component defines it, 2px card elevation, and no decorative outline.
+- **Cards:** use shared components, 16px outer card radius, 16px standard card padding, 4px internal padding in `ButlerlyTransactionInnerCard` (outer gutters are caller-controlled), 2px card elevation, and no decorative outline.
 - **Buttons:** use the shared primary, secondary, tertiary, destructive, compact, and segmented variants. Shared buttons use full-pill geometry, 16px horizontal padding, 12px vertical padding, and a preferred 48px height.
 - **Navigation:** compact and medium layouts expose Home, Transactions, Add, Tools, and More. Wide layouts use the same destinations in a 248px expanded or 72px collapsed rail. Add remains a first-class capture action; Review, Analysis, Insights, payment settlements, master data, and rules are reached through Tools or contextual routes.
 - **Bottom sheets:** use the shared sheet container with 18px top corners, safe-area-aware padding, semantic surfaces, and explicit escape paths. Selection and filter sheets should use shared controls rather than feature-local variants.
