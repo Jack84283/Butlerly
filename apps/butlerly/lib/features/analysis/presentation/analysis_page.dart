@@ -629,14 +629,13 @@ class _AnalysisContent extends StatelessWidget {
           masterData: masterData,
           onCategoryTap: analysisContext == null
               ? null
-              : (metric) => _openTransactions(
+              : (metric) => _openAnalysisSearch(
                   context,
-                  period: analysisContext!.period,
-                  category: analysisCategoryId(metric),
+                  metric: metric,
                   transactionIds: _metricTransactionIds(metric),
                 ),
           onViewAll: analysisContext != null && model.categories.length > 5
-              ? () => _openTransactions(
+              ? () => _openAnalysisSearch(
                   context,
                   period: analysisContext!.period,
                   transactionIds: _evidenceTransactionIds(
@@ -738,7 +737,11 @@ class _AnalysisContent extends StatelessWidget {
   ) async {
     final evidenceIds = _metricTransactionIds(metric);
     if (evidenceIds.isNotEmpty) {
-      _openTransactions(context, transactionIds: evidenceIds);
+      _openAnalysisSearch(
+        context,
+        metric: metric,
+        transactionIds: evidenceIds,
+      );
       return;
     }
     if (metric.availability != AnalysisDataAvailability.sufficient ||
@@ -779,45 +782,41 @@ class _AnalysisContent extends StatelessWidget {
       ).showSnackBar(SnackBar(content: Text(context.l10n.text('noResults'))));
       return;
     }
-    _openTransactions(
+    _openAnalysisSearch(
       context,
+      metric: metric,
       transactionIds: transactionIds.toList(growable: false),
     );
   }
 
-  void _openTransactions(
+  void _openAnalysisSearch(
     BuildContext context, {
+    AnalysisMetric? metric,
     AnalysisPeriod? period,
-    String? category,
-    String? date,
     List<String>? transactionIds,
   }) {
-    final hasAuthoritativeTransactionIds = transactionIds?.isNotEmpty ?? false;
+    final selectedPeriod = metric?.context.period ?? period;
+    final grouping = metric?.rule.grouping;
+    final dimension = metric == null ? null : analysisRawDimension(metric);
     final query = <String, String>{
-      // Evidence IDs are authoritative. Do not add a date filter alongside
-      // them: occurrence-only transactions have no transaction_date and
-      // would otherwise disappear from the drill-through query.
-      if (!hasAuthoritativeTransactionIds && (date != null || period != null))
-        'from': date ?? period!.startDate,
-      if (!hasAuthoritativeTransactionIds && (date != null || period != null))
-        'to': date ?? period!.endDate,
-      if (!hasAuthoritativeTransactionIds && category != null)
-        'category': category,
-      if (hasAuthoritativeTransactionIds) 'ids': transactionIds!.join(','),
+      // Exact metric evidence is authoritative. Search uses these IDs for
+      // retrieval and displays the Analysis selection as fixed criteria.
+      'locked': 'true',
+      if (selectedPeriod != null) 'from': selectedPeriod.startDate,
+      if (selectedPeriod != null) 'to': selectedPeriod.endDate,
+      if (grouping == RuleGrouping.category && dimension != null)
+        'category': dimension,
+      if (grouping == RuleGrouping.merchant && dimension != null)
+        'merchant': dimension,
+      if (grouping == RuleGrouping.subcategory && dimension != null)
+        'subcategory': dimension,
+      if (transactionIds?.isNotEmpty ?? false)
+        'ids': transactionIds!.join(','),
     };
-    final location = Uri(
-      path: '/transactions',
-      queryParameters: query,
-    ).toString();
-    if (onNavigationRequested case final callback?) {
-      callback(location);
-    } else {
-      // Transactions is a primary StatefulShellRoute destination. Pushing
-      // its root route from Analysis stacks a second branch navigator and can
-      // trigger shell/navigation errors. Switch to the Transactions branch
-      // instead, preserving the selected evidence/filter in the location.
-      context.go(location);
-    }
+    _navigate(
+      context,
+      Uri(path: '/search', queryParameters: query).toString(),
+    );
   }
 
   List<String> _metricTransactionIds(AnalysisMetric metric) =>
