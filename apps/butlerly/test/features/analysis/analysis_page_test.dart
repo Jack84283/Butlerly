@@ -776,7 +776,7 @@ void main() {
           ]),
           loadMasterData: () async => const TransactionMasterData(
             merchantNames: {'merchant-one': 'Local market'},
-            subcategoryNames: {'subcategory-one': 'Fresh produce'},
+            categoryNames: {'subcategory-one': 'Fresh produce'},
           ),
           onNavigationRequested: (path) => navigation = path,
         ),
