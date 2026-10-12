@@ -57,10 +57,7 @@ void main() {
       ButlerlySemanticColors.light.controlPrimary,
       const Color(0xFF541127),
     );
-    expect(
-      ButlerlySemanticColors.dark.controlPrimary,
-      const Color(0xFFC76F8B),
-    );
+    expect(ButlerlySemanticColors.dark.controlPrimary, const Color(0xFFC76F8B));
 
     for (final colorTheme in ButlerlyColorTheme.values) {
       for (final theme in [
