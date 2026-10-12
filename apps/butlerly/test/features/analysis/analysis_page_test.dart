@@ -757,7 +757,12 @@ void main() {
           () async => ApplicationSuccess([
             RuleExecutionResult(
               rule: merchantRule,
-              metric: metric(merchantRule, 'merchant-row', 'merchant-one', 't-merchant'),
+              metric: metric(
+                merchantRule,
+                'merchant-row',
+                'merchant-one',
+                't-merchant',
+              ),
             ),
             RuleExecutionResult(
               rule: subcategoryRule,
@@ -778,21 +783,27 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Top merchants for the selected period'), findsOneWidget);
+      expect(
+        find.text('Top merchants for the selected period'),
+        findsOneWidget,
+      );
       expect(
         find.text('Top subcategories for the selected period'),
         findsOneWidget,
       );
 
-      final merchant = find.byKey(const ValueKey('analysis-merchant-metric-merchant-row'));
+      final merchant = find.byKey(
+        const ValueKey('analysis-merchant-metric-merchant-row'),
+      );
       await tester.ensureVisible(merchant);
       await tester.tap(merchant);
       expect(navigation, contains('ids=t-merchant'));
       expect(navigation, isNot(contains('from=')));
 
       navigation = null;
-      final subcategory =
-          find.byKey(const ValueKey('analysis-subcategory-metric-subcategory-row'));
+      final subcategory = find.byKey(
+        const ValueKey('analysis-subcategory-metric-subcategory-row'),
+      );
       await tester.ensureVisible(subcategory);
       await tester.tap(subcategory);
       expect(navigation, contains('ids=t-subcategory'));
