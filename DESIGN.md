@@ -6,21 +6,21 @@ colors:
   brand-deep: "#541127"
   interactive-rose: "#C76F8B"
   paper-light: "#F6F7F8"
-  canvas-dark: "#0B162A"
+  canvas-dark: "#030405"
   surface-light: "#FFFFFF"
-  surface-dark: "#1F2534"
-  dashboard-dark: "#1A2336"
-  elevated-dark: "#2A2D40"
-  sheet-dark: "#121A2B"
+  surface-dark: "#1F2123"
+  dashboard-dark: "#141516"
+  elevated-dark: "#292B2D"
+  sheet-dark: "#1B1D1F"
   subtle-light: "#F2F3F5"
   ink-light: "#14171D"
-  ink-dark: "#F6F7F8"
+  ink-dark: "#FFFFFF"
   border-light: "#D8DDE6"
-  border-dark: "#383C44"
+  border-dark: "#282C30"
   secondary-light: "#4B5563"
-  secondary-dark: "#B9BDC7"
+  secondary-dark: "#B4B4B4"
   tertiary-light: "#6B7280"
-  tertiary-dark: "#8D939E"
+  tertiary-dark: "#9A9A9A"
   success-light: "#287A52"
   success-dark: "#4DBA7A"
   warning-light: "#916814"
@@ -122,7 +122,7 @@ The experience is smartphone-first but width-driven rather than device-branded. 
 - Quiet-premium, editorial clarity for financial decisions.
 - Serif hierarchy for editorial and financial emphasis; platform sans-serif for functional UI.
 - Burgundy interaction language with stable semantic success, warning, error, and information colors.
-- Cool navy-gray tonal surfaces with restrained borders and deliberate 6/12/16/18px geometry.
+- Cool light neutrals and near-black dark surfaces with restrained borders and deliberate 6/12/16/18px geometry.
 - Width-driven responsive behavior with 44px minimum touch targets and accessible text scaling.
 
 ## Colors
@@ -136,7 +136,7 @@ The palette is neutral-first and semantic. Butler Red is the default brand theme
 
 ### Neutral
 - **Cool Light Canvas** (`{colors.paper-light}`): light appearance background and navigation canvas.
-- **Navy Canvas** (`{colors.canvas-dark}`): dark appearance background.
+- **Near-Black Canvas** (`{colors.canvas-dark}`): dark appearance background.
 - **White Surface** (`{colors.surface-light}`): light appearance cards and content surfaces.
 - **Dark Surface** (`{colors.surface-dark}`): dark appearance sheets and content surfaces.
 - **Dashboard Dark** (`{colors.dashboard-dark}`): dark appearance cards and dashboard surfaces.
@@ -179,7 +179,7 @@ Butlerly uses a width-driven responsive model: compact below 600px, medium from 
 
 ## Elevation & Depth
 
-The system is tonal by default. Cards use a low, consistent 2px elevation with neutral surface separation; overlays use restrained elevation only when a dialog, bottom sheet, or floating element needs to sit above the working surface. Dark appearance uses navy-gray tonal layering instead of glow or heavy contrast effects.
+The system is tonal by default. Cards use a low, consistent 2px elevation with neutral surface separation; overlays use restrained elevation only when a dialog, bottom sheet, or floating element needs to sit above the working surface. Dark appearance uses near-black and charcoal tonal layering instead of glow or heavy contrast effects.
 
 ### Shadow Vocabulary
 - **Base:** no elevation; separation comes from surface tone and border.
@@ -249,7 +249,7 @@ Controls use a compact 6px radius for compact icon controls and a full pill for 
 
 For current UI implementation, use `apps/butlerly/lib/design_system/theme/butlerly_semantic_colors.dart` for light/dark color roles, `apps/butlerly/lib/design_system/tokens/butlerly_tokens.dart` and `butlerly_button.dart` for radius/spacing/navigation/button geometry, `apps/butlerly/lib/design_system/tokens/butlerly_typography.dart` for type roles, and shared components under `apps/butlerly/lib/design_system/components/`. `DESIGN.md` is the current design authority; these code tokens and widgets are implementation evidence that must remain aligned with it. Historical visual references and retired redesign targets are not active requirements.
 
-Current defaults include light background `#F6F7F8`, light card `#FFFFFF`, dark background `#0B162A`, dark dashboard card `#1A2336`, 16px card radius, 12px page gutter, pill-shaped shared buttons, and 56px minimum navigation bar height (navigation can grow to accommodate localized labels). Accent themes may replace brand roles while financial semantic colors remain stable.
+Current defaults include light background `#F6F7F8`, light card `#FFFFFF`, dark background `#030405`, dark dashboard card `#141516`, 16px card radius, 12px page gutter, pill-shaped shared buttons, and 56px minimum navigation bar height (navigation can grow to accommodate localized labels). Accent themes may replace brand roles while financial semantic colors remain stable.
 
 ### Exact implemented semantic surfaces
 
@@ -257,13 +257,13 @@ These values are read from `apps/butlerly/lib/design_system/theme/butlerly_seman
 
 | Role | Light | Dark |
 | --- | --- | --- |
-| Page background | `#F6F7F8` | `#0B162A` |
-| General surface | `#F0F2F5` | `#1F2534` |
-| Dashboard/card surface | `#FFFFFF` | `#1A2336` |
-| Elevated surface | `#F0F2F5` | `#2A2D40` |
-| Bottom navigation surface | `#F2F3F5` | `#121A2B` |
-| Primary text | `#14171D` | `#F6F7F8` |
-| Divider/border | `#D8DDE6` | `#383C44` |
+| Page background | `#F6F7F8` | `#030405` |
+| General surface | `#F0F2F5` | `#1F2123` |
+| Dashboard/card surface | `#FFFFFF` | `#141516` |
+| Elevated surface | `#F0F2F5` | `#292B2D` |
+| Bottom navigation surface | `#F2F3F5` | `#141516` |
+| Primary text | `#14171D` | `#FFFFFF` |
+| Divider/border | `#D8DDE6` | `#282C30` |
 
 The compact navigation uses the existing `PrimaryBottomNavigation` component and is not a top-of-page navigation switch. Its nominal 56px height can expand to accommodate localized labels and safe areas. The selected icon receives the semantic `navigationSelectedIcon` color.
 
@@ -271,7 +271,7 @@ The compact navigation uses the existing `PrimaryBottomNavigation` component and
 
 The following statements describe the current shipped direction. Runtime code, shared tokens, and tests should remain aligned with them.
 
-- **Colors:** use the semantic light/dark palettes above. The default dark mode is a navy-gray canvas with layered dashboard, sheet, and elevated surfaces; the default light mode is a cool gray canvas with white dashboard cards.
+- **Colors:** use the semantic light/dark palettes above. The default dark mode is a near-black canvas with charcoal dashboard, sheet, and elevated surfaces; the default light mode is a cool gray canvas with white dashboard cards.
 - **Cards:** use shared components, 16px outer card radius, 16px standard card padding, 4px internal padding in `ButlerlyTransactionInnerCard` (outer gutters are caller-controlled), 2px card elevation, and no decorative outline.
 - **Buttons:** use the shared primary, secondary, tertiary, destructive, compact, and segmented variants. Shared buttons use full-pill geometry, 16px horizontal padding, 12px vertical padding, and a preferred 48px height.
 - **Navigation:** compact and medium layouts expose Home, Transactions, Add, Tools, and More. Wide layouts use the same destinations in a 248px expanded or 72px collapsed rail. Add remains a first-class capture action; Review, Analysis, Insights, payment settlements, master data, and rules are reached through Tools or contextual routes.
