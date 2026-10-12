@@ -67,34 +67,30 @@ void main() {
     expect(modern.categoryId?.value, 'food');
     expect(modern.subcategoryId?.value, 'groceries');
 
-    AnalysisRuleDefinition rule(String id, RuleGrouping grouping) =>
-        AnalysisRuleDefinition(
-          identity: RuleIdentity(id),
-          version: RuleVersion('1.0.0'),
-          schemaVersion: '1.0.0',
-          type: AnalysisRuleType.metric,
-          nameKey: 'analysis.test',
-          descriptionKey: 'analysis.test',
-          enabled: true,
-          status: AnalysisRuleStatus.active,
-          period: 'selected_period',
-          measure: const RuleMeasure(
-            operation: RuleOperation.sum,
-            field: 'amount',
-          ),
-          grouping: grouping,
-          surface: AnalysisSurface.spending,
-          baseline: RuleBaseline.none,
-          condition: const RuleCondition(operator: 'none'),
-          severity: RuleSeverity.info,
-          definitionHash: RuleDefinitionHash('a' * 64),
-          filters: [
-            AnalysisFilter(
-              kind: AnalysisFilterKind.direction,
-              values: ['expense'],
-            ),
-          ],
-        );
+    AnalysisRuleDefinition rule(
+      String id,
+      RuleGrouping grouping,
+    ) => AnalysisRuleDefinition(
+      identity: RuleIdentity(id),
+      version: RuleVersion('1.0.0'),
+      schemaVersion: '1.0.0',
+      type: AnalysisRuleType.metric,
+      nameKey: 'analysis.test',
+      descriptionKey: 'analysis.test',
+      enabled: true,
+      status: AnalysisRuleStatus.active,
+      period: 'selected_period',
+      measure: const RuleMeasure(operation: RuleOperation.sum, field: 'amount'),
+      grouping: grouping,
+      surface: AnalysisSurface.spending,
+      baseline: RuleBaseline.none,
+      condition: const RuleCondition(operator: 'none'),
+      severity: RuleSeverity.info,
+      definitionHash: RuleDefinitionHash('a' * 64),
+      filters: [
+        AnalysisFilter(kind: AnalysisFilterKind.direction, values: ['expense']),
+      ],
+    );
     final results = const AnalysisRuleEngine().execute(
       dataset: dataset,
       definitions: [
