@@ -25,6 +25,25 @@ void main() {
     expect(events, ['activate', 'system-data', 'complete', 'presentation']);
   });
 
+  test('UI refresh failure reports warning after committed restore', () async {
+    final result = await service.restore(
+      'selected-backup',
+      mode: LocalRestoreMode.replace,
+      refreshPresentation: () async {
+        events.add('presentation-failed');
+        throw StateError('failed to refresh mounted page');
+      },
+    );
+    expect(result.restoredRows, 1);
+    expect(result.presentationRefreshFailed, isTrue);
+    expect(events, [
+      'activate',
+      'system-data',
+      'complete',
+      'presentation-failed',
+    ]);
+  });
+
   for (final operation in ['recover', 'reset']) {
     test('$operation refreshes inside the safety gate', () async {
       Future<void> refresh() async => events.add('presentation');
