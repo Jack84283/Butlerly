@@ -20,6 +20,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 void main() {
   Widget app(
@@ -830,6 +831,165 @@ void main() {
       expect(navigation, isNot(contains('ids=t-merchant')));
     },
   );
+
+  testWidgets('breakdown taps switch to the Transactions primary branch', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1000, 1800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final context = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-08-01',
+        endDate: '2026-08-31',
+        timeZoneId: 'America/Los_Angeles',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+    );
+    AnalysisRuleDefinition rule(String id, RuleGrouping grouping) =>
+        AnalysisRuleDefinition(
+          identity: RuleIdentity(id),
+          version: RuleVersion('1.0.0'),
+          schemaVersion: '1.0.0',
+          type: AnalysisRuleType.metric,
+          nameKey: 'analysis.rule.r011.name',
+          descriptionKey: 'analysis.rule.r011.description',
+          enabled: true,
+          status: AnalysisRuleStatus.active,
+          period: 'selected_period',
+          measure: const RuleMeasure(
+            operation: RuleOperation.sum,
+            field: 'amount',
+          ),
+          grouping: grouping,
+          surface: AnalysisSurface.spending,
+          baseline: RuleBaseline.none,
+          condition: const RuleCondition(operator: 'none'),
+          severity: RuleSeverity.info,
+          definitionHash: RuleDefinitionHash('a' * 64),
+        );
+
+    final results = [
+      for (final entry in <(String, RuleGrouping, String, String)>[
+        ('ANL-R010', RuleGrouping.category, 'category.food', 't-category'),
+        ('ANL-R011', RuleGrouping.merchant, 'merchant-one', 't-merchant'),
+        (
+          'ANL-R012',
+          RuleGrouping.subcategory,
+          'category.food.groceries',
+          't-subcategory',
+        ),
+      ])
+        RuleExecutionResult(
+          rule: rule(entry.$1, entry.$2),
+          metric: AnalysisMetric(
+            id: entry.$4,
+            rule: rule(entry.$1, entry.$2),
+            context: context,
+            value: DecimalValue.parse('42'),
+            dimension: '${entry.$3}:value',
+            currency: CurrencyCode('USD'),
+            evidence: [
+              EvidenceReference(transactionId: TransactionId(entry.$4)),
+            ],
+            calculatedAt: DateTime.utc(2026, 8, 31),
+          ),
+        ),
+    ];
+    final router = GoRouter(
+      initialLocation: '/analysis',
+      routes: [
+        ShellRoute(
+          builder: (_, _, child) => child,
+          routes: [
+            StatefulShellRoute.indexedStack(
+              builder: (_, _, navigationShell) => navigationShell,
+              branches: [
+                StatefulShellBranch(
+                  routes: [
+                    GoRoute(
+                      path: '/',
+                      builder: (_, _) => const Scaffold(body: Text('Home')),
+                    ),
+                  ],
+                ),
+                StatefulShellBranch(
+                  routes: [
+                    GoRoute(
+                      path: '/transactions',
+                      builder: (_, state) => Scaffold(
+                        body: Text(
+                          'Transaction IDs: ${state.uri.queryParameters['ids']}',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            GoRoute(
+              path: '/analysis',
+              builder: (_, _) => AnalysisPage(
+                load: () async => ApplicationSuccess(results),
+                loadMasterData: () async => const TransactionMasterData(
+                  categoryNames: {
+                    'category.food': 'Dining',
+                    'category.food.groceries': 'Groceries',
+                  },
+                  categoryParentIds: {
+                    'category.food.groceries': 'category.food',
+                  },
+                  merchantNames: {'merchant-one': 'Local market'},
+                  merchantCategoryIds: {
+                    'merchant-one': 'category.shopping',
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      MaterialApp.router(
+        routerConfig: router,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
+    );
+
+    for (final drill in <(Finder, String)>[
+      (find.text('Dining'), 't-category'),
+      (
+        find.byKey(const ValueKey('analysis-merchant-metric-t-merchant')),
+        't-merchant',
+      ),
+      (
+        find.byKey(const ValueKey('analysis-subcategory-metric-t-subcategory')),
+        't-subcategory',
+      ),
+    ]) {
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(drill.$1);
+      await tester.tap(drill.$1);
+      await tester.pumpAndSettle();
+      expect(router.routeInformationProvider.value.uri.path, '/transactions');
+      expect(router.routeInformationProvider.value.uri.queryParameters['ids'],
+          drill.$2);
+      expect(router.canPop(), isFalse);
+      expect(tester.takeException(), isNull);
+      router.go('/analysis');
+    }
+  });
 
   testWidgets('subcategory rows use the subcategory unavailable label', (
     tester,
