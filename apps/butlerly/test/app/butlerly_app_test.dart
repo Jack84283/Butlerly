@@ -39,9 +39,9 @@ void main() {
     expect(light.scaffoldBackgroundColor, lightColors.background);
     expect(light.cardTheme.color, lightColors.cardSurface);
     expect(lightColors.dashboardSurface, const Color(0xFFFFFFFF));
-    expect(darkColors.dashboardSurface, const Color(0xFF1A2336));
+    expect(darkColors.dashboardSurface, const Color(0xFF141516));
     expect(lightColors.cardDivider, const Color(0xFFD8DDE6));
-    expect(darkColors.cardDivider, const Color(0xFF383C44));
+    expect(darkColors.cardDivider, const Color(0xFF282C30));
   });
 
   test('button themes use centralized Butlerly geometry', () {

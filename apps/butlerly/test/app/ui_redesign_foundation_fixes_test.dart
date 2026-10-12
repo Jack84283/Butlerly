@@ -57,16 +57,16 @@ void main() {
     );
   });
 
-  test('dark theme uses the approved navy surface palette', () {
+  test('dark theme uses the approved near-black surface palette', () {
     final colors = AppTheme.dark.extension<ButlerlySemanticColors>()!;
 
-    expect(colors.background, const Color(0xFF0B162A));
-    expect(colors.subtleSurface, const Color(0xFF0B162A));
-    expect(colors.surface, const Color(0xFF1F2534));
-    expect(colors.dashboardSurface, const Color(0xFF1A2336));
-    expect(colors.elevatedSurface, const Color(0xFF2A2D40));
-    expect(colors.secondaryText, const Color(0xFFB9BDC7));
-    expect(colors.primaryText, const Color(0xFFF6F7F8));
+    expect(colors.background, const Color(0xFF030405));
+    expect(colors.subtleSurface, const Color(0xFF1B1D1F));
+    expect(colors.surface, const Color(0xFF1F2123));
+    expect(colors.dashboardSurface, const Color(0xFF141516));
+    expect(colors.elevatedSurface, const Color(0xFF292B2D));
+    expect(colors.secondaryText, const Color(0xFFB4B4B4));
+    expect(colors.primaryText, const Color(0xFFFFFFFF));
   });
 
   test('light theme uses the approved off-white surface palette', () {

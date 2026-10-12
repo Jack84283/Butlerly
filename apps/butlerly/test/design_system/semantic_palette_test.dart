@@ -6,21 +6,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('dark mode matches the approved navy background specification', () {
+  test('dark mode uses near-black canvas and layered neutral surfaces', () {
     final colors = AppTheme.dark.extension<ButlerlySemanticColors>()!;
-    expect(colors.background, const Color(0xFF0B162A));
-    expect(colors.cardSurface, const Color(0xFF1A2336));
-    expect(colors.surface, const Color(0xFF1F2534));
-    expect(colors.elevatedSurface, const Color(0xFF2A2D40));
-    expect(colors.subtleSurface, const Color(0xFF0B162A));
-    expect(colors.overlaySurface, const Color(0xFF1F2534));
-    expect(colors.sheetSurface, const Color(0xFF121A2B));
-    expect(colors.footerSurface, const Color(0xFF121A2B));
-    expect(colors.primaryText, const Color(0xFFF6F7F8));
-    expect(colors.secondaryText, const Color(0xFFB9BDC7));
-    expect(colors.tertiaryText, const Color(0xFF8D939E));
-    expect(colors.cardDivider, const Color(0xFF383C44));
-    expect(colors.border, const Color(0xFF383C44));
+    expect(colors.background, const Color(0xFF030405));
+    expect(colors.cardSurface, const Color(0xFF141516));
+    expect(colors.surface, const Color(0xFF1F2123));
+    expect(colors.elevatedSurface, const Color(0xFF292B2D));
+    expect(colors.subtleSurface, const Color(0xFF1B1D1F));
+    expect(colors.overlaySurface, const Color(0xFF1F2123));
+    expect(colors.sheetSurface, const Color(0xFF1B1D1F));
+    expect(colors.footerSurface, const Color(0xFF141516));
+    expect(colors.primaryText, const Color(0xFFFFFFFF));
+    expect(colors.secondaryText, const Color(0xFFB4B4B4));
+    expect(colors.tertiaryText, const Color(0xFF9A9A9A));
+    expect(colors.cardDivider, const Color(0xFF282C30));
+    expect(colors.border, const Color(0xFF282C30));
+    expect(
+      _contrast(colors.secondaryText, colors.cardSurface),
+      greaterThanOrEqualTo(4.5),
+    );
+    expect(
+      _contrast(colors.tertiaryText, colors.elevatedSurface),
+      greaterThanOrEqualTo(4.5),
+    );
   });
 
   test(
@@ -51,6 +59,47 @@ void main() {
       );
     },
   );
+
+  test('shared controls use the approved light and dark color roles', () {
+    expect(
+      ButlerlySemanticColors.light.controlPrimary,
+      const Color(0xFF541127),
+    );
+    expect(ButlerlySemanticColors.dark.controlPrimary, const Color(0xFFC76F8B));
+
+    for (final colorTheme in ButlerlyColorTheme.values) {
+      for (final theme in [
+        AppTheme.lightFor(colorTheme),
+        AppTheme.darkFor(colorTheme),
+      ]) {
+        final colors = theme.extension<ButlerlySemanticColors>()!;
+        final buttons = ButlerlyButtonPalette.resolve(
+          colors: colors,
+          brightness: theme.brightness,
+        );
+        final dark = theme.brightness == Brightness.dark;
+        expect(buttons.primaryFill, colors.controlPrimary);
+        expect(buttons.secondaryFill, colors.cardSurface);
+        expect(buttons.secondaryBorder, colors.border);
+        expect(buttons.secondaryText, colors.primaryText);
+        expect(
+          buttons.tertiaryFill,
+          dark ? colors.elevatedSurface : colors.subtleSurface,
+        );
+        expect(buttons.chipFill, buttons.tertiaryFill);
+        expect(buttons.chipBorder, colors.border);
+        expect(
+          buttons.segmentFill,
+          dark ? colors.surface : colors.subtleSurface,
+        );
+        expect(buttons.segmentBorder, colors.border);
+        expect(
+          _contrast(theme.colorScheme.primary, theme.colorScheme.onPrimary),
+          greaterThanOrEqualTo(4.5),
+        );
+      }
+    }
+  });
 
   test('light text and secondary actions use distinct contrasted surfaces', () {
     for (final palette in ButlerlyColorTheme.values) {
