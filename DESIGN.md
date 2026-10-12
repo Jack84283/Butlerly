@@ -200,7 +200,7 @@ Controls use a compact 6px radius for compact icon controls and a full pill for 
 
 ### Buttons
 - **Shape:** full pill radius with a 48px preferred height.
-- **Primary:** deep burgundy control surface with light text and 16px horizontal padding.
+- **Primary:** deep burgundy with light text in light mode; soft rose with contrast-aware dark text in dark mode, with the existing 16px horizontal padding.
 - **Secondary / Ghost:** transparent or outlined surface using semantic borders and the same control geometry.
 - **Focus / Disabled:** preserve the minimum target and use semantic focus and muted disabled colors rather than changing geometry.
 
