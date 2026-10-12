@@ -78,6 +78,8 @@ class SearchPage extends StatefulWidget {
     this.readOnly = false,
     this.insightRuleId,
     this.insightDimension,
+    this.selectedMerchantId,
+    this.selectedSubcategoryId,
     super.key,
   });
 
@@ -87,6 +89,8 @@ class SearchPage extends StatefulWidget {
   final bool readOnly;
   final String? insightRuleId;
   final String? insightDimension;
+  final String? selectedMerchantId;
+  final String? selectedSubcategoryId;
 
   @override
   State<SearchPage> createState() => _SearchPageState();
@@ -464,6 +468,8 @@ class _SearchPageState extends State<SearchPage>
             from: _from,
             to: _to,
             categoryId: _categoryId,
+            merchantId: widget.selectedMerchantId,
+            subcategoryId: widget.selectedSubcategoryId,
             paymentSourceId: _paymentSourceId,
             currency: _currency,
             direction: _direction,
@@ -596,6 +602,8 @@ class _LockedSearchCriteria extends StatelessWidget {
     required this.from,
     required this.to,
     required this.categoryId,
+    required this.merchantId,
+    required this.subcategoryId,
     required this.paymentSourceId,
     required this.currency,
     required this.direction,
@@ -609,6 +617,8 @@ class _LockedSearchCriteria extends StatelessWidget {
   final DateTime? from;
   final DateTime? to;
   final String? categoryId;
+  final String? merchantId;
+  final String? subcategoryId;
   final String? paymentSourceId;
   final String? currency;
   final TransactionDirection? direction;
@@ -626,6 +636,10 @@ class _LockedSearchCriteria extends StatelessWidget {
         '${context.l10n.text('category')}: ${context.l10n.text('uncategorized')}'
       else if (categoryId != null)
         '${context.l10n.text('category')}: ${presentation.categoryName(categoryId!) ?? categoryId!}',
+      if (merchantId != null)
+        '${context.l10n.text('merchant')}: ${presentation.merchantName(merchantId!) ?? merchantId!}',
+      if (subcategoryId != null)
+        '${context.l10n.text('subcategory')}: ${presentation.subcategoryName(subcategoryId!) ?? subcategoryId!}',
       if (paymentSourceId != null)
         '${context.l10n.text('paymentSource')}: ${paymentSourceNames[paymentSourceId!] ?? paymentSourceId!}',
       if (currency != null) '${context.l10n.text('currency')}: $currency',
