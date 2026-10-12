@@ -88,7 +88,7 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
     brandStrong: Color(0xFF541127),
     interactive: Color(0xFFF6F7F8),
     navigationSelectedIcon: Color(0xFFBD6384),
-    controlPrimary: Color(0xFF7A1E3A),
+    controlPrimary: Color(0xFFC76F8B),
     interactiveStrong: Color(0xFF9A3655),
     success: Color(0xFF4DBA7A),
     warning: Color(0xFFD4A85B),
