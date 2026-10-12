@@ -943,9 +943,7 @@ void main() {
                     'category.food.groceries': 'category.food',
                   },
                   merchantNames: {'merchant-one': 'Local market'},
-                  merchantCategoryIds: {
-                    'merchant-one': 'category.shopping',
-                  },
+                  merchantCategoryIds: {'merchant-one': 'category.shopping'},
                 ),
               ),
             ),
@@ -983,8 +981,10 @@ void main() {
       await tester.tap(drill.$1);
       await tester.pumpAndSettle();
       expect(router.routeInformationProvider.value.uri.path, '/transactions');
-      expect(router.routeInformationProvider.value.uri.queryParameters['ids'],
-          drill.$2);
+      expect(
+        router.routeInformationProvider.value.uri.queryParameters['ids'],
+        drill.$2,
+      );
       expect(router.canPop(), isFalse);
       expect(tester.takeException(), isNull);
       router.go('/analysis');
