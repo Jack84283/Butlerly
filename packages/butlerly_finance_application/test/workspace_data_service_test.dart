@@ -14,7 +14,7 @@ void main() {
     );
   });
 
-  test('restore refreshes UI only after activation and cleanup finish', () async {
+  test('restore refreshes UI after cleanup', () async {
     await service.restore(
       'selected-backup',
       mode: LocalRestoreMode.merge,
@@ -26,7 +26,7 @@ void main() {
   });
 
   for (final operation in ['recover', 'reset']) {
-    test('$operation refreshes system data before UI, inside safety gate', () async {
+    test('$operation refreshes inside the safety gate', () async {
       Future<void> refresh() async => events.add('presentation');
       switch (operation) {
         case 'recover':
@@ -39,7 +39,7 @@ void main() {
     });
   }
 
-  test('restore does not refresh mounted screens if activation fails', () async {
+  test('failed restore does not refresh UI', () async {
     gateway.failComplete = true;
     await expectLater(
       service.restore(
