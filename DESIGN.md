@@ -73,8 +73,8 @@ spacing:
   structural: "64px"
 components:
   button-primary:
-    backgroundColor: "{colors.brand-deep}"
-    textColor: "#FFFFFF"
+    backgroundColor: "semantic controlPrimary (deep burgundy in light, soft rose in dark)"
+    textColor: "contrasting text color for controlPrimary"
     typography: "{typography.label}"
     rounded: "{rounded.pill}"
     padding: "12px 16px"
