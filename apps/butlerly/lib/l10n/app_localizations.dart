@@ -438,7 +438,8 @@ class AppLocalizations {
       'edit': 'Edit',
       'uncategorized': 'Not categorized',
       'analysisNoSubcategory': 'No subcategory',
-      'restoreRefreshWarning': 'Data was restored, but the screen could not refresh. Reopen Butlerly to reload.',
+      'restoreRefreshWarning':
+          'Data was restored, but the screen could not refresh. Reopen Butlerly to reload.',
       'confirm': 'Confirm',
       'normalizedAmount': 'Normalized amount',
       'reviewIncomplete': 'Transaction information is incomplete',
@@ -2027,7 +2028,8 @@ class AppLocalizations {
       'edit': 'Editar',
       'uncategorized': 'Sin categoría',
       'analysisNoSubcategory': 'Sin subcategoría',
-      'restoreRefreshWarning': 'Los datos se restauraron, pero la pantalla no pudo actualizarse. Vuelve a abrir Butlerly.',
+      'restoreRefreshWarning':
+          'Los datos se restauraron, pero la pantalla no pudo actualizarse. Vuelve a abrir Butlerly.',
       'confirm': 'Confirmar',
       'normalizedAmount': 'Importe normalizado',
       'reviewIncomplete': 'La información de la transacción está incompleta',
