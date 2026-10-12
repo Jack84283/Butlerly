@@ -26,14 +26,19 @@ class AnalysisSubcategoryBreakdown extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ButlerlyCardHeader(title: context.l10n.text('spendingBySubcategory')),
+          ButlerlyCardHeader(
+            title: context.l10n.text('spendingBySubcategory'),
+            subtitle: context.l10n.text('analysisSubcategoryBreakdownSubtitle'),
+          ),
+          const SizedBox(height: ButlerlySpacing.small),
           for (final metric in model.subcategories.take(5)) ...[
             if (metric != model.subcategories.first)
               const SizedBox(height: ButlerlySpacing.compact),
             InkWell(
-              onTap: onMetricTap == null || !_canDrillThrough(metric)
-                  ? null
-                  : () => onMetricTap!(metric),
+              key: ValueKey('analysis-subcategory-metric-${metric.id}'),
+              onTap: onMetricTap != null && _canDrillThrough(metric)
+                  ? () => onMetricTap!(metric)
+                  : null,
               child: ConstrainedBox(
                 constraints: const BoxConstraints(minHeight: 44),
                 child: Padding(
