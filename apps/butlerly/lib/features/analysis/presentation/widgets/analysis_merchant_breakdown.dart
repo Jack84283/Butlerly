@@ -65,6 +65,5 @@ class AnalysisMerchantBreakdown extends StatelessWidget {
   }
 
   bool _canDrillThrough(AnalysisMetric metric) =>
-      metric.availability == AnalysisDataAvailability.sufficient &&
-      metric.evidence.isNotEmpty;
+      metric.availability == AnalysisDataAvailability.sufficient;
 }
