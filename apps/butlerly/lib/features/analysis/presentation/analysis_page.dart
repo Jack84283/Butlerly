@@ -768,9 +768,16 @@ class _AnalysisContent extends StatelessWidget {
       if (metric.rule.grouping == RuleGrouping.merchant &&
           transaction.merchantId == dimension) {
         transactionIds.add(transaction.id);
-      } else if (metric.rule.grouping == RuleGrouping.subcategory &&
-          transaction.subcategoryId == dimension) {
-        transactionIds.add(transaction.id);
+      } else if (metric.rule.grouping == RuleGrouping.subcategory) {
+        final effectiveSubcategory = transaction.subcategoryId ??
+            (masterData?.categoryParentId(transaction.categoryId) != null
+                ? transaction.categoryId
+                : null);
+        final bucket = effectiveSubcategory ??
+            (transaction.categoryId == null
+                ? 'uncategorized'
+                : 'no_subcategory');
+        if (bucket == dimension) transactionIds.add(transaction.id);
       }
     }
     if (transactionIds.isEmpty) {
