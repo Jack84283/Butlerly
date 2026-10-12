@@ -79,8 +79,20 @@ final class WorkspaceDataService {
       // invalidate mounted screens while activation/cleanup is still running.
       postActivationRefresh: () => _refresh(null),
     );
-    await refreshPresentation?.call();
-    return result;
+    try {
+      await refreshPresentation?.call();
+      return result;
+    } catch (_) {
+      // Persistence has already committed. The caller must not interpret a
+      // presentation refresh failure as a failed backup restore.
+      return LocalRestoreResult(
+        mode: result.mode,
+        restoredRows: result.restoredRows,
+        keptNewerLocalRows: result.keptNewerLocalRows,
+        restoredEvidence: result.restoredEvidence,
+        presentationRefreshFailed: true,
+      );
+    }
   }
 
   Future<void> eraseAll({Future<void> Function()? refreshPresentation}) async {
