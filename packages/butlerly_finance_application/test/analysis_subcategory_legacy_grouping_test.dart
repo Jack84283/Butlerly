@@ -40,6 +40,9 @@ void main() {
         _expense('legacy-taxi', '30', category: 'taxi'),
         _expense('category-only', '40', category: 'food'),
         _expense('no-category', '5'),
+        _expense('prior-grocery', '12', category: 'groceries', month: 7),
+        _expense('prior-root', '8', category: 'food', month: 7),
+        _expense('prior-unclassified', '3', month: 7),
       ]),
       _Preferences(),
       null,
@@ -83,7 +86,7 @@ void main() {
       measure: const RuleMeasure(operation: RuleOperation.sum, field: 'amount'),
       grouping: grouping,
       surface: AnalysisSurface.spending,
-      baseline: RuleBaseline.none,
+      baseline: RuleBaseline.previousEquivalentPeriod,
       condition: const RuleCondition(operator: 'none'),
       severity: RuleSeverity.info,
       definitionHash: RuleDefinitionHash('a' * 64),
@@ -105,8 +108,16 @@ void main() {
         result.metric!.dimension!.split(':').first: result.metric!,
     };
     expect(subcategories['groceries']?.value, DecimalValue.parse('30'));
+    final comparison = results
+        .firstWhere(
+          (r) => r.rule.grouping == RuleGrouping.subcategory &&
+              r.metric?.dimension?.startsWith('groceries:') == true,
+        )
+        .comparison;
+    expect(comparison?.baselineValue, DecimalValue.parse('12'));
     expect(subcategories['taxi']?.value, DecimalValue.parse('30'));
-    expect(subcategories['uncategorized']?.value, DecimalValue.parse('45'));
+    expect(subcategories['no_subcategory']?.value, DecimalValue.parse('40'));
+    expect(subcategories['uncategorized']?.value, DecimalValue.parse('5'));
     expect(
       subcategories['groceries']!.evidence
           .map((e) => e.transactionId.value)
@@ -117,8 +128,25 @@ void main() {
       subcategories['uncategorized']!.evidence
           .map((e) => e.transactionId.value)
           .toSet(),
-      {'category-only', 'no-category'},
+      {'no-category'},
     );
+    expect(
+      subcategories['no_subcategory']!.evidence
+          .map((e) => e.transactionId.value)
+          .toSet(),
+      {'category-only'},
+    );
+    final baseline = dataset.baselineTransactionsByPeriod['selected_period']!;
+    expect(baseline, hasLength(3));
+    final earlierGroceries = baseline.singleWhere(
+      (t) => t.id.value == 'prior-grocery',
+    );
+    expect(earlierGroceries.categoryId?.value, 'food');
+    expect(earlierGroceries.subcategoryId?.value, 'groceries');
+    final earlierRoot = baseline.singleWhere(
+      (t) => t.id.value == 'prior-root',
+    );
+    expect(earlierRoot.subcategoryId, isNull);
     final groupedCategories = {
       for (final result in results.where(
         (r) => r.rule.grouping == RuleGrouping.category,
@@ -136,12 +164,13 @@ Transaction _expense(
   String amount, {
   String? category,
   String? subcategory,
+  int month = 8,
 }) {
-  final at = DateTime.utc(2026, 8, 10, 12);
+  final at = DateTime.utc(2026, month, 10, 12);
   return Transaction(
     id: TransactionId(id),
     timing: KnownTransactionTime(at),
-    transactionDate: '2026-08-10',
+    transactionDate: '2026-${month.toString().padLeft(2, '0')}-10',
     money: Money(
       amount: DecimalValue.parse(amount),
       currency: CurrencyCode('USD'),
