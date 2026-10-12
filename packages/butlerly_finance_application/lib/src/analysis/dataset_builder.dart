@@ -10,6 +10,7 @@ final class AnalysisDatasetBuilder {
     this.links, {
     this.candidates,
     this.duplicateGroups,
+    this.categories,
     this.periodResolver = const AnalysisPeriodResolver(),
   });
   final TransactionRepository transactions;
@@ -17,6 +18,7 @@ final class AnalysisDatasetBuilder {
   final ReconciliationLinkRepository? links;
   final ReconciliationCandidateRepository? candidates;
   final DuplicateCandidateGroupRepository? duplicateGroups;
+  final CategoryRepository? categories;
   final AnalysisPeriodResolver periodResolver;
 
   Future<String> timeZoneId() async {
@@ -32,6 +34,10 @@ final class AnalysisDatasetBuilder {
       return const ApplicationDatasetResult.failure('preferencesUnavailable');
     }
     final source = await transactions.listAll();
+    final categoriesById = {
+      for (final category in await categories?.listAll() ?? <Category>[])
+        category.id.value: category,
+    };
     final reconciliationLinks = links == null
         ? const <ReconciliationLink>[]
         : await links!.listAll();
@@ -108,8 +114,8 @@ final class AnalysisDatasetBuilder {
           direction: transaction.direction,
           transactionDate: transactionDate,
           status: transaction.status,
-          categoryId: transaction.categoryId,
-          subcategoryId: transaction.subcategoryId,
+          categoryId: _effectiveCategoryId(transaction, categoriesById),
+          subcategoryId: _effectiveSubcategoryId(transaction, categoriesById),
           merchantId: transaction.merchantId,
           paymentSourceId: transaction.paymentSourceId,
           tagIds: transaction.tagIds,
@@ -146,6 +152,7 @@ final class AnalysisDatasetBuilder {
           canonical,
           preference.baseCurrency,
           window,
+          categoriesById,
         );
         final baselineResolution = periodResolver.resolvePreviousEquivalent(
           primary: window,
@@ -159,6 +166,7 @@ final class AnalysisDatasetBuilder {
             canonical,
             preference.baseCurrency,
             baselineWindow,
+            categoriesById,
           );
         }
       }
@@ -174,6 +182,28 @@ final class AnalysisDatasetBuilder {
         qualityIssues: quality,
       ),
     );
+  }
+
+  // Older data stores a leaf category in categoryId without subcategoryId.
+  // Use the same normalization as the transaction editor so those expenses
+  // are not incorrectly included in the subcategory "uncategorized" bucket.
+  // Do not invent a subcategory when the assigned category is a root.
+  CategoryId? _effectiveCategoryId(
+    Transaction transaction,
+    Map<String, Category> categoriesById,
+  ) {
+    if (transaction.subcategoryId != null) return transaction.categoryId;
+    final parentId = categoriesById[transaction.categoryId?.value]?.parentId;
+    return parentId ?? transaction.categoryId;
+  }
+
+  CategoryId? _effectiveSubcategoryId(
+    Transaction transaction,
+    Map<String, Category> categoriesById,
+  ) {
+    if (transaction.subcategoryId != null) return transaction.subcategoryId;
+    final parentId = categoriesById[transaction.categoryId?.value]?.parentId;
+    return parentId == null ? null : transaction.categoryId;
   }
 
   ResolvedAnalysisWindow _windowForContext(AnalysisContext context) {
@@ -210,6 +240,7 @@ final class AnalysisDatasetBuilder {
     CanonicalTransactionSelection canonical,
     CurrencyCode baseCurrency,
     ResolvedAnalysisWindow window,
+    Map<String, Category> categoriesById,
   ) {
     return canonical.transactions
         .where((transaction) {
@@ -238,8 +269,8 @@ final class AnalysisDatasetBuilder {
             direction: transaction.direction,
             transactionDate: transactionDate,
             status: transaction.status,
-            categoryId: transaction.categoryId,
-            subcategoryId: transaction.subcategoryId,
+            categoryId: _effectiveCategoryId(transaction, categoriesById),
+            subcategoryId: _effectiveSubcategoryId(transaction, categoriesById),
             merchantId: transaction.merchantId,
             paymentSourceId: transaction.paymentSourceId,
             tagIds: transaction.tagIds,
