@@ -5,6 +5,7 @@ import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_model.dart';
+import 'package:butlerly/features/analysis/presentation/analysis_subcategory_bucket.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_activity.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_custom_period_sheet.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_data_quality.dart';
@@ -769,14 +770,13 @@ class _AnalysisContent extends StatelessWidget {
           transaction.merchantId == dimension) {
         transactionIds.add(transaction.id);
       } else if (metric.rule.grouping == RuleGrouping.subcategory) {
-        final effectiveSubcategory = transaction.subcategoryId ??
-            (masterData?.categoryParentId(transaction.categoryId) != null
-                ? transaction.categoryId
-                : null);
-        final bucket = effectiveSubcategory ??
-            (transaction.categoryId == null
-                ? 'uncategorized'
-                : 'no_subcategory');
+        final bucket = analysisSubcategoryBucket(
+          categoryId: transaction.categoryId,
+          subcategoryId: transaction.subcategoryId,
+          parentCategoryId: masterData?.categoryParentId(
+            transaction.categoryId,
+          ),
+        );
         if (bucket == dimension) transactionIds.add(transaction.id);
       }
     }
