@@ -8,6 +8,15 @@ fi
 
 # Diagnose formatting drift using probes alongside the source files, keeping
 # their package language version and formatter configuration unchanged.
+if [[ "$PWD" == */packages/butlerly_finance_application ]]; then
+  file=test/analysis_subcategory_legacy_grouping_test.dart
+  probe="${file%.dart}_ci_format_probe.dart"
+  cp "$file" "$probe"
+  dart format "$probe" >/dev/null
+  diff -u "$file" "$probe" || true
+  rm -f "$probe"
+fi
+
 if [[ "$PWD" == */apps/butlerly ]]; then
   probes=()
   cleanup() {
