@@ -645,6 +645,9 @@ class AppLocalizations {
           'Group canonical spending by subcategory for this period.',
       'spendingByMerchant': 'Spending by merchant',
       'spendingBySubcategory': 'Spending by subcategory',
+      'analysisMerchantBreakdownSubtitle': 'Top merchants for the selected period',
+      'analysisSubcategoryBreakdownSubtitle':
+          'Top subcategories for the selected period',
       'recurringPatterns': 'Recurring patterns',
       'recurringPatternsBody':
           'Detected from your local transaction history. Review before relying on a prediction.',
@@ -1419,6 +1422,8 @@ class AppLocalizations {
       'analysis.rule.r012.description': '按子类别汇总本周期的规范支出。',
       'spendingByMerchant': '按商户统计支出',
       'spendingBySubcategory': '按子类别统计支出',
+      'analysisMerchantBreakdownSubtitle': '所选期间支出最多的商户',
+      'analysisSubcategoryBreakdownSubtitle': '所选期间支出最多的子类别',
       'recurringPatterns': '周期性模式',
       'recurringPatternsBody': '根据本地交易历史检测。使用预测前请先审核。',
       'recurringPatternsLoading': '正在加载周期性模式…',
@@ -2230,6 +2235,10 @@ class AppLocalizations {
           'Agrupa los gastos canónicos por subcategoría en este periodo.',
       'spendingByMerchant': 'Gastos por comercio',
       'spendingBySubcategory': 'Gastos por subcategoría',
+      'analysisMerchantBreakdownSubtitle':
+          'Principales comercios del periodo seleccionado',
+      'analysisSubcategoryBreakdownSubtitle':
+          'Principales subcategorías del periodo seleccionado',
       'recurringPatterns': 'Patrones recurrentes',
       'recurringPatternsBody':
           'Detectados a partir de tu historial local. Revísalos antes de confiar en una predicción.',
