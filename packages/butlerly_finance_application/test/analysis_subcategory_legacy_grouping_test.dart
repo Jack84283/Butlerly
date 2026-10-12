@@ -110,7 +110,8 @@ void main() {
     expect(subcategories['groceries']?.value, DecimalValue.parse('30'));
     final comparison = results
         .firstWhere(
-          (r) => r.rule.grouping == RuleGrouping.subcategory &&
+          (r) =>
+              r.rule.grouping == RuleGrouping.subcategory &&
               r.metric?.dimension?.startsWith('groceries:') == true,
         )
         .comparison;
@@ -143,9 +144,7 @@ void main() {
     );
     expect(earlierGroceries.categoryId?.value, 'food');
     expect(earlierGroceries.subcategoryId?.value, 'groceries');
-    final earlierRoot = baseline.singleWhere(
-      (t) => t.id.value == 'prior-root',
-    );
+    final earlierRoot = baseline.singleWhere((t) => t.id.value == 'prior-root');
     expect(earlierRoot.subcategoryId, isNull);
     final groupedCategories = {
       for (final result in results.where(
