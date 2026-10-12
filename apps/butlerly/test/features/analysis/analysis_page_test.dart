@@ -58,7 +58,9 @@ void main() {
     ),
   );
 
-  testWidgets('does not show or load paused recurring patterns', (tester) async {
+  testWidgets('does not show or load paused recurring patterns', (
+    tester,
+  ) async {
     var recurringLoads = 0;
     await tester.pumpWidget(
       app(
