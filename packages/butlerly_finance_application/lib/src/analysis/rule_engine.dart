@@ -866,7 +866,7 @@ final class AnalysisRuleEngine {
     String key(AnalysisEconomicTransaction value) => switch (grouping) {
       RuleGrouping.transaction => value.id.value,
       RuleGrouping.category => value.categoryId?.value ?? 'uncategorized',
-      RuleGrouping.subcategory => value.subcategoryId?.value ?? 'uncategorized',
+      RuleGrouping.subcategory => _subcategoryBucket(value),
       RuleGrouping.merchant => value.merchantId?.value ?? 'unresolved',
       RuleGrouping.paymentSource => value.paymentSourceId?.value ?? 'unknown',
       RuleGrouping.tag =>
@@ -907,6 +907,13 @@ final class AnalysisRuleEngine {
     }
     return grouped;
   }
+
+  // A category-only transaction is not completely uncategorized.
+  // Keep these two missing-classification states distinct for both grouped
+  // sums and distinct-subcategory metrics.
+  String _subcategoryBucket(AnalysisEconomicTransaction value) =>
+      value.subcategoryId?.value ??
+      (value.categoryId == null ? 'uncategorized' : 'no_subcategory');
 
   String _formatDate(DateTime value) =>
       '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
@@ -1284,7 +1291,7 @@ final class AnalysisRuleEngine {
           .map(
             (value) => switch (field) {
               'category' => value.categoryId?.value ?? 'uncategorized',
-              'subcategory' => value.subcategoryId?.value ?? 'uncategorized',
+              'subcategory' => _subcategoryBucket(value),
               'merchant' => value.merchantId?.value ?? 'unresolved',
               'paymentSource' => value.paymentSourceId?.value ?? 'unknown',
               'tag' => value.tagIds.map((tag) => tag.value).join(','),
