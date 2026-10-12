@@ -26,14 +26,19 @@ class AnalysisMerchantBreakdown extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ButlerlyCardHeader(title: context.l10n.text('spendingByMerchant')),
+          ButlerlyCardHeader(
+            title: context.l10n.text('spendingByMerchant'),
+            subtitle: context.l10n.text('analysisMerchantBreakdownSubtitle'),
+          ),
+          const SizedBox(height: ButlerlySpacing.small),
           for (final metric in model.merchants.take(5)) ...[
             if (metric != model.merchants.first)
               const SizedBox(height: ButlerlySpacing.compact),
             InkWell(
-              onTap: onMetricTap == null || !_canDrillThrough(metric)
-                  ? null
-                  : () => onMetricTap!(metric),
+              key: ValueKey('analysis-merchant-metric-${metric.id}'),
+              onTap: onMetricTap != null && _canDrillThrough(metric)
+                  ? () => onMetricTap!(metric)
+                  : null,
               child: ConstrainedBox(
                 constraints: const BoxConstraints(minHeight: 44),
                 child: Padding(
