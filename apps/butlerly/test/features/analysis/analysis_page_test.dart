@@ -31,6 +31,8 @@ void main() {
     Future<ApplicationResult<List<TransactionDto>>> Function(String)?
     loadTransactionsForDate,
     Future<TransactionMasterData> Function()? loadMasterData,
+    Future<ApplicationResult<List<RecurringPattern>>> Function()?
+    loadRecurringPatterns,
     ValueChanged<String>? onNavigationRequested,
     ValueChanged<TransactionDto>? onTransactionRequested,
     ThemeData? theme,
@@ -50,10 +52,28 @@ void main() {
       loadCalendar: loadCalendar,
       loadTransactionsForDate: loadTransactionsForDate,
       loadMasterData: loadMasterData,
+      loadRecurringPatterns: loadRecurringPatterns,
       onNavigationRequested: onNavigationRequested,
       onTransactionRequested: onTransactionRequested,
     ),
   );
+
+  testWidgets('does not show or load paused recurring patterns', (tester) async {
+    var recurringLoads = 0;
+    await tester.pumpWidget(
+      app(
+        () async => const ApplicationSuccess(<RuleExecutionResult>[]),
+        loadRecurringPatterns: () async {
+          recurringLoads++;
+          return const ApplicationSuccess(<RecurringPattern>[]);
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Recurring patterns'), findsNothing);
+    expect(recurringLoads, 0);
+  });
 
   testWidgets('uses one shared period selector and reloads its result', (
     tester,

@@ -64,6 +64,9 @@ class AnalysisPage extends StatefulWidget {
 
 class _AnalysisPageState extends State<AnalysisPage> {
   static const _defaultPeriod = 'current_month';
+  // Hide this experimental card until its relationship to the selected
+  // Analysis period is defined. Leave detection and saved decisions intact.
+  static const _recurringPatternsEnabled = false;
   late Future<ApplicationResult<List<RuleExecutionResult>>> _result;
   String _period = _defaultPeriod;
   AnalysisContext? _context;
@@ -87,9 +90,10 @@ class _AnalysisPageState extends State<AnalysisPage> {
       _period = 'selected_period';
     }
     _result = _load(_period, generation: ++_loadGeneration);
-    _recurringPatterns = widget.loadRecurringPatterns == null
-        ? null
-        : _loadRecurringPatterns();
+    _recurringPatterns =
+        _recurringPatternsEnabled && widget.loadRecurringPatterns != null
+        ? _loadRecurringPatterns()
+        : null;
     transactionChanges.addListener(_reload);
   }
 
@@ -198,7 +202,10 @@ class _AnalysisPageState extends State<AnalysisPage> {
     final finance = services.isRegistered<FinanceServices>()
         ? services<FinanceServices>()
         : null;
-    final report = finance?.calculatePeriodicFinancialReport;
+    // Do not calculate hidden recurring candidates during Analysis loads.
+    final report = _recurringPatternsEnabled
+        ? finance?.calculatePeriodicFinancialReport
+        : null;
     if (report != null && widget.load == null && widget.loadForPeriod == null) {
       final result = await report(context);
       if (result case ApplicationSuccess<PeriodicFinancialReport>(
@@ -285,7 +292,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
     }
     setState(() {
       _result = Future.value(result);
-      if (widget.loadRecurringPatterns != null) {
+      if (_recurringPatternsEnabled && widget.loadRecurringPatterns != null) {
         _recurringPatterns = _loadRecurringPatterns();
       }
       _calendar = null;
@@ -513,7 +520,9 @@ class _AnalysisPageState extends State<AnalysisPage> {
           calendar: _calendar,
           selectedDate: _selectedDate,
           transactions: _transactions,
-          recurringPatterns: _recurringPatterns,
+          recurringPatterns: _recurringPatternsEnabled
+              ? _recurringPatterns
+              : null,
           onConfirmRecurringPattern: _confirmRecurringPattern,
           onRejectRecurringPattern: _rejectRecurringPattern,
           onCorrectRecurringPattern: _correctRecurringPattern,
