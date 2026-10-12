@@ -10,6 +10,7 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 final class TransactionMasterData {
   const TransactionMasterData({
     this.merchantNames = const {},
+    this.merchantCategoryIds = const {},
     this.categoryNames = const {},
     this.categoryParentIds = const {},
     this.tagNames = const {},
@@ -17,12 +18,16 @@ final class TransactionMasterData {
   });
 
   final Map<String, String> merchantNames;
+  final Map<String, String> merchantCategoryIds;
   final Map<String, String> categoryNames;
   final Map<String, String?> categoryParentIds;
   final Map<String, String> tagNames;
   final Map<String, String> paymentSourceNames;
 
   String? merchantName(String? id) => id == null ? null : merchantNames[id];
+
+  String? merchantCategoryId(String? id) =>
+      id == null ? null : merchantCategoryIds[id];
 
   String? categoryName(String? id) => id == null ? null : categoryNames[id];
 
@@ -64,6 +69,13 @@ final class TransactionMasterData {
     required String languageCode,
   }) => TransactionMasterData(
     merchantNames: {for (final value in merchants) value.id.value: value.name},
+    merchantCategoryIds: {
+      for (final value in merchants)
+        if (value.defaultCategoryId != null ||
+            value.defaultSubcategoryId != null)
+          value.id.value:
+              (value.defaultCategoryId ?? value.defaultSubcategoryId)!.value,
+    },
     categoryNames: {
       for (final value in categories)
         value.id.value:

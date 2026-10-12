@@ -776,7 +776,9 @@ void main() {
           ]),
           loadMasterData: () async => const TransactionMasterData(
             merchantNames: {'merchant-one': 'Local market'},
+            merchantCategoryIds: {'merchant-one': 'category.shopping'},
             categoryNames: {'subcategory-one': 'Fresh produce'},
+            categoryParentIds: {'subcategory-one': 'category.food'},
           ),
           onNavigationRequested: (path) => navigation = path,
         ),
@@ -795,6 +797,15 @@ void main() {
       final merchant = find.byKey(
         const ValueKey('analysis-merchant-metric-merchant-row'),
       );
+      final merchantIcon = find.descendant(
+        of: merchant,
+        matching: find.byType(ButlerlyCategoryIcon),
+      );
+      expect(merchantIcon, findsOneWidget);
+      expect(
+        tester.widget<ButlerlyCategoryIcon>(merchantIcon).categoryId,
+        'category.shopping',
+      );
       await tester.ensureVisible(merchant);
       await tester.tap(merchant);
       expect(navigation, contains('ids=t-merchant'));
@@ -803,6 +814,15 @@ void main() {
       navigation = null;
       final subcategory = find.byKey(
         const ValueKey('analysis-subcategory-metric-subcategory-row'),
+      );
+      final subcategoryIcon = find.descendant(
+        of: subcategory,
+        matching: find.byType(ButlerlyCategoryIcon),
+      );
+      expect(subcategoryIcon, findsOneWidget);
+      expect(
+        tester.widget<ButlerlyCategoryIcon>(subcategoryIcon).categoryId,
+        'category.food',
       );
       await tester.ensureVisible(subcategory);
       await tester.tap(subcategory);
