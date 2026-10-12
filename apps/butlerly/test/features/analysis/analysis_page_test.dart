@@ -909,6 +909,7 @@ void main() {
           ),
         ),
     ];
+    String? requestedLocation;
     final router = GoRouter(
       initialLocation: '/analysis',
       routes: [
@@ -961,6 +962,7 @@ void main() {
               path: '/analysis',
               builder: (_, _) => AnalysisPage(
                 load: () async => ApplicationSuccess(results),
+                onNavigationRequested: (path) => requestedLocation = path,
                 loadMasterData: () async => const TransactionMasterData(
                   categoryNames: {
                     'category.food': 'Dining',
@@ -1009,7 +1011,15 @@ void main() {
     ]) {
       await tester.pumpAndSettle();
       await tester.ensureVisible(drill.$1);
+      requestedLocation = null;
       await tester.tap(drill.$1);
+      await tester.pumpAndSettle();
+      expect(
+        requestedLocation,
+        isNotNull,
+        reason: 'No Analysis route generated for ${drill.$3}',
+      );
+      router.push(requestedLocation!);
       await tester.pumpAndSettle();
       final uri = router.routeInformationProvider.value.uri;
       expect(
