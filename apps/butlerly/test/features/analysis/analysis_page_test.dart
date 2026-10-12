@@ -1012,7 +1012,11 @@ void main() {
       await tester.tap(drill.$1);
       await tester.pumpAndSettle();
       final uri = router.routeInformationProvider.value.uri;
-      expect(uri.path, '/search', reason: 'Drill-through: ${drill.$3} / ${drill.$4}');
+      expect(
+        uri.path,
+        '/search',
+        reason: 'Drill-through: ${drill.$3} / ${drill.$4}',
+      );
       expect(uri.queryParameters['ids'], drill.$2);
       expect(uri.queryParameters['locked'], 'true');
       expect(uri.queryParameters[drill.$3], drill.$4);
@@ -1158,7 +1162,10 @@ void main() {
     await tester.ensureVisible(find.text('View all categories'));
     expect(find.text('Other'), findsOneWidget);
     await tester.tap(find.text('View all categories'));
-    expect(requestedNavigation, '/search?locked=true&from=2026-08-01&to=2026-08-31');
+    expect(
+      requestedNavigation,
+      '/search?locked=true&from=2026-08-01&to=2026-08-31',
+    );
   });
 
   testWidgets('breakdowns do not render unavailable currency totals as zero', (
