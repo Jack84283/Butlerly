@@ -648,20 +648,16 @@ class _AnalysisContent extends StatelessWidget {
         AnalysisMerchantBreakdown(
           model: model,
           masterData: masterData,
-          onMetricTap: (metric) => _openTransactions(
-            context,
-            period: analysisContext?.period,
-            transactionIds: _metricTransactionIds(metric),
-          ),
+          onMetricTap: (metric) {
+            _openBreakdownTransactions(context, metric);
+          },
         ),
         AnalysisSubcategoryBreakdown(
           model: model,
           masterData: masterData,
-          onMetricTap: (metric) => _openTransactions(
-            context,
-            period: analysisContext?.period,
-            transactionIds: _metricTransactionIds(metric),
-          ),
+          onMetricTap: (metric) {
+            _openBreakdownTransactions(context, metric);
+          },
         ),
         if (recurringPatterns != null)
           AnalysisRecurringPatterns(
@@ -730,6 +726,63 @@ class _AnalysisContent extends StatelessWidget {
       _ => '/insights',
     };
     _navigate(context, path);
+  }
+
+  /// Prefer the exact evidence attached to a breakdown row. Some imported
+  /// or cached metrics can be sufficient without populated evidence; resolve
+  /// those against the same period and grouping before navigating instead of
+  /// opening an unfiltered transaction list or leaving the row unresponsive.
+  Future<void> _openBreakdownTransactions(
+    BuildContext context,
+    AnalysisMetric metric,
+  ) async {
+    final evidenceIds = _metricTransactionIds(metric);
+    if (evidenceIds.isNotEmpty) {
+      _openTransactions(context, transactionIds: evidenceIds);
+      return;
+    }
+    if (metric.availability != AnalysisDataAvailability.sufficient ||
+        !services.isRegistered<FinanceServices>()) {
+      return;
+    }
+
+    final period = metric.context.period;
+    final result = await services<FinanceServices>().listTransactions(
+      ListTransactionsQuery(
+        from: DateTime.tryParse(period.startDate),
+        to: DateTime.tryParse(period.endDate),
+        direction: TransactionDirection.expense,
+        includeUndated: true,
+      ),
+    );
+    if (!context.mounted) return;
+    if (result is! ApplicationSuccess<List<TransactionDto>>) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.text('dataPreserved'))),
+      );
+      return;
+    }
+    final dimension = analysisRawDimension(metric);
+    final transactionIds = <String>{};
+    for (final transaction in result.value) {
+      if (metric.rule.grouping == RuleGrouping.merchant &&
+          transaction.merchantId == dimension) {
+        transactionIds.add(transaction.id);
+      } else if (metric.rule.grouping == RuleGrouping.subcategory &&
+          transaction.subcategoryId == dimension) {
+        transactionIds.add(transaction.id);
+      }
+    }
+    if (transactionIds.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.l10n.text('noResults'))));
+      return;
+    }
+    _openTransactions(
+      context,
+      transactionIds: transactionIds.toList(growable: false),
+    );
   }
 
   void _openTransactions(

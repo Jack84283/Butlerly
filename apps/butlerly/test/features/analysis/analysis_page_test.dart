@@ -690,6 +690,127 @@ void main() {
     expect(requestedNavigation, isNot(contains('to=')));
   });
 
+  testWidgets(
+    'merchant and subcategory rows retain subtitles and drill into exact evidence',
+    (tester) async {
+      tester.view.physicalSize = const Size(1000, 1800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final period = AnalysisContext(
+        period: AnalysisPeriod(
+          startDate: '2026-08-01',
+          endDate: '2026-08-31',
+          timeZoneId: 'America/Los_Angeles',
+        ),
+        datasetMode: DatasetMode.allEligible,
+        currencyBasis: CurrencyBasis.baseCurrency,
+      );
+
+      AnalysisRuleDefinition rule(String id, RuleGrouping grouping) =>
+          AnalysisRuleDefinition(
+            identity: RuleIdentity(id),
+            version: RuleVersion('1.0.0'),
+            schemaVersion: '1.0.0',
+            type: AnalysisRuleType.metric,
+            nameKey: 'analysis.rule.r011.name',
+            descriptionKey: 'analysis.rule.r011.description',
+            enabled: true,
+            status: AnalysisRuleStatus.active,
+            period: 'selected_period',
+            measure: const RuleMeasure(
+              operation: RuleOperation.sum,
+              field: 'amount',
+            ),
+            grouping: grouping,
+            surface: AnalysisSurface.spending,
+            baseline: RuleBaseline.none,
+            condition: const RuleCondition(operator: 'none'),
+            severity: RuleSeverity.info,
+            definitionHash: RuleDefinitionHash('f' * 64),
+          );
+
+      final merchantRule = rule('ANL-R011', RuleGrouping.merchant);
+      final subcategoryRule = rule('ANL-R012', RuleGrouping.subcategory);
+      AnalysisMetric metric(
+        AnalysisRuleDefinition definition,
+        String id,
+        String dimension,
+        String transactionId,
+      ) => AnalysisMetric(
+        id: id,
+        rule: definition,
+        context: period,
+        value: DecimalValue.parse('42'),
+        dimension: '$dimension:value',
+        currency: CurrencyCode('USD'),
+        evidence: [
+          EvidenceReference(transactionId: TransactionId(transactionId)),
+        ],
+        calculatedAt: DateTime.utc(2026, 8, 31),
+      );
+
+      String? navigation;
+      await tester.pumpWidget(
+        app(
+          () async => ApplicationSuccess([
+            RuleExecutionResult(
+              rule: merchantRule,
+              metric: metric(
+                merchantRule,
+                'merchant-row',
+                'merchant-one',
+                't-merchant',
+              ),
+            ),
+            RuleExecutionResult(
+              rule: subcategoryRule,
+              metric: metric(
+                subcategoryRule,
+                'subcategory-row',
+                'subcategory-one',
+                't-subcategory',
+              ),
+            ),
+          ]),
+          loadMasterData: () async => const TransactionMasterData(
+            merchantNames: {'merchant-one': 'Local market'},
+            categoryNames: {'subcategory-one': 'Fresh produce'},
+          ),
+          onNavigationRequested: (path) => navigation = path,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Top merchants for the selected period'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Top subcategories for the selected period'),
+        findsOneWidget,
+      );
+
+      final merchant = find.byKey(
+        const ValueKey('analysis-merchant-metric-merchant-row'),
+      );
+      await tester.ensureVisible(merchant);
+      await tester.tap(merchant);
+      expect(navigation, contains('ids=t-merchant'));
+      expect(navigation, isNot(contains('from=')));
+
+      navigation = null;
+      final subcategory = find.byKey(
+        const ValueKey('analysis-subcategory-metric-subcategory-row'),
+      );
+      await tester.ensureVisible(subcategory);
+      await tester.tap(subcategory);
+      expect(navigation, contains('ids=t-subcategory'));
+      expect(navigation, isNot(contains('ids=t-merchant')));
+    },
+  );
+
   testWidgets('subcategory rows use the subcategory unavailable label', (
     tester,
   ) async {
