@@ -648,14 +648,12 @@ class _AnalysisContent extends StatelessWidget {
         AnalysisMerchantBreakdown(
           model: model,
           masterData: masterData,
-          onMetricTap: (metric) =>
-              _openBreakdownTransactions(context, metric),
+          onMetricTap: (metric) => _openBreakdownTransactions(context, metric),
         ),
         AnalysisSubcategoryBreakdown(
           model: model,
           masterData: masterData,
-          onMetricTap: (metric) =>
-              _openBreakdownTransactions(context, metric),
+          onMetricTap: (metric) => _openBreakdownTransactions(context, metric),
         ),
         if (recurringPatterns != null)
           AnalysisRecurringPatterns(
