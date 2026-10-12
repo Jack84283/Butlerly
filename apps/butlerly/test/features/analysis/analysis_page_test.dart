@@ -844,9 +844,7 @@ void main() {
     },
   );
 
-  testWidgets('breakdown taps open Search with fixed filters', (
-    tester,
-  ) async {
+  testWidgets('breakdown taps open Search with fixed filters', (tester) async {
     tester.view.physicalSize = const Size(1000, 1800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -1021,8 +1019,10 @@ void main() {
       expect(uri.queryParameters['from'], '2026-08-01');
       expect(uri.queryParameters['to'], '2026-08-31');
       expect(find.byType(SearchPage), findsOneWidget);
-      expect(find.byKey(const ValueKey('locked-search-criteria')),
-          findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('locked-search-criteria')),
+        findsOneWidget,
+      );
       expect(find.textContaining(drill.$4), findsWidgets);
       expect(router.canPop(), isTrue);
       expect(tester.takeException(), isNull);
