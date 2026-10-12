@@ -774,9 +774,9 @@ class _AnalysisContent extends StatelessWidget {
       }
     }
     if (transactionIds.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.text('noResults'))),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(context.l10n.text('noResults'))));
       return;
     }
     _openTransactions(
