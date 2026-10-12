@@ -2,6 +2,7 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_model.dart';
+import 'package:butlerly/features/analysis/presentation/widgets/analysis_breakdown_leading_icon.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -45,6 +46,11 @@ class AnalysisSubcategoryBreakdown extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(vertical: 2),
                   child: Row(
                     children: [
+                      AnalysisBreakdownLeadingIcon(
+                        metric: metric,
+                        masterData: masterData,
+                      ),
+                      const SizedBox(width: ButlerlySpacing.compact),
                       Expanded(
                         child: Text(
                           analysisDimension(context, metric, masterData),
