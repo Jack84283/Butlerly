@@ -10,6 +10,7 @@ import 'package:butlerly/features/analysis/presentation/widgets/analysis_custom_
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_period_selector.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_skeleton.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_summary.dart';
+import 'package:butlerly/features/foundation/presentation/search_page.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_count_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -20,6 +21,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 void main() {
   Widget app(
@@ -684,10 +686,13 @@ void main() {
     expect(find.text('View all categories'), findsNothing);
     await tester.ensureVisible(find.text('Dining'));
     await tester.tap(find.text('Dining'));
-    expect(requestedNavigation, isNot(contains('category=')));
-    expect(requestedNavigation, contains('ids=occurrence-only'));
-    expect(requestedNavigation, isNot(contains('from=')));
-    expect(requestedNavigation, isNot(contains('to=')));
+    final uri = Uri.parse(requestedNavigation!);
+    expect(uri.path, '/search');
+    expect(uri.queryParameters['locked'], 'true');
+    expect(uri.queryParameters['category'], 'category-id');
+    expect(uri.queryParameters['ids'], 'occurrence-only');
+    expect(uri.queryParameters['from'], '2026-08-01');
+    expect(uri.queryParameters['to'], '2026-08-31');
   });
 
   testWidgets(
@@ -808,8 +813,12 @@ void main() {
       );
       await tester.ensureVisible(merchant);
       await tester.tap(merchant);
-      expect(navigation, contains('ids=t-merchant'));
-      expect(navigation, isNot(contains('from=')));
+      final merchantUri = Uri.parse(navigation!);
+      expect(merchantUri.path, '/search');
+      expect(merchantUri.queryParameters['locked'], 'true');
+      expect(merchantUri.queryParameters['merchant'], 'merchant-one');
+      expect(merchantUri.queryParameters['ids'], 't-merchant');
+      expect(merchantUri.queryParameters['from'], '2026-08-01');
 
       navigation = null;
       final subcategory = find.byKey(
@@ -826,10 +835,200 @@ void main() {
       );
       await tester.ensureVisible(subcategory);
       await tester.tap(subcategory);
-      expect(navigation, contains('ids=t-subcategory'));
-      expect(navigation, isNot(contains('ids=t-merchant')));
+      final subcategoryUri = Uri.parse(navigation!);
+      expect(subcategoryUri.path, '/search');
+      expect(subcategoryUri.queryParameters['locked'], 'true');
+      expect(subcategoryUri.queryParameters['subcategory'], 'subcategory-one');
+      expect(subcategoryUri.queryParameters['ids'], 't-subcategory');
+      expect(subcategoryUri.queryParameters['to'], '2026-08-31');
     },
   );
+
+  testWidgets('breakdown taps open Search with fixed filters', (tester) async {
+    tester.view.physicalSize = const Size(1000, 1800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final context = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-08-01',
+        endDate: '2026-08-31',
+        timeZoneId: 'America/Los_Angeles',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+    );
+    AnalysisRuleDefinition rule(String id, RuleGrouping grouping) =>
+        AnalysisRuleDefinition(
+          identity: RuleIdentity(id),
+          version: RuleVersion('1.0.0'),
+          schemaVersion: '1.0.0',
+          type: AnalysisRuleType.metric,
+          nameKey: 'analysis.rule.r011.name',
+          descriptionKey: 'analysis.rule.r011.description',
+          enabled: true,
+          status: AnalysisRuleStatus.active,
+          period: 'selected_period',
+          measure: const RuleMeasure(
+            operation: RuleOperation.sum,
+            field: 'amount',
+          ),
+          grouping: grouping,
+          surface: AnalysisSurface.spending,
+          baseline: RuleBaseline.none,
+          condition: const RuleCondition(operator: 'none'),
+          severity: RuleSeverity.info,
+          definitionHash: RuleDefinitionHash('a' * 64),
+        );
+
+    final results = [
+      for (final entry in <(String, RuleGrouping, String, String)>[
+        ('ANL-R010', RuleGrouping.category, 'category.food', 't-category'),
+        ('ANL-R011', RuleGrouping.merchant, 'merchant-one', 't-merchant'),
+        (
+          'ANL-R012',
+          RuleGrouping.subcategory,
+          'category.food.groceries',
+          't-subcategory',
+        ),
+      ])
+        RuleExecutionResult(
+          rule: rule(entry.$1, entry.$2),
+          metric: AnalysisMetric(
+            id: entry.$4,
+            rule: rule(entry.$1, entry.$2),
+            context: context,
+            value: DecimalValue.parse('42'),
+            dimension: '${entry.$3}:value',
+            currency: CurrencyCode('USD'),
+            evidence: [
+              EvidenceReference(transactionId: TransactionId(entry.$4)),
+            ],
+            calculatedAt: DateTime.utc(2026, 8, 31),
+          ),
+        ),
+    ];
+    final router = GoRouter(
+      initialLocation: '/analysis',
+      routes: [
+        ShellRoute(
+          builder: (_, _, child) => child,
+          routes: [
+            StatefulShellRoute.indexedStack(
+              builder: (_, _, navigationShell) => navigationShell,
+              branches: [
+                StatefulShellBranch(
+                  routes: [
+                    GoRoute(
+                      path: '/',
+                      builder: (_, _) => const Scaffold(body: Text('Home')),
+                    ),
+                  ],
+                ),
+                StatefulShellBranch(
+                  routes: [
+                    GoRoute(
+                      path: '/transactions',
+                      builder: (_, state) => Scaffold(
+                        body: Text(
+                          'Transaction IDs: ${state.uri.queryParameters['ids']}',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            GoRoute(
+              path: '/search',
+              builder: (_, state) {
+                final parameters = state.uri.queryParameters;
+                return SearchPage(
+                  readOnly: parameters['locked'] == 'true',
+                  selectedMerchantId: parameters['merchant'],
+                  selectedSubcategoryId: parameters['subcategory'],
+                  initialQuery: ListTransactionsQuery(
+                    transactionIds: parameters['ids']?.split(','),
+                    from: DateTime.tryParse(parameters['from'] ?? ''),
+                    to: DateTime.tryParse(parameters['to'] ?? ''),
+                    categoryId: parameters['category'],
+                  ),
+                );
+              },
+            ),
+            GoRoute(
+              path: '/analysis',
+              builder: (_, _) => AnalysisPage(
+                load: () async => ApplicationSuccess(results),
+                loadMasterData: () async => const TransactionMasterData(
+                  categoryNames: {
+                    'category.food': 'Dining',
+                    'category.food.groceries': 'Groceries',
+                  },
+                  categoryParentIds: {
+                    'category.food.groceries': 'category.food',
+                  },
+                  merchantNames: {'merchant-one': 'Local market'},
+                  merchantCategoryIds: {'merchant-one': 'category.shopping'},
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      MaterialApp.router(
+        routerConfig: router,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
+    );
+
+    for (final drill in <(Finder, String, String, String)>[
+      (find.text('Dining'), 't-category', 'category', 'category.food'),
+      (
+        find.byKey(const ValueKey('analysis-merchant-metric-t-merchant')),
+        't-merchant',
+        'merchant',
+        'merchant-one',
+      ),
+      (
+        find.byKey(const ValueKey('analysis-subcategory-metric-t-subcategory')),
+        't-subcategory',
+        'subcategory',
+        'category.food.groceries',
+      ),
+    ]) {
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(drill.$1);
+      await tester.tap(drill.$1);
+      await tester.pumpAndSettle();
+      final uri = router.routeInformationProvider.value.uri;
+      expect(uri.path, '/search');
+      expect(uri.queryParameters['ids'], drill.$2);
+      expect(uri.queryParameters['locked'], 'true');
+      expect(uri.queryParameters[drill.$3], drill.$4);
+      expect(uri.queryParameters['from'], '2026-08-01');
+      expect(uri.queryParameters['to'], '2026-08-31');
+      expect(find.byType(SearchPage), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('locked-search-criteria')),
+        findsOneWidget,
+      );
+      expect(find.textContaining(drill.$4), findsWidgets);
+      expect(router.canPop(), isTrue);
+      expect(tester.takeException(), isNull);
+      router.pop();
+    }
+  });
 
   testWidgets('subcategory rows use the subcategory unavailable label', (
     tester,

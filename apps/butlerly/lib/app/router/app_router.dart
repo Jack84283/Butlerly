@@ -198,6 +198,8 @@ final appRouter = GoRouter(
                     )
                   : null,
               readOnly: locked,
+              selectedMerchantId: locked ? parameters['merchant'] : null,
+              selectedSubcategoryId: locked ? parameters['subcategory'] : null,
               insightRuleId: parameters['insightRule'],
               insightDimension: parameters['insightDimension'],
             );
