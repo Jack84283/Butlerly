@@ -52,6 +52,50 @@ void main() {
     },
   );
 
+  test('shared controls use the approved light and dark color roles', () {
+    expect(
+      ButlerlySemanticColors.light.controlPrimary,
+      const Color(0xFF541127),
+    );
+    expect(
+      ButlerlySemanticColors.dark.controlPrimary,
+      const Color(0xFFC76F8B),
+    );
+
+    for (final colorTheme in ButlerlyColorTheme.values) {
+      for (final theme in [
+        AppTheme.lightFor(colorTheme),
+        AppTheme.darkFor(colorTheme),
+      ]) {
+        final colors = theme.extension<ButlerlySemanticColors>()!;
+        final buttons = ButlerlyButtonPalette.resolve(
+          colors: colors,
+          brightness: theme.brightness,
+        );
+        final dark = theme.brightness == Brightness.dark;
+        expect(buttons.primaryFill, colors.controlPrimary);
+        expect(buttons.secondaryFill, colors.cardSurface);
+        expect(buttons.secondaryBorder, colors.border);
+        expect(buttons.secondaryText, colors.primaryText);
+        expect(
+          buttons.tertiaryFill,
+          dark ? colors.elevatedSurface : colors.subtleSurface,
+        );
+        expect(buttons.chipFill, buttons.tertiaryFill);
+        expect(buttons.chipBorder, colors.border);
+        expect(
+          buttons.segmentFill,
+          dark ? colors.surface : colors.subtleSurface,
+        );
+        expect(buttons.segmentBorder, colors.border);
+        expect(
+          _contrast(theme.colorScheme.primary, theme.colorScheme.onPrimary),
+          greaterThanOrEqualTo(4.5),
+        );
+      }
+    }
+  });
+
   test('light text and secondary actions use distinct contrasted surfaces', () {
     for (final palette in ButlerlyColorTheme.values) {
       final theme = AppTheme.lightFor(palette);
