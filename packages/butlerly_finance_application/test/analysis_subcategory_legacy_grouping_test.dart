@@ -94,8 +94,8 @@ void main() {
     final results = const AnalysisRuleEngine().execute(
       dataset: dataset,
       definitions: [
-        rule('ANL-TEST-CAT', RuleGrouping.category),
-        rule('ANL-TEST-SUB', RuleGrouping.subcategory),
+        rule('ANL-R010', RuleGrouping.category),
+        rule('ANL-R012', RuleGrouping.subcategory),
       ],
     );
     final subcategories = {
