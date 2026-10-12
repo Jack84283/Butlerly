@@ -645,7 +645,8 @@ class AppLocalizations {
           'Group canonical spending by subcategory for this period.',
       'spendingByMerchant': 'Spending by merchant',
       'spendingBySubcategory': 'Spending by subcategory',
-      'analysisMerchantBreakdownSubtitle': 'Top merchants for the selected period',
+      'analysisMerchantBreakdownSubtitle':
+          'Top merchants for the selected period',
       'analysisSubcategoryBreakdownSubtitle':
           'Top subcategories for the selected period',
       'recurringPatterns': 'Recurring patterns',
