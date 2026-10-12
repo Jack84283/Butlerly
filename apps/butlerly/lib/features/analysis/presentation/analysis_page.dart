@@ -737,11 +737,7 @@ class _AnalysisContent extends StatelessWidget {
   ) async {
     final evidenceIds = _metricTransactionIds(metric);
     if (evidenceIds.isNotEmpty) {
-      _openAnalysisSearch(
-        context,
-        metric: metric,
-        transactionIds: evidenceIds,
-      );
+      _openAnalysisSearch(context, metric: metric, transactionIds: evidenceIds);
       return;
     }
     if (metric.availability != AnalysisDataAvailability.sufficient ||
@@ -810,13 +806,9 @@ class _AnalysisContent extends StatelessWidget {
         'merchant': dimension,
       if (grouping == RuleGrouping.subcategory && dimension != null)
         'subcategory': dimension,
-      if (transactionIds?.isNotEmpty ?? false)
-        'ids': transactionIds!.join(','),
+      if (transactionIds?.isNotEmpty ?? false) 'ids': transactionIds!.join(','),
     };
-    _navigate(
-      context,
-      Uri(path: '/search', queryParameters: query).toString(),
-    );
+    _navigate(context, Uri(path: '/search', queryParameters: query).toString());
   }
 
   List<String> _metricTransactionIds(AnalysisMetric metric) =>
