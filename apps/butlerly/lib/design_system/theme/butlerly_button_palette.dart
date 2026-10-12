@@ -48,17 +48,11 @@ final class ButlerlyButtonPalette {
     required Brightness brightness,
   }) {
     final dark = brightness == Brightness.dark;
-    final primaryFill = dark
-        ? Color.lerp(colors.controlPrimary, colors.interactiveStrong, 0.35)!
-        : colors.controlPrimary;
-    final secondaryFill = dark
-        ? const Color(0xFF353D52)
-        : Color.alphaBlend(
-            colors.brand.withValues(alpha: 0.09),
-            colors.cardSurface,
-          );
-    final secondaryBorder = dark ? const Color(0xFF8993A8) : colors.brand;
-    final tertiaryFill = dark ? Colors.transparent : const Color(0xFFE9EDF3);
+    // Keep existing component treatments; only their colors come from the
+    // shared light/dark semantic palette.
+    final primaryFill = colors.controlPrimary;
+    final secondaryFill = colors.cardSurface;
+    final tertiaryFill = dark ? colors.elevatedSurface : colors.subtleSurface;
     final destructiveFill = Color.alphaBlend(
       colors.error.withValues(alpha: dark ? 0.2 : 0.09),
       dark ? colors.elevatedSurface : colors.cardSurface,
@@ -67,25 +61,20 @@ final class ButlerlyButtonPalette {
     return ButlerlyButtonPalette(
       primaryFill: primaryFill,
       secondaryFill: secondaryFill,
-      secondaryBorder: secondaryBorder,
-      secondaryText: dark ? colors.primaryText : colors.brand,
+      secondaryBorder: colors.border,
+      secondaryText: colors.primaryText,
       tertiaryFill: tertiaryFill,
-      tertiaryText: dark ? colors.primaryText : colors.secondaryText,
+      tertiaryText: colors.primaryText,
       destructiveFill: destructiveFill,
       destructiveBorder: colors.error,
       destructiveText: colors.error,
-      compactFill: dark
-          ? primaryFill
-          : Color.alphaBlend(
-              colors.brand.withValues(alpha: 0.07),
-              colors.cardSurface,
-            ),
-      compactBorder: dark ? primaryFill : colors.brand,
-      compactText: dark ? Colors.white : colors.brand,
-      chipFill: dark ? secondaryFill : const Color(0xFFE9EDF3),
-      chipBorder: dark ? const Color(0xFF8993A8) : const Color(0xFFBAC4D2),
-      segmentFill: dark ? secondaryFill : colors.subtleSurface,
-      segmentBorder: dark ? const Color(0xFF8993A8) : colors.border,
+      compactFill: colors.cardSurface,
+      compactBorder: colors.border,
+      compactText: colors.primaryText,
+      chipFill: tertiaryFill,
+      chipBorder: colors.border,
+      segmentFill: dark ? colors.surface : colors.subtleSurface,
+      segmentBorder: colors.border,
     );
   }
 }
