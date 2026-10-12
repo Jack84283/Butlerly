@@ -648,12 +648,16 @@ class _AnalysisContent extends StatelessWidget {
         AnalysisMerchantBreakdown(
           model: model,
           masterData: masterData,
-          onMetricTap: (metric) => _openBreakdownTransactions(context, metric),
+          onMetricTap: (metric) {
+            _openBreakdownTransactions(context, metric);
+          },
         ),
         AnalysisSubcategoryBreakdown(
           model: model,
           masterData: masterData,
-          onMetricTap: (metric) => _openBreakdownTransactions(context, metric),
+          onMetricTap: (metric) {
+            _openBreakdownTransactions(context, metric);
+          },
         ),
         if (recurringPatterns != null)
           AnalysisRecurringPatterns(
@@ -759,21 +763,26 @@ class _AnalysisContent extends StatelessWidget {
       return;
     }
     final dimension = analysisRawDimension(metric);
-    final transactionIds = {
-      for (final transaction in result.value)
-        if ((metric.rule.grouping == RuleGrouping.merchant &&
-                transaction.merchantId == dimension) ||
-            (metric.rule.grouping == RuleGrouping.subcategory &&
-                transaction.subcategoryId == dimension))
-          transaction.id,
-    }.toList(growable: false);
+    final transactionIds = <String>{};
+    for (final transaction in result.value) {
+      if (metric.rule.grouping == RuleGrouping.merchant &&
+          transaction.merchantId == dimension) {
+        transactionIds.add(transaction.id);
+      } else if (metric.rule.grouping == RuleGrouping.subcategory &&
+          transaction.subcategoryId == dimension) {
+        transactionIds.add(transaction.id);
+      }
+    }
     if (transactionIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.text('noResults'))),
       );
       return;
     }
-    _openTransactions(context, transactionIds: transactionIds);
+    _openTransactions(
+      context,
+      transactionIds: transactionIds.toList(growable: false),
+    );
   }
 
   void _openTransactions(
