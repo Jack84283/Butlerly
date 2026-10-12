@@ -805,10 +805,19 @@ class _AnalysisContent extends StatelessWidget {
         'category': category,
       if (hasAuthoritativeTransactionIds) 'ids': transactionIds!.join(','),
     };
-    _navigate(
-      context,
-      Uri(path: '/transactions', queryParameters: query).toString(),
-    );
+    final location = Uri(
+      path: '/transactions',
+      queryParameters: query,
+    ).toString();
+    if (onNavigationRequested case final callback?) {
+      callback(location);
+    } else {
+      // Transactions is a primary StatefulShellRoute destination. Pushing
+      // its root route from Analysis stacks a second branch navigator and can
+      // trigger shell/navigation errors. Switch to the Transactions branch
+      // instead, preserving the selected evidence/filter in the location.
+      context.go(location);
+    }
   }
 
   List<String> _metricTransactionIds(AnalysisMetric metric) =>
