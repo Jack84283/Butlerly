@@ -10,6 +10,7 @@ import 'package:butlerly/features/analysis/presentation/widgets/analysis_custom_
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_period_selector.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_skeleton.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_summary.dart';
+import 'package:butlerly/features/foundation/presentation/search_page.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_count_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -685,10 +686,13 @@ void main() {
     expect(find.text('View all categories'), findsNothing);
     await tester.ensureVisible(find.text('Dining'));
     await tester.tap(find.text('Dining'));
-    expect(requestedNavigation, isNot(contains('category=')));
-    expect(requestedNavigation, contains('ids=occurrence-only'));
-    expect(requestedNavigation, isNot(contains('from=')));
-    expect(requestedNavigation, isNot(contains('to=')));
+    final uri = Uri.parse(requestedNavigation!);
+    expect(uri.path, '/search');
+    expect(uri.queryParameters['locked'], 'true');
+    expect(uri.queryParameters['category'], 'category-id');
+    expect(uri.queryParameters['ids'], 'occurrence-only');
+    expect(uri.queryParameters['from'], '2026-08-01');
+    expect(uri.queryParameters['to'], '2026-08-31');
   });
 
   testWidgets(
@@ -809,8 +813,12 @@ void main() {
       );
       await tester.ensureVisible(merchant);
       await tester.tap(merchant);
-      expect(navigation, contains('ids=t-merchant'));
-      expect(navigation, isNot(contains('from=')));
+      final merchantUri = Uri.parse(navigation!);
+      expect(merchantUri.path, '/search');
+      expect(merchantUri.queryParameters['locked'], 'true');
+      expect(merchantUri.queryParameters['merchant'], 'merchant-one');
+      expect(merchantUri.queryParameters['ids'], 't-merchant');
+      expect(merchantUri.queryParameters['from'], '2026-08-01');
 
       navigation = null;
       final subcategory = find.byKey(
@@ -827,12 +835,16 @@ void main() {
       );
       await tester.ensureVisible(subcategory);
       await tester.tap(subcategory);
-      expect(navigation, contains('ids=t-subcategory'));
-      expect(navigation, isNot(contains('ids=t-merchant')));
+      final subcategoryUri = Uri.parse(navigation!);
+      expect(subcategoryUri.path, '/search');
+      expect(subcategoryUri.queryParameters['locked'], 'true');
+      expect(subcategoryUri.queryParameters['subcategory'], 'subcategory-one');
+      expect(subcategoryUri.queryParameters['ids'], 't-subcategory');
+      expect(subcategoryUri.queryParameters['to'], '2026-08-31');
     },
   );
 
-  testWidgets('breakdown taps switch to the Transactions primary branch', (
+  testWidgets('breakdown taps open Search with fixed filters', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1000, 1800);
@@ -931,6 +943,23 @@ void main() {
               ],
             ),
             GoRoute(
+              path: '/search',
+              builder: (_, state) {
+                final parameters = state.uri.queryParameters;
+                return SearchPage(
+                  readOnly: parameters['locked'] == 'true',
+                  selectedMerchantId: parameters['merchant'],
+                  selectedSubcategoryId: parameters['subcategory'],
+                  initialQuery: ListTransactionsQuery(
+                    transactionIds: parameters['ids']?.split(','),
+                    from: DateTime.tryParse(parameters['from'] ?? ''),
+                    to: DateTime.tryParse(parameters['to'] ?? ''),
+                    categoryId: parameters['category'],
+                  ),
+                );
+              },
+            ),
+            GoRoute(
               path: '/analysis',
               builder: (_, _) => AnalysisPage(
                 load: () async => ApplicationSuccess(results),
@@ -965,29 +994,39 @@ void main() {
       ),
     );
 
-    for (final drill in <(Finder, String)>[
-      (find.text('Dining'), 't-category'),
+    for (final drill in <(Finder, String, String, String)>[
+      (find.text('Dining'), 't-category', 'category', 'category.food'),
       (
         find.byKey(const ValueKey('analysis-merchant-metric-t-merchant')),
         't-merchant',
+        'merchant',
+        'merchant-one',
       ),
       (
         find.byKey(const ValueKey('analysis-subcategory-metric-t-subcategory')),
         't-subcategory',
+        'subcategory',
+        'category.food.groceries',
       ),
     ]) {
       await tester.pumpAndSettle();
       await tester.ensureVisible(drill.$1);
       await tester.tap(drill.$1);
       await tester.pumpAndSettle();
-      expect(router.routeInformationProvider.value.uri.path, '/transactions');
-      expect(
-        router.routeInformationProvider.value.uri.queryParameters['ids'],
-        drill.$2,
-      );
-      expect(router.canPop(), isFalse);
+      final uri = router.routeInformationProvider.value.uri;
+      expect(uri.path, '/search');
+      expect(uri.queryParameters['ids'], drill.$2);
+      expect(uri.queryParameters['locked'], 'true');
+      expect(uri.queryParameters[drill.$3], drill.$4);
+      expect(uri.queryParameters['from'], '2026-08-01');
+      expect(uri.queryParameters['to'], '2026-08-31');
+      expect(find.byType(SearchPage), findsOneWidget);
+      expect(find.byKey(const ValueKey('locked-search-criteria')),
+          findsOneWidget);
+      expect(find.textContaining(drill.$4), findsWidgets);
+      expect(router.canPop(), isTrue);
       expect(tester.takeException(), isNull);
-      router.go('/analysis');
+      router.pop();
     }
   });
 
