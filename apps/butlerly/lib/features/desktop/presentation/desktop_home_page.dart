@@ -356,6 +356,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                 height: 160,
                                 child: _DesktopTrend(
                                   points: data.monthlyTrend,
+                                  selectedMonth: current,
                                   currency: currency,
                                   onTap: () => _go('/analysis?$query'),
                                 ),
@@ -836,19 +837,6 @@ class _DesktopCategorySummaryRow extends StatelessWidget {
                       ),
                       const SizedBox(width: ButlerlySpacing.compact),
                       SizedBox(
-                        width: 52,
-                        child: Text(
-                          percentage ?? '',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.end,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: context.colors.secondaryText,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: ButlerlySpacing.compact),
-                      SizedBox(
                         width: 100,
                         child: Text(
                           amount,
@@ -857,6 +845,19 @@ class _DesktopCategorySummaryRow extends StatelessWidget {
                           textAlign: TextAlign.end,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: ButlerlySpacing.compact),
+                      SizedBox(
+                        width: 52,
+                        child: Text(
+                          percentage ?? '',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.end,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: context.colors.secondaryText,
                           ),
                         ),
                       ),
@@ -929,9 +930,9 @@ class _DesktopCategoryLeadingIcon extends StatelessWidget {
 
 // Applies to colored fills only; text and icons stay fully opaque for contrast.
 const double _desktopHomeTintOpacity = 0.80;
-// Only the current calendar month receives the stronger bar fill.
-const double _desktopHomeCurrentMonthTrendTintOpacity = 0.80;
-const double _desktopHomeOtherMonthTrendTintOpacity = 0.38;
+// Match device Home: the selected month is solid, other months are muted.
+const double _desktopHomeSelectedMonthTrendTintOpacity = 1.0;
+const double _desktopHomeOtherMonthTrendTintOpacity = 0.35;
 const double _desktopHomeActionTintOpacity = 0.18;
 const TextStyle _desktopHomeCardTitleStyle = TextStyle(
   fontSize: 16,
@@ -1202,15 +1203,16 @@ class _DesktopAction extends StatelessWidget {
 class _DesktopTrend extends StatelessWidget {
   const _DesktopTrend({
     required this.points,
+    required this.selectedMonth,
     required this.currency,
     required this.onTap,
   });
   final List<MonthlySpendingTrendPoint> points;
+  final DateTime selectedMonth;
   final String currency;
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
     final values = points
         .map(
           (point) =>
@@ -1243,9 +1245,9 @@ class _DesktopTrend extends StatelessWidget {
                           color: Theme.of(context).colorScheme.primary
                               .withValues(
                                 alpha:
-                                    points[i].month.year == now.year &&
-                                        points[i].month.month == now.month
-                                    ? _desktopHomeCurrentMonthTrendTintOpacity
+                                    points[i].month.year == selectedMonth.year &&
+                                        points[i].month.month == selectedMonth.month
+                                    ? _desktopHomeSelectedMonthTrendTintOpacity
                                     : _desktopHomeOtherMonthTrendTintOpacity,
                               ),
                           borderRadius: const BorderRadius.vertical(
