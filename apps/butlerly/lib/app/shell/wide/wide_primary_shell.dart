@@ -70,9 +70,7 @@ class _WidePrimaryShellState extends State<WidePrimaryShell> {
     // At tablet and narrow desktop widths, keep the rail compact by default.
     // A fully expanded 248px rail would leave too little space for the content.
     final narrow = MediaQuery.sizeOf(context).width < 1100;
-    final expanded = narrow
-        ? _expandedAtNarrowWidths
-        : _expandedAtWideWidths;
+    final expanded = narrow ? _expandedAtNarrowWidths : _expandedAtWideWidths;
     _ensureMoreVisible(expanded);
     return Scaffold(
       body: Row(

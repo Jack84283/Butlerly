@@ -195,11 +195,15 @@ void main() {
       expect(ButlerlyLayout.modeForWidth(width), ButlerlyLayoutMode.wide);
       expect(find.byType(WidePrimaryShell), findsOneWidget);
       expect(
-        tester.getSize(find.byKey(const ValueKey('primary-wide-navigation'))).width,
+        tester
+            .getSize(find.byKey(const ValueKey('primary-wide-navigation')))
+            .width,
         ButlerlySize.wideNavigationCollapsedWidth,
       );
       expect(
-        tester.getSize(find.byKey(const ValueKey('primary-wide-body-surface'))).width,
+        tester
+            .getSize(find.byKey(const ValueKey('primary-wide-body-surface')))
+            .width,
         width - ButlerlySize.wideNavigationCollapsedWidth,
       );
       expect(find.byKey(const ValueKey('wide-collapsed-home')), findsOneWidget);
@@ -209,13 +213,17 @@ void main() {
     tester.view.physicalSize = const Size(1200, 800);
     await tester.pumpAndSettle();
     expect(
-      tester.getSize(find.byKey(const ValueKey('primary-wide-navigation'))).width,
+      tester
+          .getSize(find.byKey(const ValueKey('primary-wide-navigation')))
+          .width,
       ButlerlySize.wideNavigationExpandedWidth,
     );
     tester.view.physicalSize = const Size(768, 800);
     await tester.pumpAndSettle();
     expect(
-      tester.getSize(find.byKey(const ValueKey('primary-wide-navigation'))).width,
+      tester
+          .getSize(find.byKey(const ValueKey('primary-wide-navigation')))
+          .width,
       ButlerlySize.wideNavigationCollapsedWidth,
     );
   });
