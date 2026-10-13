@@ -721,7 +721,8 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                               if (b.maxWidth >= 680)
                                 IntrinsicHeight(
                                   child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.stretch,
                                     children: [
                                       Expanded(child: actions),
                                       const SizedBox(width: 8),
