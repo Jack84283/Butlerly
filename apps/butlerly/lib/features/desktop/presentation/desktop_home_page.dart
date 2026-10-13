@@ -417,7 +417,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                           Divider(
                                             height: 1,
                                             thickness: 1,
-                                            color: theme.scaffoldBackgroundColor,
+                                            color: theme.dividerColor,
                                           ),
                                         ],
                                       ),
@@ -571,7 +571,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                 ),
                                 Divider(
                                   height: 12,
-                                  color: theme.scaffoldBackgroundColor,
+                                  color: theme.dividerColor,
                                 ),
                                 for (final transaction
                                     in data.recentTransactions.take(7))
@@ -710,7 +710,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                       Divider(
                                         height: 1,
                                         thickness: 1,
-                                        color: theme.scaffoldBackgroundColor,
+                                        color: theme.dividerColor,
                                       ),
                                     ],
                                   ),
