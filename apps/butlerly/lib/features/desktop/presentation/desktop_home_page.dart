@@ -1,5 +1,6 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -124,8 +125,11 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                   ),
                   TextButton.icon(
                     onPressed: () async {
-                      final picked = await showDatePicker(
+                      final picked = await showButlerlyDatePicker(
                         context: context,
+                        title: 'Select month',
+                        cancelLabel: 'Cancel',
+                        doneLabel: 'Apply',
                         initialDate: current,
                         firstDate: DateTime(2000),
                         lastDate: DateTime(2100),
