@@ -313,102 +313,104 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                           final left = SizedBox(
                             height: _desktopHomeBreakdownCardHeight,
                             child: _DesktopPanel(
-                            title: 'Spending Trend',
-                            headerHeight: _desktopHomeBreakdownHeaderHeight,
-                            trailing: DropdownButton<int>(
-                              isDense: true,
-                              value: _trendMonths,
-                              underline: const SizedBox.shrink(),
-                              items: const [3, 6, 12]
-                                  .map(
-                                    (n) => DropdownMenuItem(
-                                      value: n,
-                                      child: Text('$n months'),
-                                    ),
-                                  )
-                                  .toList(),
-                              onChanged: (n) {
-                                if (n != null) {
-                                  setState(() {
-                                    _trendMonths = n;
-                                    _reload();
-                                  });
-                                }
-                              },
-                            ),
-                            child: SizedBox(
-                              height: 160,
-                              child: _DesktopTrend(
-                                points: data.monthlyTrend,
-                                currency: currency,
-                                onTap: () => _go('/analysis?$query'),
+                              title: 'Spending Trend',
+                              headerHeight: _desktopHomeBreakdownHeaderHeight,
+                              trailing: DropdownButton<int>(
+                                isDense: true,
+                                value: _trendMonths,
+                                underline: const SizedBox.shrink(),
+                                items: const [3, 6, 12]
+                                    .map(
+                                      (n) => DropdownMenuItem(
+                                        value: n,
+                                        child: Text('$n months'),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (n) {
+                                  if (n != null) {
+                                    setState(() {
+                                      _trendMonths = n;
+                                      _reload();
+                                    });
+                                  }
+                                },
                               ),
-                            ),
+                              child: SizedBox(
+                                height: 160,
+                                child: _DesktopTrend(
+                                  points: data.monthlyTrend,
+                                  currency: currency,
+                                  onTap: () => _go('/analysis?$query'),
+                                ),
+                              ),
                             ),
                           );
                           final middle = SizedBox(
                             height: _desktopHomeBreakdownCardHeight,
                             child: _DesktopPanel(
-                            title: 'Category Breakdown',
-                            headerHeight: _desktopHomeBreakdownHeaderHeight,
-                            trailing: TextButton(
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 4,
+                              title: 'Category Breakdown',
+                              headerHeight: _desktopHomeBreakdownHeaderHeight,
+                              trailing: TextButton(
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 4,
+                                  ),
+                                  minimumSize: const Size(0, 32),
                                 ),
-                                minimumSize: const Size(0, 32),
+                                onPressed: () => _go('/analysis?$query'),
+                                child: const Text('View all →'),
                               ),
-                              onPressed: () => _go('/analysis?$query'),
-                              child: const Text('View all →'),
-                            ),
-                            child: SizedBox(
-                              height: 160,
-                              child: ListView(
-                                children: [
-                                  for (final metric
-                                      in analysis?.categories
-                                              .where(
-                                                (category) =>
-                                                    category.availability ==
-                                                    AnalysisDataAvailability
-                                                        .sufficient,
-                                              )
-                                              .take(6) ??
-                                          <AnalysisMetric>[])
-                                    ListTile(
-                                      leading: _DesktopCategoryLeadingIcon(
-                                        metric: metric,
-                                      ),
-                                      dense: true,
-                                      contentPadding: EdgeInsets.zero,
-                                      title: Text(
-                                        analysisDimension(
-                                          context,
-                                          metric,
-                                          _masterData,
+                              child: SizedBox(
+                                height: 160,
+                                child: ListView(
+                                  children: [
+                                    for (final metric
+                                        in analysis?.categories
+                                                .where(
+                                                  (category) =>
+                                                      category.availability ==
+                                                      AnalysisDataAvailability
+                                                          .sufficient,
+                                                )
+                                                .take(6) ??
+                                            <AnalysisMetric>[])
+                                      ListTile(
+                                        leading: _DesktopCategoryLeadingIcon(
+                                          metric: metric,
                                         ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
+                                        dense: true,
+                                        contentPadding: EdgeInsets.zero,
+                                        title: Text(
+                                          analysisDimension(
+                                            context,
+                                            metric,
+                                            _masterData,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        trailing: Text(
+                                          _money(metric, currency),
+                                        ),
+                                        onTap: () => _go('/analysis?$query'),
                                       ),
-                                      trailing: Text(_money(metric, currency)),
-                                      onTap: () => _go('/analysis?$query'),
-                                    ),
-                                  if (analysis?.categories
-                                          .where(
-                                            (category) =>
-                                                category.availability ==
-                                                AnalysisDataAvailability
-                                                    .sufficient,
-                                          )
-                                          .isEmpty ??
-                                      true)
-                                    const Text(
-                                      'No category data for this period',
-                                    ),
-                                ],
+                                    if (analysis?.categories
+                                            .where(
+                                              (category) =>
+                                                  category.availability ==
+                                                  AnalysisDataAvailability
+                                                      .sufficient,
+                                            )
+                                            .isEmpty ??
+                                        true)
+                                      const Text(
+                                        'No category data for this period',
+                                      ),
+                                  ],
+                                ),
                               ),
-                            ),
                             ),
                           );
                           return b.maxWidth >= 680
@@ -657,19 +659,19 @@ class _DesktopPanel extends StatelessWidget {
           SizedBox(
             height: headerHeight,
             child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: foreground,
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: foreground,
+                    ),
                   ),
                 ),
-              ),
-              ?trailing,
-            ],
+                ?trailing,
+              ],
             ),
           ),
           const SizedBox(height: 8),
