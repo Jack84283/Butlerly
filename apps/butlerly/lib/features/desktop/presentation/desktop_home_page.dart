@@ -208,8 +208,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                           title: 'Income',
                           value: _money(analysis?.income, currency),
                           icon: Icons.arrow_upward,
-                          tint: Colors.green,
-                          onTap: () => _go('/search?$query&direction=income'),
+                          comparison: analysis?.incomeComparison,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -218,8 +217,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                           title: 'Expenses',
                           value: _money(analysis?.spending, currency),
                           icon: Icons.arrow_downward,
-                          tint: Colors.red,
-                          onTap: () => _go('/search?$query&direction=expense'),
+                          comparison: analysis?.spendingComparison,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -228,8 +226,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                           title: 'Net cash flow',
                           value: _money(analysis?.net, currency),
                           icon: Icons.show_chart,
-                          tint: Colors.blue,
-                          onTap: () => _go('/analysis?$query'),
+                          comparison: analysis?.netComparison,
                         ),
                       ),
                     ],
@@ -508,14 +505,13 @@ class _DesktopMetric extends StatelessWidget {
     required this.title,
     required this.value,
     required this.icon,
-    required this.tint,
-    required this.onTap,
+    required this.comparison,
   });
+
   final String title;
   final String value;
   final IconData icon;
-  final Color tint;
-  final VoidCallback onTap;
+  final AnalysisComparison? comparison;
 
   @override
   Widget build(BuildContext context) {
@@ -528,61 +524,78 @@ class _DesktopMetric extends StatelessWidget {
     final fill = dark
         ? color.withValues(alpha: .12)
         : color.withValues(alpha: .055);
-    return Material(
-      color: fill,
-      shape: RoundedRectangleBorder(
+    final percent = comparison?.percentageChange;
+    final usable = comparison?.availability ==
+            AnalysisDataAvailability.sufficient &&
+        comparison?.baselineValue != null &&
+        percent != null;
+    final percentValue = usable ? double.tryParse(percent.toString()) : null;
+    final comparisonText = percentValue == null
+        ? 'Change unavailable'
+        : percentValue > 0
+            ? '↑ ${percentValue.abs().toStringAsFixed(1)}% vs previous period'
+            : percentValue < 0
+                ? '↓ ${percentValue.abs().toStringAsFixed(1)}% vs previous period'
+                : '0.0% vs previous period';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: fill,
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: color.withValues(alpha: dark ? .40 : .17)),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: color.withValues(alpha: .12),
-                child: Icon(icon, color: color, size: 22),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    FittedBox(
-                      alignment: Alignment.centerLeft,
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        value,
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                          color: dark ? color.withValues(alpha: .9) : color,
-                          letterSpacing: -.7,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.chevron_right,
-                color: color.withValues(alpha: .75),
-                size: 17,
-              ),
-            ],
-          ),
+        border: Border.all(
+          color: color.withValues(alpha: dark ? .40 : .17),
         ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: color.withValues(alpha: .12),
+            child: Icon(icon, color: color, size: 22),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                FittedBox(
+                  alignment: Alignment.centerLeft,
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      color: dark ? color.withValues(alpha: .9) : color,
+                      letterSpacing: -.7,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  comparisonText,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: percentValue == null
+                        ? Theme.of(context).colorScheme.onSurfaceVariant
+                        : color,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
