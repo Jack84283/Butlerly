@@ -929,6 +929,7 @@ class _DesktopCategoryLeadingIcon extends StatelessWidget {
 
 // Applies to colored fills only; text and icons stay fully opaque for contrast.
 const double _desktopHomeTintOpacity = 0.80;
+// Only the current calendar month receives the stronger bar fill.
 const double _desktopHomeCurrentMonthTrendTintOpacity = 0.80;
 const double _desktopHomeOtherMonthTrendTintOpacity = 0.38;
 const double _desktopHomeActionTintOpacity = 0.18;
