@@ -930,6 +930,10 @@ class _DesktopCategoryLeadingIcon extends StatelessWidget {
 // Applies to colored fills only; text and icons stay fully opaque for contrast.
 const double _desktopHomeTintOpacity = 0.80;
 const double _desktopHomeActionTintOpacity = 0.18;
+const TextStyle _desktopHomeCardTitleStyle = TextStyle(
+  fontSize: 16,
+  fontWeight: FontWeight.w700,
+);
 const double _desktopHomeCardTitleTopInset = 10;
 const double _desktopHomeBreakdownHeaderHeight = 32;
 const double _desktopHomeBreakdownCardHeight = 220;
@@ -974,9 +978,7 @@ class _DesktopPanel extends StatelessWidget {
                 Expanded(
                   child: Text(
                     title,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
+                    style: _desktopHomeCardTitleStyle.copyWith(
                       color: foreground,
                     ),
                   ),
@@ -1065,9 +1067,7 @@ class _DesktopMetric extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+                  style: _desktopHomeCardTitleStyle.copyWith(
                     color: Colors.white,
                   ),
                 ),
