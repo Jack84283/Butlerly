@@ -379,12 +379,12 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                 child: const Text('View all →'),
                               ),
                               child: SizedBox(
-                                // Reserve the 4px inset on both sides of the
+                                // Reserve the 12px inset on both sides of the
                                 // fixed-height dark-mode inner card.
                                 height:
                                     160 -
                                     (theme.brightness == Brightness.dark
-                                        ? 2 * ButlerlySpacing.micro
+                                        ? 2 * ButlerlySpacing.small
                                         : 0),
                                 child: ListView(
                                   children: [
@@ -900,7 +900,7 @@ class _DesktopPanel extends StatelessWidget {
               child: ColoredBox(
                 color: context.colors.cardSurface,
                 child: Padding(
-                  padding: const EdgeInsets.all(ButlerlySpacing.micro),
+                  padding: const EdgeInsets.all(ButlerlySpacing.small),
                   child: child,
                 ),
               ),
