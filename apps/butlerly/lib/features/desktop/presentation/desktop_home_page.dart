@@ -76,7 +76,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     final value = double.tryParse(metric.value.toString());
     if (value == null) return '—';
     return NumberFormat.simpleCurrency(
-      name: metric.currency ?? currency,
+      name: metric.currency?.value ?? currency,
     ).format(value);
   }
 
@@ -101,7 +101,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       builder: (context, snapshot) {
         final data = snapshot.data;
         final current = data?.displayMonth ?? _month ?? DateTime.now();
-        final currency = data?.context?.baseCurrency ?? 'USD';
+        final currency = data?.context?.baseCurrency.value ?? 'USD';
         final query = data == null ? '' : _periodQuery(data);
         final analysis = data?.analysis;
         final unavailable =
@@ -251,7 +251,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                       child: SizedBox(
                         height: 190,
                         child: _DesktopTrend(
-                          points: data!.monthlyTrend,
+                          points: data.monthlyTrend,
                           currency: currency,
                           onTap: () => _go('/analysis?$query'),
                         ),
@@ -314,7 +314,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                         children: [
                           _DesktopAction(
                             label: 'Needs review',
-                            count: data!.reviewCount,
+                            count: data.reviewCount,
                             icon: Icons.fact_check_outlined,
                             onTap: () => _go('/review?view=needsReview'),
                           ),
@@ -463,7 +463,7 @@ class _DesktopPanel extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
-              if (trailing != null) trailing!,
+              ...? [trailing],
             ],
           ),
           const SizedBox(height: 12),
