@@ -689,6 +689,7 @@ void main() {
     final uri = Uri.parse(requestedNavigation!);
     expect(uri.path, '/search');
     expect(uri.queryParameters['locked'], 'true');
+    expect(uri.queryParameters['analysisRule'], 'ANL-R010');
     expect(uri.queryParameters['category'], 'category-id');
     expect(uri.queryParameters['ids'], 'occurrence-only');
     expect(uri.queryParameters['from'], '2026-08-01');
@@ -816,6 +817,7 @@ void main() {
       final merchantUri = Uri.parse(navigation!);
       expect(merchantUri.path, '/search');
       expect(merchantUri.queryParameters['locked'], 'true');
+      expect(merchantUri.queryParameters['analysisRule'], 'ANL-R011');
       expect(merchantUri.queryParameters['merchant'], 'merchant-one');
       expect(merchantUri.queryParameters['ids'], 't-merchant');
       expect(merchantUri.queryParameters['from'], '2026-08-01');
@@ -838,6 +840,7 @@ void main() {
       final subcategoryUri = Uri.parse(navigation!);
       expect(subcategoryUri.path, '/search');
       expect(subcategoryUri.queryParameters['locked'], 'true');
+      expect(subcategoryUri.queryParameters['analysisRule'], 'ANL-R012');
       expect(subcategoryUri.queryParameters['subcategory'], 'subcategory-one');
       expect(subcategoryUri.queryParameters['ids'], 't-subcategory');
       expect(subcategoryUri.queryParameters['to'], '2026-08-31');
@@ -1024,6 +1027,11 @@ void main() {
       );
       expect(uri.queryParameters['ids'], drill.$2);
       expect(uri.queryParameters['locked'], 'true');
+      expect(uri.queryParameters['analysisRule'], drill.$3 == 'category'
+          ? 'ANL-R010'
+          : drill.$3 == 'merchant'
+          ? 'ANL-R011'
+          : 'ANL-R012');
       expect(uri.queryParameters[drill.$3], drill.$4);
       expect(uri.queryParameters['from'], '2026-08-01');
       expect(uri.queryParameters['to'], '2026-08-31');
@@ -1168,7 +1176,7 @@ void main() {
     await tester.tap(find.text('View all categories'));
     expect(
       requestedNavigation,
-      '/search?locked=true&from=2026-08-01&to=2026-08-31',
+      '/search?locked=true&analysisRule=ANL-R010&from=2026-08-01&to=2026-08-31',
     );
   });
 
