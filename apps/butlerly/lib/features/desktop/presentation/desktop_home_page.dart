@@ -101,7 +101,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       builder: (context, snapshot) {
         final data = snapshot.data;
         final current = data?.displayMonth ?? _month ?? DateTime.now();
-        final currency = data?.context?.baseCurrency.value ?? 'USD';
+        final currency = data?.context?.baseCurrency?.value ?? 'USD';
         final query = data == null ? '' : _periodQuery(data);
         final analysis = data?.analysis;
         final unavailable =
@@ -130,11 +130,12 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                         firstDate: DateTime(2000),
                         lastDate: DateTime(2100),
                       );
-                      if (picked != null)
+                      if (picked != null) {
                         setState(() {
                           _month = DateTime(picked.year, picked.month);
                           _reload();
                         });
+                      }
                     },
                     icon: const Icon(Icons.calendar_month_outlined),
                     label: Text(DateFormat.yMMMM().format(current)),
@@ -241,11 +242,12 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                             )
                             .toList(),
                         onChanged: (n) {
-                          if (n != null)
+                          if (n != null) {
                             setState(() {
                               _trendMonths = n;
                               _reload();
                             });
+                          }
                         },
                       ),
                       child: SizedBox(
@@ -577,8 +579,9 @@ class _DesktopTrend extends StatelessWidget {
         )
         .toList();
     final max = values.fold<double>(0, (a, b) => a > b ? a : b);
-    if (points.isEmpty || max <= 0)
+    if (points.isEmpty || max <= 0) {
       return const Center(child: Text('No spending trend available'));
+    }
     return InkWell(
       onTap: onTap,
       child: Row(
@@ -592,8 +595,7 @@ class _DesktopTrend extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     Tooltip(
-                      message:
-                          '${NumberFormat.simpleCurrency(name: currency).format(values[i])}',
+                      message: NumberFormat.simpleCurrency(name: currency).format(values[i]),
                       child: Container(
                         height: 135 * values[i] / max,
                         decoration: BoxDecoration(
