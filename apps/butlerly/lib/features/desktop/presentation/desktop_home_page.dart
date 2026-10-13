@@ -550,9 +550,6 @@ class _DesktopPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: dark ? const Color(0xFF171B21) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: dark ? const Color(0xFF2A3039) : const Color(0xFFE4EAF4),
-        ),
         boxShadow: dark
             ? null
             : const [
@@ -632,7 +629,6 @@ class _DesktopMetric extends StatelessWidget {
       decoration: BoxDecoration(
         color: fill,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withValues(alpha: dark ? .40 : .17)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       child: Row(
