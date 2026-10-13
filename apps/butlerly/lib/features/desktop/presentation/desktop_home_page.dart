@@ -3,6 +3,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/components/butlerly_category_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_category_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
@@ -364,6 +365,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                             height: _desktopHomeBreakdownCardHeight,
                             child: _DesktopPanel(
                               title: 'Category Breakdown',
+                              showDeviceDividerSurface: true,
                               headerHeight: _desktopHomeBreakdownHeaderHeight,
                               trailing: TextButton(
                                 style: TextButton.styleFrom(
@@ -417,7 +419,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                           Divider(
                                             height: 1,
                                             thickness: 1,
-                                            color: theme.dividerColor,
+                                            color: context.colors.cardDivider,
                                           ),
                                         ],
                                       ),
@@ -503,6 +505,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                           );
                           final recent = _DesktopPanel(
                             title: 'Recent Transactions',
+                            showDeviceDividerSurface: true,
                             trailing: TextButton(
                               style: TextButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(
@@ -569,7 +572,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                     ),
                                   ],
                                 ),
-                                Divider(height: 12, color: theme.dividerColor),
+                                Divider(height: 12, color: context.colors.cardDivider),
                                 for (final transaction
                                     in data.recentTransactions.take(7))
                                   Column(
@@ -707,7 +710,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                       Divider(
                                         height: 1,
                                         thickness: 1,
-                                        color: theme.dividerColor,
+                                        color: context.colors.cardDivider,
                                       ),
                                     ],
                                   ),
@@ -836,11 +839,13 @@ class _DesktopPanel extends StatelessWidget {
     required this.child,
     this.trailing,
     this.headerHeight,
+    this.showDeviceDividerSurface = false,
   });
   final String title;
   final Widget child;
   final Widget? trailing;
   final double? headerHeight;
+  final bool showDeviceDividerSurface;
 
   @override
   Widget build(BuildContext context) {
@@ -879,7 +884,16 @@ class _DesktopPanel extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          child,
+          if (dark && showDeviceDividerSurface)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: ColoredBox(
+                color: context.colors.cardSurface,
+                child: child,
+              ),
+            )
+          else
+            child,
         ],
       ),
     );
