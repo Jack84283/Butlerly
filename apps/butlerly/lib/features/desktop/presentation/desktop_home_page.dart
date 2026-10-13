@@ -1,6 +1,8 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -20,6 +22,8 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   DateTime? _month;
   late Future<HomeOverview?> _overview;
   int _trendMonths = 6;
+  TransactionMasterData? _masterData;
+  String? _masterDataLocale;
 
   FinanceServices? get _finance => services.isRegistered<FinanceServices>()
       ? services<FinanceServices>()
@@ -30,6 +34,21 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     super.initState();
     _reload();
     transactionChanges.addListener(_onTransactionChange);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final locale = Localizations.localeOf(context).languageCode;
+    if (_masterDataLocale == locale) return;
+    _masterDataLocale = locale;
+    final finance = _finance;
+    if (finance == null) return;
+    TransactionMasterData.load(finance, languageCode: locale).then((value) {
+      if (mounted && _masterDataLocale == locale) {
+        setState(() => _masterData = value);
+      }
+    });
   }
 
   @override
@@ -336,21 +355,26 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                               height: 160,
                               child: ListView(
                                 children: [
-                                  for (final metric
-                                      in analysis?.categories.take(6) ??
-                                          <AnalysisMetric>[])
+                                  for (final metric in analysis?.categories
+                                          .where(
+                                            (category) =>
+                                                category.availability ==
+                                                AnalysisDataAvailability.sufficient,
+                                          )
+                                          .take(6) ??
+                                      <AnalysisMetric>[])
                                     ListTile(
                                       dense: true,
                                       contentPadding: EdgeInsets.zero,
                                       title: Text(
-                                        metric.rule.nameKey,
+                                        analysisDimension(context, metric, _masterData),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                       trailing: Text(_money(metric, currency)),
                                       onTap: () => _go('/analysis?$query'),
                                     ),
-                                  if (analysis?.categories.isEmpty ?? true)
+                                  if (analysis?.categories.where((category) => category.availability == AnalysisDataAvailability.sufficient).isEmpty ?? true)
                                     const Text(
                                       'No category data for this period',
                                     ),
