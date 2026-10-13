@@ -377,7 +377,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                                 )
                                                 .take(6) ??
                                             <AnalysisMetric>[])
-                                      ListTile(
+                                      Column(
+                                        children: [
+                                          ListTile(
                                         leading: _DesktopCategoryLeadingIcon(
                                           metric: metric,
                                         ),
@@ -396,6 +398,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                           _money(metric, currency),
                                         ),
                                         onTap: () => _go('/analysis?$query'),
+                                          ),
+                                          const Divider(height: 1, thickness: 0.5),
+                                        ],
                                       ),
                                     if (analysis?.categories
                                             .where(
@@ -548,7 +553,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                 const Divider(height: 12),
                                 for (final transaction
                                     in data.recentTransactions.take(7))
-                                  InkWell(
+                                  Column(
+                                    children: [
+                                      InkWell(
                                     onTap: () => _go(
                                       '/search?ids=${Uri.encodeQueryComponent(transaction.id)}',
                                     ),
@@ -668,6 +675,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                         ],
                                       ),
                                     ),
+                                      ),
+                                      const Divider(height: 1, thickness: 0.5),
+                                    ],
                                   ),
                                 if (data.recentTransactions.isEmpty)
                                   const Padding(
