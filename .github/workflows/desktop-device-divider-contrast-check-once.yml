@@ -1,0 +1,32 @@
+name: Desktop Device Divider Contrast Check Once
+on:
+  push:
+    paths:
+      - '.github/workflows/desktop-device-divider-contrast-check-once.yml'
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/desktop-home-isolated
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.1'
+      - name: Format and analyze desktop Home
+        run: |
+          cd apps/butlerly
+          flutter pub get
+          dart format lib/features/desktop/presentation/desktop_home_page.dart
+          flutter analyze --no-pub lib/features/desktop/presentation/desktop_home_page.dart
+      - name: Commit formatting and clean workflow
+        run: |
+          rm .github/workflows/desktop-device-divider-contrast-check-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/butlerly/lib/features/desktop/presentation/desktop_home_page.dart .github/workflows/desktop-device-divider-contrast-check-once.yml
+          git commit -m "style(desktop): format dark divider contrast update" || exit 0
+          git push origin HEAD:codex/desktop-home-isolated
