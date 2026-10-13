@@ -355,26 +355,40 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                               height: 160,
                               child: ListView(
                                 children: [
-                                  for (final metric in analysis?.categories
-                                          .where(
-                                            (category) =>
-                                                category.availability ==
-                                                AnalysisDataAvailability.sufficient,
-                                          )
-                                          .take(6) ??
-                                      <AnalysisMetric>[])
+                                  for (final metric
+                                      in analysis?.categories
+                                              .where(
+                                                (category) =>
+                                                    category.availability ==
+                                                    AnalysisDataAvailability
+                                                        .sufficient,
+                                              )
+                                              .take(6) ??
+                                          <AnalysisMetric>[])
                                     ListTile(
                                       dense: true,
                                       contentPadding: EdgeInsets.zero,
                                       title: Text(
-                                        analysisDimension(context, metric, _masterData),
+                                        analysisDimension(
+                                          context,
+                                          metric,
+                                          _masterData,
+                                        ),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                       trailing: Text(_money(metric, currency)),
                                       onTap: () => _go('/analysis?$query'),
                                     ),
-                                  if (analysis?.categories.where((category) => category.availability == AnalysisDataAvailability.sufficient).isEmpty ?? true)
+                                  if (analysis?.categories
+                                          .where(
+                                            (category) =>
+                                                category.availability ==
+                                                AnalysisDataAvailability
+                                                    .sufficient,
+                                          )
+                                          .isEmpty ??
+                                      true)
                                     const Text(
                                       'No category data for this period',
                                     ),
@@ -578,7 +592,12 @@ class _DesktopPanel extends StatelessWidget {
         color: dark ? const Color(0xFF171B21) : Colors.white,
         borderRadius: BorderRadius.circular(16),
       ),
-      padding: const EdgeInsets.fromLTRB(10, _desktopHomeCardTitleTopInset, 10, 10),
+      padding: const EdgeInsets.fromLTRB(
+        10,
+        _desktopHomeCardTitleTopInset,
+        10,
+        10,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -648,7 +667,10 @@ class _DesktopMetric extends StatelessWidget {
         color: fill,
         borderRadius: BorderRadius.circular(16),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: _desktopHomeCardTitleTopInset),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: _desktopHomeCardTitleTopInset,
+      ),
       child: Row(
         children: [
           CircleAvatar(
