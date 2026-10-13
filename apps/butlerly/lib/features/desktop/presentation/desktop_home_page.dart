@@ -492,40 +492,30 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                             ),
                             child: Column(
                               children: [
-                                Row(
-                                  children: const [
-                                    SizedBox(width: 92, child: Text('Date')),
-                                    Expanded(flex: 3, child: Text('Merchant')),
-                                    Expanded(flex: 2, child: Text('Category')),
-                                    SizedBox(
-                                      width: 108,
-                                      child: Text(
-                                        'Amount',
-                                        textAlign: TextAlign.right,
-                                      ),
-                                    ),
+                                const Row(
+                                  children: [
+                                    SizedBox(width: 100, child: Text('Date', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                                    Expanded(flex: 3, child: Text('Merchant', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                                    Expanded(flex: 2, child: Text('Category', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                                    Expanded(flex: 2, child: Text('Subcategory', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                                    Expanded(flex: 2, child: Text('Payment source', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                                    SizedBox(width: 112, child: Text('Amount', textAlign: TextAlign.right, maxLines: 1, overflow: TextOverflow.ellipsis)),
                                   ],
                                 ),
                                 const Divider(height: 12),
-                                for (final transaction
-                                    in data.recentTransactions.take(7))
+                                for (final transaction in data.recentTransactions.take(7))
                                   InkWell(
                                     onTap: () => _go(
                                       '/search?ids=${Uri.encodeQueryComponent(transaction.id)}',
                                     ),
                                     child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 7,
-                                      ),
+                                      padding: const EdgeInsets.symmetric(vertical: 7),
                                       child: Row(
                                         children: [
                                           SizedBox(
-                                            width: 92,
+                                            width: 100,
                                             child: Text(
-                                              _desktopTransactionDate(
-                                                context,
-                                                transaction,
-                                              ),
+                                              _desktopTransactionDate(context, transaction),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             ),
@@ -533,9 +523,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                           Expanded(
                                             flex: 3,
                                             child: Text(
-                                              _masterData?.merchantName(
-                                                    transaction.merchantId,
-                                                  ) ??
+                                              _masterData?.merchantName(transaction.merchantId) ??
                                                   transaction.rawCounterparty ??
                                                   transaction.description ??
                                                   'Transaction',
@@ -548,53 +536,44 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                             child: Align(
                                               alignment: Alignment.centerLeft,
                                               child: Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 3,
-                                                    ),
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                                 decoration: BoxDecoration(
-                                                  color: _desktopCategoryBadgeColor(
-                                                    transaction.categoryId,
-                                                    context,
-                                                  ).withValues(alpha: .16),
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                        100,
-                                                      ),
+                                                  color: _desktopCategoryBadgeColor(transaction.categoryId, context).withValues(alpha: .16),
+                                                  borderRadius: BorderRadius.circular(100),
                                                 ),
                                                 child: Text(
-                                                  _masterData?.categoryName(
-                                                        transaction.categoryId,
-                                                      ) ??
-                                                      (transaction.categoryId ==
-                                                              null
-                                                          ? 'Uncategorized'
-                                                          : 'Category unavailable'),
+                                                  _masterData?.categoryName(transaction.categoryId) ??
+                                                      (transaction.categoryId == null ? 'Uncategorized' : 'Category unavailable'),
                                                   maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                  style: Theme.of(context)
-                                                      .textTheme
-                                                      .labelSmall
-                                                      ?.copyWith(
-                                                        color: _desktopCategoryBadgeColor(
-                                                          transaction.categoryId,
-                                                          context,
-                                                        ),
-                                                        fontWeight: FontWeight.w600,
-                                                      ),
+                                                  overflow: TextOverflow.ellipsis,
+                                                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                                    color: _desktopCategoryBadgeColor(transaction.categoryId, context),
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
                                                 ),
                                               ),
                                             ),
                                           ),
-                                          SizedBox(
-                                            width: 108,
+                                          Expanded(
+                                            flex: 2,
                                             child: Text(
-                                              _desktopTransactionAmount(
-                                                context,
-                                                transaction,
-                                              ),
+                                              _masterData?.subcategoryName(transaction.subcategoryId) ?? '—',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          Expanded(
+                                            flex: 2,
+                                            child: Text(
+                                              _masterData?.paymentSourceName(transaction.paymentSourceId) ?? '—',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          SizedBox(
+                                            width: 112,
+                                            child: Text(
+                                              _desktopTransactionAmount(context, transaction),
                                               textAlign: TextAlign.right,
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
