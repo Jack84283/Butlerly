@@ -9,21 +9,6 @@ fi
 # Diagnose formatting drift using probes alongside the source files, keeping
 # their package language version and formatter configuration unchanged.
 if [[ "$PWD" == */apps/butlerly ]]; then
-  for file in \
-    lib/features/analysis/presentation/analysis_page.dart \
-    lib/features/analysis/presentation/analysis_search_selection.dart \
-    lib/features/foundation/presentation/search_page.dart \
-    test/features/analysis/analysis_page_test.dart \
-    test/features/analysis/analysis_search_selection_test.dart; do
-    probe="${file%.dart}_ci_format_probe.dart"
-    cp "$file" "$probe"
-    dart format "$probe" >/dev/null
-    diff -u "$file" "$probe" || true
-    rm -f "$probe"
-  done
-fi
-
-if [[ "$PWD" == */apps/butlerly ]]; then
   probes=()
   cleanup() {
     for probe in "${probes[@]}"; do
