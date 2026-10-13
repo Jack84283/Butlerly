@@ -310,8 +310,11 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                       const SizedBox(height: 8),
                       LayoutBuilder(
                         builder: (context, b) {
-                          final left = _DesktopPanel(
+                          final left = SizedBox(
+                            height: _desktopHomeBreakdownCardHeight,
+                            child: _DesktopPanel(
                             title: 'Spending Trend',
+                            headerHeight: _desktopHomeBreakdownHeaderHeight,
                             trailing: DropdownButton<int>(
                               isDense: true,
                               value: _trendMonths,
@@ -341,9 +344,13 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                 onTap: () => _go('/analysis?$query'),
                               ),
                             ),
+                            ),
                           );
-                          final middle = _DesktopPanel(
+                          final middle = SizedBox(
+                            height: _desktopHomeBreakdownCardHeight,
+                            child: _DesktopPanel(
                             title: 'Category Breakdown',
+                            headerHeight: _desktopHomeBreakdownHeaderHeight,
                             trailing: TextButton(
                               style: TextButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(
@@ -401,6 +408,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                     ),
                                 ],
                               ),
+                            ),
                             ),
                           );
                           return b.maxWidth >= 680
@@ -613,16 +621,20 @@ class _DesktopCategoryLeadingIcon extends StatelessWidget {
 }
 
 const double _desktopHomeCardTitleTopInset = 10;
+const double _desktopHomeBreakdownHeaderHeight = 32;
+const double _desktopHomeBreakdownCardHeight = 220;
 
 class _DesktopPanel extends StatelessWidget {
   const _DesktopPanel({
     required this.title,
     required this.child,
     this.trailing,
+    this.headerHeight,
   });
   final String title;
   final Widget child;
   final Widget? trailing;
+  final double? headerHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -642,7 +654,9 @@ class _DesktopPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          SizedBox(
+            height: headerHeight,
+            child: Row(
             children: [
               Expanded(
                 child: Text(
@@ -656,6 +670,7 @@ class _DesktopPanel extends StatelessWidget {
               ),
               ?trailing,
             ],
+            ),
           ),
           const SizedBox(height: 8),
           child,
