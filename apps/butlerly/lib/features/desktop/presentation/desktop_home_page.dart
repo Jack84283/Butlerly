@@ -417,11 +417,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                           Divider(
                                             height: 1,
                                             thickness: 1,
-                                            color:
-                                                Theme.of(context).brightness ==
-                                                    Brightness.dark
-                                                ? const Color(0xFF555B63)
-                                                : const Color(0xFFD8DDE6),
+                                            color: theme.scaffoldBackgroundColor,
                                           ),
                                         ],
                                       ),
@@ -573,7 +569,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                     ),
                                   ],
                                 ),
-                                const Divider(height: 12),
+                                Divider(
+                                  height: 12,
+                                  color: theme.scaffoldBackgroundColor,
+                                ),
                                 for (final transaction
                                     in data.recentTransactions.take(7))
                                   Column(
@@ -711,11 +710,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                       Divider(
                                         height: 1,
                                         thickness: 1,
-                                        color:
-                                            Theme.of(context).brightness ==
-                                                Brightness.dark
-                                            ? const Color(0xFF555B63)
-                                            : const Color(0xFFD8DDE6),
+                                        color: theme.scaffoldBackgroundColor,
                                       ),
                                     ],
                                   ),
