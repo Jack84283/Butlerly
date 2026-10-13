@@ -114,7 +114,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
           },
           child: ListView(
             key: const ValueKey('desktop-home-page'),
-            padding: const EdgeInsets.fromLTRB(28, 20, 28, 32),
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
             children: [
               Row(
                 children: [
@@ -151,14 +151,14 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                   ),
                   const Spacer(),
                   SizedBox(
-                    width: 270,
+                    width: 220,
                     child: OutlinedButton.icon(
                       onPressed: () => _go('/search'),
                       icon: const Icon(Icons.search),
                       label: const Text('Search transactions'),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   FilledButton.icon(
                     onPressed: () => _go('/transactions/add'),
                     icon: const Icon(Icons.add),
@@ -166,7 +166,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
               Text(
                 'Financial overview',
                 style: theme.textTheme.headlineMedium?.copyWith(
@@ -179,7 +179,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                 DateFormat.yMMMM().format(current),
                 style: theme.textTheme.bodyMedium,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
               if (snapshot.connectionState != ConnectionState.done)
                 const LinearProgressIndicator(),
               if (unavailable)
@@ -212,7 +212,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                           onTap: () => _go('/search?$query&direction=income'),
                         ),
                       ),
-                      const SizedBox(width: 14),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: _DesktopMetric(
                           title: 'Expenses',
@@ -222,7 +222,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                           onTap: () => _go('/search?$query&direction=expense'),
                         ),
                       ),
-                      const SizedBox(width: 14),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: _DesktopMetric(
                           title: 'Net cash flow',
@@ -235,7 +235,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
                 LayoutBuilder(
                   builder: (context, b) {
                     final left = _DesktopPanel(
@@ -261,7 +261,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                         },
                       ),
                       child: SizedBox(
-                        height: 190,
+                        height: 160,
                         child: _DesktopTrend(
                           points: data.monthlyTrend,
                           currency: currency,
@@ -276,7 +276,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                         child: const Text('View all →'),
                       ),
                       child: SizedBox(
-                        height: 190,
+                        height: 160,
                         child: ListView(
                           children: [
                             for (final metric
@@ -304,20 +304,20 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Expanded(child: left),
-                              const SizedBox(width: 16),
+                              const SizedBox(width: 8),
                               Expanded(child: middle),
                             ],
                           )
                         : Column(
                             children: [
                               left,
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 8),
                               middle,
                             ],
                           );
                   },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
                 LayoutBuilder(
                   builder: (context, b) {
                     final actions = _DesktopPanel(
@@ -409,7 +409,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                 ? 'No insights for this period'
                                 : 'You have ${data.insights.length} insight${data.insights.length == 1 ? '' : 's'} to explore.',
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 8),
                           OutlinedButton.icon(
                             onPressed: () => _go('/insights?$query'),
                             icon: const Icon(Icons.insights),
@@ -425,16 +425,16 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Expanded(child: recent),
-                              const SizedBox(width: 16),
+                              const SizedBox(width: 8),
                               Expanded(child: actions),
                             ],
                           )
                         else ...[
                           recent,
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 8),
                           actions,
                         ],
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 8),
                         insights,
                       ],
                     );
@@ -480,7 +480,7 @@ class _DesktopPanel extends StatelessWidget {
                 ),
               ],
       ),
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -499,7 +499,7 @@ class _DesktopPanel extends StatelessWidget {
               ?trailing,
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
           child,
         ],
       ),
@@ -542,15 +542,15 @@ class _DesktopMetric extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 22),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
           child: Row(
             children: [
               CircleAvatar(
-                radius: 24,
+                radius: 20,
                 backgroundColor: color.withValues(alpha: .12),
-                child: Icon(icon, color: color, size: 26),
+                child: Icon(icon, color: color, size: 22),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -562,14 +562,14 @@ class _DesktopMetric extends StatelessWidget {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     FittedBox(
                       alignment: Alignment.centerLeft,
                       fit: BoxFit.scaleDown,
                       child: Text(
                         value,
                         style: TextStyle(
-                          fontSize: 27,
+                          fontSize: 24,
                           fontWeight: FontWeight.w800,
                           color: dark ? color.withValues(alpha: .9) : color,
                           letterSpacing: -.7,
@@ -615,7 +615,7 @@ class _DesktopAction extends StatelessWidget {
         ? const Color(0xFF159D72)
         : const Color(0xFF8560D4);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 4),
       child: Material(
         color: tint.withValues(alpha: dark ? .10 : .06),
         borderRadius: BorderRadius.circular(12),
@@ -623,18 +623,18 @@ class _DesktopAction extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(9),
+                  padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
                     color: tint.withValues(alpha: .10),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(icon, size: 20, color: tint),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     label,
@@ -649,8 +649,8 @@ class _DesktopAction extends StatelessWidget {
                 if (count != null && count! > 0)
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
+                      horizontal: 6,
+                      vertical: 3,
                     ),
                     decoration: BoxDecoration(
                       color: tint.withValues(alpha: .12),
@@ -704,7 +704,7 @@ class _DesktopTrend extends StatelessWidget {
           for (var i = 0; i < points.length; i++)
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 3),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -713,7 +713,7 @@ class _DesktopTrend extends StatelessWidget {
                         name: currency,
                       ).format(values[i]),
                       child: Container(
-                        height: 135 * values[i] / max,
+                        height: 120 * values[i] / max,
                         decoration: BoxDecoration(
                           color: Theme.of(
                             context,
@@ -724,7 +724,7 @@ class _DesktopTrend extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     Text(
                       DateFormat.MMM().format(points[i].month),
                       style: Theme.of(context).textTheme.labelSmall,
