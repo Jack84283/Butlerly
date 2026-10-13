@@ -850,7 +850,7 @@ class _DesktopPanel extends StatelessWidget {
   final Widget child;
   final Widget? trailing;
   final double? headerHeight;
-  // Distinct inner surfaces keep the list and dividers visible in both modes.
+  // Distinct themed inner surfaces and 12px insets apply in both modes.
   final bool showInnerCard;
 
   @override
