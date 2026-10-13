@@ -370,7 +370,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                               .take(6) ??
                                           <AnalysisMetric>[])
                                     ListTile(
-                                      leading: _DesktopCategoryLeadingIcon(metric: metric),
+                                      leading: _DesktopCategoryLeadingIcon(
+                                        metric: metric,
+                                      ),
                                       dense: true,
                                       contentPadding: EdgeInsets.zero,
                                       title: Text(
