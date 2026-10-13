@@ -353,7 +353,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                 },
                               ),
                               child: SizedBox(
-                                height: 160,
+                                height: _desktopHomeBreakdownContentHeight,
                                 child: _DesktopTrend(
                                   points: data.monthlyTrend,
                                   selectedMonth: current,
@@ -381,9 +381,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                 child: const Text('View all →'),
                               ),
                               child: SizedBox(
-                                // Reserve the 12px inner-card inset in both modes
-                                // while preserving the 220px overall card height.
-                                height: 160 - 2 * ButlerlySpacing.small,
+                                // Reserve the 12px inset within the 380px outer card.
+                                height: _desktopHomeBreakdownContentHeight -
+                                    2 * ButlerlySpacing.small,
                                 child: ListView(
                                   children: [
                                     for (final metric
@@ -940,7 +940,9 @@ const TextStyle _desktopHomeCardTitleStyle = TextStyle(
 );
 const double _desktopHomeCardTitleTopInset = 10;
 const double _desktopHomeBreakdownHeaderHeight = 32;
-const double _desktopHomeBreakdownCardHeight = 220;
+const double _desktopHomeBreakdownCardHeight = 380;
+const double _desktopHomeBreakdownContentHeight = 320;
+const double _desktopHomeTrendMaxBarHeight = 280;
 
 class _DesktopPanel extends StatelessWidget {
   const _DesktopPanel({
@@ -1240,7 +1242,7 @@ class _DesktopTrend extends StatelessWidget {
                         name: currency,
                       ).format(values[i]),
                       child: Container(
-                        height: 120 * values[i] / max,
+                        height: _desktopHomeTrendMaxBarHeight * values[i] / max,
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.primary
                               .withValues(
