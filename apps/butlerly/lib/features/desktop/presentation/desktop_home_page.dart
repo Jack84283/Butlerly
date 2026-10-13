@@ -415,12 +415,14 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                                 _go('/analysis?$query'),
                                           ),
                                           Divider(
-  height: 1,
-  thickness: 1,
-  color: Theme.of(context).brightness == Brightness.dark
-      ? const Color(0xFF555B63)
-      : const Color(0xFFD8DDE6),
-),
+                                            height: 1,
+                                            thickness: 1,
+                                            color:
+                                                Theme.of(context).brightness ==
+                                                    Brightness.dark
+                                                ? const Color(0xFF555B63)
+                                                : const Color(0xFFD8DDE6),
+                                          ),
                                         ],
                                       ),
                                     if (analysis?.categories
@@ -630,7 +632,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                                             transaction
                                                                 .categoryId,
                                                             context,
-                                                          ).withValues(alpha: _desktopHomeTintOpacity),
+                                                          ).withValues(
+                                                            alpha:
+                                                                _desktopHomeTintOpacity,
+                                                          ),
                                                       borderRadius:
                                                           BorderRadius.circular(
                                                             100,
@@ -704,12 +709,14 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                         ),
                                       ),
                                       Divider(
-  height: 1,
-  thickness: 1,
-  color: Theme.of(context).brightness == Brightness.dark
-      ? const Color(0xFF555B63)
-      : const Color(0xFFD8DDE6),
-),
+                                        height: 1,
+                                        thickness: 1,
+                                        color:
+                                            Theme.of(context).brightness ==
+                                                Brightness.dark
+                                            ? const Color(0xFF555B63)
+                                            : const Color(0xFFD8DDE6),
+                                      ),
                                     ],
                                   ),
                                 if (data.recentTransactions.isEmpty)
@@ -734,7 +741,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                     label: group.title,
                                     count: group.count,
                                     icon: _desktopInsightGroupIcon(group.group),
-                                    tintColor: _desktopInsightGroupTint(group.group),
+                                    tintColor: _desktopInsightGroupTint(
+                                      group.group,
+                                    ),
                                     onTap: () => _go('/insights?$query'),
                                   ),
                                 if (insightGroups.isEmpty)
@@ -967,9 +976,7 @@ class _DesktopMetric extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: percentValue == null
-                        ? Colors.white70
-                        : Colors.white,
+                    color: percentValue == null ? Colors.white70 : Colors.white,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -998,13 +1005,15 @@ class _DesktopAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tint = tintColor ?? (label == 'Needs review' || label == 'Possible duplicates'
-        ? const Color(0xFFE64A4F)
-        : label == 'Import statement'
-        ? const Color(0xFF216FE8)
-        : label == 'Payment settlements'
-        ? const Color(0xFF159D72)
-        : const Color(0xFF8560D4));
+    final tint =
+        tintColor ??
+        (label == 'Needs review' || label == 'Possible duplicates'
+            ? const Color(0xFFE64A4F)
+            : label == 'Import statement'
+            ? const Color(0xFF216FE8)
+            : label == 'Payment settlements'
+            ? const Color(0xFF159D72)
+            : const Color(0xFF8560D4));
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Material(
@@ -1107,9 +1116,8 @@ class _DesktopTrend extends StatelessWidget {
                       child: Container(
                         height: 120 * values[i] / max,
                         decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.primary.withValues(alpha: _desktopHomeTintOpacity),
+                          color: Theme.of(context).colorScheme.primary
+                              .withValues(alpha: _desktopHomeTintOpacity),
                           borderRadius: const BorderRadius.vertical(
                             top: Radius.circular(5),
                           ),

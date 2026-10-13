@@ -76,16 +76,20 @@ List<InsightGroupSummary> insightGroupSummaries(
   List<InsightResult> activeFindings,
 ) {
   final presented = _consolidateEquivalentComparisons(
-    activeFindings.where(
-      (result) =>
-          result.outputType != InsightOutputType.dataQuality &&
-          result.presentation.visualizationType !=
-              InsightVisualizationType.pie,
-    ).toList(growable: false),
+    activeFindings
+        .where(
+          (result) =>
+              result.outputType != InsightOutputType.dataQuality &&
+              result.presentation.visualizationType !=
+                  InsightVisualizationType.pie,
+        )
+        .toList(growable: false),
   );
   final grouped = <InsightPresentationGroup, List<_PresentedInsight>>{};
   for (final item in presented) {
-    grouped.putIfAbsent(insightPresentationGroup(item.primary), () => []).add(item);
+    grouped
+        .putIfAbsent(insightPresentationGroup(item.primary), () => [])
+        .add(item);
   }
   return [
     for (final group in insightPresentationGroupOrder)
