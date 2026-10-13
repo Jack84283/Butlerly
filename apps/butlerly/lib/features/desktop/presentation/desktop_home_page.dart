@@ -833,6 +833,7 @@ class _DesktopCategoryLeadingIcon extends StatelessWidget {
 
 // Applies to colored fills only; text and icons stay fully opaque for contrast.
 const double _desktopHomeTintOpacity = 0.80;
+const double _desktopHomeActionTintOpacity = 0.33;
 const double _desktopHomeCardTitleTopInset = 10;
 const double _desktopHomeBreakdownHeaderHeight = 32;
 const double _desktopHomeBreakdownCardHeight = 220;
@@ -1015,10 +1016,15 @@ class _DesktopAction extends StatelessWidget {
             : label == 'Payment settlements'
             ? const Color(0xFF159D72)
             : const Color(0xFF8560D4));
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final foreground = isDark
+        ? Colors.white
+        : Theme.of(context).colorScheme.onSurface;
+    final accent = isDark ? Colors.white : tint;
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Material(
-        color: tint.withValues(alpha: _desktopHomeTintOpacity),
+        color: tint.withValues(alpha: _desktopHomeActionTintOpacity),
         borderRadius: BorderRadius.circular(12),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -1033,7 +1039,7 @@ class _DesktopAction extends StatelessWidget {
                     color: Colors.white.withValues(alpha: .20),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(icon, size: 20, color: Colors.white),
+                  child: Icon(icon, size: 20, color: accent),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -1041,10 +1047,10 @@ class _DesktopAction extends StatelessWidget {
                     label,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
-                      color: Colors.white,
+                      color: foreground,
                     ),
                   ),
                 ),
@@ -1061,13 +1067,13 @@ class _DesktopAction extends StatelessWidget {
                     child: Text(
                       '$count',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: foreground,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
                 const SizedBox(width: 6),
-                Icon(Icons.chevron_right, size: 17, color: Colors.white),
+                Icon(Icons.chevron_right, size: 17, color: accent),
               ],
             ),
           ),
