@@ -5,6 +5,7 @@ import 'package:butlerly/design_system/components/butlerly_category_icon.dart';
 import 'package:butlerly/design_system/tokens/butlerly_category_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_model.dart';
+import 'package:butlerly/features/insights/presentation/insight_grouped_list.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -726,6 +727,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                               ],
                             ),
                           );
+                          final insightGroups = insightGroupSummaries(
+                            context,
+                            data.insights,
+                          );
                           final insights = _DesktopPanel(
                             title: 'Insights',
                             trailing: TextButton(
@@ -740,26 +745,27 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                               child: const Text('View all →'),
                             ),
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                Text(
-                                  data.insights.isEmpty
-                                      ? 'No insights for this period'
-                                      : 'You have ${data.insights.length} insight${data.insights.length == 1 ? '' : 's'} to explore.',
-                                ),
-                                const SizedBox(height: 8),
-                                OutlinedButton.icon(
-                                  style: OutlinedButton.styleFrom(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 4,
-                                    ),
-                                    minimumSize: const Size(0, 32),
+                                for (final group in insightGroups)
+                                  _DesktopAction(
+                                    label: group.title,
+                                    count: group.count,
+                                    icon: _desktopInsightGroupIcon(group.group),
+                                    tintColor: _desktopInsightGroupTint(group.group),
+                                    onTap: () => _go('/insights?$query'),
                                   ),
-                                  onPressed: () => _go('/insights?$query'),
-                                  icon: const Icon(Icons.insights),
-                                  label: const Text('Explore insights'),
-                                ),
+                                if (insightGroups.isEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 8,
+                                    ),
+                                    child: Text(
+                                      data.analysisUnavailable
+                                          ? 'Insights unavailable for this period'
+                                          : 'No insights for this period',
+                                    ),
+                                  ),
                               ],
                             ),
                           );
@@ -1001,23 +1007,25 @@ class _DesktopAction extends StatelessWidget {
     required this.icon,
     required this.onTap,
     this.count,
+    this.tintColor,
   });
   final String label;
   final IconData icon;
   final VoidCallback onTap;
   final int? count;
+  final Color? tintColor;
 
   @override
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    final tint = label == 'Needs review' || label == 'Possible duplicates'
+    final tint = tintColor ?? (label == 'Needs review' || label == 'Possible duplicates'
         ? const Color(0xFFE64A4F)
         : label == 'Import statement'
         ? const Color(0xFF216FE8)
         : label == 'Payment settlements'
         ? const Color(0xFF159D72)
-        : const Color(0xFF8560D4);
-    return Padding(
+        : const Color(0xFF8560D4));
+    return Padding;
       padding: const EdgeInsets.only(bottom: 4),
       child: Material(
         color: tint.withValues(alpha: dark ? .10 : .06),
@@ -1265,3 +1273,27 @@ String _desktopGreeting(DateTime now) {
   if (now.hour < 17) return 'Good afternoon';
   return 'Good evening';
 }
+
+IconData _desktopInsightGroupIcon(InsightPresentationGroup group) =>
+    switch (group) {
+      InsightPresentationGroup.unusual => Icons.priority_high,
+      InsightPresentationGroup.largePurchase => Icons.shopping_bag_outlined,
+      InsightPresentationGroup.category => Icons.category_outlined,
+      InsightPresentationGroup.subcategory => Icons.account_tree_outlined,
+      InsightPresentationGroup.tag => Icons.sell_outlined,
+      InsightPresentationGroup.merchant => Icons.storefront_outlined,
+      InsightPresentationGroup.paymentSource => Icons.credit_card_outlined,
+      InsightPresentationGroup.other => Icons.insights_outlined,
+    };
+
+Color _desktopInsightGroupTint(InsightPresentationGroup group) =>
+    switch (group) {
+      InsightPresentationGroup.unusual => const Color(0xFFE64A4F),
+      InsightPresentationGroup.largePurchase => const Color(0xFFC65D00),
+      InsightPresentationGroup.category => const Color(0xFF8560D4),
+      InsightPresentationGroup.subcategory => const Color(0xFF2878B5),
+      InsightPresentationGroup.tag => const Color(0xFF007C83),
+      InsightPresentationGroup.merchant => const Color(0xFF8A6411),
+      InsightPresentationGroup.paymentSource => const Color(0xFF216FE8),
+      InsightPresentationGroup.other => const Color(0xFF8560D4),
+    };
