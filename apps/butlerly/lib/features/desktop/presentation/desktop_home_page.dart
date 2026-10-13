@@ -550,15 +550,6 @@ class _DesktopPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: dark ? const Color(0xFF171B21) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: dark
-            ? null
-            : const [
-                BoxShadow(
-                  color: Color(0x0B17325C),
-                  blurRadius: 20,
-                  offset: Offset(0, 5),
-                ),
-              ],
       ),
       padding: const EdgeInsets.all(10),
       child: Column(
