@@ -6,6 +6,7 @@ import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
+import 'package:butlerly/features/analysis/presentation/analysis_search_selection.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_custom_period_sheet.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_period_selector.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_skeleton.dart';
@@ -951,6 +952,14 @@ void main() {
                   readOnly: parameters['locked'] == 'true',
                   selectedMerchantId: parameters['merchant'],
                   selectedSubcategoryId: parameters['subcategory'],
+                  analysisSelection: state.extra is AnalysisSearchSelection
+                      ? state.extra! as AnalysisSearchSelection
+                      : null,
+                  analysisRuleId: parameters['analysisRule'],
+                  analysisDimension:
+                      parameters['category'] ??
+                      parameters['merchant'] ??
+                      parameters['subcategory'],
                   initialQuery: ListTransactionsQuery(
                     transactionIds: parameters['ids']?.split(','),
                     from: DateTime.tryParse(parameters['from'] ?? ''),
@@ -1040,6 +1049,10 @@ void main() {
         findsOneWidget,
       );
       expect(find.textContaining(drill.$4), findsWidgets);
+      expect(find.text('Analysis selection'), findsOneWidget);
+      final selection = tester.widget<SearchPage>(search).analysisSelection;
+      expect(selection, isNotNull);
+      expect(selection!.evidenceIds, [drill.$2]);
       expect(router.canPop(), isTrue);
       expect(tester.takeException(), isNull);
       router.pop();
