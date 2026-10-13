@@ -942,6 +942,7 @@ const TextStyle _desktopHomeCardTitleStyle = TextStyle(
 const double _desktopHomeCardTitleTopInset = 10;
 const double _desktopHomeBreakdownHeaderHeight = 32;
 const double _desktopHomeBreakdownCardHeight = 380;
+// A 380px panel leaves 320px for content after header and outer padding.
 const double _desktopHomeBreakdownContentHeight = 320;
 const double _desktopHomeTrendMaxBarHeight = 280;
 
