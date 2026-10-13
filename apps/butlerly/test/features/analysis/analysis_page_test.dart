@@ -1036,11 +1036,14 @@ void main() {
       );
       expect(uri.queryParameters['ids'], drill.$2);
       expect(uri.queryParameters['locked'], 'true');
-      expect(uri.queryParameters['analysisRule'], drill.$3 == 'category'
-          ? 'ANL-R010'
-          : drill.$3 == 'merchant'
-          ? 'ANL-R011'
-          : 'ANL-R012');
+      expect(
+        uri.queryParameters['analysisRule'],
+        drill.$3 == 'category'
+            ? 'ANL-R010'
+            : drill.$3 == 'merchant'
+            ? 'ANL-R011'
+            : 'ANL-R012',
+      );
       expect(uri.queryParameters[drill.$3], drill.$4);
       expect(uri.queryParameters['from'], '2026-08-01');
       expect(uri.queryParameters['to'], '2026-08-31');
