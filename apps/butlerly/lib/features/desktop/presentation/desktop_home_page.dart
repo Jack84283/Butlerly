@@ -382,7 +382,8 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                               ),
                               child: SizedBox(
                                 // Reserve the 12px inset within the 380px outer card.
-                                height: _desktopHomeBreakdownContentHeight -
+                                height:
+                                    _desktopHomeBreakdownContentHeight -
                                     2 * ButlerlySpacing.small,
                                 child: ListView(
                                   children: [
