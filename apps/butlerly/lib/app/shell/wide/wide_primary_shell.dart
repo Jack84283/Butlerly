@@ -152,9 +152,9 @@ class _WidePrimaryNavigation extends StatelessWidget {
   bool _selected(int branchIndex) => currentIndex == branchIndex;
 
   @override
-  Widget build(BuildContext context) => AnimatedContainer(
-    duration: ButlerlyMotion.responsive(context, ButlerlyMotion.standard),
-    curve: ButlerlyMotion.curve,
+  Widget build(BuildContext context) => Container(
+    // Switch widths atomically: animating a 248px menu inside a 72px rail
+    // overflows while transitioning across responsive breakpoints.
     width: expanded
         ? ButlerlySize.wideNavigationExpandedWidth
         : ButlerlySize.wideNavigationCollapsedWidth,
