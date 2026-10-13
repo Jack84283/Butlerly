@@ -652,12 +652,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                                           .textTheme
                                                           .labelSmall
                                                           ?.copyWith(
-                                                            color:
-                                                                _desktopCategoryBadgeColor(
-                                                                  transaction
-                                                                      .categoryId,
-                                                                  context,
-                                                                ),
+                                                            color: Colors.white,
                                                             fontWeight:
                                                                 FontWeight.w600,
                                                           ),
