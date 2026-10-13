@@ -299,7 +299,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                         ),
                       ),
                     );
-                    return b.maxWidth >= 1050
+                    return b.maxWidth >= 680
                         ? Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -418,23 +418,22 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                         ],
                       ),
                     );
-                    if (b.maxWidth >= 1160) {
-                      return Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(flex: 3, child: actions),
-                          const SizedBox(width: 16),
-                          Expanded(flex: 4, child: recent),
-                          const SizedBox(width: 16),
-                          Expanded(flex: 3, child: insights),
-                        ],
-                      );
-                    }
                     return Column(
                       children: [
-                        actions,
-                        const SizedBox(height: 16),
-                        recent,
+                        if (b.maxWidth >= 680)
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(flex: 5, child: recent),
+                              const SizedBox(width: 16),
+                              Expanded(flex: 4, child: actions),
+                            ],
+                          )
+                        else ...[
+                          recent,
+                          const SizedBox(height: 16),
+                          actions,
+                        ],
                         const SizedBox(height: 16),
                         insights,
                       ],
