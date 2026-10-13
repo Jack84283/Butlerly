@@ -114,7 +114,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
           },
           child: ListView(
             key: const ValueKey('desktop-home-page'),
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.fromLTRB(28, 20, 28, 32),
             children: [
               Row(
                 children: [
@@ -167,7 +167,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                 ],
               ),
               const SizedBox(height: 24),
-              Text('Financial overview', style: theme.textTheme.headlineMedium),
+              Text('Financial overview', style: theme.textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800, letterSpacing: -0.6)),
               const SizedBox(height: 4),
               Text(
                 DateFormat.yMMMM().format(current),
@@ -233,7 +233,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                 LayoutBuilder(
                   builder: (context, b) {
                     final left = _DesktopPanel(
-                      title: 'Spending trend',
+                      title: 'Spending Trend',
                       trailing: DropdownButton<int>(
                         value: _trendMonths,
                         underline: const SizedBox.shrink(),
@@ -264,7 +264,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                       ),
                     );
                     final middle = _DesktopPanel(
-                      title: 'Spending by category',
+                      title: 'Category Breakdown',
                       trailing: TextButton(
                         onPressed: () => _go('/analysis?$query'),
                         child: const Text('View all →'),
@@ -315,7 +315,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                 LayoutBuilder(
                   builder: (context, b) {
                     final actions = _DesktopPanel(
-                      title: 'Action center',
+                      title: 'Action Center',
                       child: Column(
                         children: [
                           _DesktopAction(
@@ -356,7 +356,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                       ),
                     );
                     final recent = _DesktopPanel(
-                      title: 'Recent transactions',
+                      title: 'Recent Transactions',
                       trailing: TextButton(
                         onPressed: () => _go('/search?$query'),
                         child: const Text('View all →'),
@@ -445,124 +445,117 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
 }
 
 class _DesktopPanel extends StatelessWidget {
-  const _DesktopPanel({
-    required this.title,
-    required this.child,
-    this.trailing,
-  });
+  const _DesktopPanel({required this.title, required this.child, this.trailing});
   final String title;
   final Widget child;
   final Widget? trailing;
+
   @override
-  Widget build(BuildContext context) => Card(
-    margin: EdgeInsets.zero,
-    child: Padding(
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-              ?trailing,
-            ],
-          ),
-          const SizedBox(height: 12),
-          child,
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final foreground = dark ? const Color(0xFFF6F8FB) : const Color(0xFF14213E);
+    return Container(
+      decoration: BoxDecoration(
+        color: dark ? const Color(0xFF171B21) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: dark ? const Color(0xFF2A3039) : const Color(0xFFE4EAF4)),
+        boxShadow: dark ? null : const [
+          BoxShadow(color: Color(0x0B17325C), blurRadius: 20, offset: Offset(0, 5)),
         ],
       ),
-    ),
-  );
+      padding: const EdgeInsets.all(18),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Expanded(child: Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: foreground))),
+          ?trailing,
+        ]),
+        const SizedBox(height: 14),
+        child,
+      ]),
+    );
+  }
 }
 
 class _DesktopMetric extends StatelessWidget {
-  const _DesktopMetric({
-    required this.title,
-    required this.value,
-    required this.icon,
-    required this.tint,
-    required this.onTap,
-  });
+  const _DesktopMetric({required this.title, required this.value, required this.icon, required this.tint, required this.onTap});
   final String title;
   final String value;
   final IconData icon;
   final Color tint;
   final VoidCallback onTap;
+
   @override
-  Widget build(BuildContext context) => Card(
-    margin: EdgeInsets.zero,
-    child: InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(22),
-        child: Row(
-          children: [
-            CircleAvatar(
-              backgroundColor: tint.withValues(alpha: .12),
-              child: Icon(icon, color: tint),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: Theme.of(context).textTheme.bodyMedium),
-                  const SizedBox(height: 6),
-                  FittedBox(
-                    alignment: Alignment.centerLeft,
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      value,
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.chevron_right, size: 18),
-          ],
-        ),
-      ),
-    ),
-  );
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final color = title == 'Income' ? const Color(0xFF009B61) :
+        title == 'Expenses' ? const Color(0xFFE24247) : const Color(0xFF1769E8);
+    final fill = dark ? color.withValues(alpha: .12) : color.withValues(alpha: .055);
+    return Material(
+      color: fill,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: color.withValues(alpha: dark ? .40 : .17))),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(onTap: onTap, child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 22),
+        child: Row(children: [
+          CircleAvatar(radius: 24, backgroundColor: color.withValues(alpha: .12),
+            child: Icon(icon, color: color, size: 26)),
+          const SizedBox(width: 16),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 6),
+            FittedBox(alignment: Alignment.centerLeft, fit: BoxFit.scaleDown,
+              child: Text(value, style: TextStyle(fontSize: 27, fontWeight: FontWeight.w800,
+                color: dark ? color.withValues(alpha: .9) : color, letterSpacing: -.7))),
+          ])),
+          Icon(Icons.chevron_right, color: color.withValues(alpha: .75), size: 17),
+        ]),
+      )),
+    );
+  }
 }
 
 class _DesktopAction extends StatelessWidget {
-  const _DesktopAction({
-    required this.label,
-    required this.icon,
-    required this.onTap,
-    this.count,
-  });
+  const _DesktopAction({required this.label, required this.icon, required this.onTap, this.count});
   final String label;
   final IconData icon;
   final VoidCallback onTap;
   final int? count;
+
   @override
-  Widget build(BuildContext context) => ListTile(
-    dense: true,
-    contentPadding: EdgeInsets.zero,
-    leading: Icon(icon),
-    title: Text(label),
-    trailing: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (count != null)
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: Text('$count'),
-          ),
-        const Icon(Icons.chevron_right, size: 16),
-      ],
-    ),
-    onTap: onTap,
-  );
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final tint = label == 'Needs review' || label == 'Possible duplicates'
+        ? const Color(0xFFE64A4F)
+        : label == 'Import statement' ? const Color(0xFF216FE8) :
+          label == 'Payment settlements' ? const Color(0xFF159D72) : const Color(0xFF8560D4);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: tint.withValues(alpha: dark ? .10 : .06),
+        borderRadius: BorderRadius.circular(12),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(onTap: onTap, child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          child: Row(children: [
+            Container(padding: const EdgeInsets.all(9), decoration: BoxDecoration(
+              color: tint.withValues(alpha: .10), borderRadius: BorderRadius.circular(10)),
+              child: Icon(icon, size: 20, color: tint)),
+            const SizedBox(width: 12),
+            Expanded(child: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
+            if (count != null && count! > 0) Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(color: tint.withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(8)),
+              child: Text('$count', style: TextStyle(color: tint, fontWeight: FontWeight.w700))),
+            const SizedBox(width: 6),
+            Icon(Icons.chevron_right, size: 17, color: tint),
+          ]),
+        )),
+      ),
+    );
+  }
 }
 
 class _DesktopTrend extends StatelessWidget {
