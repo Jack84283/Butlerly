@@ -4,6 +4,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
+import 'package:butlerly/features/desktop/presentation/desktop_home_page.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_search_selection.dart';
 import 'package:butlerly/features/foundation/presentation/add_page.dart';
 import 'package:butlerly/features/foundation/presentation/butlerly_launch_page.dart';
@@ -28,6 +29,7 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:go_router/go_router.dart';
 
 final _primaryShellVisibility = PrimaryShellVisibilityController();
@@ -82,7 +84,8 @@ final appRouter = GoRouter(
                 GoRoute(
                   path: '/',
                   pageBuilder: (context, state) =>
-                      _primaryPage('home', const HomePage()),
+                      _primaryPage('home', _desktopHomeEnabled(context)
+                          ? const DesktopHomePage() : const HomePage()),
                 ),
               ],
             ),
@@ -365,4 +368,13 @@ TransactionDirection? _queryDirection(String? value) {
     if (direction.name == value) return direction;
   }
   return null;
+}
+
+/// Desktop presentation activates only on large desktop windows.
+/// Mobile and tablet routes keep their original HomePage unchanged.
+bool _desktopHomeEnabled(BuildContext context) {
+  final platform = Theme.of(context).platform;
+  final desktopPlatform = platform == TargetPlatform.macOS ||
+      platform == TargetPlatform.windows || platform == TargetPlatform.linux;
+  return MediaQuery.sizeOf(context).width >= 1100 && (desktopPlatform || kIsWeb);
 }
