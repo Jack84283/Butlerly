@@ -131,17 +131,14 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                       icon: const Icon(Icons.chevron_left),
                     ),
                     TextButton.icon(
+                      style: TextButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        surfaceTintColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                      ),
                       onPressed: () async {
-                        final picked = await showButlerlyDatePicker(
-                          context: context,
-                          title: 'Select month',
-                          cancelLabel: 'Cancel',
-                          doneLabel: 'Apply',
-                          initialDate: current,
-                          firstDate: DateTime(2000),
-                          lastDate: DateTime(2100),
-                        );
-                        if (picked != null) {
+                        final picked = await _selectDesktopMonth(context, current);
+                        if (picked != null && mounted) {
                           setState(() {
                             _month = DateTime(picked.year, picked.month);
                             _reload();
@@ -766,4 +763,71 @@ class _DesktopTrend extends StatelessWidget {
       ),
     );
   }
+}
+
+Future<DateTime?> _selectDesktopMonth(BuildContext context, DateTime selected) {
+  var year = selected.year;
+  var month = selected.month;
+  return showButlerlyBottomSheet<DateTime>(
+    context: context,
+    builder: (sheetContext) => StatefulBuilder(
+      builder: (sheetContext, update) => ButlerlySheet(
+        title: Row(
+          children: [
+            const Expanded(child: Text('Select month')),
+            IconButton(
+              tooltip: 'Previous year',
+              icon: const Icon(Icons.chevron_left),
+              onPressed: year > 2000 ? () => update(() => year--) : null,
+            ),
+            Text('$year'),
+            IconButton(
+              tooltip: 'Next year',
+              icon: const Icon(Icons.chevron_right),
+              onPressed: year < 2100 ? () => update(() => year++) : null,
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 400,
+          child: GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: 12,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              childAspectRatio: 2.5,
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+            ),
+            itemBuilder: (context, index) {
+              final candidate = index + 1;
+              return OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: candidate == month
+                      ? Theme.of(context).colorScheme.primaryContainer
+                      : Colors.transparent,
+                ),
+                onPressed: () => update(() => month = candidate),
+                child: Text(DateFormat.MMM().format(DateTime(year, candidate))),
+              );
+            },
+          ),
+        ),
+        actions: [
+          ButlerlyCancelButton(
+            onPressed: () => Navigator.pop(sheetContext),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(
+              sheetContext,
+              DateTime(year, month),
+            ),
+            child: const Text('Apply'),
+          ),
+        ],
+      ),
+    ),
+  );
 }
