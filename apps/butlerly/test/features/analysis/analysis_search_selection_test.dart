@@ -129,8 +129,9 @@ void main() {
       );
       expect(
         await selection.resolveEvidence(
-          calculate: (_) async =>
-              ApplicationSuccess([result('ANL-R012', 'taxi', ['unrelated'])]),
+          calculate: (_) async => ApplicationSuccess([
+            result('ANL-R012', 'taxi', ['unrelated']),
+          ]),
         ),
         isEmpty,
       );
