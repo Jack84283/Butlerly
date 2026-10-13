@@ -800,10 +800,7 @@ void main() {
     final content = tester.renderObject<RenderSliver>(
       find.byKey(const ValueKey('butlerly-page-content-sliver')),
     );
-    expect(
-      content.constraints.crossAxisExtent,
-      700,
-    );
+    expect(content.constraints.crossAxisExtent, 700);
   });
 
   testWidgets(
