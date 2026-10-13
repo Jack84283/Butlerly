@@ -143,9 +143,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: theme.brightness == Brightness.dark
-                      ? const Color(0xFF1C293B)
-                      : const Color(0xFFE3ECFA),
+                  color: theme.colorScheme.secondaryContainer,
                 ),
                 child: Row(
                   children: [
@@ -241,7 +239,12 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(12, 16, 12, 16),
+                padding: const EdgeInsets.fromLTRB(
+                  ButlerlySpacing.small,
+                  ButlerlySpacing.small,
+                  ButlerlySpacing.small,
+                  ButlerlySpacing.standard,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
