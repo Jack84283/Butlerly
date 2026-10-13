@@ -75,16 +75,19 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     }
     final value = double.tryParse(metric.value.toString());
     if (value == null) return '—';
-    return NumberFormat.simpleCurrency(name: metric.currency ?? currency)
-        .format(value);
+    return NumberFormat.simpleCurrency(
+      name: metric.currency ?? currency,
+    ).format(value);
   }
 
   String _periodQuery(HomeOverview data) {
     final month = data.displayMonth ?? DateTime.now();
-    final from = DateFormat('yyyy-MM-dd')
-        .format(DateTime(month.year, month.month, 1));
-    final to = DateFormat('yyyy-MM-dd')
-        .format(DateTime(month.year, month.month + 1, 0));
+    final from = DateFormat(
+      'yyyy-MM-dd',
+    ).format(DateTime(month.year, month.month, 1));
+    final to = DateFormat(
+      'yyyy-MM-dd',
+    ).format(DateTime(month.year, month.month + 1, 0));
     return 'from=$from&to=$to';
   }
 
@@ -594,8 +597,9 @@ class _DesktopTrend extends StatelessWidget {
                       child: Container(
                         height: 135 * values[i] / max,
                         decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary
-                              .withValues(alpha: .75),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.primary.withValues(alpha: .75),
                           borderRadius: const BorderRadius.vertical(
                             top: Radius.circular(5),
                           ),
