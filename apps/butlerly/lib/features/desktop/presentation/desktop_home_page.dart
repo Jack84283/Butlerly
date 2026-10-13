@@ -2,6 +2,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/components/butlerly_category_icon.dart';
+import 'package:butlerly/design_system/tokens/butlerly_category_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_model.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
@@ -553,9 +554,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                                       vertical: 3,
                                                     ),
                                                 decoration: BoxDecoration(
-                                                  color: Theme.of(context)
-                                                      .colorScheme
-                                                      .surfaceContainerHighest,
+                                                  color: _desktopCategoryBadgeColor(
+                                                    transaction.categoryId,
+                                                    context,
+                                                  ).withValues(alpha: .16),
                                                   borderRadius:
                                                       BorderRadius.circular(
                                                         100,
@@ -572,9 +574,16 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                                   maxLines: 1,
                                                   overflow:
                                                       TextOverflow.ellipsis,
-                                                  style: Theme.of(
-                                                    context,
-                                                  ).textTheme.labelSmall,
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .labelSmall
+                                                      ?.copyWith(
+                                                        color: _desktopCategoryBadgeColor(
+                                                          transaction.categoryId,
+                                                          context,
+                                                        ),
+                                                        fontWeight: FontWeight.w600,
+                                                      ),
                                                 ),
                                               ),
                                             ),
@@ -1122,4 +1131,14 @@ String _desktopTransactionAmount(
     locale: Localizations.localeOf(context).toString(),
   ).format(amount.abs());
   return '${transaction.direction == 'income' ? '+' : '−'}$formatted';
+}
+
+Color _desktopCategoryBadgeColor(String? categoryId, BuildContext context) {
+  final identity = categoryId == null
+      ? null
+      : ButlerlyCategoryIdentity.forBuiltInId(categoryId);
+  if (identity != null) {
+    return ButlerlyCategoryColors.color(identity.categoryColorId);
+  }
+  return Theme.of(context).colorScheme.onSurfaceVariant;
 }
