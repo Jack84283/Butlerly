@@ -1,0 +1,34 @@
+name: Desktop Insights Summary Validate Once
+on:
+  push:
+    paths:
+      - '.github/workflows/desktop-insights-summary-validate-once.yml'
+permissions:
+  contents: write
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/desktop-home-isolated
+          persist-credentials: true
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.1'
+      - name: Format and validate insight summary
+        run: |
+          cd apps/butlerly
+          flutter pub get
+          dart format lib/features/desktop/presentation/desktop_home_page.dart lib/features/insights/presentation/insight_grouped_list.dart test/features/insights/insight_grouped_list_test.dart
+          flutter analyze --no-pub lib/features/desktop/presentation/desktop_home_page.dart lib/features/insights/presentation/insight_grouped_list.dart test/features/insights/insight_grouped_list_test.dart
+          flutter test --no-pub test/features/insights/insight_grouped_list_test.dart
+      - name: Commit formatter and remove temporary workflow
+        run: |
+          rm .github/workflows/desktop-insights-summary-validate-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/butlerly/lib/features/desktop/presentation/desktop_home_page.dart apps/butlerly/lib/features/insights/presentation/insight_grouped_list.dart apps/butlerly/test/features/insights/insight_grouped_list_test.dart .github/workflows/desktop-insights-summary-validate-once.yml
+          git commit -m "style(desktop): format validated Insights summaries" || exit 0
+          git push origin HEAD:codex/desktop-home-isolated
