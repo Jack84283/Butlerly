@@ -396,32 +396,24 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                             <AnalysisMetric>[])
                                       Column(
                                         children: [
-                                          ListTile(
-                                            leading:
-                                                _DesktopCategoryLeadingIcon(
-                                                  metric: metric,
-                                                ),
-                                            dense: true,
-                                            contentPadding: EdgeInsets.zero,
-                                            title: Text(
-                                              analysisDimension(
-                                                context,
-                                                metric,
-                                                _masterData,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            trailing: Text(
-                                              _money(metric, currency),
-                                            ),
-                                            onTap: () =>
-                                                _go('/analysis?$query'),
+                                          _DesktopCategorySummaryRow(
+                                            metric: metric,
+                                            share: analysis
+                                                ?.categoryShares[metric.id],
+                                            masterData: _masterData,
+                                            amount: _money(metric, currency),
+                                            onTap: () => _go('/analysis?$query'),
+                                          ),
+                                          const SizedBox(
+                                            height: ButlerlySpacing.compact,
                                           ),
                                           Divider(
                                             height: 1,
                                             thickness: 1,
                                             color: context.colors.cardDivider,
+                                          ),
+                                          const SizedBox(
+                                            height: ButlerlySpacing.compact,
                                           ),
                                         ],
                                       ),
@@ -797,6 +789,116 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   }
 }
 
+class _DesktopCategorySummaryRow extends StatelessWidget {
+  const _DesktopCategorySummaryRow({
+    required this.metric,
+    required this.share,
+    required this.masterData,
+    required this.amount,
+    required this.onTap,
+  });
+
+  final AnalysisMetric metric;
+  final DecimalValue? share;
+  final TransactionMasterData? masterData;
+  final String amount;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final categoryId = analysisCategoryId(metric);
+    final label = analysisDimension(context, metric, masterData);
+    final color = ButlerlyChartColors.category(categoryId);
+    final percentage = share == null
+        ? null
+        : analysisPercentageRatio(context, share!);
+    final progress = (double.tryParse(share?.toString() ?? '') ?? 0)
+        .clamp(0.0, 1.0)
+        .toDouble();
+    final theme = Theme.of(context);
+    return Semantics(
+      label: '$label, $amount${percentage == null ? '' : ', $percentage'}',
+      button: true,
+      child: InkWell(
+        onTap: onTap,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _DesktopCategoryLeadingIcon(metric: metric),
+            const SizedBox(width: ButlerlySpacing.small),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      if (percentage != null) ...[
+                        const SizedBox(width: ButlerlySpacing.compact),
+                        Text(
+                          percentage,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: context.colors.secondaryText,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(width: ButlerlySpacing.compact),
+                      Flexible(
+                        flex: 2,
+                        child: Text(
+                          amount,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.end,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: ButlerlySpacing.micro),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(ButlerlyRadius.full),
+                    child: SizedBox(
+                      height: 7,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          ColoredBox(
+                            color: color.withValues(alpha: 0.14),
+                          ),
+                          FractionallySizedBox(
+                            alignment: AlignmentDirectional.centerStart,
+                            widthFactor: progress,
+                            child: ColoredBox(
+                              color: color.withValues(alpha: 0.75),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _DesktopCategoryLeadingIcon extends StatelessWidget {
   const _DesktopCategoryLeadingIcon({required this.metric});
 
@@ -813,17 +915,18 @@ class _DesktopCategoryLeadingIcon extends StatelessWidget {
       );
     }
 
-    final scheme = Theme.of(context).colorScheme;
+    final color = ButlerlyChartColors.category(categoryId);
     return SizedBox.square(
       dimension: ButlerlySize.categoryIconContainer,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: scheme.surfaceContainerHighest,
+          color: color.withValues(alpha: 0.16),
           shape: BoxShape.circle,
+          border: Border.all(color: color.withValues(alpha: 0.55)),
         ),
         child: Icon(
           Icons.category_outlined,
-          color: scheme.onSurfaceVariant,
+          color: color,
           size: ButlerlySize.categoryIconGlyph,
         ),
       ),
