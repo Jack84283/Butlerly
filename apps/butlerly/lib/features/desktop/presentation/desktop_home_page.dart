@@ -1380,7 +1380,7 @@ String _desktopGreeting(DateTime now) {
   return 'Good evening';
 }
 
-/// Keep the six common Insights sections visible even with no findings.
+/// Keep six standard Insights sections visible even with no findings.
 /// Less-common sections appear when they have actual findings.
 const _desktopDefaultInsightGroups = <InsightPresentationGroup>{
   InsightPresentationGroup.unusual,
