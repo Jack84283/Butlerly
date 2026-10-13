@@ -48,18 +48,18 @@ void main() {
   test('classifies presentation from width at the documented breakpoints', () {
     expect(ButlerlyLayout.modeForWidth(599), ButlerlyLayoutMode.compact);
     expect(ButlerlyLayout.modeForWidth(600), ButlerlyLayoutMode.medium);
-    expect(ButlerlyLayout.modeForWidth(960), ButlerlyLayoutMode.medium);
-    expect(ButlerlyLayout.modeForWidth(960.5), ButlerlyLayoutMode.medium);
-    expect(ButlerlyLayout.modeForWidth(961), ButlerlyLayoutMode.wide);
+    expect(ButlerlyLayout.modeForWidth(720), ButlerlyLayoutMode.medium);
+    expect(ButlerlyLayout.modeForWidth(720.5), ButlerlyLayoutMode.medium);
+    expect(ButlerlyLayout.modeForWidth(721), ButlerlyLayoutMode.wide);
     expect(ButlerlyLayout.modeForWidth(1024), ButlerlyLayoutMode.wide);
 
     for (final width in [390.0, 500.0]) {
       expect(ButlerlyLayout.modeForWidth(width), ButlerlyLayoutMode.compact);
     }
-    for (final width in [744.0, 800.0, 900.0]) {
+    for (final width in [600.0, 700.0, 720.0]) {
       expect(ButlerlyLayout.modeForWidth(width), ButlerlyLayoutMode.medium);
     }
-    for (final width in [1133.0, 1200.0]) {
+    for (final width in [744.0, 800.0, 900.0, 1133.0, 1200.0]) {
       expect(ButlerlyLayout.modeForWidth(width), ButlerlyLayoutMode.wide);
     }
   });
@@ -79,7 +79,7 @@ void main() {
           ButlerlyLayoutMode.compact,
         );
         expect(
-          ButlerlyLayout.mode(const Size(800, 390)),
+          ButlerlyLayout.mode(const Size(700, 390)),
           ButlerlyLayoutMode.medium,
         );
         expect(
@@ -131,7 +131,7 @@ void main() {
   testWidgets(
     'Medium overlays floating switch buttons on full-height content',
     (tester) async {
-      const size = Size(800, 800);
+      const size = Size(700, 800);
       await _pumpAt(tester, size);
 
       expect(find.byType(MediumPrimaryShell), findsOneWidget);
@@ -153,11 +153,8 @@ void main() {
         lessThan(tester.getRect(bodySurface).bottom),
       );
       final content = find.byKey(const ValueKey('home-page-content'));
-      expect(tester.getSize(content).width, ButlerlySize.pageContentMaxWidth);
-      expect(
-        tester.getRect(content).left,
-        closeTo((size.width - ButlerlySize.pageContentMaxWidth) / 2, 0.01),
-      );
+      expect(tester.getSize(content).width, size.width);
+      expect(tester.getRect(content).left, 0);
       expect(
         tester
             .getSize(find.byKey(const ValueKey('primary-medium-navigation')))
@@ -657,7 +654,7 @@ void main() {
     );
 
     appRouter.go('/');
-    await _pumpAt(tester, const Size(800, 800));
+    await _pumpAt(tester, const Size(700, 800));
     await tester.tap(find.bySemanticsLabel('Tools'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Analysis'));
@@ -768,7 +765,7 @@ void main() {
       await tester.pumpAndSettle();
 
       for (final size in const [
-        Size(800, 800),
+        Size(700, 800),
         Size(1200, 800),
         Size(390, 844),
       ]) {
@@ -793,19 +790,19 @@ void main() {
   testWidgets('secondary routes apply the same width-driven body policy', (
     tester,
   ) async {
-    await _pumpAt(tester, const Size(900, 800));
+    await _pumpAt(tester, const Size(700, 800));
     appRouter.go('/search');
     await tester.pumpAndSettle();
 
     expect(find.byType(NavigationRail), findsNothing);
     expect(find.byType(AppBar), findsOneWidget);
-    expect(tester.getSize(find.byType(AppBar)).width, 900);
+    expect(tester.getSize(find.byType(AppBar)).width, 700);
     final content = tester.renderObject<RenderSliver>(
       find.byKey(const ValueKey('butlerly-page-content-sliver')),
     );
     expect(
       content.constraints.crossAxisExtent,
-      ButlerlySize.pageContentMaxWidth,
+      700,
     );
   });
 
