@@ -463,7 +463,7 @@ class _DesktopPanel extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
-              ...? [trailing],
+              ?trailing,
             ],
           ),
           const SizedBox(height: 12),
