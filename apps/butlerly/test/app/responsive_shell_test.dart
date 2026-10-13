@@ -48,7 +48,9 @@ void main() {
   test('classifies presentation from width at the documented breakpoints', () {
     expect(ButlerlyLayout.modeForWidth(599), ButlerlyLayoutMode.compact);
     expect(ButlerlyLayout.modeForWidth(600), ButlerlyLayoutMode.medium);
-    expect(ButlerlyLayout.modeForWidth(1023), ButlerlyLayoutMode.medium);
+    expect(ButlerlyLayout.modeForWidth(960), ButlerlyLayoutMode.medium);
+    expect(ButlerlyLayout.modeForWidth(960.5), ButlerlyLayoutMode.medium);
+    expect(ButlerlyLayout.modeForWidth(961), ButlerlyLayoutMode.wide);
     expect(ButlerlyLayout.modeForWidth(1024), ButlerlyLayoutMode.wide);
 
     for (final width in [390.0, 500.0]) {
