@@ -184,6 +184,42 @@ void main() {
     },
   );
 
+  testWidgets('Narrow Wide windows retain content space with a compact rail', (
+    tester,
+  ) async {
+    await _pumpAt(tester, const Size(768, 800));
+
+    for (final width in [768.0, 900.0, 1024.0]) {
+      tester.view.physicalSize = Size(width, 800);
+      await tester.pumpAndSettle();
+      expect(ButlerlyLayout.modeForWidth(width), ButlerlyLayoutMode.wide);
+      expect(find.byType(WidePrimaryShell), findsOneWidget);
+      expect(
+        tester.getSize(find.byKey(const ValueKey('primary-wide-navigation'))).width,
+        ButlerlySize.wideNavigationCollapsedWidth,
+      );
+      expect(
+        tester.getSize(find.byKey(const ValueKey('primary-wide-body-surface'))).width,
+        width - ButlerlySize.wideNavigationCollapsedWidth,
+      );
+      expect(find.byKey(const ValueKey('wide-collapsed-home')), findsOneWidget);
+    }
+
+    // The desktop preference is independent of the tablet-sized rail.
+    tester.view.physicalSize = const Size(1200, 800);
+    await tester.pumpAndSettle();
+    expect(
+      tester.getSize(find.byKey(const ValueKey('primary-wide-navigation'))).width,
+      ButlerlySize.wideNavigationExpandedWidth,
+    );
+    tester.view.physicalSize = const Size(768, 800);
+    await tester.pumpAndSettle();
+    expect(
+      tester.getSize(find.byKey(const ValueKey('primary-wide-navigation'))).width,
+      ButlerlySize.wideNavigationCollapsedWidth,
+    );
+  });
+
   testWidgets('Wide uses the left navigation shell', (tester) async {
     const size = Size(1200, 800);
     await _pumpAt(tester, size);
