@@ -289,7 +289,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                         builder: (context, b) {
                           final left = _DesktopPanel(
                             title: 'Spending Trend',
-                            topPadding: 2,
+                            topPadding: _spendingTrendTopPadding,
                             trailing: DropdownButton<int>(
                               isDense: true,
                               value: _trendMonths,
@@ -533,6 +533,8 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     );
   }
 }
+
+const double _spendingTrendTopPadding = 10;
 
 class _DesktopPanel extends StatelessWidget {
   const _DesktopPanel({
