@@ -77,31 +77,31 @@ void main() {
     expect(recalculated, isFalse);
   });
 
-  test('missing evidence uses only the canonical Analysis rule results', () async {
-    final selection = AnalysisSearchSelection(
-      context: context,
-      ruleId: 'ANL-R012',
-      dimension: 'groceries',
-    );
-    final ids = await selection.resolveEvidence(
-      calculate: (requested) async {
-        expect(requested, same(context));
-        expect(requested.datasetMode, DatasetMode.verifiedOnly);
-        return ApplicationSuccess([
-          result('ANL-R012', 'groceries', ['canonical-1', 'canonical-2']),
-          result('ANL-R012', 'taxi', ['wrong-group']),
-          result('ANL-R011', 'groceries', ['wrong-rule']),
-          result(
-            'ANL-R012',
-            'groceries',
-            ['not-available'],
-            availability: AnalysisDataAvailability.insufficient,
-          ),
-        ]);
-      },
-    );
-    expect(ids, ['canonical-1', 'canonical-2']);
-  });
+  test(
+    'missing evidence uses only the canonical Analysis rule results',
+    () async {
+      final selection = AnalysisSearchSelection(
+        context: context,
+        ruleId: 'ANL-R012',
+        dimension: 'groceries',
+      );
+      final ids = await selection.resolveEvidence(
+        calculate: (requested) async {
+          expect(requested, same(context));
+          expect(requested.datasetMode, DatasetMode.verifiedOnly);
+          return ApplicationSuccess([
+            result('ANL-R012', 'groceries', ['canonical-1', 'canonical-2']),
+            result('ANL-R012', 'taxi', ['wrong-group']),
+            result('ANL-R011', 'groceries', ['wrong-rule']),
+            result('ANL-R012', 'groceries', [
+              'not-available',
+            ], availability: AnalysisDataAvailability.insufficient),
+          ]);
+        },
+      );
+      expect(ids, ['canonical-1', 'canonical-2']);
+    },
+  );
 
   test('aggregate selection includes all buckets of the same rule', () async {
     final selection = AnalysisSearchSelection(
@@ -119,29 +119,32 @@ void main() {
     expect(ids, ['a', 'b']);
   });
 
-  test('missing and failed evidence never broadens to all transactions', () async {
-    final selection = AnalysisSearchSelection(
-      context: context,
-      ruleId: 'ANL-R012',
-      dimension: 'groceries',
-    );
-    expect(
-      await selection.resolveEvidence(
-        calculate: (_) async =>
-            ApplicationSuccess([result('ANL-R012', 'taxi', ['unrelated'])]),
-      ),
-      isEmpty,
-    );
-    await expectLater(
-      selection.resolveEvidence(
-        calculate: (_) async => const ApplicationFailure(
-          ApplicationFailureDetail(
-            operation: 'calculate analysis overview',
-            code: ApplicationFailureCode.unavailable,
+  test(
+    'missing and failed evidence never broadens to all transactions',
+    () async {
+      final selection = AnalysisSearchSelection(
+        context: context,
+        ruleId: 'ANL-R012',
+        dimension: 'groceries',
+      );
+      expect(
+        await selection.resolveEvidence(
+          calculate: (_) async =>
+              ApplicationSuccess([result('ANL-R012', 'taxi', ['unrelated'])]),
+        ),
+        isEmpty,
+      );
+      await expectLater(
+        selection.resolveEvidence(
+          calculate: (_) async => const ApplicationFailure(
+            ApplicationFailureDetail(
+              operation: 'calculate analysis overview',
+              code: ApplicationFailureCode.unavailable,
+            ),
           ),
         ),
-      ),
-      throwsStateError,
-    );
-  });
+        throwsStateError,
+      );
+    },
+  );
 }
