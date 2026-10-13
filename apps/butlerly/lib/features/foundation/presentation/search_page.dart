@@ -19,6 +19,7 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 
 const _selectiveConditionEvidenceMarker = 'conditionEvidence:selective';
+const _analysisEvidenceQueryBatchSize = 400;
 
 final class InsightDrillDownRefreshDecision {
   const InsightDrillDownRefreshDecision({
@@ -139,7 +140,7 @@ class _SearchPageState extends State<SearchPage>
     super.initState();
     final query = widget.initialQuery;
     _text.text = query?.text ?? '';
-    _transactionIds = query?.transactionIds;
+    _transactionIds = query?.transactionIds ?? widget.analysisSelection?.evidenceIds;
     _currency = query?.currency;
     _direction = query?.direction;
     _categoryId = query?.categoryId;
@@ -230,15 +231,27 @@ class _SearchPageState extends State<SearchPage>
         calculate: (context) => analysis.call(context, forceRefresh: true),
       );
       if (ids.isEmpty) return const [];
-      final evidenceResult = await finance.listTransactions(
-        ListTransactionsQuery(transactionIds: ids),
-      );
-      return switch (evidenceResult) {
-        ApplicationSuccess<List<TransactionDto>>(:final value) => value,
-        ApplicationFailure<List<TransactionDto>>() => throw StateError(
-          'Unable to retrieve Analysis supporting transactions.',
-        ),
-      };
+      final combined = <TransactionDto>[];
+      for (
+        var offset = 0;
+        offset < ids.length;
+        offset += _analysisEvidenceQueryBatchSize
+      ) {
+        final batch = ids.skip(offset).take(_analysisEvidenceQueryBatchSize);
+        final evidenceResult = await finance.listTransactions(
+          ListTransactionsQuery(transactionIds: batch.toList()),
+        );
+        if (evidenceResult is! ApplicationSuccess<List<TransactionDto>>) {
+          throw StateError('Unable to retrieve Analysis supporting transactions.');
+        }
+        combined.addAll(evidenceResult.value);
+      }
+      combined.sort((a, b) {
+        final left = a.financialDate ?? a.occurredAt ?? a.createdAt;
+        final right = b.financialDate ?? b.occurredAt ?? b.createdAt;
+        return right.compareTo(left);
+      });
+      return combined;
     }
     final result = await finance.listTransactions(
       ListTransactionsQuery(
