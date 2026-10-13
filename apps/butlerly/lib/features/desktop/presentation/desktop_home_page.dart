@@ -1238,7 +1238,9 @@ class _DesktopTrend extends StatelessWidget {
                         height: 120 * values[i] / max,
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.primary
-                              .withValues(alpha: _desktopHomeSpendingTrendTintOpacity),
+                              .withValues(
+                                alpha: _desktopHomeSpendingTrendTintOpacity,
+                              ),
                           borderRadius: const BorderRadius.vertical(
                             top: Radius.circular(5),
                           ),
