@@ -380,26 +380,31 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                       Column(
                                         children: [
                                           ListTile(
-                                        leading: _DesktopCategoryLeadingIcon(
-                                          metric: metric,
-                                        ),
-                                        dense: true,
-                                        contentPadding: EdgeInsets.zero,
-                                        title: Text(
-                                          analysisDimension(
-                                            context,
-                                            metric,
-                                            _masterData,
+                                            leading:
+                                                _DesktopCategoryLeadingIcon(
+                                                  metric: metric,
+                                                ),
+                                            dense: true,
+                                            contentPadding: EdgeInsets.zero,
+                                            title: Text(
+                                              analysisDimension(
+                                                context,
+                                                metric,
+                                                _masterData,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            trailing: Text(
+                                              _money(metric, currency),
+                                            ),
+                                            onTap: () =>
+                                                _go('/analysis?$query'),
                                           ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        trailing: Text(
-                                          _money(metric, currency),
-                                        ),
-                                        onTap: () => _go('/analysis?$query'),
+                                          const Divider(
+                                            height: 1,
+                                            thickness: 0.5,
                                           ),
-                                          const Divider(height: 1, thickness: 0.5),
                                         ],
                                       ),
                                     if (analysis?.categories
@@ -556,126 +561,139 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                   Column(
                                     children: [
                                       InkWell(
-                                    onTap: () => _go(
-                                      '/search?ids=${Uri.encodeQueryComponent(transaction.id)}',
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 7,
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          SizedBox(
-                                            width: 100,
-                                            child: Text(
-                                              _desktopTransactionDate(
-                                                context,
-                                                transaction,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
+                                        onTap: () => _go(
+                                          '/search?ids=${Uri.encodeQueryComponent(transaction.id)}',
+                                        ),
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 7,
                                           ),
-                                          Expanded(
-                                            flex: 3,
-                                            child: Text(
-                                              _masterData?.merchantName(
-                                                    transaction.merchantId,
-                                                  ) ??
-                                                  transaction.rawCounterparty ??
-                                                  transaction.description ??
-                                                  'Transaction',
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          Expanded(
-                                            flex: 2,
-                                            child: Align(
-                                              alignment: Alignment.centerLeft,
-                                              child: Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 3,
-                                                    ),
-                                                decoration: BoxDecoration(
-                                                  color:
-                                                      _desktopCategoryBadgeColor(
-                                                        transaction.categoryId,
-                                                        context,
-                                                      ).withValues(alpha: .16),
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                        100,
-                                                      ),
-                                                ),
+                                          child: Row(
+                                            children: [
+                                              SizedBox(
+                                                width: 100,
                                                 child: Text(
-                                                  _masterData?.categoryName(
-                                                        transaction.categoryId,
-                                                      ) ??
-                                                      (transaction.categoryId ==
-                                                              null
-                                                          ? 'Uncategorized'
-                                                          : 'Category unavailable'),
+                                                  _desktopTransactionDate(
+                                                    context,
+                                                    transaction,
+                                                  ),
                                                   maxLines: 1,
                                                   overflow:
                                                       TextOverflow.ellipsis,
-                                                  style: Theme.of(context)
-                                                      .textTheme
-                                                      .labelSmall
-                                                      ?.copyWith(
-                                                        color:
-                                                            _desktopCategoryBadgeColor(
-                                                              transaction
-                                                                  .categoryId,
-                                                              context,
-                                                            ),
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                      ),
                                                 ),
                                               ),
-                                            ),
-                                          ),
-                                          Expanded(
-                                            flex: 2,
-                                            child: Text(
-                                              _masterData?.subcategoryName(
-                                                    transaction.subcategoryId,
-                                                  ) ??
-                                                  '—',
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          Expanded(
-                                            flex: 2,
-                                            child: Text(
-                                              _masterData?.paymentSourceName(
-                                                    transaction.paymentSourceId,
-                                                  ) ??
-                                                  '—',
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          SizedBox(
-                                            width: 112,
-                                            child: Text(
-                                              _desktopTransactionAmount(
-                                                context,
-                                                transaction,
+                                              Expanded(
+                                                flex: 3,
+                                                child: Text(
+                                                  _masterData?.merchantName(
+                                                        transaction.merchantId,
+                                                      ) ??
+                                                      transaction
+                                                          .rawCounterparty ??
+                                                      transaction.description ??
+                                                      'Transaction',
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
                                               ),
-                                              textAlign: TextAlign.right,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
+                                              Expanded(
+                                                flex: 2,
+                                                child: Align(
+                                                  alignment:
+                                                      Alignment.centerLeft,
+                                                  child: Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 8,
+                                                          vertical: 3,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color:
+                                                          _desktopCategoryBadgeColor(
+                                                            transaction
+                                                                .categoryId,
+                                                            context,
+                                                          ).withValues(
+                                                            alpha: .16,
+                                                          ),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            100,
+                                                          ),
+                                                    ),
+                                                    child: Text(
+                                                      _masterData?.categoryName(
+                                                            transaction
+                                                                .categoryId,
+                                                          ) ??
+                                                          (transaction.categoryId ==
+                                                                  null
+                                                              ? 'Uncategorized'
+                                                              : 'Category unavailable'),
+                                                      maxLines: 1,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .labelSmall
+                                                          ?.copyWith(
+                                                            color:
+                                                                _desktopCategoryBadgeColor(
+                                                                  transaction
+                                                                      .categoryId,
+                                                                  context,
+                                                                ),
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                              Expanded(
+                                                flex: 2,
+                                                child: Text(
+                                                  _masterData?.subcategoryName(
+                                                        transaction
+                                                            .subcategoryId,
+                                                      ) ??
+                                                      '—',
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              Expanded(
+                                                flex: 2,
+                                                child: Text(
+                                                  _masterData?.paymentSourceName(
+                                                        transaction
+                                                            .paymentSourceId,
+                                                      ) ??
+                                                      '—',
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              SizedBox(
+                                                width: 112,
+                                                child: Text(
+                                                  _desktopTransactionAmount(
+                                                    context,
+                                                    transaction,
+                                                  ),
+                                                  textAlign: TextAlign.right,
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                        ],
+                                        ),
                                       ),
-                                    ),
-                                    ),
                                       const Divider(height: 1, thickness: 0.5),
                                     ],
                                   ),
