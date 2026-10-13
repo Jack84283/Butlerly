@@ -651,22 +651,22 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                           );
                           return Column(
                             children: [
+                              recent,
+                              const SizedBox(height: 8),
                               if (b.maxWidth >= 680)
                                 Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Expanded(child: recent),
-                                    const SizedBox(width: 8),
                                     Expanded(child: actions),
+                                    const SizedBox(width: 8),
+                                    Expanded(child: insights),
                                   ],
                                 )
                               else ...[
-                                recent,
-                                const SizedBox(height: 8),
                                 actions,
+                                const SizedBox(height: 8),
+                                insights,
                               ],
-                              const SizedBox(height: 8),
-                              insights,
                             ],
                           );
                         },
