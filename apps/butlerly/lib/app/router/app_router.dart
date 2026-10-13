@@ -83,9 +83,12 @@ final appRouter = GoRouter(
               routes: [
                 GoRoute(
                   path: '/',
-                  pageBuilder: (context, state) =>
-                      _primaryPage('home', _desktopHomeEnabled(context)
-                          ? const DesktopHomePage() : const HomePage()),
+                  pageBuilder: (context, state) => _primaryPage(
+                    'home',
+                    _desktopHomeEnabled(context)
+                        ? const DesktopHomePage()
+                        : const HomePage(),
+                  ),
                 ),
               ],
             ),
@@ -374,7 +377,10 @@ TransactionDirection? _queryDirection(String? value) {
 /// Mobile and tablet routes keep their original HomePage unchanged.
 bool _desktopHomeEnabled(BuildContext context) {
   final platform = Theme.of(context).platform;
-  final desktopPlatform = platform == TargetPlatform.macOS ||
-      platform == TargetPlatform.windows || platform == TargetPlatform.linux;
-  return MediaQuery.sizeOf(context).width >= 1100 && (desktopPlatform || kIsWeb);
+  final desktopPlatform =
+      platform == TargetPlatform.macOS ||
+      platform == TargetPlatform.windows ||
+      platform == TargetPlatform.linux;
+  return MediaQuery.sizeOf(context).width >= 1100 &&
+      (desktopPlatform || kIsWeb);
 }
