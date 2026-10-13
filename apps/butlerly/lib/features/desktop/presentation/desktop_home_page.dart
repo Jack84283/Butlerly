@@ -572,7 +572,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                     ),
                                   ],
                                 ),
-                                Divider(height: 12, color: context.colors.cardDivider),
+                                Divider(
+                                  height: 12,
+                                  color: context.colors.cardDivider,
+                                ),
                                 for (final transaction
                                     in data.recentTransactions.take(7))
                                   Column(
