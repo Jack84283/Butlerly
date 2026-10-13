@@ -595,7 +595,9 @@ class _DesktopTrend extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     Tooltip(
-                      message: NumberFormat.simpleCurrency(name: currency).format(values[i]),
+                      message: NumberFormat.simpleCurrency(
+                        name: currency,
+                      ).format(values[i]),
                       child: Container(
                         height: 135 * values[i] / max,
                         decoration: BoxDecoration(
