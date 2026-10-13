@@ -834,19 +834,22 @@ class _DesktopCategorySummaryRow extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (percentage != null) ...[
-                        const SizedBox(width: ButlerlySpacing.compact),
-                        Text(
-                          percentage,
+                      const SizedBox(width: ButlerlySpacing.compact),
+                      SizedBox(
+                        width: 52,
+                        child: Text(
+                          percentage ?? '',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.end,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: context.colors.secondaryText,
                           ),
                         ),
-                      ],
+                      ),
                       const SizedBox(width: ButlerlySpacing.compact),
-                      ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 125),
+                      SizedBox(
+                        width: 100,
                         child: Text(
                           amount,
                           maxLines: 1,
