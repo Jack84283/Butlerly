@@ -1,5 +1,3 @@
-import 'package:butlerly_finance_application/butlerly_finance_application.dart';
-import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
@@ -12,6 +10,8 @@ import 'package:butlerly/features/analysis/presentation/analysis_model.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/insights/presentation/insight_grouped_list.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -630,9 +630,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                                             transaction
                                                                 .categoryId,
                                                             context,
-                                                          ).withValues(
-                                                            alpha: .16,
-                                                          ),
+                                                          ).withValues(alpha: _desktopHomeTintOpacity),
                                                       borderRadius:
                                                           BorderRadius.circular(
                                                             100,
@@ -733,17 +731,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                           );
                           final insights = _DesktopPanel(
                             title: 'Insights',
-                            trailing: TextButton(
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 4,
-                                ),
-                                minimumSize: const Size(0, 32),
-                              ),
-                              onPressed: () => _go('/insights?$query'),
-                              child: const Text('View all →'),
-                            ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
@@ -840,6 +827,7 @@ class _DesktopCategoryLeadingIcon extends StatelessWidget {
   }
 }
 
+const double _desktopHomeTintOpacity = 0.80;
 const double _desktopHomeCardTitleTopInset = 10;
 const double _desktopHomeBreakdownHeaderHeight = 32;
 const double _desktopHomeBreakdownCardHeight = 220;
@@ -915,15 +903,12 @@ class _DesktopMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
     final color = title == 'Income'
         ? const Color(0xFF009B61)
         : title == 'Expenses'
         ? const Color(0xFFE24247)
         : const Color(0xFF1769E8);
-    final fill = dark
-        ? color.withValues(alpha: .24)
-        : color.withValues(alpha: .14);
+    final fill = color.withValues(alpha: _desktopHomeTintOpacity);
     final percent = comparison?.percentageChange;
     final usable =
         comparison?.availability == AnalysisDataAvailability.sufficient &&
@@ -951,8 +936,8 @@ class _DesktopMetric extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 20,
-            backgroundColor: color.withValues(alpha: .12),
-            child: Icon(icon, color: color, size: 22),
+            backgroundColor: Colors.white.withValues(alpha: .20),
+            child: Icon(icon, color: Colors.white, size: 22),
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -964,6 +949,7 @@ class _DesktopMetric extends StatelessWidget {
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
+                    color: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -975,7 +961,7 @@ class _DesktopMetric extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w800,
-                      color: dark ? color.withValues(alpha: .9) : color,
+                      color: Colors.white,
                       letterSpacing: -.7,
                     ),
                   ),
@@ -987,8 +973,8 @@ class _DesktopMetric extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                     color: percentValue == null
-                        ? Theme.of(context).colorScheme.onSurfaceVariant
-                        : color,
+                        ? Colors.white70
+                        : Colors.white,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -1017,7 +1003,6 @@ class _DesktopAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
     final tint = tintColor ?? (label == 'Needs review' || label == 'Possible duplicates'
         ? const Color(0xFFE64A4F)
         : label == 'Import statement'
@@ -1028,7 +1013,7 @@ class _DesktopAction extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Material(
-        color: tint.withValues(alpha: dark ? .10 : .06),
+        color: tint.withValues(alpha: _desktopHomeTintOpacity),
         borderRadius: BorderRadius.circular(12),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -1040,10 +1025,10 @@ class _DesktopAction extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
-                    color: tint.withValues(alpha: .10),
+                    color: Colors.white.withValues(alpha: .20),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(icon, size: 20, color: tint),
+                  child: Icon(icon, size: 20, color: Colors.white),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -1054,6 +1039,7 @@ class _DesktopAction extends StatelessWidget {
                     style: const TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
+                      color: Colors.white,
                     ),
                   ),
                 ),
@@ -1064,19 +1050,19 @@ class _DesktopAction extends StatelessWidget {
                       vertical: 3,
                     ),
                     decoration: BoxDecoration(
-                      color: tint.withValues(alpha: .12),
+                      color: Colors.white.withValues(alpha: .20),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       '$count',
                       style: TextStyle(
-                        color: tint,
+                        color: Colors.white,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
                 const SizedBox(width: 6),
-                Icon(Icons.chevron_right, size: 17, color: tint),
+                Icon(Icons.chevron_right, size: 17, color: Colors.white),
               ],
             ),
           ),
@@ -1128,7 +1114,7 @@ class _DesktopTrend extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: Theme.of(
                             context,
-                          ).colorScheme.primary.withValues(alpha: .75),
+                          ).colorScheme.primary.withValues(alpha: _desktopHomeTintOpacity),
                           borderRadius: const BorderRadius.vertical(
                             top: Radius.circular(5),
                           ),
