@@ -781,7 +781,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   }
 }
 
-/// Desktop counterpart of the device Home's category share rows.
+/// Desktop category row: right-aligned amount then percentage above the share bar.
 class _DesktopCategorySummaryRow extends StatelessWidget {
   const _DesktopCategorySummaryRow({
     required this.metric,
