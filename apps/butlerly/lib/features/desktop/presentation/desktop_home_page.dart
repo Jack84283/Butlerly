@@ -1241,7 +1241,8 @@ class _DesktopTrend extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.primary
                               .withValues(
-                                alpha: points[i].month.year == now.year &&
+                                alpha:
+                                    points[i].month.year == now.year &&
                                         points[i].month.month == now.month
                                     ? _desktopHomeCurrentMonthTrendTintOpacity
                                     : _desktopHomeOtherMonthTrendTintOpacity,
