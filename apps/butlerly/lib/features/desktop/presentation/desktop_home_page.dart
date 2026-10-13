@@ -289,6 +289,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                         builder: (context, b) {
                           final left = _DesktopPanel(
                             title: 'Spending Trend',
+                            topPadding: 4,
                             trailing: DropdownButton<int>(
                               value: _trendMonths,
                               underline: const SizedBox.shrink(),
@@ -537,10 +538,12 @@ class _DesktopPanel extends StatelessWidget {
     required this.title,
     required this.child,
     this.trailing,
+    this.topPadding = 10,
   });
   final String title;
   final Widget child;
   final Widget? trailing;
+  final double topPadding;
 
   @override
   Widget build(BuildContext context) {
@@ -551,7 +554,7 @@ class _DesktopPanel extends StatelessWidget {
         color: dark ? const Color(0xFF171B21) : Colors.white,
         borderRadius: BorderRadius.circular(16),
       ),
-      padding: const EdgeInsets.all(10),
+      padding: EdgeInsets.fromLTRB(10, topPadding, 10, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
