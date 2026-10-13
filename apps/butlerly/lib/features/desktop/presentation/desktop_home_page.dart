@@ -125,55 +125,55 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
-                children: [
-                  IconButton(
-                    tooltip: 'Previous month',
-                    onPressed: () => _moveMonth(-1, current),
-                    icon: const Icon(Icons.chevron_left),
-                  ),
-                  TextButton.icon(
-                    onPressed: () async {
-                      final picked = await showButlerlyDatePicker(
-                        context: context,
-                        title: 'Select month',
-                        cancelLabel: 'Cancel',
-                        doneLabel: 'Apply',
-                        initialDate: current,
-                        firstDate: DateTime(2000),
-                        lastDate: DateTime(2100),
-                      );
-                      if (picked != null) {
-                        setState(() {
-                          _month = DateTime(picked.year, picked.month);
-                          _reload();
-                        });
-                      }
-                    },
-                    icon: const Icon(Icons.calendar_month_outlined),
-                    label: Text(DateFormat.yMMMM().format(current)),
-                  ),
-                  IconButton(
-                    tooltip: 'Next month',
-                    onPressed: () => _moveMonth(1, current),
-                    icon: const Icon(Icons.chevron_right),
-                  ),
-                  const Spacer(),
-                  SizedBox(
-                    width: 220,
-                    child: OutlinedButton.icon(
-                      onPressed: () => _go('/search'),
-                      icon: const Icon(Icons.search),
-                      label: const Text('Search transactions'),
+                  children: [
+                    IconButton(
+                      tooltip: 'Previous month',
+                      onPressed: () => _moveMonth(-1, current),
+                      icon: const Icon(Icons.chevron_left),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton.icon(
-                    onPressed: () => _go('/transactions/add'),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add'),
-                  ),
-                ],
-              ),
+                    TextButton.icon(
+                      onPressed: () async {
+                        final picked = await showButlerlyDatePicker(
+                          context: context,
+                          title: 'Select month',
+                          cancelLabel: 'Cancel',
+                          doneLabel: 'Apply',
+                          initialDate: current,
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2100),
+                        );
+                        if (picked != null) {
+                          setState(() {
+                            _month = DateTime(picked.year, picked.month);
+                            _reload();
+                          });
+                        }
+                      },
+                      icon: const Icon(Icons.calendar_month_outlined),
+                      label: Text(DateFormat.yMMMM().format(current)),
+                    ),
+                    IconButton(
+                      tooltip: 'Next month',
+                      onPressed: () => _moveMonth(1, current),
+                      icon: const Icon(Icons.chevron_right),
+                    ),
+                    const Spacer(),
+                    SizedBox(
+                      width: 220,
+                      child: OutlinedButton.icon(
+                        onPressed: () => _go('/search'),
+                        icon: const Icon(Icons.search),
+                        label: const Text('Search transactions'),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton.icon(
+                      onPressed: () => _go('/transactions/add'),
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add'),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 4),
               Text(
