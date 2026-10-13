@@ -28,7 +28,7 @@ class WidePrimaryShell extends StatefulWidget {
 
 class _WidePrimaryShellState extends State<WidePrimaryShell> {
   final _moreNavigationKey = GlobalKey();
-  // Separate preferences prevent a small window from inheriting a desktop rail.
+  // Preserve each rail mode's expansion preference across viewport changes.
   bool _expandedAtWideWidths = true;
   bool _expandedAtNarrowWidths = false;
   bool _addExpanded = true;
