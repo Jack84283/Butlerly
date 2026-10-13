@@ -11,6 +11,7 @@ import 'package:butlerly/features/analysis/presentation/analysis_model.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/insights/presentation/insight_grouped_list.dart';
+import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
@@ -720,9 +721,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                               ],
                             ),
                           );
-                          final insightGroups = insightGroupSummaries(
+                          final insightGroups = _desktopInsightCatalog(
                             context,
-                            data.insights,
+                            insightGroupSummaries(context, data.insights),
                           );
                           final insights = _DesktopPanel(
                             title: 'Insights',
@@ -738,17 +739,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                       group.group,
                                     ),
                                     onTap: () => _go('/insights?$query'),
-                                  ),
-                                if (insightGroups.isEmpty)
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 8,
-                                    ),
-                                    child: Text(
-                                      data.analysisUnavailable
-                                          ? 'Insights unavailable for this period'
-                                          : 'No insights for this period',
-                                    ),
                                   ),
                               ],
                             ),
@@ -835,7 +825,6 @@ class _DesktopCategorySummaryRow extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        flex: 3,
                         child: Text(
                           label,
                           maxLines: 1,
@@ -849,14 +838,15 @@ class _DesktopCategorySummaryRow extends StatelessWidget {
                         const SizedBox(width: ButlerlySpacing.compact),
                         Text(
                           percentage,
+                          textAlign: TextAlign.end,
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: context.colors.secondaryText,
                           ),
                         ),
                       ],
                       const SizedBox(width: ButlerlySpacing.compact),
-                      Flexible(
-                        flex: 2,
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 125),
                         child: Text(
                           amount,
                           maxLines: 1,
@@ -1389,6 +1379,52 @@ String _desktopGreeting(DateTime now) {
   if (now.hour < 17) return 'Good afternoon';
   return 'Good evening';
 }
+
+/// Keep the six common Insights sections visible even with no findings.
+/// Less-common sections appear when they have actual findings.
+const _desktopDefaultInsightGroups = <InsightPresentationGroup>{
+  InsightPresentationGroup.unusual,
+  InsightPresentationGroup.largePurchase,
+  InsightPresentationGroup.category,
+  InsightPresentationGroup.subcategory,
+  InsightPresentationGroup.merchant,
+  InsightPresentationGroup.paymentSource,
+};
+
+List<InsightGroupSummary> _desktopInsightCatalog(
+  BuildContext context,
+  List<InsightGroupSummary> available,
+) {
+  final byGroup = <InsightPresentationGroup, InsightGroupSummary>{
+    for (final item in available) item.group: item,
+  };
+  return [
+    for (final group in insightPresentationGroupOrder)
+      if (_desktopDefaultInsightGroups.contains(group) ||
+          byGroup.containsKey(group))
+        byGroup[group] ??
+            InsightGroupSummary(
+              group: group,
+              title: _desktopEmptyInsightTitle(context, group),
+              count: 0,
+            ),
+  ];
+}
+
+String _desktopEmptyInsightTitle(
+  BuildContext context,
+  InsightPresentationGroup group,
+) => switch (group) {
+  InsightPresentationGroup.unusual => context.l10n.text('needsAttention'),
+  InsightPresentationGroup.largePurchase =>
+    context.l10n.text('analysis.rule.r025.name'),
+  InsightPresentationGroup.category => context.l10n.text('categories'),
+  InsightPresentationGroup.subcategory => context.l10n.text('subcategories'),
+  InsightPresentationGroup.tag => context.l10n.text('tags'),
+  InsightPresentationGroup.merchant => context.l10n.text('merchant'),
+  InsightPresentationGroup.paymentSource => context.l10n.text('paymentSources'),
+  InsightPresentationGroup.other => context.l10n.text('otherInsights'),
+};
 
 IconData _desktopInsightGroupIcon(InsightPresentationGroup group) =>
     switch (group) {
