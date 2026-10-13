@@ -116,7 +116,15 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
             key: const ValueKey('desktop-home-page'),
             padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
             children: [
-              Row(
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: theme.brightness == Brightness.dark
+                      ? const Color(0xFF1C293B)
+                      : const Color(0xFFE3ECFA),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
                 children: [
                   IconButton(
                     tooltip: 'Previous month',
@@ -166,7 +174,8 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              ),
+              const SizedBox(height: 4),
               Text(
                 'Financial overview',
                 style: theme.textTheme.headlineMedium?.copyWith(
