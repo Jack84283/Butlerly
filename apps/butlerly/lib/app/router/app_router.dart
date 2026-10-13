@@ -85,9 +85,7 @@ final appRouter = GoRouter(
                   path: '/',
                   pageBuilder: (context, state) => _primaryPage(
                     'home',
-                    _desktopHomeEnabled(context)
-                        ? const DesktopHomePage()
-                        : const HomePage(),
+                    const _HomeLayoutSwitch(),
                   ),
                 ),
               ],
@@ -371,6 +369,19 @@ TransactionDirection? _queryDirection(String? value) {
     if (direction.name == value) return direction;
   }
   return null;
+}
+
+/// Resolves the desktop/device Home split after the route is mounted.
+/// This avoids inherited layout/theme lookups during GoRouter page creation.
+class _HomeLayoutSwitch extends StatelessWidget {
+  const _HomeLayoutSwitch();
+
+  @override
+  Widget build(BuildContext context) {
+    return _desktopHomeEnabled(context)
+        ? const DesktopHomePage()
+        : const HomePage();
+  }
 }
 
 /// Desktop presentation activates only on large desktop windows.
