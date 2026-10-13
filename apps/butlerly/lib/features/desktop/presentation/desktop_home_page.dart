@@ -289,8 +289,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                         builder: (context, b) {
                           final left = _DesktopPanel(
                             title: 'Spending Trend',
-                            topPadding: 4,
+                            topPadding: 2,
                             trailing: DropdownButton<int>(
+                              isDense: true,
                               value: _trendMonths,
                               underline: const SizedBox.shrink(),
                               items: const [3, 6, 12]
