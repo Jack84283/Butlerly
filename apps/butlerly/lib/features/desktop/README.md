@@ -9,3 +9,5 @@ Desktop UI changes must not alter mobile/device widgets, business rules, data ac
 The desktop route is activated only on supported wide desktop/web viewports; its feature boundary is intended to stay independent of device presentation components.
 
 CI validation covers Dart formatting, static analysis, Flutter tests, web build, and platform smoke checks. New desktop changes should be pushed only with those checks reviewed.
+
+The desktop Home implementation is reviewed independently from the mobile layout during PR validation.
