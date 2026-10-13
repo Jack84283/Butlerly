@@ -140,7 +140,8 @@ class _SearchPageState extends State<SearchPage>
     super.initState();
     final query = widget.initialQuery;
     _text.text = query?.text ?? '';
-    _transactionIds = query?.transactionIds ?? widget.analysisSelection?.evidenceIds;
+    _transactionIds =
+        query?.transactionIds ?? widget.analysisSelection?.evidenceIds;
     _currency = query?.currency;
     _direction = query?.direction;
     _categoryId = query?.categoryId;
@@ -242,7 +243,9 @@ class _SearchPageState extends State<SearchPage>
           ListTransactionsQuery(transactionIds: batch.toList()),
         );
         if (evidenceResult is! ApplicationSuccess<List<TransactionDto>>) {
-          throw StateError('Unable to retrieve Analysis supporting transactions.');
+          throw StateError(
+            'Unable to retrieve Analysis supporting transactions.',
+          );
         }
         combined.addAll(evidenceResult.value);
       }
