@@ -200,6 +200,15 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                       icon: const Icon(Icons.chevron_right),
                     ),
                     const Spacer(),
+                    Text(
+                      _desktopGreeting(DateTime.now()),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
                     SizedBox(
                       width: 220,
                       child: OutlinedButton.icon(
@@ -232,7 +241,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
+                padding: const EdgeInsets.fromLTRB(12, 16, 12, 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -1246,4 +1255,10 @@ Color _desktopCategoryBadgeColor(String? categoryId, BuildContext context) {
     return ButlerlyCategoryColors.color(identity.categoryColorId);
   }
   return Theme.of(context).colorScheme.onSurfaceVariant;
+}
+
+String _desktopGreeting(DateTime now) {
+  if (now.hour < 12) return 'Good morning';
+  if (now.hour < 17) return 'Good afternoon';
+  return 'Good evening';
 }
