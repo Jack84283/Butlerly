@@ -831,6 +831,7 @@ class _DesktopCategoryLeadingIcon extends StatelessWidget {
   }
 }
 
+// Applies to colored fills only; text and icons stay fully opaque for contrast.
 const double _desktopHomeTintOpacity = 0.80;
 const double _desktopHomeCardTitleTopInset = 10;
 const double _desktopHomeBreakdownHeaderHeight = 32;
