@@ -491,29 +491,81 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                             ),
                             child: Column(
                               children: [
-                                for (final transaction
-                                    in data.recentTransactions.take(7))
-                                  ListTile(
-                                    dense: true,
-                                    contentPadding: EdgeInsets.zero,
-                                    title: Text(
-                                      transaction.description ??
-                                          transaction.rawCounterparty ??
-                                          'Transaction',
-                                    ),
-                                    subtitle: Text(
-                                      transaction.transactionDate ??
-                                          transaction.currency,
-                                    ),
-                                    trailing: Text(
-                                      '${transaction.direction == 'income' ? '+' : '−'}${transaction.amount} ${transaction.currency}',
-                                    ),
+                                Row(
+                                  children: const [
+                                    SizedBox(width: 92, child: Text('Date')),
+                                    Expanded(flex: 3, child: Text('Merchant')),
+                                    Expanded(flex: 2, child: Text('Category')),
+                                    SizedBox(width: 108, child: Text('Amount', textAlign: TextAlign.right)),
+                                  ],
+                                ),
+                                const Divider(height: 12),
+                                for (final transaction in data.recentTransactions.take(7))
+                                  InkWell(
                                     onTap: () => _go(
                                       '/search?ids=${Uri.encodeQueryComponent(transaction.id)}',
                                     ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 7),
+                                      child: Row(
+                                        children: [
+                                          SizedBox(
+                                            width: 92,
+                                            child: Text(
+                                              _desktopTransactionDate(context, transaction),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          Expanded(
+                                            flex: 3,
+                                            child: Text(
+                                              _masterData?.merchantName(transaction.merchantId) ??
+                                                  transaction.rawCounterparty ??
+                                                  transaction.description ??
+                                                  'Transaction',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          Expanded(
+                                            flex: 2,
+                                            child: Align(
+                                              alignment: Alignment.centerLeft,
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                                decoration: BoxDecoration(
+                                                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                                                  borderRadius: BorderRadius.circular(100),
+                                                ),
+                                                child: Text(
+                                                  _masterData?.categoryName(transaction.categoryId) ??
+                                                      (transaction.categoryId == null ? 'Uncategorized' : 'Category unavailable'),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                  style: Theme.of(context).textTheme.labelSmall,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          SizedBox(
+                                            width: 108,
+                                            child: Text(
+                                              _desktopTransactionAmount(context, transaction),
+                                              textAlign: TextAlign.right,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
                                 if (data.recentTransactions.isEmpty)
-                                  const Text('No recent transactions'),
+                                  const Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 16),
+                                    child: Text('No recent transactions'),
+                                  ),
                               ],
                             ),
                           );
@@ -1009,4 +1061,22 @@ Future<DateTime?> _selectDesktopMonth(BuildContext context, DateTime selected) {
       ),
     ),
   );
+}
+
+String _desktopTransactionDate(BuildContext context, TransactionDto transaction) {
+  final date = transaction.financialDate ??
+      DateTime.tryParse(transaction.transactionDate ?? '') ??
+      transaction.occurredAt;
+  if (date == null) return '—';
+  return DateFormat.yMd(Localizations.localeOf(context).toString()).format(date);
+}
+
+String _desktopTransactionAmount(BuildContext context, TransactionDto transaction) {
+  final amount = double.tryParse(transaction.amount);
+  if (amount == null) return '—';
+  final formatted = NumberFormat.simpleCurrency(
+    name: transaction.currency,
+    locale: Localizations.localeOf(context).toString(),
+  ).format(amount.abs());
+  return '${transaction.direction == 'income' ? '+' : '−'}$formatted';
 }
