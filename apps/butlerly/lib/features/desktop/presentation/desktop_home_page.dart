@@ -1025,7 +1025,7 @@ class _DesktopAction extends StatelessWidget {
         : label == 'Payment settlements'
         ? const Color(0xFF159D72)
         : const Color(0xFF8560D4));
-    return Padding;
+    return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: Material(
         color: tint.withValues(alpha: dark ? .10 : .06),
