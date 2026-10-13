@@ -675,7 +675,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                         ],
                                       ),
                                     ),
-                                      ),
                                       const Divider(height: 1, thickness: 0.5),
                                     ],
                                   ),
