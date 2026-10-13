@@ -5,7 +5,7 @@ import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_model.dart';
-import 'package:butlerly/features/analysis/presentation/analysis_subcategory_bucket.dart';
+import 'package:butlerly/features/analysis/presentation/analysis_search_selection.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_activity.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_custom_period_sheet.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_data_quality.dart';
@@ -638,7 +638,8 @@ class _AnalysisContent extends StatelessWidget {
           onViewAll: analysisContext != null && model.categories.length > 5
               ? () => _openAnalysisSearch(
                   context,
-                  period: analysisContext!.period,
+                  selectionContext: analysisContext!,
+                  ruleId: model.categories.first.rule.identity.value,
                   transactionIds: _evidenceTransactionIds(
                     model.categories.expand((metric) => metric.evidence),
                   ),
@@ -649,14 +650,22 @@ class _AnalysisContent extends StatelessWidget {
           model: model,
           masterData: masterData,
           onMetricTap: (metric) {
-            _openBreakdownTransactions(context, metric);
+            _openAnalysisSearch(
+              context,
+              metric: metric,
+              transactionIds: _metricTransactionIds(metric),
+            );
           },
         ),
         AnalysisSubcategoryBreakdown(
           model: model,
           masterData: masterData,
           onMetricTap: (metric) {
-            _openBreakdownTransactions(context, metric);
+            _openAnalysisSearch(
+              context,
+              metric: metric,
+              transactionIds: _metricTransactionIds(metric),
+            );
           },
         ),
         if (recurringPatterns != null)
@@ -728,94 +737,54 @@ class _AnalysisContent extends StatelessWidget {
     _navigate(context, path);
   }
 
-  /// Prefer the exact evidence attached to a breakdown row. Some imported
-  /// or cached metrics can be sufficient without populated evidence; resolve
-  /// those against the same period and grouping before navigating instead of
-  /// opening an unfiltered transaction list or leaving the row unresponsive.
-  Future<void> _openBreakdownTransactions(
-    BuildContext context,
-    AnalysisMetric metric,
-  ) async {
-    final evidenceIds = _metricTransactionIds(metric);
-    if (evidenceIds.isNotEmpty) {
-      _openAnalysisSearch(context, metric: metric, transactionIds: evidenceIds);
-      return;
-    }
-    if (metric.availability != AnalysisDataAvailability.sufficient ||
-        !services.isRegistered<FinanceServices>()) {
-      return;
-    }
-
-    final period = metric.context.period;
-    final result = await services<FinanceServices>().listTransactions(
-      ListTransactionsQuery(
-        from: DateTime.tryParse(period.startDate),
-        to: DateTime.tryParse(period.endDate),
-        timeZoneId: period.timeZoneId,
-        direction: TransactionDirection.expense,
-      ),
-    );
-    if (!context.mounted) return;
-    if (result is! ApplicationSuccess<List<TransactionDto>>) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.text('dataPreserved'))),
-      );
-      return;
-    }
-    final dimension = analysisRawDimension(metric);
-    final transactionIds = <String>{};
-    for (final transaction in result.value) {
-      if (metric.rule.grouping == RuleGrouping.merchant &&
-          transaction.merchantId == dimension) {
-        transactionIds.add(transaction.id);
-      } else if (metric.rule.grouping == RuleGrouping.subcategory) {
-        final bucket = analysisSubcategoryBucket(
-          categoryId: transaction.categoryId,
-          subcategoryId: transaction.subcategoryId,
-          parentCategoryId: masterData?.categoryParentId(
-            transaction.categoryId,
-          ),
-        );
-        if (bucket == dimension) transactionIds.add(transaction.id);
-      }
-    }
-    if (transactionIds.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(context.l10n.text('noResults'))));
-      return;
-    }
-    _openAnalysisSearch(
-      context,
-      metric: metric,
-      transactionIds: transactionIds.toList(growable: false),
-    );
-  }
+  static const _maximumUrlEvidenceIds = 24;
+  static const _maximumUrlEvidenceLength = 800;
 
   void _openAnalysisSearch(
     BuildContext context, {
     AnalysisMetric? metric,
-    AnalysisPeriod? period,
+    AnalysisContext? selectionContext,
+    String? ruleId,
     List<String>? transactionIds,
   }) {
-    final selectedPeriod = metric?.context.period ?? period;
-    final grouping = metric?.rule.grouping;
+    final selected = metric?.context ?? selectionContext;
+    final sourceRule = metric?.rule.identity.value ?? ruleId;
+    if (selected == null || sourceRule == null) return;
+
     final dimension = metric == null ? null : analysisRawDimension(metric);
+    final ids = transactionIds?.toSet().toList(growable: false) ??
+        const <String>[];
+    final selection = AnalysisSearchSelection(
+      context: selected,
+      ruleId: sourceRule,
+      dimension: dimension,
+      evidenceIds: ids,
+    );
+    // Keep long evidence sets out of the URL. The rule/dimension/period are
+    // sufficient to recompute canonical evidence if a link is reopened.
+    final includeShortIds =
+        ids.length <= _maximumUrlEvidenceIds &&
+        ids.join(',').length <= _maximumUrlEvidenceLength;
     final query = <String, String>{
-      // Exact metric evidence is authoritative. Search uses these IDs for
-      // retrieval and displays the Analysis selection as fixed criteria.
       'locked': 'true',
-      if (selectedPeriod != null) 'from': selectedPeriod.startDate,
-      if (selectedPeriod != null) 'to': selectedPeriod.endDate,
-      if (grouping == RuleGrouping.category && dimension != null)
+      'analysisRule': sourceRule,
+      'from': selected.period.startDate,
+      'to': selected.period.endDate,
+      if (metric?.rule.grouping == RuleGrouping.category && dimension != null)
         'category': dimension,
-      if (grouping == RuleGrouping.merchant && dimension != null)
+      if (metric?.rule.grouping == RuleGrouping.merchant && dimension != null)
         'merchant': dimension,
-      if (grouping == RuleGrouping.subcategory && dimension != null)
+      if (metric?.rule.grouping == RuleGrouping.subcategory &&
+          dimension != null)
         'subcategory': dimension,
-      if (transactionIds?.isNotEmpty ?? false) 'ids': transactionIds!.join(','),
+      if (includeShortIds && ids.isNotEmpty) 'ids': ids.join(','),
     };
-    _navigate(context, Uri(path: '/search', queryParameters: query).toString());
+    final path = Uri(path: '/search', queryParameters: query).toString();
+    if (onNavigationRequested case final callback?) {
+      callback(path);
+    } else {
+      context.push(path, extra: selection);
+    }
   }
 
   List<String> _metricTransactionIds(AnalysisMetric metric) =>
