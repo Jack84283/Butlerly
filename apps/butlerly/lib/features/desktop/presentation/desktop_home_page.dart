@@ -381,7 +381,8 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                               child: SizedBox(
                                 // Reserve the 4px inset on both sides of the
                                 // fixed-height dark-mode inner card.
-                                height: 160 -
+                                height:
+                                    160 -
                                     (theme.brightness == Brightness.dark
                                         ? 2 * ButlerlySpacing.micro
                                         : 0),
