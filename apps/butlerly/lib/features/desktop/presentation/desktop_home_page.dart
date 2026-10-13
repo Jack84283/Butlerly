@@ -126,12 +126,15 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                 child: Row(
                   children: [
                     IconButton(
+                      style: IconButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), minimumSize: const Size(34, 32)),
                       tooltip: 'Previous month',
                       onPressed: () => _moveMonth(-1, current),
                       icon: const Icon(Icons.chevron_left),
                     ),
                     TextButton.icon(
                       style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        minimumSize: const Size(0, 32),
                         backgroundColor: Colors.transparent,
                         surfaceTintColor: Colors.transparent,
                         shadowColor: Colors.transparent,
@@ -152,6 +155,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                       label: Text(DateFormat.yMMMM().format(current)),
                     ),
                     IconButton(
+                      style: IconButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), minimumSize: const Size(34, 32)),
                       tooltip: 'Next month',
                       onPressed: () => _moveMonth(1, current),
                       icon: const Icon(Icons.chevron_right),
@@ -160,6 +164,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                     SizedBox(
                       width: 220,
                       child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), minimumSize: const Size(0, 32)),
                         onPressed: () => _go('/search'),
                         icon: const Icon(Icons.search),
                         label: const Text('Search transactions'),
@@ -167,6 +172,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                     ),
                     const SizedBox(width: 8),
                     FilledButton.icon(
+                        style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), minimumSize: const Size(0, 32)),
                       onPressed: () => _go('/transactions/add'),
                       icon: const Icon(Icons.add),
                       label: const Text('Add'),
@@ -205,6 +211,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                               ),
                             ),
                             TextButton(
+                        style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), minimumSize: const Size(0, 32)),
                               onPressed: () => setState(_reload),
                               child: const Text('Retry'),
                             ),
@@ -281,6 +288,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                           final middle = _DesktopPanel(
                             title: 'Category Breakdown',
                             trailing: TextButton(
+                        style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), minimumSize: const Size(0, 32)),
                               onPressed: () => _go('/analysis?$query'),
                               child: const Text('View all →'),
                             ),
@@ -376,6 +384,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                           final recent = _DesktopPanel(
                             title: 'Recent Transactions',
                             trailing: TextButton(
+                        style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), minimumSize: const Size(0, 32)),
                               onPressed: () => _go('/search?$query'),
                               child: const Text('View all →'),
                             ),
@@ -410,6 +419,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                           final insights = _DesktopPanel(
                             title: 'Insights',
                             trailing: TextButton(
+                        style: TextButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), minimumSize: const Size(0, 32)),
                               onPressed: () => _go('/insights?$query'),
                               child: const Text('View all →'),
                             ),
@@ -423,6 +433,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                 ),
                                 const SizedBox(height: 8),
                                 OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), minimumSize: const Size(0, 32)),
                                   onPressed: () => _go('/insights?$query'),
                                   icon: const Icon(Icons.insights),
                                   label: const Text('Explore insights'),
@@ -779,12 +790,14 @@ Future<DateTime?> _selectDesktopMonth(BuildContext context, DateTime selected) {
           children: [
             const Expanded(child: Text('Select month')),
             IconButton(
+                      style: IconButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), minimumSize: const Size(34, 32)),
               tooltip: 'Previous year',
               icon: const Icon(Icons.chevron_left),
               onPressed: year > 2000 ? () => update(() => year--) : null,
             ),
             Text('$year'),
             IconButton(
+                      style: IconButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2), minimumSize: const Size(34, 32)),
               tooltip: 'Next year',
               icon: const Icon(Icons.chevron_right),
               onPressed: year < 2100 ? () => update(() => year++) : null,
@@ -807,6 +820,8 @@ Future<DateTime?> _selectDesktopMonth(BuildContext context, DateTime selected) {
               final candidate = index + 1;
               return OutlinedButton(
                 style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  minimumSize: const Size(0, 30),
                   backgroundColor: candidate == month
                       ? Theme.of(context).colorScheme.primaryContainer
                       : Colors.transparent,
@@ -823,6 +838,7 @@ Future<DateTime?> _selectDesktopMonth(BuildContext context, DateTime selected) {
             child: const Text('Cancel'),
           ),
           FilledButton(
+                        style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4), minimumSize: const Size(0, 32)),
             onPressed: () => Navigator.pop(sheetContext, DateTime(year, month)),
             child: const Text('Apply'),
           ),
