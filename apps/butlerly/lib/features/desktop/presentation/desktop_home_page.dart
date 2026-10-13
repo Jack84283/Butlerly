@@ -848,6 +848,7 @@ class _DesktopPanel extends StatelessWidget {
   final Widget child;
   final Widget? trailing;
   final double? headerHeight;
+  // Device dark dividers need the device card surface for visible contrast.
   final bool showDeviceDividerSurface;
 
   @override
