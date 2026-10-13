@@ -1,5 +1,9 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
+import 'package:butlerly/design_system/components/butlerly_category_icon.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/analysis/presentation/analysis_model.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -366,6 +370,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                               .take(6) ??
                                           <AnalysisMetric>[])
                                     ListTile(
+                                      leading: _DesktopCategoryLeadingIcon(metric: metric),
                                       dense: true,
                                       contentPadding: EdgeInsets.zero,
                                       title: Text(
@@ -567,6 +572,40 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
           ),
         );
       },
+    );
+  }
+}
+
+class _DesktopCategoryLeadingIcon extends StatelessWidget {
+  const _DesktopCategoryLeadingIcon({required this.metric});
+
+  final AnalysisMetric metric;
+
+  @override
+  Widget build(BuildContext context) {
+    final categoryId = analysisCategoryId(metric);
+    if (ButlerlyCategoryIdentity.forBuiltInId(categoryId) != null) {
+      return ButlerlyCategoryIcon(
+        categoryId: categoryId,
+        containerSize: ButlerlySize.categoryIconContainer,
+        glyphSize: ButlerlySize.categoryIconGlyph,
+      );
+    }
+
+    final scheme = Theme.of(context).colorScheme;
+    return SizedBox.square(
+      dimension: ButlerlySize.categoryIconContainer,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHighest,
+          shape: BoxShape.circle,
+        ),
+        child: Icon(
+          Icons.category_outlined,
+          color: scheme.onSurfaceVariant,
+          size: ButlerlySize.categoryIconGlyph,
+        ),
+      ),
     );
   }
 }
