@@ -1011,12 +1011,12 @@ void main() {
       await tester.ensureVisible(drill.$1);
       await tester.tap(drill.$1);
       await tester.pumpAndSettle();
-      expect(find.byType(SearchPage), findsOneWidget);
+      final search = find.byType(SearchPage);
+      expect(search, findsOneWidget);
       // Imperative GoRouter.push does not necessarily replace the browser
       // route-information URI. Inspect the active secondary route instead.
-      final uri = GoRouterState.of(
-        tester.element(find.byType(SearchPage)),
-      ).uri;
+      final searchContext = tester.element(search);
+      final uri = GoRouterState.of(searchContext).uri;
       expect(
         uri.path,
         '/search',
