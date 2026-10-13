@@ -6,6 +6,7 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/analysis/presentation/analysis_search_selection.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_count_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -18,6 +19,7 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 
 const _selectiveConditionEvidenceMarker = 'conditionEvidence:selective';
+const _analysisEvidenceQueryBatchSize = 400;
 
 final class InsightDrillDownRefreshDecision {
   const InsightDrillDownRefreshDecision({
@@ -80,6 +82,9 @@ class SearchPage extends StatefulWidget {
     this.insightDimension,
     this.selectedMerchantId,
     this.selectedSubcategoryId,
+    this.analysisSelection,
+    this.analysisRuleId,
+    this.analysisDimension,
     super.key,
   });
 
@@ -91,6 +96,9 @@ class SearchPage extends StatefulWidget {
   final String? insightDimension;
   final String? selectedMerchantId;
   final String? selectedSubcategoryId;
+  final AnalysisSearchSelection? analysisSelection;
+  final String? analysisRuleId;
+  final String? analysisDimension;
 
   @override
   State<SearchPage> createState() => _SearchPageState();
@@ -132,7 +140,8 @@ class _SearchPageState extends State<SearchPage>
     super.initState();
     final query = widget.initialQuery;
     _text.text = query?.text ?? '';
-    _transactionIds = query?.transactionIds;
+    _transactionIds =
+        query?.transactionIds ?? widget.analysisSelection?.evidenceIds;
     _currency = query?.currency;
     _direction = query?.direction;
     _categoryId = query?.categoryId;
@@ -190,20 +199,77 @@ class _SearchPageState extends State<SearchPage>
     if (_forceNoResults) return const [];
     final finance = _finance;
     if (finance == null) return const [];
+    // The selected period and dimension remain visible as locked criteria,
+    // but exact Analysis/Insights evidence IDs must not be filtered a second
+    // time by dates or category: occurrence-only records have no dated field.
+    final exactEvidence =
+        widget.readOnly && (_transactionIds?.isNotEmpty ?? false);
+    if (widget.analysisSelection != null || widget.analysisRuleId != null) {
+      final analysis = finance.calculateAnalysisOverview;
+      if (analysis == null) {
+        throw StateError('Analysis is unavailable for drill-through.');
+      }
+      var selection = widget.analysisSelection;
+      if (selection == null) {
+        final from = _from;
+        final to = _to;
+        if (from == null || to == null) return const [];
+        final resolved = await analysis.contextForDates(
+          startDate: _searchDate(from),
+          endDate: _searchDate(to),
+        );
+        if (resolved is! ApplicationSuccess<AnalysisContext>) {
+          throw StateError('Analysis period is no longer available.');
+        }
+        selection = AnalysisSearchSelection(
+          context: resolved.value,
+          ruleId: widget.analysisRuleId!,
+          dimension: widget.analysisDimension,
+          evidenceIds: _transactionIds ?? const [],
+        );
+      }
+      final ids = await selection.resolveEvidence(
+        calculate: (context) => analysis.call(context, forceRefresh: true),
+      );
+      if (ids.isEmpty) return const [];
+      final combined = <TransactionDto>[];
+      for (
+        var offset = 0;
+        offset < ids.length;
+        offset += _analysisEvidenceQueryBatchSize
+      ) {
+        final batch = ids.skip(offset).take(_analysisEvidenceQueryBatchSize);
+        final evidenceResult = await finance.listTransactions(
+          ListTransactionsQuery(transactionIds: batch.toList()),
+        );
+        if (evidenceResult is! ApplicationSuccess<List<TransactionDto>>) {
+          throw StateError(
+            'Unable to retrieve Analysis supporting transactions.',
+          );
+        }
+        combined.addAll(evidenceResult.value);
+      }
+      combined.sort((a, b) {
+        final left = a.financialDate ?? a.occurredAt ?? a.createdAt;
+        final right = b.financialDate ?? b.occurredAt ?? b.createdAt;
+        return right.compareTo(left);
+      });
+      return combined;
+    }
     final result = await finance.listTransactions(
       ListTransactionsQuery(
         text: _text.text.trim().isEmpty ? null : _text.text.trim(),
         transactionIds: _transactionIds,
         currency: _currency,
         direction: _direction,
-        categoryId: _categoryId,
+        categoryId: exactEvidence ? null : _categoryId,
         paymentSourceId: _paymentSourceId,
         status: _status,
         needsReview: _needsReview,
         uncategorized: _uncategorized,
         includeUndated: _includeUndated,
-        from: _from,
-        to: _to,
+        from: exactEvidence ? null : _from,
+        to: exactEvidence ? null : _to,
       ),
     );
     return switch (result) {
@@ -470,6 +536,9 @@ class _SearchPageState extends State<SearchPage>
             categoryId: _categoryId,
             merchantId: widget.selectedMerchantId,
             subcategoryId: widget.selectedSubcategoryId,
+            analysisEvidenceMode:
+                widget.analysisSelection != null ||
+                widget.analysisRuleId != null,
             paymentSourceId: _paymentSourceId,
             currency: _currency,
             direction: _direction,
@@ -604,6 +673,7 @@ class _LockedSearchCriteria extends StatelessWidget {
     required this.categoryId,
     required this.merchantId,
     required this.subcategoryId,
+    required this.analysisEvidenceMode,
     required this.paymentSourceId,
     required this.currency,
     required this.direction,
@@ -619,6 +689,7 @@ class _LockedSearchCriteria extends StatelessWidget {
   final String? categoryId;
   final String? merchantId;
   final String? subcategoryId;
+  final bool analysisEvidenceMode;
   final String? paymentSourceId;
   final String? currency;
   final TransactionDirection? direction;
@@ -656,7 +727,15 @@ class _LockedSearchCriteria extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ButlerlyCardHeader(title: context.l10n.text('filters')),
+          ButlerlyCardHeader(
+            title: context.l10n.text(
+              analysisEvidenceMode ? 'analysisEvidenceSelection' : 'filters',
+            ),
+          ),
+          if (analysisEvidenceMode) ...[
+            Text(context.l10n.text('analysisEvidenceExplanation')),
+            const SizedBox(height: ButlerlySpacing.small),
+          ],
           const SizedBox(height: ButlerlySpacing.small),
           for (final criterion in criteria)
             Padding(

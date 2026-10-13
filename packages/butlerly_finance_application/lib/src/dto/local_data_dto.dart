@@ -42,12 +42,17 @@ final class LocalRestoreResult {
     required this.restoredRows,
     required this.keptNewerLocalRows,
     required this.restoredEvidence,
+    this.presentationRefreshFailed = false,
   });
 
   final LocalRestoreMode mode;
   final int restoredRows;
   final int keptNewerLocalRows;
   final int restoredEvidence;
+
+  /// The database restore succeeded, but the non-critical UI refresh failed.
+  /// Do not report this as a failed data restore or try to restore again.
+  final bool presentationRefreshFailed;
 }
 
 final class LocalDataExportResult {

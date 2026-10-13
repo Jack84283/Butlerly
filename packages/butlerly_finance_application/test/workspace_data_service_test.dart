@@ -14,31 +14,62 @@ void main() {
     );
   });
 
-  for (final operation in ['restore', 'recover', 'reset']) {
-    test(
-      '$operation refreshes system data before UI, inside the safety gate',
-      () async {
-        Future<void> refresh() async => events.add('presentation');
-        switch (operation) {
-          case 'restore':
-            await service.restore(
-              'selected-backup',
-              mode: LocalRestoreMode.merge,
-              password: 'secret',
-              refreshPresentation: refresh,
-            );
-            expect(gateway.password, 'secret');
-            break;
-          case 'recover':
-            await service.recoverControlledState(refreshPresentation: refresh);
-            break;
-          case 'reset':
-            await service.resetControlledRecovery(refreshPresentation: refresh);
-        }
-        expect(events, ['activate', 'system-data', 'presentation', 'complete']);
+  test('restore refreshes UI after cleanup', () async {
+    await service.restore(
+      'selected-backup',
+      mode: LocalRestoreMode.merge,
+      password: 'secret',
+      refreshPresentation: () async => events.add('presentation'),
+    );
+    expect(gateway.password, 'secret');
+    expect(events, ['activate', 'system-data', 'complete', 'presentation']);
+  });
+
+  test('UI refresh failure reports warning after committed restore', () async {
+    final result = await service.restore(
+      'selected-backup',
+      mode: LocalRestoreMode.replace,
+      refreshPresentation: () async {
+        events.add('presentation-failed');
+        throw StateError('failed to refresh mounted page');
       },
     );
+    expect(result.restoredRows, 1);
+    expect(result.presentationRefreshFailed, isTrue);
+    expect(events, [
+      'activate',
+      'system-data',
+      'complete',
+      'presentation-failed',
+    ]);
+  });
+
+  for (final operation in ['recover', 'reset']) {
+    test('$operation refreshes inside the safety gate', () async {
+      Future<void> refresh() async => events.add('presentation');
+      switch (operation) {
+        case 'recover':
+          await service.recoverControlledState(refreshPresentation: refresh);
+          break;
+        case 'reset':
+          await service.resetControlledRecovery(refreshPresentation: refresh);
+      }
+      expect(events, ['activate', 'system-data', 'presentation', 'complete']);
+    });
   }
+
+  test('failed restore does not refresh UI', () async {
+    gateway.failComplete = true;
+    await expectLater(
+      service.restore(
+        'selected-backup',
+        mode: LocalRestoreMode.replace,
+        refreshPresentation: () async => events.add('presentation'),
+      ),
+      throwsStateError,
+    );
+    expect(events, ['activate', 'system-data', 'complete']);
+  });
 
   test(
     'refresh failure propagates inside restore instead of reporting success',
@@ -79,6 +110,7 @@ class _Gateway implements LocalDataGateway {
   final List<String> events;
   String? password;
   bool failErase = false;
+  bool failComplete = false;
   @override
   bool get hasRecoverySafetyCopy => true;
 
@@ -86,6 +118,7 @@ class _Gateway implements LocalDataGateway {
     events.add('activate');
     await refresh();
     events.add('complete');
+    if (failComplete) throw StateError('activation cleanup failed');
   }
 
   @override

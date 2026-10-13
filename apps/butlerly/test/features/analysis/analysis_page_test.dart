@@ -6,6 +6,7 @@ import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
+import 'package:butlerly/features/analysis/presentation/analysis_search_selection.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_custom_period_sheet.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_period_selector.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_skeleton.dart';
@@ -689,6 +690,7 @@ void main() {
     final uri = Uri.parse(requestedNavigation!);
     expect(uri.path, '/search');
     expect(uri.queryParameters['locked'], 'true');
+    expect(uri.queryParameters['analysisRule'], 'ANL-R010');
     expect(uri.queryParameters['category'], 'category-id');
     expect(uri.queryParameters['ids'], 'occurrence-only');
     expect(uri.queryParameters['from'], '2026-08-01');
@@ -816,6 +818,7 @@ void main() {
       final merchantUri = Uri.parse(navigation!);
       expect(merchantUri.path, '/search');
       expect(merchantUri.queryParameters['locked'], 'true');
+      expect(merchantUri.queryParameters['analysisRule'], 'ANL-R011');
       expect(merchantUri.queryParameters['merchant'], 'merchant-one');
       expect(merchantUri.queryParameters['ids'], 't-merchant');
       expect(merchantUri.queryParameters['from'], '2026-08-01');
@@ -838,6 +841,7 @@ void main() {
       final subcategoryUri = Uri.parse(navigation!);
       expect(subcategoryUri.path, '/search');
       expect(subcategoryUri.queryParameters['locked'], 'true');
+      expect(subcategoryUri.queryParameters['analysisRule'], 'ANL-R012');
       expect(subcategoryUri.queryParameters['subcategory'], 'subcategory-one');
       expect(subcategoryUri.queryParameters['ids'], 't-subcategory');
       expect(subcategoryUri.queryParameters['to'], '2026-08-31');
@@ -948,6 +952,14 @@ void main() {
                   readOnly: parameters['locked'] == 'true',
                   selectedMerchantId: parameters['merchant'],
                   selectedSubcategoryId: parameters['subcategory'],
+                  analysisSelection: state.extra is AnalysisSearchSelection
+                      ? state.extra! as AnalysisSearchSelection
+                      : null,
+                  analysisRuleId: parameters['analysisRule'],
+                  analysisDimension:
+                      parameters['category'] ??
+                      parameters['merchant'] ??
+                      parameters['subcategory'],
                   initialQuery: ListTransactionsQuery(
                     transactionIds: parameters['ids']?.split(','),
                     from: DateTime.tryParse(parameters['from'] ?? ''),
@@ -1011,23 +1023,113 @@ void main() {
       await tester.ensureVisible(drill.$1);
       await tester.tap(drill.$1);
       await tester.pumpAndSettle();
-      final uri = router.routeInformationProvider.value.uri;
-      expect(uri.path, '/search');
+      final search = find.byType(SearchPage);
+      expect(search, findsOneWidget);
+      // Imperative GoRouter.push does not necessarily replace the browser
+      // route-information URI. Inspect the active secondary route instead.
+      final searchContext = tester.element(search);
+      final uri = GoRouterState.of(searchContext).uri;
+      expect(
+        uri.path,
+        '/search',
+        reason: 'Drill-through: ${drill.$3} / ${drill.$4}',
+      );
       expect(uri.queryParameters['ids'], drill.$2);
       expect(uri.queryParameters['locked'], 'true');
+      expect(
+        uri.queryParameters['analysisRule'],
+        drill.$3 == 'category'
+            ? 'ANL-R010'
+            : drill.$3 == 'merchant'
+            ? 'ANL-R011'
+            : 'ANL-R012',
+      );
       expect(uri.queryParameters[drill.$3], drill.$4);
       expect(uri.queryParameters['from'], '2026-08-01');
       expect(uri.queryParameters['to'], '2026-08-31');
-      expect(find.byType(SearchPage), findsOneWidget);
       expect(
         find.byKey(const ValueKey('locked-search-criteria')),
         findsOneWidget,
       );
       expect(find.textContaining(drill.$4), findsWidgets);
+      expect(find.text('Analysis selection'), findsOneWidget);
+      final selection = tester.widget<SearchPage>(search).analysisSelection;
+      expect(selection, isNotNull);
+      expect(selection!.evidenceIds, [drill.$2]);
       expect(router.canPop(), isTrue);
       expect(tester.takeException(), isNull);
       router.pop();
     }
+  });
+
+  testWidgets('large Analysis groups use bounded URLs', (tester) async {
+    final context = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-08-01',
+        endDate: '2026-08-31',
+        timeZoneId: 'UTC',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+    );
+    final rule = AnalysisRuleDefinition(
+      identity: RuleIdentity('ANL-R011'),
+      version: RuleVersion('1.0.0'),
+      schemaVersion: '1.0.0',
+      type: AnalysisRuleType.metric,
+      nameKey: 'analysis.rule.r011.name',
+      descriptionKey: 'analysis.rule.r011.description',
+      enabled: true,
+      status: AnalysisRuleStatus.active,
+      period: 'selected_period',
+      measure: const RuleMeasure(operation: RuleOperation.sum, field: 'amount'),
+      grouping: RuleGrouping.merchant,
+      surface: AnalysisSurface.spending,
+      baseline: RuleBaseline.none,
+      condition: const RuleCondition(operator: 'none'),
+      severity: RuleSeverity.info,
+      definitionHash: RuleDefinitionHash('e' * 64),
+    );
+    final evidence = [
+      for (var i = 0; i < 300; i++)
+        EvidenceReference(transactionId: TransactionId('transaction-$i')),
+    ];
+    String? navigation;
+    await tester.pumpWidget(
+      app(
+        () async => ApplicationSuccess([
+          RuleExecutionResult(
+            rule: rule,
+            metric: AnalysisMetric(
+              id: 'large-merchant',
+              rule: rule,
+              context: context,
+              value: DecimalValue.parse('300'),
+              dimension: 'large-merchant:value',
+              currency: CurrencyCode('USD'),
+              evidence: evidence,
+              calculatedAt: DateTime.utc(2026, 8, 31),
+            ),
+          ),
+        ]),
+        loadMasterData: () async => const TransactionMasterData(
+          merchantNames: {'large-merchant': 'Large merchant'},
+        ),
+        onNavigationRequested: (path) => navigation = path,
+      ),
+    );
+    await tester.pumpAndSettle();
+    final item = find.byKey(
+      const ValueKey('analysis-merchant-metric-large-merchant'),
+    );
+    await tester.ensureVisible(item);
+    await tester.tap(item);
+    final path = Uri.parse(navigation!);
+    expect(path.path, '/search');
+    expect(navigation!.length, lessThan(400));
+    expect(path.queryParameters.containsKey('ids'), isFalse);
+    expect(path.queryParameters['analysisRule'], 'ANL-R011');
+    expect(path.queryParameters['merchant'], 'large-merchant');
   });
 
   testWidgets('subcategory rows use the subcategory unavailable label', (
@@ -1158,7 +1260,10 @@ void main() {
     await tester.ensureVisible(find.text('View all categories'));
     expect(find.text('Other'), findsOneWidget);
     await tester.tap(find.text('View all categories'));
-    expect(requestedNavigation, '/transactions?from=2026-08-01&to=2026-08-31');
+    expect(
+      requestedNavigation,
+      '/search?locked=true&analysisRule=ANL-R010&from=2026-08-01&to=2026-08-31',
+    );
   });
 
   testWidgets('breakdowns do not render unavailable currency totals as zero', (

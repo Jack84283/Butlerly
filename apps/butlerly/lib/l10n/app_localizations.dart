@@ -437,6 +437,9 @@ class AppLocalizations {
       'dismiss': 'Dismiss',
       'edit': 'Edit',
       'uncategorized': 'Not categorized',
+      'analysisNoSubcategory': 'No subcategory',
+      'restoreRefreshWarning':
+          'Data was restored, but the screen could not refresh. Reopen Butlerly to reload.',
       'confirm': 'Confirm',
       'normalizedAmount': 'Normalized amount',
       'reviewIncomplete': 'Transaction information is incomplete',
@@ -645,6 +648,9 @@ class AppLocalizations {
           'Group canonical spending by subcategory for this period.',
       'spendingByMerchant': 'Spending by merchant',
       'spendingBySubcategory': 'Spending by subcategory',
+      'analysisEvidenceSelection': 'Analysis selection',
+      'analysisEvidenceExplanation':
+          'Date and group describe the Analysis calculation. Results follow supporting transaction evidence, not extra live filters.',
       'analysisMerchantBreakdownSubtitle':
           'Top merchants for the selected period',
       'analysisSubcategoryBreakdownSubtitle':
@@ -1235,6 +1241,8 @@ class AppLocalizations {
       'dismiss': '忽略',
       'edit': '编辑',
       'uncategorized': '未分类',
+      'analysisNoSubcategory': '无子分类',
+      'restoreRefreshWarning': '数据已恢复，但界面未能刷新。请重新打开 Butlerly。',
       'confirm': '确认',
       'normalizedAmount': '标准化金额',
       'reviewIncomplete': '交易信息不完整',
@@ -1423,6 +1431,9 @@ class AppLocalizations {
       'analysis.rule.r012.description': '按子类别汇总本周期的规范支出。',
       'spendingByMerchant': '按商户统计支出',
       'spendingBySubcategory': '按子类别统计支出',
+      'analysisEvidenceSelection': '分析结果选择',
+      'analysisEvidenceExplanation':
+          '日期和分组说明分析计算的范围。结果根据关联交易证据显示，不会再次使用实时筛选条件。',
       'analysisMerchantBreakdownSubtitle': '所选期间支出最多的商户',
       'analysisSubcategoryBreakdownSubtitle': '所选期间支出最多的子类别',
       'recurringPatterns': '周期性模式',
@@ -2022,6 +2033,9 @@ class AppLocalizations {
       'dismiss': 'Descartar',
       'edit': 'Editar',
       'uncategorized': 'Sin categoría',
+      'analysisNoSubcategory': 'Sin subcategoría',
+      'restoreRefreshWarning':
+          'Los datos se restauraron, pero la pantalla no pudo actualizarse. Vuelve a abrir Butlerly.',
       'confirm': 'Confirmar',
       'normalizedAmount': 'Importe normalizado',
       'reviewIncomplete': 'La información de la transacción está incompleta',
@@ -2236,6 +2250,9 @@ class AppLocalizations {
           'Agrupa los gastos canónicos por subcategoría en este periodo.',
       'spendingByMerchant': 'Gastos por comercio',
       'spendingBySubcategory': 'Gastos por subcategoría',
+      'analysisEvidenceSelection': 'Selección de análisis',
+      'analysisEvidenceExplanation':
+          'La fecha y el grupo describen el cálculo. Los resultados siguen las transacciones de respaldo, no filtros adicionales en vivo.',
       'analysisMerchantBreakdownSubtitle':
           'Principales comercios del periodo seleccionado',
       'analysisSubcategoryBreakdownSubtitle':

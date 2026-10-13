@@ -155,7 +155,10 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           .backupText('restoreResult')
           .replaceAll('{restored}', '${result.restoredRows}')
           .replaceAll('{kept}', '${result.keptNewerLocalRows}');
-      _message('${context.l10n.backupText('restoreComplete')} $summary');
+      _message(
+        '${context.l10n.backupText('restoreComplete')} $summary'
+        '${result.presentationRefreshFailed ? ' ${context.l10n.text('restoreRefreshWarning')}' : ''}',
+      );
     } on BackupPasswordOrIntegrityException {
       if (mounted) {
         _message(context.l10n.backupText('passwordOrIntegrityFailed'));

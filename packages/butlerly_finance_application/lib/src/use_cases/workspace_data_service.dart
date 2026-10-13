@@ -34,6 +34,7 @@ abstract interface class LocalDataGateway {
 
 /// Application orchestration shared by normal privacy controls and recovery.
 /// System-data refresh must complete inside the adapter's restore safety gate.
+/// UI invalidation must wait until restore commits and closes its recovery gate.
 final class WorkspaceDataService {
   const WorkspaceDataService(this.gateway, {required this.refreshSystemData});
   final LocalDataGateway gateway;
@@ -69,12 +70,30 @@ final class WorkspaceDataService {
     required LocalRestoreMode mode,
     String? password,
     Future<void> Function()? refreshPresentation,
-  }) => gateway.restore(
-    filePath,
-    mode: mode,
-    password: password,
-    postActivationRefresh: () => _refresh(refreshPresentation),
-  );
+  }) async {
+    final result = await gateway.restore(
+      filePath,
+      mode: mode,
+      password: password,
+      // Keep validation/reseeding inside the restore safety gate, but do not
+      // invalidate mounted screens while activation/cleanup is still running.
+      postActivationRefresh: () => _refresh(null),
+    );
+    try {
+      await refreshPresentation?.call();
+      return result;
+    } catch (_) {
+      // Persistence has already committed. The caller must not interpret a
+      // presentation refresh failure as a failed backup restore.
+      return LocalRestoreResult(
+        mode: result.mode,
+        restoredRows: result.restoredRows,
+        keptNewerLocalRows: result.keptNewerLocalRows,
+        restoredEvidence: result.restoredEvidence,
+        presentationRefreshFailed: true,
+      );
+    }
+  }
 
   Future<void> eraseAll({Future<void> Function()? refreshPresentation}) async {
     await gateway.eraseAll();

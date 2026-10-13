@@ -4,6 +4,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
+import 'package:butlerly/features/analysis/presentation/analysis_search_selection.dart';
 import 'package:butlerly/features/foundation/presentation/add_page.dart';
 import 'package:butlerly/features/foundation/presentation/butlerly_launch_page.dart';
 import 'package:butlerly/features/foundation/presentation/contextual_pages.dart';
@@ -200,6 +201,14 @@ final appRouter = GoRouter(
               readOnly: locked,
               selectedMerchantId: locked ? parameters['merchant'] : null,
               selectedSubcategoryId: locked ? parameters['subcategory'] : null,
+              analysisSelection: state.extra is AnalysisSearchSelection
+                  ? state.extra! as AnalysisSearchSelection
+                  : null,
+              analysisRuleId: parameters['analysisRule'],
+              analysisDimension:
+                  parameters['category'] ??
+                  parameters['merchant'] ??
+                  parameters['subcategory'],
               insightRuleId: parameters['insightRule'],
               insightDimension: parameters['insightDimension'],
             );
