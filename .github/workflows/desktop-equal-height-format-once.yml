@@ -1,0 +1,27 @@
+name: Desktop Equal Height Format Once
+on:
+  push:
+    paths:
+      - '.github/workflows/desktop-equal-height-format-once.yml'
+permissions:
+  contents: write
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: codex/desktop-home-isolated
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.1'
+      - name: Format and remove temporary workflow
+        run: |
+          (cd apps/butlerly && flutter pub get && dart format .)
+          rm .github/workflows/desktop-equal-height-format-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/butlerly/lib .github/workflows/desktop-equal-height-format-once.yml
+          git commit -m "style(desktop): format equal-height cards" || exit 0
+          git push origin HEAD:codex/desktop-home-isolated
