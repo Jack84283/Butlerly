@@ -303,9 +303,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                         ? Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(flex: 3, child: left),
+                              Expanded(child: left),
                               const SizedBox(width: 16),
-                              Expanded(flex: 2, child: middle),
+                              Expanded(child: middle),
                             ],
                           )
                         : Column(
@@ -424,9 +424,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(flex: 5, child: recent),
+                              Expanded(child: recent),
                               const SizedBox(width: 16),
-                              Expanded(flex: 4, child: actions),
+                              Expanded(child: actions),
                             ],
                           )
                         else ...[
