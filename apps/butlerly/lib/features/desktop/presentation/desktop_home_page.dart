@@ -381,7 +381,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                 child: const Text('View all →'),
                               ),
                               child: SizedBox(
-                                // Reserve the 12px inset within the 380px outer card.
+                                // Reserve the 12px inset within the 280px outer card.
                                 height:
                                     _desktopHomeBreakdownContentHeight -
                                     2 * ButlerlySpacing.small,
@@ -941,10 +941,10 @@ const TextStyle _desktopHomeCardTitleStyle = TextStyle(
 );
 const double _desktopHomeCardTitleTopInset = 10;
 const double _desktopHomeBreakdownHeaderHeight = 32;
-const double _desktopHomeBreakdownCardHeight = 380;
-// A 380px panel leaves 320px for content after header and outer padding.
-const double _desktopHomeBreakdownContentHeight = 320;
-const double _desktopHomeTrendMaxBarHeight = 280;
+const double _desktopHomeBreakdownCardHeight = 280;
+// A 280px panel leaves 220px for content after header and outer padding.
+const double _desktopHomeBreakdownContentHeight = 220;
+const double _desktopHomeTrendMaxBarHeight = 180;
 
 class _DesktopPanel extends StatelessWidget {
   const _DesktopPanel({
