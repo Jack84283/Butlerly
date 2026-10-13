@@ -1059,6 +1059,76 @@ void main() {
     }
   });
 
+  testWidgets('large Analysis groups use bounded URLs', (tester) async {
+    final context = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-08-01',
+        endDate: '2026-08-31',
+        timeZoneId: 'UTC',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+    );
+    final rule = AnalysisRuleDefinition(
+      identity: RuleIdentity('ANL-R011'),
+      version: RuleVersion('1.0.0'),
+      schemaVersion: '1.0.0',
+      type: AnalysisRuleType.metric,
+      nameKey: 'analysis.rule.r011.name',
+      descriptionKey: 'analysis.rule.r011.description',
+      enabled: true,
+      status: AnalysisRuleStatus.active,
+      period: 'selected_period',
+      measure: const RuleMeasure(operation: RuleOperation.sum, field: 'amount'),
+      grouping: RuleGrouping.merchant,
+      surface: AnalysisSurface.spending,
+      baseline: RuleBaseline.none,
+      condition: const RuleCondition(operator: 'none'),
+      severity: RuleSeverity.info,
+      definitionHash: RuleDefinitionHash('e' * 64),
+    );
+    final evidence = [
+      for (var i = 0; i < 300; i++)
+        EvidenceReference(transactionId: TransactionId('transaction-$i')),
+    ];
+    String? navigation;
+    await tester.pumpWidget(
+      app(
+        () async => ApplicationSuccess([
+          RuleExecutionResult(
+            rule: rule,
+            metric: AnalysisMetric(
+              id: 'large-merchant',
+              rule: rule,
+              context: context,
+              value: DecimalValue.parse('300'),
+              dimension: 'large-merchant:value',
+              currency: CurrencyCode('USD'),
+              evidence: evidence,
+              calculatedAt: DateTime.utc(2026, 8, 31),
+            ),
+          ),
+        ]),
+        loadMasterData: () async => const TransactionMasterData(
+          merchantNames: {'large-merchant': 'Large merchant'},
+        ),
+        onNavigationRequested: (path) => navigation = path,
+      ),
+    );
+    await tester.pumpAndSettle();
+    final item = find.byKey(
+      const ValueKey('analysis-merchant-metric-large-merchant'),
+    );
+    await tester.ensureVisible(item);
+    await tester.tap(item);
+    final path = Uri.parse(navigation!);
+    expect(path.path, '/search');
+    expect(navigation!.length, lessThan(400));
+    expect(path.queryParameters.containsKey('ids'), isFalse);
+    expect(path.queryParameters['analysisRule'], 'ANL-R011');
+    expect(path.queryParameters['merchant'], 'large-merchant');
+  });
+
   testWidgets('subcategory rows use the subcategory unavailable label', (
     tester,
   ) async {
