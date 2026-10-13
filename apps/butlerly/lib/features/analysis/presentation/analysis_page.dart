@@ -752,8 +752,8 @@ class _AnalysisContent extends StatelessWidget {
     if (selected == null || sourceRule == null) return;
 
     final dimension = metric == null ? null : analysisRawDimension(metric);
-    final ids = transactionIds?.toSet().toList(growable: false) ??
-        const <String>[];
+    final ids =
+        transactionIds?.toSet().toList(growable: false) ?? const <String>[];
     final selection = AnalysisSearchSelection(
       context: selected,
       ruleId: sourceRule,
