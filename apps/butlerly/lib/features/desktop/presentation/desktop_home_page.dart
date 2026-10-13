@@ -790,6 +790,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   }
 }
 
+/// Desktop counterpart of the device Home's category share rows.
 class _DesktopCategorySummaryRow extends StatelessWidget {
   const _DesktopCategorySummaryRow({
     required this.metric,
