@@ -365,7 +365,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                             height: _desktopHomeBreakdownCardHeight,
                             child: _DesktopPanel(
                               title: 'Category Breakdown',
-                              showDeviceDividerSurface: true,
+                              showInnerCard: true,
                               headerHeight: _desktopHomeBreakdownHeaderHeight,
                               trailing: TextButton(
                                 style: TextButton.styleFrom(
@@ -379,13 +379,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                 child: const Text('View all →'),
                               ),
                               child: SizedBox(
-                                // Reserve the 12px inset on both sides of the
-                                // fixed-height dark-mode inner card.
-                                height:
-                                    160 -
-                                    (theme.brightness == Brightness.dark
-                                        ? 2 * ButlerlySpacing.small
-                                        : 0),
+                                // Reserve the 12px inner-card inset in both modes
+                                // while preserving the 220px overall card height.
+                                height: 160 - 2 * ButlerlySpacing.small,
                                 child: ListView(
                                   children: [
                                     for (final metric
@@ -511,7 +507,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                           );
                           final recent = _DesktopPanel(
                             title: 'Recent Transactions',
-                            showDeviceDividerSurface: true,
+                            showInnerCard: true,
                             trailing: TextButton(
                               style: TextButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(
@@ -848,14 +844,14 @@ class _DesktopPanel extends StatelessWidget {
     required this.child,
     this.trailing,
     this.headerHeight,
-    this.showDeviceDividerSurface = false,
+    this.showInnerCard = false,
   });
   final String title;
   final Widget child;
   final Widget? trailing;
   final double? headerHeight;
-  // Device dark dividers need the device card surface for visible contrast.
-  final bool showDeviceDividerSurface;
+  // Distinct inner surfaces keep the list and dividers visible in both modes.
+  final bool showInnerCard;
 
   @override
   Widget build(BuildContext context) {
@@ -894,11 +890,13 @@ class _DesktopPanel extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          if (dark && showDeviceDividerSurface)
+          if (showInnerCard)
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: ColoredBox(
-                color: context.colors.cardSurface,
+                color: dark
+                    ? context.colors.cardSurface
+                    : context.colors.subtleSurface,
                 child: Padding(
                   padding: const EdgeInsets.all(ButlerlySpacing.small),
                   child: child,
