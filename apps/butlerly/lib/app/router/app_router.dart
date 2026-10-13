@@ -83,10 +83,8 @@ final appRouter = GoRouter(
               routes: [
                 GoRoute(
                   path: '/',
-                  pageBuilder: (context, state) => _primaryPage(
-                    'home',
-                    const _HomeLayoutSwitch(),
-                  ),
+                  pageBuilder: (context, state) =>
+                      _primaryPage('home', const _HomeLayoutSwitch()),
                 ),
               ],
             ),

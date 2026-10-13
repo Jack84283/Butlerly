@@ -525,26 +525,24 @@ class _DesktopMetric extends StatelessWidget {
         ? color.withValues(alpha: .12)
         : color.withValues(alpha: .055);
     final percent = comparison?.percentageChange;
-    final usable = comparison?.availability ==
-            AnalysisDataAvailability.sufficient &&
+    final usable =
+        comparison?.availability == AnalysisDataAvailability.sufficient &&
         comparison?.baselineValue != null &&
         percent != null;
     final percentValue = usable ? double.tryParse(percent.toString()) : null;
     final comparisonText = percentValue == null
         ? 'Change unavailable'
         : percentValue > 0
-            ? '↑ ${percentValue.abs().toStringAsFixed(1)}% vs previous period'
-            : percentValue < 0
-                ? '↓ ${percentValue.abs().toStringAsFixed(1)}% vs previous period'
-                : '0.0% vs previous period';
+        ? '↑ ${percentValue.abs().toStringAsFixed(1)}% vs previous period'
+        : percentValue < 0
+        ? '↓ ${percentValue.abs().toStringAsFixed(1)}% vs previous period'
+        : '0.0% vs previous period';
 
     return Container(
       decoration: BoxDecoration(
         color: fill,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: color.withValues(alpha: dark ? .40 : .17),
-        ),
+        border: Border.all(color: color.withValues(alpha: dark ? .40 : .17)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       child: Row(
