@@ -961,7 +961,7 @@ void main() {
               path: '/analysis',
               builder: (_, _) => AnalysisPage(
                 load: () async => ApplicationSuccess(results),
-                 loadMasterData: () async => const TransactionMasterData(
+                loadMasterData: () async => const TransactionMasterData(
                   categoryNames: {
                     'category.food': 'Dining',
                     'category.food.groceries': 'Groceries',
