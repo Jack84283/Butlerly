@@ -114,7 +114,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
           },
           child: ListView(
             key: const ValueKey('desktop-home-page'),
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
+            padding: EdgeInsets.zero,
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -122,7 +122,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                   color: theme.brightness == Brightness.dark
                       ? const Color(0xFF1C293B)
                       : const Color(0xFFE3ECFA),
-                  borderRadius: BorderRadius.circular(10),
                 ),
                 child: Row(
                   children: [
@@ -175,7 +174,11 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                   ],
                 ),
               ),
-              const SizedBox(height: 4),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 4, 12, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
               Text(
                 'Financial overview',
                 style: theme.textTheme.headlineMedium?.copyWith(
@@ -443,6 +446,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                   },
                 ),
               ],
+                  ],
+                ),
+              ),
             ],
           ),
         );
