@@ -929,7 +929,8 @@ class _DesktopCategoryLeadingIcon extends StatelessWidget {
 
 // Applies to colored fills only; text and icons stay fully opaque for contrast.
 const double _desktopHomeTintOpacity = 0.80;
-const double _desktopHomeSpendingTrendTintOpacity = 0.58;
+const double _desktopHomeCurrentMonthTrendTintOpacity = 0.80;
+const double _desktopHomeOtherMonthTrendTintOpacity = 0.38;
 const double _desktopHomeActionTintOpacity = 0.18;
 const TextStyle _desktopHomeCardTitleStyle = TextStyle(
   fontSize: 16,
@@ -1208,6 +1209,7 @@ class _DesktopTrend extends StatelessWidget {
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
     final values = points
         .map(
           (point) =>
@@ -1239,7 +1241,10 @@ class _DesktopTrend extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.primary
                               .withValues(
-                                alpha: _desktopHomeSpendingTrendTintOpacity,
+                                alpha: points[i].month.year == now.year &&
+                                        points[i].month.month == now.month
+                                    ? _desktopHomeCurrentMonthTrendTintOpacity
+                                    : _desktopHomeOtherMonthTrendTintOpacity,
                               ),
                           borderRadius: const BorderRadius.vertical(
                             top: Radius.circular(5),
