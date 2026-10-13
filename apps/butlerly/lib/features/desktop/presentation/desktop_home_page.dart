@@ -402,7 +402,8 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                                 ?.categoryShares[metric.id],
                                             masterData: _masterData,
                                             amount: _money(metric, currency),
-                                            onTap: () => _go('/analysis?$query'),
+                                            onTap: () =>
+                                                _go('/analysis?$query'),
                                           ),
                                           const SizedBox(
                                             height: ButlerlySpacing.compact,
@@ -875,9 +876,7 @@ class _DesktopCategorySummaryRow extends StatelessWidget {
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
-                          ColoredBox(
-                            color: color.withValues(alpha: 0.14),
-                          ),
+                          ColoredBox(color: color.withValues(alpha: 0.14)),
                           FractionallySizedBox(
                             alignment: AlignmentDirectional.centerStart,
                             widthFactor: progress,
