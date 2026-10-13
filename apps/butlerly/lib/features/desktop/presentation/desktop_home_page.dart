@@ -401,10 +401,13 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                             onTap: () =>
                                                 _go('/analysis?$query'),
                                           ),
-                                          const Divider(
-                                            height: 1,
-                                            thickness: 0.5,
-                                          ),
+                                          Divider(
+  height: 1,
+  thickness: 1,
+  color: Theme.of(context).brightness == Brightness.dark
+      ? const Color(0xFF555B63)
+      : const Color(0xFFD8DDE6),
+),
                                         ],
                                       ),
                                     if (analysis?.categories
@@ -694,7 +697,13 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                           ),
                                         ),
                                       ),
-                                      const Divider(height: 1, thickness: 0.5),
+                                      Divider(
+  height: 1,
+  thickness: 1,
+  color: Theme.of(context).brightness == Brightness.dark
+      ? const Color(0xFF555B63)
+      : const Color(0xFFD8DDE6),
+),
                                     ],
                                   ),
                                 if (data.recentTransactions.isEmpty)
