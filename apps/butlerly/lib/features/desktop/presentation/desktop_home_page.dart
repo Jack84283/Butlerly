@@ -1416,8 +1416,9 @@ String _desktopEmptyInsightTitle(
   InsightPresentationGroup group,
 ) => switch (group) {
   InsightPresentationGroup.unusual => context.l10n.text('needsAttention'),
-  InsightPresentationGroup.largePurchase =>
-    context.l10n.text('analysis.rule.r025.name'),
+  InsightPresentationGroup.largePurchase => context.l10n.text(
+    'analysis.rule.r025.name',
+  ),
   InsightPresentationGroup.category => context.l10n.text('categories'),
   InsightPresentationGroup.subcategory => context.l10n.text('subcategories'),
   InsightPresentationGroup.tag => context.l10n.text('tags'),
