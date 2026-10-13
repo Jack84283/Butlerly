@@ -1,4 +1,4 @@
-name: Desktop Insights Summary Validate Once
+name: Desktop Insights Summary Validate Retry
 on:
   push:
     paths:
