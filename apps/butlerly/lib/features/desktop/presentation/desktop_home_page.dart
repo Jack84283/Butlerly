@@ -929,6 +929,7 @@ class _DesktopCategoryLeadingIcon extends StatelessWidget {
 
 // Applies to colored fills only; text and icons stay fully opaque for contrast.
 const double _desktopHomeTintOpacity = 0.80;
+const double _desktopHomeSpendingTrendTintOpacity = 0.58;
 const double _desktopHomeActionTintOpacity = 0.18;
 const TextStyle _desktopHomeCardTitleStyle = TextStyle(
   fontSize: 16,
@@ -1237,7 +1238,7 @@ class _DesktopTrend extends StatelessWidget {
                         height: 120 * values[i] / max,
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.primary
-                              .withValues(alpha: _desktopHomeTintOpacity),
+                              .withValues(alpha: _desktopHomeSpendingTrendTintOpacity),
                           borderRadius: const BorderRadius.vertical(
                             top: Radius.circular(5),
                           ),
