@@ -521,7 +521,8 @@ class _SearchPageState extends State<SearchPage>
             merchantId: widget.selectedMerchantId,
             subcategoryId: widget.selectedSubcategoryId,
             analysisEvidenceMode:
-                widget.analysisSelection != null || widget.analysisRuleId != null,
+                widget.analysisSelection != null ||
+                widget.analysisRuleId != null,
             paymentSourceId: _paymentSourceId,
             currency: _currency,
             direction: _direction,
