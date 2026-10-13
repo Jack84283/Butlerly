@@ -309,11 +309,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                             ],
                           )
                         : Column(
-                            children: [
-                              left,
-                              const SizedBox(height: 8),
-                              middle,
-                            ],
+                            children: [left, const SizedBox(height: 8), middle],
                           );
                   },
                 ),
