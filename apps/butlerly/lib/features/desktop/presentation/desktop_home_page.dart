@@ -719,13 +719,15 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                               recent,
                               const SizedBox(height: 8),
                               if (b.maxWidth >= 680)
-                                Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(child: actions),
-                                    const SizedBox(width: 8),
-                                    Expanded(child: insights),
-                                  ],
+                                IntrinsicHeight(
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      Expanded(child: actions),
+                                      const SizedBox(width: 8),
+                                      Expanded(child: insights),
+                                    ],
+                                  ),
                                 )
                               else ...[
                                 actions,
@@ -804,7 +806,7 @@ class _DesktopPanel extends StatelessWidget {
     final foreground = dark ? const Color(0xFFF6F8FB) : const Color(0xFF14213E);
     return Container(
       decoration: BoxDecoration(
-        color: dark ? const Color(0xFF171B21) : Colors.white,
+        color: dark ? const Color(0xFF292D33) : Colors.white,
         borderRadius: BorderRadius.circular(16),
       ),
       padding: const EdgeInsets.fromLTRB(
