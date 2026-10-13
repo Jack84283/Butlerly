@@ -612,8 +612,8 @@ class _DesktopMetric extends StatelessWidget {
         ? const Color(0xFFE24247)
         : const Color(0xFF1769E8);
     final fill = dark
-        ? color.withValues(alpha: .12)
-        : color.withValues(alpha: .055);
+        ? color.withValues(alpha: .24)
+        : color.withValues(alpha: .14);
     final percent = comparison?.percentageChange;
     final usable =
         comparison?.availability == AnalysisDataAvailability.sufficient &&
