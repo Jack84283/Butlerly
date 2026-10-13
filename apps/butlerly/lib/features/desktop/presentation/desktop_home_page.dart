@@ -179,273 +179,280 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-              Text(
-                'Financial overview',
-                style: theme.textTheme.headlineMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.6,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                DateFormat.yMMMM().format(current),
-                style: theme.textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 10),
-              if (snapshot.connectionState != ConnectionState.done)
-                const LinearProgressIndicator(),
-              if (unavailable)
-                _DesktopPanel(
-                  title: 'Overview unavailable',
-                  child: Row(
-                    children: [
-                      const Expanded(
-                        child: Text(
-                          'Local financial data is currently unavailable. Your records are preserved.',
-                        ),
+                    Text(
+                      'Financial overview',
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.6,
                       ),
-                      TextButton(
-                        onPressed: () => setState(_reload),
-                        child: const Text('Retry'),
-                      ),
-                    ],
-                  ),
-                ),
-              if (!unavailable) ...[
-                LayoutBuilder(
-                  builder: (context, bounds) => Row(
-                    children: [
-                      Expanded(
-                        child: _DesktopMetric(
-                          title: 'Income',
-                          value: _money(analysis?.income, currency),
-                          icon: Icons.arrow_upward,
-                          comparison: analysis?.incomeComparison,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _DesktopMetric(
-                          title: 'Expenses',
-                          value: _money(analysis?.spending, currency),
-                          icon: Icons.arrow_downward,
-                          comparison: analysis?.spendingComparison,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _DesktopMetric(
-                          title: 'Net cash flow',
-                          value: _money(analysis?.net, currency),
-                          icon: Icons.show_chart,
-                          comparison: analysis?.netComparison,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                LayoutBuilder(
-                  builder: (context, b) {
-                    final left = _DesktopPanel(
-                      title: 'Spending Trend',
-                      trailing: DropdownButton<int>(
-                        value: _trendMonths,
-                        underline: const SizedBox.shrink(),
-                        items: const [3, 6, 12]
-                            .map(
-                              (n) => DropdownMenuItem(
-                                value: n,
-                                child: Text('$n months'),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (n) {
-                          if (n != null) {
-                            setState(() {
-                              _trendMonths = n;
-                              _reload();
-                            });
-                          }
-                        },
-                      ),
-                      child: SizedBox(
-                        height: 160,
-                        child: _DesktopTrend(
-                          points: data.monthlyTrend,
-                          currency: currency,
-                          onTap: () => _go('/analysis?$query'),
-                        ),
-                      ),
-                    );
-                    final middle = _DesktopPanel(
-                      title: 'Category Breakdown',
-                      trailing: TextButton(
-                        onPressed: () => _go('/analysis?$query'),
-                        child: const Text('View all →'),
-                      ),
-                      child: SizedBox(
-                        height: 160,
-                        child: ListView(
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      DateFormat.yMMMM().format(current),
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                    const SizedBox(height: 10),
+                    if (snapshot.connectionState != ConnectionState.done)
+                      const LinearProgressIndicator(),
+                    if (unavailable)
+                      _DesktopPanel(
+                        title: 'Overview unavailable',
+                        child: Row(
                           children: [
-                            for (final metric
-                                in analysis?.categories.take(6) ??
-                                    <AnalysisMetric>[])
-                              ListTile(
-                                dense: true,
-                                contentPadding: EdgeInsets.zero,
-                                title: Text(
-                                  metric.rule.nameKey,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                trailing: Text(_money(metric, currency)),
-                                onTap: () => _go('/analysis?$query'),
+                            const Expanded(
+                              child: Text(
+                                'Local financial data is currently unavailable. Your records are preserved.',
                               ),
-                            if (analysis?.categories.isEmpty ?? true)
-                              const Text('No category data for this period'),
+                            ),
+                            TextButton(
+                              onPressed: () => setState(_reload),
+                              child: const Text('Retry'),
+                            ),
                           ],
                         ),
                       ),
-                    );
-                    return b.maxWidth >= 680
-                        ? Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(child: left),
-                              const SizedBox(width: 8),
-                              Expanded(child: middle),
-                            ],
-                          )
-                        : Column(
-                            children: [left, const SizedBox(height: 8), middle],
-                          );
-                  },
-                ),
-                const SizedBox(height: 8),
-                LayoutBuilder(
-                  builder: (context, b) {
-                    final actions = _DesktopPanel(
-                      title: 'Action Center',
-                      child: Column(
-                        children: [
-                          _DesktopAction(
-                            label: 'Needs review',
-                            count: data.reviewCount,
-                            icon: Icons.fact_check_outlined,
-                            onTap: () => _go('/review?view=needsReview'),
-                          ),
-                          _DesktopAction(
-                            label: 'Uncategorized',
-                            count: data.uncategorizedTransactionCount,
-                            icon: Icons.category_outlined,
-                            onTap: () => _go('/review?view=uncategorized'),
-                          ),
-                          _DesktopAction(
-                            label: 'Possible duplicates',
-                            count: data.possibleDuplicateCount,
-                            icon: Icons.copy_outlined,
-                            onTap: () => _go('/review?view=duplicates'),
-                          ),
-                          _DesktopAction(
-                            label: 'Merchant issues',
-                            count: data.merchantReviewCount,
-                            icon: Icons.store_outlined,
-                            onTap: () => _go('/review?view=overview'),
-                          ),
-                          _DesktopAction(
-                            label: 'Import statement',
-                            icon: Icons.upload_file_outlined,
-                            onTap: () => _go('/statements'),
-                          ),
-                          _DesktopAction(
-                            label: 'Payment settlements',
-                            icon: Icons.payments_outlined,
-                            onTap: () => _go('/payment-settlements'),
-                          ),
-                        ],
-                      ),
-                    );
-                    final recent = _DesktopPanel(
-                      title: 'Recent Transactions',
-                      trailing: TextButton(
-                        onPressed: () => _go('/search?$query'),
-                        child: const Text('View all →'),
-                      ),
-                      child: Column(
-                        children: [
-                          for (final transaction
-                              in data.recentTransactions.take(7))
-                            ListTile(
-                              dense: true,
-                              contentPadding: EdgeInsets.zero,
-                              title: Text(
-                                transaction.description ??
-                                    transaction.rawCounterparty ??
-                                    'Transaction',
-                              ),
-                              subtitle: Text(
-                                transaction.transactionDate ??
-                                    transaction.currency,
-                              ),
-                              trailing: Text(
-                                '${transaction.direction == 'income' ? '+' : '−'}${transaction.amount} ${transaction.currency}',
-                              ),
-                              onTap: () => _go(
-                                '/search?ids=${Uri.encodeQueryComponent(transaction.id)}',
+                    if (!unavailable) ...[
+                      LayoutBuilder(
+                        builder: (context, bounds) => Row(
+                          children: [
+                            Expanded(
+                              child: _DesktopMetric(
+                                title: 'Income',
+                                value: _money(analysis?.income, currency),
+                                icon: Icons.arrow_upward,
+                                comparison: analysis?.incomeComparison,
                               ),
                             ),
-                          if (data.recentTransactions.isEmpty)
-                            const Text('No recent transactions'),
-                        ],
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _DesktopMetric(
+                                title: 'Expenses',
+                                value: _money(analysis?.spending, currency),
+                                icon: Icons.arrow_downward,
+                                comparison: analysis?.spendingComparison,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: _DesktopMetric(
+                                title: 'Net cash flow',
+                                value: _money(analysis?.net, currency),
+                                icon: Icons.show_chart,
+                                comparison: analysis?.netComparison,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    );
-                    final insights = _DesktopPanel(
-                      title: 'Insights',
-                      trailing: TextButton(
-                        onPressed: () => _go('/insights?$query'),
-                        child: const Text('View all →'),
+                      const SizedBox(height: 8),
+                      LayoutBuilder(
+                        builder: (context, b) {
+                          final left = _DesktopPanel(
+                            title: 'Spending Trend',
+                            trailing: DropdownButton<int>(
+                              value: _trendMonths,
+                              underline: const SizedBox.shrink(),
+                              items: const [3, 6, 12]
+                                  .map(
+                                    (n) => DropdownMenuItem(
+                                      value: n,
+                                      child: Text('$n months'),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (n) {
+                                if (n != null) {
+                                  setState(() {
+                                    _trendMonths = n;
+                                    _reload();
+                                  });
+                                }
+                              },
+                            ),
+                            child: SizedBox(
+                              height: 160,
+                              child: _DesktopTrend(
+                                points: data.monthlyTrend,
+                                currency: currency,
+                                onTap: () => _go('/analysis?$query'),
+                              ),
+                            ),
+                          );
+                          final middle = _DesktopPanel(
+                            title: 'Category Breakdown',
+                            trailing: TextButton(
+                              onPressed: () => _go('/analysis?$query'),
+                              child: const Text('View all →'),
+                            ),
+                            child: SizedBox(
+                              height: 160,
+                              child: ListView(
+                                children: [
+                                  for (final metric
+                                      in analysis?.categories.take(6) ??
+                                          <AnalysisMetric>[])
+                                    ListTile(
+                                      dense: true,
+                                      contentPadding: EdgeInsets.zero,
+                                      title: Text(
+                                        metric.rule.nameKey,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      trailing: Text(_money(metric, currency)),
+                                      onTap: () => _go('/analysis?$query'),
+                                    ),
+                                  if (analysis?.categories.isEmpty ?? true)
+                                    const Text(
+                                      'No category data for this period',
+                                    ),
+                                ],
+                              ),
+                            ),
+                          );
+                          return b.maxWidth >= 680
+                              ? Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(child: left),
+                                    const SizedBox(width: 8),
+                                    Expanded(child: middle),
+                                  ],
+                                )
+                              : Column(
+                                  children: [
+                                    left,
+                                    const SizedBox(height: 8),
+                                    middle,
+                                  ],
+                                );
+                        },
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            data.insights.isEmpty
-                                ? 'No insights for this period'
-                                : 'You have ${data.insights.length} insight${data.insights.length == 1 ? '' : 's'} to explore.',
-                          ),
-                          const SizedBox(height: 8),
-                          OutlinedButton.icon(
-                            onPressed: () => _go('/insights?$query'),
-                            icon: const Icon(Icons.insights),
-                            label: const Text('Explore insights'),
-                          ),
-                        ],
-                      ),
-                    );
-                    return Column(
-                      children: [
-                        if (b.maxWidth >= 680)
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                      const SizedBox(height: 8),
+                      LayoutBuilder(
+                        builder: (context, b) {
+                          final actions = _DesktopPanel(
+                            title: 'Action Center',
+                            child: Column(
+                              children: [
+                                _DesktopAction(
+                                  label: 'Needs review',
+                                  count: data.reviewCount,
+                                  icon: Icons.fact_check_outlined,
+                                  onTap: () => _go('/review?view=needsReview'),
+                                ),
+                                _DesktopAction(
+                                  label: 'Uncategorized',
+                                  count: data.uncategorizedTransactionCount,
+                                  icon: Icons.category_outlined,
+                                  onTap: () =>
+                                      _go('/review?view=uncategorized'),
+                                ),
+                                _DesktopAction(
+                                  label: 'Possible duplicates',
+                                  count: data.possibleDuplicateCount,
+                                  icon: Icons.copy_outlined,
+                                  onTap: () => _go('/review?view=duplicates'),
+                                ),
+                                _DesktopAction(
+                                  label: 'Merchant issues',
+                                  count: data.merchantReviewCount,
+                                  icon: Icons.store_outlined,
+                                  onTap: () => _go('/review?view=overview'),
+                                ),
+                                _DesktopAction(
+                                  label: 'Import statement',
+                                  icon: Icons.upload_file_outlined,
+                                  onTap: () => _go('/statements'),
+                                ),
+                                _DesktopAction(
+                                  label: 'Payment settlements',
+                                  icon: Icons.payments_outlined,
+                                  onTap: () => _go('/payment-settlements'),
+                                ),
+                              ],
+                            ),
+                          );
+                          final recent = _DesktopPanel(
+                            title: 'Recent Transactions',
+                            trailing: TextButton(
+                              onPressed: () => _go('/search?$query'),
+                              child: const Text('View all →'),
+                            ),
+                            child: Column(
+                              children: [
+                                for (final transaction
+                                    in data.recentTransactions.take(7))
+                                  ListTile(
+                                    dense: true,
+                                    contentPadding: EdgeInsets.zero,
+                                    title: Text(
+                                      transaction.description ??
+                                          transaction.rawCounterparty ??
+                                          'Transaction',
+                                    ),
+                                    subtitle: Text(
+                                      transaction.transactionDate ??
+                                          transaction.currency,
+                                    ),
+                                    trailing: Text(
+                                      '${transaction.direction == 'income' ? '+' : '−'}${transaction.amount} ${transaction.currency}',
+                                    ),
+                                    onTap: () => _go(
+                                      '/search?ids=${Uri.encodeQueryComponent(transaction.id)}',
+                                    ),
+                                  ),
+                                if (data.recentTransactions.isEmpty)
+                                  const Text('No recent transactions'),
+                              ],
+                            ),
+                          );
+                          final insights = _DesktopPanel(
+                            title: 'Insights',
+                            trailing: TextButton(
+                              onPressed: () => _go('/insights?$query'),
+                              child: const Text('View all →'),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  data.insights.isEmpty
+                                      ? 'No insights for this period'
+                                      : 'You have ${data.insights.length} insight${data.insights.length == 1 ? '' : 's'} to explore.',
+                                ),
+                                const SizedBox(height: 8),
+                                OutlinedButton.icon(
+                                  onPressed: () => _go('/insights?$query'),
+                                  icon: const Icon(Icons.insights),
+                                  label: const Text('Explore insights'),
+                                ),
+                              ],
+                            ),
+                          );
+                          return Column(
                             children: [
-                              Expanded(child: recent),
-                              const SizedBox(width: 8),
-                              Expanded(child: actions),
+                              if (b.maxWidth >= 680)
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(child: recent),
+                                    const SizedBox(width: 8),
+                                    Expanded(child: actions),
+                                  ],
+                                )
+                              else ...[
+                                recent,
+                                const SizedBox(height: 8),
+                                actions,
+                              ],
+                              const SizedBox(height: 8),
+                              insights,
                             ],
-                          )
-                        else ...[
-                          recent,
-                          const SizedBox(height: 8),
-                          actions,
-                        ],
-                        const SizedBox(height: 8),
-                        insights,
-                      ],
-                    );
-                  },
-                ),
-              ],
+                          );
+                        },
+                      ),
+                    ],
                   ],
                 ),
               ),
