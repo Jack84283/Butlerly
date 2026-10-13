@@ -28,7 +28,8 @@ final class AnalysisSearchSelection {
   Future<List<String>> resolveEvidence({
     required Future<ApplicationResult<List<RuleExecutionResult>>> Function(
       AnalysisContext,
-    ) calculate,
+    )
+    calculate,
   }) async {
     if (evidenceIds.isNotEmpty) return evidenceIds.toSet().toList();
     final calculated = await calculate(context);
@@ -39,7 +40,8 @@ final class AnalysisSearchSelection {
       for (final result in calculated.value)
         if (result.rule.identity.value == ruleId &&
             result.metric != null &&
-            result.metric!.availability == AnalysisDataAvailability.sufficient &&
+            result.metric!.availability ==
+                AnalysisDataAvailability.sufficient &&
             (dimension == null ||
                 result.metric!.dimension?.split(':').first == dimension))
           for (final evidence in result.metric!.evidence)
