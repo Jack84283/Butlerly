@@ -137,7 +137,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                         shadowColor: Colors.transparent,
                       ),
                       onPressed: () async {
-                        final picked = await _selectDesktopMonth(context, current);
+                        final picked = await _selectDesktopMonth(
+                          context,
+                          current,
+                        );
                         if (picked != null && mounted) {
                           setState(() {
                             _month = DateTime(picked.year, picked.month);
@@ -820,10 +823,7 @@ Future<DateTime?> _selectDesktopMonth(BuildContext context, DateTime selected) {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(
-              sheetContext,
-              DateTime(year, month),
-            ),
+            onPressed: () => Navigator.pop(sheetContext, DateTime(year, month)),
             child: const Text('Apply'),
           ),
         ],
