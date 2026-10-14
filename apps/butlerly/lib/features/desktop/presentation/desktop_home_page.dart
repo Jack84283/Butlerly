@@ -282,7 +282,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                               title: context.l10n.text('homeUnavailable'),
                               child: Row(
                                 children: [
-                                  const Expanded(
+                                  Expanded(
                                     child: Text(
                                       context.l10n.text(
                                         'desktopLocalDataUnavailable',
