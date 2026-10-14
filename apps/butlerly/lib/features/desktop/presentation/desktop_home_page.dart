@@ -148,11 +148,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                 decoration: BoxDecoration(
                   color: theme.colorScheme.secondaryContainer,
                 ),
-                child: Wrap(
-                  alignment: WrapAlignment.end,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 8,
-                  runSpacing: 8,
+                child: Row(
                   children: [
                     IconButton(
                       style: IconButton.styleFrom(
@@ -204,6 +200,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                       onPressed: () => _moveMonth(1, current),
                       icon: const Icon(Icons.chevron_right),
                     ),
+                    const Spacer(),
                     Text(
                       _desktopGreeting(DateTime.now()),
                       maxLines: 1,
@@ -212,6 +209,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
+                    const SizedBox(width: 16),
                     SizedBox(
                       width: 220,
                       child: OutlinedButton.icon(
@@ -227,6 +225,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                         label: const Text('Search transactions'),
                       ),
                     ),
+                    const SizedBox(width: 8),
                     FilledButton.icon(
                       style: FilledButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
