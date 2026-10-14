@@ -1240,9 +1240,7 @@ class _DesktopTrend extends StatelessWidget {
     }
 
     const gridLevels = 5;
-    final gridColor = Theme.of(context).brightness == Brightness.dark
-        ? const Color(0xFF555A60)
-        : context.colors.cardDivider;
+    final gridColor = context.colors.cardDivider;
     final formatter = NumberFormat.compactCurrency(
       name: currency,
       decimalDigits: 0,
