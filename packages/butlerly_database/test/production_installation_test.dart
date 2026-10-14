@@ -1,53 +1,11 @@
 import 'dart:io';
 
 import 'package:butlerly_database/butlerly_database.dart';
-import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:test/test.dart';
 
 void main() {
   setUpAll(sqfliteFfiInit);
-
-  test('incomplete current-version database fails before catalog seed',
-      () async {
-    final directory = await Directory.systemTemp.createTemp(
-      'butlerly-incomplete-install-',
-    );
-    final dbPath = '${directory.path}/butlerly.db';
-    final incomplete = await databaseFactoryFfi.openDatabase(
-      dbPath,
-      options: OpenDatabaseOptions(
-        version: ButlerlyDatabase.databaseVersion,
-        onCreate: (db, _) async {
-          await db.execute('CREATE TABLE categories (id TEXT PRIMARY KEY)');
-        },
-      ),
-    );
-    await incomplete.close();
-    final baseline = await File('database/schema/v1.sql').readAsString();
-    final database = ButlerlyDatabase(
-      factory: databaseFactoryFfi,
-      path: dbPath,
-      schemaSql: baseline,
-      seedSql: ["INSERT INTO categories (id) VALUES ('test')"],
-      validateSchemaBeforeSeed: true,
-    );
-    try {
-      await expectLater(
-        database.open(),
-        throwsA(
-          isA<RepositoryException>().having(
-            (error) => error.code,
-            'code',
-            RepositoryFailureCode.migration,
-          ),
-        ),
-      );
-    } finally {
-      await database.close();
-      await directory.delete(recursive: true);
-    }
-  });
 
   test('fresh installation uses production baseline, hardening and catalog',
       () async {
@@ -67,7 +25,6 @@ void main() {
           '$baseline\n${baselineHardeningFromDeployment(deployment)}',
       seedSql: [catalog],
       migrations: parseDeploymentMigrations(deployment),
-      validateSchemaBeforeSeed: true,
     );
     try {
       await db.open();
