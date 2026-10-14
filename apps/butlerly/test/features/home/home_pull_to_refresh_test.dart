@@ -872,7 +872,7 @@ void main() {
     expect(find.text(r'$0.00'), findsNothing);
   });
 
-  testWidgets('Home Summary stacks desktop-style metric rows on phones', (
+  testWidgets('Home Summary keeps desktop-style metrics in one row on phones', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -904,8 +904,8 @@ void main() {
     final net = tester.getTopLeft(
       find.byKey(const ValueKey('home-summary-inner-net-position')),
     );
-    expect(income.dy, lessThan(spending.dy));
-    expect(spending.dy, lessThan(net.dy));
+    expect(income.dy, closeTo(spending.dy, 1));
+    expect(spending.dy, closeTo(net.dy, 1));
     expect(tester.takeException(), isNull);
   });
 
