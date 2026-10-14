@@ -18,7 +18,7 @@ void main() {
     await database.open();
     final repository = SqliteUserPreferenceRepository(database);
     await repository.save(
-      const UserPreference(
+      UserPreference(
         locale: 'en',
         baseCurrency: CurrencyCode('USD'),
         timeZoneId: 'UTC',
@@ -81,7 +81,7 @@ void main() {
       expect(await database.connection.getVersion(), 15);
       expect((await repository.load())?.displayName, '');
       await repository.save(
-        const UserPreference(
+        UserPreference(
           locale: 'en',
           baseCurrency: CurrencyCode('USD'),
           timeZoneId: 'UTC',
