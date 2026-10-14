@@ -257,10 +257,7 @@ void main() {
         findsOneWidget,
       );
     }
-    expect(
-      find.byKey(const ValueKey('desktop-home-page')),
-      findsOneWidget,
-    );
+    expect(find.byKey(const ValueKey('desktop-home-page')), findsOneWidget);
     expect(
       find.byKey(const ValueKey('primary-wide-body-surface')),
       findsOneWidget,
@@ -269,10 +266,7 @@ void main() {
       find.byKey(const ValueKey('primary-wide-home-floating-surface')),
       findsNothing,
     );
-    expect(
-      find.byKey(const ValueKey('desktop-home-page')),
-      findsOneWidget,
-    );
+    expect(find.byKey(const ValueKey('desktop-home-page')), findsOneWidget);
     expect(
       tester.getSize(find.byKey(const ValueKey('primary-wide-body-surface'))),
       const Size(1200 - ButlerlySize.wideNavigationExpandedWidth, 800),
