@@ -95,9 +95,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
     controller.dispose();
     if (updated != null && mounted) {
-      await ref.read(userPreferenceProvider.notifier).saveChanges(
-        displayName: updated,
-      );
+      await ref
+          .read(userPreferenceProvider.notifier)
+          .saveChanges(displayName: updated);
     }
   }
 

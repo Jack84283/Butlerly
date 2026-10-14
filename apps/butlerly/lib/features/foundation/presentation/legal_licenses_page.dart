@@ -9,13 +9,16 @@ import 'package:go_router/go_router.dart';
 
 // Read the app version from the bundled Flutter manifest so the displayed
 // version always matches pubspec.yaml without a database field.
-final Future<String> _bundledVersion = rootBundle.loadString('pubspec.yaml').then(
-  (manifest) =>
-      RegExp(r'^version:\s*([^\s#]+)', multiLine: true)
-          .firstMatch(manifest)
-          ?.group(1) ??
-      '—',
-);
+Future<String> _readBundledVersion() async {
+  final manifest = await rootBundle.loadString('pubspec.yaml');
+  final match = RegExp(
+    r'^version:\s*([^\s#]+)',
+    multiLine: true,
+  ).firstMatch(manifest);
+  return match?.group(1) ?? '—';
+}
+
+final Future<String> _bundledVersion = _readBundledVersion();
 
 /// Offline reader for the bundled, authoritative Legal document set.
 class LegalLicensesPage extends StatelessWidget {
@@ -45,8 +48,9 @@ class LegalLicensesPage extends StatelessWidget {
           title: Text(context.l10n.text('appName')),
           subtitle: FutureBuilder<String>(
             future: _bundledVersion,
-            builder: (context, snapshot) =>
-                Text('Version ${snapshot.data ?? '—'}'),
+            builder: (context, snapshot) {
+              return Text('Version ${snapshot.data ?? '—'}');
+            },
           ),
         ),
       ),
