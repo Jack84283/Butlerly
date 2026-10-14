@@ -1261,7 +1261,9 @@ class _DesktopTrend extends StatelessWidget {
                   children: [
                     for (var i = 0; i < gridLevels; i++)
                       Text(
-                        formatter.format(\n                          max * (gridLevels - 1 - i) / (gridLevels - 1),\n                        ),
+                        formatter.format(
+                          max * (gridLevels - 1 - i) / (gridLevels - 1),
+                        ),
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           color: context.colors.secondaryText,
                         ),
