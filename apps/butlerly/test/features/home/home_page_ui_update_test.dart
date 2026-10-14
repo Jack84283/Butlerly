@@ -239,7 +239,7 @@ void main() {
   });
 
   testWidgets(
-    'Monthly Summary keeps three inner cards horizontal on phone-sized layouts',
+    'Monthly Summary stacks desktop-style rows on phone-sized layouts',
     (tester) async {
       tester.view.physicalSize = const Size(320, 568);
       tester.view.devicePixelRatio = 1;
@@ -256,33 +256,14 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      final metricKeys = const [
-        ValueKey('home-summary-metric-spending'),
-        ValueKey('home-summary-metric-income'),
-        ValueKey('home-summary-metric-net-position'),
-      ];
-      final tops = [
-        for (final key in metricKeys) tester.getTopLeft(find.byKey(key)).dy,
-      ];
-      for (final top in tops.skip(1)) {
-        expect(top, closeTo(tops.first, 1.0));
-      }
-      expect(
-        find.byKey(const ValueKey('home-summary-metric-savings')),
-        findsNothing,
-      );
-      final innerCards = [
-        for (final key in const [
-          'home-summary-inner-spending',
-          'home-summary-inner-income',
-          'home-summary-inner-net-position',
-        ])
-          find.byKey(ValueKey(key)),
-      ];
-      for (final card in innerCards) {
-        expect(card, findsOneWidget);
-        expect(tester.getSize(card).height, closeTo(108, 0.01));
-      }
+      final income = find.byKey(const ValueKey('home-summary-inner-income'));
+      final spending = find.byKey(const ValueKey('home-summary-inner-spending'));
+      final net = find.byKey(const ValueKey('home-summary-inner-net-position'));
+      expect(income, findsOneWidget);
+      expect(spending, findsOneWidget);
+      expect(net, findsOneWidget);
+      expect(tester.getTopLeft(income).dy, lessThan(tester.getTopLeft(spending).dy));
+      expect(tester.getTopLeft(spending).dy, lessThan(tester.getTopLeft(net).dy));
       expect(tester.takeException(), isNull);
     },
   );
