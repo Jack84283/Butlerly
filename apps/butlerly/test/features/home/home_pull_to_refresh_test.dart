@@ -5,7 +5,6 @@ import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
-import 'package:butlerly/design_system/tokens/butlerly_category_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
@@ -1916,23 +1915,6 @@ Future<void> _pumpHomeInsight(WidgetTester tester, String periodType) async {
   );
   await tester.pumpAndSettle();
 }
-
-AnalysisComparison _comparison(String change) => AnalysisComparison(
-  currentValue: DecimalValue.parse('10'),
-  baselineValue: DecimalValue.parse('8'),
-  absoluteChange: DecimalValue.parse(change),
-  percentageChange: DecimalValue.parse('25'),
-  availability: AnalysisDataAvailability.sufficient,
-);
-
-Text _lastTextIn(WidgetTester tester, String key) => tester
-    .widgetList<Text>(
-      find.descendant(
-        of: find.byKey(ValueKey(key)),
-        matching: find.byType(Text),
-      ),
-    )
-    .last;
 
 final class _PaymentSources implements PaymentSourceRepository {
   @override
