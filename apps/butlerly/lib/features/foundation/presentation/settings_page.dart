@@ -65,14 +65,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _editDisplayName(String currentName) async {
-    final controller = TextEditingController(text: currentName);
+    // Let the text field own its controller for the entire sheet lifecycle.
+    // A route can keep building during its exit animation after pop returns.
+    var editedName = currentName;
     final updated = await showButlerlyBottomSheet<String>(
       context: context,
       builder: (sheetContext) => ButlerlySheet(
         title: Text(sheetContext.l10n.text('displayName')),
-        content: TextField(
+        content: TextFormField(
           key: const ValueKey('settings-display-name-input'),
-          controller: controller,
+          initialValue: currentName,
+          onChanged: (value) => editedName = value,
           autofocus: true,
           maxLength: 10,
           textCapitalization: TextCapitalization.words,
@@ -87,13 +90,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
           FilledButton(
             onPressed: () =>
-                Navigator.of(sheetContext).pop(controller.text.trim()),
+                Navigator.of(sheetContext).pop(editedName.trim()),
             child: Text(sheetContext.l10n.text('save')),
           ),
         ],
       ),
     );
-    controller.dispose();
     if (updated != null && mounted) {
       await ref
           .read(userPreferenceProvider.notifier)
