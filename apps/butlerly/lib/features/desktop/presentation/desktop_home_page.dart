@@ -139,7 +139,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: theme.scaffoldBackgroundColor,
+                  color: context.colors.subtleSurface,
                   border: Border(
                     bottom: BorderSide(color: context.colors.cardDivider),
                   ),
