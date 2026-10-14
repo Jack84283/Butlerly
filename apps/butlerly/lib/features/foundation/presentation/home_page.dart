@@ -891,9 +891,6 @@ class _HomeSummaryCard extends StatelessWidget {
                   color: const Color(0xFF1769E8),
                 ),
               ];
-              final useColumns =
-                  constraints.maxWidth >= 720 &&
-                  MediaQuery.textScalerOf(context).scale(14) < 22;
               final cards = [
                 for (final metric in metrics)
                   _DeviceDesktopSummaryMetric(
@@ -924,17 +921,6 @@ class _HomeSummaryCard extends StatelessWidget {
                     color: metric.color,
                   ),
               ];
-              if (!useColumns) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    for (var index = 0; index < cards.length; index++) ...[
-                      cards[index],
-                      if (index < cards.length - 1) const SizedBox(height: 8),
-                    ],
-                  ],
-                );
-              }
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1000,54 +986,66 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
         color: color.withValues(alpha: 0.80),
         borderRadius: BorderRadius.circular(16),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      child: Row(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+      child: Column(
+        key: titleKey,
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           CircleAvatar(
-            radius: 20,
+            radius: 16,
             backgroundColor: Colors.white.withValues(alpha: .20),
-            child: Icon(icon, color: Colors.white, size: 22),
+            child: Icon(icon, color: Colors.white, size: 18),
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              key: titleKey,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
+          const SizedBox(height: 6),
+          SizedBox(
+            width: double.infinity,
+            height: 20,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                maxLines: 1,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
                 ),
-                const SizedBox(height: 4),
-                FittedBox(
-                  alignment: Alignment.centerLeft,
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    amount,
-                    maxLines: 1,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                      letterSpacing: -.7,
-                    ),
-                  ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          SizedBox(
+            width: double.infinity,
+            height: 28,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                amount,
+                maxLines: 1,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  letterSpacing: -.7,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  comparisonText,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: percentValue == null ? Colors.white70 : Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          SizedBox(
+            width: double.infinity,
+            height: 16,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                comparisonText,
+                maxLines: 1,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: percentValue == null ? Colors.white70 : Colors.white,
+                  fontWeight: FontWeight.w600,
                 ),
-              ],
+              ),
             ),
           ),
         ],
