@@ -311,6 +311,24 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('monthly summary uses the standard card surface in both themes', (
+    tester,
+  ) async {
+    for (final theme in [AppTheme.light, AppTheme.dark]) {
+      await tester.pumpWidget(_testApp(router, theme: theme));
+      await tester.pumpAndSettle();
+
+      final summary = tester.widget<ButlerlyCard>(
+        find.byKey(const ValueKey('home-summary-card')),
+      );
+      expect(summary.color, isNull);
+      expect(
+        theme.cardTheme.color,
+        theme.extension<ButlerlySemanticColors>()!.cardSurface,
+      );
+    }
+  });
+
   testWidgets('Home card titles share the canonical top inset', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -784,8 +802,9 @@ void main() {
   );
 }
 
-Widget _testApp(GoRouter router, {Locale? locale}) => MaterialApp.router(
-  theme: AppTheme.light,
+Widget _testApp(GoRouter router, {Locale? locale, ThemeData? theme}) =>
+    MaterialApp.router(
+      theme: theme ?? AppTheme.light,
   locale: locale,
   routerConfig: router,
   supportedLocales: AppLocalizations.supportedLocales,
