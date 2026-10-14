@@ -383,18 +383,10 @@ class _HomeLayoutSwitch extends StatelessWidget {
   }
 }
 
-/// Desktop presentation activates only on large desktop windows.
-/// Mobile and tablet routes keep their original HomePage unchanged.
-bool _desktopHomeEnabled(BuildContext context) {
-  final platform = Theme.of(context).platform;
-  final desktopPlatform =
-      platform == TargetPlatform.macOS ||
-      platform == TargetPlatform.windows ||
-      platform == TargetPlatform.linux;
-  final width = MediaQuery.sizeOf(context).width;
-  final tabletWide =
-      effectiveButlerlyLayoutMode(context, width) == ButlerlyLayoutMode.wide &&
-      MediaQuery.sizeOf(context).width > MediaQuery.sizeOf(context).height;
-  return tabletWide ||
-      (width >= ButlerlySize.wideBreakpoint && (desktopPlatform || kIsWeb));
-}
+/// Wide uses the desktop Home on all platforms, including iPad.
+bool _desktopHomeEnabled(BuildContext context) =>
+    effectiveButlerlyLayoutMode(
+      context,
+      MediaQuery.sizeOf(context).width,
+    ) ==
+    ButlerlyLayoutMode.wide;
