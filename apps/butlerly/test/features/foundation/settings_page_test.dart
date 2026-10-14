@@ -39,6 +39,16 @@ void main() {
     expect(find.text('Optional features'), findsOneWidget);
   });
 
+  testWidgets('More display-name label uses regular font weight', (
+    tester,
+  ) async {
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    final label = tester.widget<Text>(find.text('Display name').first);
+    expect(label.style?.fontWeight, FontWeight.w400);
+  });
+
   testWidgets('display-name sheet saves and can reopen without crashing', (
     tester,
   ) async {
