@@ -89,8 +89,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             child: Text(sheetContext.l10n.text('cancel')),
           ),
           FilledButton(
-            onPressed: () =>
-                Navigator.of(sheetContext).pop(editedName.trim()),
+            onPressed: () => Navigator.of(sheetContext).pop(editedName.trim()),
             child: Text(sheetContext.l10n.text('save')),
           ),
         ],
