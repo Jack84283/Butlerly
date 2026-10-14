@@ -1240,7 +1240,7 @@ class _DesktopTrend extends StatelessWidget {
     }
 
     const gridLevels = 5;
-    final gridColor = context.colors.cardDivider.withValues(alpha: 0.45);
+    final gridColor = context.colors.cardDivider;
     final formatter = NumberFormat.compactCurrency(
       name: currency,
       decimalDigits: 0,
