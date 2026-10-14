@@ -382,6 +382,17 @@ RepositoryException mapDatabaseException(
   final detail =
       'sqlite${code == null ? '' : ' code=$code'}: '
       '${raw.replaceAll(RegExp(r'\s+'), ' ').trim()}';
+  // SQLite reports missing schema objects as generic error code 1.
+  // Treat this as an actionable migration/schema failure, not DB-UNKNOWN.
+  if (raw.contains('no such table:') ||
+      raw.contains('no such column:') ||
+      raw.contains('duplicate column name:')) {
+    return RepositoryException(
+      RepositoryFailureCode.migration,
+      operation,
+      detail: detail,
+    );
+  }
   if (error.isUniqueConstraintError() || error.isNotNullConstraintError()) {
     return RepositoryException(
       RepositoryFailureCode.constraint,
