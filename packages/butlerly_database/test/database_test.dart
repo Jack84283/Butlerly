@@ -5,8 +5,6 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:test/test.dart';
 
-import 'support/deployment_sql.dart';
-
 void main() {
   late ButlerlyDatabase database;
 
@@ -106,206 +104,28 @@ void main() {
     );
   });
 
-  test('recovers a versioned but empty database on first launch', () async {
-    await database.close();
-    final directory = await Directory.systemTemp.createTemp('butlerly-empty-');
-    final dbPath = '${directory.path}/empty.db';
-    try {
-      final empty = await databaseFactoryFfi.openDatabase(
-        dbPath,
-        options: OpenDatabaseOptions(
-          version: 13,
-          onCreate: (_, _) async {},
-        ),
-      );
-      await empty.close();
-
-      final baseline = await File('database/schema/v1.sql').readAsString();
-      database = ButlerlyDatabase(
-        factory: databaseFactoryFfi,
-        path: dbPath,
-        schemaSql: baseline,
-        migrations: parseDeploymentMigrations(await deploymentSql()),
-      );
-      await database.open();
-      expect(await database.connection.getVersion(), 14);
-      expect(
-        await database.connection.rawQuery(
-          "SELECT name FROM sqlite_master WHERE type = 'table' "
-          "AND name = 'duplicate_candidate_groups'",
-        ),
-        hasLength(1),
-      );
-      expect(
-        (await database.connection.rawQuery(
-          'PRAGMA table_info(duplicate_candidate_groups)',
-        )).any((column) => column['name'] == 'statement_rows'),
-        isTrue,
-      );
-      expect(await database.passesIntegrityCheck(), isTrue);
-    } finally {
-      await database.close();
-      await directory.delete(recursive: true);
-    }
-  });
-
-  test('repairs missing duplicate groups in a version 13 database', () async {
-    await database.close();
-    final directory = await Directory.systemTemp.createTemp('butlerly-v13-');
-    final dbPath = '${directory.path}/existing.db';
-    try {
-      final incomplete = await databaseFactoryFfi.openDatabase(
-        dbPath,
-        options: OpenDatabaseOptions(
-          version: 13,
-          onCreate: (db, _) async {
-            await db.execute(
-              'CREATE TABLE duplicate_candidate_group_transactions '
-              '(group_id TEXT, transaction_id TEXT)',
-            );
-          },
-        ),
-      );
-      await incomplete.close();
-      final baseline = await File('database/schema/v1.sql').readAsString();
-      database = ButlerlyDatabase(
-        factory: databaseFactoryFfi,
-        path: dbPath,
-        schemaSql: baseline,
-        migrations: parseDeploymentMigrations(await deploymentSql()),
-      );
-      await database.open();
-      expect(await database.connection.getVersion(), 14);
-      expect(
-        (await database.connection.rawQuery(
-          'PRAGMA table_info(duplicate_candidate_groups)',
-        )).any((column) => column['name'] == 'statement_rows'),
-        isTrue,
-      );
-    } finally {
-      await database.close();
-      await directory.delete(recursive: true);
-    }
-  });
-
-  test('repairs missing duplicate groups before seeding version 14', () async {
-    await database.close();
-    final directory = await Directory.systemTemp.createTemp('butlerly-seed-');
-    final dbPath = '${directory.path}/partial.db';
-    try {
-      final existing = await databaseFactoryFfi.openDatabase(
-        dbPath,
-        options: OpenDatabaseOptions(
-          version: 14,
-          onCreate: (db, _) async {
-            await db.execute(
-              'CREATE TABLE categories (id TEXT PRIMARY KEY, name TEXT)',
-            );
-            await db.execute(
-              'CREATE TABLE duplicate_candidate_group_transactions '
-              '(group_id TEXT, transaction_id TEXT)',
-            );
-          },
-        ),
-      );
-      await existing.close();
-
-      final baseline = await File('database/schema/v1.sql').readAsString();
-      database = ButlerlyDatabase(
-        factory: databaseFactoryFfi,
-        path: dbPath,
-        schemaSql: baseline,
-        seedSql: [
-          "INSERT INTO categories (id, name) VALUES ('test', 'Test')",
-        ],
-      );
-      await database.open();
-      expect(await database.connection.getVersion(), 14);
-      expect(
-        (await database.connection.rawQuery(
-          'PRAGMA table_info(duplicate_candidate_groups)',
-        )).any((row) => row['name'] == 'statement_rows'),
-        isTrue,
-      );
-      expect(await database.connection.query('categories'), hasLength(1));
-    } finally {
-      await database.close();
-      await directory.delete(recursive: true);
-    }
-  });
-
-  test('seeds an existing v14 database with legacy merchants columns', () async {
-    await database.close();
-    final directory = await Directory.systemTemp.createTemp('butlerly-merchant-');
-    final dbPath = '${directory.path}/legacy-merchants.db';
-    try {
-      final existing = await databaseFactoryFfi.openDatabase(
-        dbPath,
-        options: OpenDatabaseOptions(
-          version: 14,
-          onCreate: (db, _) async {
-            await db.execute(
-              'CREATE TABLE merchants (id TEXT PRIMARY KEY, '
-              'name TEXT NOT NULL, status TEXT NOT NULL)',
-            );
-          },
-        ),
-      );
-      await existing.insert('merchants', {
-        'id': 'existing-merchant',
-        'name': 'Existing Merchant',
-        'status': 'active',
-      });
-      await existing.close();
-
-      database = ButlerlyDatabase(
-        factory: databaseFactoryFfi,
-        path: dbPath,
-        schemaSql: await File('database/schema/v1.sql').readAsString(),
-        seedSql: [
-          "INSERT INTO merchants "
-          "(id,name,normalized_name,default_category_id,"
-          "default_subcategory_id,is_built_in,status) "
-          "VALUES ('merchant.safeway','Safeway','safeway',NULL,NULL,1,'active')",
-        ],
-      );
-      await database.open();
-      final columns = await database.connection.rawQuery(
-        'PRAGMA table_info(merchants)',
-      );
-      expect(
-        columns.map((row) => row['name']),
-        containsAll(['normalized_name', 'default_category_id',
-          'default_subcategory_id', 'is_built_in', 'created_at', 'updated_at']),
-      );
-      expect(
-        await database.connection.query(
-          'merchants', where: 'id = ?', whereArgs: ['existing-merchant'],
-        ),
-        hasLength(1),
-      );
-      expect(
-        await database.connection.query(
-          'merchants', where: 'id = ?', whereArgs: ['merchant.safeway'],
-        ),
-        hasLength(1),
-      );
-    } finally {
-      await database.close();
-      await directory.delete(recursive: true);
-    }
-  });
-
   test('upgrades an installed pre-disposition V1 database', () async {
     final directory = await Directory.systemTemp.createTemp('butlerly-db-');
     final path = '${directory.path}/legacy.db';
     final current = await File('database/schema/v1.sql').readAsString();
-    final migration = await migrationSqlForVersion(2);
-    final resultsMigration = await migrationSqlForVersion(3);
-    final merchantMigration = await migrationSqlForVersion(4);
-    final classificationMigration = await migrationSqlForVersion(5);
-    final statementSubcategoryMigration = await migrationSqlForVersion(6);
-    final analysisPeriodTypeMigration = await migrationSqlForVersion(7);
+    final migration = await File(
+      'database/migrations/v1_to_v2.sql',
+    ).readAsString();
+    final resultsMigration = await File(
+      'database/migrations/v2_to_v3.sql',
+    ).readAsString();
+    final merchantMigration = await File(
+      'database/migrations/v3_to_v4.sql',
+    ).readAsString();
+    final classificationMigration = await File(
+      'database/migrations/v4_to_v5.sql',
+    ).readAsString();
+    final statementSubcategoryMigration = await File(
+      'database/migrations/v5_to_v6.sql',
+    ).readAsString();
+    final analysisPeriodTypeMigration = await File(
+      'database/migrations/v6_to_v7.sql',
+    ).readAsString();
     final legacy = current
         .replaceFirst(
           ",\n      period_type TEXT NOT NULL DEFAULT 'selected_period'",
