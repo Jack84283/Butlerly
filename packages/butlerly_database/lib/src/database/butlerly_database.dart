@@ -343,10 +343,10 @@ final class ButlerlyDatabase {
           } on DatabaseException catch (error) {
             if (kDebugMode) {
               final statementKind = RegExp(
-                r'^\\s*([A-Za-z_]+)',
+                r'^\s*([A-Za-z_]+)',
               ).firstMatch(statement)?.group(1) ?? 'unknown';
               final table = RegExp(
-                r'^\\s*INSERT\\s+(?:OR\\s+IGNORE\\s+)?INTO\\s+'
+                r'^\s*INSERT\s+(?:OR\s+IGNORE\s+)?INTO\s+'
                 r'([A-Za-z_][A-Za-z0-9_]*)',
                 caseSensitive: false,
               ).firstMatch(statement)?.group(1) ?? 'unknown';
@@ -357,7 +357,7 @@ final class ButlerlyDatabase {
                   'failed; command=$statementKind table=$table '
                   'sqliteCode=${error.getResultCode()}');
               final schema = RegExp(
-                r'(?:no such table|no such column):\\s*'
+                r'(?:no such table|no such column):\s*'
                 r'[A-Za-z_][A-Za-z0-9_]*',
                 caseSensitive: false,
               ).firstMatch(error.toString())?.group(0);
@@ -429,9 +429,9 @@ final class ButlerlyDatabase {
 // Emits only a structural SQL identifier, never SQL values or user records.
 String _schemaOperation(String statement) {
   final match = RegExp(
-    r'^\\s*(?:CREATE\\s+(?:UNIQUE\\s+)?(?:TABLE|INDEX|TRIGGER)|'
-    r'ALTER\\s+TABLE|DROP\\s+(?:TABLE|INDEX|TRIGGER))'
-    r'\\s+(?:IF\\s+(?:NOT\\s+)?EXISTS\\s+)?'
+    r'^\s*(?:CREATE\s+(?:UNIQUE\s+)?(?:TABLE|INDEX|TRIGGER)|'
+    r'ALTER\s+TABLE|DROP\s+(?:TABLE|INDEX|TRIGGER))'
+    r'\s+(?:IF\s+(?:NOT\s+)?EXISTS\s+)?'
     r'([A-Za-z_][A-Za-z0-9_]*)',
     caseSensitive: false,
   ).firstMatch(statement);
