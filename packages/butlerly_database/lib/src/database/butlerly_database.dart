@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart'
     show RepositoryException, RepositoryFailureCode, normalizeMerchantName;
 import 'package:sqflite_common/sqlite_api.dart';
@@ -12,7 +11,6 @@ final class ButlerlyDatabase {
     this.seedSql = const [],
     this.migrations = const {},
     this.targetVersion = databaseVersion,
-    this.validateSchemaBeforeSeed = false,
   }) : assert(targetVersion >= 1 && targetVersion <= databaseVersion);
 
   static const databaseVersion = 14;
@@ -21,9 +19,6 @@ final class ButlerlyDatabase {
   final String path;
   final String schemaSql;
   final List<String> seedSql;
-
-  /// Enable for production startup: reject incomplete schemas before seeding.
-  final bool validateSchemaBeforeSeed;
 
   /// Database-owned migration SQL keyed by its target schema version.
   final Map<int, String> migrations;
@@ -50,45 +45,14 @@ final class ButlerlyDatabase {
 
   Future<void> open() async {
     try {
-      if (kDebugMode) {
-        debugPrint('Butlerly DB: opening SQLite target v$targetVersion');
-      }
       _database = await factory.openDatabase(
         path,
         options: OpenDatabaseOptions(
           version: targetVersion,
-          onConfigure: (database) async {
-            if (kDebugMode) {
-              debugPrint('Butlerly DB: configuring SQLite connection');
-            }
-            await database.execute('PRAGMA foreign_keys = ON');
-          },
-          onCreate: (database, _) async {
-            if (kDebugMode) debugPrint('Butlerly DB: creating baseline v$targetVersion');
-            await _executeSql(database, schemaSql);
-          },
+          onConfigure: (database) =>
+              database.execute('PRAGMA foreign_keys = ON'),
+          onCreate: (database, _) => _executeSql(database, schemaSql),
           onUpgrade: (database, oldVersion, newVersion) async {
-            if (kDebugMode) {
-              debugPrint('Butlerly DB: upgrading v$oldVersion -> v$newVersion');
-            }
-            // A newly installed app can encounter a versioned but empty SQLite
-            // file (for example, after an interrupted first launch). It has no
-            // user records to migrate, so install the current baseline instead.
-            // Never use this fallback for a database with any user tables.
-            final tables = await database.rawQuery(
-              "SELECT name FROM sqlite_master "
-              "WHERE type = 'table' AND name NOT LIKE 'sqlite_%' LIMIT 1",
-            );
-            if (tables.isEmpty) {
-              await _executeSql(database, schemaSql);
-              return;
-            }
-            // v13 databases created by interrupted or pre-release startup
-            // may lack this specific table. Restore its definition only when
-            // there are no membership records requiring the missing parent.
-            if (oldVersion < 14 && newVersion >= 14) {
-              await _restoreMissingDuplicateGroupsTable(database, schemaSql);
-            }
             for (
               var version = oldVersion + 1;
               version <= newVersion;
@@ -101,39 +65,11 @@ final class ButlerlyDatabase {
                   'apply database migration',
                 );
               }
-              var statementIndex = 0;
               for (final statement in splitSqlStatements(sql)) {
-                statementIndex++;
-                final alteredTable = RegExp(
-                  r'^ALTER\s+TABLE\s+([A-Za-z_][A-Za-z0-9_]*)\b',
-                  caseSensitive: false,
-                ).firstMatch(statement.trim())?.group(1);
-                if (alteredTable != null) {
-                  final found = await database.rawQuery(
-                    "SELECT 1 FROM sqlite_master WHERE type = 'table' "
-                    "AND name = ? LIMIT 1",
-                    [alteredTable],
-                  );
-                  if (found.isEmpty) {
-                    throw RepositoryException(
-                      RepositoryFailureCode.migration,
-                      'missing table $alteredTable during database migration',
-                    );
-                  }
-                }
                 if (await _alreadyHasAddedColumn(database, statement)) {
                   continue;
                 }
-                try {
-                  await database.execute(statement);
-                } on DatabaseException catch (error) {
-                  if (kDebugMode) {
-                    debugPrint('Butlerly DB: migration v$version statement '
-                        '$statementIndex failed; sqliteCode=${error.getResultCode()} '
-                        'object=${_schemaOperation(statement)}');
-                  }
-                  rethrow;
-                }
+                await database.execute(statement);
               }
               if (version == 5) {
                 await _backfillNormalizedDescriptions(database);
@@ -148,28 +84,8 @@ final class ButlerlyDatabase {
           },
         ),
       );
-      // A database can already advertise the target user_version while
-      // missing a table after an incomplete pre-release initialization.
-      // Verify this specific dependency before catalog seed triggers run.
-      await _restoreMissingDuplicateGroupsTable(_database!, schemaSql);
-      await _repairLegacyMerchantColumns(_database!);
-      if (validateSchemaBeforeSeed) {
-        await _validateBaselineTables(_database!, schemaSql);
-      }
-      if (kDebugMode) debugPrint('Butlerly DB: starting catalog seed');
       await seedSystemData();
-      if (kDebugMode) debugPrint('Butlerly DB: catalog seed complete');
     } on DatabaseException catch (error) {
-      if (kDebugMode) {
-        final summary = RegExp(
-          r'(?:no such table|no such column|duplicate column name):\s*'
-          r'[A-Za-z_][A-Za-z0-9_]*',
-          caseSensitive: false,
-        ).firstMatch(error.toString())?.group(0);
-        debugPrint('Butlerly DB: open failed; '
-            'sqliteCode=${error.getResultCode()} '
-            'schemaIssue=${summary ?? 'unclassified'}');
-      }
       await _database?.close();
       _database = null;
       throw mapDatabaseException(error, 'open database');
@@ -178,117 +94,6 @@ final class ButlerlyDatabase {
       _database = null;
       rethrow;
     }
-  }
-
-  // Pre-release databases may already carry user_version 14 while retaining
-  // a merchants table from before its classification columns were introduced.
-  // Add only absent nullable/defaulted columns; never discard merchant rows.
-  static Future<void> _validateBaselineTables(
-    Database database,
-    String baselineSql,
-  ) async {
-    final declaredTables = <String>{};
-    final tablePattern = RegExp(
-      r'^CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?'
-      r'([A-Za-z_][A-Za-z0-9_]*)\s*\(',
-      caseSensitive: false,
-    );
-    for (final statement in splitSqlStatements(baselineSql)) {
-      final match = tablePattern.firstMatch(statement.trim());
-      if (match != null) declaredTables.add(match.group(1)!);
-    }
-    if (declaredTables.isEmpty) {
-      throw const RepositoryException(
-        RepositoryFailureCode.migration,
-        'baseline schema has no table definitions',
-      );
-    }
-    final existing = (await database.rawQuery(
-      "SELECT name FROM sqlite_master WHERE type = 'table'",
-    )).map((row) => row['name']).whereType<String>().toSet();
-    final missing = declaredTables.difference(existing).toList()..sort();
-    if (missing.isNotEmpty) {
-      if (kDebugMode) {
-        debugPrint('Butlerly DB: incomplete schema; '
-            'missing ${missing.length} tables: ${missing.join(', ')}');
-      }
-      throw RepositoryException(
-        RepositoryFailureCode.migration,
-        'incomplete database schema: missing ${missing.join(', ')}',
-      );
-    }
-    if (kDebugMode) {
-      debugPrint('Butlerly DB: verified ${declaredTables.length} '
-          'required baseline tables');
-    }
-  }
-
-  static Future<void> _repairLegacyMerchantColumns(Database database) async {
-    final tables = await database.rawQuery(
-      "SELECT 1 FROM sqlite_master WHERE type = 'table' "
-      "AND name = 'merchants' LIMIT 1",
-    );
-    if (tables.isEmpty) return;
-    final current = await database.rawQuery('PRAGMA table_info(merchants)');
-    final existing = current.map((row) => row['name']).toSet();
-    const columns = <String, String>{
-      'normalized_name': "TEXT NOT NULL DEFAULT ''",
-      'default_category_id': 'TEXT REFERENCES categories(id)',
-      'default_subcategory_id': 'TEXT REFERENCES categories(id)',
-      'is_built_in': 'INTEGER NOT NULL DEFAULT 0',
-      'created_at': "TEXT NOT NULL DEFAULT ''",
-      'updated_at': "TEXT NOT NULL DEFAULT ''",
-    };
-    for (final entry in columns.entries) {
-      if (existing.contains(entry.key)) continue;
-      await database.execute(
-        'ALTER TABLE merchants ADD COLUMN ${entry.key} ${entry.value}',
-      );
-      if (kDebugMode) {
-        debugPrint('Butlerly DB: restored merchants column ${entry.key}');
-      }
-    }
-  }
-
-  static Future<void> _restoreMissingDuplicateGroupsTable(
-    Database database,
-    String baselineSql,
-  ) async {
-    final found = await database.rawQuery(
-      "SELECT 1 FROM sqlite_master WHERE type = 'table' "
-      "AND name = 'duplicate_candidate_groups' LIMIT 1",
-    );
-    if (found.isNotEmpty) return;
-
-    final membership = await database.rawQuery(
-      "SELECT 1 FROM sqlite_master WHERE type = 'table' "
-      "AND name = 'duplicate_candidate_group_transactions' LIMIT 1",
-    );
-    if (membership.isNotEmpty) {
-      final linkedRecords = await database.rawQuery(
-        'SELECT 1 FROM duplicate_candidate_group_transactions LIMIT 1',
-      );
-      if (linkedRecords.isNotEmpty) {
-        throw const RepositoryException(
-          RepositoryFailureCode.migration,
-          'missing duplicate_candidate_groups with existing membership records',
-        );
-      }
-    }
-
-    final definitions = splitSqlStatements(baselineSql).where(
-      (statement) => RegExp(
-        r'^CREATE\s+TABLE\s+duplicate_candidate_groups\s*\(',
-        caseSensitive: false,
-      ).hasMatch(statement.trim()),
-    );
-    if (definitions.length != 1) {
-      throw const RepositoryException(
-        RepositoryFailureCode.migration,
-        'missing duplicate_candidate_groups baseline definition',
-      );
-    }
-    await database.execute(definitions.single);
   }
 
   static Future<bool> _alreadyHasAddedColumn(
@@ -334,39 +139,9 @@ final class ButlerlyDatabase {
   Future<void> seedSystemData() async {
     if (seedSql.isEmpty) return;
     await transaction((tx) async {
-      var seedIndex = 0;
       for (final sql in seedSql) {
         for (final statement in splitSqlStatements(sql)) {
-          seedIndex++;
-          try {
-            await tx.execute(statement);
-          } on DatabaseException catch (error) {
-            if (kDebugMode) {
-              final statementKind = RegExp(
-                r'^\s*([A-Za-z_]+)',
-              ).firstMatch(statement)?.group(1) ?? 'unknown';
-              final table = RegExp(
-                r'^\s*INSERT\s+(?:OR\s+IGNORE\s+)?INTO\s+'
-                r'([A-Za-z_][A-Za-z0-9_]*)',
-                caseSensitive: false,
-              ).firstMatch(statement)?.group(1) ?? 'unknown';
-              final reason = error.toString().split(" sql '").first;
-              debugPrint('Butlerly DB: seed SQLite reason: '
-                  '${reason.length > 450 ? reason.substring(0, 450) : reason}');
-              debugPrint('Butlerly DB: catalog seed statement $seedIndex '
-                  'failed; command=$statementKind table=$table '
-                  'sqliteCode=${error.getResultCode()}');
-              final schema = RegExp(
-                r'(?:no such table|no such column):\s*'
-                r'[A-Za-z_][A-Za-z0-9_]*',
-                caseSensitive: false,
-              ).firstMatch(error.toString())?.group(0);
-              if (schema != null) {
-                debugPrint('Butlerly DB: catalog schema issue $schema');
-              }
-            }
-            rethrow;
-          }
+          await tx.execute(statement);
         }
       }
     });
@@ -403,19 +178,8 @@ final class ButlerlyDatabase {
 
   static Future<void> _executeSql(Database database, String sql) async {
     try {
-      var index = 0;
       for (final statement in splitSqlStatements(sql)) {
-        index++;
-        try {
-          await database.execute(statement);
-        } on DatabaseException catch (error) {
-          if (kDebugMode) {
-            debugPrint('Butlerly DB: baseline statement $index failed; '
-                'sqliteCode=${error.getResultCode()} '
-                'object=${_schemaOperation(statement)}');
-          }
-          rethrow;
-        }
+        await database.execute(statement);
       }
     } on DatabaseException {
       throw const RepositoryException(
@@ -424,18 +188,6 @@ final class ButlerlyDatabase {
       );
     }
   }
-}
-
-// Emits only a structural SQL identifier, never SQL values or user records.
-String _schemaOperation(String statement) {
-  final match = RegExp(
-    r'^\s*(?:CREATE\s+(?:UNIQUE\s+)?(?:TABLE|INDEX|TRIGGER)|'
-    r'ALTER\s+TABLE|DROP\s+(?:TABLE|INDEX|TRIGGER))'
-    r'\s+(?:IF\s+(?:NOT\s+)?EXISTS\s+)?'
-    r'([A-Za-z_][A-Za-z0-9_]*)',
-    caseSensitive: false,
-  ).firstMatch(statement);
-  return match?.group(1) ?? 'unnamed';
 }
 
 /// Parses the single ordered database deployment asset into upgrades keyed by
@@ -554,17 +306,6 @@ RepositoryException mapDatabaseException(
   final detail =
       'sqlite${code == null ? '' : ' code=$code'}: '
       '${raw.replaceAll(RegExp(r'\s+'), ' ').trim()}';
-  // SQLite reports missing schema objects as generic error code 1.
-  // Treat this as an actionable migration/schema failure, not DB-UNKNOWN.
-  if (raw.contains('no such table:') ||
-      raw.contains('no such column:') ||
-      raw.contains('duplicate column name:')) {
-    return RepositoryException(
-      RepositoryFailureCode.migration,
-      operation,
-      detail: detail,
-    );
-  }
   if (error.isUniqueConstraintError() || error.isNotNullConstraintError()) {
     return RepositoryException(
       RepositoryFailureCode.constraint,
