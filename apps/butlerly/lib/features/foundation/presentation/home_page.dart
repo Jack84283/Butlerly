@@ -796,6 +796,7 @@ class _HomeHeader extends StatelessWidget {
             PersonalizedHomeGreeting(
               greetingKey: greetingKey,
               textKey: const ValueKey('home-greeting'),
+              fitToWidth: true,
               style: ButlerlyTypography.homeGreetingTitle(
                 Theme.of(context).textTheme.headlineLarge ?? const TextStyle(),
               ),
