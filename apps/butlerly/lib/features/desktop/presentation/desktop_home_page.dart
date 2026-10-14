@@ -185,10 +185,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                     },
                     icon: const Icon(Icons.calendar_month_outlined),
                     label: Text(
-                        DateFormat.yMMMM(
-                          Localizations.localeOf(context).toLanguageTag(),
-                        ).format(current),
-                      ),
+                      DateFormat.yMMMM(
+                        Localizations.localeOf(context).toLanguageTag(),
+                      ).format(current),
+                    ),
                   ),
                   IconButton(
                     style: IconButton.styleFrom(
