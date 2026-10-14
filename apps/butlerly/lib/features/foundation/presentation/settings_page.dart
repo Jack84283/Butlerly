@@ -64,6 +64,43 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     });
   }
 
+  Future<void> _editDisplayName(String currentName) async {
+    final controller = TextEditingController(text: currentName);
+    final updated = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(dialogContext.l10n.text('displayName')),
+        content: TextField(
+          key: const ValueKey('settings-display-name-input'),
+          controller: controller,
+          autofocus: true,
+          maxLength: 10,
+          textCapitalization: TextCapitalization.words,
+          decoration: InputDecoration(
+            hintText: dialogContext.l10n.text('displayNameHint'),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(dialogContext.l10n.text('cancel')),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(controller.text.trim()),
+            child: Text(dialogContext.l10n.text('save')),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (updated != null && mounted) {
+      await ref.read(userPreferenceProvider.notifier).saveChanges(
+        displayName: updated,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeProvider);
@@ -81,6 +118,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ),
         _SettingsSectionCard(
           children: [
+            _SettingsRow(
+              icon: Icons.person_outline_rounded,
+              title: context.l10n.text('displayName'),
+              subtitle: preference?.displayName.isNotEmpty == true
+                  ? preference!.displayName
+                  : context.l10n.text('displayNameNotSet'),
+              onTap: () => _editDisplayName(preference?.displayName ?? ''),
+            ),
             _SettingsDropdownRow<ThemeMode>(
               value: themeMode,
               label: context.l10n.text('appearance'),
