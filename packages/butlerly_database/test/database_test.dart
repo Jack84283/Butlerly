@@ -188,6 +188,52 @@ void main() {
     }
   });
 
+  test('repairs missing duplicate groups before seeding version 14', () async {
+    await database.close();
+    final directory = await Directory.systemTemp.createTemp('butlerly-seed-');
+    final dbPath = '${directory.path}/partial.db';
+    try {
+      final existing = await databaseFactoryFfi.openDatabase(
+        dbPath,
+        options: OpenDatabaseOptions(
+          version: 14,
+          onCreate: (db, _) async {
+            await db.execute(
+              'CREATE TABLE categories (id TEXT PRIMARY KEY, name TEXT)',
+            );
+            await db.execute(
+              'CREATE TABLE duplicate_candidate_group_transactions '
+              '(group_id TEXT, transaction_id TEXT)',
+            );
+          },
+        ),
+      );
+      await existing.close();
+
+      final baseline = await File('database/schema/v1.sql').readAsString();
+      database = ButlerlyDatabase(
+        factory: databaseFactoryFfi,
+        path: dbPath,
+        schemaSql: baseline,
+        seedSql: [
+          "INSERT INTO categories (id, name) VALUES ('test', 'Test')",
+        ],
+      );
+      await database.open();
+      expect(await database.connection.getVersion(), 14);
+      expect(
+        (await database.connection.rawQuery(
+          'PRAGMA table_info(duplicate_candidate_groups)',
+        )).any((row) => row['name'] == 'statement_rows'),
+        isTrue,
+      );
+      expect(await database.connection.query('categories'), hasLength(1));
+    } finally {
+      await database.close();
+      await directory.delete(recursive: true);
+    }
+  });
+
   test('upgrades an installed pre-disposition V1 database', () async {
     final directory = await Directory.systemTemp.createTemp('butlerly-db-');
     final path = '${directory.path}/legacy.db';
