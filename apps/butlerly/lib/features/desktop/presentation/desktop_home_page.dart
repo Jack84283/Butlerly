@@ -197,13 +197,15 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                     onPressed: () => _moveMonth(1, current),
                     icon: const Icon(Icons.chevron_right),
                   ),
-                  const Spacer(),
-                  Text(
-                    _desktopGreeting(DateTime.now()),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
+                  Expanded(
+                    child: Text(
+                      _desktopGreeting(DateTime.now()),
+                      maxLines: 1,
+                      textAlign: TextAlign.end,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 16),
