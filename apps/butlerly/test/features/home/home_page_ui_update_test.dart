@@ -239,7 +239,7 @@ void main() {
   });
 
   testWidgets(
-    'Monthly Summary stacks desktop-style rows on phone-sized layouts',
+    'Monthly Summary keeps three desktop-style cards in one row',
     (tester) async {
       tester.view.physicalSize = const Size(320, 568);
       tester.view.devicePixelRatio = 1;
@@ -262,8 +262,8 @@ void main() {
       expect(income, findsOneWidget);
       expect(spending, findsOneWidget);
       expect(net, findsOneWidget);
-      expect(tester.getTopLeft(income).dy, lessThan(tester.getTopLeft(spending).dy));
-      expect(tester.getTopLeft(spending).dy, lessThan(tester.getTopLeft(net).dy));
+      expect(tester.getTopLeft(income).dy, closeTo(tester.getTopLeft(spending).dy, 1));
+      expect(tester.getTopLeft(spending).dy, closeTo(tester.getTopLeft(net).dy, 1));
       expect(tester.takeException(), isNull);
     },
   );
