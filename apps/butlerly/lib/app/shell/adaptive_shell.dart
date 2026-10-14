@@ -15,9 +15,12 @@ const primaryShellRouteNamePrefix = 'primary-shell:';
 
 bool _isTabletLandscape(BuildContext context) {
   final viewport = MediaQuery.sizeOf(context);
-  return Theme.of(context).platform == TargetPlatform.iOS &&
-      viewport.shortestSide >= 600 &&
-      viewport.width > viewport.height;
+  // The iPad mini can report a smaller logical viewport in display-zoom
+  // modes. Do not rely on the themed platform or a 600px short-side cutoff.
+  // Phones remain below the tablet short-side threshold in landscape.
+  return viewport.width > viewport.height &&
+      viewport.shortestSide >= 500 &&
+      viewport.width >= ButlerlySize.compactBreakpoint;
 }
 
 ButlerlyLayoutMode _effectiveLayoutMode(BuildContext context, double width) =>
@@ -137,7 +140,10 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
             : MediaQuery.sizeOf(context).width;
         final layoutMode = _effectiveLayoutMode(context, width);
         assert(() {
-          debugPrint('Butlerly layout: outer width=${width.toStringAsFixed(1)} '
+          final viewport = MediaQuery.sizeOf(context);
+          debugPrint('Butlerly layout: viewport=$viewport '
+              'outerWidth=${width.toStringAsFixed(1)} '
+              'tabletLandscape=${_isTabletLandscape(context)} '
               'mode=${layoutMode.name}');
           return true;
         }());
