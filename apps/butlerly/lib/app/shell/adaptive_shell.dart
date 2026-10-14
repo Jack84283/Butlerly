@@ -13,6 +13,21 @@ export 'package:butlerly/app/shell/shared/primary_bottom_navigation.dart'
 
 const primaryShellRouteNamePrefix = 'primary-shell:';
 
+bool _isTabletLandscape(BuildContext context) {
+  final viewport = MediaQuery.sizeOf(context);
+  return Theme.of(context).platform == TargetPlatform.iOS &&
+      viewport.shortestSide >= 600 &&
+      viewport.width > viewport.height;
+}
+
+ButlerlyLayoutMode _effectiveLayoutMode(BuildContext context, double width) =>
+    ButlerlyLayout.modeForWidth(
+      width,
+      tabletLandscape: _isTabletLandscape(context),
+    );
+
+
+
 class PrimaryShellVisibilityController extends ChangeNotifier {
   final Map<int, bool> _secondaryRouteVisible = <int, bool>{};
   bool _notificationScheduled = false;
@@ -120,7 +135,7 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
         final width = constraints.hasBoundedWidth
             ? constraints.maxWidth
             : MediaQuery.sizeOf(context).width;
-        final layoutMode = ButlerlyLayout.modeForWidth(width);
+        final layoutMode = _effectiveLayoutMode(context, width);
         assert(() {
           debugPrint('Butlerly layout: outer width=${width.toStringAsFixed(1)} '
               'mode=${layoutMode.name}');
@@ -307,7 +322,8 @@ class _PrimaryNavigationShellState extends State<PrimaryNavigationShell> {
 
   @override
   Widget build(BuildContext context) {
-    final layoutMode = ButlerlyLayout.modeForWidth(
+    final layoutMode = _effectiveLayoutMode(
+      context,
       MediaQuery.sizeOf(context).width,
     );
     final secondaryRouteVisible = widget.visibilityController
