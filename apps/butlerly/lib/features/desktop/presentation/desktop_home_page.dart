@@ -1252,9 +1252,11 @@ class _DesktopTrend extends StatelessWidget {
                       message: NumberFormat.simpleCurrency(
                         name: currency,
                       ).format(values[i]),
-                      child: FractionallySizedBox(
-                        widthFactor: 0.6,
-                        child: Container(
+                      child: Align(
+                        alignment: Alignment.bottomCenter,
+                        child: FractionallySizedBox(
+                          widthFactor: 0.6,
+                          child: Container(
                           height: _desktopHomeTrendMaxBarHeight * values[i] / max,
                           decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.primary
@@ -1270,6 +1272,7 @@ class _DesktopTrend extends StatelessWidget {
                           borderRadius: const BorderRadius.vertical(
                             top: Radius.circular(5),
                           ),
+                        ),
                         ),
                         ),
                       ),
