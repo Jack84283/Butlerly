@@ -46,12 +46,19 @@ final class ButlerlyDatabase {
 
   Future<void> open() async {
     try {
+      if (kDebugMode) {
+        debugPrint('Butlerly DB: opening SQLite target v$targetVersion');
+      }
       _database = await factory.openDatabase(
         path,
         options: OpenDatabaseOptions(
           version: targetVersion,
-          onConfigure: (database) =>
-              database.execute('PRAGMA foreign_keys = ON'),
+          onConfigure: (database) async {
+            if (kDebugMode) {
+              debugPrint('Butlerly DB: configuring SQLite connection');
+            }
+            await database.execute('PRAGMA foreign_keys = ON');
+          },
           onCreate: (database, _) async {
             if (kDebugMode) debugPrint('Butlerly DB: creating baseline v$targetVersion');
             await _executeSql(database, schemaSql);
@@ -137,11 +144,13 @@ final class ButlerlyDatabase {
           },
         ),
       );
+      if (kDebugMode) debugPrint('Butlerly DB: starting catalog seed');
       await seedSystemData();
+      if (kDebugMode) debugPrint('Butlerly DB: catalog seed complete');
     } on DatabaseException catch (error) {
       if (kDebugMode) {
         final summary = RegExp(
-          r'(?:no such table|no such column|duplicate column name):\\s*'
+          r'(?:no such table|no such column|duplicate column name):\s*'
           r'[A-Za-z_][A-Za-z0-9_]*',
           caseSensitive: false,
         ).firstMatch(error.toString())?.group(0);
