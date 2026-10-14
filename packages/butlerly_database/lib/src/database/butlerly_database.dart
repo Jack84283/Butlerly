@@ -50,8 +50,9 @@ final class ButlerlyDatabase {
 
   Future<void> open() async {
     try {
-      if (_isDebugBuild)
+      if (_isDebugBuild) {
         developer.log('Butlerly DB: opening target v$targetVersion');
+      }
       _database = await factory.openDatabase(
         path,
         options: OpenDatabaseOptions(
@@ -63,10 +64,11 @@ final class ButlerlyDatabase {
             await _executeSql(database, schemaSql);
           },
           onUpgrade: (database, oldVersion, newVersion) async {
-            if (_isDebugBuild)
+            if (_isDebugBuild) {
               developer.log(
                 'Butlerly DB: upgrading v$oldVersion to v$newVersion',
               );
+            }
             for (
               var version = oldVersion + 1;
               version <= newVersion;
