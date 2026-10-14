@@ -53,6 +53,18 @@ final class ButlerlyDatabase {
               database.execute('PRAGMA foreign_keys = ON'),
           onCreate: (database, _) => _executeSql(database, schemaSql),
           onUpgrade: (database, oldVersion, newVersion) async {
+            // A newly installed app can encounter a versioned but empty SQLite
+            // file (for example, after an interrupted first launch). It has no
+            // user records to migrate, so install the current baseline instead.
+            // Never use this fallback for a database with any user tables.
+            final tables = await database.rawQuery(
+              "SELECT name FROM sqlite_master "
+              "WHERE type = 'table' AND name NOT LIKE 'sqlite_%' LIMIT 1",
+            );
+            if (tables.isEmpty) {
+              await _executeSql(database, schemaSql);
+              return;
+            }
             for (
               var version = oldVersion + 1;
               version <= newVersion;
@@ -66,6 +78,23 @@ final class ButlerlyDatabase {
                 );
               }
               for (final statement in splitSqlStatements(sql)) {
+                final alteredTable = RegExp(
+                  r'^ALTER\\s+TABLE\\s+([A-Za-z_][A-Za-z0-9_]*)\\b',
+                  caseSensitive: false,
+                ).firstMatch(statement.trim())?.group(1);
+                if (alteredTable != null) {
+                  final found = await database.rawQuery(
+                    "SELECT 1 FROM sqlite_master WHERE type = 'table' "
+                    "AND name = ? LIMIT 1",
+                    [alteredTable],
+                  );
+                  if (found.isEmpty) {
+                    throw RepositoryException(
+                      RepositoryFailureCode.migration,
+                      'missing table $alteredTable during database migration',
+                    );
+                  }
+                }
                 if (await _alreadyHasAddedColumn(database, statement)) {
                   continue;
                 }
