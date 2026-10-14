@@ -41,6 +41,8 @@ void main() {
             'CREATE TABLE user_preferences ('
             'id INTEGER PRIMARY KEY NOT NULL, '
             'locale TEXT NOT NULL, '
+            'formatting_locale TEXT, '
+            'region_code TEXT, '
             'base_currency TEXT NOT NULL, '
             'time_zone_id TEXT NOT NULL, '
             'external_ai_enabled INTEGER NOT NULL, '
