@@ -371,8 +371,9 @@ class _HomePageState extends State<HomePage> {
     final useCupertinoRefresh =
         !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
-    final content = ButlerlyContentCanvas(
-      canvasKey: const ValueKey('home-page-canvas'),
+    final content = ColoredBox(
+      key: const ValueKey('home-page-canvas'),
+      color: context.colors.background,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final headerExtent = _homeHeaderExtent(
