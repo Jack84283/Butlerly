@@ -66,10 +66,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   Future<void> _editDisplayName(String currentName) async {
     final controller = TextEditingController(text: currentName);
-    final updated = await showDialog<String>(
+    final updated = await showButlerlyBottomSheet<String>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(dialogContext.l10n.text('displayName')),
+      builder: (sheetContext) => ButlerlySheet(
+        title: Text(sheetContext.l10n.text('displayName')),
         content: TextField(
           key: const ValueKey('settings-display-name-input'),
           controller: controller,
@@ -77,18 +77,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           maxLength: 10,
           textCapitalization: TextCapitalization.words,
           decoration: InputDecoration(
-            hintText: dialogContext.l10n.text('displayNameHint'),
+            hintText: sheetContext.l10n.text('displayNameHint'),
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(dialogContext.l10n.text('cancel')),
+          ButlerlyCancelButton(
+            onPressed: () => Navigator.of(sheetContext).pop(),
+            child: Text(sheetContext.l10n.text('cancel')),
           ),
           FilledButton(
             onPressed: () =>
-                Navigator.of(dialogContext).pop(controller.text.trim()),
-            child: Text(dialogContext.l10n.text('save')),
+                Navigator.of(sheetContext).pop(controller.text.trim()),
+            child: Text(sheetContext.l10n.text('save')),
           ),
         ],
       ),
