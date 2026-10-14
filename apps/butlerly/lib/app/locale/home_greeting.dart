@@ -31,6 +31,7 @@ class PersonalizedHomeGreeting extends StatelessWidget {
     required this.greetingKey,
     this.textKey,
     this.maxLines,
+    this.fitToWidth = false,
     this.textAlign,
     this.style,
     super.key,
@@ -39,6 +40,7 @@ class PersonalizedHomeGreeting extends StatelessWidget {
   final String greetingKey;
   final Key? textKey;
   final int? maxLines;
+  final bool fitToWidth;
   final TextAlign? textAlign;
   final TextStyle? style;
 
@@ -47,14 +49,22 @@ class PersonalizedHomeGreeting extends StatelessWidget {
     Widget label(String? name) {
       final named = name?.trim().isNotEmpty ?? false;
       final lineCount = maxLines ?? (named ? 1 : null);
-      return Text(
-        homeGreetingWithName(context, greetingKey, name),
+      final greetingText = homeGreetingWithName(context, greetingKey, name);
+      final text = Text(
+        greetingText,
         key: textKey,
         maxLines: lineCount,
         textAlign: textAlign,
         overflow: lineCount == null ? null : TextOverflow.ellipsis,
         style: style,
       );
+      return fitToWidth && named
+          ? FittedBox(
+              alignment: Alignment.centerLeft,
+              fit: BoxFit.scaleDown,
+              child: text,
+            )
+          : text;
     }
 
     if (context
