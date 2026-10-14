@@ -863,83 +863,75 @@ class _HomeSummaryCard extends StatelessWidget {
           const SizedBox(height: ButlerlySpacing.small),
           LayoutBuilder(
             builder: (context, constraints) {
-              final largeText =
-                  MediaQuery.textScalerOf(context).scale(14) >= 28;
-              final cells = [
-                _HomeMetricCell(
-                  key: const ValueKey('home-summary-metric-spending'),
-                  label: context.l10n.text('spending'),
-                  metric: model?.spending,
-                  fallbackCurrency: baseCurrency,
-                  showMissingAsZero: showMissingValuesAsZero,
-                  comparison: model?.spendingComparison,
-                  icon: Icons.arrow_downward_rounded,
-                  color: ButlerlyCategoryColors.color(
-                    ButlerlyCategoryColorId.coral,
-                  ),
-                  supportingColor: context.colors.error,
-                ),
-                _HomeMetricCell(
+              final metrics = [
+                (
                   key: const ValueKey('home-summary-metric-income'),
+                  tileKey: const ValueKey('home-summary-inner-income'),
                   label: context.l10n.text('income'),
-                  metric: model?.income,
-                  fallbackCurrency: baseCurrency,
-                  showMissingAsZero: showMissingValuesAsZero,
+                  value: model?.income,
                   comparison: model?.incomeComparison,
-                  icon: Icons.arrow_upward_rounded,
-                  color: ButlerlyCategoryColors.color(
-                    ButlerlyCategoryColorId.green,
-                  ),
-                  supportingColor: context.colors.success,
+                  icon: Icons.arrow_upward,
+                  color: const Color(0xFF009B61),
                 ),
-                _HomeMetricCell(
+                (
+                  key: const ValueKey('home-summary-metric-spending'),
+                  tileKey: const ValueKey('home-summary-inner-spending'),
+                  label: context.l10n.text('spending'),
+                  value: model?.spending,
+                  comparison: model?.spendingComparison,
+                  icon: Icons.arrow_downward,
+                  color: const Color(0xFFE24247),
+                ),
+                (
                   key: const ValueKey('home-summary-metric-net-position'),
-                  label: context.l10n.text('netPosition'),
-                  metric: model?.net,
-                  fallbackCurrency: baseCurrency,
-                  showMissingAsZero: showMissingValuesAsZero,
-                  icon: Icons.bar_chart_rounded,
-                  color: ButlerlyCategoryColors.color(
-                    ButlerlyCategoryColorId.gold,
-                  ),
+                  tileKey: const ValueKey('home-summary-inner-net-position'),
+                  label: context.l10n.text('netCashFlow'),
+                  value: model?.net,
+                  comparison: model?.netComparison,
+                  icon: Icons.show_chart,
+                  color: const Color(0xFF1769E8),
                 ),
               ];
-              const innerGap = ButlerlySpacing.compact;
-              const innerPadding = ButlerlySpacing.small;
-              final tileWidth = math.max(
-                1.0,
-                (constraints.maxWidth - innerGap * (cells.length - 1)) /
-                    cells.length,
-              );
-              final metricWidth = math.max(1.0, tileWidth - innerPadding * 2);
-              final stacked =
-                  largeText ||
-                  cells.any(
-                    (cell) => cell.requiresStackedLayout(context, metricWidth),
-                  );
-              final layoutCells = [
-                for (final cell in cells) cell.withStacked(stacked),
+              final useColumns =
+                  constraints.maxWidth >= 720 &&
+                  MediaQuery.textScalerOf(context).scale(14) < 22;
+              final cards = [
+                for (final metric in metrics)
+                  _DeviceDesktopSummaryMetric(
+                    key: metric.tileKey,
+                    titleKey: metric.key,
+                    label: metric.label,
+                    amount: metric.value == null ||
+                            metric.value!.availability ==
+                                AnalysisDataAvailability.insufficient
+                        ? showMissingValuesAsZero
+                              ? localizedCompactMoney(
+                                  context,
+                                  '0',
+                                  baseCurrency?.value ?? 'USD',
+                                )
+                              : '—'
+                        : metric.value!.availability ==
+                              AnalysisDataAvailability.empty
+                        ? localizedCompactMoney(
+                            context,
+                            '0',
+                            baseCurrency?.value ?? 'USD',
+                          )
+                        : _homeMoney(context, metric.value!),
+                    comparison: metric.comparison,
+                    icon: metric.icon,
+                    color: metric.color,
+                  ),
               ];
-              final tileKeys = const [
-                ValueKey('home-summary-inner-spending'),
-                ValueKey('home-summary-inner-income'),
-                ValueKey('home-summary-inner-net-position'),
-              ];
-              if (stacked) {
+              if (!useColumns) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    for (
-                      var index = 0;
-                      index < layoutCells.length;
-                      index++
-                    ) ...[
-                      _HomeSummaryMetricTile(
-                        key: tileKeys[index],
-                        child: layoutCells[index],
-                      ),
-                      if (index < layoutCells.length - 1)
-                        const SizedBox(height: ButlerlySpacing.small),
+                    for (var index = 0; index < cards.length; index++) ...[
+                      cards[index],
+                      if (index < cards.length - 1)
+                        const SizedBox(height: 8),
                     ],
                   ],
                 );
@@ -947,18 +939,9 @@ class _HomeSummaryCard extends StatelessWidget {
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (var index = 0; index < layoutCells.length; index++) ...[
-                    if (index > 0)
-                      const SizedBox(width: ButlerlySpacing.compact),
-                    Expanded(
-                      child: SizedBox(
-                        height: 108,
-                        child: _HomeSummaryMetricTile(
-                          key: tileKeys[index],
-                          child: layoutCells[index],
-                        ),
-                      ),
-                    ),
+                  for (var index = 0; index < cards.length; index++) ...[
+                    if (index > 0) const SizedBox(width: 8),
+                    Expanded(child: cards[index]),
                   ],
                 ],
               );
@@ -973,6 +956,101 @@ class _HomeSummaryCard extends StatelessWidget {
               ).copyWith(color: context.colors.secondaryText),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Device counterpart of the desktop Home summary metric presentation.
+class _DeviceDesktopSummaryMetric extends StatelessWidget {
+  const _DeviceDesktopSummaryMetric({
+    required this.titleKey,
+    required this.label,
+    required this.amount,
+    required this.comparison,
+    required this.icon,
+    required this.color,
+    super.key,
+  });
+
+  final Key titleKey;
+  final String label;
+  final String amount;
+  final AnalysisComparison? comparison;
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final percent = comparison?.percentageChange;
+    final usable =
+        comparison?.availability == AnalysisDataAvailability.sufficient &&
+        comparison?.baselineValue != null &&
+        percent != null;
+    final percentValue = usable ? double.tryParse(percent.toString()) : null;
+    final comparisonText = percentValue == null
+        ? context.l10n.text('changeUnavailable')
+        : percentValue > 0
+        ? '↑ ${percentValue.abs().toStringAsFixed(1)}% ${context.l10n.text('vsPreviousPeriod')}'
+        : percentValue < 0
+        ? '↓ ${percentValue.abs().toStringAsFixed(1)}% ${context.l10n.text('vsPreviousPeriod')}'
+        : '0.0% ${context.l10n.text('vsPreviousPeriod')}';
+    return Container(
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.80),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: Colors.white.withValues(alpha: .20),
+            child: Icon(icon, color: Colors.white, size: 22),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              key: titleKey,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                FittedBox(
+                  alignment: Alignment.centerLeft,
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    amount,
+                    maxLines: 1,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: -.7,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  comparisonText,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: percentValue == null ? Colors.white70 : Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
