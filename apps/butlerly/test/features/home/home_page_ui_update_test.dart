@@ -238,35 +238,40 @@ void main() {
     expect(find.byKey(const Key('home-notification-action')), findsNothing);
   });
 
-  testWidgets(
-    'Monthly Summary keeps three desktop-style cards in one row',
-    (tester) async {
-      tester.view.physicalSize = const Size(320, 568);
-      tester.view.devicePixelRatio = 1;
-      tester.view.platformDispatcher.textScaleFactorTestValue = 1.2;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      addTearDown(tester.view.platformDispatcher.clearTextScaleFactorTestValue);
+  testWidgets('Monthly Summary keeps three desktop-style cards in one row', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    tester.view.platformDispatcher.textScaleFactorTestValue = 1.2;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.platformDispatcher.clearTextScaleFactorTestValue);
 
-      await tester.pumpWidget(_testApp(router));
-      await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(
-        find.byKey(const ValueKey('home-summary-card')),
-        200,
-      );
-      await tester.pumpAndSettle();
+    await tester.pumpWidget(_testApp(router));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('home-summary-card')),
+      200,
+    );
+    await tester.pumpAndSettle();
 
-      final income = find.byKey(const ValueKey('home-summary-inner-income'));
-      final spending = find.byKey(const ValueKey('home-summary-inner-spending'));
-      final net = find.byKey(const ValueKey('home-summary-inner-net-position'));
-      expect(income, findsOneWidget);
-      expect(spending, findsOneWidget);
-      expect(net, findsOneWidget);
-      expect(tester.getTopLeft(income).dy, closeTo(tester.getTopLeft(spending).dy, 1));
-      expect(tester.getTopLeft(spending).dy, closeTo(tester.getTopLeft(net).dy, 1));
-      expect(tester.takeException(), isNull);
-    },
-  );
+    final income = find.byKey(const ValueKey('home-summary-inner-income'));
+    final spending = find.byKey(const ValueKey('home-summary-inner-spending'));
+    final net = find.byKey(const ValueKey('home-summary-inner-net-position'));
+    expect(income, findsOneWidget);
+    expect(spending, findsOneWidget);
+    expect(net, findsOneWidget);
+    expect(
+      tester.getTopLeft(income).dy,
+      closeTo(tester.getTopLeft(spending).dy, 1),
+    );
+    expect(
+      tester.getTopLeft(spending).dy,
+      closeTo(tester.getTopLeft(net).dy, 1),
+    );
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('Home intro stays within an Android phone header', (
     tester,
