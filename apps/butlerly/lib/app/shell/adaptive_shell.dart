@@ -23,13 +23,13 @@ bool _isTabletLandscape(BuildContext context) {
       viewport.width >= ButlerlySize.compactBreakpoint;
 }
 
-ButlerlyLayoutMode effectiveButlerlyLayoutMode(BuildContext context, double width) =>
-    ButlerlyLayout.modeForWidth(
-      width,
-      tabletLandscape: _isTabletLandscape(context),
-    );
-
-
+ButlerlyLayoutMode effectiveButlerlyLayoutMode(
+  BuildContext context,
+  double width,
+) => ButlerlyLayout.modeForWidth(
+  width,
+  tabletLandscape: _isTabletLandscape(context),
+);
 
 class PrimaryShellVisibilityController extends ChangeNotifier {
   final Map<int, bool> _secondaryRouteVisible = <int, bool>{};
