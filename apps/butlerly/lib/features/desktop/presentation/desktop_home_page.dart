@@ -1254,15 +1254,13 @@ class _DesktopTrend extends StatelessWidget {
       onTap: onTap,
       child: Row(
         children: [
-          SizedBox(
-            width: 32,
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 20),
-              child: SizedBox(
-                height: _desktopHomeTrendMaxBarHeight,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.end,
+          Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: SizedBox(
+              height: _desktopHomeTrendMaxBarHeight,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     for (var i = 0; i < gridLevels; i++)
                       Text(
@@ -1274,8 +1272,7 @@ class _DesktopTrend extends StatelessWidget {
                               const TextStyle(),
                         ).copyWith(color: context.colors.secondaryText),
                       ),
-                  ],
-                ),
+                ],
               ),
             ),
           ),
