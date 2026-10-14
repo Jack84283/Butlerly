@@ -156,7 +156,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                       ),
                       minimumSize: const Size(34, 32),
                     ),
-                    tooltip: 'Previous month',
+                    tooltip: context.l10n.text('previousMonth'),
                     onPressed: () => _moveMonth(-1, current),
                     icon: const Icon(Icons.chevron_left),
                   ),
@@ -194,7 +194,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                       ),
                       minimumSize: const Size(34, 32),
                     ),
-                    tooltip: 'Next month',
+                    tooltip: context.l10n.text('nextMonth'),
                     onPressed: () => _moveMonth(1, current),
                     icon: const Icon(Icons.chevron_right),
                   ),
@@ -221,7 +221,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                       ),
                       onPressed: () => _go('/search'),
                       icon: const Icon(Icons.search),
-                      label: const Text('Search transactions'),
+                      label: Text(context.l10n.text('desktopSearchTransactions')),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -235,7 +235,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                     ),
                     onPressed: () => _go('/transactions/add'),
                     icon: const Icon(Icons.add),
-                    label: const Text('Add'),
+                    label: Text(context.l10n.text('add')),
                   ),
                 ],
               ),
@@ -277,12 +277,12 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                             const LinearProgressIndicator(),
                           if (unavailable)
                             _DesktopPanel(
-                              title: 'Overview unavailable',
+                              title: context.l10n.text('homeUnavailable'),
                               child: Row(
                                 children: [
                                   const Expanded(
                                     child: Text(
-                                      'Local financial data is currently unavailable. Your records are preserved.',
+                                      context.l10n.text('desktopLocalDataUnavailable'),
                                     ),
                                   ),
                                   TextButton(
@@ -294,7 +294,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                       minimumSize: const Size(0, 32),
                                     ),
                                     onPressed: () => setState(_reload),
-                                    child: const Text('Retry'),
+                                    child: Text(context.l10n.text('desktopRetry')),
                                   ),
                                 ],
                               ),
@@ -307,7 +307,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                 children: [
                                   Expanded(
                                     child: _DesktopMetric(
-                                      title: 'Income',
+                                      title: context.l10n.text('income'),
                                       value: _money(analysis?.income, currency),
                                       icon: Icons.arrow_upward,
                                       comparison: analysis?.incomeComparison,
@@ -316,7 +316,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: _DesktopMetric(
-                                      title: 'Expenses',
+                                      title: context.l10n.text('desktopExpenses'),
                                       value: _money(
                                         analysis?.spending,
                                         currency,
@@ -328,7 +328,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: _DesktopMetric(
-                                      title: 'Net cash flow',
+                                      title: context.l10n.text('netCashFlow'),
                                       value: _money(analysis?.net, currency),
                                       icon: Icons.show_chart,
                                       comparison: analysis?.netComparison,
@@ -343,7 +343,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                 final left = SizedBox(
                                   height: _desktopHomeBreakdownCardHeight,
                                   child: _DesktopPanel(
-                                    title: 'Spending Trend',
+                                    title: context.l10n.text('spendingTrend'),
                                     showInnerCard: true,
                                     headerHeight:
                                         _desktopHomeBreakdownHeaderHeight,
@@ -355,7 +355,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                           .map(
                                             (n) => DropdownMenuItem(
                                               value: n,
-                                              child: Text('$n months'),
+                                              child: Text(context.l10n.text('desktopMonthsCount', {'count': '$n'})),
                                             ),
                                           )
                                           .toList(),
@@ -384,7 +384,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                 final middle = SizedBox(
                                   height: _desktopHomeBreakdownCardHeight,
                                   child: _DesktopPanel(
-                                    title: 'Category Breakdown',
+                                    title: context.l10n.text('desktopCategoryBreakdown'),
                                     showInnerCard: true,
                                     headerHeight:
                                         _desktopHomeBreakdownHeaderHeight,
@@ -397,7 +397,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                         minimumSize: const Size(0, 32),
                                       ),
                                       onPressed: () => _go('/analysis?$query'),
-                                      child: const Text('View all →'),
+                                      child: Text(context.l10n.text('viewAll')),
                                     ),
                                     child: SizedBox(
                                       // Reserve the 12px inset within the 280px outer card.
@@ -459,8 +459,8 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                                   )
                                                   .isEmpty ??
                                               true)
-                                            const Text(
-                                              'No category data for this period',
+                                            Text(
+                                              context.l10n.text('desktopNoCategoryData'),
                                             ),
                                         ],
                                       ),
@@ -490,18 +490,18 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                             LayoutBuilder(
                               builder: (context, b) {
                                 final actions = _DesktopPanel(
-                                  title: 'Action Center',
+                                  title: context.l10n.text('desktopActionCenter'),
                                   child: Column(
                                     children: [
                                       _DesktopAction(
-                                        label: 'Needs review',
+                                        label: context.l10n.text('needsReview'),
                                         count: data.reviewCount,
                                         icon: Icons.fact_check_outlined,
                                         onTap: () =>
                                             _go('/review?view=needsReview'),
                                       ),
                                       _DesktopAction(
-                                        label: 'Uncategorized',
+                                        label: context.l10n.text('uncategorized'),
                                         count:
                                             data.uncategorizedTransactionCount,
                                         icon: Icons.category_outlined,
@@ -509,26 +509,26 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                             _go('/review?view=uncategorized'),
                                       ),
                                       _DesktopAction(
-                                        label: 'Possible duplicates',
+                                        label: context.l10n.text('possibleDuplicates'),
                                         count: data.possibleDuplicateCount,
                                         icon: Icons.copy_outlined,
                                         onTap: () =>
                                             _go('/review?view=duplicates'),
                                       ),
                                       _DesktopAction(
-                                        label: 'Merchant issues',
+                                        label: context.l10n.text('desktopMerchantIssues'),
                                         count: data.merchantReviewCount,
                                         icon: Icons.store_outlined,
                                         onTap: () =>
                                             _go('/review?view=overview'),
                                       ),
                                       _DesktopAction(
-                                        label: 'Import statement',
+                                        label: context.l10n.text('desktopImportStatement'),
                                         icon: Icons.upload_file_outlined,
                                         onTap: () => _go('/statements'),
                                       ),
                                       _DesktopAction(
-                                        label: 'Payment settlements',
+                                        label: context.l10n.text('paymentSettlements'),
                                         icon: Icons.payments_outlined,
                                         onTap: () =>
                                             _go('/payment-settlements'),
@@ -537,7 +537,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                   ),
                                 );
                                 final recent = _DesktopPanel(
-                                  title: 'Recent Transactions',
+                                  title: context.l10n.text('recentTransactions'),
                                   showInnerCard: true,
                                   trailing: TextButton(
                                     style: TextButton.styleFrom(
@@ -548,7 +548,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                       minimumSize: const Size(0, 32),
                                     ),
                                     onPressed: () => _go('/search?$query'),
-                                    child: const Text('View all →'),
+                                    child: Text(context.l10n.text('viewAll')),
                                   ),
                                   child: Column(
                                     children: [
@@ -647,7 +647,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                                                 .rawCounterparty ??
                                                             transaction
                                                                 .description ??
-                                                            'Transaction',
+                                                            context.l10n.text('untitledTransaction'),
                                                         maxLines: 1,
                                                         overflow: TextOverflow
                                                             .ellipsis,
@@ -686,8 +686,8 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                                                 ) ??
                                                                 (transaction.categoryId ==
                                                                         null
-                                                                    ? 'Uncategorized'
-                                                                    : 'Category unavailable'),
+                                                                    ? context.l10n.text('uncategorized')
+                                                                    : context.l10n.text('unavailableCategory')),
                                                             maxLines: 1,
                                                             overflow:
                                                                 TextOverflow
@@ -762,7 +762,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                           padding: EdgeInsets.symmetric(
                                             vertical: 16,
                                           ),
-                                          child: Text('No recent transactions'),
+                                          child: Text(context.l10n.text('noTransactions')),
                                         ),
                                     ],
                                   ),
@@ -772,7 +772,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                   insightGroupSummaries(context, data.insights),
                                 );
                                 final insights = _DesktopPanel(
-                                  title: 'Insights',
+                                  title: context.l10n.text('insights'),
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.stretch,
@@ -1096,9 +1096,9 @@ class _DesktopMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = title == 'Income'
+    final color = icon == Icons.arrow_upward
         ? const Color(0xFF009B61)
-        : title == 'Expenses'
+        : icon == Icons.arrow_downward
         ? const Color(0xFFE24247)
         : const Color(0xFF1769E8);
     final fill = color.withValues(alpha: _desktopHomeTintOpacity);
@@ -1109,12 +1109,12 @@ class _DesktopMetric extends StatelessWidget {
         percent != null;
     final percentValue = usable ? double.tryParse(percent.toString()) : null;
     final comparisonText = percentValue == null
-        ? 'Change unavailable'
+        ? context.l10n.text('comparisonUnavailable')
         : percentValue > 0
-        ? '↑ ${percentValue.abs().toStringAsFixed(1)}% vs previous period'
+        ? '↑ ${percentValue.abs().toStringAsFixed(1)}% ${context.l10n.text('vsPreviousPeriod')}'
         : percentValue < 0
-        ? '↓ ${percentValue.abs().toStringAsFixed(1)}% vs previous period'
-        : '0.0% vs previous period';
+        ? '↓ ${percentValue.abs().toStringAsFixed(1)}% ${context.l10n.text('vsPreviousPeriod')}'
+        : '0.0% ${context.l10n.text('vsPreviousPeriod')}';
 
     return Container(
       decoration: BoxDecoration(
@@ -1194,11 +1194,11 @@ class _DesktopAction extends StatelessWidget {
   Widget build(BuildContext context) {
     final tint =
         tintColor ??
-        (label == 'Needs review' || label == 'Possible duplicates'
+        (icon == Icons.fact_check_outlined || icon == Icons.copy_outlined
             ? const Color(0xFFE64A4F)
-            : label == 'Import statement'
+            : icon == Icons.upload_file_outlined
             ? const Color(0xFF216FE8)
-            : label == 'Payment settlements'
+            : icon == Icons.payments_outlined
             ? const Color(0xFF159D72)
             : const Color(0xFF8560D4));
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1291,7 +1291,7 @@ class _DesktopTrend extends StatelessWidget {
         .toList();
     final max = values.fold<double>(0, (a, b) => a > b ? a : b);
     if (points.isEmpty || max <= 0) {
-      return const Center(child: Text('No spending trend available'));
+      return const Center(child: Text(context.l10n.text('desktopNoSpendingTrend')));
     }
 
     const gridInterval = 1000.0;
@@ -1429,13 +1429,13 @@ Future<DateTime?> _selectDesktopMonth(BuildContext context, DateTime selected) {
       builder: (sheetContext, update) => ButlerlySheet(
         title: Row(
           children: [
-            const Expanded(child: Text('Select month')),
+            const Expanded(child: Text(context.l10n.text('desktopSelectMonth'))),
             IconButton(
               style: IconButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 minimumSize: const Size(34, 32),
               ),
-              tooltip: 'Previous year',
+              tooltip: context.l10n.text('desktopPreviousYear'),
               icon: const Icon(Icons.chevron_left),
               onPressed: year > 2000 ? () => update(() => year--) : null,
             ),
@@ -1445,7 +1445,7 @@ Future<DateTime?> _selectDesktopMonth(BuildContext context, DateTime selected) {
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 minimumSize: const Size(34, 32),
               ),
-              tooltip: 'Next year',
+              tooltip: context.l10n.text('desktopNextYear'),
               icon: const Icon(Icons.chevron_right),
               onPressed: year < 2100 ? () => update(() => year++) : null,
             ),
@@ -1485,7 +1485,7 @@ Future<DateTime?> _selectDesktopMonth(BuildContext context, DateTime selected) {
         actions: [
           ButlerlyCancelButton(
             onPressed: () => Navigator.pop(sheetContext),
-            child: const Text('Cancel'),
+            child: Text(context.l10n.text('cancel')),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
@@ -1493,7 +1493,7 @@ Future<DateTime?> _selectDesktopMonth(BuildContext context, DateTime selected) {
               minimumSize: const Size(0, 32),
             ),
             onPressed: () => Navigator.pop(sheetContext, DateTime(year, month)),
-            child: const Text('Apply'),
+            child: Text(context.l10n.text('desktopApply')),
           ),
         ],
       ),
