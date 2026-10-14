@@ -221,7 +221,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                       ),
                       onPressed: () => _go('/search'),
                       icon: const Icon(Icons.search),
-                      label: Text(context.l10n.text('desktopSearchTransactions')),
+                      label: Text(
+                        context.l10n.text('desktopSearchTransactions'),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -282,7 +284,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                 children: [
                                   const Expanded(
                                     child: Text(
-                                      context.l10n.text('desktopLocalDataUnavailable'),
+                                      context.l10n.text(
+                                        'desktopLocalDataUnavailable',
+                                      ),
                                     ),
                                   ),
                                   TextButton(
@@ -294,7 +298,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                       minimumSize: const Size(0, 32),
                                     ),
                                     onPressed: () => setState(_reload),
-                                    child: Text(context.l10n.text('desktopRetry')),
+                                    child: Text(
+                                      context.l10n.text('desktopRetry'),
+                                    ),
                                   ),
                                 ],
                               ),
@@ -316,7 +322,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: _DesktopMetric(
-                                      title: context.l10n.text('desktopExpenses'),
+                                      title: context.l10n.text(
+                                        'desktopExpenses',
+                                      ),
                                       value: _money(
                                         analysis?.spending,
                                         currency,
@@ -355,7 +363,12 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                           .map(
                                             (n) => DropdownMenuItem(
                                               value: n,
-                                              child: Text(context.l10n.text('desktopMonthsCount', {'count': '$n'})),
+                                              child: Text(
+                                                context.l10n.text(
+                                                  'desktopMonthsCount',
+                                                  {'count': '$n'},
+                                                ),
+                                              ),
                                             ),
                                           )
                                           .toList(),
@@ -384,7 +397,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                 final middle = SizedBox(
                                   height: _desktopHomeBreakdownCardHeight,
                                   child: _DesktopPanel(
-                                    title: context.l10n.text('desktopCategoryBreakdown'),
+                                    title: context.l10n.text(
+                                      'desktopCategoryBreakdown',
+                                    ),
                                     showInnerCard: true,
                                     headerHeight:
                                         _desktopHomeBreakdownHeaderHeight,
@@ -460,7 +475,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                                   .isEmpty ??
                                               true)
                                             Text(
-                                              context.l10n.text('desktopNoCategoryData'),
+                                              context.l10n.text(
+                                                'desktopNoCategoryData',
+                                              ),
                                             ),
                                         ],
                                       ),
@@ -490,7 +507,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                             LayoutBuilder(
                               builder: (context, b) {
                                 final actions = _DesktopPanel(
-                                  title: context.l10n.text('desktopActionCenter'),
+                                  title: context.l10n.text(
+                                    'desktopActionCenter',
+                                  ),
                                   child: Column(
                                     children: [
                                       _DesktopAction(
@@ -501,7 +520,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                             _go('/review?view=needsReview'),
                                       ),
                                       _DesktopAction(
-                                        label: context.l10n.text('uncategorized'),
+                                        label: context.l10n.text(
+                                          'uncategorized',
+                                        ),
                                         count:
                                             data.uncategorizedTransactionCount,
                                         icon: Icons.category_outlined,
@@ -509,26 +530,34 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                             _go('/review?view=uncategorized'),
                                       ),
                                       _DesktopAction(
-                                        label: context.l10n.text('possibleDuplicates'),
+                                        label: context.l10n.text(
+                                          'possibleDuplicates',
+                                        ),
                                         count: data.possibleDuplicateCount,
                                         icon: Icons.copy_outlined,
                                         onTap: () =>
                                             _go('/review?view=duplicates'),
                                       ),
                                       _DesktopAction(
-                                        label: context.l10n.text('desktopMerchantIssues'),
+                                        label: context.l10n.text(
+                                          'desktopMerchantIssues',
+                                        ),
                                         count: data.merchantReviewCount,
                                         icon: Icons.store_outlined,
                                         onTap: () =>
                                             _go('/review?view=overview'),
                                       ),
                                       _DesktopAction(
-                                        label: context.l10n.text('desktopImportStatement'),
+                                        label: context.l10n.text(
+                                          'desktopImportStatement',
+                                        ),
                                         icon: Icons.upload_file_outlined,
                                         onTap: () => _go('/statements'),
                                       ),
                                       _DesktopAction(
-                                        label: context.l10n.text('paymentSettlements'),
+                                        label: context.l10n.text(
+                                          'paymentSettlements',
+                                        ),
                                         icon: Icons.payments_outlined,
                                         onTap: () =>
                                             _go('/payment-settlements'),
@@ -537,7 +566,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                   ),
                                 );
                                 final recent = _DesktopPanel(
-                                  title: context.l10n.text('recentTransactions'),
+                                  title: context.l10n.text(
+                                    'recentTransactions',
+                                  ),
                                   showInnerCard: true,
                                   trailing: TextButton(
                                     style: TextButton.styleFrom(
@@ -589,7 +620,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                           Expanded(
                                             flex: 2,
                                             child: Text(
-                                              context.l10n.text('paymentSource'),
+                                              context.l10n.text(
+                                                'paymentSource',
+                                              ),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             ),
@@ -647,7 +680,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                                                 .rawCounterparty ??
                                                             transaction
                                                                 .description ??
-                                                            context.l10n.text('untitledTransaction'),
+                                                            context.l10n.text(
+                                                              'untitledTransaction',
+                                                            ),
                                                         maxLines: 1,
                                                         overflow: TextOverflow
                                                             .ellipsis,
@@ -686,8 +721,16 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                                                 ) ??
                                                                 (transaction.categoryId ==
                                                                         null
-                                                                    ? context.l10n.text('uncategorized')
-                                                                    : context.l10n.text('unavailableCategory')),
+                                                                    ? context
+                                                                          .l10n
+                                                                          .text(
+                                                                            'uncategorized',
+                                                                          )
+                                                                    : context
+                                                                          .l10n
+                                                                          .text(
+                                                                            'unavailableCategory',
+                                                                          )),
                                                             maxLines: 1,
                                                             overflow:
                                                                 TextOverflow
@@ -762,7 +805,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                           padding: const EdgeInsets.symmetric(
                                             vertical: 16,
                                           ),
-                                          child: Text(context.l10n.text('noTransactions')),
+                                          child: Text(
+                                            context.l10n.text('noTransactions'),
+                                          ),
                                         ),
                                     ],
                                   ),
