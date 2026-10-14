@@ -1261,7 +1261,7 @@ class _DesktopTrend extends StatelessWidget {
                   children: [
                     for (var i = 0; i < gridLevels; i++)
                       Text(
-                        formatter.format(max * (gridLevels - 1 - i) / (gridLevels - 1)),
+                        formatter.format(\n                          max * (gridLevels - 1 - i) / (gridLevels - 1),\n                        ),
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           color: context.colors.secondaryText,
                         ),
@@ -1289,56 +1289,56 @@ class _DesktopTrend extends StatelessWidget {
                   ),
                 ),
                 Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              for (var i = 0; i < points.length; i++)
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 3),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Tooltip(
-                          message: NumberFormat.simpleCurrency(
-                            name: currency,
-                          ).format(values[i]),
-                          child: Align(
-                            alignment: Alignment.bottomCenter,
-                            child: FractionallySizedBox(
-                              widthFactor: 0.6,
-                              child: Container(
-                                height:
-                                    _desktopHomeTrendMaxBarHeight * values[i] / max,
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).colorScheme.primary
-                                      .withValues(
-                                        alpha:
-                                            points[i].month.year ==
-                                                    selectedMonth.year &&
-                                                points[i].month.month ==
-                                                    selectedMonth.month
-                                            ? _desktopHomeSelectedMonthTrendTintOpacity
-                                            : _desktopHomeOtherMonthTrendTintOpacity,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      for (var i = 0; i < points.length; i++)
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 3),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Tooltip(
+                                  message: NumberFormat.simpleCurrency(
+                                    name: currency,
+                                  ).format(values[i]),
+                                  child: Align(
+                                    alignment: Alignment.bottomCenter,
+                                    child: FractionallySizedBox(
+                                      widthFactor: 0.6,
+                                      child: Container(
+                                        height:
+                                            _desktopHomeTrendMaxBarHeight * values[i] / max,
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(context).colorScheme.primary
+                                              .withValues(
+                                                alpha:
+                                                    points[i].month.year ==
+                                                            selectedMonth.year &&
+                                                        points[i].month.month ==
+                                                            selectedMonth.month
+                                                    ? _desktopHomeSelectedMonthTrendTintOpacity
+                                                    : _desktopHomeOtherMonthTrendTintOpacity,
+                                              ),
+                                          borderRadius: const BorderRadius.vertical(
+                                            top: Radius.circular(5),
+                                          ),
+                                        ),
                                       ),
-                                  borderRadius: const BorderRadius.vertical(
-                                    top: Radius.circular(5),
+                                    ),
                                   ),
                                 ),
-                              ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  DateFormat.MMM().format(points[i].month),
+                                  style: Theme.of(context).textTheme.labelSmall,
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          DateFormat.MMM().format(points[i].month),
-                          style: Theme.of(context).textTheme.labelSmall,
+                    ],
                         ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-                ),
               ],
             ),
           ),
