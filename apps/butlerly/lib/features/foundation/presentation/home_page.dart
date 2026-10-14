@@ -990,7 +990,7 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
         percent != null;
     final percentValue = usable ? double.tryParse(percent.toString()) : null;
     final comparisonText = percentValue == null
-        ? context.l10n.text('changeUnavailable')
+        ? context.l10n.text('comparisonUnavailable')
         : percentValue > 0
         ? '↑ ${percentValue.abs().toStringAsFixed(1)}% ${context.l10n.text('vsPreviousPeriod')}'
         : percentValue < 0
