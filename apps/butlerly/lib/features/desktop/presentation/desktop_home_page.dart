@@ -1242,8 +1242,9 @@ class _DesktopTrend extends StatelessWidget {
     }
 
     const gridInterval = 1000.0;
+    final roundedMaximum = (max / gridInterval).ceil();
     final chartMaximum =
-        (max / gridInterval).ceil().clamp(4, 1000000) * gridInterval;
+        (roundedMaximum < 4 ? 4 : roundedMaximum) * gridInterval;
     final gridLevels = (chartMaximum / gridInterval).toInt() + 1;
     final gridColor = context.colors.cardDivider;
     final formatter = NumberFormat.compactCurrency(
