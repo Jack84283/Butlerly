@@ -7,17 +7,8 @@ void main() {
       ButlerlyLayout.modeForWidth(980, tabletLandscape: true),
       ButlerlyLayoutMode.wide,
     );
-    expect(
-      ButlerlyLayout.modeForWidth(744),
-      ButlerlyLayoutMode.compact,
-    );
-    expect(
-      ButlerlyLayout.modeForWidth(980),
-      ButlerlyLayoutMode.medium,
-    );
-    expect(
-      ButlerlyLayout.modeForWidth(1100),
-      ButlerlyLayoutMode.wide,
-    );
+    expect(ButlerlyLayout.modeForWidth(744), ButlerlyLayoutMode.compact);
+    expect(ButlerlyLayout.modeForWidth(980), ButlerlyLayoutMode.medium);
+    expect(ButlerlyLayout.modeForWidth(1100), ButlerlyLayoutMode.wide);
   });
 }

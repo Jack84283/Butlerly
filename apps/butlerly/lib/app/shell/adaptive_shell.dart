@@ -141,10 +141,12 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
         final layoutMode = effectiveButlerlyLayoutMode(context, width);
         assert(() {
           final viewport = MediaQuery.sizeOf(context);
-          debugPrint('Butlerly layout: viewport=$viewport '
-              'outerWidth=${width.toStringAsFixed(1)} '
-              'tabletLandscape=${_isTabletLandscape(context)} '
-              'mode=${layoutMode.name}');
+          debugPrint(
+            'Butlerly layout: viewport=$viewport '
+            'outerWidth=${width.toStringAsFixed(1)} '
+            'tabletLandscape=${_isTabletLandscape(context)} '
+            'mode=${layoutMode.name}',
+          );
           return true;
         }());
         if (layoutMode != ButlerlyLayoutMode.wide) return widget.child;

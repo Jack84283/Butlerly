@@ -50,7 +50,8 @@ final class ButlerlyDatabase {
 
   Future<void> open() async {
     try {
-      if (_isDebugBuild) developer.log('Butlerly DB: opening target v$targetVersion');
+      if (_isDebugBuild)
+        developer.log('Butlerly DB: opening target v$targetVersion');
       _database = await factory.openDatabase(
         path,
         options: OpenDatabaseOptions(
@@ -62,7 +63,10 @@ final class ButlerlyDatabase {
             await _executeSql(database, schemaSql);
           },
           onUpgrade: (database, oldVersion, newVersion) async {
-            if (_isDebugBuild) developer.log('Butlerly DB: upgrading v$oldVersion to v$newVersion');
+            if (_isDebugBuild)
+              developer.log(
+                'Butlerly DB: upgrading v$oldVersion to v$newVersion',
+              );
             for (
               var version = oldVersion + 1;
               version <= newVersion;
@@ -164,7 +168,9 @@ final class ButlerlyDatabase {
           } on DatabaseException catch (error) {
             if (_isDebugBuild) {
               final reason = error.toString().split(" sql '").first;
-              developer.log('Butlerly DB: catalog statement $statementIndex failed: $reason');
+              developer.log(
+                'Butlerly DB: catalog statement $statementIndex failed: $reason',
+              );
             }
             rethrow;
           }

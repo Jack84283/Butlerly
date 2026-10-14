@@ -384,8 +384,5 @@ class _HomeLayoutSwitch extends StatelessWidget {
 
 /// Wide uses the desktop Home on all platforms, including iPad.
 bool _desktopHomeEnabled(BuildContext context) =>
-    effectiveButlerlyLayoutMode(
-      context,
-      MediaQuery.sizeOf(context).width,
-    ) ==
+    effectiveButlerlyLayoutMode(context, MediaQuery.sizeOf(context).width) ==
     ButlerlyLayoutMode.wide;

@@ -137,107 +137,107 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
             data == null || data.status != HomeOverviewStatus.available;
         return Column(
           children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: context.colors.subtleSurface,
-                  border: Border(
-                    bottom: BorderSide(color: context.colors.cardDivider),
-                  ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: context.colors.subtleSurface,
+                border: Border(
+                  bottom: BorderSide(color: context.colors.cardDivider),
                 ),
-                child: Row(
-                  children: [
-                    IconButton(
-                      style: IconButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        minimumSize: const Size(34, 32),
+              ),
+              child: Row(
+                children: [
+                  IconButton(
+                    style: IconButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
                       ),
-                      tooltip: 'Previous month',
-                      onPressed: () => _moveMonth(-1, current),
-                      icon: const Icon(Icons.chevron_left),
+                      minimumSize: const Size(34, 32),
                     ),
-                    TextButton.icon(
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        minimumSize: const Size(0, 32),
-                        backgroundColor: Colors.transparent,
-                        surfaceTintColor: Colors.transparent,
-                        shadowColor: Colors.transparent,
+                    tooltip: 'Previous month',
+                    onPressed: () => _moveMonth(-1, current),
+                    icon: const Icon(Icons.chevron_left),
+                  ),
+                  TextButton.icon(
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
                       ),
-                      onPressed: () async {
-                        final picked = await _selectDesktopMonth(
-                          context,
-                          current,
-                        );
-                        if (picked != null && mounted) {
-                          setState(() {
-                            _month = DateTime(picked.year, picked.month);
-                            _reload();
-                          });
-                        }
-                      },
-                      icon: const Icon(Icons.calendar_month_outlined),
-                      label: Text(DateFormat.yMMMM().format(current)),
+                      minimumSize: const Size(0, 32),
+                      backgroundColor: Colors.transparent,
+                      surfaceTintColor: Colors.transparent,
+                      shadowColor: Colors.transparent,
                     ),
-                    IconButton(
-                      style: IconButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        minimumSize: const Size(34, 32),
+                    onPressed: () async {
+                      final picked = await _selectDesktopMonth(
+                        context,
+                        current,
+                      );
+                      if (picked != null && mounted) {
+                        setState(() {
+                          _month = DateTime(picked.year, picked.month);
+                          _reload();
+                        });
+                      }
+                    },
+                    icon: const Icon(Icons.calendar_month_outlined),
+                    label: Text(DateFormat.yMMMM().format(current)),
+                  ),
+                  IconButton(
+                    style: IconButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
                       ),
-                      tooltip: 'Next month',
-                      onPressed: () => _moveMonth(1, current),
-                      icon: const Icon(Icons.chevron_right),
+                      minimumSize: const Size(34, 32),
                     ),
-                    const Spacer(),
-                    Text(
-                      _desktopGreeting(DateTime.now()),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                    tooltip: 'Next month',
+                    onPressed: () => _moveMonth(1, current),
+                    icon: const Icon(Icons.chevron_right),
+                  ),
+                  const Spacer(),
+                  Text(
+                    _desktopGreeting(DateTime.now()),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
-                    const SizedBox(width: 16),
-                    SizedBox(
-                      width: 220,
-                      child: OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 4,
-                          ),
-                          minimumSize: const Size(0, 32),
-                        ),
-                        onPressed: () => _go('/search'),
-                        icon: const Icon(Icons.search),
-                        label: const Text('Search transactions'),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    FilledButton.icon(
-                      style: FilledButton.styleFrom(
+                  ),
+                  const SizedBox(width: 16),
+                  SizedBox(
+                    width: 220,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
                           vertical: 4,
                         ),
                         minimumSize: const Size(0, 32),
                       ),
-                      onPressed: () => _go('/transactions/add'),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add'),
+                      onPressed: () => _go('/search'),
+                      icon: const Icon(Icons.search),
+                      label: const Text('Search transactions'),
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 4,
+                      ),
+                      minimumSize: const Size(0, 32),
+                    ),
+                    onPressed: () => _go('/transactions/add'),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Add'),
+                  ),
+                ],
               ),
+            ),
             Expanded(
               child: RefreshIndicator(
                 onRefresh: () async {
@@ -248,541 +248,575 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                   key: const ValueKey('desktop-home-page'),
                   padding: EdgeInsets.zero,
                   children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  ButlerlySpacing.small,
-                  ButlerlySpacing.small,
-                  ButlerlySpacing.small,
-                  ButlerlySpacing.standard,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      'Financial overview',
-                      style: theme.textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.6,
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        ButlerlySpacing.small,
+                        ButlerlySpacing.small,
+                        ButlerlySpacing.small,
+                        ButlerlySpacing.standard,
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      DateFormat.yMMMM().format(current),
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                    const SizedBox(height: 10),
-                    if (snapshot.connectionState != ConnectionState.done)
-                      const LinearProgressIndicator(),
-                    if (unavailable)
-                      _DesktopPanel(
-                        title: 'Overview unavailable',
-                        child: Row(
-                          children: [
-                            const Expanded(
-                              child: Text(
-                                'Local financial data is currently unavailable. Your records are preserved.',
-                              ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            'Financial overview',
+                            style: theme.textTheme.headlineMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.6,
                             ),
-                            TextButton(
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 4,
-                                ),
-                                minimumSize: const Size(0, 32),
-                              ),
-                              onPressed: () => setState(_reload),
-                              child: const Text('Retry'),
-                            ),
-                          ],
-                        ),
-                      ),
-                    if (!unavailable) ...[
-                      LayoutBuilder(
-                        builder: (context, bounds) => Row(
-                          children: [
-                            Expanded(
-                              child: _DesktopMetric(
-                                title: 'Income',
-                                value: _money(analysis?.income, currency),
-                                icon: Icons.arrow_upward,
-                                comparison: analysis?.incomeComparison,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _DesktopMetric(
-                                title: 'Expenses',
-                                value: _money(analysis?.spending, currency),
-                                icon: Icons.arrow_downward,
-                                comparison: analysis?.spendingComparison,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: _DesktopMetric(
-                                title: 'Net cash flow',
-                                value: _money(analysis?.net, currency),
-                                icon: Icons.show_chart,
-                                comparison: analysis?.netComparison,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      LayoutBuilder(
-                        builder: (context, b) {
-                          final left = SizedBox(
-                            height: _desktopHomeBreakdownCardHeight,
-                            child: _DesktopPanel(
-                              title: 'Spending Trend',
-                              showInnerCard: true,
-                              headerHeight: _desktopHomeBreakdownHeaderHeight,
-                              trailing: DropdownButton<int>(
-                                isDense: true,
-                                value: _trendMonths,
-                                underline: const SizedBox.shrink(),
-                                items: const [3, 6, 12]
-                                    .map(
-                                      (n) => DropdownMenuItem(
-                                        value: n,
-                                        child: Text('$n months'),
-                                      ),
-                                    )
-                                    .toList(),
-                                onChanged: (n) {
-                                  if (n != null) {
-                                    setState(() {
-                                      _trendMonths = n;
-                                      _reload();
-                                    });
-                                  }
-                                },
-                              ),
-                              child: SizedBox(
-                                height: _desktopHomeBreakdownContentHeight -
-                                    ButlerlySpacing.small * 2,
-                                child: _DesktopTrend(
-                                  points: data.monthlyTrend,
-                                  selectedMonth: current,
-                                  currency: currency,
-                                  onTap: () => _go('/analysis?$query'),
-                                ),
-                              ),
-                            ),
-                          );
-                          final middle = SizedBox(
-                            height: _desktopHomeBreakdownCardHeight,
-                            child: _DesktopPanel(
-                              title: 'Category Breakdown',
-                              showInnerCard: true,
-                              headerHeight: _desktopHomeBreakdownHeaderHeight,
-                              trailing: TextButton(
-                                style: TextButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 4,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            DateFormat.yMMMM().format(current),
+                            style: theme.textTheme.bodyMedium,
+                          ),
+                          const SizedBox(height: 10),
+                          if (snapshot.connectionState != ConnectionState.done)
+                            const LinearProgressIndicator(),
+                          if (unavailable)
+                            _DesktopPanel(
+                              title: 'Overview unavailable',
+                              child: Row(
+                                children: [
+                                  const Expanded(
+                                    child: Text(
+                                      'Local financial data is currently unavailable. Your records are preserved.',
+                                    ),
                                   ),
-                                  minimumSize: const Size(0, 32),
-                                ),
-                                onPressed: () => _go('/analysis?$query'),
-                                child: const Text('View all →'),
+                                  TextButton(
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 4,
+                                      ),
+                                      minimumSize: const Size(0, 32),
+                                    ),
+                                    onPressed: () => setState(_reload),
+                                    child: const Text('Retry'),
+                                  ),
+                                ],
                               ),
-                              child: SizedBox(
-                                // Reserve the 12px inset within the 280px outer card.
-                                height:
-                                    _desktopHomeBreakdownContentHeight -
-                                    2 * ButlerlySpacing.small,
-                                child: ListView(
-                                  children: [
-                                    for (final metric
-                                        in analysis?.categories
-                                                .where(
-                                                  (category) =>
-                                                      category.availability ==
-                                                      AnalysisDataAvailability
-                                                          .sufficient,
-                                                )
-                                                .take(6) ??
-                                            <AnalysisMetric>[])
-                                      Column(
+                            ),
+                          if (!unavailable) ...[
+                            LayoutBuilder(
+                              builder: (context, bounds) => Row(
+                                children: [
+                                  Expanded(
+                                    child: _DesktopMetric(
+                                      title: 'Income',
+                                      value: _money(analysis?.income, currency),
+                                      icon: Icons.arrow_upward,
+                                      comparison: analysis?.incomeComparison,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: _DesktopMetric(
+                                      title: 'Expenses',
+                                      value: _money(
+                                        analysis?.spending,
+                                        currency,
+                                      ),
+                                      icon: Icons.arrow_downward,
+                                      comparison: analysis?.spendingComparison,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: _DesktopMetric(
+                                      title: 'Net cash flow',
+                                      value: _money(analysis?.net, currency),
+                                      icon: Icons.show_chart,
+                                      comparison: analysis?.netComparison,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            LayoutBuilder(
+                              builder: (context, b) {
+                                final left = SizedBox(
+                                  height: _desktopHomeBreakdownCardHeight,
+                                  child: _DesktopPanel(
+                                    title: 'Spending Trend',
+                                    showInnerCard: true,
+                                    headerHeight:
+                                        _desktopHomeBreakdownHeaderHeight,
+                                    trailing: DropdownButton<int>(
+                                      isDense: true,
+                                      value: _trendMonths,
+                                      underline: const SizedBox.shrink(),
+                                      items: const [3, 6, 12]
+                                          .map(
+                                            (n) => DropdownMenuItem(
+                                              value: n,
+                                              child: Text('$n months'),
+                                            ),
+                                          )
+                                          .toList(),
+                                      onChanged: (n) {
+                                        if (n != null) {
+                                          setState(() {
+                                            _trendMonths = n;
+                                            _reload();
+                                          });
+                                        }
+                                      },
+                                    ),
+                                    child: SizedBox(
+                                      height:
+                                          _desktopHomeBreakdownContentHeight -
+                                          ButlerlySpacing.small * 2,
+                                      child: _DesktopTrend(
+                                        points: data.monthlyTrend,
+                                        selectedMonth: current,
+                                        currency: currency,
+                                        onTap: () => _go('/analysis?$query'),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                                final middle = SizedBox(
+                                  height: _desktopHomeBreakdownCardHeight,
+                                  child: _DesktopPanel(
+                                    title: 'Category Breakdown',
+                                    showInnerCard: true,
+                                    headerHeight:
+                                        _desktopHomeBreakdownHeaderHeight,
+                                    trailing: TextButton(
+                                      style: TextButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 4,
+                                        ),
+                                        minimumSize: const Size(0, 32),
+                                      ),
+                                      onPressed: () => _go('/analysis?$query'),
+                                      child: const Text('View all →'),
+                                    ),
+                                    child: SizedBox(
+                                      // Reserve the 12px inset within the 280px outer card.
+                                      height:
+                                          _desktopHomeBreakdownContentHeight -
+                                          2 * ButlerlySpacing.small,
+                                      child: ListView(
                                         children: [
-                                          _DesktopCategorySummaryRow(
-                                            metric: metric,
-                                            share: analysis
-                                                ?.categoryShares[metric.id],
-                                            masterData: _masterData,
-                                            amount: _money(metric, currency),
-                                            onTap: () =>
-                                                _go('/analysis?$query'),
+                                          for (final metric
+                                              in analysis?.categories
+                                                      .where(
+                                                        (category) =>
+                                                            category
+                                                                .availability ==
+                                                            AnalysisDataAvailability
+                                                                .sufficient,
+                                                      )
+                                                      .take(6) ??
+                                                  <AnalysisMetric>[])
+                                            Column(
+                                              children: [
+                                                _DesktopCategorySummaryRow(
+                                                  metric: metric,
+                                                  share:
+                                                      analysis
+                                                          ?.categoryShares[metric
+                                                          .id],
+                                                  masterData: _masterData,
+                                                  amount: _money(
+                                                    metric,
+                                                    currency,
+                                                  ),
+                                                  onTap: () =>
+                                                      _go('/analysis?$query'),
+                                                ),
+                                                const SizedBox(
+                                                  height:
+                                                      ButlerlySpacing.compact,
+                                                ),
+                                                Divider(
+                                                  height: 1,
+                                                  thickness: 1,
+                                                  color: context
+                                                      .colors
+                                                      .cardDivider,
+                                                ),
+                                                const SizedBox(
+                                                  height:
+                                                      ButlerlySpacing.compact,
+                                                ),
+                                              ],
+                                            ),
+                                          if (analysis?.categories
+                                                  .where(
+                                                    (category) =>
+                                                        category.availability ==
+                                                        AnalysisDataAvailability
+                                                            .sufficient,
+                                                  )
+                                                  .isEmpty ??
+                                              true)
+                                            const Text(
+                                              'No category data for this period',
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                                return b.maxWidth >= 680
+                                    ? Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Expanded(child: left),
+                                          const SizedBox(width: 8),
+                                          Expanded(child: middle),
+                                        ],
+                                      )
+                                    : Column(
+                                        children: [
+                                          left,
+                                          const SizedBox(height: 8),
+                                          middle,
+                                        ],
+                                      );
+                              },
+                            ),
+                            const SizedBox(height: 8),
+                            LayoutBuilder(
+                              builder: (context, b) {
+                                final actions = _DesktopPanel(
+                                  title: 'Action Center',
+                                  child: Column(
+                                    children: [
+                                      _DesktopAction(
+                                        label: 'Needs review',
+                                        count: data.reviewCount,
+                                        icon: Icons.fact_check_outlined,
+                                        onTap: () =>
+                                            _go('/review?view=needsReview'),
+                                      ),
+                                      _DesktopAction(
+                                        label: 'Uncategorized',
+                                        count:
+                                            data.uncategorizedTransactionCount,
+                                        icon: Icons.category_outlined,
+                                        onTap: () =>
+                                            _go('/review?view=uncategorized'),
+                                      ),
+                                      _DesktopAction(
+                                        label: 'Possible duplicates',
+                                        count: data.possibleDuplicateCount,
+                                        icon: Icons.copy_outlined,
+                                        onTap: () =>
+                                            _go('/review?view=duplicates'),
+                                      ),
+                                      _DesktopAction(
+                                        label: 'Merchant issues',
+                                        count: data.merchantReviewCount,
+                                        icon: Icons.store_outlined,
+                                        onTap: () =>
+                                            _go('/review?view=overview'),
+                                      ),
+                                      _DesktopAction(
+                                        label: 'Import statement',
+                                        icon: Icons.upload_file_outlined,
+                                        onTap: () => _go('/statements'),
+                                      ),
+                                      _DesktopAction(
+                                        label: 'Payment settlements',
+                                        icon: Icons.payments_outlined,
+                                        onTap: () =>
+                                            _go('/payment-settlements'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                final recent = _DesktopPanel(
+                                  title: 'Recent Transactions',
+                                  showInnerCard: true,
+                                  trailing: TextButton(
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 4,
+                                      ),
+                                      minimumSize: const Size(0, 32),
+                                    ),
+                                    onPressed: () => _go('/search?$query'),
+                                    child: const Text('View all →'),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      const Row(
+                                        children: [
+                                          SizedBox(
+                                            width: 100,
+                                            child: Text(
+                                              'Date',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
                                           ),
-                                          const SizedBox(
-                                            height: ButlerlySpacing.compact,
+                                          Expanded(
+                                            flex: 3,
+                                            child: Text(
+                                              'Merchant',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
                                           ),
-                                          Divider(
-                                            height: 1,
-                                            thickness: 1,
-                                            color: context.colors.cardDivider,
+                                          Expanded(
+                                            flex: 2,
+                                            child: Text(
+                                              'Category',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
                                           ),
-                                          const SizedBox(
-                                            height: ButlerlySpacing.compact,
+                                          Expanded(
+                                            flex: 2,
+                                            child: Text(
+                                              'Subcategory',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          Expanded(
+                                            flex: 2,
+                                            child: Text(
+                                              'Payment source',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          SizedBox(
+                                            width: 112,
+                                            child: Text(
+                                              'Amount',
+                                              textAlign: TextAlign.right,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
                                           ),
                                         ],
                                       ),
-                                    if (analysis?.categories
-                                            .where(
-                                              (category) =>
-                                                  category.availability ==
-                                                  AnalysisDataAvailability
-                                                      .sufficient,
-                                            )
-                                            .isEmpty ??
-                                        true)
-                                      const Text(
-                                        'No category data for this period',
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                          return b.maxWidth >= 680
-                              ? Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(child: left),
-                                    const SizedBox(width: 8),
-                                    Expanded(child: middle),
-                                  ],
-                                )
-                              : Column(
-                                  children: [
-                                    left,
-                                    const SizedBox(height: 8),
-                                    middle,
-                                  ],
-                                );
-                        },
-                      ),
-                      const SizedBox(height: 8),
-                      LayoutBuilder(
-                        builder: (context, b) {
-                          final actions = _DesktopPanel(
-                            title: 'Action Center',
-                            child: Column(
-                              children: [
-                                _DesktopAction(
-                                  label: 'Needs review',
-                                  count: data.reviewCount,
-                                  icon: Icons.fact_check_outlined,
-                                  onTap: () => _go('/review?view=needsReview'),
-                                ),
-                                _DesktopAction(
-                                  label: 'Uncategorized',
-                                  count: data.uncategorizedTransactionCount,
-                                  icon: Icons.category_outlined,
-                                  onTap: () =>
-                                      _go('/review?view=uncategorized'),
-                                ),
-                                _DesktopAction(
-                                  label: 'Possible duplicates',
-                                  count: data.possibleDuplicateCount,
-                                  icon: Icons.copy_outlined,
-                                  onTap: () => _go('/review?view=duplicates'),
-                                ),
-                                _DesktopAction(
-                                  label: 'Merchant issues',
-                                  count: data.merchantReviewCount,
-                                  icon: Icons.store_outlined,
-                                  onTap: () => _go('/review?view=overview'),
-                                ),
-                                _DesktopAction(
-                                  label: 'Import statement',
-                                  icon: Icons.upload_file_outlined,
-                                  onTap: () => _go('/statements'),
-                                ),
-                                _DesktopAction(
-                                  label: 'Payment settlements',
-                                  icon: Icons.payments_outlined,
-                                  onTap: () => _go('/payment-settlements'),
-                                ),
-                              ],
-                            ),
-                          );
-                          final recent = _DesktopPanel(
-                            title: 'Recent Transactions',
-                            showInnerCard: true,
-                            trailing: TextButton(
-                              style: TextButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 4,
-                                ),
-                                minimumSize: const Size(0, 32),
-                              ),
-                              onPressed: () => _go('/search?$query'),
-                              child: const Text('View all →'),
-                            ),
-                            child: Column(
-                              children: [
-                                const Row(
-                                  children: [
-                                    SizedBox(
-                                      width: 100,
-                                      child: Text(
-                                        'Date',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 3,
-                                      child: Text(
-                                        'Merchant',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 2,
-                                      child: Text(
-                                        'Category',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 2,
-                                      child: Text(
-                                        'Subcategory',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    Expanded(
-                                      flex: 2,
-                                      child: Text(
-                                        'Payment source',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      width: 112,
-                                      child: Text(
-                                        'Amount',
-                                        textAlign: TextAlign.right,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                Divider(
-                                  height: 12,
-                                  color: context.colors.cardDivider,
-                                ),
-                                for (final transaction
-                                    in data.recentTransactions.take(7))
-                                  Column(
-                                    children: [
-                                      InkWell(
-                                        onTap: () => _go(
-                                          '/search?ids=${Uri.encodeQueryComponent(transaction.id)}',
-                                        ),
-                                        child: Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 7,
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              SizedBox(
-                                                width: 100,
-                                                child: Text(
-                                                  _desktopTransactionDate(
-                                                    context,
-                                                    transaction,
-                                                  ),
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                              Expanded(
-                                                flex: 3,
-                                                child: Text(
-                                                  _masterData?.merchantName(
-                                                        transaction.merchantId,
-                                                      ) ??
-                                                      transaction
-                                                          .rawCounterparty ??
-                                                      transaction.description ??
-                                                      'Transaction',
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                              Expanded(
-                                                flex: 2,
-                                                child: Align(
-                                                  alignment:
-                                                      Alignment.centerLeft,
-                                                  child: Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 8,
-                                                          vertical: 3,
-                                                        ),
-                                                    decoration: BoxDecoration(
-                                                      color:
-                                                          _desktopCategoryBadgeColor(
-                                                            transaction
-                                                                .categoryId,
-                                                            context,
-                                                          ).withValues(
-                                                            alpha:
-                                                                _desktopHomeTintOpacity,
-                                                          ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            100,
-                                                          ),
-                                                    ),
-                                                    child: Text(
-                                                      _masterData?.categoryName(
-                                                            transaction
-                                                                .categoryId,
-                                                          ) ??
-                                                          (transaction.categoryId ==
-                                                                  null
-                                                              ? 'Uncategorized'
-                                                              : 'Category unavailable'),
-                                                      maxLines: 1,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                      style: Theme.of(context)
-                                                          .textTheme
-                                                          .labelSmall
-                                                          ?.copyWith(
-                                                            color: Colors.white,
-                                                            fontWeight:
-                                                                FontWeight.w600,
-                                                          ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                              Expanded(
-                                                flex: 2,
-                                                child: Text(
-                                                  _masterData?.subcategoryName(
-                                                        transaction
-                                                            .subcategoryId,
-                                                      ) ??
-                                                      '—',
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                              Expanded(
-                                                flex: 2,
-                                                child: Text(
-                                                  _masterData?.paymentSourceName(
-                                                        transaction
-                                                            .paymentSourceId,
-                                                      ) ??
-                                                      '—',
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                              SizedBox(
-                                                width: 112,
-                                                child: Text(
-                                                  _desktopTransactionAmount(
-                                                    context,
-                                                    transaction,
-                                                  ),
-                                                  textAlign: TextAlign.right,
-                                                  maxLines: 1,
-                                                  overflow:
-                                                      TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
                                       Divider(
-                                        height: 1,
-                                        thickness: 1,
+                                        height: 12,
                                         color: context.colors.cardDivider,
                                       ),
+                                      for (final transaction
+                                          in data.recentTransactions.take(7))
+                                        Column(
+                                          children: [
+                                            InkWell(
+                                              onTap: () => _go(
+                                                '/search?ids=${Uri.encodeQueryComponent(transaction.id)}',
+                                              ),
+                                              child: Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 7,
+                                                    ),
+                                                child: Row(
+                                                  children: [
+                                                    SizedBox(
+                                                      width: 100,
+                                                      child: Text(
+                                                        _desktopTransactionDate(
+                                                          context,
+                                                          transaction,
+                                                        ),
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                      ),
+                                                    ),
+                                                    Expanded(
+                                                      flex: 3,
+                                                      child: Text(
+                                                        _masterData?.merchantName(
+                                                              transaction
+                                                                  .merchantId,
+                                                            ) ??
+                                                            transaction
+                                                                .rawCounterparty ??
+                                                            transaction
+                                                                .description ??
+                                                            'Transaction',
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                      ),
+                                                    ),
+                                                    Expanded(
+                                                      flex: 2,
+                                                      child: Align(
+                                                        alignment: Alignment
+                                                            .centerLeft,
+                                                        child: Container(
+                                                          padding:
+                                                              const EdgeInsets.symmetric(
+                                                                horizontal: 8,
+                                                                vertical: 3,
+                                                              ),
+                                                          decoration: BoxDecoration(
+                                                            color:
+                                                                _desktopCategoryBadgeColor(
+                                                                  transaction
+                                                                      .categoryId,
+                                                                  context,
+                                                                ).withValues(
+                                                                  alpha:
+                                                                      _desktopHomeTintOpacity,
+                                                                ),
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  100,
+                                                                ),
+                                                          ),
+                                                          child: Text(
+                                                            _masterData?.categoryName(
+                                                                  transaction
+                                                                      .categoryId,
+                                                                ) ??
+                                                                (transaction.categoryId ==
+                                                                        null
+                                                                    ? 'Uncategorized'
+                                                                    : 'Category unavailable'),
+                                                            maxLines: 1,
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
+                                                            style: Theme.of(context)
+                                                                .textTheme
+                                                                .labelSmall
+                                                                ?.copyWith(
+                                                                  color: Colors
+                                                                      .white,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                ),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    Expanded(
+                                                      flex: 2,
+                                                      child: Text(
+                                                        _masterData?.subcategoryName(
+                                                              transaction
+                                                                  .subcategoryId,
+                                                            ) ??
+                                                            '—',
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                      ),
+                                                    ),
+                                                    Expanded(
+                                                      flex: 2,
+                                                      child: Text(
+                                                        _masterData?.paymentSourceName(
+                                                              transaction
+                                                                  .paymentSourceId,
+                                                            ) ??
+                                                            '—',
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                      ),
+                                                    ),
+                                                    SizedBox(
+                                                      width: 112,
+                                                      child: Text(
+                                                        _desktopTransactionAmount(
+                                                          context,
+                                                          transaction,
+                                                        ),
+                                                        textAlign:
+                                                            TextAlign.right,
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                            Divider(
+                                              height: 1,
+                                              thickness: 1,
+                                              color: context.colors.cardDivider,
+                                            ),
+                                          ],
+                                        ),
+                                      if (data.recentTransactions.isEmpty)
+                                        const Padding(
+                                          padding: EdgeInsets.symmetric(
+                                            vertical: 16,
+                                          ),
+                                          child: Text('No recent transactions'),
+                                        ),
                                     ],
                                   ),
-                                if (data.recentTransactions.isEmpty)
-                                  const Padding(
-                                    padding: EdgeInsets.symmetric(vertical: 16),
-                                    child: Text('No recent transactions'),
-                                  ),
-                              ],
-                            ),
-                          );
-                          final insightGroups = _desktopInsightCatalog(
-                            context,
-                            insightGroupSummaries(context, data.insights),
-                          );
-                          final insights = _DesktopPanel(
-                            title: 'Insights',
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                for (final group in insightGroups)
-                                  _DesktopAction(
-                                    label: group.title,
-                                    count: group.count,
-                                    icon: _desktopInsightGroupIcon(group.group),
-                                    tintColor: _desktopInsightGroupTint(
-                                      group.group,
-                                    ),
-                                    onTap: () => _go('/insights?$query'),
-                                  ),
-                              ],
-                            ),
-                          );
-                          return Column(
-                            children: [
-                              recent,
-                              const SizedBox(height: 8),
-                              if (b.maxWidth >= 680)
-                                IntrinsicHeight(
-                                  child: Row(
+                                );
+                                final insightGroups = _desktopInsightCatalog(
+                                  context,
+                                  insightGroupSummaries(context, data.insights),
+                                );
+                                final insights = _DesktopPanel(
+                                  title: 'Insights',
+                                  child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.stretch,
                                     children: [
-                                      Expanded(child: actions),
-                                      const SizedBox(width: 8),
-                                      Expanded(child: insights),
+                                      for (final group in insightGroups)
+                                        _DesktopAction(
+                                          label: group.title,
+                                          count: group.count,
+                                          icon: _desktopInsightGroupIcon(
+                                            group.group,
+                                          ),
+                                          tintColor: _desktopInsightGroupTint(
+                                            group.group,
+                                          ),
+                                          onTap: () => _go('/insights?$query'),
+                                        ),
                                     ],
                                   ),
-                                )
-                              else ...[
-                                actions,
-                                const SizedBox(height: 8),
-                                insights,
-                              ],
-                            ],
-                          );
-                        },
+                                );
+                                return Column(
+                                  children: [
+                                    recent,
+                                    const SizedBox(height: 8),
+                                    if (b.maxWidth >= 680)
+                                      IntrinsicHeight(
+                                        child: Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
+                                          children: [
+                                            Expanded(child: actions),
+                                            const SizedBox(width: 8),
+                                            Expanded(child: insights),
+                                          ],
+                                        ),
+                                      )
+                                    else ...[
+                                      actions,
+                                      const SizedBox(height: 8),
+                                      insights,
+                                    ],
+                                  ],
+                                );
+                              },
+                            ),
+                          ],
+                        ],
                       ),
-                    ],
-                  ],
-                ),
-              ),
+                    ),
                   ],
                 ),
               ),
@@ -1261,17 +1295,15 @@ class _DesktopTrend extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    for (var i = 0; i < gridLevels; i++)
-                      Text(
-                        formatter.format(
-                          chartMaximum - i * gridInterval,
-                        ),
-                        style: ButlerlyTypography.badgeLabel(
-                          Theme.of(context).textTheme.bodySmall ??
-                              const TextStyle(),
-                        ).copyWith(color: context.colors.secondaryText),
-                      ),
+                children: [
+                  for (var i = 0; i < gridLevels; i++)
+                    Text(
+                      formatter.format(chartMaximum - i * gridInterval),
+                      style: ButlerlyTypography.badgeLabel(
+                        Theme.of(context).textTheme.bodySmall ??
+                            const TextStyle(),
+                      ).copyWith(color: context.colors.secondaryText),
+                    ),
                 ],
               ),
             ),
@@ -1294,69 +1326,73 @@ class _DesktopTrend extends StatelessWidget {
                   ),
                 ),
                 Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      for (var i = 0; i < points.length; i++)
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 3),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                Tooltip(
-                                  message: NumberFormat.simpleCurrency(
-                                    name: currency,
-                                  ).format(values[i]),
-                                  child: Align(
-                                    alignment: Alignment.bottomCenter,
-                                    child: FractionallySizedBox(
-                                      widthFactor: 0.6,
-                                      child: Container(
-                                        height:
-                                            _desktopHomeTrendMaxBarHeight * values[i] / chartMaximum,
-                                        decoration: BoxDecoration(
-                                          color: context.colors.interactive
-                                              .withValues(
-                                                alpha:
-                                                    points[i].month.year ==
-                                                            selectedMonth.year &&
-                                                        points[i].month.month ==
-                                                            selectedMonth.month
-                                                    ? _desktopHomeSelectedMonthTrendTintOpacity
-                                                    : _desktopHomeOtherMonthTrendTintOpacity,
-                                              ),
-                                          borderRadius: const BorderRadius.vertical(
-                                            top: Radius.circular(5),
-                                          ),
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    for (var i = 0; i < points.length; i++)
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 3),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Tooltip(
+                                message: NumberFormat.simpleCurrency(
+                                  name: currency,
+                                ).format(values[i]),
+                                child: Align(
+                                  alignment: Alignment.bottomCenter,
+                                  child: FractionallySizedBox(
+                                    widthFactor: 0.6,
+                                    child: Container(
+                                      height:
+                                          _desktopHomeTrendMaxBarHeight *
+                                          values[i] /
+                                          chartMaximum,
+                                      decoration: BoxDecoration(
+                                        color: context.colors.interactive.withValues(
+                                          alpha:
+                                              points[i].month.year ==
+                                                      selectedMonth.year &&
+                                                  points[i].month.month ==
+                                                      selectedMonth.month
+                                              ? _desktopHomeSelectedMonthTrendTintOpacity
+                                              : _desktopHomeOtherMonthTrendTintOpacity,
                                         ),
+                                        borderRadius:
+                                            const BorderRadius.vertical(
+                                              top: Radius.circular(5),
+                                            ),
                                       ),
                                     ),
                                   ),
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  DateFormat.MMM(locale)
-                                      .format(points[i].month)
-                                      .toUpperCase(),
-                                  textAlign: TextAlign.center,
-                                  style: ButlerlyTypography.badgeLabel(
-                                    Theme.of(context).textTheme.bodySmall ??
-                                        const TextStyle(),
-                                  ).copyWith(
-                                    color: points[i].month.year ==
-                                                selectedMonth.year &&
-                                            points[i].month.month ==
-                                                selectedMonth.month
-                                        ? context.colors.interactive
-                                        : null,
-                                  ),
-                                ),
-                              ],
-                            ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                DateFormat.MMM(
+                                  locale,
+                                ).format(points[i].month).toUpperCase(),
+                                textAlign: TextAlign.center,
+                                style:
+                                    ButlerlyTypography.badgeLabel(
+                                      Theme.of(context).textTheme.bodySmall ??
+                                          const TextStyle(),
+                                    ).copyWith(
+                                      color:
+                                          points[i].month.year ==
+                                                  selectedMonth.year &&
+                                              points[i].month.month ==
+                                                  selectedMonth.month
+                                          ? context.colors.interactive
+                                          : null,
+                                    ),
+                              ),
+                            ],
                           ),
                         ),
-                    ],
-                        ),
+                      ),
+                  ],
+                ),
               ],
             ),
           ),

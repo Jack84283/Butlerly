@@ -71,7 +71,8 @@ class _DesktopPrimaryShellState extends State<DesktopPrimaryShell> {
   Widget build(BuildContext context) {
     // At tablet and narrow desktop widths, keep the rail compact by default.
     // A fully expanded 248px rail would leave too little space for the content.
-    final narrow = MediaQuery.sizeOf(context).width < ButlerlySize.wideBreakpoint;
+    final narrow =
+        MediaQuery.sizeOf(context).width < ButlerlySize.wideBreakpoint;
     final expanded = narrow ? _expandedAtNarrowWidths : _expandedAtWideWidths;
     _ensureMoreVisible(expanded);
     return Scaffold(
@@ -105,10 +106,7 @@ class _DesktopPrimaryShellState extends State<DesktopPrimaryShell> {
             child: ColoredBox(
               key: const ValueKey('primary-wide-body-surface'),
               color: context.colors.subtleSurface,
-              child: SafeArea(
-                bottom: false,
-                child: widget.body,
-              ),
+              child: SafeArea(bottom: false, child: widget.body),
             ),
           ),
         ],
