@@ -261,7 +261,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Text(
-                            'Financial overview',
+                            context.l10n.text('desktopFinancialOverview'),
                             style: theme.textTheme.headlineMedium?.copyWith(
                               fontWeight: FontWeight.w800,
                               letterSpacing: -0.6,
@@ -552,12 +552,12 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                   ),
                                   child: Column(
                                     children: [
-                                      const Row(
+                                      Row(
                                         children: [
                                           SizedBox(
                                             width: 100,
                                             child: Text(
-                                              'Date',
+                                              context.l10n.text('date'),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             ),
@@ -565,7 +565,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                           Expanded(
                                             flex: 3,
                                             child: Text(
-                                              'Merchant',
+                                              context.l10n.text('merchant'),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             ),
@@ -573,7 +573,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                           Expanded(
                                             flex: 2,
                                             child: Text(
-                                              'Category',
+                                              context.l10n.text('category'),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             ),
@@ -581,7 +581,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                           Expanded(
                                             flex: 2,
                                             child: Text(
-                                              'Subcategory',
+                                              context.l10n.text('subcategory'),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             ),
@@ -589,7 +589,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                           Expanded(
                                             flex: 2,
                                             child: Text(
-                                              'Payment source',
+                                              context.l10n.text('paymentSource'),
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                             ),
@@ -597,7 +597,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                           SizedBox(
                                             width: 112,
                                             child: Text(
-                                              'Amount',
+                                              context.l10n.text('amount'),
                                               textAlign: TextAlign.right,
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
@@ -758,8 +758,8 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                           ],
                                         ),
                                       if (data.recentTransactions.isEmpty)
-                                        const Padding(
-                                          padding: EdgeInsets.symmetric(
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
                                             vertical: 16,
                                           ),
                                           child: Text(context.l10n.text('noTransactions')),
@@ -1291,7 +1291,7 @@ class _DesktopTrend extends StatelessWidget {
         .toList();
     final max = values.fold<double>(0, (a, b) => a > b ? a : b);
     if (points.isEmpty || max <= 0) {
-      return const Center(child: Text(context.l10n.text('desktopNoSpendingTrend')));
+      return Center(child: Text(context.l10n.text('desktopNoSpendingTrend')));
     }
 
     const gridInterval = 1000.0;
@@ -1429,7 +1429,7 @@ Future<DateTime?> _selectDesktopMonth(BuildContext context, DateTime selected) {
       builder: (sheetContext, update) => ButlerlySheet(
         title: Row(
           children: [
-            const Expanded(child: Text(context.l10n.text('desktopSelectMonth'))),
+            Expanded(child: Text(context.l10n.text('desktopSelectMonth'))),
             IconButton(
               style: IconButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
