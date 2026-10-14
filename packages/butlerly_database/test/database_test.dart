@@ -149,6 +149,45 @@ void main() {
     }
   });
 
+  test('repairs missing duplicate groups in a version 13 database', () async {
+    await database.close();
+    final directory = await Directory.systemTemp.createTemp('butlerly-v13-');
+    final dbPath = '${directory.path}/existing.db';
+    try {
+      final incomplete = await databaseFactoryFfi.openDatabase(
+        dbPath,
+        options: OpenDatabaseOptions(
+          version: 13,
+          onCreate: (db, _) async {
+            await db.execute(
+              'CREATE TABLE duplicate_candidate_group_transactions '
+              '(group_id TEXT, transaction_id TEXT)',
+            );
+          },
+        ),
+      );
+      await incomplete.close();
+      final baseline = await File('database/schema/v1.sql').readAsString();
+      database = ButlerlyDatabase(
+        factory: databaseFactoryFfi,
+        path: dbPath,
+        schemaSql: baseline,
+        migrations: parseDeploymentMigrations(await deploymentSql()),
+      );
+      await database.open();
+      expect(await database.connection.getVersion(), 14);
+      expect(
+        (await database.connection.rawQuery(
+          'PRAGMA table_info(duplicate_candidate_groups)',
+        )).any((column) => column['name'] == 'statement_rows'),
+        isTrue,
+      );
+    } finally {
+      await database.close();
+      await directory.delete(recursive: true);
+    }
+  });
+
   test('upgrades an installed pre-disposition V1 database', () async {
     final directory = await Directory.systemTemp.createTemp('butlerly-db-');
     final path = '${directory.path}/legacy.db';
