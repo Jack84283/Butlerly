@@ -47,7 +47,7 @@ void main() {
     await database.close();
   });
 
-  test('upgrades an installed v14 database to v15 and preserves records', () async {
+  test('upgrades a populated v14 database without data loss', () async {
     final installedPath = '${directory.path}/butlerly.db';
     final baseline = await rootBundle.loadString(
       'packages/butlerly_database/database/schema/v1.sql',
