@@ -6,6 +6,7 @@ import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_category_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_model.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
@@ -1247,10 +1248,8 @@ class _DesktopTrend extends StatelessWidget {
         (roundedMaximum < 4 ? 4 : roundedMaximum) * gridInterval;
     final gridLevels = (chartMaximum / gridInterval).toInt() + 1;
     final gridColor = context.colors.cardDivider;
-    final formatter = NumberFormat.compactCurrency(
-      name: currency,
-      decimalDigits: 0,
-    );
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    final formatter = NumberFormat.compact(locale: locale);
     return InkWell(
       onTap: onTap,
       child: Row(
@@ -1270,9 +1269,10 @@ class _DesktopTrend extends StatelessWidget {
                         formatter.format(
                           chartMaximum - i * gridInterval,
                         ),
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: context.colors.secondaryText,
-                        ),
+                        style: ButlerlyTypography.badgeLabel(
+                          Theme.of(context).textTheme.bodySmall ??
+                              const TextStyle(),
+                        ).copyWith(color: context.colors.secondaryText),
                       ),
                   ],
                 ),
@@ -1318,7 +1318,7 @@ class _DesktopTrend extends StatelessWidget {
                                         height:
                                             _desktopHomeTrendMaxBarHeight * values[i] / chartMaximum,
                                         decoration: BoxDecoration(
-                                          color: Theme.of(context).colorScheme.primary
+                                          color: context.colors.interactive
                                               .withValues(
                                                 alpha:
                                                     points[i].month.year ==
@@ -1338,8 +1338,21 @@ class _DesktopTrend extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  DateFormat.MMM().format(points[i].month),
-                                  style: Theme.of(context).textTheme.labelSmall,
+                                  DateFormat.MMM(locale)
+                                      .format(points[i].month)
+                                      .toUpperCase(),
+                                  textAlign: TextAlign.center,
+                                  style: ButlerlyTypography.badgeLabel(
+                                    Theme.of(context).textTheme.bodySmall ??
+                                        const TextStyle(),
+                                  ).copyWith(
+                                    color: points[i].month.year ==
+                                                selectedMonth.year &&
+                                            points[i].month.month ==
+                                                selectedMonth.month
+                                        ? context.colors.interactive
+                                        : null,
+                                  ),
                                 ),
                               ],
                             ),
