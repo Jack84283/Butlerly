@@ -303,6 +303,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                             _DesktopPanel(
                               title: context.l10n.text('monthlySummary'),
                               subtitle: context.l10n.text('vsPreviousPeriod'),
+                              color: Color.alphaBlend(
+                                context.colors.brand.withValues(alpha: 0.50),
+                                context.colors.cardSurface,
+                              ),
                               child: Row(
                                 children: [
                                   Expanded(
@@ -1001,6 +1005,7 @@ class _DesktopPanel extends StatelessWidget {
     required this.title,
     required this.child,
     this.subtitle,
+    this.color,
     this.trailing,
     this.headerHeight,
     this.showInnerCard = false,
@@ -1008,6 +1013,7 @@ class _DesktopPanel extends StatelessWidget {
   final String title;
   final Widget child;
   final String? subtitle;
+  final Color? color;
   final Widget? trailing;
   final double? headerHeight;
   // Distinct themed inner surfaces and 12px insets apply in both modes.
@@ -1017,8 +1023,8 @@ class _DesktopPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: context.colors.cardSurface,
-        borderRadius: BorderRadius.circular(16),
+        color: color ?? context.colors.cardSurface,
+        borderRadius: BorderRadius.circular(ButlerlyRadius.card),
       ),
       padding: const EdgeInsets.fromLTRB(
         10,

@@ -15,9 +15,7 @@ void main() {
     (const Locale('es'), 'Buenos días, Mia', 'Buenos días'),
     (const Locale('zh', 'CN'), '早上好，Mia', '早上好'),
   ]) {
-    testWidgets('localized named greeting for ${scenario.$1}', (
-      tester,
-    ) async {
+    testWidgets('localized named greeting for ${scenario.$1}', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           locale: scenario.$1,

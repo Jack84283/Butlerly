@@ -17,10 +17,6 @@ if [[ "$PWD" == */apps/butlerly ]]; then
   }
   trap cleanup EXIT
   for file in \
-    lib/app/locale/home_greeting.dart \
-    test/features/home/home_greeting_test.dart \
-    lib/features/foundation/presentation/legal_licenses_page.dart \
-    lib/features/foundation/presentation/settings_page.dart \
     lib/features/foundation/presentation/transactions_page.dart \
     test/design_system/semantic_palette_test.dart; do
     probe="${file%.dart}_ci_format_probe.dart"

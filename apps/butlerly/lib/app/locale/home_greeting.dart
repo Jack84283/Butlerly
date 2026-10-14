@@ -57,8 +57,10 @@ class PersonalizedHomeGreeting extends StatelessWidget {
       );
     }
 
-    if (context.getElementForInheritedWidgetOfExactType<
-            UncontrolledProviderScope>() ==
+    if (context
+            .getElementForInheritedWidgetOfExactType<
+              UncontrolledProviderScope
+            >() ==
         null) {
       return label(null);
     }
