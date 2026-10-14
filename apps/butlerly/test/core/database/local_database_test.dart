@@ -103,7 +103,9 @@ void main() {
       persistence.ButlerlyDatabase.databaseVersion,
     );
     expect(
-      (await upgraded.database.query('user_preferences')).single['display_name'],
+      (await upgraded.database.query(
+        'user_preferences',
+      )).single['display_name'],
       '',
     );
     expect(
