@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart'
     show RepositoryException, RepositoryFailureCode, normalizeMerchantName;
 import 'package:sqflite_common/sqlite_api.dart';
@@ -45,14 +46,19 @@ final class ButlerlyDatabase {
 
   Future<void> open() async {
     try {
+      if (kDebugMode) debugPrint('Butlerly DB: opening target v$targetVersion');
       _database = await factory.openDatabase(
         path,
         options: OpenDatabaseOptions(
           version: targetVersion,
           onConfigure: (database) =>
               database.execute('PRAGMA foreign_keys = ON'),
-          onCreate: (database, _) => _executeSql(database, schemaSql),
+          onCreate: (database, _) async {
+            if (kDebugMode) debugPrint('Butlerly DB: creating baseline');
+            await _executeSql(database, schemaSql);
+          },
           onUpgrade: (database, oldVersion, newVersion) async {
+            if (kDebugMode) debugPrint('Butlerly DB: upgrading v$oldVersion to v$newVersion');
             for (
               var version = oldVersion + 1;
               version <= newVersion;
@@ -84,8 +90,14 @@ final class ButlerlyDatabase {
           },
         ),
       );
+      if (kDebugMode) debugPrint('Butlerly DB: seeding catalog');
       await seedSystemData();
+      if (kDebugMode) debugPrint('Butlerly DB: catalog complete');
     } on DatabaseException catch (error) {
+      if (kDebugMode) {
+        final reason = error.toString().split(" sql '").first;
+        debugPrint('Butlerly DB: sqlite failure: $reason');
+      }
       await _database?.close();
       _database = null;
       throw mapDatabaseException(error, 'open database');
@@ -140,8 +152,18 @@ final class ButlerlyDatabase {
     if (seedSql.isEmpty) return;
     await transaction((tx) async {
       for (final sql in seedSql) {
+        var statementIndex = 0;
         for (final statement in splitSqlStatements(sql)) {
-          await tx.execute(statement);
+          statementIndex++;
+          try {
+            await tx.execute(statement);
+          } on DatabaseException catch (error) {
+            if (kDebugMode) {
+              final reason = error.toString().split(" sql '").first;
+              debugPrint('Butlerly DB: catalog statement $statementIndex failed: $reason');
+            }
+            rethrow;
+          }
         }
       }
     });
