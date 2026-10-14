@@ -336,6 +336,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                             height: _desktopHomeBreakdownCardHeight,
                             child: _DesktopPanel(
                               title: 'Spending Trend',
+                              showInnerCard: true,
                               headerHeight: _desktopHomeBreakdownHeaderHeight,
                               trailing: DropdownButton<int>(
                                 isDense: true,
@@ -359,7 +360,8 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                 },
                               ),
                               child: SizedBox(
-                                height: _desktopHomeBreakdownContentHeight,
+                                height: _desktopHomeBreakdownContentHeight -
+                                    ButlerlySpacing.small * 2,
                                 child: _DesktopTrend(
                                   points: data.monthlyTrend,
                                   selectedMonth: current,
@@ -1239,7 +1241,10 @@ class _DesktopTrend extends StatelessWidget {
       return const Center(child: Text('No spending trend available'));
     }
 
-    const gridLevels = 5;
+    const gridInterval = 1000.0;
+    final chartMaximum =
+        (max / gridInterval).ceil().clamp(4, 1000000) * gridInterval;
+    final gridLevels = (chartMaximum / gridInterval).toInt() + 1;
     final gridColor = context.colors.cardDivider;
     final formatter = NumberFormat.compactCurrency(
       name: currency,
@@ -1262,7 +1267,7 @@ class _DesktopTrend extends StatelessWidget {
                     for (var i = 0; i < gridLevels; i++)
                       Text(
                         formatter.format(
-                          max * (gridLevels - 1 - i) / (gridLevels - 1),
+                          chartMaximum - i * gridInterval,
                         ),
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           color: context.colors.secondaryText,
@@ -1310,7 +1315,7 @@ class _DesktopTrend extends StatelessWidget {
                                       widthFactor: 0.6,
                                       child: Container(
                                         height:
-                                            _desktopHomeTrendMaxBarHeight * values[i] / max,
+                                            _desktopHomeTrendMaxBarHeight * values[i] / chartMaximum,
                                         decoration: BoxDecoration(
                                           color: Theme.of(context).colorScheme.primary
                                               .withValues(
