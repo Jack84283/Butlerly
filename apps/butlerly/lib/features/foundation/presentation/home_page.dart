@@ -845,10 +845,6 @@ class _HomeSummaryCard extends StatelessWidget {
     return ButlerlyCard(
       key: const ValueKey('home-summary-card'),
       variant: ButlerlyCardVariant.dashboard,
-      color: Color.alphaBlend(
-        context.colors.brand.withValues(alpha: 0.50),
-        context.colors.cardSurface,
-      ),
       semanticLabel: context.l10n.text('monthlySummary'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
