@@ -39,6 +39,32 @@ void main() {
     expect(find.text('Optional features'), findsOneWidget);
   });
 
+  testWidgets('display-name sheet saves and can reopen without crashing', (
+    tester,
+  ) async {
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Display name').first);
+    await tester.pumpAndSettle();
+    final input = find.byKey(const ValueKey('settings-display-name-input'));
+    expect(input, findsOneWidget);
+    await tester.enterText(input, 'Mia');
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Mia'), findsOneWidget);
+
+    await tester.tap(find.text('Display name').first);
+    await tester.pumpAndSettle();
+    final reopened = tester.widget<TextFormField>(input);
+    expect(reopened.initialValue, 'Mia');
+    await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('More uses Cupertino symbols for native iOS settings controls', (
     tester,
   ) async {
