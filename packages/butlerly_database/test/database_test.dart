@@ -106,6 +106,49 @@ void main() {
     );
   });
 
+  test('recovers a versioned but empty database on first launch', () async {
+    await database.close();
+    final directory = await Directory.systemTemp.createTemp('butlerly-empty-');
+    final dbPath = '${directory.path}/empty.db';
+    try {
+      final empty = await databaseFactoryFfi.openDatabase(
+        dbPath,
+        options: OpenDatabaseOptions(
+          version: 13,
+          onCreate: (_, _) async {},
+        ),
+      );
+      await empty.close();
+
+      final baseline = await File('database/schema/v1.sql').readAsString();
+      database = ButlerlyDatabase(
+        factory: databaseFactoryFfi,
+        path: dbPath,
+        schemaSql: baseline,
+        migrations: parseDeploymentMigrations(await deploymentSql()),
+      );
+      await database.open();
+      expect(await database.connection.getVersion(), 14);
+      expect(
+        await database.connection.rawQuery(
+          "SELECT name FROM sqlite_master WHERE type = 'table' "
+          "AND name = 'duplicate_candidate_groups'",
+        ),
+        hasLength(1),
+      );
+      expect(
+        (await database.connection.rawQuery(
+          'PRAGMA table_info(duplicate_candidate_groups)',
+        )).any((column) => column['name'] == 'statement_rows'),
+        isTrue,
+      );
+      expect(await database.passesIntegrityCheck(), isTrue);
+    } finally {
+      await database.close();
+      await directory.delete(recursive: true);
+    }
+  });
+
   test('upgrades an installed pre-disposition V1 database', () async {
     final directory = await Directory.systemTemp.createTemp('butlerly-db-');
     final path = '${directory.path}/legacy.db';
