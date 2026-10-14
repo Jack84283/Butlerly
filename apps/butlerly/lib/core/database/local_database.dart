@@ -70,6 +70,7 @@ class LocalDatabase {
       seedSql: [catalogSql],
       targetVersion: persistence.ButlerlyDatabase.databaseVersion,
       migrations: migrations,
+      validateSchemaBeforeSeed: true,
     );
     await _database!.open();
     status = DatabaseStatus.ready;
