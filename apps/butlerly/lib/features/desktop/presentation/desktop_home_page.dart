@@ -1239,25 +1239,56 @@ class _DesktopTrend extends StatelessWidget {
       return const Center(child: Text('No spending trend available'));
     }
 
-    final gridColor = context.colors.cardDivider.withValues(alpha: 0.65);
+    const gridLevels = 5;
+    final gridColor = context.colors.cardDivider.withValues(alpha: 0.45);
+    final formatter = NumberFormat.compactCurrency(
+      name: currency,
+      decimalDigits: 0,
+    );
     return InkWell(
       onTap: onTap,
-      child: Stack(
+      child: Row(
         children: [
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: _desktopHomeTrendMaxBarHeight,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                for (var i = 0; i < 5; i++)
-                  Container(height: 1, color: gridColor),
-              ],
+          SizedBox(
+            width: 58,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 20),
+              child: SizedBox(
+                height: _desktopHomeTrendMaxBarHeight,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    for (var i = 0; i < gridLevels; i++)
+                      Text(
+                        formatter.format(max * (gridLevels - 1 - i) / (gridLevels - 1)),
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: context.colors.secondaryText,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ),
           ),
-          Row(
+          const SizedBox(width: 8),
+          Expanded(
+            child: Stack(
+              children: [
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 20,
+                  height: _desktopHomeTrendMaxBarHeight,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      for (var i = 0; i < gridLevels; i++)
+                        Container(height: 1, color: gridColor),
+                    ],
+                  ),
+                ),
+                Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               for (var i = 0; i < points.length; i++)
@@ -1307,6 +1338,9 @@ class _DesktopTrend extends StatelessWidget {
                   ),
                 ),
             ],
+                ),
+              ],
+            ),
           ),
         ],
       ),
