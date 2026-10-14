@@ -1,6 +1,6 @@
 import 'package:butlerly/app/shell/compact/compact_primary_shell.dart';
 import 'package:butlerly/app/shell/medium/medium_primary_shell.dart';
-import 'package:butlerly/app/shell/wide/wide_primary_shell.dart';
+import 'package:butlerly/features/desktop/presentation/desktop_primary_shell.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/contextual_pages.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -149,7 +149,7 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
         }());
         if (layoutMode != ButlerlyLayoutMode.wide) return widget.child;
 
-        return WidePrimaryShell(
+        return DesktopPrimaryShell(
           body: widget.child,
           currentIndex: _wideParentIndex,
           onSelected: _selectWideDestination,
