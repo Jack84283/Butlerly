@@ -802,19 +802,20 @@ void main() {
   );
 }
 
-Widget _testApp(GoRouter router, {Locale? locale, ThemeData? theme}) =>
-    MaterialApp.router(
-      theme: theme ?? AppTheme.light,
-  locale: locale,
-  routerConfig: router,
-  supportedLocales: AppLocalizations.supportedLocales,
-  localizationsDelegates: const [
-    AppLocalizations.delegate,
-    GlobalMaterialLocalizations.delegate,
-    GlobalWidgetsLocalizations.delegate,
-    GlobalCupertinoLocalizations.delegate,
-  ],
-);
+Widget _testApp(GoRouter router, {Locale? locale, ThemeData? theme}) {
+  return MaterialApp.router(
+    theme: theme ?? AppTheme.light,
+    locale: locale,
+    routerConfig: router,
+    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: const [
+      AppLocalizations.delegate,
+      GlobalMaterialLocalizations.delegate,
+      GlobalWidgetsLocalizations.delegate,
+      GlobalCupertinoLocalizations.delegate,
+    ],
+  );
+}
 
 AnalysisMetric _trendMetric() => AnalysisMetric(
   id: 'trend-result',
