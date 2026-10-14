@@ -122,6 +122,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             _SettingsRow(
               icon: Icons.person_outline_rounded,
               title: context.l10n.text('displayName'),
+              titleStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w400,
+              ),
               subtitle: preference?.displayName.isNotEmpty == true
                   ? preference!.displayName
                   : context.l10n.text('displayNameNotSet'),
@@ -430,12 +433,14 @@ class _SettingsRow extends StatelessWidget {
   const _SettingsRow({
     required this.icon,
     required this.title,
+    this.titleStyle,
     required this.subtitle,
     required this.onTap,
   });
 
   final IconData icon;
   final String title;
+  final TextStyle? titleStyle;
   final String subtitle;
   final VoidCallback onTap;
 
@@ -446,7 +451,10 @@ class _SettingsRow extends StatelessWidget {
       vertical: ButlerlySpacing.xxs,
     ),
     leading: _SettingsIcon(icon: _settingsIcon(context, icon)),
-    title: Text(title, style: Theme.of(context).textTheme.titleMedium),
+    title: Text(
+      title,
+      style: titleStyle ?? Theme.of(context).textTheme.titleMedium,
+    ),
     subtitle: Text(subtitle, style: _settingsSubtitleStyle(context)),
     trailing: Icon(
       _settingsIcon(context, Icons.chevron_right_rounded),
