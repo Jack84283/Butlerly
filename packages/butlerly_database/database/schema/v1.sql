@@ -507,6 +507,7 @@ CREATE TABLE user_preferences (
       region_code TEXT,
       appearance TEXT NOT NULL DEFAULT 'system',
       color_theme TEXT NOT NULL DEFAULT 'butlerRed',
+      display_name TEXT NOT NULL DEFAULT '',
       updated_at TEXT NOT NULL DEFAULT ''
     );
 

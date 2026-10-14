@@ -8,12 +8,32 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 
-class FirstUsePreferencesPage extends ConsumerWidget {
+class FirstUsePreferencesPage extends ConsumerStatefulWidget {
   const FirstUsePreferencesPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<FirstUsePreferencesPage> createState() =>
+      _FirstUsePreferencesPageState();
+}
+
+class _FirstUsePreferencesPageState
+    extends ConsumerState<FirstUsePreferencesPage> {
+  final _nameController = TextEditingController();
+  bool _nameInitialized = false;
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final preference = ref.watch(userPreferenceProvider).value!;
+    if (!_nameInitialized) {
+      _nameController.text = preference.displayName;
+      _nameInitialized = true;
+    }
     return Scaffold(
       body: SafeArea(
         child: ButlerlyResponsiveBody(
@@ -45,6 +65,18 @@ class FirstUsePreferencesPage extends ConsumerWidget {
                   padding: const EdgeInsets.all(ButlerlySpacing.standard),
                   child: Column(
                     children: [
+                      TextField(
+                        key: const ValueKey('first-use-display-name'),
+                        controller: _nameController,
+                        maxLength: 10,
+                        maxLines: 1,
+                        textCapitalization: TextCapitalization.words,
+                        decoration: InputDecoration(
+                          labelText: context.l10n.text('displayName'),
+                          hintText: context.l10n.text('displayNameHint'),
+                        ),
+                      ),
+                      const SizedBox(height: ButlerlySpacing.standard),
                       _SetupDropdown<String>(
                         label: context.l10n.text('language'),
                         value: preference.locale,
@@ -150,7 +182,10 @@ class FirstUsePreferencesPage extends ConsumerWidget {
               FilledButton(
                 onPressed: () => ref
                     .read(userPreferenceProvider.notifier)
-                    .saveChanges(firstUseCompleted: true),
+                    .saveChanges(
+                      displayName: _nameController.text,
+                      firstUseCompleted: true,
+                    ),
                 child: Text(context.l10n.text('continueLocally')),
               ),
             ],

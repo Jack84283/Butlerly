@@ -11,6 +11,7 @@ final class UserPreference {
     this.firstUseCompleted = false,
     this.appearance = 'system',
     this.colorTheme = 'butlerRed',
+    this.displayName = '',
   });
 
   final String locale;
@@ -22,4 +23,5 @@ final class UserPreference {
   final bool firstUseCompleted;
   final String appearance;
   final String colorTheme;
+  final String displayName;
 }

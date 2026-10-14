@@ -126,9 +126,7 @@ class ButlerlyPage extends StatelessWidget {
                       child: SizedBox(height: pinnedSpacing.headerBottomGap),
                     )
                   : null,
-              backgroundColor: context.colors.background.withValues(
-                alpha: 0.96,
-              ),
+              backgroundColor: context.colors.background,
             ),
           if (pinnedHeader != null)
             SliverPersistentHeader(

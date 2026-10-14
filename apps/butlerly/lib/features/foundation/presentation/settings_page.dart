@@ -64,6 +64,44 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     });
   }
 
+  Future<void> _editDisplayName(String currentName) async {
+    // Let the text field own its controller for the entire sheet lifecycle.
+    // A route can keep building during its exit animation after pop returns.
+    var editedName = currentName;
+    final updated = await showButlerlyBottomSheet<String>(
+      context: context,
+      builder: (sheetContext) => ButlerlySheet(
+        title: Text(sheetContext.l10n.text('displayName')),
+        content: TextFormField(
+          key: const ValueKey('settings-display-name-input'),
+          initialValue: currentName,
+          onChanged: (value) => editedName = value,
+          autofocus: true,
+          maxLength: 10,
+          textCapitalization: TextCapitalization.words,
+          decoration: InputDecoration(
+            hintText: sheetContext.l10n.text('displayNameHint'),
+          ),
+        ),
+        actions: [
+          ButlerlyCancelButton(
+            onPressed: () => Navigator.of(sheetContext).pop(),
+            child: Text(sheetContext.l10n.text('cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(sheetContext).pop(editedName.trim()),
+            child: Text(sheetContext.l10n.text('save')),
+          ),
+        ],
+      ),
+    );
+    if (updated != null && mounted) {
+      await ref
+          .read(userPreferenceProvider.notifier)
+          .saveChanges(displayName: updated);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeProvider);
@@ -81,6 +119,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ),
         _SettingsSectionCard(
           children: [
+            _SettingsRow(
+              icon: Icons.person_outline_rounded,
+              title: context.l10n.text('displayName'),
+              titleStyle: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w400),
+              subtitle: preference?.displayName.isNotEmpty == true
+                  ? preference!.displayName
+                  : context.l10n.text('displayNameNotSet'),
+              onTap: () => _editDisplayName(preference?.displayName ?? ''),
+            ),
             _SettingsDropdownRow<ThemeMode>(
               value: themeMode,
               label: context.l10n.text('appearance'),
@@ -384,12 +433,14 @@ class _SettingsRow extends StatelessWidget {
   const _SettingsRow({
     required this.icon,
     required this.title,
+    this.titleStyle,
     required this.subtitle,
     required this.onTap,
   });
 
   final IconData icon;
   final String title;
+  final TextStyle? titleStyle;
   final String subtitle;
   final VoidCallback onTap;
 
@@ -400,7 +451,10 @@ class _SettingsRow extends StatelessWidget {
       vertical: ButlerlySpacing.xxs,
     ),
     leading: _SettingsIcon(icon: _settingsIcon(context, icon)),
-    title: Text(title, style: Theme.of(context).textTheme.titleMedium),
+    title: Text(
+      title,
+      style: titleStyle ?? Theme.of(context).textTheme.titleMedium,
+    ),
     subtitle: Text(subtitle, style: _settingsSubtitleStyle(context)),
     trailing: Icon(
       _settingsIcon(context, Icons.chevron_right_rounded),

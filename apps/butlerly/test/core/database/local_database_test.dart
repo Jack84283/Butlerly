@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly_database/butlerly_database.dart' as persistence;
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -44,6 +45,87 @@ void main() {
     expect(tables.map((row) => row['name']), contains('transactions'));
 
     await database.close();
+  });
+
+  test('upgrades a populated v14 database without data loss', () async {
+    final installedPath = '${directory.path}/butlerly.db';
+    final baseline = await rootBundle.loadString(
+      'packages/butlerly_database/database/schema/v1.sql',
+    );
+    final deployment = await rootBundle.loadString(
+      'packages/butlerly_database/database/migrations/deployment.sql',
+    );
+    const newColumn = "      display_name TEXT NOT NULL DEFAULT '',\n";
+    final v14Schema = baseline.replaceFirst(newColumn, '');
+    expect(v14Schema, isNot(baseline));
+
+    // An installed v14 database must be upgraded, not recreated or erased.
+    final previous = persistence.ButlerlyDatabase(
+      factory: databaseFactoryFfi,
+      path: installedPath,
+      schemaSql:
+          '$v14Schema\n${persistence.baselineHardeningFromDeployment(deployment)}',
+      targetVersion: 14,
+    );
+    await previous.open();
+    final timestamp = DateTime.utc(2026, 10, 13).toIso8601String();
+    await previous.connection.insert('user_preferences', {
+      'id': 1,
+      'locale': 'en',
+      'base_currency': 'USD',
+      'time_zone_id': 'UTC',
+      'external_ai_enabled': 0,
+      'first_use_completed': 1,
+      'appearance': 'dark',
+      'color_theme': 'butlerRed',
+      'updated_at': timestamp,
+    });
+    await previous.connection.insert('transactions', {
+      'id': 'preserved-transaction',
+      'unknown_time_reason': 'not supplied',
+      'amount_coefficient': '4200',
+      'amount_scale': 2,
+      'currency': 'USD',
+      'direction': 'expense',
+      'source_type': 'manual',
+      'status': 'active',
+      'created_at': timestamp,
+      'updated_at': timestamp,
+      'transaction_date': '2026-10-13',
+    });
+    await previous.close();
+
+    var upgraded = localDatabase();
+    await upgraded.initialize();
+    expect(upgraded.status, DatabaseStatus.ready);
+    expect(
+      await upgraded.database.getVersion(),
+      persistence.ButlerlyDatabase.databaseVersion,
+    );
+    expect(
+      (await upgraded.database.query(
+        'user_preferences',
+      )).single['display_name'],
+      '',
+    );
+    expect(
+      (await upgraded.database.query(
+        'transactions',
+        where: 'id = ?',
+        whereArgs: ['preserved-transaction'],
+      )).single['amount_coefficient'],
+      '4200',
+    );
+    await upgraded.close();
+
+    // The migration is one-time and data must still survive a restart.
+    upgraded = localDatabase();
+    await upgraded.initialize();
+    expect(
+      (await upgraded.database.query('transactions')).single['id'],
+      'preserved-transaction',
+    );
+    await upgraded.close();
   });
 
   test(

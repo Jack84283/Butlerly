@@ -238,54 +238,40 @@ void main() {
     expect(find.byKey(const Key('home-notification-action')), findsNothing);
   });
 
-  testWidgets(
-    'Monthly Summary keeps three inner cards horizontal on phone-sized layouts',
-    (tester) async {
-      tester.view.physicalSize = const Size(320, 568);
-      tester.view.devicePixelRatio = 1;
-      tester.view.platformDispatcher.textScaleFactorTestValue = 1.2;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      addTearDown(tester.view.platformDispatcher.clearTextScaleFactorTestValue);
+  testWidgets('Monthly Summary keeps three desktop-style cards in one row', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    tester.view.platformDispatcher.textScaleFactorTestValue = 1.2;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.platformDispatcher.clearTextScaleFactorTestValue);
 
-      await tester.pumpWidget(_testApp(router));
-      await tester.pumpAndSettle();
-      await tester.scrollUntilVisible(
-        find.byKey(const ValueKey('home-summary-card')),
-        200,
-      );
-      await tester.pumpAndSettle();
+    await tester.pumpWidget(_testApp(router));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('home-summary-card')),
+      200,
+    );
+    await tester.pumpAndSettle();
 
-      final metricKeys = const [
-        ValueKey('home-summary-metric-spending'),
-        ValueKey('home-summary-metric-income'),
-        ValueKey('home-summary-metric-net-position'),
-      ];
-      final tops = [
-        for (final key in metricKeys) tester.getTopLeft(find.byKey(key)).dy,
-      ];
-      for (final top in tops.skip(1)) {
-        expect(top, closeTo(tops.first, 1.0));
-      }
-      expect(
-        find.byKey(const ValueKey('home-summary-metric-savings')),
-        findsNothing,
-      );
-      final innerCards = [
-        for (final key in const [
-          'home-summary-inner-spending',
-          'home-summary-inner-income',
-          'home-summary-inner-net-position',
-        ])
-          find.byKey(ValueKey(key)),
-      ];
-      for (final card in innerCards) {
-        expect(card, findsOneWidget);
-        expect(tester.getSize(card).height, closeTo(108, 0.01));
-      }
-      expect(tester.takeException(), isNull);
-    },
-  );
+    final income = find.byKey(const ValueKey('home-summary-inner-income'));
+    final spending = find.byKey(const ValueKey('home-summary-inner-spending'));
+    final net = find.byKey(const ValueKey('home-summary-inner-net-position'));
+    expect(income, findsOneWidget);
+    expect(spending, findsOneWidget);
+    expect(net, findsOneWidget);
+    expect(
+      tester.getTopLeft(income).dy,
+      closeTo(tester.getTopLeft(spending).dy, 1),
+    );
+    expect(
+      tester.getTopLeft(spending).dy,
+      closeTo(tester.getTopLeft(net).dy, 1),
+    );
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('Home intro stays within an Android phone header', (
     tester,
@@ -309,6 +295,43 @@ void main() {
       lessThanOrEqualTo(tester.getBottomLeft(header).dy + 0.01),
     );
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('monthly summary uses the standard card surface in both themes', (
+    tester,
+  ) async {
+    for (final theme in [AppTheme.light, AppTheme.dark]) {
+      await tester.pumpWidget(_testApp(router, theme: theme));
+      await tester.pumpAndSettle();
+
+      final summary = tester.widget<ButlerlyCard>(
+        find.byKey(const ValueKey('home-summary-card')),
+      );
+      expect(summary.color, isNull);
+      expect(
+        theme.cardTheme.color,
+        theme.extension<ButlerlySemanticColors>()!.cardSurface,
+      );
+    }
+  });
+
+  testWidgets('Home header and outer canvas share page color in both themes', (
+    tester,
+  ) async {
+    for (final theme in [AppTheme.light, AppTheme.dark]) {
+      await tester.pumpWidget(_testApp(router, theme: theme));
+      await tester.pumpAndSettle();
+
+      final pageColor = theme.extension<ButlerlySemanticColors>()!.background;
+      final header = tester.widget<ColoredBox>(
+        find.byKey(const ValueKey('home-header-surface')),
+      );
+      final canvas = tester.widget<ColoredBox>(
+        find.byKey(const ValueKey('home-page-canvas')),
+      );
+      expect(header.color, pageColor);
+      expect(canvas.color, pageColor);
+    }
   });
 
   testWidgets('Home card titles share the canonical top inset', (tester) async {
@@ -784,18 +807,20 @@ void main() {
   );
 }
 
-Widget _testApp(GoRouter router, {Locale? locale}) => MaterialApp.router(
-  theme: AppTheme.light,
-  locale: locale,
-  routerConfig: router,
-  supportedLocales: AppLocalizations.supportedLocales,
-  localizationsDelegates: const [
-    AppLocalizations.delegate,
-    GlobalMaterialLocalizations.delegate,
-    GlobalWidgetsLocalizations.delegate,
-    GlobalCupertinoLocalizations.delegate,
-  ],
-);
+Widget _testApp(GoRouter router, {Locale? locale, ThemeData? theme}) {
+  return MaterialApp.router(
+    theme: theme ?? AppTheme.light,
+    locale: locale,
+    routerConfig: router,
+    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: const [
+      AppLocalizations.delegate,
+      GlobalMaterialLocalizations.delegate,
+      GlobalWidgetsLocalizations.delegate,
+      GlobalCupertinoLocalizations.delegate,
+    ],
+  );
+}
 
 AnalysisMetric _trendMetric() => AnalysisMetric(
   id: 'trend-result',

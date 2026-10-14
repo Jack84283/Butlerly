@@ -28,6 +28,7 @@ final class SqliteUserPreferenceRepository implements UserPreferenceRepository {
         firstUseCompleted: row['first_use_completed'] == 1,
         appearance: row['appearance'] as String? ?? 'system',
         colorTheme: row['color_theme'] as String? ?? 'butlerRed',
+        displayName: row['display_name'] as String? ?? '',
       );
     } on Exception catch (error) {
       if (error is RepositoryException) rethrow;
@@ -52,6 +53,7 @@ final class SqliteUserPreferenceRepository implements UserPreferenceRepository {
         'first_use_completed': preference.firstUseCompleted ? 1 : 0,
         'appearance': preference.appearance,
         'color_theme': preference.colorTheme,
+        'display_name': preference.displayName,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       }, conflictAlgorithm: ConflictAlgorithm.replace);
     } on Exception catch (error) {

@@ -5,7 +5,6 @@ import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
-import 'package:butlerly/design_system/tokens/butlerly_category_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
@@ -17,7 +16,6 @@ import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -176,7 +174,7 @@ void main() {
     expect(find.text('Spending trend'), findsOneWidget);
     expect(find.text('Top categories'), findsOneWidget);
     expect(find.text('Savings'), findsNothing);
-    expect(find.text('Net position'), findsOneWidget);
+    expect(find.text('Net cash flow'), findsOneWidget);
     expect(find.text('Recent transactions'), findsOneWidget);
     expect(find.text('Insights'), findsOneWidget);
     expect(find.text('Sep 2026'), findsOneWidget);
@@ -223,7 +221,9 @@ void main() {
       summaryAmount.style?.fontFamily,
       isNot(ButlerlyTypography.editorialFontFamily),
     );
-    expect(summaryAmount.style?.fontFeatures, isNotEmpty);
+    expect(summaryAmount.style?.fontSize, 24);
+    expect(summaryAmount.style?.fontWeight, FontWeight.w800);
+    expect(summaryAmount.style?.color, Colors.white);
     expect(find.byKey(const ValueKey('home-attention-card')), findsOneWidget);
     expect(find.text('1 merchant to review'), findsOneWidget);
     expect(find.byKey(const ValueKey('home-insight-card')), findsOneWidget);
@@ -631,12 +631,9 @@ void main() {
       for (final key in metricKeys) tester.getTopLeft(find.byKey(key)),
     ];
     for (var index = 1; index < metricPositions.length; index++) {
-      expect(
-        metricPositions[index].dy,
-        greaterThan(metricPositions[index - 1].dy),
-      );
+      expect(metricPositions[index].dy, closeTo(metricPositions.first.dy, 1));
     }
-    for (final label in ['Spending', 'Income', 'Net position']) {
+    for (final label in ['Spending', 'Income', 'Net cash flow']) {
       expect(find.text(label), findsOneWidget);
     }
     expect(
@@ -649,84 +646,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Home Summary keeps all three inner cards in one row normally', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(390, 844);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    final model = AnalysisOverview(
-      insightUnavailable: false,
-      trend: const [],
-      categories: const [],
-      qualityCount: 0,
-      qualityEvaluated: true,
-      qualityLimited: false,
-    );
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: _summaryTestTheme(),
-        localizationsDelegates: const [
-          AppLocalizations.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(
-          body: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: ButlerlySize.contentGutter,
-            ),
-            child: homeSummaryForTest(model),
-          ),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    final spending = tester.getTopLeft(
-      find.byKey(const ValueKey('home-summary-metric-spending')),
-    );
-    final income = tester.getTopLeft(
-      find.byKey(const ValueKey('home-summary-metric-income')),
-    );
-    final netPosition = tester.getTopLeft(
-      find.byKey(const ValueKey('home-summary-metric-net-position')),
-    );
-    expect(spending.dy, closeTo(income.dy, 0.01));
-    expect(spending.dy, closeTo(netPosition.dy, 0.01));
-    expect(spending.dx, lessThan(income.dx));
-    expect(income.dx, lessThan(netPosition.dx));
-    expect(
-      find.byKey(const ValueKey('home-summary-metric-savings')),
-      findsNothing,
-    );
-    for (final key in const [
-      'home-summary-inner-spending',
-      'home-summary-inner-income',
-      'home-summary-inner-net-position',
-    ]) {
-      expect(find.byKey(ValueKey(key)), findsOneWidget);
-    }
-    for (final entry in [
-      ('home-summary-metric-spending', 'Spending'),
-      ('home-summary-metric-income', 'Income'),
-      ('home-summary-metric-net-position', 'Net position'),
-    ]) {
-      final cell = find.byKey(ValueKey(entry.$1));
-      final label = find.descendant(of: cell, matching: find.text(entry.$2));
-      expect(
-        (tester.getCenter(cell).dx - tester.getCenter(label).dx).abs(),
-        lessThan(0.01),
-      );
-    }
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('Home Summary icons use solid category-style colors', (
+  testWidgets('Home Summary mirrors desktop metric content and colors', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -745,33 +665,48 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final summary = find.byKey(const ValueKey('home-summary-card'));
-    for (final entry in const [
-      (Icons.arrow_downward_rounded, ButlerlyCategoryColorId.coral),
-      (Icons.arrow_upward_rounded, ButlerlyCategoryColorId.green),
-      (Icons.bar_chart_rounded, ButlerlyCategoryColorId.gold),
+    for (final entry in [
+      (
+        'home-summary-inner-income',
+        'Income',
+        const Color(0xFF009B61),
+        Icons.arrow_upward,
+      ),
+      (
+        'home-summary-inner-spending',
+        'Spending',
+        const Color(0xFFE24247),
+        Icons.arrow_downward,
+      ),
+      (
+        'home-summary-inner-net-position',
+        'Net cash flow',
+        const Color(0xFF1769E8),
+        Icons.show_chart,
+      ),
     ]) {
-      final iconFinder = find.descendant(
-        of: summary,
-        matching: find.byIcon(entry.$1),
+      final card = find.byKey(ValueKey(entry.$1));
+      expect(card, findsOneWidget);
+      final container = tester.widget<Container>(
+        find.descendant(of: card, matching: find.byType(Container)).first,
       );
-      expect(iconFinder, findsOneWidget);
+      final decoration = container.decoration! as BoxDecoration;
+      expect(decoration.color, entry.$3.withValues(alpha: 0.80));
+      expect(decoration.borderRadius, BorderRadius.circular(16));
       expect(
-        tester.widget<Icon>(iconFinder).color,
-        ButlerlyCategoryColors.whiteGlyph,
+        find.descendant(of: card, matching: find.text(entry.$2)),
+        findsOneWidget,
       );
-      final containerFinder = find.ancestor(
-        of: iconFinder,
-        matching: find.byWidgetPredicate(
-          (widget) => widget is Container && widget.decoration is BoxDecoration,
+      final icon = find.descendant(of: card, matching: find.byIcon(entry.$4));
+      expect(icon, findsOneWidget);
+      expect(tester.widget<Icon>(icon).color, Colors.white);
+      expect(
+        find.descendant(
+          of: card,
+          matching: find.text('Comparison unavailable'),
         ),
+        findsOneWidget,
       );
-      expect(containerFinder, findsOneWidget);
-      final decoration =
-          tester.widget<Container>(containerFinder).decoration!
-              as BoxDecoration;
-      expect(decoration.color, ButlerlyCategoryColors.color(entry.$2));
-      expect(decoration.shape, BoxShape.circle);
     }
     expect(tester.takeException(), isNull);
   });
@@ -942,92 +877,7 @@ void main() {
     expect(find.text(r'$0.00'), findsNothing);
   });
 
-  testWidgets(
-    'Home Summary keeps populated metrics horizontal with mild text scaling',
-    (tester) async {
-      tester.view.physicalSize = const Size(320, 568);
-      tester.view.devicePixelRatio = 1;
-      tester.view.platformDispatcher.textScaleFactorTestValue = 1.2;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      addTearDown(tester.view.platformDispatcher.clearTextScaleFactorTestValue);
-
-      final context = AnalysisContext(
-        period: AnalysisPeriod(
-          startDate: '2026-09-01',
-          endDate: '2026-09-16',
-          timeZoneId: 'UTC',
-        ),
-        datasetMode: DatasetMode.allEligible,
-        currencyBasis: CurrencyBasis.baseCurrency,
-        baseCurrency: CurrencyCode('USD'),
-      );
-      final model = AnalysisOverview(
-        spending: _categoryMetric(value: '9999.99'),
-        income: _categoryMetric(value: '4150.00'),
-        savings: AnalysisValue(
-          value: DecimalValue.parse('1809.82'),
-          currency: CurrencyCode('USD'),
-          context: context,
-        ),
-        net: _categoryMetric(value: '1809.82'),
-        insightUnavailable: false,
-        trend: const [],
-        categories: const [],
-        qualityCount: 0,
-        qualityEvaluated: true,
-        qualityLimited: false,
-      );
-
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: _summaryTestTheme(),
-          localizationsDelegates: const [
-            AppLocalizations.delegate,
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Scaffold(
-            body: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: ButlerlySize.contentGutter,
-              ),
-              child: homeSummaryForTest(model),
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      final metricKeys = [
-        const ValueKey('home-summary-metric-spending'),
-        const ValueKey('home-summary-metric-income'),
-        const ValueKey('home-summary-metric-net-position'),
-      ];
-      final metricTops = [
-        for (final key in metricKeys) tester.getTopLeft(find.byKey(key)).dy,
-      ];
-      for (final top in metricTops.skip(1)) {
-        expect(top, closeTo(metricTops.first, 0.01));
-      }
-      final value = tester.widget<Text>(find.text('\$9,999.99'));
-      expect(value.style?.fontSize, 14);
-      expect(value.softWrap, isFalse);
-      expect(value.maxLines, 1);
-      expect(
-        find.ancestor(
-          of: find.text('\$9,999.99'),
-          matching: find.byType(FittedBox),
-        ),
-        findsOneWidget,
-      );
-      expect(tester.takeException(), isNull);
-    },
-  );
-
-  testWidgets('Home Summary keeps reference amounts on one line', (
+  testWidgets('Home Summary keeps desktop-style metrics in one row on phones', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -1035,244 +885,67 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    final context = AnalysisContext(
-      period: AnalysisPeriod(
-        startDate: '2026-09-01',
-        endDate: '2026-09-16',
-        timeZoneId: 'UTC',
-      ),
-      datasetMode: DatasetMode.allEligible,
-      currencyBasis: CurrencyBasis.baseCurrency,
-      baseCurrency: CurrencyCode('USD'),
-    );
-    final model = AnalysisOverview(
-      spending: _categoryMetric(value: '2340.18'),
-      income: _categoryMetric(value: '4150.00'),
-      savings: AnalysisValue(
-        value: DecimalValue.parse('1809.82'),
-        currency: CurrencyCode('USD'),
-        context: context,
-      ),
-      net: _categoryMetric(value: '1809.82'),
-      insightUnavailable: false,
-      trend: const [],
-      categories: const [],
-      qualityCount: 0,
-      qualityEvaluated: true,
-      qualityLimited: false,
-    );
-
     await tester.pumpWidget(
-      MaterialApp(
-        theme: _summaryTestTheme(),
-        localizationsDelegates: const [
-          AppLocalizations.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(
-          body: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: ButlerlySize.contentGutter,
-            ),
-            child: homeSummaryForTest(model),
+      _summaryTestApp(
+        homeSummaryForTest(
+          AnalysisOverview(
+            insightUnavailable: false,
+            trend: const [],
+            categories: const [],
+            qualityCount: 0,
+            qualityEvaluated: true,
+            qualityLimited: false,
           ),
         ),
       ),
     );
     await tester.pumpAndSettle();
-
-    const referenceValues = {
-      'home-summary-metric-spending': '\$2,340.18',
-      'home-summary-metric-income': '\$4,150.00',
-      'home-summary-metric-net-position': '\$1,809.82',
-    };
-    for (final entry in referenceValues.entries) {
-      final textFinder = find.descendant(
-        of: find.byKey(ValueKey(entry.key)),
-        matching: find.text(entry.value),
-      );
-      expect(textFinder, findsOneWidget);
-      final text = tester.widget<Text>(textFinder);
-      expect(text.maxLines, 1);
-      expect(text.softWrap, isFalse);
-      expect(text.overflow, isNull);
-      expect(text.style?.fontSize, 14);
-      final render = tester.renderObject<RenderParagraph>(textFinder);
-      final context = tester.element(textFinder);
-      final effectiveStyle = DefaultTextStyle.of(
-        context,
-      ).style.merge(text.style);
-      final painter = TextPainter(
-        text: TextSpan(text: entry.value, style: effectiveStyle),
-        textDirection: Directionality.of(context),
-        textScaler: MediaQuery.textScalerOf(context),
-      )..layout();
-      expect(painter.width, lessThanOrEqualTo(render.size.width + 0.01));
-    }
-    final metricTops = [
-      for (final key in referenceValues.keys)
-        tester.getTopLeft(find.byKey(ValueKey(key))).dy,
-    ];
-    for (final top in metricTops.skip(1)) {
-      expect(top, closeTo(metricTops.first, 0.01));
-    }
-    for (final label in ['Spending', 'Income', 'Net position']) {
-      expect(tester.widget<Text>(find.text(label)).style?.fontSize, 13);
-    }
+    final income = tester.getTopLeft(
+      find.byKey(const ValueKey('home-summary-inner-income')),
+    );
+    final spending = tester.getTopLeft(
+      find.byKey(const ValueKey('home-summary-inner-spending')),
+    );
+    final net = tester.getTopLeft(
+      find.byKey(const ValueKey('home-summary-inner-net-position')),
+    );
+    expect(income.dy, closeTo(spending.dy, 1));
+    expect(spending.dy, closeTo(net.dy, 1));
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Home Summary stacks extreme amounts at enlarged text scale', (
+  testWidgets('Home Summary fits large text and amounts without overflow', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(390, 844);
+    tester.view.physicalSize = const Size(320, 568);
     tester.view.devicePixelRatio = 1;
-    tester.view.platformDispatcher.textScaleFactorTestValue = 1.3;
+    tester.view.platformDispatcher.textScaleFactorTestValue = 1.6;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.platformDispatcher.clearTextScaleFactorTestValue);
 
-    final context = AnalysisContext(
-      period: AnalysisPeriod(
-        startDate: '2026-09-01',
-        endDate: '2026-09-16',
-        timeZoneId: 'UTC',
-      ),
-      datasetMode: DatasetMode.allEligible,
-      currencyBasis: CurrencyBasis.baseCurrency,
-      baseCurrency: CurrencyCode('USD'),
-    );
-    final model = AnalysisOverview(
-      spending: _categoryMetric(
-        value: '123456789012345678901234567890',
-        currency: 'USDLONG',
-      ),
-      income: _categoryMetric(value: '4150.00'),
-      savings: AnalysisValue(
-        value: DecimalValue.parse('1809.82'),
-        currency: CurrencyCode('USD'),
-        context: context,
-      ),
-      net: _categoryMetric(value: '1809.82'),
-      insightUnavailable: false,
-      trend: const [],
-      categories: const [],
-      qualityCount: 0,
-      qualityEvaluated: true,
-      qualityLimited: false,
-    );
-
     await tester.pumpWidget(
-      MaterialApp(
-        theme: _summaryTestTheme(),
-        localizationsDelegates: const [
-          AppLocalizations.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(
-          body: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: ButlerlySize.contentGutter,
-            ),
-            child: homeSummaryForTest(model),
+      _summaryTestApp(
+        homeSummaryForTest(
+          AnalysisOverview(
+            spending: _categoryMetric(value: '99999999.99'),
+            income: _categoryMetric(value: '4150.00'),
+            net: _categoryMetric(value: '1809.82'),
+            insightUnavailable: false,
+            trend: const [],
+            categories: const [],
+            qualityCount: 0,
+            qualityEvaluated: true,
+            qualityLimited: false,
           ),
         ),
       ),
     );
     await tester.pumpAndSettle();
-
-    final metricKeys = [
-      const ValueKey('home-summary-metric-spending'),
-      const ValueKey('home-summary-metric-income'),
-      const ValueKey('home-summary-metric-net-position'),
-    ];
-    final metricTops = [
-      for (final key in metricKeys) tester.getTopLeft(find.byKey(key)).dy,
-    ];
-    for (var index = 1; index < metricTops.length; index++) {
-      expect(metricTops[index], greaterThan(metricTops[index - 1]));
-    }
-    final longValue = find.textContaining('USDLONG');
-    expect(longValue, findsOneWidget);
-    final longValueRect = tester.getRect(longValue);
-    final spendingRect = tester.getRect(find.byKey(metricKeys.first));
-    expect(longValueRect.left, greaterThanOrEqualTo(spendingRect.left - 0.01));
-    expect(longValueRect.right, lessThanOrEqualTo(spendingRect.right + 0.01));
-    final valueText = tester.widget<Text>(longValue);
-    expect(valueText.softWrap, isTrue);
-    expect(valueText.maxLines, isNull);
-    final renderedValue = tester.renderObject<RenderParagraph>(longValue);
-    final singleLinePainter = TextPainter(
-      text: TextSpan(text: valueText.data, style: valueText.style),
-      textDirection: TextDirection.ltr,
-      textScaler: MediaQuery.textScalerOf(tester.element(longValue)),
-    )..layout();
-    expect(
-      renderedValue.textSize.height,
-      greaterThan(singleLinePainter.preferredLineHeight),
-    );
+    expect(find.textContaining('99,999,999.99'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Home Summary uses semantic colors for supporting values', (
-    tester,
-  ) async {
-    final context = AnalysisContext(
-      period: AnalysisPeriod(
-        startDate: '2026-09-01',
-        endDate: '2026-09-16',
-        timeZoneId: 'UTC',
-      ),
-      datasetMode: DatasetMode.allEligible,
-      currencyBasis: CurrencyBasis.baseCurrency,
-      baseCurrency: CurrencyCode('USD'),
-    );
-    final model = AnalysisOverview(
-      insightUnavailable: false,
-      trend: const [],
-      categories: const [],
-      qualityCount: 0,
-      qualityEvaluated: false,
-      qualityLimited: false,
-      savings: AnalysisValue(
-        value: DecimalValue.parse('5'),
-        currency: CurrencyCode('USD'),
-        context: context,
-      ),
-      savingsRate: DecimalValue.parse('0.5'),
-      spendingComparison: _comparison('2'),
-      incomeComparison: _comparison('-3'),
-    );
-    await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.light,
-        localizationsDelegates: const [
-          AppLocalizations.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(body: homeSummaryForTest(model)),
-      ),
-    );
-
-    final colors = AppTheme.light.extension<ButlerlySemanticColors>()!;
-    expect(
-      _lastTextIn(tester, 'home-summary-metric-spending').style?.color,
-      colors.error,
-    );
-    expect(
-      _lastTextIn(tester, 'home-summary-metric-income').style?.color,
-      colors.success,
-    );
-  });
   testWidgets('Home Insight preview uses data-driven localized copy', (
     tester,
   ) async {
@@ -1571,9 +1244,9 @@ void main() {
         find.byKey(const ValueKey('home-page-content-surface')),
       );
       final bodyColor = (bodySurface.decoration as BoxDecoration).color;
-      expect(canvas.color, colors.subtleSurface);
+      expect(canvas.color, colors.background);
       expect(bodyColor, colors.background);
-      expect(canvas.color, isNot(bodyColor));
+      expect(canvas.color, bodyColor);
 
       final bodyPadding = tester.widget<Padding>(
         find.byKey(const ValueKey('home-page-content-padding')),
@@ -2242,23 +1915,6 @@ Future<void> _pumpHomeInsight(WidgetTester tester, String periodType) async {
   );
   await tester.pumpAndSettle();
 }
-
-AnalysisComparison _comparison(String change) => AnalysisComparison(
-  currentValue: DecimalValue.parse('10'),
-  baselineValue: DecimalValue.parse('8'),
-  absoluteChange: DecimalValue.parse(change),
-  percentageChange: DecimalValue.parse('25'),
-  availability: AnalysisDataAvailability.sufficient,
-);
-
-Text _lastTextIn(WidgetTester tester, String key) => tester
-    .widgetList<Text>(
-      find.descendant(
-        of: find.byKey(ValueKey(key)),
-        matching: find.byType(Text),
-      ),
-    )
-    .last;
 
 final class _PaymentSources implements PaymentSourceRepository {
   @override

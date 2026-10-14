@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:butlerly/app/locale/home_greeting.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
@@ -7,7 +8,6 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
-import 'package:butlerly/design_system/tokens/butlerly_category_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
@@ -370,8 +370,9 @@ class _HomePageState extends State<HomePage> {
     final useCupertinoRefresh =
         !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
 
-    final content = ButlerlyContentCanvas(
-      canvasKey: const ValueKey('home-page-canvas'),
+    final content = ColoredBox(
+      key: const ValueKey('home-page-canvas'),
+      color: context.colors.background,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final headerExtent = _homeHeaderExtent(
@@ -792,9 +793,10 @@ class _HomeHeader extends StatelessWidget {
           children: [
             topRow,
             const SizedBox(height: ButlerlySpacing.small),
-            Text(
-              context.l10n.text(greetingKey),
-              key: const ValueKey('home-greeting'),
+            PersonalizedHomeGreeting(
+              greetingKey: greetingKey,
+              textKey: const ValueKey('home-greeting'),
+              fitToWidth: true,
               style: ButlerlyTypography.homeGreetingTitle(
                 Theme.of(context).textTheme.headlineLarge ?? const TextStyle(),
               ),
@@ -844,10 +846,6 @@ class _HomeSummaryCard extends StatelessWidget {
     return ButlerlyCard(
       key: const ValueKey('home-summary-card'),
       variant: ButlerlyCardVariant.dashboard,
-      color: Color.alphaBlend(
-        context.colors.brand.withValues(alpha: 0.50),
-        context.colors.cardSurface,
-      ),
       semanticLabel: context.l10n.text('monthlySummary'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -865,102 +863,71 @@ class _HomeSummaryCard extends StatelessWidget {
           const SizedBox(height: ButlerlySpacing.small),
           LayoutBuilder(
             builder: (context, constraints) {
-              final largeText =
-                  MediaQuery.textScalerOf(context).scale(14) >= 28;
-              final cells = [
-                _HomeMetricCell(
-                  key: const ValueKey('home-summary-metric-spending'),
-                  label: context.l10n.text('spending'),
-                  metric: model?.spending,
-                  fallbackCurrency: baseCurrency,
-                  showMissingAsZero: showMissingValuesAsZero,
-                  comparison: model?.spendingComparison,
-                  icon: Icons.arrow_downward_rounded,
-                  color: ButlerlyCategoryColors.color(
-                    ButlerlyCategoryColorId.coral,
-                  ),
-                  supportingColor: context.colors.error,
-                ),
-                _HomeMetricCell(
+              final metrics = [
+                (
                   key: const ValueKey('home-summary-metric-income'),
+                  tileKey: const ValueKey('home-summary-inner-income'),
                   label: context.l10n.text('income'),
-                  metric: model?.income,
-                  fallbackCurrency: baseCurrency,
-                  showMissingAsZero: showMissingValuesAsZero,
+                  value: model?.income,
                   comparison: model?.incomeComparison,
-                  icon: Icons.arrow_upward_rounded,
-                  color: ButlerlyCategoryColors.color(
-                    ButlerlyCategoryColorId.green,
-                  ),
-                  supportingColor: context.colors.success,
+                  icon: Icons.arrow_upward,
+                  color: const Color(0xFF009B61),
                 ),
-                _HomeMetricCell(
+                (
+                  key: const ValueKey('home-summary-metric-spending'),
+                  tileKey: const ValueKey('home-summary-inner-spending'),
+                  label: context.l10n.text('spending'),
+                  value: model?.spending,
+                  comparison: model?.spendingComparison,
+                  icon: Icons.arrow_downward,
+                  color: const Color(0xFFE24247),
+                ),
+                (
                   key: const ValueKey('home-summary-metric-net-position'),
-                  label: context.l10n.text('netPosition'),
-                  metric: model?.net,
-                  fallbackCurrency: baseCurrency,
-                  showMissingAsZero: showMissingValuesAsZero,
-                  icon: Icons.bar_chart_rounded,
-                  color: ButlerlyCategoryColors.color(
-                    ButlerlyCategoryColorId.gold,
-                  ),
+                  tileKey: const ValueKey('home-summary-inner-net-position'),
+                  label: context.l10n.text('netCashFlow'),
+                  value: model?.net,
+                  comparison: model?.netComparison,
+                  icon: Icons.show_chart,
+                  color: const Color(0xFF1769E8),
                 ),
               ];
-              const innerGap = ButlerlySpacing.compact;
-              const innerPadding = ButlerlySpacing.small;
-              final tileWidth = math.max(
-                1.0,
-                (constraints.maxWidth - innerGap * (cells.length - 1)) /
-                    cells.length,
-              );
-              final metricWidth = math.max(1.0, tileWidth - innerPadding * 2);
-              final stacked =
-                  largeText ||
-                  cells.any(
-                    (cell) => cell.requiresStackedLayout(context, metricWidth),
-                  );
-              final layoutCells = [
-                for (final cell in cells) cell.withStacked(stacked),
+              final cards = [
+                for (final metric in metrics)
+                  _DeviceDesktopSummaryMetric(
+                    key: metric.tileKey,
+                    titleKey: metric.key,
+                    label: metric.label,
+                    amount:
+                        metric.value == null ||
+                            metric.value!.availability ==
+                                AnalysisDataAvailability.insufficient
+                        ? showMissingValuesAsZero
+                              ? localizedCompactMoney(
+                                  context,
+                                  '0',
+                                  baseCurrency?.value ?? 'USD',
+                                )
+                              : '—'
+                        : metric.value!.availability ==
+                              AnalysisDataAvailability.empty
+                        ? localizedCompactMoney(
+                            context,
+                            '0',
+                            baseCurrency?.value ?? 'USD',
+                          )
+                        : _homeMoney(context, metric.value!),
+                    comparison: metric.comparison,
+                    icon: metric.icon,
+                    color: metric.color,
+                  ),
               ];
-              final tileKeys = const [
-                ValueKey('home-summary-inner-spending'),
-                ValueKey('home-summary-inner-income'),
-                ValueKey('home-summary-inner-net-position'),
-              ];
-              if (stacked) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    for (
-                      var index = 0;
-                      index < layoutCells.length;
-                      index++
-                    ) ...[
-                      _HomeSummaryMetricTile(
-                        key: tileKeys[index],
-                        child: layoutCells[index],
-                      ),
-                      if (index < layoutCells.length - 1)
-                        const SizedBox(height: ButlerlySpacing.small),
-                    ],
-                  ],
-                );
-              }
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (var index = 0; index < layoutCells.length; index++) ...[
-                    if (index > 0)
-                      const SizedBox(width: ButlerlySpacing.compact),
-                    Expanded(
-                      child: SizedBox(
-                        height: 108,
-                        child: _HomeSummaryMetricTile(
-                          key: tileKeys[index],
-                          child: layoutCells[index],
-                        ),
-                      ),
-                    ),
+                  for (var index = 0; index < cards.length; index++) ...[
+                    if (index > 0) const SizedBox(width: 8),
+                    Expanded(child: cards[index]),
                   ],
                 ],
               );
@@ -981,292 +948,110 @@ class _HomeSummaryCard extends StatelessWidget {
   }
 }
 
-class _HomeSummaryMetricTile extends StatelessWidget {
-  const _HomeSummaryMetricTile({required this.child, super.key});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) => DecoratedBox(
-    decoration: BoxDecoration(
-      color: context.colors.subtleSurface,
-      borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-      border: Border.all(color: context.colors.border),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: ButlerlySpacing.small,
-        vertical: ButlerlySpacing.micro,
-      ),
-      child: child,
-    ),
-  );
-}
-
-class _HomeMetricCell extends StatelessWidget {
-  const _HomeMetricCell({
-    super.key,
+/// Device counterpart of the desktop Home summary metric presentation.
+class _DeviceDesktopSummaryMetric extends StatelessWidget {
+  const _DeviceDesktopSummaryMetric({
+    required this.titleKey,
     required this.label,
-    this.metric,
-    this.value,
-    this.comparison,
-    this.supportingText,
-    this.secondarySupportingText,
-    this.supportingColor,
-    this.fallbackCurrency,
-    this.showMissingAsZero = false,
+    required this.amount,
+    required this.comparison,
     required this.icon,
     required this.color,
-    this.stacked = false,
+    super.key,
   });
 
+  final Key titleKey;
   final String label;
-  final AnalysisMetric? metric;
-  final AnalysisValue? value;
+  final String amount;
   final AnalysisComparison? comparison;
-  final String? supportingText;
-  final String? secondarySupportingText;
-  final Color? supportingColor;
-  final CurrencyCode? fallbackCurrency;
-  final bool showMissingAsZero;
   final IconData icon;
   final Color color;
-  final bool stacked;
-
-  _HomeMetricCell withStacked(bool value) => _HomeMetricCell(
-    key: key,
-    label: label,
-    metric: metric,
-    value: this.value,
-    comparison: comparison,
-    supportingText: supportingText,
-    secondarySupportingText: secondarySupportingText,
-    supportingColor: supportingColor,
-    fallbackCurrency: fallbackCurrency,
-    showMissingAsZero: showMissingAsZero,
-    icon: icon,
-    color: color,
-    stacked: value,
-  );
-
-  bool requiresStackedLayout(BuildContext context, double maxWidth) {
-    const minimumReadableScale = 0.25;
-    final valueStyle = ButlerlyTypography.homeSummaryMetricValue(
-      Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
-    );
-    final painter = TextPainter(
-      text: TextSpan(text: _displayValue(context), style: valueStyle),
-      textDirection: Directionality.of(context),
-      textScaler: MediaQuery.textScalerOf(context),
-      maxLines: 1,
-    )..layout();
-    return painter.width * minimumReadableScale > maxWidth;
-  }
 
   @override
   Widget build(BuildContext context) {
-    final metricUnavailable = _isUnavailable(metric?.availability);
-    final valueUnavailable = _isUnavailable(value?.availability);
-    final displayUnavailable =
-        (!showMissingAsZero && metric == null && value == null) ||
-        valueUnavailable ||
-        metricUnavailable;
-    final displayValue = _displayValue(context);
-    final comparisonText = comparison == null
-        ? null
-        : analysisComparisonChangeText(context, comparison!);
-    final support = supportingText ?? comparisonText;
-    final secondarySupport = supportingText == null
-        ? null
-        : secondarySupportingText;
-    final semanticSupport = [
-      if (support != null && support.isNotEmpty) support,
-      if (secondarySupport != null && secondarySupport.isNotEmpty)
-        secondarySupport,
-    ].join(', ');
-    return Semantics(
-      label:
-          '$label, ${displayUnavailable ? context.l10n.text('notAvailable') : displayValue}'
-          '${semanticSupport.isEmpty ? '' : ', $semanticSupport'}',
+    final percent = comparison?.percentageChange;
+    final usable =
+        comparison?.availability == AnalysisDataAvailability.sufficient &&
+        comparison?.baselineValue != null &&
+        percent != null;
+    final percentValue = usable ? double.tryParse(percent.toString()) : null;
+    final comparisonText = percentValue == null
+        ? context.l10n.text('comparisonUnavailable')
+        : percentValue > 0
+        ? '↑ ${percentValue.abs().toStringAsFixed(1)}% ${context.l10n.text('vsPreviousPeriod')}'
+        : percentValue < 0
+        ? '↓ ${percentValue.abs().toStringAsFixed(1)}% ${context.l10n.text('vsPreviousPeriod')}'
+        : '0.0% ${context.l10n.text('vsPreviousPeriod')}';
+    return Container(
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.80),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
       child: Column(
-        mainAxisAlignment: stacked
-            ? MainAxisAlignment.start
-            : MainAxisAlignment.center,
+        key: titleKey,
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Container(
-            width: stacked ? 32 : 28,
-            height: stacked ? 32 : 28,
-            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-            child: Icon(
-              icon,
-              size: stacked ? 18 : 16,
-              color: ButlerlyCategoryColors.whiteGlyph,
-            ),
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: Colors.white.withValues(alpha: .20),
+            child: Icon(icon, color: Colors.white, size: 18),
           ),
+          const SizedBox(height: 6),
           SizedBox(
-            height: stacked ? ButlerlySpacing.compact : ButlerlySpacing.micro,
-          ),
-          if (stacked)
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: ButlerlyTypography.homeSummaryMetricLabel(
-                Theme.of(context).textTheme.labelLarge ?? const TextStyle(),
-              ).copyWith(color: context.colors.secondaryText),
-            )
-          else
-            SizedBox(
-              height: 18,
-              width: double.infinity,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.center,
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  softWrap: false,
-                  textAlign: TextAlign.center,
-                  style: ButlerlyTypography.homeSummaryMetricLabel(
-                    Theme.of(context).textTheme.labelLarge ?? const TextStyle(),
-                  ).copyWith(color: context.colors.secondaryText),
+            width: double.infinity,
+            height: 20,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                maxLines: 1,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
                 ),
               ),
             ),
-          const SizedBox(height: ButlerlySpacing.xxs),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final valueStyle = ButlerlyTypography.homeSummaryMetricValue(
-                Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
-              );
-              final valueText = Text(
-                displayValue,
-                maxLines: stacked ? null : 1,
-                softWrap: stacked,
-                textAlign: TextAlign.center,
-                style: valueStyle,
-              );
-              return SizedBox(
-                width: constraints.maxWidth,
-                height: stacked ? null : 18,
-                child: stacked
-                    ? valueText
-                    : FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.center,
-                        child: valueText,
-                      ),
-              );
-            },
           ),
+          const SizedBox(height: 4),
           SizedBox(
-            height: stacked ? ButlerlySpacing.micro : ButlerlySpacing.xxs,
-          ),
-          if (stacked)
-            Text(
-              !valueUnavailable &&
-                      !metricUnavailable &&
-                      support != null &&
-                      support.isNotEmpty
-                  ? support
-                  : ' ',
-              maxLines: 1,
-              overflow: TextOverflow.clip,
-              textAlign: TextAlign.center,
-              softWrap: false,
-              style:
-                  ButlerlyTypography.homeSummaryMetricChange(
-                    Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
-                  ).copyWith(
-                    color: supportingColor ?? context.colors.secondaryText,
-                  ),
-            )
-          else
-            SizedBox(
-              height: 16,
-              width: double.infinity,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.center,
-                child: Text(
-                  !valueUnavailable &&
-                          !metricUnavailable &&
-                          support != null &&
-                          support.isNotEmpty
-                      ? support
-                      : ' ',
-                  maxLines: 1,
-                  softWrap: false,
-                  textAlign: TextAlign.center,
-                  style:
-                      ButlerlyTypography.homeSummaryMetricChange(
-                        Theme.of(context).textTheme.bodySmall ??
-                            const TextStyle(),
-                      ).copyWith(
-                        color: supportingColor ?? context.colors.secondaryText,
-                      ),
+            width: double.infinity,
+            height: 28,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                amount,
+                maxLines: 1,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  letterSpacing: -.7,
                 ),
               ),
             ),
-          if (stacked &&
-              !valueUnavailable &&
-              !metricUnavailable &&
-              secondarySupport != null &&
-              secondarySupport.isNotEmpty) ...[
-            const SizedBox(height: ButlerlySpacing.micro),
-            Text(
-              secondarySupport,
-              textAlign: TextAlign.center,
-              softWrap: true,
-              style: ButlerlyTypography.homeSummaryMetricChange(
-                Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
-              ).copyWith(color: context.colors.secondaryText),
+          ),
+          const SizedBox(height: 4),
+          SizedBox(
+            width: double.infinity,
+            height: 16,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                comparisonText,
+                maxLines: 1,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: percentValue == null ? Colors.white70 : Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
-          ],
+          ),
         ],
       ),
     );
-  }
-
-  String _displayValue(BuildContext context) {
-    final metricUnavailable = _isUnavailable(metric?.availability);
-    final valueUnavailable = _isUnavailable(value?.availability);
-    final displayUnavailable =
-        (!showMissingAsZero && metric == null && value == null) ||
-        valueUnavailable ||
-        metricUnavailable;
-    if (showMissingAsZero && metric == null && value == null) {
-      return _zeroMoney(context);
-    }
-    if (metric?.availability == AnalysisDataAvailability.empty ||
-        value?.availability == AnalysisDataAvailability.empty) {
-      return _zeroMoney(context);
-    }
-    return displayUnavailable
-        ? '—'
-        : value == null
-        ? _homeMoney(context, metric!)
-        : _homeValueMoney(context, value!);
-  }
-
-  bool _isUnavailable(AnalysisDataAvailability? availability) {
-    if (availability == null ||
-        availability == AnalysisDataAvailability.sufficient) {
-      return false;
-    }
-    return availability == AnalysisDataAvailability.insufficient;
-  }
-
-  String _zeroMoney(BuildContext context) {
-    final currency =
-        value?.currency?.value ??
-        metric?.currency?.value ??
-        value?.context.baseCurrency?.value ??
-        metric?.context.baseCurrency?.value ??
-        fallbackCurrency?.value;
-    return currency == null
-        ? localizedTransactionAmount(context, '0')
-        : localizedCompactMoney(context, '0', currency);
   }
 }
 
@@ -2924,12 +2709,6 @@ String _homeMoney(BuildContext context, AnalysisMetric metric) {
   return currency == null
       ? localizedDecimal(context, metric.value.toString())
       : localizedCompactMoney(context, metric.value.toString(), currency);
-}
-
-String _homeValueMoney(BuildContext context, AnalysisValue value) {
-  final currency =
-      value.currency?.value ?? value.context.baseCurrency?.value ?? '';
-  return localizedCompactMoney(context, value.value.toString(), currency);
 }
 
 String _homeMetricMoney(BuildContext context, AnalysisMetric metric) {

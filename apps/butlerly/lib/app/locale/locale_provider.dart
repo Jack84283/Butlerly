@@ -51,6 +51,7 @@ final class UserPreferenceController extends AsyncNotifier<UserPreference> {
           firstUseCompleted: value.firstUseCompleted,
           appearance: value.appearance,
           colorTheme: value.colorTheme,
+          displayName: value.displayName,
         );
         await financeServices.saveUserPreference(migrated);
         return migrated;
@@ -76,6 +77,7 @@ final class UserPreferenceController extends AsyncNotifier<UserPreference> {
     bool? firstUseCompleted,
     String? appearance,
     String? colorTheme,
+    String? displayName,
   }) async {
     final current = state.value ?? _defaults(timeZoneId: 'UTC');
     final next = UserPreference(
@@ -88,6 +90,9 @@ final class UserPreferenceController extends AsyncNotifier<UserPreference> {
       firstUseCompleted: firstUseCompleted ?? current.firstUseCompleted,
       appearance: appearance ?? current.appearance,
       colorTheme: colorTheme ?? current.colorTheme,
+      displayName: displayName == null
+          ? current.displayName
+          : displayName.trim(),
     );
     state = AsyncData(next);
     final financeServices = _services;
