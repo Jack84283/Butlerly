@@ -1,6 +1,7 @@
 import 'package:butlerly/app/locale/home_greeting.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -20,7 +21,12 @@ void main() {
         MaterialApp(
           locale: scenario.$1,
           supportedLocales: AppLocalizations.supportedLocales,
-          localizationsDelegates: const [AppLocalizations.delegate],
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
           home: Builder(
             builder: (context) => Column(
               children: [
