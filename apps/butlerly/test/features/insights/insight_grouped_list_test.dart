@@ -1,5 +1,6 @@
 import 'package:butlerly/features/insights/presentation/insight_grouped_list.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -83,6 +84,54 @@ void main() {
       );
     },
   );
+
+  testWidgets('Home counts the same visible Insight groups as device cards', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) {
+            final summaries = insightGroupSummaries(context, [
+              _insight(
+                RuleGrouping.transaction,
+                semanticType: InsightSemanticType.attention,
+              ),
+              _insight(
+                RuleGrouping.transaction,
+                semanticType: InsightSemanticType.attention,
+              ),
+              _insight(
+                RuleGrouping.transaction,
+                role: 'largePurchase',
+                semanticType: InsightSemanticType.attention,
+              ),
+              _insight(RuleGrouping.category),
+              _insight(RuleGrouping.merchant),
+              _insight(
+                RuleGrouping.paymentSource,
+                visualizationType: InsightVisualizationType.pie,
+              ),
+            ]);
+            expect(summaries.map((group) => group.group).toList(), [
+              InsightPresentationGroup.unusual,
+              InsightPresentationGroup.largePurchase,
+              InsightPresentationGroup.category,
+              InsightPresentationGroup.merchant,
+            ]);
+            expect(summaries.map((group) => group.count).toList(), [
+              2,
+              1,
+              1,
+              1,
+            ]);
+            expect(summaries.every((group) => group.title.isNotEmpty), isTrue);
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+  });
 
   test('recognizes an all-positive fallback group', () {
     expect(

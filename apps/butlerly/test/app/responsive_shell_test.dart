@@ -5,7 +5,6 @@ import 'package:butlerly/app/butlerly_app.dart';
 import 'package:butlerly/app/router/app_router.dart';
 import 'package:butlerly/app/shell/compact/compact_primary_shell.dart';
 import 'package:butlerly/app/shell/medium/medium_primary_shell.dart';
-import 'package:butlerly/app/shell/wide/wide_primary_shell.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/di/finance_services.dart';
@@ -15,6 +14,7 @@ import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
+import 'package:butlerly/features/desktop/presentation/desktop_primary_shell.dart';
 import 'package:butlerly/features/foundation/presentation/contextual_pages.dart';
 import 'package:butlerly/features/foundation/presentation/legal_licenses_page.dart';
 import 'package:butlerly/features/foundation/presentation/receipt_capture_page.dart';
@@ -46,18 +46,17 @@ void main() {
   tearDown(() => debugDefaultTargetPlatformOverride = null);
 
   test('classifies presentation from width at the documented breakpoints', () {
-    expect(ButlerlyLayout.modeForWidth(599), ButlerlyLayoutMode.compact);
-    expect(ButlerlyLayout.modeForWidth(600), ButlerlyLayoutMode.medium);
+    expect(ButlerlyLayout.modeForWidth(800), ButlerlyLayoutMode.compact);
+    expect(ButlerlyLayout.modeForWidth(801), ButlerlyLayoutMode.medium);
     expect(ButlerlyLayout.modeForWidth(1023), ButlerlyLayoutMode.medium);
     expect(ButlerlyLayout.modeForWidth(1024), ButlerlyLayoutMode.wide);
-
-    for (final width in [390.0, 500.0]) {
+    for (final width in [390.0, 500.0, 744.0, 800.0]) {
       expect(ButlerlyLayout.modeForWidth(width), ButlerlyLayoutMode.compact);
     }
-    for (final width in [744.0, 800.0, 900.0]) {
+    for (final width in [801.0, 900.0, 1023.0]) {
       expect(ButlerlyLayout.modeForWidth(width), ButlerlyLayoutMode.medium);
     }
-    for (final width in [1133.0, 1200.0]) {
+    for (final width in [1024.0, 1133.0, 1200.0]) {
       expect(ButlerlyLayout.modeForWidth(width), ButlerlyLayoutMode.wide);
     }
   });
@@ -77,7 +76,7 @@ void main() {
           ButlerlyLayoutMode.compact,
         );
         expect(
-          ButlerlyLayout.mode(const Size(800, 390)),
+          ButlerlyLayout.mode(const Size(900, 390)),
           ButlerlyLayoutMode.medium,
         );
         expect(
@@ -94,7 +93,7 @@ void main() {
       ButlerlySize.compactContentMaxWidth,
     );
     expect(
-      ButlerlyLayout.contentMaxWidth(const Size(800, 800)),
+      ButlerlyLayout.contentMaxWidth(const Size(900, 1100)),
       ButlerlySize.pageContentMaxWidth,
     );
     expect(
@@ -129,7 +128,7 @@ void main() {
   testWidgets(
     'Medium overlays floating switch buttons on full-height content',
     (tester) async {
-      const size = Size(800, 800);
+      const size = Size(900, 1100);
       await _pumpAt(tester, size);
 
       expect(find.byType(MediumPrimaryShell), findsOneWidget);
@@ -154,7 +153,7 @@ void main() {
       expect(tester.getSize(content).width, ButlerlySize.pageContentMaxWidth);
       expect(
         tester.getRect(content).left,
-        closeTo((size.width - ButlerlySize.pageContentMaxWidth) / 2, 0.01),
+        (size.width - ButlerlySize.pageContentMaxWidth) / 2,
       );
       expect(
         tester
@@ -182,12 +181,42 @@ void main() {
     },
   );
 
+  testWidgets('Tablet landscape wide uses a compact desktop rail', (
+    tester,
+  ) async {
+    await _pumpAt(tester, const Size(900, 600));
+
+    expect(find.byType(DesktopPrimaryShell), findsOneWidget);
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('primary-wide-navigation')))
+          .width,
+      ButlerlySize.wideNavigationCollapsedWidth,
+    );
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('primary-wide-body-surface')))
+          .width,
+      900 - ButlerlySize.wideNavigationCollapsedWidth,
+    );
+    expect(find.byKey(const ValueKey('wide-collapsed-home')), findsOneWidget);
+
+    tester.view.physicalSize = const Size(1200, 800);
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('primary-wide-navigation')))
+          .width,
+      ButlerlySize.wideNavigationExpandedWidth,
+    );
+  });
+
   testWidgets('Wide uses the left navigation shell', (tester) async {
     const size = Size(1200, 800);
     await _pumpAt(tester, size);
 
     expect(ButlerlyLayout.mode(size), ButlerlyLayoutMode.wide);
-    expect(find.byType(WidePrimaryShell), findsOneWidget);
+    expect(find.byType(DesktopPrimaryShell), findsOneWidget);
     expect(find.byType(MediumPrimaryShell), findsNothing);
     expect(find.byType(CompactPrimaryShell), findsNothing);
     expect(find.byType(NavigationRail), findsNothing);
@@ -225,10 +254,7 @@ void main() {
         findsOneWidget,
       );
     }
-    expect(
-      tester.getSize(find.byKey(const ValueKey('home-page-content'))).width,
-      ButlerlySize.pageContentMaxWidth,
-    );
+    expect(find.byKey(const ValueKey('desktop-home-page')), findsOneWidget);
     expect(
       find.byKey(const ValueKey('primary-wide-body-surface')),
       findsOneWidget,
@@ -237,10 +263,7 @@ void main() {
       find.byKey(const ValueKey('primary-wide-home-floating-surface')),
       findsNothing,
     );
-    expect(
-      find.byKey(const ValueKey('home-page-content-surface')),
-      findsOneWidget,
-    );
+    expect(find.byKey(const ValueKey('desktop-home-page')), findsOneWidget);
     expect(
       tester.getSize(find.byKey(const ValueKey('primary-wide-body-surface'))),
       const Size(1200 - ButlerlySize.wideNavigationExpandedWidth, 800),
@@ -264,7 +287,7 @@ void main() {
       appRouter.go(route);
       await tester.pumpAndSettle();
 
-      expect(find.byType(WidePrimaryShell), findsOneWidget);
+      expect(find.byType(DesktopPrimaryShell), findsOneWidget);
       expect(
         find.byKey(const ValueKey('primary-wide-body-surface')),
         findsOneWidget,
@@ -533,7 +556,7 @@ void main() {
     await tester.tap(find.text('Analysis'));
     await tester.pumpAndSettle();
     expect(find.byType(AnalysisPage), findsOneWidget);
-    expect(find.byType(WidePrimaryShell), findsOneWidget);
+    expect(find.byType(DesktopPrimaryShell), findsOneWidget);
   });
 
   testWidgets('Wide child navigation pushes and restores the previous shell', (
@@ -554,7 +577,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(AnalysisPage), findsOneWidget);
-    expect(find.byType(WidePrimaryShell), findsOneWidget);
+    expect(find.byType(DesktopPrimaryShell), findsOneWidget);
     expect(
       find.byKey(const ValueKey('primary-wide-navigation')),
       findsOneWidget,
@@ -564,7 +587,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(appRouter.routeInformationProvider.value.uri.path, '/tools');
-    expect(find.byType(WidePrimaryShell), findsOneWidget);
+    expect(find.byType(DesktopPrimaryShell), findsOneWidget);
     expect(find.byType(ToolsPage), findsOneWidget);
     expect(
       find.byKey(const ValueKey('primary-wide-navigation')),
@@ -597,8 +620,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(appRouter.routeInformationProvider.value.uri.path, '/');
-    expect(find.byKey(const ValueKey('home-page-content')), findsOneWidget);
-    expect(find.byType(WidePrimaryShell), findsOneWidget);
+    expect(find.byKey(const ValueKey('desktop-home-page')), findsOneWidget);
+    expect(find.byType(DesktopPrimaryShell), findsOneWidget);
     expect(
       tester
           .widget<Semantics>(find.byKey(const ValueKey('wide-home-navigation')))
@@ -630,7 +653,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(appRouter.routeInformationProvider.value.uri.path, '/');
-    expect(find.byKey(const ValueKey('home-page-content')), findsOneWidget);
+    expect(find.byKey(const ValueKey('desktop-home-page')), findsOneWidget);
     expect(
       tester.getSize(find.byKey(const ValueKey('primary-wide-navigation'))),
       const Size(ButlerlySize.wideNavigationCollapsedWidth, 800),
@@ -655,7 +678,7 @@ void main() {
     );
 
     appRouter.go('/');
-    await _pumpAt(tester, const Size(800, 800));
+    await _pumpAt(tester, const Size(900, 1100));
     await tester.tap(find.bySemanticsLabel('Tools'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Analysis'));
@@ -675,7 +698,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(AnalysisPage), findsOneWidget);
-    expect(find.byType(WidePrimaryShell), findsOneWidget);
+    expect(find.byType(DesktopPrimaryShell), findsOneWidget);
     expect(
       tester
           .widget<Semantics>(
@@ -695,7 +718,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(NotificationsPage), findsOneWidget);
-    expect(find.byType(WidePrimaryShell), findsOneWidget);
+    expect(find.byType(DesktopPrimaryShell), findsOneWidget);
     expect(
       tester
           .widget<Semantics>(find.byKey(const ValueKey('wide-home-navigation')))
@@ -766,7 +789,7 @@ void main() {
       await tester.pumpAndSettle();
 
       for (final size in const [
-        Size(800, 800),
+        Size(700, 800),
         Size(1200, 800),
         Size(390, 844),
       ]) {
@@ -791,7 +814,7 @@ void main() {
   testWidgets('secondary routes apply the same width-driven body policy', (
     tester,
   ) async {
-    await _pumpAt(tester, const Size(900, 800));
+    await _pumpAt(tester, const Size(900, 1100));
     appRouter.go('/search');
     await tester.pumpAndSettle();
 
@@ -810,7 +833,7 @@ void main() {
   testWidgets(
     'responsive body keeps full canvas and centered readable content',
     (tester) async {
-      const size = Size(800, 800);
+      const size = Size(900, 1100);
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);

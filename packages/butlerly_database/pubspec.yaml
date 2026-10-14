@@ -6,6 +6,20 @@ publish_to: none
 flutter:
   assets:
     - database/schema/v1.sql
+    - database/migrations/v1_to_v2.sql
+    - database/migrations/v2_to_v3.sql
+    - database/migrations/v3_to_v4.sql
+    - database/migrations/v4_to_v5.sql
+    - database/migrations/v5_to_v6.sql
+    - database/migrations/v6_to_v7.sql
+    - database/migrations/v7_to_v8.sql
+    - database/migrations/v8_backup_restore_hardening.sql
+    - database/migrations/v8_to_v9.sql
+    - database/migrations/v9_to_v10.sql
+    - database/migrations/v10_to_v11.sql
+    - database/migrations/v11_to_v12.sql
+    - database/migrations/v12_to_v13.sql
+    - database/migrations/v13_to_v14.sql
     - database/migrations/deployment.sql
     - database/seed/catalog.sql
 

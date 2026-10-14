@@ -28,7 +28,9 @@ class WidePrimaryShell extends StatefulWidget {
 
 class _WidePrimaryShellState extends State<WidePrimaryShell> {
   final _moreNavigationKey = GlobalKey();
-  bool _expanded = true;
+  // Preserve each rail mode's expansion preference across viewport changes.
+  bool _expandedAtWideWidths = true;
+  bool _expandedAtNarrowWidths = false;
   bool _addExpanded = true;
   bool _toolsExpanded = true;
   bool _moreExpanded = true;
@@ -41,8 +43,8 @@ class _WidePrimaryShellState extends State<WidePrimaryShell> {
     widget.onSelected(branchIndex);
   }
 
-  void _ensureMoreVisible() {
-    if (!_expanded || widget.currentIndex != 4 || _moreVisibilityScheduled) {
+  void _ensureMoreVisible(bool expanded) {
+    if (!expanded || widget.currentIndex != 4 || _moreVisibilityScheduled) {
       return;
     }
     _moreVisibilityScheduled = true;
@@ -65,18 +67,29 @@ class _WidePrimaryShellState extends State<WidePrimaryShell> {
 
   @override
   Widget build(BuildContext context) {
-    _ensureMoreVisible();
+    // At tablet and narrow desktop widths, keep the rail compact by default.
+    // A fully expanded 248px rail would leave too little space for the content.
+    final narrow =
+        MediaQuery.sizeOf(context).width < ButlerlySize.wideBreakpoint;
+    final expanded = narrow ? _expandedAtNarrowWidths : _expandedAtWideWidths;
+    _ensureMoreVisible(expanded);
     return Scaffold(
       body: Row(
         children: [
           _WidePrimaryNavigation(
             key: const ValueKey('primary-wide-navigation'),
-            expanded: _expanded,
+            expanded: expanded,
             addExpanded: _addExpanded,
             toolsExpanded: _toolsExpanded,
             moreExpanded: _moreExpanded,
             currentIndex: widget.currentIndex,
-            onToggleExpanded: () => setState(() => _expanded = !_expanded),
+            onToggleExpanded: () => setState(() {
+              if (narrow) {
+                _expandedAtNarrowWidths = !expanded;
+              } else {
+                _expandedAtWideWidths = !expanded;
+              }
+            }),
             onToggleAdd: () => setState(() => _addExpanded = !_addExpanded),
             onToggleTools: () =>
                 setState(() => _toolsExpanded = !_toolsExpanded),
@@ -140,9 +153,9 @@ class _WidePrimaryNavigation extends StatelessWidget {
   bool _selected(int branchIndex) => currentIndex == branchIndex;
 
   @override
-  Widget build(BuildContext context) => AnimatedContainer(
-    duration: ButlerlyMotion.responsive(context, ButlerlyMotion.standard),
-    curve: ButlerlyMotion.curve,
+  Widget build(BuildContext context) => Container(
+    // Switch widths atomically: animating a 248px menu inside a 72px rail
+    // overflows while transitioning across responsive breakpoints.
     width: expanded
         ? ButlerlySize.wideNavigationExpandedWidth
         : ButlerlySize.wideNavigationCollapsedWidth,

@@ -3,8 +3,10 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_search_selection.dart';
+import 'package:butlerly/features/desktop/presentation/desktop_home_page.dart';
 import 'package:butlerly/features/foundation/presentation/add_page.dart';
 import 'package:butlerly/features/foundation/presentation/butlerly_launch_page.dart';
 import 'package:butlerly/features/foundation/presentation/contextual_pages.dart';
@@ -82,7 +84,7 @@ final appRouter = GoRouter(
                 GoRoute(
                   path: '/',
                   pageBuilder: (context, state) =>
-                      _primaryPage('home', const HomePage()),
+                      _primaryPage('home', const _HomeLayoutSwitch()),
                 ),
               ],
             ),
@@ -366,3 +368,21 @@ TransactionDirection? _queryDirection(String? value) {
   }
   return null;
 }
+
+/// Resolves the desktop/device Home split after the route is mounted.
+/// This avoids inherited layout/theme lookups during GoRouter page creation.
+class _HomeLayoutSwitch extends StatelessWidget {
+  const _HomeLayoutSwitch();
+
+  @override
+  Widget build(BuildContext context) {
+    return _desktopHomeEnabled(context)
+        ? const DesktopHomePage()
+        : const HomePage();
+  }
+}
+
+/// Wide uses the desktop Home on all platforms, including iPad.
+bool _desktopHomeEnabled(BuildContext context) =>
+    effectiveButlerlyLayoutMode(context, MediaQuery.sizeOf(context).width) ==
+    ButlerlyLayoutMode.wide;

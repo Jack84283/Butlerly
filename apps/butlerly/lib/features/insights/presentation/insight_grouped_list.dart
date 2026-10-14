@@ -45,6 +45,63 @@ bool insightGroupIsPositiveOnly(List<InsightResult> items) =>
       (item) => item.presentation.semanticType == InsightSemanticType.positive,
     );
 
+/// Section order shared by the device Insights page and desktop Home overview.
+const insightPresentationGroupOrder = <InsightPresentationGroup>[
+  InsightPresentationGroup.unusual,
+  InsightPresentationGroup.largePurchase,
+  InsightPresentationGroup.category,
+  InsightPresentationGroup.subcategory,
+  InsightPresentationGroup.tag,
+  InsightPresentationGroup.merchant,
+  InsightPresentationGroup.paymentSource,
+  InsightPresentationGroup.other,
+];
+
+final class InsightGroupSummary {
+  const InsightGroupSummary({
+    required this.group,
+    required this.title,
+    required this.count,
+  });
+
+  final InsightPresentationGroup group;
+  final String title;
+  final int count;
+}
+
+/// Counts the same visible sections as [InsightGroupedList], consolidating
+/// matching comparison/escalation findings before counting them.
+List<InsightGroupSummary> insightGroupSummaries(
+  BuildContext context,
+  List<InsightResult> activeFindings,
+) {
+  final presented = _consolidateEquivalentComparisons(
+    activeFindings
+        .where(
+          (result) =>
+              result.outputType != InsightOutputType.dataQuality &&
+              result.presentation.visualizationType !=
+                  InsightVisualizationType.pie,
+        )
+        .toList(growable: false),
+  );
+  final grouped = <InsightPresentationGroup, List<_PresentedInsight>>{};
+  for (final item in presented) {
+    grouped
+        .putIfAbsent(insightPresentationGroup(item.primary), () => [])
+        .add(item);
+  }
+  return [
+    for (final group in insightPresentationGroupOrder)
+      if (grouped[group] case final items? when items.isNotEmpty)
+        InsightGroupSummary(
+          group: group,
+          title: _groupTitle(context, group, items),
+          count: items.length,
+        ),
+  ];
+}
+
 class InsightGroupedList extends StatelessWidget {
   const InsightGroupedList({
     super.key,
@@ -89,21 +146,10 @@ class InsightGroupedList extends StatelessWidget {
           .add(result);
     }
 
-    const order = [
-      InsightPresentationGroup.unusual,
-      InsightPresentationGroup.largePurchase,
-      InsightPresentationGroup.category,
-      InsightPresentationGroup.subcategory,
-      InsightPresentationGroup.tag,
-      InsightPresentationGroup.merchant,
-      InsightPresentationGroup.paymentSource,
-      InsightPresentationGroup.other,
-    ];
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: _withGroupedInsightCardSpacing([
-        for (final group in order)
+        for (final group in insightPresentationGroupOrder)
           if (grouped[group] case final items? when items.isNotEmpty)
             ButlerlyCard(
               semanticLabel: _groupTitle(context, group, items),

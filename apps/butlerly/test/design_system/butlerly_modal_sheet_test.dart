@@ -460,7 +460,7 @@ void main() {
       find.byKey(const ValueKey('butlerly-bottom-sheet-surface')),
     );
     final action = tester.getRect(find.byKey(const ValueKey('sheet-action')));
-    expect(surface.width, ButlerlySize.pageContentMaxWidth);
+    expect(surface.width, 800);
     expect(action.bottom, lessThanOrEqualTo(size.height - 280 + 1));
   });
 

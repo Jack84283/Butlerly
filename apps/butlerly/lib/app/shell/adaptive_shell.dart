@@ -1,7 +1,7 @@
 import 'package:butlerly/app/shell/compact/compact_primary_shell.dart';
 import 'package:butlerly/app/shell/medium/medium_primary_shell.dart';
-import 'package:butlerly/app/shell/wide/wide_primary_shell.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/desktop/presentation/desktop_primary_shell.dart';
 import 'package:butlerly/features/foundation/presentation/contextual_pages.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/cupertino.dart';
@@ -12,6 +12,24 @@ export 'package:butlerly/app/shell/shared/primary_bottom_navigation.dart'
     show compactNavigationHeightForLabels;
 
 const primaryShellRouteNamePrefix = 'primary-shell:';
+
+bool _isTabletLandscape(BuildContext context) {
+  final viewport = MediaQuery.sizeOf(context);
+  // The iPad mini can report a smaller logical viewport in display-zoom
+  // modes. Do not rely on the themed platform or a 600px short-side cutoff.
+  // Phones remain below the tablet short-side threshold in landscape.
+  return viewport.width > viewport.height &&
+      viewport.shortestSide >= 500 &&
+      viewport.width >= ButlerlySize.compactBreakpoint;
+}
+
+ButlerlyLayoutMode effectiveButlerlyLayoutMode(
+  BuildContext context,
+  double width,
+) => ButlerlyLayout.modeForWidth(
+  width,
+  tabletLandscape: _isTabletLandscape(context),
+);
 
 class PrimaryShellVisibilityController extends ChangeNotifier {
   final Map<int, bool> _secondaryRouteVisible = <int, bool>{};
@@ -115,15 +133,32 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
 
   @override
   Widget build(BuildContext context) {
-    final layoutMode = ButlerlyLayout.mode(MediaQuery.sizeOf(context));
-    if (layoutMode != ButlerlyLayoutMode.wide) return widget.child;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.hasBoundedWidth
+            ? constraints.maxWidth
+            : MediaQuery.sizeOf(context).width;
+        final layoutMode = effectiveButlerlyLayoutMode(context, width);
+        assert(() {
+          final viewport = MediaQuery.sizeOf(context);
+          debugPrint(
+            'Butlerly layout: viewport=$viewport '
+            'outerWidth=${width.toStringAsFixed(1)} '
+            'tabletLandscape=${_isTabletLandscape(context)} '
+            'mode=${layoutMode.name}',
+          );
+          return true;
+        }());
+        if (layoutMode != ButlerlyLayoutMode.wide) return widget.child;
 
-    return WidePrimaryShell(
-      body: widget.child,
-      currentIndex: _wideParentIndex,
-      onSelected: _selectWideDestination,
-      onMoreSectionSelected: _selectMoreSection,
-      onImport: () => startLocalFileImport(context),
+        return DesktopPrimaryShell(
+          body: widget.child,
+          currentIndex: _wideParentIndex,
+          onSelected: _selectWideDestination,
+          onMoreSectionSelected: _selectMoreSection,
+          onImport: () => startLocalFileImport(context),
+        );
+      },
     );
   }
 }
@@ -295,7 +330,10 @@ class _PrimaryNavigationShellState extends State<PrimaryNavigationShell> {
 
   @override
   Widget build(BuildContext context) {
-    final layoutMode = ButlerlyLayout.mode(MediaQuery.sizeOf(context));
+    final layoutMode = effectiveButlerlyLayoutMode(
+      context,
+      MediaQuery.sizeOf(context).width,
+    );
     final secondaryRouteVisible = widget.visibilityController
         .secondaryRouteVisibleFor(navigationShell.currentIndex);
     if (secondaryRouteVisible) {

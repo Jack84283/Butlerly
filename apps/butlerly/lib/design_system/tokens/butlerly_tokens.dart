@@ -194,7 +194,7 @@ abstract final class ButlerlySize {
   static const pageToolbarHeight = 48.0;
   static const compactPageToolbarHeight = 40.0;
   static const refreshIndicatorDisplacement = compactPageToolbarHeight;
-  static const compactBreakpoint = 600.0;
+  static const compactBreakpoint = 801.0;
   static const wideBreakpoint = 1024.0;
   static const compactContentMaxWidth = compactBreakpoint;
   static const contentGutter = 12.0;
@@ -235,7 +235,11 @@ enum ButlerlyLayoutMode { compact, medium, wide }
 /// classification. The same available width must produce the same mode on
 /// every platform and device.
 abstract final class ButlerlyLayout {
-  static ButlerlyLayoutMode modeForWidth(double width) {
+  static ButlerlyLayoutMode modeForWidth(
+    double width, {
+    bool tabletLandscape = false,
+  }) {
+    if (tabletLandscape) return ButlerlyLayoutMode.wide;
     if (width < ButlerlySize.compactBreakpoint) {
       return ButlerlyLayoutMode.compact;
     }
