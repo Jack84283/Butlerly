@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
 import 'package:butlerly/app/locale/home_greeting.dart';
-import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
@@ -32,7 +31,6 @@ import 'package:flutter/foundation.dart'
         kIsWeb,
         visibleForTesting;
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
@@ -795,20 +793,11 @@ class _HomeHeader extends StatelessWidget {
           children: [
             topRow,
             const SizedBox(height: ButlerlySpacing.small),
-            Consumer(
-              builder: (context, ref, _) => Text(
-                homeGreetingWithName(
-                  context,
-                  greetingKey,
-                  ref.watch(userPreferenceProvider).value?.displayName,
-                ),
-                key: const ValueKey('home-greeting'),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: ButlerlyTypography.homeGreetingTitle(
-                  Theme.of(context).textTheme.headlineLarge ??
-                      const TextStyle(),
-                ),
+            PersonalizedHomeGreeting(
+              greetingKey: greetingKey,
+              textKey: const ValueKey('home-greeting'),
+              style: ButlerlyTypography.homeGreetingTitle(
+                Theme.of(context).textTheme.headlineLarge ?? const TextStyle(),
               ),
             ),
             const SizedBox(height: ButlerlySpacing.micro),

@@ -1,5 +1,4 @@
 import 'package:butlerly/app/locale/home_greeting.dart';
-import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
@@ -18,7 +17,6 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
@@ -201,19 +199,12 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                     icon: const Icon(Icons.chevron_right),
                   ),
                   Expanded(
-                    child: Consumer(
-                      builder: (context, ref, _) => Text(
-                        homeGreetingWithName(
-                          context,
-                          greetingKeyForTime(DateTime.now()),
-                          ref.watch(userPreferenceProvider).value?.displayName,
-                        ),
-                        maxLines: 1,
-                        textAlign: TextAlign.end,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                    child: PersonalizedHomeGreeting(
+                      greetingKey: greetingKeyForTime(DateTime.now()),
+                      maxLines: 1,
+                      textAlign: TextAlign.end,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ),
