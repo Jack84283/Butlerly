@@ -144,6 +144,10 @@ final class ButlerlyDatabase {
           },
         ),
       );
+      // A database can already advertise the target user_version while
+      // missing a table after an incomplete pre-release initialization.
+      // Verify this specific dependency before catalog seed triggers run.
+      await _restoreMissingDuplicateGroupsTable(_database!, schemaSql);
       if (kDebugMode) debugPrint('Butlerly DB: starting catalog seed');
       await seedSystemData();
       if (kDebugMode) debugPrint('Butlerly DB: catalog seed complete');
@@ -252,9 +256,36 @@ final class ButlerlyDatabase {
   Future<void> seedSystemData() async {
     if (seedSql.isEmpty) return;
     await transaction((tx) async {
+      var seedIndex = 0;
       for (final sql in seedSql) {
         for (final statement in splitSqlStatements(sql)) {
-          await tx.execute(statement);
+          seedIndex++;
+          try {
+            await tx.execute(statement);
+          } on DatabaseException catch (error) {
+            if (kDebugMode) {
+              final statementKind = RegExp(
+                r'^\\s*([A-Za-z_]+)',
+              ).firstMatch(statement)?.group(1) ?? 'unknown';
+              final table = RegExp(
+                r'^\\s*INSERT\\s+(?:OR\\s+IGNORE\\s+)?INTO\\s+'
+                r'([A-Za-z_][A-Za-z0-9_]*)',
+                caseSensitive: false,
+              ).firstMatch(statement)?.group(1) ?? 'unknown';
+              debugPrint('Butlerly DB: catalog seed statement $seedIndex '
+                  'failed; command=$statementKind table=$table '
+                  'sqliteCode=${error.getResultCode()}');
+              final schema = RegExp(
+                r'(?:no such table|no such column):\\s*'
+                r'[A-Za-z_][A-Za-z0-9_]*',
+                caseSensitive: false,
+              ).firstMatch(error.toString())?.group(0);
+              if (schema != null) {
+                debugPrint('Butlerly DB: catalog schema issue $schema');
+              }
+            }
+            rethrow;
+          }
         }
       }
     });
