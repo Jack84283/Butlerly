@@ -93,7 +93,7 @@ void main() {
       ButlerlySize.compactContentMaxWidth,
     );
     expect(
-      ButlerlyLayout.contentMaxWidth(const Size(900, 800)),
+      ButlerlyLayout.contentMaxWidth(const Size(900, 1100)),
       ButlerlySize.pageContentMaxWidth,
     );
     expect(
@@ -128,7 +128,7 @@ void main() {
   testWidgets(
     'Medium overlays floating switch buttons on full-height content',
     (tester) async {
-      const size = Size(700, 800);
+      const size = Size(900, 1100);
       await _pumpAt(tester, size);
 
       expect(find.byType(MediumPrimaryShell), findsOneWidget);
@@ -684,7 +684,7 @@ void main() {
     );
 
     appRouter.go('/');
-    await _pumpAt(tester, const Size(900, 800));
+    await _pumpAt(tester, const Size(900, 1100));
     await tester.tap(find.bySemanticsLabel('Tools'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Analysis'));
@@ -820,26 +820,26 @@ void main() {
   testWidgets('secondary routes apply the same width-driven body policy', (
     tester,
   ) async {
-    await _pumpAt(tester, const Size(900, 800));
+    await _pumpAt(tester, const Size(900, 1100));
     appRouter.go('/search');
     await tester.pumpAndSettle();
 
     expect(find.byType(NavigationRail), findsNothing);
     expect(find.byType(AppBar), findsOneWidget);
-    expect(tester.getSize(find.byType(AppBar)).width, 700);
+    expect(tester.getSize(find.byType(AppBar)).width, 900);
     final content = tester.renderObject<RenderSliver>(
       find.byKey(const ValueKey('butlerly-page-content-sliver')),
     );
     expect(
       content.constraints.crossAxisExtent,
-      700 - ButlerlySize.contentGutter * 2,
+      900 - ButlerlySize.contentGutter * 2,
     );
   });
 
   testWidgets(
     'responsive body keeps full canvas and centered readable content',
     (tester) async {
-      const size = Size(800, 800);
+      const size = Size(900, 1100);
       tester.view.physicalSize = size;
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
