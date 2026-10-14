@@ -234,6 +234,68 @@ void main() {
     }
   });
 
+  test('seeds an existing v14 database with legacy merchants columns', () async {
+    await database.close();
+    final directory = await Directory.systemTemp.createTemp('butlerly-merchant-');
+    final dbPath = '${directory.path}/legacy-merchants.db';
+    try {
+      final existing = await databaseFactoryFfi.openDatabase(
+        dbPath,
+        options: OpenDatabaseOptions(
+          version: 14,
+          onCreate: (db, _) async {
+            await db.execute(
+              'CREATE TABLE merchants (id TEXT PRIMARY KEY, '
+              'name TEXT NOT NULL, status TEXT NOT NULL)',
+            );
+          },
+        ),
+      );
+      await existing.insert('merchants', {
+        'id': 'existing-merchant',
+        'name': 'Existing Merchant',
+        'status': 'active',
+      });
+      await existing.close();
+
+      database = ButlerlyDatabase(
+        factory: databaseFactoryFfi,
+        path: dbPath,
+        schemaSql: await File('database/schema/v1.sql').readAsString(),
+        seedSql: [
+          "INSERT INTO merchants "
+          "(id,name,normalized_name,default_category_id,"
+          "default_subcategory_id,is_built_in,status) "
+          "VALUES ('merchant.safeway','Safeway','safeway',NULL,NULL,1,'active')",
+        ],
+      );
+      await database.open();
+      final columns = await database.connection.rawQuery(
+        'PRAGMA table_info(merchants)',
+      );
+      expect(
+        columns.map((row) => row['name']),
+        containsAll(['normalized_name', 'default_category_id',
+          'default_subcategory_id', 'is_built_in', 'created_at', 'updated_at']),
+      );
+      expect(
+        await database.connection.query(
+          'merchants', where: 'id = ?', whereArgs: ['existing-merchant'],
+        ),
+        hasLength(1),
+      );
+      expect(
+        await database.connection.query(
+          'merchants', where: 'id = ?', whereArgs: ['merchant.safeway'],
+        ),
+        hasLength(1),
+      );
+    } finally {
+      await database.close();
+      await directory.delete(recursive: true);
+    }
+  });
+
   test('upgrades an installed pre-disposition V1 database', () async {
     final directory = await Directory.systemTemp.createTemp('butlerly-db-');
     final path = '${directory.path}/legacy.db';
