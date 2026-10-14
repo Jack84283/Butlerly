@@ -390,6 +390,6 @@ bool _desktopHomeEnabled(BuildContext context) {
       platform == TargetPlatform.macOS ||
       platform == TargetPlatform.windows ||
       platform == TargetPlatform.linux;
-  return MediaQuery.sizeOf(context).width >= 1100 &&
+  return MediaQuery.sizeOf(context).width >= ButlerlySize.wideBreakpoint &&
       (desktopPlatform || kIsWeb);
 }
