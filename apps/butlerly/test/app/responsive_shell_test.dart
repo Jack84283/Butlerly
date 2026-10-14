@@ -150,10 +150,7 @@ void main() {
         lessThan(tester.getRect(bodySurface).bottom),
       );
       final content = find.byKey(const ValueKey('home-page-content'));
-      expect(
-        tester.getSize(content).width,
-        ButlerlySize.pageContentMaxWidth,
-      );
+      expect(tester.getSize(content).width, ButlerlySize.pageContentMaxWidth);
       expect(
         tester.getRect(content).left,
         (size.width - ButlerlySize.pageContentMaxWidth) / 2,
