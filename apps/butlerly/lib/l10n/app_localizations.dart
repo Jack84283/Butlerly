@@ -566,7 +566,8 @@ class AppLocalizations {
       'desktopImportStatement': 'Import statement',
       'desktopSearchTransactions': 'Search transactions',
       'desktopRetry': 'Retry',
-      'desktopLocalDataUnavailable': 'Local financial data is currently unavailable. Your records are preserved.',
+      'desktopLocalDataUnavailable':
+          'Local financial data is currently unavailable. Your records are preserved.',
       'desktopNoCategoryData': 'No category data for this period',
       'desktopNoSpendingTrend': 'No spending trend available',
       'desktopSelectMonth': 'Select month',
@@ -2206,7 +2207,8 @@ class AppLocalizations {
       'desktopImportStatement': 'Importar extracto',
       'desktopSearchTransactions': 'Buscar transacciones',
       'desktopRetry': 'Reintentar',
-      'desktopLocalDataUnavailable': 'Los datos financieros locales no están disponibles. Tus registros se conservan.',
+      'desktopLocalDataUnavailable':
+          'Los datos financieros locales no están disponibles. Tus registros se conservan.',
       'desktopNoCategoryData': 'No hay datos de categorías para este período',
       'desktopNoSpendingTrend': 'No hay tendencia de gastos disponible',
       'desktopSelectMonth': 'Seleccionar mes',
