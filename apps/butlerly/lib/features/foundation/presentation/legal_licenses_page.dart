@@ -7,6 +7,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
+// Read the app version from the bundled Flutter manifest so the displayed
+// version always matches pubspec.yaml without a database field.
+final Future<String> _bundledVersion = rootBundle.loadString('pubspec.yaml').then(
+  (manifest) =>
+      RegExp(r'^version:\s*([^\s#]+)', multiLine: true)
+          .firstMatch(manifest)
+          ?.group(1) ??
+      '—',
+);
+
 /// Offline reader for the bundled, authoritative Legal document set.
 class LegalLicensesPage extends StatelessWidget {
   const LegalLicensesPage({super.key});
@@ -33,7 +43,11 @@ class LegalLicensesPage extends StatelessWidget {
             color: context.colors.interactive,
           ),
           title: Text(context.l10n.text('appName')),
-          subtitle: const Text('Version 1.0.0+1'),
+          subtitle: FutureBuilder<String>(
+            future: _bundledVersion,
+            builder: (context, snapshot) =>
+                Text('Version ${snapshot.data ?? '—'}'),
+          ),
         ),
       ),
       const SizedBox(height: ButlerlySpacing.section),
