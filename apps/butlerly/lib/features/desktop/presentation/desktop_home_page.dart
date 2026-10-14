@@ -1255,7 +1255,7 @@ class _DesktopTrend extends StatelessWidget {
       child: Row(
         children: [
           SizedBox(
-            width: 58,
+            width: 32,
             child: Padding(
               padding: const EdgeInsets.only(bottom: 20),
               child: SizedBox(
@@ -1279,7 +1279,7 @@ class _DesktopTrend extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: ButlerlySpacing.compact),
           Expanded(
             child: Stack(
               children: [
