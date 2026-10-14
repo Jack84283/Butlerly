@@ -65,6 +65,12 @@ final class ButlerlyDatabase {
               await _executeSql(database, schemaSql);
               return;
             }
+            // v13 databases created by interrupted or pre-release startup
+            // may lack this specific table. Restore its definition only when
+            // there are no membership records requiring the missing parent.
+            if (oldVersion < 14 && newVersion >= 14) {
+              await _restoreMissingDuplicateGroupsTable(database, schemaSql);
+            }
             for (
               var version = oldVersion + 1;
               version <= newVersion;
@@ -79,7 +85,7 @@ final class ButlerlyDatabase {
               }
               for (final statement in splitSqlStatements(sql)) {
                 final alteredTable = RegExp(
-                  r'^ALTER\\s+TABLE\\s+([A-Za-z_][A-Za-z0-9_]*)\\b',
+                  r'^ALTER\s+TABLE\s+([A-Za-z_][A-Za-z0-9_]*)\b',
                   caseSensitive: false,
                 ).firstMatch(statement.trim())?.group(1);
                 if (alteredTable != null) {
@@ -123,6 +129,47 @@ final class ButlerlyDatabase {
       _database = null;
       rethrow;
     }
+  }
+
+  static Future<void> _restoreMissingDuplicateGroupsTable(
+    Database database,
+    String baselineSql,
+  ) async {
+    final found = await database.rawQuery(
+      "SELECT 1 FROM sqlite_master WHERE type = 'table' "
+      "AND name = 'duplicate_candidate_groups' LIMIT 1",
+    );
+    if (found.isNotEmpty) return;
+
+    final membership = await database.rawQuery(
+      "SELECT 1 FROM sqlite_master WHERE type = 'table' "
+      "AND name = 'duplicate_candidate_group_transactions' LIMIT 1",
+    );
+    if (membership.isNotEmpty) {
+      final linkedRecords = await database.rawQuery(
+        'SELECT 1 FROM duplicate_candidate_group_transactions LIMIT 1',
+      );
+      if (linkedRecords.isNotEmpty) {
+        throw const RepositoryException(
+          RepositoryFailureCode.migration,
+          'missing duplicate_candidate_groups with existing membership records',
+        );
+      }
+    }
+
+    final definitions = splitSqlStatements(baselineSql).where(
+      (statement) => RegExp(
+        r'^CREATE\s+TABLE\s+duplicate_candidate_groups\s*\(',
+        caseSensitive: false,
+      ).hasMatch(statement.trim()),
+    );
+    if (definitions.length != 1) {
+      throw const RepositoryException(
+        RepositoryFailureCode.migration,
+        'missing duplicate_candidate_groups baseline definition',
+      );
+    }
+    await database.execute(definitions.single);
   }
 
   static Future<bool> _alreadyHasAddedColumn(
