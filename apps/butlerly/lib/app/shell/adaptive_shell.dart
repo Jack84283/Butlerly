@@ -23,7 +23,7 @@ bool _isTabletLandscape(BuildContext context) {
       viewport.width >= ButlerlySize.compactBreakpoint;
 }
 
-ButlerlyLayoutMode _effectiveLayoutMode(BuildContext context, double width) =>
+ButlerlyLayoutMode effectiveButlerlyLayoutMode(BuildContext context, double width) =>
     ButlerlyLayout.modeForWidth(
       width,
       tabletLandscape: _isTabletLandscape(context),
@@ -138,7 +138,7 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
         final width = constraints.hasBoundedWidth
             ? constraints.maxWidth
             : MediaQuery.sizeOf(context).width;
-        final layoutMode = _effectiveLayoutMode(context, width);
+        final layoutMode = effectiveButlerlyLayoutMode(context, width);
         assert(() {
           final viewport = MediaQuery.sizeOf(context);
           debugPrint('Butlerly layout: viewport=$viewport '
@@ -328,7 +328,7 @@ class _PrimaryNavigationShellState extends State<PrimaryNavigationShell> {
 
   @override
   Widget build(BuildContext context) {
-    final layoutMode = _effectiveLayoutMode(
+    final layoutMode = effectiveButlerlyLayoutMode(
       context,
       MediaQuery.sizeOf(context).width,
     );
