@@ -27,8 +27,8 @@ void main() {
   test('missing migration target fails before a database is opened', () async {
     final sql = await deploymentSql();
     final broken = sql.replaceFirst(
-      '-- BUTLERLY_MIGRATION_TARGET: 14',
       '-- BUTLERLY_MIGRATION_TARGET: 15',
+      '-- BUTLERLY_MIGRATION_TARGET: 16',
     );
     expect(() => parseDeploymentMigrations(broken), throwsFormatException);
   });

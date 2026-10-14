@@ -1060,3 +1060,7 @@ CREATE INDEX idx_recurring_pattern_decisions_key
 ALTER TABLE duplicate_candidate_groups
 ADD COLUMN statement_rows TEXT NOT NULL DEFAULT '[]';
 
+
+-- BUTLERLY_MIGRATION_TARGET: 15
+-- Source: v14_to_v15.sql
+ALTER TABLE user_preferences ADD COLUMN display_name TEXT NOT NULL DEFAULT '';
