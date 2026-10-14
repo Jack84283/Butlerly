@@ -300,8 +300,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                               ),
                             ),
                           if (!unavailable) ...[
-                            LayoutBuilder(
-                              builder: (context, bounds) => Row(
+                            _DesktopPanel(
+                              title: context.l10n.text('monthlySummary'),
+                              subtitle: context.l10n.text('vsPreviousPeriod'),
+                              child: Row(
                                 children: [
                                   Expanded(
                                     child: _DesktopMetric(
@@ -998,12 +1000,14 @@ class _DesktopPanel extends StatelessWidget {
   const _DesktopPanel({
     required this.title,
     required this.child,
+    this.subtitle,
     this.trailing,
     this.headerHeight,
     this.showInnerCard = false,
   });
   final String title;
   final Widget child;
+  final String? subtitle;
   final Widget? trailing;
   final double? headerHeight;
   // Distinct themed inner surfaces and 12px insets apply in both modes.
@@ -1011,11 +1015,9 @@ class _DesktopPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final foreground = dark ? const Color(0xFFF6F8FB) : const Color(0xFF14213E);
     return Container(
       decoration: BoxDecoration(
-        color: dark ? const Color(0xFF292D33) : Colors.white,
+        color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(16),
       ),
       padding: const EdgeInsets.fromLTRB(
@@ -1032,11 +1034,27 @@ class _DesktopPanel extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
-                  child: Text(
-                    title,
-                    style: _desktopHomeCardTitleStyle.copyWith(
-                      color: foreground,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        style: _desktopHomeCardTitleStyle.copyWith(
+                          color: context.colors.primaryText,
+                        ),
+                      ),
+                      if (subtitle != null) ...[
+                        const SizedBox(height: ButlerlySpacing.micro),
+                        Text(
+                          subtitle!,
+                          style: ButlerlyTypography.cardSubtitle(
+                            Theme.of(context).textTheme.bodySmall ??
+                                const TextStyle(),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
                 ?trailing,
@@ -1048,9 +1066,7 @@ class _DesktopPanel extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: ColoredBox(
-                color: dark
-                    ? context.colors.cardSurface
-                    : context.colors.subtleSurface,
+                color: context.colors.subtleSurface,
                 child: Padding(
                   padding: const EdgeInsets.all(ButlerlySpacing.small),
                   child: child,

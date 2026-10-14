@@ -105,7 +105,7 @@ class _DesktopPrimaryShellState extends State<DesktopPrimaryShell> {
           Expanded(
             child: ColoredBox(
               key: const ValueKey('primary-wide-body-surface'),
-              color: context.colors.subtleSurface,
+              color: context.colors.background,
               child: SafeArea(bottom: false, child: widget.body),
             ),
           ),
