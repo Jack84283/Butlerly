@@ -174,7 +174,7 @@ void main() {
     expect(find.text('Spending trend'), findsOneWidget);
     expect(find.text('Top categories'), findsOneWidget);
     expect(find.text('Savings'), findsNothing);
-    expect(find.text('Net position'), findsOneWidget);
+    expect(find.text('Net cash flow'), findsOneWidget);
     expect(find.text('Recent transactions'), findsOneWidget);
     expect(find.text('Insights'), findsOneWidget);
     expect(find.text('Sep 2026'), findsOneWidget);
@@ -629,12 +629,9 @@ void main() {
       for (final key in metricKeys) tester.getTopLeft(find.byKey(key)),
     ];
     for (var index = 1; index < metricPositions.length; index++) {
-      expect(
-        metricPositions[index].dy,
-        greaterThan(metricPositions[index - 1].dy),
-      );
+      expect(metricPositions[index].dy, closeTo(metricPositions.first.dy, 1));
     }
-    for (final label in ['Spending', 'Income', 'Net position']) {
+    for (final label in ['Spending', 'Income', 'Net cash flow']) {
       expect(find.text(label), findsOneWidget);
     }
     expect(
@@ -688,7 +685,9 @@ void main() {
     ]) {
       final card = find.byKey(ValueKey(entry.$1));
       expect(card, findsOneWidget);
-      final container = tester.widget<Container>(card);
+      final container = tester.widget<Container>(
+        find.descendant(of: card, matching: find.byType(Container)).first,
+      );
       final decoration = container.decoration! as BoxDecoration;
       expect(decoration.color, entry.$3.withValues(alpha: 0.80));
       expect(decoration.borderRadius, BorderRadius.circular(16));
@@ -1243,9 +1242,9 @@ void main() {
         find.byKey(const ValueKey('home-page-content-surface')),
       );
       final bodyColor = (bodySurface.decoration as BoxDecoration).color;
-      expect(canvas.color, colors.subtleSurface);
+      expect(canvas.color, colors.background);
       expect(bodyColor, colors.background);
-      expect(canvas.color, isNot(bodyColor));
+      expect(canvas.color, bodyColor);
 
       final bodyPadding = tester.widget<Padding>(
         find.byKey(const ValueKey('home-page-content-padding')),
