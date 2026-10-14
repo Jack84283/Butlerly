@@ -12,6 +12,7 @@ final class ButlerlyDatabase {
     this.seedSql = const [],
     this.migrations = const {},
     this.targetVersion = databaseVersion,
+    this.validateSchemaBeforeSeed = false,
   }) : assert(targetVersion >= 1 && targetVersion <= databaseVersion);
 
   static const databaseVersion = 14;
@@ -20,6 +21,9 @@ final class ButlerlyDatabase {
   final String path;
   final String schemaSql;
   final List<String> seedSql;
+
+  /// Enable for production startup: reject incomplete schemas before seeding.
+  final bool validateSchemaBeforeSeed;
 
   /// Database-owned migration SQL keyed by its target schema version.
   final Map<int, String> migrations;
@@ -149,6 +153,9 @@ final class ButlerlyDatabase {
       // Verify this specific dependency before catalog seed triggers run.
       await _restoreMissingDuplicateGroupsTable(_database!, schemaSql);
       await _repairLegacyMerchantColumns(_database!);
+      if (validateSchemaBeforeSeed) {
+        await _validateBaselineTables(_database!, schemaSql);
+      }
       if (kDebugMode) debugPrint('Butlerly DB: starting catalog seed');
       await seedSystemData();
       if (kDebugMode) debugPrint('Butlerly DB: catalog seed complete');
@@ -176,6 +183,46 @@ final class ButlerlyDatabase {
   // Pre-release databases may already carry user_version 14 while retaining
   // a merchants table from before its classification columns were introduced.
   // Add only absent nullable/defaulted columns; never discard merchant rows.
+  static Future<void> _validateBaselineTables(
+    Database database,
+    String baselineSql,
+  ) async {
+    final declaredTables = <String>{};
+    final tablePattern = RegExp(
+      r'^CREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?'
+      r'([A-Za-z_][A-Za-z0-9_]*)\\s*\\(',
+      caseSensitive: false,
+    );
+    for (final statement in splitSqlStatements(baselineSql)) {
+      final match = tablePattern.firstMatch(statement.trim());
+      if (match != null) declaredTables.add(match.group(1)!);
+    }
+    if (declaredTables.isEmpty) {
+      throw const RepositoryException(
+        RepositoryFailureCode.migration,
+        'baseline schema has no table definitions',
+      );
+    }
+    final existing = (await database.rawQuery(
+      "SELECT name FROM sqlite_master WHERE type = 'table'",
+    )).map((row) => row['name']).whereType<String>().toSet();
+    final missing = declaredTables.difference(existing).toList()..sort();
+    if (missing.isNotEmpty) {
+      if (kDebugMode) {
+        debugPrint('Butlerly DB: incomplete schema; '
+            'missing ${missing.length} tables: ${missing.join(', ')}');
+      }
+      throw RepositoryException(
+        RepositoryFailureCode.migration,
+        'incomplete database schema: missing ${missing.join(', ')}',
+      );
+    }
+    if (kDebugMode) {
+      debugPrint('Butlerly DB: verified ${declaredTables.length} '
+          'required baseline tables');
+    }
+  }
+
   static Future<void> _repairLegacyMerchantColumns(Database database) async {
     final tables = await database.rawQuery(
       "SELECT 1 FROM sqlite_master WHERE type = 'table' "
