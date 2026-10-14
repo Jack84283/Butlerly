@@ -122,9 +122,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             _SettingsRow(
               icon: Icons.person_outline_rounded,
               title: context.l10n.text('displayName'),
-              titleStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w400,
-              ),
+              titleStyle: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w400),
               subtitle: preference?.displayName.isNotEmpty == true
                   ? preference!.displayName
                   : context.l10n.text('displayNameNotSet'),
