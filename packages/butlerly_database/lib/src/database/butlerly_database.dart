@@ -148,6 +148,7 @@ final class ButlerlyDatabase {
       // missing a table after an incomplete pre-release initialization.
       // Verify this specific dependency before catalog seed triggers run.
       await _restoreMissingDuplicateGroupsTable(_database!, schemaSql);
+      await _repairLegacyMerchantColumns(_database!);
       if (kDebugMode) debugPrint('Butlerly DB: starting catalog seed');
       await seedSystemData();
       if (kDebugMode) debugPrint('Butlerly DB: catalog seed complete');
@@ -169,6 +170,36 @@ final class ButlerlyDatabase {
       await _database?.close();
       _database = null;
       rethrow;
+    }
+  }
+
+  // Pre-release databases may already carry user_version 14 while retaining
+  // a merchants table from before its classification columns were introduced.
+  // Add only absent nullable/defaulted columns; never discard merchant rows.
+  static Future<void> _repairLegacyMerchantColumns(Database database) async {
+    final tables = await database.rawQuery(
+      "SELECT 1 FROM sqlite_master WHERE type = 'table' "
+      "AND name = 'merchants' LIMIT 1",
+    );
+    if (tables.isEmpty) return;
+    final current = await database.rawQuery('PRAGMA table_info(merchants)');
+    final existing = current.map((row) => row['name']).toSet();
+    const columns = <String, String>{
+      'normalized_name': "TEXT NOT NULL DEFAULT ''",
+      'default_category_id': 'TEXT REFERENCES categories(id)',
+      'default_subcategory_id': 'TEXT REFERENCES categories(id)',
+      'is_built_in': 'INTEGER NOT NULL DEFAULT 0',
+      'created_at': "TEXT NOT NULL DEFAULT ''",
+      'updated_at': "TEXT NOT NULL DEFAULT ''",
+    };
+    for (final entry in columns.entries) {
+      if (existing.contains(entry.key)) continue;
+      await database.execute(
+        'ALTER TABLE merchants ADD COLUMN ${entry.key} ${entry.value}',
+      );
+      if (kDebugMode) {
+        debugPrint('Butlerly DB: restored merchants column ${entry.key}');
+      }
     }
   }
 
@@ -272,6 +303,9 @@ final class ButlerlyDatabase {
                 r'([A-Za-z_][A-Za-z0-9_]*)',
                 caseSensitive: false,
               ).firstMatch(statement)?.group(1) ?? 'unknown';
+              final reason = error.toString().split(" sql '").first;
+              debugPrint('Butlerly DB: seed SQLite reason: '
+                  '${reason.length > 450 ? reason.substring(0, 450) : reason}');
               debugPrint('Butlerly DB: catalog seed statement $seedIndex '
                   'failed; command=$statementKind table=$table '
                   'sqliteCode=${error.getResultCode()}');
