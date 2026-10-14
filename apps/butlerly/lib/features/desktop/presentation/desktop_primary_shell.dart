@@ -102,11 +102,11 @@ class _DesktopPrimaryShellState extends State<DesktopPrimaryShell> {
             onImport: widget.onImport,
           ),
           Expanded(
-            child: SafeArea(
-              bottom: false,
-              child: ColoredBox(
-                key: const ValueKey('primary-wide-body-surface'),
-                color: context.colors.subtleSurface,
+            child: ColoredBox(
+              key: const ValueKey('primary-wide-body-surface'),
+              color: context.colors.subtleSurface,
+              child: SafeArea(
+                bottom: false,
                 child: widget.body,
               ),
             ),
