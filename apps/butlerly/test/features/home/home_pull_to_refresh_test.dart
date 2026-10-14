@@ -221,7 +221,9 @@ void main() {
       summaryAmount.style?.fontFamily,
       isNot(ButlerlyTypography.editorialFontFamily),
     );
-    expect(summaryAmount.style?.fontFeatures, isNotEmpty);
+    expect(summaryAmount.style?.fontSize, 24);
+    expect(summaryAmount.style?.fontWeight, FontWeight.w800);
+    expect(summaryAmount.style?.color, Colors.white);
     expect(find.byKey(const ValueKey('home-attention-card')), findsOneWidget);
     expect(find.text('1 merchant to review'), findsOneWidget);
     expect(find.byKey(const ValueKey('home-insight-card')), findsOneWidget);
