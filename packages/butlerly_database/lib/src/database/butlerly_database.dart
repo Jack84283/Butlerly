@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart'
     show RepositoryException, RepositoryFailureCode, normalizeMerchantName;
 import 'package:sqflite_common/sqlite_api.dart';
@@ -51,8 +52,14 @@ final class ButlerlyDatabase {
           version: targetVersion,
           onConfigure: (database) =>
               database.execute('PRAGMA foreign_keys = ON'),
-          onCreate: (database, _) => _executeSql(database, schemaSql),
+          onCreate: (database, _) async {
+            if (kDebugMode) debugPrint('Butlerly DB: creating baseline v$targetVersion');
+            await _executeSql(database, schemaSql);
+          },
           onUpgrade: (database, oldVersion, newVersion) async {
+            if (kDebugMode) {
+              debugPrint('Butlerly DB: upgrading v$oldVersion -> v$newVersion');
+            }
             // A newly installed app can encounter a versioned but empty SQLite
             // file (for example, after an interrupted first launch). It has no
             // user records to migrate, so install the current baseline instead.
@@ -83,7 +90,9 @@ final class ButlerlyDatabase {
                   'apply database migration',
                 );
               }
+              var statementIndex = 0;
               for (final statement in splitSqlStatements(sql)) {
+                statementIndex++;
                 final alteredTable = RegExp(
                   r'^ALTER\s+TABLE\s+([A-Za-z_][A-Za-z0-9_]*)\b',
                   caseSensitive: false,
@@ -104,7 +113,16 @@ final class ButlerlyDatabase {
                 if (await _alreadyHasAddedColumn(database, statement)) {
                   continue;
                 }
-                await database.execute(statement);
+                try {
+                  await database.execute(statement);
+                } on DatabaseException catch (error) {
+                  if (kDebugMode) {
+                    debugPrint('Butlerly DB: migration v$version statement '
+                        '$statementIndex failed; sqliteCode=${error.getResultCode()} '
+                        'object=${_schemaOperation(statement)}');
+                  }
+                  rethrow;
+                }
               }
               if (version == 5) {
                 await _backfillNormalizedDescriptions(database);
@@ -254,8 +272,19 @@ final class ButlerlyDatabase {
 
   static Future<void> _executeSql(Database database, String sql) async {
     try {
+      var index = 0;
       for (final statement in splitSqlStatements(sql)) {
-        await database.execute(statement);
+        index++;
+        try {
+          await database.execute(statement);
+        } on DatabaseException catch (error) {
+          if (kDebugMode) {
+            debugPrint('Butlerly DB: baseline statement $index failed; '
+                'sqliteCode=${error.getResultCode()} '
+                'object=${_schemaOperation(statement)}');
+          }
+          rethrow;
+        }
       }
     } on DatabaseException {
       throw const RepositoryException(
@@ -264,6 +293,18 @@ final class ButlerlyDatabase {
       );
     }
   }
+}
+
+// Emits only a structural SQL identifier, never SQL values or user records.
+String _schemaOperation(String statement) {
+  final match = RegExp(
+    r'^\\s*(?:CREATE\\s+(?:UNIQUE\\s+)?(?:TABLE|INDEX|TRIGGER)|'
+    r'ALTER\\s+TABLE|DROP\\s+(?:TABLE|INDEX|TRIGGER))'
+    r'\\s+(?:IF\\s+(?:NOT\\s+)?EXISTS\\s+)?'
+    r'([A-Za-z_][A-Za-z0-9_]*)',
+    caseSensitive: false,
+  ).firstMatch(statement);
+  return match?.group(1) ?? 'unnamed';
 }
 
 /// Parses the single ordered database deployment asset into upgrades keyed by
