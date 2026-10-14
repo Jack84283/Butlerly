@@ -115,15 +115,27 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
 
   @override
   Widget build(BuildContext context) {
-    final layoutMode = ButlerlyLayout.mode(MediaQuery.sizeOf(context));
-    if (layoutMode != ButlerlyLayoutMode.wide) return widget.child;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.hasBoundedWidth
+            ? constraints.maxWidth
+            : MediaQuery.sizeOf(context).width;
+        final layoutMode = ButlerlyLayout.modeForWidth(width);
+        assert(() {
+          debugPrint('Butlerly layout: outer width=${width.toStringAsFixed(1)} '
+              'mode=${layoutMode.name}');
+          return true;
+        }());
+        if (layoutMode != ButlerlyLayoutMode.wide) return widget.child;
 
-    return WidePrimaryShell(
-      body: widget.child,
-      currentIndex: _wideParentIndex,
-      onSelected: _selectWideDestination,
-      onMoreSectionSelected: _selectMoreSection,
-      onImport: () => startLocalFileImport(context),
+        return WidePrimaryShell(
+          body: widget.child,
+          currentIndex: _wideParentIndex,
+          onSelected: _selectWideDestination,
+          onMoreSectionSelected: _selectMoreSection,
+          onImport: () => startLocalFileImport(context),
+        );
+      },
     );
   }
 }
@@ -295,7 +307,9 @@ class _PrimaryNavigationShellState extends State<PrimaryNavigationShell> {
 
   @override
   Widget build(BuildContext context) {
-    final layoutMode = ButlerlyLayout.mode(MediaQuery.sizeOf(context));
+    final layoutMode = ButlerlyLayout.modeForWidth(
+      MediaQuery.sizeOf(context).width,
+    );
     final secondaryRouteVisible = widget.visibilityController
         .secondaryRouteVisibleFor(navigationShell.currentIndex);
     if (secondaryRouteVisible) {
