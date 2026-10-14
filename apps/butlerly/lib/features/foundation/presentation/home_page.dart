@@ -901,7 +901,8 @@ class _HomeSummaryCard extends StatelessWidget {
                     key: metric.tileKey,
                     titleKey: metric.key,
                     label: metric.label,
-                    amount: metric.value == null ||
+                    amount:
+                        metric.value == null ||
                             metric.value!.availability ==
                                 AnalysisDataAvailability.insufficient
                         ? showMissingValuesAsZero
@@ -930,8 +931,7 @@ class _HomeSummaryCard extends StatelessWidget {
                   children: [
                     for (var index = 0; index < cards.length; index++) ...[
                       cards[index],
-                      if (index < cards.length - 1)
-                        const SizedBox(height: 8),
+                      if (index < cards.length - 1) const SizedBox(height: 8),
                     ],
                   ],
                 );
