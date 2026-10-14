@@ -139,6 +139,16 @@ final class ButlerlyDatabase {
       );
       await seedSystemData();
     } on DatabaseException catch (error) {
+      if (kDebugMode) {
+        final summary = RegExp(
+          r'(?:no such table|no such column|duplicate column name):\\s*'
+          r'[A-Za-z_][A-Za-z0-9_]*',
+          caseSensitive: false,
+        ).firstMatch(error.toString())?.group(0);
+        debugPrint('Butlerly DB: open failed; '
+            'sqliteCode=${error.getResultCode()} '
+            'schemaIssue=${summary ?? 'unclassified'}');
+      }
       await _database?.close();
       _database = null;
       throw mapDatabaseException(error, 'open database');
