@@ -397,7 +397,7 @@ void main() {
   });
 
   testWidgets('uses bottom navigation at medium tablet widths', (tester) async {
-    tester.view.physicalSize = const Size(700, 800);
+    tester.view.physicalSize = const Size(900, 1100);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
