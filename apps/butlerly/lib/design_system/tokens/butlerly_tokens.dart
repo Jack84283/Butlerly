@@ -194,8 +194,8 @@ abstract final class ButlerlySize {
   static const pageToolbarHeight = 48.0;
   static const compactPageToolbarHeight = 40.0;
   static const refreshIndicatorDisplacement = compactPageToolbarHeight;
-  static const compactBreakpoint = 600.0;
-  static const wideBreakpoint = 1100.0;
+  static const compactBreakpoint = 801.0;
+  static const wideBreakpoint = 1024.0;
   static const compactContentMaxWidth = compactBreakpoint;
   static const contentGutter = 12.0;
   static const readableWidth = 760.0;
