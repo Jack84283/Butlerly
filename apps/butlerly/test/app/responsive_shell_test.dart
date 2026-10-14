@@ -152,9 +152,12 @@ void main() {
       final content = find.byKey(const ValueKey('home-page-content'));
       expect(
         tester.getSize(content).width,
-        size.width - ButlerlySize.contentGutter * 2,
+        ButlerlySize.pageContentMaxWidth,
       );
-      expect(tester.getRect(content).left, ButlerlySize.contentGutter);
+      expect(
+        tester.getRect(content).left,
+        (size.width - ButlerlySize.pageContentMaxWidth) / 2,
+      );
       expect(
         tester
             .getSize(find.byKey(const ValueKey('primary-medium-navigation')))
@@ -255,8 +258,8 @@ void main() {
       );
     }
     expect(
-      tester.getSize(find.byKey(const ValueKey('home-page-content'))).width,
-      ButlerlySize.pageContentMaxWidth,
+      find.byKey(const ValueKey('desktop-home-page')),
+      findsOneWidget,
     );
     expect(
       find.byKey(const ValueKey('primary-wide-body-surface')),
@@ -267,7 +270,7 @@ void main() {
       findsNothing,
     );
     expect(
-      find.byKey(const ValueKey('home-page-content-surface')),
+      find.byKey(const ValueKey('desktop-home-page')),
       findsOneWidget,
     );
     expect(
@@ -626,7 +629,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(appRouter.routeInformationProvider.value.uri.path, '/');
-    expect(find.byKey(const ValueKey('home-page-content')), findsOneWidget);
+    expect(find.byKey(const ValueKey('desktop-home-page')), findsOneWidget);
     expect(find.byType(DesktopPrimaryShell), findsOneWidget);
     expect(
       tester
@@ -659,7 +662,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(appRouter.routeInformationProvider.value.uri.path, '/');
-    expect(find.byKey(const ValueKey('home-page-content')), findsOneWidget);
+    expect(find.byKey(const ValueKey('desktop-home-page')), findsOneWidget);
     expect(
       tester.getSize(find.byKey(const ValueKey('primary-wide-navigation'))),
       const Size(ButlerlySize.wideNavigationCollapsedWidth, 800),
@@ -832,7 +835,7 @@ void main() {
     );
     expect(
       content.constraints.crossAxisExtent,
-      900 - ButlerlySize.contentGutter * 2,
+      ButlerlySize.pageContentMaxWidth,
     );
   });
 
