@@ -184,7 +184,11 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                       }
                     },
                     icon: const Icon(Icons.calendar_month_outlined),
-                    label: Text(DateFormat.yMMMM(Localizations.localeOf(context).toLanguageTag()).format(current)),
+                    label: Text(
+                        DateFormat.yMMMM(
+                          Localizations.localeOf(context).toLanguageTag(),
+                        ).format(current),
+                      ),
                   ),
                   IconButton(
                     style: IconButton.styleFrom(
@@ -271,7 +275,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            DateFormat.yMMMM(Localizations.localeOf(context).toLanguageTag()).format(current),
+                            DateFormat.yMMMM(
+                              Localizations.localeOf(context).toLanguageTag(),
+                            ).format(current),
                             style: theme.textTheme.bodyMedium,
                           ),
                           const SizedBox(height: 10),
@@ -1522,7 +1528,11 @@ Future<DateTime?> _selectDesktopMonth(BuildContext context, DateTime selected) {
                       : Colors.transparent,
                 ),
                 onPressed: () => update(() => month = candidate),
-                child: Text(DateFormat.MMM(Localizations.localeOf(context).toLanguageTag()).format(DateTime(year, candidate))),
+                child: Text(
+                  DateFormat.MMM(
+                    Localizations.localeOf(context).toLanguageTag(),
+                  ).format(DateTime(year, candidate)),
+                ),
               );
             },
           ),
