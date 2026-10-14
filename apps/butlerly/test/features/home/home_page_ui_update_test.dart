@@ -329,6 +329,25 @@ void main() {
     }
   });
 
+  testWidgets('Home header and outer canvas share page color in both themes', (
+    tester,
+  ) async {
+    for (final theme in [AppTheme.light, AppTheme.dark]) {
+      await tester.pumpWidget(_testApp(router, theme: theme));
+      await tester.pumpAndSettle();
+
+      final pageColor = theme.extension<ButlerlySemanticColors>()!.background;
+      final header = tester.widget<ColoredBox>(
+        find.byKey(const ValueKey('home-header-surface')),
+      );
+      final canvas = tester.widget<ColoredBox>(
+        find.byKey(const ValueKey('home-page-canvas')),
+      );
+      expect(header.color, pageColor);
+      expect(canvas.color, pageColor);
+    }
+  });
+
   testWidgets('Home card titles share the canonical top inset', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
