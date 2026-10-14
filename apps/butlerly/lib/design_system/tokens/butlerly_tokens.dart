@@ -235,7 +235,11 @@ enum ButlerlyLayoutMode { compact, medium, wide }
 /// classification. The same available width must produce the same mode on
 /// every platform and device.
 abstract final class ButlerlyLayout {
-  static ButlerlyLayoutMode modeForWidth(double width) {
+  static ButlerlyLayoutMode modeForWidth(
+    double width, {
+    bool tabletLandscape = false,
+  }) {
+    if (tabletLandscape) return ButlerlyLayoutMode.wide;
     if (width < ButlerlySize.compactBreakpoint) {
       return ButlerlyLayoutMode.compact;
     }
