@@ -189,8 +189,8 @@ final class ButlerlyDatabase {
   ) async {
     final declaredTables = <String>{};
     final tablePattern = RegExp(
-      r'^CREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?'
-      r'([A-Za-z_][A-Za-z0-9_]*)\\s*\\(',
+      r'^CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?'
+      r'([A-Za-z_][A-Za-z0-9_]*)\s*\(',
       caseSensitive: false,
     );
     for (final statement in splitSqlStatements(baselineSql)) {
