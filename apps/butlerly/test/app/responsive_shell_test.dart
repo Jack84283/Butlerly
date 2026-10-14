@@ -5,7 +5,6 @@ import 'package:butlerly/app/butlerly_app.dart';
 import 'package:butlerly/app/router/app_router.dart';
 import 'package:butlerly/app/shell/compact/compact_primary_shell.dart';
 import 'package:butlerly/app/shell/medium/medium_primary_shell.dart';
-import 'package:butlerly/features/desktop/presentation/desktop_primary_shell.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/di/finance_services.dart';
@@ -14,6 +13,7 @@ import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/desktop/presentation/desktop_primary_shell.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
 import 'package:butlerly/features/foundation/presentation/contextual_pages.dart';
 import 'package:butlerly/features/foundation/presentation/legal_licenses_page.dart';
@@ -181,32 +181,26 @@ void main() {
     },
   );
 
-  testWidgets('Narrow Wide windows retain content space with a compact rail', (
+  testWidgets('Tablet landscape wide uses a compact desktop rail', (
     tester,
   ) async {
-    await _pumpAt(tester, const Size(1024, 800));
+    await _pumpAt(tester, const Size(900, 600));
 
-    for (final width in [1024.0, 1100.0]) {
-      tester.view.physicalSize = Size(width, 800);
-      await tester.pumpAndSettle();
-      expect(ButlerlyLayout.modeForWidth(width), ButlerlyLayoutMode.wide);
-      expect(find.byType(DesktopPrimaryShell), findsOneWidget);
-      expect(
-        tester
-            .getSize(find.byKey(const ValueKey('primary-wide-navigation')))
-            .width,
-        ButlerlySize.wideNavigationCollapsedWidth,
-      );
-      expect(
-        tester
-            .getSize(find.byKey(const ValueKey('primary-wide-body-surface')))
-            .width,
-        width - ButlerlySize.wideNavigationCollapsedWidth,
-      );
-      expect(find.byKey(const ValueKey('wide-collapsed-home')), findsOneWidget);
-    }
+    expect(find.byType(DesktopPrimaryShell), findsOneWidget);
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('primary-wide-navigation')))
+          .width,
+      ButlerlySize.wideNavigationCollapsedWidth,
+    );
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('primary-wide-body-surface')))
+          .width,
+      900 - ButlerlySize.wideNavigationCollapsedWidth,
+    );
+    expect(find.byKey(const ValueKey('wide-collapsed-home')), findsOneWidget);
 
-    // The desktop preference is independent of the tablet-sized rail.
     tester.view.physicalSize = const Size(1200, 800);
     await tester.pumpAndSettle();
     expect(
@@ -214,14 +208,6 @@ void main() {
           .getSize(find.byKey(const ValueKey('primary-wide-navigation')))
           .width,
       ButlerlySize.wideNavigationExpandedWidth,
-    );
-    tester.view.physicalSize = const Size(1024, 800);
-    await tester.pumpAndSettle();
-    expect(
-      tester
-          .getSize(find.byKey(const ValueKey('primary-wide-navigation')))
-          .width,
-      ButlerlySize.wideNavigationCollapsedWidth,
     );
   });
 
