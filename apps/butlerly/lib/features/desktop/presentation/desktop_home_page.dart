@@ -134,19 +134,15 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
         final analysis = data?.analysis;
         final unavailable =
             data == null || data.status != HomeOverviewStatus.available;
-        return RefreshIndicator(
-          onRefresh: () async {
-            setState(_reload);
-            await _overview;
-          },
-          child: ListView(
-            key: const ValueKey('desktop-home-page'),
-            padding: EdgeInsets.zero,
-            children: [
+        return Column(
+          children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.secondaryContainer,
+                  color: theme.scaffoldBackgroundColor,
+                  border: Border(
+                    bottom: BorderSide(color: context.colors.cardDivider),
+                  ),
                 ),
                 child: Row(
                   children: [
@@ -241,6 +237,16 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                   ],
                 ),
               ),
+            Expanded(
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  setState(_reload);
+                  await _overview;
+                },
+                child: ListView(
+                  key: const ValueKey('desktop-home-page'),
+                  padding: EdgeInsets.zero,
+                  children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(
                   ButlerlySpacing.small,
@@ -774,8 +780,11 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                   ],
                 ),
               ),
-            ],
-          ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         );
       },
     );
@@ -1243,9 +1252,11 @@ class _DesktopTrend extends StatelessWidget {
                       message: NumberFormat.simpleCurrency(
                         name: currency,
                       ).format(values[i]),
-                      child: Container(
-                        height: _desktopHomeTrendMaxBarHeight * values[i] / max,
-                        decoration: BoxDecoration(
+                      child: FractionallySizedBox(
+                        widthFactor: 0.6,
+                        child: Container(
+                          height: _desktopHomeTrendMaxBarHeight * values[i] / max,
+                          decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.primary
                               .withValues(
                                 alpha:
@@ -1259,6 +1270,7 @@ class _DesktopTrend extends StatelessWidget {
                           borderRadius: const BorderRadius.vertical(
                             top: Radius.circular(5),
                           ),
+                        ),
                         ),
                       ),
                     ),
