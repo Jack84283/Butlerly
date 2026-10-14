@@ -694,12 +694,18 @@ void main() {
       final decoration = container.decoration! as BoxDecoration;
       expect(decoration.color, entry.$3.withValues(alpha: 0.80));
       expect(decoration.borderRadius, BorderRadius.circular(16));
-      expect(find.descendant(of: card, matching: find.text(entry.$2)), findsOneWidget);
+      expect(
+        find.descendant(of: card, matching: find.text(entry.$2)),
+        findsOneWidget,
+      );
       final icon = find.descendant(of: card, matching: find.byIcon(entry.$4));
       expect(icon, findsOneWidget);
       expect(tester.widget<Icon>(icon).color, Colors.white);
       expect(
-        find.descendant(of: card, matching: find.text('Comparison unavailable')),
+        find.descendant(
+          of: card,
+          matching: find.text('Comparison unavailable'),
+        ),
         findsOneWidget,
       );
     }
