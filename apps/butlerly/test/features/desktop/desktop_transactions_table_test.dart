@@ -124,7 +124,9 @@ void main() {
       expect(find.byType(ButlerlyPaymentMarkIcon), findsOneWidget);
       expect(find.text('September cafe'), findsNothing);
 
-      await tester.tap(find.byKey(const ValueKey('desktop-transaction-row-oct-1')));
+      await tester.tap(
+        find.byKey(const ValueKey('desktop-transaction-row-oct-1')),
+      );
       expect(tapped, 'oct-1');
 
       await tester.tap(find.text('September 2026'));

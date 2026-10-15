@@ -57,11 +57,7 @@ class DesktopTransactionTable extends StatelessWidget {
       for (var index = 0; index < transactions.length; index++) ...[
         _transactionRow(context, transactions[index]),
         if (index < transactions.length - 1)
-          Divider(
-            height: 1,
-            thickness: 1,
-            color: context.colors.cardDivider,
-          ),
+          Divider(height: 1, thickness: 1, color: context.colors.cardDivider),
       ],
     ],
   );
@@ -89,12 +85,13 @@ class DesktopTransactionTable extends StatelessWidget {
     final subcategoryId =
         transaction.subcategoryId ??
         (legacyParentId == null ? null : transaction.categoryId);
-    final sourceName = masterData.paymentSourceName(
-      transaction.paymentSourceId,
-    ) ?? paymentSourceNames[transaction.paymentSourceId];
+    final sourceName =
+        masterData.paymentSourceName(transaction.paymentSourceId) ??
+        paymentSourceNames[transaction.paymentSourceId];
     final sourceLabel = sourceName?.trim();
     final showSource = sourceLabel != null && sourceLabel.isNotEmpty;
-    final categoryLabel = masterData.categoryName(categoryId) ??
+    final categoryLabel =
+        masterData.categoryName(categoryId) ??
         missingCategoryLabel ??
         context.l10n.text('uncategorized');
     final subcategoryLabel = masterData.categoryName(subcategoryId);
@@ -143,7 +140,8 @@ class DesktopTransactionTable extends StatelessWidget {
                   children: [
                     if (showSource) ...[
                       ButlerlyPaymentMarkIcon(
-                        mark: masterData.paymentSourceMark(
+                        mark:
+                            masterData.paymentSourceMark(
                               transaction.paymentSourceId,
                             ) ??
                             'other',
@@ -151,12 +149,7 @@ class DesktopTransactionTable extends StatelessWidget {
                       ),
                       const SizedBox(width: ButlerlySpacing.micro),
                     ],
-                    Expanded(
-                      child: _rowText(
-                        context,
-                        sourceLabel ?? '—',
-                      ),
-                    ),
+                    Expanded(child: _rowText(context, sourceLabel ?? '—')),
                   ],
                 ),
               ),
@@ -221,7 +214,8 @@ class DesktopTransactionTable extends StatelessWidget {
   }
 
   String _date(BuildContext context, TransactionDto transaction) {
-    final date = transaction.financialDate ??
+    final date =
+        transaction.financialDate ??
         DateTime.tryParse(transaction.transactionDate ?? '') ??
         transaction.occurredAt?.toUtc();
     if (date == null) return context.l10n.text('datePending');
