@@ -50,10 +50,7 @@ void main() {
         matching: find.byType(ButlerlyCard),
       ),
     );
-    expect(
-      inner.padding,
-      const EdgeInsets.all(ButlerlySpacing.micro),
-    );
+    expect(inner.padding, const EdgeInsets.all(ButlerlySpacing.micro));
     expect(tester.takeException(), isNull);
   });
 }
