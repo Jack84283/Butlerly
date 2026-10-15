@@ -496,6 +496,13 @@ String _trendRangeLabelKey(int monthCount) => switch (monthCount) {
   _ => 'lastSixMonths',
 };
 
+/// Compact Home sections keep a tighter gap below the card title without
+/// changing the standard spacing of Medium or Wide layouts.
+double _homeTitleContentGap(BuildContext context, double regularGap) =>
+    context.designTokens.mode == ButlerlyLayoutMode.compact
+    ? ButlerlySpacing.micro
+    : regularGap;
+
 Widget _homeEllipsisAction({
   required Key key,
   required String semanticLabel,
@@ -990,7 +997,9 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
         color: color.withValues(alpha: 0.80),
         borderRadius: BorderRadius.circular(16),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+      padding: context.designTokens.mode == ButlerlyLayoutMode.compact
+          ? const EdgeInsets.all(ButlerlySpacing.micro)
+          : const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
       child: Column(
         key: titleKey,
         mainAxisSize: MainAxisSize.min,
@@ -1427,7 +1436,10 @@ class _CategorySummary extends StatelessWidget {
             ),
             keepActionInlineAtCompactWidth: true,
           ),
-          const SizedBox(height: ButlerlySpacing.compact),
+          SizedBox(
+            key: const ValueKey('home-category-title-content-gap'),
+            height: _homeTitleContentGap(context, ButlerlySpacing.compact),
+          ),
           if (model == null)
             Text(
               context.l10n.text('analysisUnavailableBody'),
@@ -1966,7 +1978,7 @@ class _HomeRecentActivity extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(
                 ButlerlySpacing.standard,
-                ButlerlySpacing.small,
+                _homeTitleContentGap(context, ButlerlySpacing.small),
                 ButlerlySpacing.standard,
                 ButlerlySpacing.standard,
               ),
@@ -1989,7 +2001,12 @@ class _HomeRecentActivity extends StatelessWidget {
               ButlerlySpacing.micro,
             ),
             child: Transform.translate(
-              offset: const Offset(0, -ButlerlySpacing.micro),
+              offset: Offset(
+                0,
+                context.designTokens.mode == ButlerlyLayoutMode.compact
+                    ? -ButlerlySpacing.compact
+                    : -ButlerlySpacing.micro,
+              ),
               child: ButlerlyTransactionInnerCard(
                 key: const ValueKey('home-recent-transactions-inner-card'),
                 child: ButlerlyTransactionList(
@@ -2089,7 +2106,10 @@ class _HomeInsightCard extends StatelessWidget {
             ),
             keepActionInlineAtCompactWidth: true,
           ),
-          const SizedBox(height: ButlerlySpacing.small),
+          SizedBox(
+            key: const ValueKey('home-insight-title-content-gap'),
+            height: _homeTitleContentGap(context, ButlerlySpacing.small),
+          ),
           Material(
             color: context.colors.selection,
             shape: RoundedRectangleBorder(
@@ -2262,9 +2282,9 @@ class _HomeEmptyTransactions extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     key: const ValueKey('home-empty-transactions-row'),
-    padding: const EdgeInsets.fromLTRB(
+    padding: EdgeInsets.fromLTRB(
       ButlerlySpacing.standard,
-      ButlerlySpacing.small,
+      _homeTitleContentGap(context, ButlerlySpacing.small),
       ButlerlySpacing.standard,
       ButlerlySpacing.standard,
     ),
