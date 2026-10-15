@@ -199,10 +199,9 @@ class TransactionRecordList extends StatelessWidget {
           ButlerlyInsetTransactionCard(
             innerCardKey: ValueKey('transaction-month-inner-card-${entry.key}'),
             child: ButlerlyTransactionList(
-                children: [
-                  for (final transaction in entry.value) rows[transaction]!,
-                ],
-              ),
+              children: [
+                for (final transaction in entry.value) rows[transaction]!,
+              ],
             ),
           )
         else
