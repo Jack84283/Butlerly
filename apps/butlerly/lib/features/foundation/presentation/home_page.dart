@@ -875,78 +875,78 @@ class _HomeSummaryCard extends StatelessWidget {
         else
           summaryTitle,
         const SizedBox(height: ButlerlySpacing.small),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final metrics = [
-                (
-                  key: const ValueKey('home-summary-metric-income'),
-                  tileKey: const ValueKey('home-summary-inner-income'),
-                  label: context.l10n.text('income'),
-                  value: model?.income,
-                  comparison: model?.incomeComparison,
-                  icon: Icons.arrow_upward,
-                  color: context.designTokens.homeColors.income,
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final metrics = [
+              (
+                key: const ValueKey('home-summary-metric-income'),
+                tileKey: const ValueKey('home-summary-inner-income'),
+                label: context.l10n.text('income'),
+                value: model?.income,
+                comparison: model?.incomeComparison,
+                icon: Icons.arrow_upward,
+                color: context.designTokens.homeColors.income,
+              ),
+              (
+                key: const ValueKey('home-summary-metric-spending'),
+                tileKey: const ValueKey('home-summary-inner-spending'),
+                label: context.l10n.text('spending'),
+                value: model?.spending,
+                comparison: model?.spendingComparison,
+                icon: Icons.arrow_downward,
+                color: context.designTokens.homeColors.spending,
+              ),
+              (
+                key: const ValueKey('home-summary-metric-net-position'),
+                tileKey: const ValueKey('home-summary-inner-net-position'),
+                label: context.l10n.text('netCashFlow'),
+                value: model?.net,
+                comparison: model?.netComparison,
+                icon: Icons.show_chart,
+                color: context.designTokens.homeColors.net,
+              ),
+            ];
+            final cards = [
+              for (final metric in metrics)
+                _DeviceDesktopSummaryMetric(
+                  key: metric.tileKey,
+                  titleKey: metric.key,
+                  label: metric.label,
+                  amount:
+                      metric.value == null ||
+                          metric.value!.availability ==
+                              AnalysisDataAvailability.insufficient
+                      ? showMissingValuesAsZero
+                            ? localizedCompactMoney(
+                                context,
+                                '0',
+                                baseCurrency?.value ?? 'USD',
+                              )
+                            : '—'
+                      : metric.value!.availability ==
+                            AnalysisDataAvailability.empty
+                      ? localizedCompactMoney(
+                          context,
+                          '0',
+                          baseCurrency?.value ?? 'USD',
+                        )
+                      : _homeMoney(context, metric.value!),
+                  comparison: metric.comparison,
+                  icon: metric.icon,
+                  color: metric.color,
                 ),
-                (
-                  key: const ValueKey('home-summary-metric-spending'),
-                  tileKey: const ValueKey('home-summary-inner-spending'),
-                  label: context.l10n.text('spending'),
-                  value: model?.spending,
-                  comparison: model?.spendingComparison,
-                  icon: Icons.arrow_downward,
-                  color: context.designTokens.homeColors.spending,
-                ),
-                (
-                  key: const ValueKey('home-summary-metric-net-position'),
-                  tileKey: const ValueKey('home-summary-inner-net-position'),
-                  label: context.l10n.text('netCashFlow'),
-                  value: model?.net,
-                  comparison: model?.netComparison,
-                  icon: Icons.show_chart,
-                  color: context.designTokens.homeColors.net,
-                ),
-              ];
-              final cards = [
-                for (final metric in metrics)
-                  _DeviceDesktopSummaryMetric(
-                    key: metric.tileKey,
-                    titleKey: metric.key,
-                    label: metric.label,
-                    amount:
-                        metric.value == null ||
-                            metric.value!.availability ==
-                                AnalysisDataAvailability.insufficient
-                        ? showMissingValuesAsZero
-                              ? localizedCompactMoney(
-                                  context,
-                                  '0',
-                                  baseCurrency?.value ?? 'USD',
-                                )
-                              : '—'
-                        : metric.value!.availability ==
-                              AnalysisDataAvailability.empty
-                        ? localizedCompactMoney(
-                            context,
-                            '0',
-                            baseCurrency?.value ?? 'USD',
-                          )
-                        : _homeMoney(context, metric.value!),
-                    comparison: metric.comparison,
-                    icon: metric.icon,
-                    color: metric.color,
-                  ),
-              ];
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (var index = 0; index < cards.length; index++) ...[
-                    if (index > 0) const SizedBox(width: 8),
-                    Expanded(child: cards[index]),
-                  ],
+            ];
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var index = 0; index < cards.length; index++) ...[
+                  if (index > 0) const SizedBox(width: 8),
+                  Expanded(child: cards[index]),
                 ],
-              );
-            },
-          ),
+              ],
+            );
+          },
+        ),
         if (analysisUnavailable) ...[
           const SizedBox(height: ButlerlySpacing.standard),
           Text(
