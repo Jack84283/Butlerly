@@ -2,7 +2,7 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-/// Available offline payment-network icons, distinct from issuing banks.
+/// Recognized card networks and wallet providers, stored independently of banks.
 const cardPaymentNetworkLabels = <String, String>{
   'visa': 'Visa',
   'mastercard': 'Mastercard',
@@ -19,7 +19,7 @@ const walletPaymentProviderLabels = <String, String>{
   'googlePay': 'Google Pay',
 };
 
-/// Infers a network only from explicit words, never from card digits or bank.
+/// Only matches explicitly named networks, never an issuer or last-four digits.
 String? paymentNetworkFromText(String? input) {
   if (input == null || input.trim().isEmpty) return null;
   final normalized =
@@ -67,7 +67,7 @@ String paymentMarkFor(PaymentSource source) {
   return named ?? 'other';
 }
 
-/// Render the brand symbol only, with no background, border or surrounding card.
+/// No icon background, shape, outline or shadow: brand artwork only.
 class ButlerlyPaymentSourceIcon extends StatelessWidget {
   const ButlerlyPaymentSourceIcon({
     required this.source,
@@ -107,42 +107,38 @@ class ButlerlyPaymentMarkIcon extends StatelessWidget {
       'applePay': 'applepay',
       'googlePay': 'googlepay',
     };
-    final svg = svgNames[mark];
+    final name = svgNames[mark];
+    Widget symbol;
+    if (name != null) {
+      symbol = SvgPicture.asset(
+        'assets/icons/payment_sources/$name.svg',
+        fit: BoxFit.contain,
+      );
+    } else if (mark == 'cash') {
+      symbol = Center(
+        child: Text(
+          r'$',
+          style: TextStyle(
+            fontSize: size * .75,
+            height: 1,
+            fontWeight: FontWeight.w700,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+      );
+    } else {
+      symbol = Icon(
+        switch (mark) {
+          'account' => Icons.account_balance_outlined,
+          'wallet' => Icons.account_balance_wallet_outlined,
+          _ => Icons.credit_card_outlined,
+        },
+        size: size * .83,
+        color: Theme.of(context).colorScheme.onSurface,
+      );
+    }
     return ExcludeSemantics(
-      child: SizedBox.square(
-        dimension: size,
-        child: svg != null
-            ? SvgPicture.asset(
-                'assets/icons/payment_sources/$svg.svg',
-                fit: BoxFit.contain,
-              )
-            : mark == 'cash'
-            ? Center(
-                child: Text(
-                  r'
-      ),
-    );
-  }
-}
-,
-                  style: TextStyle(
-                    fontSize: size * .75,
-                    height: 1,
-                    fontWeight: FontWeight.w700,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                ),
-              )
-            : Icon(
-                switch (mark) {
-                  'account' => Icons.account_balance_outlined,
-                  'wallet' => Icons.account_balance_wallet_outlined,
-                  _ => Icons.credit_card_outlined,
-                },
-                size: size * .83,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-      ),
+      child: SizedBox.square(dimension: size, child: symbol),
     );
   }
 }
