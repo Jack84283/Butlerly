@@ -1,5 +1,6 @@
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
+import 'package:butlerly/features/desktop/presentation/desktop_transaction_table.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_date_label.dart';
@@ -30,6 +31,7 @@ class TransactionRecordList extends StatelessWidget {
     this.collapsibleMonthSections = false,
     this.monthSectionsAsCards = false,
     this.dashboardRowStyle = false,
+    this.desktopTableMode = false,
     this.wrapInCard = false,
     this.showDateInRows = false,
     this.supportingContentBuilder,
@@ -49,6 +51,7 @@ class TransactionRecordList extends StatelessWidget {
   final bool collapsibleMonthSections;
   final bool monthSectionsAsCards;
   final bool dashboardRowStyle;
+  final bool desktopTableMode;
   final bool wrapInCard;
   final bool showDateInRows;
   final Widget Function(BuildContext, TransactionDto)? supportingContentBuilder;
@@ -198,11 +201,19 @@ class TransactionRecordList extends StatelessWidget {
         if (monthSectionsAsCards)
           ButlerlyInsetTransactionCard(
             innerCardKey: ValueKey('transaction-month-inner-card-${entry.key}'),
-            child: ButlerlyTransactionList(
-              children: [
-                for (final transaction in entry.value) rows[transaction]!,
-              ],
-            ),
+            child: desktopTableMode
+                ? DesktopTransactionTable(
+                    transactions: entry.value,
+                    masterData: masterData,
+                    paymentSourceNames: paymentSourceNames,
+                    missingCategoryLabel: missingCategoryLabel,
+                    onTap: onTap,
+                  )
+                : ButlerlyTransactionList(
+                    children: [
+                      for (final transaction in entry.value) rows[transaction]!,
+                    ],
+                  ),
           )
         else
           ButlerlyTransactionList(
