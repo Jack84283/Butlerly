@@ -651,9 +651,7 @@ class _SearchPageState extends State<SearchPage>
       results: resultsPage,
       detail: desktop && _selectedTransaction != null && _finance != null
           ? DesktopTransactionPanel(
-              key: ValueKey(
-                'desktop-search-panel-${_selectedTransaction!.id}',
-              ),
+              key: ValueKey('desktop-search-panel-${_selectedTransaction!.id}'),
               finance: _finance!,
               transaction: _selectedTransaction!,
               onChanged: () {

@@ -179,9 +179,7 @@ void main() {
       find.byKey(const ValueKey('transaction-description-field')),
       'Panel coffee edited',
     );
-    await tester.tap(
-      find.byKey(const ValueKey('transaction-save-locally')),
-    );
+    await tester.tap(find.byKey(const ValueKey('transaction-save-locally')));
     await tester.pumpAndSettle();
     expect(find.text('Panel coffee edited'), findsWidgets);
     expect(

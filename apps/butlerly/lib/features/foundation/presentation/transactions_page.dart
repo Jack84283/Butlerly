@@ -631,7 +631,8 @@ class _DesktopTransactionPanelState extends State<DesktopTransactionPanel> {
       _editing = false;
       _changed = false;
       _savedTransaction = null;
-    } else if (oldWidget.transaction.updatedAt != widget.transaction.updatedAt) {
+    } else if (oldWidget.transaction.updatedAt !=
+        widget.transaction.updatedAt) {
       _savedTransaction = widget.transaction;
     }
   }
