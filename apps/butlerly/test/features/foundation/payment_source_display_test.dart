@@ -13,7 +13,6 @@ void main() {
       type: PaymentSourceType.card,
       lastFour: '8421',
     );
-
     expect(paymentSourceDisplayLabel(source), 'Chase Sapphire •••• 8421');
     expect(paymentSourceRequiresLastFour(source.type), isTrue);
     expect(paymentMarkFor(source), 'card');
@@ -26,23 +25,48 @@ void main() {
       type: PaymentSourceType.account,
       displayIdentity: 'Everyday Checking',
     );
-
     expect(paymentSourceDisplayLabel(source), 'Everyday Checking');
     expect(paymentSourceRequiresLastFour(source.type), isFalse);
   });
 
-  test('non-card source keeps a stored last four when one exists', () {
+  test('non-card source keeps stored last four when present', () {
     final source = PaymentSource(
       id: PaymentSourceId('debit-1'),
       name: 'Debit',
       type: PaymentSourceType.debitCard,
       lastFour: '1234',
     );
-
     expect(paymentSourceDisplayLabel(source), 'Debit •••• 1234');
   });
 
-  testWidgets('Payment icons are transparent SVGs with text cash fallback', (
+  test('explicit network and wallet/cash fallback resolve correctly', () {
+    final visa = PaymentSource(
+      id: PaymentSourceId('chase'),
+      name: 'Chase Sapphire',
+      type: PaymentSourceType.card,
+      issuer: 'Chase',
+      network: 'visa',
+      lastFour: '8421',
+    );
+    expect(paymentMarkFor(visa), 'visa');
+    expect(visa.archive().network, 'visa');
+    final venmo = PaymentSource(
+      id: PaymentSourceId('venmo'),
+      name: 'Venmo wallet',
+      type: PaymentSourceType.wallet,
+    );
+    expect(paymentMarkFor(venmo), 'venmo');
+    final cash = PaymentSource(
+      id: PaymentSourceId('cash'),
+      name: 'Cash',
+      type: PaymentSourceType.cash,
+    );
+    expect(paymentMarkFor(cash), 'cash');
+    expect(paymentNetworkFromText('AMEX'), 'americanExpress');
+    expect(paymentNetworkFromText('Capital One'), isNull);
+  });
+
+  testWidgets('renders transparent marks, cash and unknown fallback', (
     tester,
   ) async {
     final visa = PaymentSource(
@@ -57,8 +81,8 @@ void main() {
       type: PaymentSourceType.cash,
     );
     final other = PaymentSource(
-      id: PaymentSourceId('card'),
-      name: 'Unidentified',
+      id: PaymentSourceId('other'),
+      name: 'Unknown',
       type: PaymentSourceType.card,
     );
     await tester.pumpWidget(
@@ -74,74 +98,9 @@ void main() {
         ),
       ),
     );
-
     expect(find.byType(SvgPicture), findsOneWidget);
-    expect(find.text(r'
-    final visa = PaymentSource(
-      id: PaymentSourceId('chase'),
-      name: 'Chase Sapphire',
-      type: PaymentSourceType.card,
-      issuer: 'Chase',
-      network: 'visa',
-      lastFour: '8421',
-    );
-    expect(paymentMarkFor(visa), 'visa');
-    expect(visa.archive().network, 'visa');
-
-    final venmo = PaymentSource(
-      id: PaymentSourceId('venmo'),
-      name: 'Venmo wallet',
-      type: PaymentSourceType.wallet,
-    );
-    expect(paymentMarkFor(venmo), 'venmo');
-    expect(
-      paymentMarkFor(
-        PaymentSource(
-          id: PaymentSourceId('cash'),
-          name: 'Cash',
-          type: PaymentSourceType.cash,
-        ),
-      ),
-      'cash',
-    );
-    expect(paymentNetworkFromText('AMEX'), 'americanExpress');
-    expect(paymentNetworkFromText('Capital One'), isNull);
-  });
-}
-), findsOneWidget);
+    expect(find.text(r'$'), findsOneWidget);
     expect(find.byIcon(Icons.credit_card_outlined), findsOneWidget);
     expect(tester.takeException(), isNull);
-  });
-
-  test('explicit card network, wallet and cash marks are resolved', () {
-    final visa = PaymentSource(
-      id: PaymentSourceId('chase'),
-      name: 'Chase Sapphire',
-      type: PaymentSourceType.card,
-      issuer: 'Chase',
-      network: 'visa',
-      lastFour: '8421',
-    );
-    expect(paymentMarkFor(visa), 'visa');
-    expect(visa.archive().network, 'visa');
-
-    final venmo = PaymentSource(
-      id: PaymentSourceId('venmo'),
-      name: 'Venmo wallet',
-      type: PaymentSourceType.wallet,
-    );
-    expect(paymentMarkFor(venmo), 'venmo');
-    expect(
-      paymentMarkFor(
-        PaymentSource(
-          id: PaymentSourceId('cash'),
-          name: 'Cash',
-          type: PaymentSourceType.cash,
-        ),
-      ),
-      'cash',
-    );
-    expect(paymentNetworkFromText('AMEX'), 'americanExpress');
-    expect(paymentNetworkFromText('Capital One'), isNull);
   });
 }
