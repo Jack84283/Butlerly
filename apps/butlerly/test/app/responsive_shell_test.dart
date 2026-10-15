@@ -350,6 +350,42 @@ void main() {
     );
   });
 
+  testWidgets('Desktop Home shows greeting before month selector', (
+    tester,
+  ) async {
+    await _pumpAt(tester, const Size(1200, 800));
+
+    final greeting = find.byKey(const ValueKey('desktop-home-greeting'));
+    final month = find.byKey(const ValueKey('desktop-home-month-selector'));
+    final previous = find.byIcon(Icons.chevron_left);
+    final next = find.byIcon(Icons.chevron_right);
+    final search = find.byIcon(Icons.search);
+
+    expect(greeting, findsOneWidget);
+    expect(month, findsOneWidget);
+    expect(
+      tester.widget<Text>(greeting).textAlign,
+      TextAlign.start,
+    );
+    expect(
+      tester.getRect(greeting).right,
+      lessThanOrEqualTo(tester.getRect(previous).left),
+    );
+    expect(
+      tester.getRect(previous).right,
+      lessThanOrEqualTo(tester.getRect(month).left),
+    );
+    expect(
+      tester.getRect(month).right,
+      lessThanOrEqualTo(tester.getRect(next).left),
+    );
+    expect(
+      tester.getRect(next).right,
+      lessThan(tester.getRect(search).left),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Wide primary destinations share the same body surface', (
     tester,
   ) async {
