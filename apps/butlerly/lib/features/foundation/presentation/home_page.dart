@@ -1011,6 +1011,7 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
           ? context.designTokens.homeColors.onMetricMuted
           : context.designTokens.homeColors.onMetric,
       fontWeight: FontWeight.w600,
+      height: compact ? 1.1 : null,
     );
     return Container(
       decoration: BoxDecoration(
@@ -1047,7 +1048,7 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
           ),
           SizedBox(
             width: double.infinity,
-            height: 20,
+            height: compact ? 18 : 20,
             child: FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
@@ -1062,11 +1063,11 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
             ),
           ),
           SizedBox(
-            height: compact ? ButlerlySpacing.xxs : ButlerlySpacing.micro,
+            height: compact ? ButlerlySpacing.none : ButlerlySpacing.micro,
           ),
           SizedBox(
             width: double.infinity,
-            height: 28,
+            height: compact ? 24 : 28,
             child: FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
@@ -1082,7 +1083,7 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
             ),
           ),
           SizedBox(
-            height: compact ? ButlerlySpacing.xxs : ButlerlySpacing.micro,
+            height: compact ? ButlerlySpacing.none : ButlerlySpacing.micro,
           ),
           if (compact)
             SizedBox(
