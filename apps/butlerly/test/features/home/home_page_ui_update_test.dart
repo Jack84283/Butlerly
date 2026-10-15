@@ -297,9 +297,48 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('monthly summary uses the standard card surface in both themes', (
+  testWidgets('Compact monthly summary removes only its outer card', (
     tester,
   ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    for (final theme in [AppTheme.light, AppTheme.dark]) {
+      await tester.pumpWidget(_testApp(router, theme: theme));
+      await tester.pumpAndSettle();
+
+      final section = find.byKey(const ValueKey('home-summary-card'));
+      expect(section, findsOneWidget);
+      expect(tester.widget<Semantics>(section).container, isTrue);
+      expect(
+        find.descendant(of: section, matching: find.byType(ButlerlyCard)),
+        findsNothing,
+      );
+      final income = find.byKey(const ValueKey('home-summary-inner-income'));
+      final net = find.byKey(const ValueKey('home-summary-inner-net-position'));
+      expect(
+        tester.getTopLeft(income).dx,
+        closeTo(tester.getTopLeft(section).dx, 0.01),
+      );
+      expect(
+        tester.getTopRight(net).dx,
+        closeTo(tester.getTopRight(section).dx, 0.01),
+      );
+      final summaryTitle = tester.widget<Text>(find.text('Monthly summary'));
+      expect(summaryTitle.style?.fontSize, 16);
+    }
+  });
+
+  testWidgets('Medium and Wide monthly summary retain the outer card', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(900, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     for (final theme in [AppTheme.light, AppTheme.dark]) {
       await tester.pumpWidget(_testApp(router, theme: theme));
       await tester.pumpAndSettle();
@@ -357,8 +396,13 @@ void main() {
       expect(title, findsOneWidget);
       expect(
         tester.getTopLeft(title).dy - tester.getTopLeft(card).dy,
-        closeTo(ButlerlySpacing.cardPadding, 1.0),
-        reason: '${entry.title} should use the canonical card top inset',
+        closeTo(
+          entry.card == 'home-summary-card'
+              ? ButlerlySpacing.none
+              : ButlerlySpacing.cardPadding,
+          1.0,
+        ),
+        reason: '${entry.title} should use the canonical section top inset',
       );
     }
   });
