@@ -746,7 +746,7 @@ class _ReviewPageState extends State<ReviewPage> {
                                 groupByFinancialDate: true,
                                 collapsibleMonthSections: true,
                                 monthSectionsAsCards: true,
-                                              dashboardRowStyle: true,
+                                dashboardRowStyle: true,
                                 missingCategoryLabel: context.l10n.text(
                                   'uncategorized',
                                 ),
@@ -882,8 +882,7 @@ class _ReviewTransactionCardState extends State<_ReviewTransactionCard> {
                       child: TransactionRow(
                         transaction: transaction,
                         masterData:
-                            data?.presentation ??
-                            const TransactionMasterData(),
+                            data?.presentation ?? const TransactionMasterData(),
                         paymentSourceNames: {
                           for (final source
                               in data?.paymentSources ?? <PaymentSource>[])
