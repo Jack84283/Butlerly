@@ -759,8 +759,10 @@ void main() {
         find.byKey(ValueKey(entry.content)),
       );
       expect((content.children[1] as SizedBox).height, 4);
-      expect((content.children[3] as SizedBox).height, 2);
-      expect((content.children[5] as SizedBox).height, 2);
+      expect((content.children[2] as SizedBox).height, 18);
+      expect((content.children[3] as SizedBox).height, 0);
+      expect((content.children[4] as SizedBox).height, 24);
+      expect((content.children[5] as SizedBox).height, 0);
 
       final comparison = find.descendant(
         of: tile,
@@ -770,6 +772,7 @@ void main() {
       expect(text.softWrap, isTrue);
       expect(text.maxLines, isNull);
       expect(text.textAlign, TextAlign.center);
+      expect(text.style?.height, 1.1);
       expect(tester.getSize(comparison).height, greaterThan(20));
     }
     expect(tester.takeException(), isNull);
@@ -809,7 +812,9 @@ void main() {
       find.byKey(const ValueKey('home-summary-metric-income')),
     );
     expect((content.children[1] as SizedBox).height, 6);
+    expect((content.children[2] as SizedBox).height, 20);
     expect((content.children[3] as SizedBox).height, 4);
+    expect((content.children[4] as SizedBox).height, 28);
     expect((content.children[5] as SizedBox).height, 4);
     final comparison = find.descendant(
       of: tile,
