@@ -8,12 +8,14 @@ import 'package:flutter/material.dart';
 class ButlerlyInsetTransactionCard extends StatelessWidget {
   const ButlerlyInsetTransactionCard({
     required this.child,
+    this.innerCardKey,
     this.topInset = 0,
     this.bottomInset = 0,
     super.key,
   });
 
   final Widget child;
+  final Key? innerCardKey;
   final double topInset;
   final double bottomInset;
 
@@ -22,7 +24,7 @@ class ButlerlyInsetTransactionCard extends StatelessWidget {
     final gutter = context.designTokens.geometry.innerCardGutter;
     return Padding(
       padding: EdgeInsets.fromLTRB(gutter, topInset, gutter, bottomInset),
-      child: ButlerlyTransactionInnerCard(child: child),
+      child: ButlerlyTransactionInnerCard(key: innerCardKey, child: child),
     );
   }
 }
