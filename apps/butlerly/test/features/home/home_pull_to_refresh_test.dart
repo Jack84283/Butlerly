@@ -711,6 +711,109 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Compact summary metrics wrap comparison text and tighten gaps', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      _summaryTestApp(
+        homeSummaryForTest(
+          AnalysisOverview(
+            insightUnavailable: false,
+            trend: const [],
+            categories: const [],
+            qualityCount: 0,
+            qualityEvaluated: true,
+            qualityLimited: false,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    for (final entry in const [
+      (tile: 'home-summary-inner-income', content: 'home-summary-metric-income'),
+      (
+        tile: 'home-summary-inner-spending',
+        content: 'home-summary-metric-spending',
+      ),
+      (
+        tile: 'home-summary-inner-net-position',
+        content: 'home-summary-metric-net-position',
+      ),
+    ]) {
+      final tile = find.byKey(ValueKey(entry.tile));
+      final container = tester.widget<Container>(tile);
+      expect(
+        container.padding,
+        const EdgeInsets.fromLTRB(4, 8, 4, 4),
+      );
+
+      final content = tester.widget<Column>(find.byKey(ValueKey(entry.content)));
+      expect((content.children[1] as SizedBox).height, 4);
+      expect((content.children[3] as SizedBox).height, 2);
+      expect((content.children[5] as SizedBox).height, 2);
+
+      final comparison = find.descendant(
+        of: tile,
+        matching: find.text('Comparison unavailable'),
+      );
+      final text = tester.widget<Text>(comparison);
+      expect(text.softWrap, isTrue);
+      expect(text.maxLines, isNull);
+      expect(text.textAlign, TextAlign.center);
+      expect(tester.getSize(comparison).height, greaterThan(20));
+    }
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Medium summary metrics preserve their existing single-line layout', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(900, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      _summaryTestApp(
+        homeSummaryForTest(
+          AnalysisOverview(
+            insightUnavailable: false,
+            trend: const [],
+            categories: const [],
+            qualityCount: 0,
+            qualityEvaluated: true,
+            qualityLimited: false,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final tile = find.byKey(const ValueKey('home-summary-inner-income'));
+    expect(
+      tester.widget<Container>(tile).padding,
+      const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+    );
+    final content = tester.widget<Column>(
+      find.byKey(const ValueKey('home-summary-metric-income')),
+    );
+    expect((content.children[1] as SizedBox).height, 6);
+    expect((content.children[3] as SizedBox).height, 4);
+    expect((content.children[5] as SizedBox).height, 4);
+    final comparison = find.descendant(
+      of: tile,
+      matching: find.text('Comparison unavailable'),
+    );
+    expect(tester.widget<Text>(comparison).maxLines, 1);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Home Summary renders empty sum metrics as zero', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
