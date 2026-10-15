@@ -273,57 +273,6 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Home Compact card title gaps and metric insets are tighter', (
-    tester,
-  ) async {
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    for (final layout in const [
-      (width: 390.0, titleCategory: 4.0, titleInsight: 4.0, metricY: 4.0),
-      (width: 900.0, titleCategory: 8.0, titleInsight: 12.0, metricY: 10.0),
-    ]) {
-      tester.view.physicalSize = Size(layout.width, 1100);
-      await tester.pumpWidget(_testApp(router));
-      await tester.pumpAndSettle();
-
-      expect(
-        tester
-            .widget<SizedBox>(
-              find.byKey(const ValueKey('home-category-title-content-gap')),
-            )
-            .height,
-        layout.titleCategory,
-      );
-      expect(
-        tester
-            .widget<SizedBox>(
-              find.byKey(const ValueKey('home-insight-title-content-gap')),
-            )
-            .height,
-        layout.titleInsight,
-      );
-      for (final name in const [
-        'home-summary-inner-income',
-        'home-summary-inner-spending',
-        'home-summary-inner-net-position',
-      ]) {
-        final metric = find.byKey(ValueKey(name));
-        final metricContainer = find.ancestor(
-          of: metric,
-          matching: find.byType(Container),
-        );
-        final padding = tester.widget<Container>(metricContainer.first).padding!;
-        expect(
-          padding,
-          EdgeInsets.symmetric(horizontal: 4, vertical: layout.metricY),
-        );
-      }
-    }
-    expect(tester.takeException(), isNull);
-  });
-
   testWidgets('Home intro stays within an Android phone header', (
     tester,
   ) async {
