@@ -310,12 +310,15 @@ void main() {
         'home-summary-inner-net-position',
       ]) {
         final metric = find.byKey(ValueKey(name));
-        final metricContainer = find.descendant(
+        final metricContainer = find.ancestor(
           of: metric,
           matching: find.byType(Container),
         );
         final padding = tester.widget<Container>(metricContainer.first).padding!;
-        expect(padding, EdgeInsets.symmetric(horizontal: 4, vertical: layout.metricY));
+        expect(
+          padding,
+          EdgeInsets.symmetric(horizontal: 4, vertical: layout.metricY),
+        );
       }
     }
     expect(tester.takeException(), isNull);
