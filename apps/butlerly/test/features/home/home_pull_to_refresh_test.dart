@@ -750,7 +750,9 @@ void main() {
       ),
     ]) {
       final tile = find.byKey(ValueKey(entry.tile));
-      final container = tester.widget<Container>(tile);
+      final container = tester.widget<Container>(
+        find.descendant(of: tile, matching: find.byType(Container)).first,
+      );
       expect(container.padding, const EdgeInsets.fromLTRB(4, 8, 4, 4));
 
       final content = tester.widget<Column>(
@@ -797,7 +799,11 @@ void main() {
 
     final tile = find.byKey(const ValueKey('home-summary-inner-income'));
     expect(
-      tester.widget<Container>(tile).padding,
+      tester
+          .widget<Container>(
+            find.descendant(of: tile, matching: find.byType(Container)).first,
+          )
+          .padding,
       const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
     );
     final content = tester.widget<Column>(
