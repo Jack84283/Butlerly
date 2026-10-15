@@ -154,7 +154,7 @@ class DesktopTransactionTable extends StatelessWidget {
                     Expanded(
                       child: _rowText(
                         context,
-                        showSource ? sourceLabel : '—',
+                        sourceLabel ?? '—',
                       ),
                     ),
                   ],
