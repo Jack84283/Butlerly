@@ -1,3 +1,4 @@
+import 'package:butlerly/design_system/theme/butlerly_responsive_design_tokens.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
@@ -54,7 +55,7 @@ abstract final class ButlerlyTransactionItemTokens {
 extension ButlerlyTransactionItemStyles on BuildContext {
   TextStyle get transactionItemAmount {
     final base = Theme.of(this).textTheme.titleMedium!;
-    return ButlerlyTypography.denseRowAmount(base).copyWith(
+    return designTokens.transactionTypography.amountStyle(base).copyWith(
       color: colors.primaryText,
       fontFamily: base.fontFamily,
       fontFamilyFallback: base.fontFamilyFallback,
@@ -63,15 +64,15 @@ extension ButlerlyTransactionItemStyles on BuildContext {
 
   TextStyle get transactionItemDate =>
       Theme.of(this).textTheme.bodyMedium!.copyWith(
-        fontSize: ButlerlyTransactionItemTokens.metadataFontSize,
-        height: ButlerlyTransactionItemTokens.metadataLineHeight,
+        fontSize: designTokens.transactionTypography.metadata,
+        height: designTokens.transactionTypography.metadataLineHeight,
         fontWeight: FontWeight.w400,
         color: colors.secondaryText,
       );
 
   TextStyle get transactionItemDescription {
     final base = Theme.of(this).textTheme.bodyMedium!;
-    return ButlerlyTypography.denseRowTitle(base).copyWith(
+    return designTokens.transactionTypography.titleStyle(base).copyWith(
       color: colors.primaryText,
       fontFamily: base.fontFamily,
       fontFamilyFallback: base.fontFamilyFallback,
@@ -80,8 +81,8 @@ extension ButlerlyTransactionItemStyles on BuildContext {
 
   TextStyle get transactionItemMetadata =>
       Theme.of(this).textTheme.bodyMedium!.copyWith(
-        fontSize: ButlerlyTransactionItemTokens.metadataFontSize,
-        height: ButlerlyTransactionItemTokens.metadataLineHeight,
+        fontSize: designTokens.transactionTypography.metadata,
+        height: designTokens.transactionTypography.metadataLineHeight,
         fontWeight: FontWeight.w400,
         color: colors.secondaryText,
       );
