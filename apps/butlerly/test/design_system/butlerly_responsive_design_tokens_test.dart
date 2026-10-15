@@ -36,8 +36,8 @@ void main() {
       expect(spacing.pageGutter, ButlerlySize.contentGutter);
       expect(spacing.cardPadding, ButlerlySpacing.cardPadding);
       expect(spacing.cardGap, ButlerlySpacing.cardGap);
-      expect(spacing.innerCardGutter, 12);
-      expect(spacing.innerCardPadding, 12);
+      expect(spacing.innerCardGutter, 8);
+      expect(spacing.innerCardPadding, 4);
     }
   });
 
