@@ -1,6 +1,12 @@
+import 'package:butlerly/app/theme/app_theme.dart';
+import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/insights/presentation/insight_grouped_list.dart';
+import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -131,6 +137,57 @@ void main() {
         ),
       ),
     );
+  });
+
+  testWidgets('Insights group cards use standard shared padding', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: InsightGroupedList(
+              results: [
+                _insight(RuleGrouping.category),
+                _insight(RuleGrouping.subcategory),
+                _insight(RuleGrouping.merchant),
+              ],
+              visualizationResults: const [],
+              masterData: const TransactionMasterData(),
+              canViewTransactions: (_) => false,
+              onViewTransactions: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final outerCards = tester
+        .widgetList<ButlerlyCard>(find.byType(ButlerlyCard))
+        .where((card) => card.semanticLabel != null)
+        .toList();
+    expect(outerCards, hasLength(3));
+    for (final card in outerCards) {
+      expect(
+        card.padding,
+        const EdgeInsets.all(ButlerlySpacing.cardPadding),
+      );
+    }
+    expect(tester.takeException(), isNull);
   });
 
   test('recognizes an all-positive fallback group', () {
