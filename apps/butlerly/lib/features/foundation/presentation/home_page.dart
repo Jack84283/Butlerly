@@ -1982,10 +1982,10 @@ class _HomeRecentActivity extends StatelessWidget {
           const _HomeEmptyTransactions()
         else
           Padding(
-            padding: const EdgeInsets.fromLTRB(
-              ButlerlySpacing.compact,
+            padding: EdgeInsets.fromLTRB(
+              context.designTokens.geometry.innerCardGutter,
               ButlerlySpacing.none,
-              ButlerlySpacing.compact,
+              context.designTokens.geometry.innerCardGutter,
               ButlerlySpacing.micro,
             ),
             child: Transform.translate(
