@@ -41,35 +41,38 @@ void main() {
     }
   });
 
-  test('Transaction row scale varies by mode without shrinking touch targets', () {
-    final compact = ButlerlyTransactionTypographyTokens.forMode(
-      ButlerlyLayoutMode.compact,
-    );
-    final medium = ButlerlyTransactionTypographyTokens.forMode(
-      ButlerlyLayoutMode.medium,
-    );
-    final wide = ButlerlyTransactionTypographyTokens.forMode(
-      ButlerlyLayoutMode.wide,
-    );
+  test(
+    'Transaction row scale varies by mode without shrinking touch targets',
+    () {
+      final compact = ButlerlyTransactionTypographyTokens.forMode(
+        ButlerlyLayoutMode.compact,
+      );
+      final medium = ButlerlyTransactionTypographyTokens.forMode(
+        ButlerlyLayoutMode.medium,
+      );
+      final wide = ButlerlyTransactionTypographyTokens.forMode(
+        ButlerlyLayoutMode.wide,
+      );
 
-    expect(compact.title, 14);
-    expect(compact.amount, 14);
-    expect(compact.metadata, 13);
-    expect(compact.badge, 11);
-    expect(medium.title, 15);
-    expect(medium.amount, 15);
-    expect(medium.metadata, 14);
-    expect(medium.badge, 12);
-    expect(wide.title, medium.title);
+      expect(compact.title, 14);
+      expect(compact.amount, 14);
+      expect(compact.metadata, 13);
+      expect(compact.badge, 11);
+      expect(medium.title, 15);
+      expect(medium.amount, 15);
+      expect(medium.metadata, 14);
+      expect(medium.badge, 12);
+      expect(wide.title, medium.title);
 
-    for (final mode in ButlerlyLayoutMode.values) {
-      final geometry = ButlerlyTransactionGeometryTokens.forMode(mode);
-      expect(geometry.horizontalInset, 8);
-      expect(geometry.verticalPadding, 12);
-      expect(geometry.dividerInset, 8);
-      expect(geometry.minimumRowHeight, 72);
-    }
-  });
+      for (final mode in ButlerlyLayoutMode.values) {
+        final geometry = ButlerlyTransactionGeometryTokens.forMode(mode);
+        expect(geometry.horizontalInset, 8);
+        expect(geometry.verticalPadding, 12);
+        expect(geometry.dividerInset, 8);
+        expect(geometry.minimumRowHeight, 72);
+      }
+    },
+  );
 
   testWidgets('Resolved design uses the active light/dark palette', (
     tester,
