@@ -1,4 +1,3 @@
-import 'package:butlerly/design_system/theme/butlerly_responsive_design_tokens.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
@@ -55,38 +54,34 @@ abstract final class ButlerlyTransactionItemTokens {
 extension ButlerlyTransactionItemStyles on BuildContext {
   TextStyle get transactionItemAmount {
     final base = Theme.of(this).textTheme.titleMedium!;
-    return designTokens.transactionTypography
-        .amountStyle(base)
-        .copyWith(
-          color: colors.primaryText,
-          fontFamily: base.fontFamily,
-          fontFamilyFallback: base.fontFamilyFallback,
-        );
+    return ButlerlyTypography.denseRowAmount(base).copyWith(
+      color: colors.primaryText,
+      fontFamily: base.fontFamily,
+      fontFamilyFallback: base.fontFamilyFallback,
+    );
   }
 
   TextStyle get transactionItemDate =>
       Theme.of(this).textTheme.bodyMedium!.copyWith(
-        fontSize: designTokens.transactionTypography.metadata,
-        height: designTokens.transactionTypography.metadataLineHeight,
+        fontSize: ButlerlyTransactionItemTokens.metadataFontSize,
+        height: ButlerlyTransactionItemTokens.metadataLineHeight,
         fontWeight: FontWeight.w400,
         color: colors.secondaryText,
       );
 
   TextStyle get transactionItemDescription {
     final base = Theme.of(this).textTheme.bodyMedium!;
-    return designTokens.transactionTypography
-        .titleStyle(base)
-        .copyWith(
-          color: colors.primaryText,
-          fontFamily: base.fontFamily,
-          fontFamilyFallback: base.fontFamilyFallback,
-        );
+    return ButlerlyTypography.denseRowTitle(base).copyWith(
+      color: colors.primaryText,
+      fontFamily: base.fontFamily,
+      fontFamilyFallback: base.fontFamilyFallback,
+    );
   }
 
   TextStyle get transactionItemMetadata =>
       Theme.of(this).textTheme.bodyMedium!.copyWith(
-        fontSize: designTokens.transactionTypography.metadata,
-        height: designTokens.transactionTypography.metadataLineHeight,
+        fontSize: ButlerlyTransactionItemTokens.metadataFontSize,
+        height: ButlerlyTransactionItemTokens.metadataLineHeight,
         fontWeight: FontWeight.w400,
         color: colors.secondaryText,
       );
