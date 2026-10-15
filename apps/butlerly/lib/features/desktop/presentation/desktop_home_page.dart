@@ -775,12 +775,16 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                                     Expanded(
                                                       flex: 2,
                                                       child: _DesktopPaymentSourceCell(
-                                                        name: _masterData?.paymentSourceName(
-                                                          transaction.paymentSourceId,
-                                                        ),
-                                                        mark: _masterData?.paymentSourceMark(
-                                                          transaction.paymentSourceId,
-                                                        ),
+                                                        name: _masterData
+                                                            ?.paymentSourceName(
+                                                              transaction
+                                                                  .paymentSourceId,
+                                                            ),
+                                                        mark: _masterData
+                                                            ?.paymentSourceMark(
+                                                              transaction
+                                                                  .paymentSourceId,
+                                                            ),
                                                       ),
                                                     ),
                                                     SizedBox(
@@ -1572,11 +1576,7 @@ class _DesktopPaymentSourceCell extends StatelessWidget {
         const SizedBox(width: ButlerlySpacing.micro),
       ],
       Expanded(
-        child: Text(
-          name ?? '—',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
+        child: Text(name ?? '—', maxLines: 1, overflow: TextOverflow.ellipsis),
       ),
     ],
   );

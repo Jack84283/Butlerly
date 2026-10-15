@@ -12,9 +12,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('payment marks use responsive metadata lines', (
-    tester,
-  ) async {
+  testWidgets('payment marks use responsive metadata lines', (tester) async {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -203,9 +201,7 @@ void main() {
     expect(find.text('Sep 2, 2026'), findsOneWidget);
     expect(
       tester.getTopLeft(find.text('Sep 2, 2026')).dx,
-      tester
-          .getTopLeft(find.text('Groceries · Supermarket'))
-          .dx,
+      tester.getTopLeft(find.text('Groceries · Supermarket')).dx,
     );
     expect(find.byIcon(Icons.arrow_downward_rounded), findsNothing);
     expect(
