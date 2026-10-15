@@ -210,7 +210,7 @@ void main() {
       summaryTitle.style?.fontFamily,
       isNot(ButlerlyTypography.editorialFontFamily),
     );
-    expect(summaryTitle.style?.fontSize, 16);
+    expect(summaryTitle.style?.fontSize, 14);
     final summaryAmount = tester.widget<Text>(
       find.descendant(
         of: find.byKey(const ValueKey('home-summary-card')),
@@ -221,7 +221,7 @@ void main() {
       summaryAmount.style?.fontFamily,
       isNot(ButlerlyTypography.editorialFontFamily),
     );
-    expect(summaryAmount.style?.fontSize, 24);
+    expect(summaryAmount.style?.fontSize, 20);
     expect(summaryAmount.style?.fontWeight, FontWeight.w800);
     expect(summaryAmount.style?.color, Colors.white);
     expect(find.byKey(const ValueKey('home-attention-card')), findsOneWidget);
@@ -1161,9 +1161,9 @@ void main() {
 
     final amount = tester.widget<Text>(find.text(r'$1,234,567.89'));
     final percentage = tester.widget<Text>(find.text('25%'));
-    expect(amount.style?.fontSize, 14);
+    expect(amount.style?.fontSize, 13);
     expect(amount.style?.fontWeight, FontWeight.w600);
-    expect(percentage.style?.fontSize, 13);
+    expect(percentage.style?.fontSize, 12);
     expect(percentage.style?.fontWeight, FontWeight.w400);
   });
 
