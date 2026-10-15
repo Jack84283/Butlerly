@@ -12,12 +12,14 @@ class ButlerlyResponsiveDesignTokens {
     required this.mode,
     required this.colors,
     required this.homeTypography,
+    required this.homeColors,
     required this.geometry,
   });
 
   final ButlerlyLayoutMode mode;
   final ButlerlySemanticColors colors;
   final ButlerlyHomeTypographyTokens homeTypography;
+  final ButlerlyHomeColorTokens homeColors;
   final ButlerlyGeometryTokens geometry;
 
   static ButlerlyResponsiveDesignTokens of(BuildContext context) {
@@ -42,6 +44,7 @@ class ButlerlyResponsiveDesignTokens {
     mode: mode,
     colors: colors,
     homeTypography: ButlerlyHomeTypographyTokens.forMode(mode),
+    homeColors: ButlerlyHomeColorTokens.forMode(mode),
     geometry: ButlerlyGeometryTokens.forMode(mode),
   );
 }
@@ -166,6 +169,37 @@ class ButlerlyHomeTypographyTokens {
 
   TextStyle reviewSubtitle(TextStyle base) =>
       ButlerlyTypography.rowMetadata(base).copyWith(fontSize: attentionSubtitle);
+}
+
+/// Shared Home financial accent and on-tint colors. The same semantic
+/// accents work in light and dark themes; surface/text colors come from the
+/// current ButlerlySemanticColors palette in the resolved design tokens.
+@immutable
+class ButlerlyHomeColorTokens {
+  const ButlerlyHomeColorTokens({
+    required this.income,
+    required this.spending,
+    required this.net,
+    required this.onMetric,
+    required this.onMetricMuted,
+  });
+
+  final Color income;
+  final Color spending;
+  final Color net;
+  final Color onMetric;
+  final Color onMetricMuted;
+
+  static const standard = ButlerlyHomeColorTokens(
+    income: Color(0xFF009B61),
+    spending: Color(0xFFE24247),
+    net: Color(0xFF1769E8),
+    onMetric: Colors.white,
+    onMetricMuted: Colors.white70,
+  );
+
+  static ButlerlyHomeColorTokens forMode(ButlerlyLayoutMode mode) =>
+      standard;
 }
 
 /// Semantic geometry for pages and reusable components. Geometry can vary by
