@@ -10,7 +10,6 @@ import 'package:butlerly/design_system/components/butlerly_transaction_inner_car
 import 'package:butlerly/design_system/theme/butlerly_responsive_design_tokens.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
-import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_model.dart';
@@ -1993,33 +1992,27 @@ class _HomeRecentActivity extends StatelessWidget {
               offset: const Offset(0, -ButlerlySpacing.micro),
               child: ButlerlyTransactionInnerCard(
                 key: const ValueKey('home-recent-transactions-inner-card'),
-                child: ButlerlyTransactionTypographyScope(
-                  typography: context
-                      .designTokens
-                      .homeTypography
-                      .recentTransactionTypography,
-                  child: ButlerlyTransactionList(
-                    children: [
-                      for (var index = 0; index < transactions.length; index++)
-                        TransactionRow(
-                          key: ValueKey(
-                            'home-recent-transaction-${transactions[index].id}',
-                          ),
-                          transaction: transactions[index],
-                          masterData: masterData,
-                          missingCategoryLabel: context.l10n.text(
-                            'uncategorized',
-                          ),
-                          showDate: true,
-                          showCategoryPill: true,
-                          compactMoney: true,
-                          compactSpacing: index == 0,
-                          showNavigationIndicator: false,
-                          variant: ButlerlyTransactionRowVariant.dashboard,
-                          onTap: () => onTap(transactions[index]),
+                child: ButlerlyTransactionList(
+                  children: [
+                    for (var index = 0; index < transactions.length; index++)
+                      TransactionRow(
+                        key: ValueKey(
+                          'home-recent-transaction-${transactions[index].id}',
                         ),
-                    ],
-                  ),
+                        transaction: transactions[index],
+                        masterData: masterData,
+                        missingCategoryLabel: context.l10n.text(
+                          'uncategorized',
+                        ),
+                        showDate: true,
+                        showCategoryPill: true,
+                        compactMoney: true,
+                        compactSpacing: index == 0,
+                        showNavigationIndicator: false,
+                        variant: ButlerlyTransactionRowVariant.dashboard,
+                        onTap: () => onTap(transactions[index]),
+                      ),
+                  ],
                 ),
               ),
             ),
