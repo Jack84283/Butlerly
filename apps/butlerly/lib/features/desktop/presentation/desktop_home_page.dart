@@ -139,6 +139,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
         return Column(
           children: [
             Container(
+              key: const ValueKey('desktop-home-header'),
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: context.colors.background,
