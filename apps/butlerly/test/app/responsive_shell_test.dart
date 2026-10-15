@@ -211,6 +211,79 @@ void main() {
     );
   });
 
+  testWidgets(
+    'Android landscape cutout keeps the compact rail and expand button usable',
+    (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      await _pumpAt(tester, const Size(600, 900));
+      expect(find.byType(CompactPrimaryShell), findsOneWidget);
+
+      // Landscape system UI can reserve space on the left of Android displays.
+      // That inset must not consume the rail's fixed 72px touch targets.
+      tester.view.padding = const FakeViewPadding(left: 56);
+      addTearDown(tester.view.resetPadding);
+      tester.view.physicalSize = const Size(900, 600);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(DesktopPrimaryShell), findsOneWidget);
+      final rail = find.byKey(const ValueKey('primary-wide-navigation'));
+      expect(tester.getRect(rail).left, 56);
+      expect(
+        tester.getSize(rail).width,
+        ButlerlySize.wideNavigationCollapsedWidth,
+      );
+      expect(
+        tester.getRect(find.byKey(const ValueKey('wide-collapsed-home'))).left,
+        greaterThanOrEqualTo(56),
+      );
+
+      await tester.tap(
+        find.byKey(const ValueKey('wide-collapsed-transactions')),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        appRouter.routeInformationProvider.value.uri.path,
+        '/transactions',
+      );
+
+      await tester.tap(find.byIcon(Icons.keyboard_double_arrow_right_rounded));
+      await tester.pumpAndSettle();
+      expect(
+        tester.getSize(rail).width,
+        ButlerlySize.wideNavigationExpandedWidth,
+      );
+      debugDefaultTargetPlatformOverride = null;
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'Android phone rotation preserves Medium bottom navigation and taps',
+    (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      await _pumpAt(tester, const Size(390, 900));
+      expect(find.byType(CompactPrimaryShell), findsOneWidget);
+
+      tester.view.physicalSize = const Size(900, 390);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MediumPrimaryShell), findsOneWidget);
+      expect(find.byType(DesktopPrimaryShell), findsNothing);
+      expect(
+        find.byKey(const ValueKey('primary-medium-navigation')),
+        findsOneWidget,
+      );
+      await tester.tap(find.bySemanticsLabel('Transactions'));
+      await tester.pumpAndSettle();
+      expect(
+        appRouter.routeInformationProvider.value.uri.path,
+        '/transactions',
+      );
+      debugDefaultTargetPlatformOverride = null;
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('Wide uses the left navigation shell', (tester) async {
     const size = Size(1200, 800);
     await _pumpAt(tester, size);

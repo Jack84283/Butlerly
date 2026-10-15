@@ -541,6 +541,47 @@ void main() {
     }
   });
 
+  testWidgets('Device spending trend shows thousands as lowercase k', (
+    tester,
+  ) async {
+    for (final locale in [
+      const Locale('en'),
+      const Locale('zh', 'CN'),
+      const Locale('es'),
+    ]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: locale,
+          theme: AppTheme.light,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: homeSpendingTrendForTest([
+              (month: DateTime(2026, 6), value: 2400, selected: false),
+              (month: DateTime(2026, 7), value: 3800, selected: true),
+              (month: DateTime(2026, 8), value: 1200, selected: false),
+            ]),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      const expectedLabels = ['4k', '3k', '2k', '1k', '0'];
+      for (var index = 0; index < expectedLabels.length; index++) {
+        final axisLabel = tester.widget<Text>(
+          find.byKey(ValueKey('home-spending-trend-axis-label-$index')),
+        );
+        expect(axisLabel.data, expectedLabels[index]);
+      }
+      expect(tester.takeException(), isNull);
+    }
+  });
+
   testWidgets(
     'Home trend range selector changes only trend points and keeps Home month',
     (tester) async {
@@ -674,10 +715,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('4K'), findsOneWidget);
-    expect(find.text('3K'), findsOneWidget);
-    expect(find.text('2K'), findsOneWidget);
-    expect(find.text('1K'), findsOneWidget);
+    expect(find.text('4k'), findsOneWidget);
+    expect(find.text('3k'), findsOneWidget);
+    expect(find.text('2k'), findsOneWidget);
+    expect(find.text('1k'), findsOneWidget);
     expect(find.text('0'), findsOneWidget);
   });
 

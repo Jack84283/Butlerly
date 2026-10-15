@@ -76,40 +76,44 @@ class _DesktopPrimaryShellState extends State<DesktopPrimaryShell> {
     final expanded = narrow ? _expandedAtNarrowWidths : _expandedAtWideWidths;
     _ensureMoreVisible(expanded);
     return Scaffold(
-      body: Row(
-        children: [
-          _WidePrimaryNavigation(
-            key: const ValueKey('primary-wide-navigation'),
-            expanded: expanded,
-            addExpanded: _addExpanded,
-            toolsExpanded: _toolsExpanded,
-            moreExpanded: _moreExpanded,
-            currentIndex: widget.currentIndex,
-            onToggleExpanded: () => setState(() {
-              if (narrow) {
-                _expandedAtNarrowWidths = !expanded;
-              } else {
-                _expandedAtWideWidths = !expanded;
-              }
-            }),
-            onToggleAdd: () => setState(() => _addExpanded = !_addExpanded),
-            onToggleTools: () =>
-                setState(() => _toolsExpanded = !_toolsExpanded),
-            onToggleMore: () => setState(() => _moreExpanded = !_moreExpanded),
-            moreNavigationKey: _moreNavigationKey,
-            onParentSelected: _selectParent,
-            onMoreSectionSelected: widget.onMoreSectionSelected,
-            onNavigate: _navigate,
-            onImport: widget.onImport,
-          ),
-          Expanded(
-            child: ColoredBox(
-              key: const ValueKey('primary-wide-body-surface'),
-              color: context.colors.background,
-              child: SafeArea(bottom: false, child: widget.body),
+      body: SafeArea(
+        bottom: false,
+        child: Row(
+          children: [
+            _WidePrimaryNavigation(
+              key: const ValueKey('primary-wide-navigation'),
+              expanded: expanded,
+              addExpanded: _addExpanded,
+              toolsExpanded: _toolsExpanded,
+              moreExpanded: _moreExpanded,
+              currentIndex: widget.currentIndex,
+              onToggleExpanded: () => setState(() {
+                if (narrow) {
+                  _expandedAtNarrowWidths = !expanded;
+                } else {
+                  _expandedAtWideWidths = !expanded;
+                }
+              }),
+              onToggleAdd: () => setState(() => _addExpanded = !_addExpanded),
+              onToggleTools: () =>
+                  setState(() => _toolsExpanded = !_toolsExpanded),
+              onToggleMore: () =>
+                  setState(() => _moreExpanded = !_moreExpanded),
+              moreNavigationKey: _moreNavigationKey,
+              onParentSelected: _selectParent,
+              onMoreSectionSelected: widget.onMoreSectionSelected,
+              onNavigate: _navigate,
+              onImport: widget.onImport,
             ),
-          ),
-        ],
+            Expanded(
+              child: ColoredBox(
+                key: const ValueKey('primary-wide-body-surface'),
+                color: context.colors.background,
+                child: SafeArea(bottom: false, child: widget.body),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

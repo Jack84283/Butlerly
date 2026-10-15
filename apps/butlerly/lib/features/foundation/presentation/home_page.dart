@@ -2320,8 +2320,12 @@ double _trendScaleMax(double maxValue) {
   return niceStep * magnitude * 4;
 }
 
-String _trendScaleLabel(String locale, double value) =>
-    NumberFormat.compact(locale: locale).format(value);
+String _trendScaleLabel(String locale, double value) {
+  if (value >= 1000 && value < 1000000) {
+    return '${NumberFormat.decimalPattern(locale).format(value / 1000)}k';
+  }
+  return NumberFormat.compact(locale: locale).format(value);
+}
 
 class _HomeUnavailableContent extends StatelessWidget {
   const _HomeUnavailableContent({
