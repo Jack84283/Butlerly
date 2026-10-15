@@ -387,10 +387,7 @@ void main() {
       tester.getRect(month).right,
       lessThanOrEqualTo(tester.getRect(next).left),
     );
-    expect(
-      tester.getRect(next).right,
-      lessThan(tester.getRect(search).left),
-    );
+    expect(tester.getRect(next).right, lessThan(tester.getRect(search).left));
     expect(tester.takeException(), isNull);
   });
 
