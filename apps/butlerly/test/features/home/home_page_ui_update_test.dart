@@ -270,6 +270,14 @@ void main() {
       tester.getTopLeft(spending).dy,
       closeTo(tester.getTopLeft(net).dy, 1),
     );
+    expect(
+      tester.getTopLeft(spending).dx - tester.getTopRight(income).dx,
+      closeTo(ButlerlySpacing.micro, 0.01),
+    );
+    expect(
+      tester.getTopLeft(net).dx - tester.getTopRight(spending).dx,
+      closeTo(ButlerlySpacing.micro, 0.01),
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -361,6 +369,19 @@ void main() {
       expect(
         theme.cardTheme.color,
         theme.extension<ButlerlySemanticColors>()!.cardSurface,
+      );
+      final income = find.byKey(const ValueKey('home-summary-inner-income'));
+      final spending = find.byKey(const ValueKey('home-summary-inner-spending'));
+      final net = find.byKey(
+        const ValueKey('home-summary-inner-net-position'),
+      );
+      expect(
+        tester.getTopLeft(spending).dx - tester.getTopRight(income).dx,
+        closeTo(ButlerlySpacing.compact, 0.01),
+      );
+      expect(
+        tester.getTopLeft(net).dx - tester.getTopRight(spending).dx,
+        closeTo(ButlerlySpacing.compact, 0.01),
       );
     }
   });
