@@ -10,7 +10,7 @@ import 'support/deployment_sql.dart';
 void main() {
   setUpAll(sqfliteFfiInit);
 
-  test('v15 to v16 retains existing cards and saves network metadata', () async {
+  test('v15 to v16 preserves cards and network', () async {
     final directory = await Directory.systemTemp.createTemp('butlerly-v16-');
     final path = '${directory.path}/legacy.db';
     final schema = await File('database/schema/v1.sql').readAsString();
