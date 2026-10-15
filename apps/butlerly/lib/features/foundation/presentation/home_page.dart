@@ -872,7 +872,7 @@ class _HomeSummaryCard extends StatelessWidget {
                   value: model?.income,
                   comparison: model?.incomeComparison,
                   icon: Icons.arrow_upward,
-                  color: const Color(0xFF009B61),
+                  color: context.designTokens.homeColors.income,
                 ),
                 (
                   key: const ValueKey('home-summary-metric-spending'),
@@ -881,7 +881,7 @@ class _HomeSummaryCard extends StatelessWidget {
                   value: model?.spending,
                   comparison: model?.spendingComparison,
                   icon: Icons.arrow_downward,
-                  color: const Color(0xFFE24247),
+                  color: context.designTokens.homeColors.spending,
                 ),
                 (
                   key: const ValueKey('home-summary-metric-net-position'),
@@ -890,7 +890,7 @@ class _HomeSummaryCard extends StatelessWidget {
                   value: model?.net,
                   comparison: model?.netComparison,
                   icon: Icons.show_chart,
-                  color: const Color(0xFF1769E8),
+                  color: context.designTokens.homeColors.net,
                 ),
               ];
               final cards = [
@@ -996,8 +996,14 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 16,
-            backgroundColor: Colors.white.withValues(alpha: .20),
-            child: Icon(icon, color: Colors.white, size: 18),
+            backgroundColor: context.designTokens.homeColors.onMetric.withValues(
+              alpha: .20,
+            ),
+            child: Icon(
+              icon,
+              color: context.designTokens.homeColors.onMetric,
+              size: 18,
+            ),
           ),
           const SizedBox(height: 6),
           SizedBox(
@@ -1011,7 +1017,7 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
                 style: TextStyle(
                   fontSize: context.designTokens.homeTypography.summaryLabel,
                   fontWeight: FontWeight.w700,
-                  color: Colors.white,
+                  color: context.designTokens.homeColors.onMetric,
                 ),
               ),
             ),
@@ -1028,7 +1034,7 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
                 style: TextStyle(
                   fontSize: context.designTokens.homeTypography.summaryAmount,
                   fontWeight: FontWeight.w800,
-                  color: Colors.white,
+                  color: context.designTokens.homeColors.onMetric,
                   letterSpacing: -.7,
                 ),
               ),
@@ -1044,7 +1050,9 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
                 comparisonText,
                 maxLines: 1,
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: percentValue == null ? Colors.white70 : Colors.white,
+                  color: percentValue == null
+                      ? context.designTokens.homeColors.onMetricMuted
+                      : context.designTokens.homeColors.onMetric,
                   fontWeight: FontWeight.w600,
                 ),
               ),
