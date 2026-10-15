@@ -331,6 +331,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
       _includeUndated = false;
       _from = null;
       _to = null;
+      _selectedTransactionId = null;
     });
     unawaited(_refresh());
   }
@@ -364,6 +365,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
             _includeUndated = value.includeUndated;
             _from = value.from;
             _to = value.to;
+            _selectedTransactionId = null;
           });
           unawaited(_refresh());
           Navigator.pop(sheetContext);
@@ -382,11 +384,11 @@ class _TransactionsPageState extends State<TransactionsPage> {
         searchFieldKey: const ValueKey('transactions-search-field'),
         controller: _search,
         activeFilterCount: _activeFilterCount,
-        onSearch: () => setState(() {}),
-        onChanged: (_) => setState(() {}),
+        onSearch: () => setState(() => _selectedTransactionId = null),
+        onChanged: (_) => setState(() => _selectedTransactionId = null),
         onClear: () {
           _search.clear();
-          setState(() {});
+          setState(() => _selectedTransactionId = null);
         },
         onFilter: _openFilters,
       );
