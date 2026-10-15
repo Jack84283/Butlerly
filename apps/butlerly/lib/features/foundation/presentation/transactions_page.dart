@@ -440,7 +440,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
         final selectedTransaction = visible
             .where((value) => value.id == _selectedTransactionId)
             .firstOrNull;
-        final desktop = ButlerlyLayout.mode(MediaQuery.sizeOf(context)) ==
+        final desktop =
+            ButlerlyLayout.mode(MediaQuery.sizeOf(context)) ==
             ButlerlyLayoutMode.wide;
         final resultsPage = ButlerlyPage(
           title: context.l10n.text('transactions'),

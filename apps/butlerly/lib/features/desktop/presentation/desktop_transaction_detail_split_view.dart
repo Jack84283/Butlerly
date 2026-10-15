@@ -26,7 +26,11 @@ class DesktopTransactionDetailSplitView extends StatelessWidget {
         children: [
           Expanded(child: results),
           if (detail case final selected?) ...[
-            VerticalDivider(width: 1, thickness: 1, color: context.colors.cardDivider),
+            VerticalDivider(
+              width: 1,
+              thickness: 1,
+              color: context.colors.cardDivider,
+            ),
             SizedBox(
               key: const ValueKey('desktop-transaction-detail-panel'),
               width: panelWidth,

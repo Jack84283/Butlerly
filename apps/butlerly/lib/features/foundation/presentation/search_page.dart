@@ -512,7 +512,8 @@ class _SearchPageState extends State<SearchPage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final desktop = ButlerlyLayout.mode(MediaQuery.sizeOf(context)) ==
+    final desktop =
+        ButlerlyLayout.mode(MediaQuery.sizeOf(context)) ==
         ButlerlyLayoutMode.wide;
     final resultsPage = ButlerlyPage(
       title: context.l10n.text('search'),
@@ -650,7 +651,9 @@ class _SearchPageState extends State<SearchPage>
       results: resultsPage,
       detail: desktop && _selectedTransaction != null && _finance != null
           ? TransactionDetailPage(
-              key: ValueKey('desktop-search-detail-${_selectedTransaction!.id}'),
+              key: ValueKey(
+                'desktop-search-detail-${_selectedTransaction!.id}',
+              ),
               finance: _finance!,
               transaction: _selectedTransaction!,
               onChanged: () {
