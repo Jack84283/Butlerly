@@ -118,7 +118,9 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    final row = find.byKey(const ValueKey('desktop-transaction-row-panel-transaction'));
+    final row = find.byKey(
+      const ValueKey('desktop-transaction-row-panel-transaction'),
+    );
     expect(row, findsOneWidget);
     expect(
       find.byKey(const ValueKey('desktop-transaction-detail-panel')),
@@ -131,11 +133,19 @@ void main() {
       find.byKey(const ValueKey('desktop-transaction-detail-panel')),
       findsOneWidget,
     );
-    expect(find.byKey(const ValueKey('transaction-detail-summary-card')), findsOneWidget);
-    expect(find.byKey(const ValueKey('transaction-detail-edit-action')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('transaction-detail-summary-card')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('transaction-detail-edit-action')),
+      findsOneWidget,
+    );
     expect(row, findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('transaction-detail-close-panel')));
+    await tester.tap(
+      find.byKey(const ValueKey('transaction-detail-close-panel')),
+    );
     await tester.pumpAndSettle();
     expect(
       find.byKey(const ValueKey('desktop-transaction-detail-panel')),
@@ -182,16 +192,33 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Search panel coffee'), findsOneWidget);
-    expect(find.byKey(const ValueKey('desktop-transaction-detail-panel')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('desktop-transaction-detail-panel')),
+      findsNothing,
+    );
 
     await tester.tap(find.text('Search panel coffee'));
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('desktop-transaction-detail-panel')), findsOneWidget);
-    expect(find.byKey(const ValueKey('transaction-detail-amount-card')), findsOneWidget);
-    expect(find.byKey(const ValueKey('search-pinned-controls')), findsOneWidget);
-    await tester.tap(find.byKey(const ValueKey('transaction-detail-close-panel')));
+    expect(
+      find.byKey(const ValueKey('desktop-transaction-detail-panel')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('transaction-detail-amount-card')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('search-pinned-controls')),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('transaction-detail-close-panel')),
+    );
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('desktop-transaction-detail-panel')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('desktop-transaction-detail-panel')),
+      findsNothing,
+    );
     expect(find.text('Search panel coffee'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
