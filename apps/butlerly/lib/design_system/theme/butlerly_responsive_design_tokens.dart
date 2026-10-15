@@ -269,25 +269,20 @@ class ButlerlyTransactionTypographyTokens {
 
   static const wide = medium;
 
-  static ButlerlyTransactionTypographyTokens forMode(
-    ButlerlyLayoutMode mode,
-  ) => switch (mode) {
-    ButlerlyLayoutMode.compact => compact,
-    ButlerlyLayoutMode.medium => medium,
-    ButlerlyLayoutMode.wide => wide,
-  };
+  static ButlerlyTransactionTypographyTokens forMode(ButlerlyLayoutMode mode) =>
+      switch (mode) {
+        ButlerlyLayoutMode.compact => compact,
+        ButlerlyLayoutMode.medium => medium,
+        ButlerlyLayoutMode.wide => wide,
+      };
 
-  TextStyle titleStyle(TextStyle base) =>
-      ButlerlyTypography.denseRowTitle(base).copyWith(
-        fontSize: title,
-        height: primaryLineHeight,
-      );
+  TextStyle titleStyle(TextStyle base) => ButlerlyTypography.denseRowTitle(
+    base,
+  ).copyWith(fontSize: title, height: primaryLineHeight);
 
-  TextStyle amountStyle(TextStyle base) =>
-      ButlerlyTypography.denseRowAmount(base).copyWith(
-        fontSize: amount,
-        height: primaryLineHeight,
-      );
+  TextStyle amountStyle(TextStyle base) => ButlerlyTypography.denseRowAmount(
+    base,
+  ).copyWith(fontSize: amount, height: primaryLineHeight);
 }
 
 /// Transaction-row geometry is deliberately stable between modes to preserve
@@ -330,13 +325,12 @@ class ButlerlyTransactionGeometryTokens {
   static const medium = compact;
   static const wide = compact;
 
-  static ButlerlyTransactionGeometryTokens forMode(
-    ButlerlyLayoutMode mode,
-  ) => switch (mode) {
-    ButlerlyLayoutMode.compact => compact,
-    ButlerlyLayoutMode.medium => medium,
-    ButlerlyLayoutMode.wide => wide,
-  };
+  static ButlerlyTransactionGeometryTokens forMode(ButlerlyLayoutMode mode) =>
+      switch (mode) {
+        ButlerlyLayoutMode.compact => compact,
+        ButlerlyLayoutMode.medium => medium,
+        ButlerlyLayoutMode.wide => wide,
+      };
 }
 
 /// Semantic geometry for pages and reusable components. Geometry can vary by
