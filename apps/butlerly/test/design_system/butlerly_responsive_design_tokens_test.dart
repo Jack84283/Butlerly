@@ -25,6 +25,8 @@ void main() {
     expect(medium.greeting, 24);
     expect(medium.cardTitle, 16);
     expect(medium.summaryAmount, 24);
+    expect(wide.greeting, 16);
+    expect(wide.cardTitle, medium.cardTitle);
     expect(wide.summaryAmount, medium.summaryAmount);
   });
 
