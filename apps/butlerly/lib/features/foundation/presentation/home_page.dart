@@ -8,6 +8,7 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/theme/butlerly_responsive_design_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
@@ -303,7 +304,7 @@ class _HomePageState extends State<HomePage> {
           analysisUnavailable: data.analysisUnavailable || overviewUnavailable,
           baseCurrency: data.baseCurrency,
         ),
-        const SizedBox(height: ButlerlySpacing.cardGap),
+        SizedBox(height: context.designTokens.geometry.cardGap),
         _HomeTrend(
           data: data,
           unavailable: overviewUnavailable,
@@ -311,7 +312,7 @@ class _HomePageState extends State<HomePage> {
           rangeCount: _trendMonthCount,
           onRangeChanged: () => _selectTrendRange(data),
         ),
-        const SizedBox(height: ButlerlySpacing.cardGap),
+        SizedBox(height: context.designTokens.geometry.cardGap),
         _CategorySummary(
           model: data.model,
           masterData: data.masterData,
@@ -321,7 +322,7 @@ class _HomePageState extends State<HomePage> {
                   _periodRoute('/analysis', period, currentMonth: currentMonth),
                 ),
         ),
-        const SizedBox(height: ButlerlySpacing.cardGap),
+        SizedBox(height: context.designTokens.geometry.cardGap),
         _AttentionSection(
           uncategorizedTransactionCount: data.uncategorizedTransactionCount,
           possibleDuplicateCount: data.possibleDuplicateCount,
@@ -334,7 +335,7 @@ class _HomePageState extends State<HomePage> {
           onRetry: _refresh,
           period: period,
         ),
-        const SizedBox(height: ButlerlySpacing.cardGap),
+        SizedBox(height: context.designTokens.geometry.cardGap),
         _HomeRecentActivity(
           transactions: data.transactions,
           masterData: data.masterData,
@@ -348,7 +349,7 @@ class _HomePageState extends State<HomePage> {
                   _periodRoute('/search', period, currentMonth: currentMonth),
                 ),
         ),
-        const SizedBox(height: ButlerlySpacing.cardGap),
+        SizedBox(height: context.designTokens.geometry.cardGap),
         _HomeInsightCard(
           insight: data.insight,
           masterData: data.masterData,
@@ -526,17 +527,17 @@ double _homeHeaderExtent(
   final direction = Directionality.of(context);
 
   final appStyle = ButlerlyTypography.editorialText(
-    ButlerlyTypography.pageHeroTitle(
+    context.designTokens.homeTypography.appTitle(
       textTheme.headlineLarge ?? const TextStyle(),
     ),
   );
-  final brandSubtitleStyle = ButlerlyTypography.cardSubtitle(
+  final brandSubtitleStyle = context.designTokens.homeTypography.subtitle(
     textTheme.bodySmall ?? const TextStyle(),
   );
-  final introStyle = ButlerlyTypography.cardSubtitle(
+  final introStyle = context.designTokens.homeTypography.subtitle(
     textTheme.bodySmall ?? const TextStyle(),
   );
-  final greetingStyle = ButlerlyTypography.homeGreetingTitle(
+  final greetingStyle = context.designTokens.homeTypography.greetingTitle(
     textTheme.headlineLarge ?? const TextStyle(),
   );
   final monthStyle = ButlerlyTypography.cardAction(
@@ -723,7 +724,7 @@ class _HomeHeader extends StatelessWidget {
             Text(
               context.l10n.text('appName'),
               style: ButlerlyTypography.editorialText(
-                ButlerlyTypography.pageHeroTitle(
+                context.designTokens.homeTypography.appTitle(
                   Theme.of(context).textTheme.headlineLarge ??
                       const TextStyle(),
                 ),
@@ -735,7 +736,7 @@ class _HomeHeader extends StatelessWidget {
               key: const ValueKey('home-brand-tagline'),
               maxLines: 1,
               softWrap: false,
-              style: ButlerlyTypography.cardSubtitle(
+              style: context.designTokens.homeTypography.subtitle(
                 Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
               ),
             ),
@@ -797,7 +798,7 @@ class _HomeHeader extends StatelessWidget {
               greetingKey: greetingKey,
               textKey: const ValueKey('home-greeting'),
               fitToWidth: true,
-              style: ButlerlyTypography.homeGreetingTitle(
+              style: context.designTokens.homeTypography.greetingTitle(
                 Theme.of(context).textTheme.headlineLarge ?? const TextStyle(),
               ),
             ),
@@ -805,7 +806,7 @@ class _HomeHeader extends StatelessWidget {
             Text(
               context.l10n.text('homeSubtitle', {'period': monthLabel}),
               key: const ValueKey('home-intro'),
-              style: ButlerlyTypography.cardSubtitle(
+              style: context.designTokens.homeTypography.subtitle(
                 Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
               ),
             ),
@@ -853,10 +854,10 @@ class _HomeSummaryCard extends StatelessWidget {
           ButlerlyCardHeader(
             title: context.l10n.text('monthlySummary'),
             subtitle: context.l10n.text('vsPreviousPeriod'),
-            titleStyle: ButlerlyTypography.compactCardTitle(
+            titleStyle: context.designTokens.homeTypography.sectionTitle(
               Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
             ),
-            subtitleStyle: ButlerlyTypography.cardSubtitle(
+            subtitleStyle: context.designTokens.homeTypography.subtitle(
               Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
             ),
           ),
@@ -937,7 +938,7 @@ class _HomeSummaryCard extends StatelessWidget {
             const SizedBox(height: ButlerlySpacing.standard),
             Text(
               context.l10n.text('analysisUnavailable'),
-              style: ButlerlyTypography.cardSubtitle(
+              style: context.designTokens.homeTypography.subtitle(
                 Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
               ).copyWith(color: context.colors.secondaryText),
             ),
@@ -1007,8 +1008,8 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
               child: Text(
                 label,
                 maxLines: 1,
-                style: const TextStyle(
-                  fontSize: 16,
+                style: TextStyle(
+                  fontSize: context.designTokens.homeTypography.summaryLabel,
                   fontWeight: FontWeight.w700,
                   color: Colors.white,
                 ),
@@ -1024,8 +1025,8 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
               child: Text(
                 amount,
                 maxLines: 1,
-                style: const TextStyle(
-                  fontSize: 24,
+                style: TextStyle(
+                  fontSize: context.designTokens.homeTypography.summaryAmount,
                   fontWeight: FontWeight.w800,
                   color: Colors.white,
                   letterSpacing: -.7,
@@ -1157,7 +1158,7 @@ class _SpendingTrend extends StatelessWidget {
                   padding: EdgeInsetsDirectional.only(end: largeText ? 0 : 132),
                   child: ButlerlyCardHeader(
                     title: context.l10n.text('spendingTrend'),
-                    titleStyle: ButlerlyTypography.compactCardTitle(
+                    titleStyle: context.designTokens.homeTypography.sectionTitle(
                       Theme.of(context).textTheme.titleLarge ??
                           const TextStyle(),
                     ),
@@ -1173,7 +1174,7 @@ class _SpendingTrend extends StatelessWidget {
                           ? 'analysisUnavailableBody'
                           : 'insufficientTrendData',
                     ),
-                    style: ButlerlyTypography.cardSubtitle(
+                    style: context.designTokens.homeTypography.subtitle(
                       Theme.of(context).textTheme.bodySmall ??
                           const TextStyle(),
                     ),
@@ -1188,7 +1189,7 @@ class _SpendingTrend extends StatelessWidget {
                       children: [
                         Text(
                           _homeMetricMoney(context, metric),
-                          style: ButlerlyTypography.metricValue(
+                          style: context.designTokens.homeTypography.trendValue(
                             Theme.of(context).textTheme.titleLarge ??
                                 const TextStyle(),
                           ),
@@ -1196,7 +1197,7 @@ class _SpendingTrend extends StatelessWidget {
                         if (comparisonText.isNotEmpty)
                           Text(
                             comparisonText,
-                            style: ButlerlyTypography.metricChange(
+                            style: context.designTokens.homeTypography.trendComparison(
                               Theme.of(context).textTheme.bodySmall ??
                                   const TextStyle(),
                             ).copyWith(color: context.colors.interactive),
@@ -1265,7 +1266,7 @@ class _HomeTrendPlot extends StatelessWidget {
                             'home-spending-trend-axis-label-$index',
                           ),
                           maxLines: 1,
-                          style: ButlerlyTypography.badgeLabel(
+                          style: context.designTokens.homeTypography.axisLabel(
                             Theme.of(context).textTheme.bodySmall ??
                                 const TextStyle(),
                           ).copyWith(color: context.colors.secondaryText),
@@ -1351,7 +1352,7 @@ class _HomeTrendPlot extends StatelessWidget {
                             maxLines: 1,
                             textAlign: TextAlign.center,
                             style:
-                                ButlerlyTypography.badgeLabel(
+                                context.designTokens.homeTypography.axisLabel(
                                   Theme.of(context).textTheme.bodySmall ??
                                       const TextStyle(),
                                 ).copyWith(
@@ -1401,7 +1402,7 @@ class _CategorySummary extends StatelessWidget {
         children: [
           ButlerlyCardHeader(
             title: context.l10n.text('topCategories'),
-            titleStyle: ButlerlyTypography.compactCardTitle(
+            titleStyle: context.designTokens.homeTypography.sectionTitle(
               Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
             ),
             action: _homeEllipsisAction(
@@ -1415,14 +1416,14 @@ class _CategorySummary extends StatelessWidget {
           if (model == null)
             Text(
               context.l10n.text('analysisUnavailableBody'),
-              style: ButlerlyTypography.cardSubtitle(
+              style: context.designTokens.homeTypography.subtitle(
                 Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
               ),
             )
           else if (categories.isEmpty)
             Text(
               context.l10n.text('noSpendingInPeriod'),
-              style: ButlerlyTypography.cardSubtitle(
+              style: context.designTokens.homeTypography.subtitle(
                 Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
               ),
             )
@@ -1502,14 +1503,14 @@ class _CategorySummaryItem extends StatelessWidget {
             metricUnavailable ? '—' : _homeMetricMoney(context, metric),
             textAlign: TextAlign.end,
             softWrap: true,
-            style: ButlerlyTypography.compactRowAmount(
+            style: context.designTokens.homeTypography.categoryAmount(
               Theme.of(context).textTheme.titleMedium ?? const TextStyle(),
             ),
           );
           final name = Text(
             label,
             softWrap: true,
-            style: ButlerlyTypography.compactRowTitle(
+            style: context.designTokens.homeTypography.categoryTitle(
               Theme.of(context).textTheme.bodyLarge ?? const TextStyle(),
             ),
           );
@@ -1526,7 +1527,7 @@ class _CategorySummaryItem extends StatelessWidget {
                           const SizedBox(width: ButlerlySpacing.compact),
                           Text(
                             percentage,
-                            style: ButlerlyTypography.compactRowMetadata(
+                            style: context.designTokens.homeTypography.categoryDetails(
                               Theme.of(context).textTheme.bodySmall ??
                                   const TextStyle(),
                             ),
@@ -1546,7 +1547,7 @@ class _CategorySummaryItem extends StatelessWidget {
                       const SizedBox(width: ButlerlySpacing.compact),
                       Text(
                         percentage,
-                        style: ButlerlyTypography.compactRowMetadata(
+                        style: context.designTokens.homeTypography.categoryDetails(
                           Theme.of(context).textTheme.bodySmall ??
                               const TextStyle(),
                         ),
@@ -1750,7 +1751,7 @@ class _AttentionSection extends StatelessWidget {
                 padding: const EdgeInsets.only(top: ButlerlySpacing.compact),
                 child: Text(
                   context.l10n.text('nothingNeedsAttentionBody'),
-                  style: ButlerlyTypography.rowMetadata(
+                  style: context.designTokens.homeTypography.reviewSubtitle(
                     Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
                   ),
                 ),
@@ -1788,7 +1789,7 @@ class _AttentionSection extends StatelessWidget {
                 child: ButlerlyCardHeader(
                   title: context.l10n.text('needsAttention'),
                   subtitle: context.l10n.text(subtitleKey),
-                  titleStyle: ButlerlyTypography.compactCardTitle(
+                  titleStyle: context.designTokens.homeTypography.sectionTitle(
                     Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
                   ),
                   action: _homeEllipsisAction(
@@ -1860,7 +1861,7 @@ class _AttentionRow extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: ButlerlyTypography.rowTitle(
+                      style: context.designTokens.homeTypography.reviewTitle(
                         Theme.of(context).textTheme.titleMedium ??
                             const TextStyle(),
                       ),
@@ -1868,7 +1869,7 @@ class _AttentionRow extends StatelessWidget {
                     const SizedBox(height: ButlerlySpacing.micro),
                     Text(
                       subtitle,
-                      style: ButlerlyTypography.rowMetadata(
+                      style: context.designTokens.homeTypography.reviewSubtitle(
                         Theme.of(context).textTheme.bodySmall ??
                             const TextStyle(),
                       ),
@@ -1929,7 +1930,7 @@ class _HomeRecentActivity extends StatelessWidget {
           ),
           child: ButlerlyCardHeader(
             title: context.l10n.text('recentTransactions'),
-            titleStyle: ButlerlyTypography.compactCardTitle(
+            titleStyle: context.designTokens.homeTypography.sectionTitle(
               Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
             ),
             action: _homeEllipsisAction(
@@ -2061,7 +2062,7 @@ class _HomeInsightCard extends StatelessWidget {
         children: [
           ButlerlyCardHeader(
             title: context.l10n.text('insights'),
-            titleStyle: ButlerlyTypography.compactCardTitle(
+            titleStyle: context.designTokens.homeTypography.sectionTitle(
               Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
             ),
             action: _homeEllipsisAction(
@@ -2103,7 +2104,7 @@ class _HomeInsightCard extends StatelessWidget {
                         children: [
                           Text(
                             preview.title,
-                            style: ButlerlyTypography.rowTitle(
+                            style: context.designTokens.homeTypography.reviewTitle(
                               Theme.of(context).textTheme.titleMedium ??
                                   const TextStyle(),
                             ),
@@ -2113,7 +2114,7 @@ class _HomeInsightCard extends StatelessWidget {
                             preview.description,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: ButlerlyTypography.rowMetadata(
+                            style: context.designTokens.homeTypography.reviewSubtitle(
                               Theme.of(context).textTheme.bodySmall ??
                                   const TextStyle(),
                             ),
@@ -2265,13 +2266,13 @@ class _HomeEmptyTransactions extends StatelessWidget {
             children: [
               Text(
                 context.l10n.text('noTransactions'),
-                style: ButlerlyTypography.rowTitle(
+                style: context.designTokens.homeTypography.reviewTitle(
                   Theme.of(context).textTheme.titleMedium ?? const TextStyle(),
                 ),
               ),
               Text(
                 context.l10n.text('noTransactionsBody'),
-                style: ButlerlyTypography.rowMetadata(
+                style: context.designTokens.homeTypography.reviewSubtitle(
                   Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
                 ),
               ),
@@ -2359,14 +2360,14 @@ class _HomeUnavailableContent extends StatelessWidget {
           children: [
             Text(
               context.l10n.text(titleKey),
-              style: ButlerlyTypography.rowTitle(
+              style: context.designTokens.homeTypography.reviewTitle(
                 Theme.of(context).textTheme.titleMedium ?? const TextStyle(),
               ),
             ),
             const SizedBox(height: ButlerlySpacing.compact),
             Text(
               context.l10n.text(bodyKey),
-              style: ButlerlyTypography.cardSubtitle(
+              style: context.designTokens.homeTypography.subtitle(
                 Theme.of(context).textTheme.bodyMedium ?? const TextStyle(),
               ),
             ),
