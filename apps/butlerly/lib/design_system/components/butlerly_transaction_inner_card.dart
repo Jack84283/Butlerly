@@ -1,6 +1,6 @@
 import 'package:butlerly/design_system/components/butlerly_components.dart';
-import 'package:butlerly/design_system/theme/butlerly_responsive_design_tokens.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:flutter/material.dart';
 
 /// Shared inset transaction-list surface used within a parent dashboard card.
@@ -15,7 +15,7 @@ class ButlerlyTransactionInnerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ButlerlyCard(
     color: context.colors.subtleSurface,
-    padding: EdgeInsets.all(context.designTokens.geometry.innerCardPadding),
+    padding: const EdgeInsets.all(ButlerlySpacing.micro),
     child: child,
   );
 }
