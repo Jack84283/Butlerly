@@ -1,5 +1,6 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/theme/butlerly_responsive_design_tokens.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_category_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -575,11 +576,11 @@ void main() {
 
     expect(
       tester.widget<Text>(find.text('1.00 USD')).style?.fontSize,
-      ButlerlyTransactionItemTokens.amountFontSize,
+      ButlerlyTransactionTypographyTokens.compact.amount,
     );
     expect(
       tester.widget<Text>(find.text('Description')).style?.fontSize,
-      ButlerlyTransactionItemTokens.titleFontSize,
+      ButlerlyTransactionTypographyTokens.compact.title,
     );
     expect(
       tester.widget<Text>(find.text('Description')).style?.fontWeight,
@@ -591,7 +592,7 @@ void main() {
     );
     expect(
       tester.widget<Text>(find.text('Metadata')).style?.fontSize,
-      ButlerlyTransactionItemTokens.metadataFontSize,
+      ButlerlyTransactionTypographyTokens.compact.metadata,
     );
     expect(
       ButlerlyTransactionItemTokens.horizontalInset,
