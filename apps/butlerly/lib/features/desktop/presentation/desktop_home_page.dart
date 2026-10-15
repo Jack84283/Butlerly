@@ -4,7 +4,6 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/components/butlerly_category_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
-import 'package:butlerly/design_system/theme/butlerly_responsive_design_tokens.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_category_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -209,7 +208,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                       maxLines: 1,
                       textAlign: TextAlign.end,
                       style: theme.textTheme.titleMedium?.copyWith(
-                        fontSize: context.designTokens.homeTypography.greeting,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -1039,6 +1037,7 @@ const double _desktopHomeSelectedMonthTrendTintOpacity = 1.0;
 const double _desktopHomeOtherMonthTrendTintOpacity = 0.35;
 const double _desktopHomeActionTintOpacity = 0.18;
 const TextStyle _desktopHomeCardTitleStyle = TextStyle(
+  fontSize: 16,
   fontWeight: FontWeight.w700,
 );
 const double _desktopHomeCardTitleTopInset = 10;
@@ -1093,8 +1092,6 @@ class _DesktopPanel extends StatelessWidget {
                       Text(
                         title,
                         style: _desktopHomeCardTitleStyle.copyWith(
-                          fontSize:
-                              context.designTokens.homeTypography.cardTitle,
                           color: context.colors.primaryText,
                         ),
                       ),
@@ -1150,12 +1147,11 @@ class _DesktopMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = context.designTokens.homeColors;
     final color = icon == Icons.arrow_upward
-        ? accent.income
+        ? const Color(0xFF009B61)
         : icon == Icons.arrow_downward
-        ? accent.spending
-        : accent.net;
+        ? const Color(0xFFE24247)
+        : const Color(0xFF1769E8);
     final fill = color.withValues(alpha: _desktopHomeTintOpacity);
     final percent = comparison?.percentageChange;
     final usable =
@@ -1184,13 +1180,8 @@ class _DesktopMetric extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 20,
-            backgroundColor: context.designTokens.homeColors.onMetric
-                .withValues(alpha: .20),
-            child: Icon(
-              icon,
-              color: context.designTokens.homeColors.onMetric,
-              size: 22,
-            ),
+            backgroundColor: Colors.white.withValues(alpha: .20),
+            child: Icon(icon, color: Colors.white, size: 22),
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -1200,8 +1191,7 @@ class _DesktopMetric extends StatelessWidget {
                 Text(
                   title,
                   style: _desktopHomeCardTitleStyle.copyWith(
-                    fontSize: context.designTokens.homeTypography.summaryLabel,
-                    color: context.designTokens.homeColors.onMetric,
+                    color: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1211,10 +1201,9 @@ class _DesktopMetric extends StatelessWidget {
                   child: Text(
                     value,
                     style: TextStyle(
-                      fontSize:
-                          context.designTokens.homeTypography.summaryAmount,
+                      fontSize: 24,
                       fontWeight: FontWeight.w800,
-                      color: context.designTokens.homeColors.onMetric,
+                      color: Colors.white,
                       letterSpacing: -.7,
                     ),
                   ),
@@ -1225,9 +1214,7 @@ class _DesktopMetric extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: percentValue == null
-                        ? context.designTokens.homeColors.onMetricMuted
-                        : context.designTokens.homeColors.onMetric,
+                    color: percentValue == null ? Colors.white70 : Colors.white,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
