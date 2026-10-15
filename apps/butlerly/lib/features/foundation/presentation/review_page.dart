@@ -880,18 +880,17 @@ class _ReviewTransactionCardState extends State<_ReviewTransactionCard> {
                       topInset: ButlerlySpacing.compact,
                       bottomInset: ButlerlySpacing.compact,
                       child: TransactionRow(
-                          transaction: transaction,
-                          masterData:
-                              data?.presentation ??
-                              const TransactionMasterData(),
-                          paymentSourceNames: {
-                            for (final source
-                                in data?.paymentSources ?? <PaymentSource>[])
-                              source.id.value: source.name,
-                          },
-                          showDate: true,
-                          onTap: widget.onEdit,
-                        ),
+                        transaction: transaction,
+                        masterData:
+                            data?.presentation ??
+                            const TransactionMasterData(),
+                        paymentSourceNames: {
+                          for (final source
+                              in data?.paymentSources ?? <PaymentSource>[])
+                            source.id.value: source.name,
+                        },
+                        showDate: true,
+                        onTap: widget.onEdit,
                       ),
                     ),
                     Padding(
