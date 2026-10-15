@@ -1435,7 +1435,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                     ? ButlerlySpacing.none
                     : ButlerlyTransactionItemTokens.metadataSpacing,
               ),
-              child: _paymentSourceLine(context, sourceLabel!),
+              child: _paymentSourceLine(context, sourceLabel),
             ),
         ],
       );
@@ -1453,7 +1453,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
         if (hasSource) ...[
           if (categoryDetails.isNotEmpty)
             const SizedBox(width: ButlerlySpacing.micro),
-          Flexible(child: _paymentSourceLine(context, sourceLabel!)),
+          Flexible(child: _paymentSourceLine(context, sourceLabel)),
         ],
       ],
     );
