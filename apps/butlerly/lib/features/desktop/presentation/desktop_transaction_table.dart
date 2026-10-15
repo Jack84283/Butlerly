@@ -33,7 +33,19 @@ class DesktopTransactionTable extends StatelessWidget {
   final ValueChanged<TransactionDto> onTap;
 
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final table = _buildTable(context);
+      if (constraints.maxWidth >= 760) return table;
+      return SingleChildScrollView(
+        key: const ValueKey('desktop-transaction-table-horizontal-scroll'),
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(width: 760, child: table),
+      );
+    },
+  );
+
+  Widget _buildTable(BuildContext context) => Column(
     key: const ValueKey('desktop-transactions-table'),
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
