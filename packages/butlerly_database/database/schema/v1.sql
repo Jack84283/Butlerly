@@ -238,6 +238,7 @@ CREATE TABLE payment_sources (
       display_identity TEXT,
       last_four TEXT,
       issuer TEXT,
+      network TEXT,
       currency TEXT,
       note TEXT,
       created_at TEXT NOT NULL DEFAULT '',

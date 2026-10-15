@@ -17,6 +17,7 @@ final class SqlitePaymentSourceRepository implements PaymentSourceRepository {
         'display_identity': value.displayIdentity,
         'last_four': value.lastFour,
         'issuer': value.issuer,
+        'network': value.network,
         'currency': value.currency,
         'note': value.note,
       });
@@ -41,6 +42,7 @@ final class SqlitePaymentSourceRepository implements PaymentSourceRepository {
     displayIdentity: row['display_identity'] as String?,
     lastFour: row['last_four'] as String?,
     issuer: row['issuer'] as String?,
+    network: row['network'] as String?,
     currency: row['currency'] as String?,
     note: row['note'] as String?,
   );

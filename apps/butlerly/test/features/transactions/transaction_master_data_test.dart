@@ -23,6 +23,44 @@ void main() {
   });
   tearDown(() => database.close());
 
+  test('payment marks resolve by source ID', () {
+    final sources = [
+      PaymentSource(
+        id: PaymentSourceId('visa'),
+        name: 'Chase Sapphire',
+        type: PaymentSourceType.card,
+        issuer: 'Chase',
+        network: 'visa',
+        lastFour: '8421',
+      ),
+      PaymentSource(
+        id: PaymentSourceId('wechat'),
+        name: '微信支付',
+        type: PaymentSourceType.wallet,
+        network: 'wechatPay',
+      ),
+      PaymentSource(
+        id: PaymentSourceId('cash'),
+        name: 'Cash',
+        type: PaymentSourceType.cash,
+      ),
+    ];
+    final data = TransactionMasterData.fromEntities(
+      merchants: const [],
+      categories: const [],
+      tags: const [],
+      paymentSources: sources,
+      categoryLabels: const {},
+      tagLabels: const {},
+      languageCode: 'zh-Hans',
+    );
+    expect(data.paymentSourceMark('visa'), 'visa');
+    expect(data.paymentSourceMark('wechat'), 'wechatPay');
+    expect(data.paymentSourceMark('cash'), 'cash');
+    expect(data.paymentSourceMark('missing'), isNull);
+    expect(data.paymentSourceName('visa'), contains('8421'));
+  });
+
   test(
     'stable category and tag keys resolve to locale labels without rewriting',
     () {

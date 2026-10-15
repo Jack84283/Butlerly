@@ -109,6 +109,9 @@ class TransactionRow extends StatelessWidget {
       categoryLabel: category ?? missingCategoryLabel ?? '',
       subcategoryLabel: subcategory,
       paymentSource: sourceLabel,
+      paymentSourceMark: sourceLabel == null
+          ? null
+          : masterData.paymentSourceMark(transaction.paymentSourceId),
       tags: tags,
       supportingContent: supportingContent,
       meta: showDate

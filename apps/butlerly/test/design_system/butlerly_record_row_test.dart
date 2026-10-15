@@ -1,5 +1,6 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_payment_source_icon.dart';
 import 'package:butlerly/design_system/theme/butlerly_responsive_design_tokens.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_category_colors.dart';
@@ -11,6 +12,91 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('payment marks use responsive metadata lines', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    for (final size in [
+      const Size(390, 840),
+      const Size(900, 1000),
+      const Size(1200, 900),
+    ]) {
+      tester.view.physicalSize = size;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: const Scaffold(
+            body: ButlerlyRecordRow(
+              title: 'Restaurant',
+              amount: '35.00',
+              currency: 'USD',
+              categoryLabel: 'Dining',
+              subcategoryLabel: 'Restaurants',
+              paymentSource: 'WeChat Pay',
+              paymentSourceMark: 'wechatPay',
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final category = find.text(
+        size.width < ButlerlySize.compactBreakpoint
+            ? 'Dining · Restaurants'
+            : 'Dining · Restaurants ·',
+      );
+      final payment = find.text('WeChat Pay');
+      final sourceRow = find.byKey(
+        const ValueKey('transaction-row-payment-source'),
+      );
+      expect(category, findsOneWidget);
+      expect(payment, findsOneWidget);
+      expect(sourceRow, findsOneWidget);
+      final paymentIcon = tester.widget<ButlerlyPaymentMarkIcon>(
+        find.descendant(
+          of: sourceRow,
+          matching: find.byType(ButlerlyPaymentMarkIcon),
+        ),
+      );
+      expect(paymentIcon.mark, 'wechatPay');
+      expect(paymentIcon.size, 18);
+      if (size.width < ButlerlySize.compactBreakpoint) {
+        expect(
+          tester.getTopLeft(sourceRow).dy,
+          greaterThan(tester.getBottomLeft(category).dy),
+        );
+      } else {
+        expect(
+          tester.getTopLeft(sourceRow).dy,
+          closeTo(tester.getTopLeft(category).dy, 4),
+        );
+      }
+      expect(tester.takeException(), isNull);
+    }
+  });
+
+  testWidgets('payment icon is absent without a payment source', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: const Scaffold(
+          body: ButlerlyRecordRow(
+            title: 'Cashless unknown',
+            amount: '10.00',
+            currency: 'USD',
+            categoryLabel: 'Other',
+          ),
+        ),
+      ),
+    );
+    expect(
+      find.byKey(const ValueKey('transaction-row-payment-source')),
+      findsNothing,
+    );
+    expect(find.byType(ButlerlyPaymentMarkIcon), findsNothing);
+  });
+
   testWidgets('possible duplicate indicator is accessible and navigable', (
     tester,
   ) async {
@@ -105,17 +191,17 @@ void main() {
     );
 
     expect(find.text('−82.47 USD'), findsOneWidget);
+    expect(find.text('Groceries · Supermarket'), findsOneWidget);
+    expect(find.text('Visa ••••8421'), findsOneWidget);
     expect(
-      find.text('Groceries · Supermarket · Visa ••••8421'),
+      find.byKey(const ValueKey('transaction-row-payment-source')),
       findsOneWidget,
     );
     expect(find.text('Vacation · Family'), findsOneWidget);
     expect(find.text('Sep 2, 2026'), findsOneWidget);
     expect(
       tester.getTopLeft(find.text('Sep 2, 2026')).dx,
-      tester
-          .getTopLeft(find.text('Groceries · Supermarket · Visa ••••8421'))
-          .dx,
+      tester.getTopLeft(find.text('Groceries · Supermarket')).dx,
     );
     expect(find.byIcon(Icons.arrow_downward_rounded), findsNothing);
     expect(
@@ -682,8 +768,14 @@ void main() {
       ),
     );
 
-    final metadata = tester.getRect(find.text('Food · Visa'));
+    final metadata = tester.getRect(
+      find.byKey(const ValueKey('transaction-row-payment-source')),
+    );
     final tags = tester.getRect(find.text('Groceries'));
+    expect(
+      tester.getTopLeft(find.text('Visa')).dy,
+      greaterThan(tester.getBottomLeft(find.text('Food')).dy),
+    );
     expect(
       tags.top - metadata.bottom,
       ButlerlyTransactionItemTokens.metadataSpacing,

@@ -1,5 +1,6 @@
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/components/butlerly_payment_source_icon.dart';
 import 'package:butlerly/design_system/theme/butlerly_button_palette.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -544,6 +545,7 @@ class ButlerlyPaymentSourceSelector extends StatelessWidget {
         DropdownMenuEntry(
           value: source.id.value,
           label: paymentSourceDisplayLabel(source),
+          leadingIcon: ButlerlyPaymentSourceIcon(source: source, size: 24),
         ),
     ],
     onChanged: onChanged,
@@ -619,6 +621,7 @@ class ButlerlyPaymentSourceFilter extends StatelessWidget {
         DropdownMenuEntry(
           value: source.id.value,
           label: paymentSourceDisplayLabel(source),
+          leadingIcon: ButlerlyPaymentSourceIcon(source: source, size: 24),
         ),
     ],
     onChanged: (value) => onChanged(value == '' ? null : value),

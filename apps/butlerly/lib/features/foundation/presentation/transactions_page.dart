@@ -5,6 +5,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/components/butlerly_payment_source_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -2291,7 +2292,10 @@ class _PaymentSourceRow extends StatelessWidget {
           ?.where((value) => value.id.value == paymentSourceId)
           .firstOrNull;
       return _DetailRow(
-        icon: Icons.credit_card_outlined,
+        icon: source == null ? Icons.credit_card_outlined : null,
+        leading: source == null
+            ? null
+            : ButlerlyPaymentSourceIcon(source: source, size: 20),
         label: context.l10n.text('paymentSource'),
         value: source == null
             ? context.l10n.text('unavailablePaymentSource')
@@ -2379,11 +2383,17 @@ class _TransactionDetailCardHeader extends StatelessWidget {
 }
 
 class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value, this.icon});
+  const _DetailRow({
+    required this.label,
+    required this.value,
+    this.icon,
+    this.leading,
+  });
 
   final String label;
   final String value;
   final IconData? icon;
+  final Widget? leading;
 
   @override
   Widget build(BuildContext context) => Padding(
@@ -2391,8 +2401,15 @@ class _DetailRow extends StatelessWidget {
     child: Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        if (icon != null) ...[
-          Icon(icon, size: 20, color: Theme.of(context).colorScheme.onSurface),
+        if (icon != null || leading != null) ...[
+          if (leading case final widget?)
+            widget
+          else
+            Icon(
+              icon,
+              size: 20,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
           const SizedBox(width: ButlerlySpacing.standard),
         ],
         Expanded(
