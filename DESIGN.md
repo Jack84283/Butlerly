@@ -208,7 +208,7 @@ Controls use a compact 6px radius for compact icon controls and a full pill for 
 - **Corner Style:** 16px radius (current `ButlerlyRadius.card`).
 - **Background:** `dashboardSurface` / `cardSurface` from `ButlerlySemanticColors`, selected by appearance.
 - **Shadow Strategy:** 2px card elevation at rest; use tonal separation and no decorative outline.
-- **Internal Padding:** use `ButlerlySpacing.cardPadding` (16px) for standard cards; the shared `ButlerlyTransactionInnerCard` applies `ButlerlySpacing.micro` (4px) of internal padding. Parent widgets determine outer gutters and list spacing.
+- **Internal Padding:** standard card headers and content use `ButlerlySpacing.cardPadding` (16px). Nested transaction-style inner cards use the shared `ButlerlyInsetTransactionCard` wrapper for an 8px outer-to-inner horizontal gutter and `ButlerlyTransactionInnerCard` for 4px internal padding, both sourced from responsive geometry tokens. Keep card-header padding independent of inner-card gutters.
 
 ### Inputs / Fields
 - **Style:** filled subtle-surface background, 12px radius, and a quiet semantic border; exact surface follows the active appearance.
@@ -285,7 +285,7 @@ The compact navigation uses the existing `PrimaryBottomNavigation` component and
 The following statements describe the current shipped direction. Runtime code, shared tokens, and tests should remain aligned with them.
 
 - **Colors:** use the semantic light/dark palettes above. The default dark mode is a near-black canvas with charcoal dashboard, sheet, and elevated surfaces; the default light mode is a cool gray canvas with white dashboard cards.
-- **Cards:** use shared components, 16px outer card radius, 16px standard card padding, 4px internal padding in `ButlerlyTransactionInnerCard` (outer gutters are caller-controlled), 2px card elevation, and no decorative outline.
+- **Cards:** use shared components, 16px outer card radius, 16px standard card-header padding, 8px nested transaction-card horizontal gutter through `ButlerlyInsetTransactionCard`, 4px internal padding through `ButlerlyTransactionInnerCard`, 2px card elevation, and no decorative outline. Do not reintroduce page-specific nested card insets.
 - **Buttons:** use the shared primary, secondary, tertiary, destructive, compact, and segmented variants. Shared buttons use full-pill geometry, 16px horizontal padding, 12px vertical padding, and a preferred 48px height.
 - **Navigation:** compact and medium layouts expose Home, Transactions, Add, Tools, and More. Wide layouts use the same destinations in a 248px expanded or 72px collapsed rail. Add remains a first-class capture action; Review, Analysis, Insights, payment settlements, master data, and rules are reached through Tools or contextual routes.
 - **Bottom sheets:** use the shared sheet container with 18px top corners, safe-area-aware padding, semantic surfaces, and explicit escape paths. Selection and filter sheets should use shared controls rather than feature-local variants.
