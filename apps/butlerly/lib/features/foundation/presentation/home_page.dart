@@ -865,15 +865,7 @@ class _HomeSummaryCard extends StatelessWidget {
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (compact)
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: ButlerlySpacing.cardPadding,
-            ),
-            child: summaryTitle,
-          )
-        else
-          summaryTitle,
+        summaryTitle,
         const SizedBox(height: ButlerlySpacing.small),
         LayoutBuilder(
           builder: (context, constraints) {
