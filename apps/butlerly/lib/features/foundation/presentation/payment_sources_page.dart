@@ -96,7 +96,9 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
     final name = TextEditingController(text: existing?.name);
     final detectedNetwork = paymentNetworkFromText(scanned?.issuer);
     final issuer = TextEditingController(
-      text: existing?.issuer ?? (detectedNetwork == null ? scanned?.issuer : null),
+      text:
+          existing?.issuer ??
+          (detectedNetwork == null ? scanned?.issuer : null),
     );
     final lastFour = TextEditingController(
       text: existing?.lastFour ?? scanned?.lastFour,
@@ -204,9 +206,11 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                         value: '',
                         label: context.l10n.text('notSet'),
                       ),
-                      for (final entry in (type == PaymentSourceType.wallet
-                          ? walletPaymentProviderLabels
-                          : cardPaymentNetworkLabels).entries)
+                      for (final entry
+                          in (type == PaymentSourceType.wallet
+                                  ? walletPaymentProviderLabels
+                                  : cardPaymentNetworkLabels)
+                              .entries)
                         DropdownMenuEntry(
                           value: entry.key,
                           label: entry.value,

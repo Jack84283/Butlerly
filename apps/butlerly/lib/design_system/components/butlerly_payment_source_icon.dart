@@ -50,9 +50,7 @@ String? paymentNetworkFromText(String? input) {
 String paymentMarkFor(PaymentSource source) {
   if (source.type == PaymentSourceType.cash) return 'cash';
   if (source.type == PaymentSourceType.account) return 'account';
-  final named = paymentNetworkFromText(
-    '${source.name} ${source.issuer ?? ''}',
-  );
+  final named = paymentNetworkFromText('${source.name} ${source.issuer ?? ''}');
   if (source.type == PaymentSourceType.card ||
       source.type == PaymentSourceType.debitCard) {
     if (cardPaymentNetworkLabels.containsKey(source.network)) {
@@ -81,10 +79,8 @@ class ButlerlyPaymentSourceIcon extends StatelessWidget {
   final double size;
 
   @override
-  Widget build(BuildContext context) => ButlerlyPaymentMarkIcon(
-    mark: paymentMarkFor(source),
-    size: size,
-  );
+  Widget build(BuildContext context) =>
+      ButlerlyPaymentMarkIcon(mark: paymentMarkFor(source), size: size);
 }
 
 class ButlerlyPaymentMarkIcon extends StatelessWidget {
@@ -121,26 +117,31 @@ class ButlerlyPaymentMarkIcon extends StatelessWidget {
                 fit: BoxFit.contain,
               )
             : mark == 'cash'
-                ? Center(
-                    child: Text(
-                      r'$',
-                      style: TextStyle(
-                        fontSize: size * .75,
-                        height: 1,
-                        fontWeight: FontWeight.w700,
-                        color: Theme.of(context).colorScheme.onSurface,
-                      ),
-                    ),
-                  )
-                : Icon(
-                    switch (mark) {
-                      'account' => Icons.account_balance_outlined,
-                      'wallet' => Icons.account_balance_wallet_outlined,
-                      _ => Icons.credit_card_outlined,
-                    },
-                    size: size * .83,
+            ? Center(
+                child: Text(
+                  r'
+      ),
+    );
+  }
+}
+,
+                  style: TextStyle(
+                    fontSize: size * .75,
+                    height: 1,
+                    fontWeight: FontWeight.w700,
                     color: Theme.of(context).colorScheme.onSurface,
                   ),
+                ),
+              )
+            : Icon(
+                switch (mark) {
+                  'account' => Icons.account_balance_outlined,
+                  'wallet' => Icons.account_balance_wallet_outlined,
+                  _ => Icons.credit_card_outlined,
+                },
+                size: size * .83,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
       ),
     );
   }

@@ -27,6 +27,7 @@ final class PaymentSource {
   final String? displayIdentity;
   final String? lastFour;
   final String? issuer;
+
   /// Card network or wallet provider, independent of the issuer.
   final String? network;
   final String? currency;
@@ -41,7 +42,7 @@ final class PaymentSource {
     lastFour: lastFour,
     issuer: issuer,
     network: network,
-    currency: currency;
+    currency: currency,
     note: note,
   );
 

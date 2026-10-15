@@ -2405,7 +2405,11 @@ class _DetailRow extends StatelessWidget {
           if (leading case final widget?)
             widget
           else
-            Icon(icon, size: 20, color: Theme.of(context).colorScheme.onSurface),
+            Icon(
+              icon,
+              size: 20,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
           const SizedBox(width: ButlerlySpacing.standard),
         ],
         Expanded(
