@@ -252,6 +252,7 @@ void main() {
         tester.getSize(rail).width,
         ButlerlySize.wideNavigationExpandedWidth,
       );
+      debugDefaultTargetPlatformOverride = null;
       expect(tester.takeException(), isNull);
     },
   );
