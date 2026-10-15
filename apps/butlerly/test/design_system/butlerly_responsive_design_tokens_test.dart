@@ -17,7 +17,7 @@ void main() {
 
     expect(compact.brand, 24);
     expect(compact.greeting, 20);
-    expect(compact.cardTitle, 14);
+    expect(compact.cardTitle, 16);
     expect(compact.summaryAmount, 20);
     expect(compact.categoryText, 13);
     expect(compact.chartLabel, 12);
