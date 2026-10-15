@@ -104,8 +104,7 @@ final class TransactionMasterData {
         value.id.value: paymentSourceDisplayLabel(value),
     },
     paymentSourceMarks: {
-      for (final value in paymentSources)
-        value.id.value: paymentMarkFor(value),
+      for (final value in paymentSources) value.id.value: paymentMarkFor(value),
     },
   );
 

@@ -774,31 +774,13 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                                     ),
                                                     Expanded(
                                                       flex: 2,
-                                                      child: Row(
-                                                        children: [
-                                                          if (_masterData?.paymentSourceName(
-                                                                transaction.paymentSourceId,
-                                                              ) != null) ...[
-                                                            ButlerlyPaymentMarkIcon(
-                                                              mark: _masterData?.paymentSourceMark(
-                                                                    transaction.paymentSourceId,
-                                                                  ) ?? 'other',
-                                                              size: 20,
-                                                            ),
-                                                            const SizedBox(
-                                                              width: ButlerlySpacing.micro,
-                                                            ),
-                                                          ],
-                                                          Expanded(
-                                                            child: Text(
-                                                              _masterData?.paymentSourceName(
-                                                                    transaction.paymentSourceId,
-                                                                  ) ?? '—',
-                                                              maxLines: 1,
-                                                              overflow: TextOverflow.ellipsis,
-                                                            ),
-                                                          ),
-                                                        ],
+                                                      child: _DesktopPaymentSourceCell(
+                                                        name: _masterData?.paymentSourceName(
+                                                          transaction.paymentSourceId,
+                                                        ),
+                                                        mark: _masterData?.paymentSourceMark(
+                                                          transaction.paymentSourceId,
+                                                        ),
                                                       ),
                                                     ),
                                                     SizedBox(
@@ -1573,6 +1555,30 @@ Future<DateTime?> _selectDesktopMonth(BuildContext context, DateTime selected) {
         ],
       ),
     ),
+  );
+}
+
+class _DesktopPaymentSourceCell extends StatelessWidget {
+  const _DesktopPaymentSourceCell({required this.name, required this.mark});
+
+  final String? name;
+  final String? mark;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      if (name != null) ...[
+        ButlerlyPaymentMarkIcon(mark: mark ?? 'other', size: 20),
+        const SizedBox(width: ButlerlySpacing.micro),
+      ],
+      Expanded(
+        child: Text(
+          name ?? '—',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    ],
   );
 }
 
