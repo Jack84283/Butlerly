@@ -210,7 +210,7 @@ void main() {
       summaryTitle.style?.fontFamily,
       isNot(ButlerlyTypography.editorialFontFamily),
     );
-    expect(summaryTitle.style?.fontSize, 14);
+    expect(summaryTitle.style?.fontSize, 16);
     final summaryAmount = tester.widget<Text>(
       find.descendant(
         of: find.byKey(const ValueKey('home-summary-card')),
