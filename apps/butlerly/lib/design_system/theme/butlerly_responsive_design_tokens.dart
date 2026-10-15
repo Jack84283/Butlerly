@@ -157,18 +157,21 @@ class ButlerlyHomeTypographyTokens {
       ButlerlyTypography.compactRowTitle(base).copyWith(fontSize: categoryText);
 
   TextStyle categoryAmount(TextStyle base) =>
-      ButlerlyTypography.compactRowAmount(base).copyWith(fontSize: categoryText);
+      ButlerlyTypography.compactRowAmount(
+        base,
+      ).copyWith(fontSize: categoryText);
 
   TextStyle categoryDetails(TextStyle base) =>
-      ButlerlyTypography.compactRowMetadata(base).copyWith(
-        fontSize: categoryMetadata,
-      );
+      ButlerlyTypography.compactRowMetadata(
+        base,
+      ).copyWith(fontSize: categoryMetadata);
 
   TextStyle reviewTitle(TextStyle base) =>
       ButlerlyTypography.rowTitle(base).copyWith(fontSize: attentionTitle);
 
-  TextStyle reviewSubtitle(TextStyle base) =>
-      ButlerlyTypography.rowMetadata(base).copyWith(fontSize: attentionSubtitle);
+  TextStyle reviewSubtitle(TextStyle base) => ButlerlyTypography.rowMetadata(
+    base,
+  ).copyWith(fontSize: attentionSubtitle);
 }
 
 /// Shared Home financial accent and on-tint colors. The same semantic
@@ -198,8 +201,7 @@ class ButlerlyHomeColorTokens {
     onMetricMuted: Colors.white70,
   );
 
-  static ButlerlyHomeColorTokens forMode(ButlerlyLayoutMode mode) =>
-      standard;
+  static ButlerlyHomeColorTokens forMode(ButlerlyLayoutMode mode) => standard;
 }
 
 /// Semantic geometry for pages and reusable components. Geometry can vary by
