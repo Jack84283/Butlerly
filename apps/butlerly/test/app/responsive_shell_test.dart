@@ -237,9 +237,14 @@ void main() {
         greaterThanOrEqualTo(56),
       );
 
-      await tester.tap(find.byKey(const ValueKey('wide-collapsed-transactions')));
+      await tester.tap(
+        find.byKey(const ValueKey('wide-collapsed-transactions')),
+      );
       await tester.pumpAndSettle();
-      expect(appRouter.routeInformationProvider.value.uri.path, '/transactions');
+      expect(
+        appRouter.routeInformationProvider.value.uri.path,
+        '/transactions',
+      );
 
       await tester.tap(find.byIcon(Icons.keyboard_double_arrow_right_rounded));
       await tester.pumpAndSettle();
