@@ -1216,7 +1216,9 @@ class _SpendingTrend extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: EdgeInsetsDirectional.only(end: largeText ? 0 : 132),
+                    padding: EdgeInsetsDirectional.only(
+                      end: largeText ? 0 : 132,
+                    ),
                     child: ButlerlyCardHeader(
                       title: context.l10n.text('spendingTrend'),
                       titleStyle: context.designTokens.homeTypography
@@ -1251,10 +1253,11 @@ class _SpendingTrend extends StatelessWidget {
                         children: [
                           Text(
                             _homeMetricMoney(context, metric),
-                            style: context.designTokens.homeTypography.trendValue(
-                              Theme.of(context).textTheme.titleLarge ??
-                                  const TextStyle(),
-                            ),
+                            style: context.designTokens.homeTypography
+                                .trendValue(
+                                  Theme.of(context).textTheme.titleLarge ??
+                                      const TextStyle(),
+                                ),
                           ),
                           if (comparisonText.isNotEmpty)
                             Text(
