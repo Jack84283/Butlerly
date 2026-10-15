@@ -4,6 +4,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/components/butlerly_category_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/components/butlerly_payment_source_icon.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_category_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -773,15 +774,31 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                                     ),
                                                     Expanded(
                                                       flex: 2,
-                                                      child: Text(
-                                                        _masterData?.paymentSourceName(
-                                                              transaction
-                                                                  .paymentSourceId,
-                                                            ) ??
-                                                            '—',
-                                                        maxLines: 1,
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
+                                                      child: Row(
+                                                        children: [
+                                                          if (_masterData?.paymentSourceName(
+                                                                transaction.paymentSourceId,
+                                                              ) != null) ...[
+                                                            ButlerlyPaymentMarkIcon(
+                                                              mark: _masterData?.paymentSourceMark(
+                                                                    transaction.paymentSourceId,
+                                                                  ) ?? 'other',
+                                                              size: 20,
+                                                            ),
+                                                            const SizedBox(
+                                                              width: ButlerlySpacing.micro,
+                                                            ),
+                                                          ],
+                                                          Expanded(
+                                                            child: Text(
+                                                              _masterData?.paymentSourceName(
+                                                                    transaction.paymentSourceId,
+                                                                  ) ?? '—',
+                                                              maxLines: 1,
+                                                              overflow: TextOverflow.ellipsis,
+                                                            ),
+                                                          ),
+                                                        ],
                                                       ),
                                                     ),
                                                     SizedBox(
