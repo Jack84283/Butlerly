@@ -1038,7 +1038,6 @@ const double _desktopHomeSelectedMonthTrendTintOpacity = 1.0;
 const double _desktopHomeOtherMonthTrendTintOpacity = 0.35;
 const double _desktopHomeActionTintOpacity = 0.18;
 const TextStyle _desktopHomeCardTitleStyle = TextStyle(
-  fontSize: 16,
   fontWeight: FontWeight.w700,
 );
 const double _desktopHomeCardTitleTopInset = 10;
@@ -1208,7 +1207,7 @@ class _DesktopMetric extends StatelessWidget {
                   child: Text(
                     value,
                     style: TextStyle(
-                      fontSize: 24,
+                      fontSize: context.designTokens.homeTypography.summaryAmount,
                       fontWeight: FontWeight.w800,
                       color: context.designTokens.homeColors.onMetric,
                       letterSpacing: -.7,
