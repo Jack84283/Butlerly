@@ -639,13 +639,22 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(tester.widget<Text>(find.text('Coffee')).style?.fontSize, entry.title);
+      expect(
+        tester.widget<Text>(find.text('Coffee')).style?.fontSize,
+        entry.title,
+      );
       expect(
         tester.widget<Text>(find.text('−20.00 USD')).style?.fontSize,
         entry.title,
       );
-      expect(tester.widget<Text>(find.text('Visa')).style?.fontSize, entry.meta);
-      expect(tester.widget<Text>(find.text('Food')).style?.fontSize, entry.badge);
+      expect(
+        tester.widget<Text>(find.text('Visa')).style?.fontSize,
+        entry.meta,
+      );
+      expect(
+        tester.widget<Text>(find.text('Food')).style?.fontSize,
+        entry.badge,
+      );
       expect(
         tester.getSize(find.byType(ButlerlyRecordRow)).height,
         greaterThanOrEqualTo(72),
