@@ -67,12 +67,14 @@ class ButlerlySliverContentSurface extends StatelessWidget {
     required this.sliver,
     this.surfaceKey,
     this.surfaceHorizontalPadding = 0,
+    this.fullWidth = false,
     super.key,
   });
 
   final Widget sliver;
   final Key? surfaceKey;
   final double surfaceHorizontalPadding;
+  final bool fullWidth;
 
   @override
   Widget build(BuildContext context) => SliverLayoutBuilder(
@@ -82,7 +84,9 @@ class ButlerlySliverContentSurface extends StatelessWidget {
       );
       final surfaceMaxWidth = readableWidth + surfaceHorizontalPadding;
       final extraWidth = constraints.crossAxisExtent - surfaceMaxWidth;
-      final horizontalInset = extraWidth > 0 ? extraWidth / 2 : 0.0;
+      final horizontalInset = fullWidth
+          ? 0.0
+          : (extraWidth > 0 ? extraWidth / 2 : 0.0);
       return SliverPadding(
         padding: EdgeInsets.symmetric(horizontal: horizontalInset),
         sliver: DecoratedSliver(

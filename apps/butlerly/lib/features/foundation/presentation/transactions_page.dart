@@ -435,6 +435,9 @@ class _TransactionsPageState extends State<TransactionsPage> {
           onRefresh: _refresh,
           refreshKey: const ValueKey('transactions-pull-to-refresh'),
           pinnedSpacing: ButlerlyPinnedPageSpacing.tightHeader,
+          fullWidth:
+              ButlerlyLayout.mode(MediaQuery.sizeOf(context)) ==
+              ButlerlyLayoutMode.wide,
           pinnedHeaderExtent: ButlerlySize.searchPinnedHeaderHeight,
           pinnedHeader: _transactionSearchControls(context),
           children: [
