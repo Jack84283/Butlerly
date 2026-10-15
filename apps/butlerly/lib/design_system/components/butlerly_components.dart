@@ -1003,8 +1003,13 @@ class ButlerlyCategoryBadge extends StatelessWidget {
           softWrap: true,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
             color: foreground,
-            fontSize: ButlerlyTransactionItemTokens.categoryBadgeFontSize,
-            height: ButlerlyTransactionItemTokens.categoryBadgeLineHeight,
+            fontSize:
+                ButlerlyTransactionTypographyScope.maybeOf(context)?.badge ??
+                ButlerlyTransactionItemTokens.categoryBadgeFontSize,
+            height:
+                ButlerlyTransactionTypographyScope.maybeOf(context)
+                    ?.badgeLineHeight ??
+                ButlerlyTransactionItemTokens.categoryBadgeLineHeight,
             fontWeight: FontWeight.w600,
           ),
         ),
