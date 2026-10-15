@@ -1427,11 +1427,18 @@ class TransactionDetailPage extends StatefulWidget {
   const TransactionDetailPage({
     required this.finance,
     required this.transaction,
+    this.onClose,
+    this.onChanged,
     super.key,
   });
 
   final FinanceServices finance;
   final TransactionDto transaction;
+
+  /// When supplied, embed the existing detail page in a desktop side panel
+  /// instead of popping the primary navigation route.
+  final ValueChanged<bool>? onClose;
+  final VoidCallback? onChanged;
 
   @override
   State<TransactionDetailPage> createState() => _TransactionDetailPageState();
@@ -1447,6 +1454,24 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   void initState() {
     super.initState();
     transaction = widget.transaction;
+  }
+
+  @override
+  void didUpdateWidget(covariant TransactionDetailPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.transaction.id != widget.transaction.id ||
+        oldWidget.transaction.updatedAt != widget.transaction.updatedAt) {
+      transaction = widget.transaction;
+    }
+  }
+
+  void _close({bool? changed}) {
+    final didChange = changed ?? _changed;
+    if (widget.onClose case final onClose?) {
+      onClose(didChange);
+    } else {
+      Navigator.of(context).pop(didChange);
+    }
   }
 
   Future<void> _delete(BuildContext context) async {
@@ -1471,7 +1496,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       }
     }
     await finance.deleteTransactionPermanently(transaction.id);
-    if (context.mounted) Navigator.of(context).pop(true);
+    if (context.mounted) _close(changed: true);
   }
 
   void _showEvidenceCleanupFailure(BuildContext context) {
@@ -1499,19 +1524,22 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
           _changed = true;
         });
       }
+      widget.onChanged?.call();
     }
   }
 
   @override
-  Widget build(BuildContext context) => PopScope<void>(
-    canPop: false,
-    onPopInvokedWithResult: (didPop, _) {
-      if (!didPop && context.mounted) {
-        Navigator.of(context).pop(_changed);
-      }
-    },
-    child: Scaffold(
+  Widget build(BuildContext context) {
+    final detail = Scaffold(
       appBar: AppBar(
+        leading: widget.onClose == null
+            ? null
+            : IconButton(
+                key: const ValueKey('transaction-detail-close-panel'),
+                tooltip: context.l10n.text('close'),
+                onPressed: () => _close(),
+                icon: const Icon(Icons.close_rounded),
+              ),
         title: Text(context.l10n.text('transactionDetail')),
         actions: [
           IconButton(
@@ -1861,8 +1889,16 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
           ],
         ),
       ),
-    ),
-  );
+    );
+    if (widget.onClose != null) return detail;
+    return PopScope<void>(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && context.mounted) _close();
+      },
+      child: detail,
+    );
+  }
 }
 
 class _EvidenceSection extends StatefulWidget {
