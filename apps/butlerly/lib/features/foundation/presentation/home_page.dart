@@ -851,24 +851,30 @@ class _HomeSummaryCard extends StatelessWidget {
         !analysisUnavailable &&
         model != null &&
         _allKnownSummaryValuesEmpty(model!);
-    return ButlerlyCard(
-      key: const ValueKey('home-summary-card'),
-      variant: ButlerlyCardVariant.dashboard,
-      semanticLabel: context.l10n.text('monthlySummary'),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ButlerlyCardHeader(
-            title: context.l10n.text('monthlySummary'),
-            subtitle: context.l10n.text('vsPreviousPeriod'),
-            titleStyle: context.designTokens.homeTypography.sectionTitle(
-              Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
+    final compact = context.designTokens.mode == ButlerlyLayoutMode.compact;
+    final summaryTitle = ButlerlyCardHeader(
+      title: context.l10n.text('monthlySummary'),
+      subtitle: context.l10n.text('vsPreviousPeriod'),
+      titleStyle: context.designTokens.homeTypography.sectionTitle(
+        Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
+      ),
+      subtitleStyle: context.designTokens.homeTypography.subtitle(
+        Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
+      ),
+    );
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (compact)
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: ButlerlySpacing.cardPadding,
             ),
-            subtitleStyle: context.designTokens.homeTypography.subtitle(
-              Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
-            ),
-          ),
-          const SizedBox(height: ButlerlySpacing.small),
+            child: summaryTitle,
+          )
+        else
+          summaryTitle,
+        const SizedBox(height: ButlerlySpacing.small),
           LayoutBuilder(
             builder: (context, constraints) {
               final metrics = [
@@ -941,19 +947,34 @@ class _HomeSummaryCard extends StatelessWidget {
               );
             },
           ),
-          if (analysisUnavailable) ...[
-            const SizedBox(height: ButlerlySpacing.standard),
-            Text(
-              context.l10n.text('analysisUnavailable'),
-              style: context.designTokens.homeTypography
-                  .subtitle(
-                    Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
-                  )
-                  .copyWith(color: context.colors.secondaryText),
-            ),
-          ],
+        if (analysisUnavailable) ...[
+          const SizedBox(height: ButlerlySpacing.standard),
+          Text(
+            context.l10n.text('analysisUnavailable'),
+            style: context.designTokens.homeTypography
+                .subtitle(
+                  Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
+                )
+                .copyWith(color: context.colors.secondaryText),
+          ),
         ],
-      ),
+      ],
+    );
+    if (compact) {
+      // Remove the enclosing surface so all three metrics can use the full
+      // readable content width. Keep the section key for navigation and tests.
+      return Semantics(
+        key: const ValueKey('home-summary-card'),
+        container: true,
+        label: context.l10n.text('monthlySummary'),
+        child: content,
+      );
+    }
+    return ButlerlyCard(
+      key: const ValueKey('home-summary-card'),
+      variant: ButlerlyCardVariant.dashboard,
+      semanticLabel: context.l10n.text('monthlySummary'),
+      child: content,
     );
   }
 }
