@@ -121,8 +121,22 @@ class ButlerlyHomeTypographyTokens {
     attentionSubtitle: 14,
   );
 
-  // Wide has its own desktop Home composition and is intentionally unchanged.
-  static const wide = medium;
+  // The desktop greeting lives in the toolbar rather than the page hero.
+  static const wide = ButlerlyHomeTypographyTokens(
+    brand: 32,
+    greeting: 16,
+    description: 14,
+    cardTitle: 16,
+    summaryLabel: 16,
+    summaryAmount: 24,
+    trendAmount: 24,
+    trendChange: 14,
+    chartLabel: 13,
+    categoryText: 14,
+    categoryMetadata: 13,
+    attentionTitle: 16,
+    attentionSubtitle: 14,
+  );
 
   static ButlerlyHomeTypographyTokens forMode(ButlerlyLayoutMode mode) =>
       switch (mode) {
