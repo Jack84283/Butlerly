@@ -355,18 +355,26 @@ void main() {
   ) async {
     await _pumpAt(tester, const Size(1200, 800));
 
+    final header = find.byKey(const ValueKey('desktop-home-header'));
     final greeting = find.byKey(const ValueKey('desktop-home-greeting'));
     final month = find.byKey(const ValueKey('desktop-home-month-selector'));
-    final previous = find.byIcon(Icons.chevron_left);
-    final next = find.byIcon(Icons.chevron_right);
-    final search = find.byIcon(Icons.search);
+    final previous = find.descendant(
+      of: header,
+      matching: find.byIcon(Icons.chevron_left),
+    );
+    final next = find.descendant(
+      of: header,
+      matching: find.byIcon(Icons.chevron_right),
+    );
+    final search = find.descendant(
+      of: header,
+      matching: find.byIcon(Icons.search),
+    );
 
+    expect(header, findsOneWidget);
     expect(greeting, findsOneWidget);
     expect(month, findsOneWidget);
-    expect(
-      tester.widget<Text>(greeting).textAlign,
-      TextAlign.start,
-    );
+    expect(tester.widget<Text>(greeting).textAlign, TextAlign.start);
     expect(
       tester.getRect(greeting).right,
       lessThanOrEqualTo(tester.getRect(previous).left),
