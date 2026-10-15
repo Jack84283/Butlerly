@@ -1206,86 +1206,89 @@ class _SpendingTrend extends StatelessWidget {
       key: const ValueKey('home-trend-card'),
       variant: ButlerlyCardVariant.dashboard,
       semanticLabel: context.l10n.text('spendingTrend'),
-      child: Stack(
-        children: [
-          Semantics(
-            container: true,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: EdgeInsetsDirectional.only(end: largeText ? 0 : 132),
-                  child: ButlerlyCardHeader(
-                    title: context.l10n.text('spendingTrend'),
-                    titleStyle: context.designTokens.homeTypography
-                        .sectionTitle(
-                          Theme.of(context).textTheme.titleLarge ??
-                              const TextStyle(),
-                        ),
-                    action: largeText ? trendAction : null,
-                    keepActionInlineAtCompactWidth: true,
-                  ),
-                ),
-                if (unavailable || points.isEmpty || !meaningful) ...[
-                  const SizedBox(height: ButlerlySpacing.small),
-                  Text(
-                    context.l10n.text(
-                      unavailable
-                          ? 'analysisUnavailableBody'
-                          : 'insufficientTrendData',
-                    ),
-                    style: context.designTokens.homeTypography.subtitle(
-                      Theme.of(context).textTheme.bodySmall ??
-                          const TextStyle(),
-                    ),
-                  ),
-                ] else ...[
-                  if (selectedPoint?.metric case final metric?) ...[
-                    const SizedBox(height: ButlerlySpacing.small),
-                    Wrap(
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      spacing: ButlerlySpacing.small,
-                      runSpacing: ButlerlySpacing.micro,
-                      children: [
-                        Text(
-                          _homeMetricMoney(context, metric),
-                          style: context.designTokens.homeTypography.trendValue(
+      child: SizedBox(
+        width: double.infinity,
+        child: Stack(
+          children: [
+            Semantics(
+              container: true,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: EdgeInsetsDirectional.only(end: largeText ? 0 : 132),
+                    child: ButlerlyCardHeader(
+                      title: context.l10n.text('spendingTrend'),
+                      titleStyle: context.designTokens.homeTypography
+                          .sectionTitle(
                             Theme.of(context).textTheme.titleLarge ??
                                 const TextStyle(),
                           ),
-                        ),
-                        if (comparisonText.isNotEmpty)
-                          Text(
-                            comparisonText,
-                            style: context.designTokens.homeTypography
-                                .trendComparison(
-                                  Theme.of(context).textTheme.bodySmall ??
-                                      const TextStyle(),
-                                )
-                                .copyWith(color: context.colors.interactive),
-                          ),
-                      ],
+                      action: largeText ? trendAction : null,
+                      keepActionInlineAtCompactWidth: true,
                     ),
+                  ),
+                  if (unavailable || points.isEmpty || !meaningful) ...[
+                    const SizedBox(height: ButlerlySpacing.small),
+                    Text(
+                      context.l10n.text(
+                        unavailable
+                            ? 'analysisUnavailableBody'
+                            : 'insufficientTrendData',
+                      ),
+                      style: context.designTokens.homeTypography.subtitle(
+                        Theme.of(context).textTheme.bodySmall ??
+                            const TextStyle(),
+                      ),
+                    ),
+                  ] else ...[
+                    if (selectedPoint?.metric case final metric?) ...[
+                      const SizedBox(height: ButlerlySpacing.small),
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: ButlerlySpacing.small,
+                        runSpacing: ButlerlySpacing.micro,
+                        children: [
+                          Text(
+                            _homeMetricMoney(context, metric),
+                            style: context.designTokens.homeTypography.trendValue(
+                              Theme.of(context).textTheme.titleLarge ??
+                                  const TextStyle(),
+                            ),
+                          ),
+                          if (comparisonText.isNotEmpty)
+                            Text(
+                              comparisonText,
+                              style: context.designTokens.homeTypography
+                                  .trendComparison(
+                                    Theme.of(context).textTheme.bodySmall ??
+                                        const TextStyle(),
+                                  )
+                                  .copyWith(color: context.colors.interactive),
+                            ),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: ButlerlySpacing.small),
+                    _HomeTrendPlot(points: points, locale: locale),
                   ],
-                  const SizedBox(height: ButlerlySpacing.small),
-                  _HomeTrendPlot(points: points, locale: locale),
                 ],
-              ],
+              ),
             ),
-          ),
-          if (!largeText)
-            PositionedDirectional(top: 0, end: 0, child: trendAction),
-          if (loading)
-            const Positioned.fill(
-              child: IgnorePointer(
-                child: Center(
-                  child: CircularProgressIndicator(
-                    key: ValueKey('home-trend-local-loading'),
+            if (!largeText)
+              PositionedDirectional(top: 0, end: 0, child: trendAction),
+            if (loading)
+              const Positioned.fill(
+                child: IgnorePointer(
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      key: ValueKey('home-trend-local-loading'),
+                    ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
