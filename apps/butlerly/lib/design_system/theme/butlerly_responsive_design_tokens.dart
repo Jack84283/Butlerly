@@ -99,7 +99,7 @@ class ButlerlyHomeTypographyTokens {
     brand: 24,
     greeting: 20,
     description: 13,
-    cardTitle: 14,
+    cardTitle: 16,
     summaryLabel: 14,
     summaryAmount: 20,
     trendAmount: 20,
