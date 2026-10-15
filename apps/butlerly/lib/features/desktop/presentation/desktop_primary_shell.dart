@@ -111,7 +111,7 @@ class _DesktopPrimaryShellState extends State<DesktopPrimaryShell> {
                 child: SafeArea(bottom: false, child: widget.body),
               ),
             ),
-        ],
+          ],
         ),
       ),
     );
