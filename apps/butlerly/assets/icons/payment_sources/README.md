@@ -1,0 +1,1 @@
+Transparent payment-network/provider icons from https://github.com/simple-icons/simple-icons (develop branch, retrieved 2026-10-15). Simple Icons collection CC0-1.0; individual marks remain trademarks of their owners. Verify individual brand-use guidelines before distribution. Locally bundled icons require no internet or third-party service.
