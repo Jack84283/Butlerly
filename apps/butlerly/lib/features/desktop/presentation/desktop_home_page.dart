@@ -209,6 +209,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                       maxLines: 1,
                       textAlign: TextAlign.end,
                       style: theme.textTheme.titleMedium?.copyWith(
+                        fontSize: context.designTokens.homeTypography.greeting,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -1092,6 +1093,7 @@ class _DesktopPanel extends StatelessWidget {
                       Text(
                         title,
                         style: _desktopHomeCardTitleStyle.copyWith(
+                          fontSize: context.designTokens.homeTypography.cardTitle,
                           color: context.colors.primaryText,
                         ),
                       ),
@@ -1197,6 +1199,7 @@ class _DesktopMetric extends StatelessWidget {
                 Text(
                   title,
                   style: _desktopHomeCardTitleStyle.copyWith(
+                    fontSize: context.designTokens.homeTypography.summaryLabel,
                     color: context.designTokens.homeColors.onMetric,
                   ),
                 ),
