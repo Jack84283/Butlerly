@@ -1093,7 +1093,8 @@ class _DesktopPanel extends StatelessWidget {
                       Text(
                         title,
                         style: _desktopHomeCardTitleStyle.copyWith(
-                          fontSize: context.designTokens.homeTypography.cardTitle,
+                          fontSize:
+                              context.designTokens.homeTypography.cardTitle,
                           color: context.colors.primaryText,
                         ),
                       ),
@@ -1210,7 +1211,8 @@ class _DesktopMetric extends StatelessWidget {
                   child: Text(
                     value,
                     style: TextStyle(
-                      fontSize: context.designTokens.homeTypography.summaryAmount,
+                      fontSize:
+                          context.designTokens.homeTypography.summaryAmount,
                       fontWeight: FontWeight.w800,
                       color: context.designTokens.homeColors.onMetric,
                       letterSpacing: -.7,
