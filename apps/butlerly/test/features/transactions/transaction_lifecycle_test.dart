@@ -131,7 +131,12 @@ void main() {
 
       expect(find.text('Corner Cafe'), findsOneWidget);
       expect(find.text('Food'), findsOneWidget);
-      expect(find.text('Dining · Visa'), findsOneWidget);
+      expect(find.text('Dining'), findsOneWidget);
+      expect(find.text('Visa'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('transaction-row-payment-source')),
+        findsOneWidget,
+      );
 
       await tester.tap(find.text('Corner Cafe'));
       await tester.pumpAndSettle();

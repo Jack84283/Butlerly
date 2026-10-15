@@ -768,8 +768,14 @@ void main() {
       ),
     );
 
-    final metadata = tester.getRect(find.text('Food · Visa'));
+    final metadata = tester.getRect(
+      find.byKey(const ValueKey('transaction-row-payment-source')),
+    );
     final tags = tester.getRect(find.text('Groceries'));
+    expect(
+      tester.getTopLeft(find.text('Visa')).dy,
+      greaterThan(tester.getBottomLeft(find.text('Food')).dy),
+    );
     expect(
       tags.top - metadata.bottom,
       ButlerlyTransactionItemTokens.metadataSpacing,
