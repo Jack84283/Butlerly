@@ -538,8 +538,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
         return DesktopTransactionDetailSplitView(
           results: resultsPage,
           detail: desktop && selectedTransaction != null
-              ? TransactionDetailPage(
-                  key: ValueKey('desktop-detail-${selectedTransaction.id}'),
+              ? DesktopTransactionPanel(
+                  key: ValueKey('desktop-panel-${selectedTransaction.id}'),
                   finance: _finance!,
                   transaction: selectedTransaction,
                   onChanged: _refresh,
@@ -599,6 +599,86 @@ final class _TransactionsData {
   final Set<String> possibleDuplicateIds;
 }
 
+/// Shows the existing detail and editor screens in the same desktop panel.
+class DesktopTransactionPanel extends StatefulWidget {
+  const DesktopTransactionPanel({
+    required this.finance,
+    required this.transaction,
+    required this.onClose,
+    required this.onChanged,
+    super.key,
+  });
+
+  final FinanceServices finance;
+  final TransactionDto transaction;
+  final ValueChanged<bool> onClose;
+  final VoidCallback onChanged;
+
+  @override
+  State<DesktopTransactionPanel> createState() =>
+      _DesktopTransactionPanelState();
+}
+
+class _DesktopTransactionPanelState extends State<DesktopTransactionPanel> {
+  bool _editing = false;
+  bool _changed = false;
+  TransactionDto? _savedTransaction;
+
+  @override
+  void didUpdateWidget(covariant DesktopTransactionPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.transaction.id != widget.transaction.id) {
+      _editing = false;
+      _changed = false;
+      _savedTransaction = null;
+    } else if (oldWidget.transaction.updatedAt != widget.transaction.updatedAt) {
+      _savedTransaction = widget.transaction;
+    }
+  }
+
+  void _completeEdit(TransactionEditorResult result) {
+    if (!mounted) return;
+    switch (result) {
+      case TransactionEditorSaved(:final transaction):
+        setState(() {
+          _savedTransaction = transaction;
+          _changed = true;
+          _editing = false;
+        });
+        widget.onChanged();
+      case TransactionEditorUseExisting():
+        setState(() {
+          _editing = false;
+          _changed = true;
+        });
+        widget.onChanged();
+      case TransactionEditorCancelled():
+        setState(() => _editing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final transaction = _savedTransaction ?? widget.transaction;
+    if (_editing) {
+      return TransactionEditorPage(
+        key: ValueKey('desktop-editor-${transaction.id}'),
+        finance: widget.finance,
+        existing: transaction,
+        onComplete: _completeEdit,
+      );
+    }
+    return TransactionDetailPage(
+      key: ValueKey('desktop-detail-${transaction.id}'),
+      finance: widget.finance,
+      transaction: transaction,
+      onEditRequested: () => setState(() => _editing = true),
+      onChanged: widget.onChanged,
+      onClose: (changed) => widget.onClose(changed || _changed),
+    );
+  }
+}
+
 sealed class TransactionEditorResult {
   const TransactionEditorResult();
   const factory TransactionEditorResult.saved(TransactionDto transaction) =
@@ -627,11 +707,15 @@ class TransactionEditorPage extends StatefulWidget {
   const TransactionEditorPage({
     required this.finance,
     this.existing,
+    this.onComplete,
     super.key,
   });
 
   final FinanceServices finance;
   final TransactionDto? existing;
+
+  /// Completes editing in place when embedded in the desktop panel.
+  final ValueChanged<TransactionEditorResult>? onComplete;
 
   @override
   State<TransactionEditorPage> createState() => _TransactionEditorPageState();
@@ -781,6 +865,14 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
     if (!_classificationOverridden) await _refreshClassification();
   }
 
+  void _complete(TransactionEditorResult result) {
+    if (widget.onComplete case final onComplete?) {
+      onComplete(result);
+    } else {
+      Navigator.of(context).pop(result);
+    }
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     final money = Money(
@@ -844,9 +936,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
       if (decision.decision == ButlerlyDuplicateDecision.useExisting) {
         final selectedId = decision.selectedTransactionId;
         if (selectedId != null) {
-          Navigator.of(
-            context,
-          ).pop(TransactionEditorResult.useExisting(selectedId));
+          _complete(TransactionEditorResult.useExisting(selectedId));
         }
         return;
       }
@@ -909,7 +999,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
     }
     notifyTransactionChanged();
     if (result case ApplicationSuccess<TransactionDto>(value: final saved)) {
-      Navigator.of(context).pop(TransactionEditorResult.saved(saved));
+      _complete(TransactionEditorResult.saved(saved));
     }
   }
 
@@ -917,6 +1007,17 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: widget.onComplete == null
+            ? null
+            : IconButton(
+                key: const ValueKey('transaction-editor-cancel-panel'),
+                tooltip: context.l10n.text('cancel'),
+                onPressed: _saving
+                    ? null
+                    : () =>
+                          _complete(const TransactionEditorResult.cancelled()),
+                icon: const Icon(Icons.arrow_back_rounded),
+              ),
         title: Text(
           widget.existing == null
               ? context.l10n.text('addTransaction')
@@ -1459,11 +1560,13 @@ class TransactionDetailPage extends StatefulWidget {
     required this.transaction,
     this.onClose,
     this.onChanged,
+    this.onEditRequested,
     super.key,
   });
 
   final FinanceServices finance;
   final TransactionDto transaction;
+  final VoidCallback? onEditRequested;
 
   /// When supplied, embed the existing detail page in a desktop side panel
   /// instead of popping the primary navigation route.
@@ -1536,6 +1639,10 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   }
 
   Future<void> _editTransaction() async {
+    if (widget.onEditRequested case final onEditRequested?) {
+      onEditRequested();
+      return;
+    }
     final changed = await Navigator.of(context).push<TransactionEditorResult>(
       MaterialPageRoute(
         builder: (_) =>

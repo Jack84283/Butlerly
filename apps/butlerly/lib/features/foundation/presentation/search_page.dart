@@ -650,9 +650,9 @@ class _SearchPageState extends State<SearchPage>
     return DesktopTransactionDetailSplitView(
       results: resultsPage,
       detail: desktop && _selectedTransaction != null && _finance != null
-          ? TransactionDetailPage(
+          ? DesktopTransactionPanel(
               key: ValueKey(
-                'desktop-search-detail-${_selectedTransaction!.id}',
+                'desktop-search-panel-${_selectedTransaction!.id}',
               ),
               finance: _finance!,
               transaction: _selectedTransaction!,

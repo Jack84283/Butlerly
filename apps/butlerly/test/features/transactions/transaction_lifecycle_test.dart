@@ -143,6 +143,57 @@ void main() {
     );
     expect(row, findsOneWidget);
 
+    // Edit keeps the same panel and leaves the transactions table mounted.
+    await tester.tap(
+      find.byKey(const ValueKey('transaction-detail-edit-action')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('desktop-transaction-detail-panel')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('transaction-editor-content')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('transaction-detail-summary-card')),
+      findsNothing,
+    );
+    expect(row, findsOneWidget);
+    await tester.tap(
+      find.byKey(const ValueKey('transaction-editor-cancel-panel')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('transaction-detail-summary-card')),
+      findsOneWidget,
+    );
+
+    // Saving returns to the current detail in place with updated values.
+    await tester.tap(
+      find.byKey(const ValueKey('transaction-detail-edit-action')),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('transaction-description-field')),
+      'Panel coffee edited',
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('transaction-save-locally')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Panel coffee edited'), findsWidgets);
+    expect(
+      find.byKey(const ValueKey('desktop-transaction-detail-panel')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('transaction-detail-summary-card')),
+      findsOneWidget,
+    );
+    expect(row, findsOneWidget);
+
     await tester.tap(
       find.byKey(const ValueKey('transaction-detail-close-panel')),
     );
@@ -209,6 +260,30 @@ void main() {
     );
     expect(
       find.byKey(const ValueKey('search-pinned-controls')),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('transaction-detail-edit-action')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('desktop-transaction-detail-panel')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('transaction-editor-content')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('search-pinned-controls')),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('transaction-editor-cancel-panel')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('transaction-detail-amount-card')),
       findsOneWidget,
     );
     await tester.tap(
