@@ -36,6 +36,8 @@ class AppLocalizations {
 
   static const _strings = <String, Map<String, String>>{
     'en': {
+      'cardNetwork': 'Card network',
+      'walletProvider': 'Wallet provider',
       'appName': 'Butlerly',
       'brandTagline': 'A CALMER WAY TO MONEY',
       'collapse': 'Collapse',
@@ -910,6 +912,8 @@ class AppLocalizations {
       'subcategory': 'Subcategory',
     },
     'zh': {
+      'cardNetwork': '银行卡网络',
+      'walletProvider': '电子钱包服务商',
       'appName': 'Butlerly',
       'brandTagline': 'A CALMER WAY TO MONEY',
       'collapse': '收起',
@@ -1664,6 +1668,8 @@ class AppLocalizations {
       'subcategory': '子类别',
     },
     'es': {
+      'cardNetwork': 'Red de tarjeta',
+      'walletProvider': 'Proveedor de billetera',
       'appName': 'Butlerly',
       'brandTagline': 'A CALMER WAY TO MONEY',
       'collapse': 'Contraer',

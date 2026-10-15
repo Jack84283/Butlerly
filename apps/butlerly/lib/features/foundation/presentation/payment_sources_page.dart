@@ -3,6 +3,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_ocr_service.dart';
 import 'package:butlerly/core/evidence/platform_ocr_recognizer.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_payment_source_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/payment_source_display.dart';
@@ -93,8 +94,9 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
     final finance = _finance;
     if (finance == null) return;
     final name = TextEditingController(text: existing?.name);
+    final detectedNetwork = paymentNetworkFromText(scanned?.issuer);
     final issuer = TextEditingController(
-      text: existing?.issuer ?? scanned?.issuer,
+      text: existing?.issuer ?? (detectedNetwork == null ? scanned?.issuer : null),
     );
     final lastFour = TextEditingController(
       text: existing?.lastFour ?? scanned?.lastFour,
@@ -102,6 +104,7 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
     final currency = TextEditingController(text: existing?.currency ?? 'USD');
     final note = TextEditingController(text: existing?.note);
     var type = existing?.type ?? scanned?.type ?? PaymentSourceType.account;
+    String? network = existing?.network ?? detectedNetwork;
     final locale = Localizations.localeOf(context);
     final typeLabelsResult = await finance.loadReferenceData.labels(
       type: 'payment_source_type',
@@ -177,9 +180,47 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                       ),
                   ],
                   onChanged: (value) {
-                    if (value != null) setDialogState(() => type = value);
+                    if (value != null) {
+                      setDialogState(() {
+                        if (value != type) network = null;
+                        type = value;
+                      });
+                    }
                   },
                 ),
+                if (type == PaymentSourceType.card ||
+                    type == PaymentSourceType.debitCard ||
+                    type == PaymentSourceType.wallet) ...[
+                  const SizedBox(height: ButlerlySpacing.small),
+                  ButlerlySelectField<String>(
+                    label: context.l10n.text(
+                      type == PaymentSourceType.wallet
+                          ? 'walletProvider'
+                          : 'cardNetwork',
+                    ),
+                    value: network ?? '',
+                    entries: [
+                      DropdownMenuEntry(
+                        value: '',
+                        label: context.l10n.text('notSet'),
+                      ),
+                      for (final entry in (type == PaymentSourceType.wallet
+                          ? walletPaymentProviderLabels
+                          : cardPaymentNetworkLabels).entries)
+                        DropdownMenuEntry(
+                          value: entry.key,
+                          label: entry.value,
+                          leadingIcon: ButlerlyPaymentMarkIcon(
+                            mark: entry.key,
+                            size: 24,
+                          ),
+                        ),
+                    ],
+                    onChanged: (value) => setDialogState(
+                      () => network = value == '' ? null : value,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -260,6 +301,7 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                     issuer: issuer.text.trim().isEmpty
                         ? null
                         : issuer.text.trim(),
+                    network: network,
                     currency: currency.text.trim().toUpperCase(),
                     note: note.text.trim().isEmpty ? null : note.text.trim(),
                     status: existing?.status ?? PaymentSourceStatus.active,
@@ -353,6 +395,7 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                           horizontal: ButlerlySpacing.standard,
                           vertical: ButlerlySpacing.compact,
                         ),
+                        leading: ButlerlyPaymentSourceIcon(source: value),
                         title: Text(paymentSourceDisplayLabel(value)),
                         subtitle: Text(
                           [
@@ -401,6 +444,7 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                                   displayIdentity: value.displayIdentity,
                                   lastFour: value.lastFour,
                                   issuer: value.issuer,
+                                  network: value.network,
                                   currency: value.currency,
                                   note: value.note,
                                 ),
