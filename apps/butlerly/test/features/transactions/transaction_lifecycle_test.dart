@@ -82,6 +82,120 @@ void main() {
 
   tearDown(() => services.reset());
 
+  testWidgets('Wide Transactions opens the existing detail in a side panel', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1600, 1200);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    final finance = services<FinanceServices>();
+    final created = await finance.createTransaction(
+      CreateTransactionCommand(
+        id: 'panel-transaction',
+        provenanceId: 'panel-transaction-source',
+        timing: KnownTransactionTime(DateTime.utc(2026, 10, 14, 12)),
+        money: Money(
+          amount: DecimalValue.parse('19.75'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        transactionDate: '2026-10-14',
+        description: 'Panel coffee',
+      ),
+    );
+    expect(created, isA<ApplicationSuccess<TransactionDto>>());
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TransactionsPage(
+            query: const ListTransactionsQuery(
+              transactionIds: ['panel-transaction'],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final row = find.byKey(const ValueKey('desktop-transaction-row-panel-transaction'));
+    expect(row, findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('desktop-transaction-detail-panel')),
+      findsNothing,
+    );
+
+    await tester.tap(row);
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('desktop-transaction-detail-panel')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('transaction-detail-summary-card')), findsOneWidget);
+    expect(find.byKey(const ValueKey('transaction-detail-edit-action')), findsOneWidget);
+    expect(row, findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('transaction-detail-close-panel')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('desktop-transaction-detail-panel')),
+      findsNothing,
+    );
+    expect(row, findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Wide Search retains results when its detail panel closes', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1500, 1100);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    final finance = services<FinanceServices>();
+    final created = await finance.createTransaction(
+      CreateTransactionCommand(
+        id: 'search-panel-transaction',
+        provenanceId: 'search-panel-source',
+        timing: KnownTransactionTime(DateTime.utc(2026, 10, 12, 12)),
+        money: Money(
+          amount: DecimalValue.parse('6.25'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        transactionDate: '2026-10-12',
+        description: 'Search panel coffee',
+      ),
+    );
+    expect(created, isA<ApplicationSuccess<TransactionDto>>());
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SearchPage(
+            initialQuery: const ListTransactionsQuery(
+              transactionIds: ['search-panel-transaction'],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Search panel coffee'), findsOneWidget);
+    expect(find.byKey(const ValueKey('desktop-transaction-detail-panel')), findsNothing);
+
+    await tester.tap(find.text('Search panel coffee'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('desktop-transaction-detail-panel')), findsOneWidget);
+    expect(find.byKey(const ValueKey('transaction-detail-amount-card')), findsOneWidget);
+    expect(find.byKey(const ValueKey('search-pinned-controls')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('transaction-detail-close-panel')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('desktop-transaction-detail-panel')), findsNothing);
+    expect(find.text('Search panel coffee'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'row detail and edit preserve transaction master-data references',
     (tester) async {
