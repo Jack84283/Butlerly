@@ -1013,13 +1013,25 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
         : percentValue < 0
         ? '↓ ${percentValue.abs().toStringAsFixed(1)}% ${context.l10n.text('vsPreviousPeriod')}'
         : '0.0% ${context.l10n.text('vsPreviousPeriod')}';
+    final compact = context.designTokens.mode == ButlerlyLayoutMode.compact;
+    final comparisonStyle = Theme.of(context).textTheme.labelSmall?.copyWith(
+      color: percentValue == null
+          ? context.designTokens.homeColors.onMetricMuted
+          : context.designTokens.homeColors.onMetric,
+      fontWeight: FontWeight.w600,
+    );
     return Container(
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.80),
         borderRadius: BorderRadius.circular(16),
       ),
-      padding: context.designTokens.mode == ButlerlyLayoutMode.compact
-          ? const EdgeInsets.all(ButlerlySpacing.micro)
+      padding: compact
+          ? const EdgeInsets.fromLTRB(
+              ButlerlySpacing.micro,
+              ButlerlySpacing.compact,
+              ButlerlySpacing.micro,
+              ButlerlySpacing.micro,
+            )
           : const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
       child: Column(
         key: titleKey,
@@ -1036,7 +1048,11 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
               size: 18,
             ),
           ),
-          const SizedBox(height: 6),
+          SizedBox(
+            height: compact
+                ? ButlerlySpacing.micro
+                : ButlerlySpacing.microSmall,
+          ),
           SizedBox(
             width: double.infinity,
             height: 20,
@@ -1053,7 +1069,9 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 4),
+          SizedBox(
+            height: compact ? ButlerlySpacing.xxs : ButlerlySpacing.micro,
+          ),
           SizedBox(
             width: double.infinity,
             height: 28,
@@ -1071,24 +1089,32 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(height: 4),
           SizedBox(
-            width: double.infinity,
-            height: 16,
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
+            height: compact ? ButlerlySpacing.xxs : ButlerlySpacing.micro,
+          ),
+          if (compact)
+            SizedBox(
+              width: double.infinity,
               child: Text(
                 comparisonText,
-                maxLines: 1,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: percentValue == null
-                      ? context.designTokens.homeColors.onMetricMuted
-                      : context.designTokens.homeColors.onMetric,
-                  fontWeight: FontWeight.w600,
+                textAlign: TextAlign.center,
+                softWrap: true,
+                style: comparisonStyle,
+              ),
+            )
+          else
+            SizedBox(
+              width: double.infinity,
+              height: 16,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  comparisonText,
+                  maxLines: 1,
+                  style: comparisonStyle,
                 ),
               ),
             ),
-          ),
         ],
       ),
     );
