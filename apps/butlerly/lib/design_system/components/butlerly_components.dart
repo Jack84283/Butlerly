@@ -923,7 +923,8 @@ class ButlerlyTransactionList extends StatelessWidget {
             height: 1,
             indent: context.designTokens.transactionGeometry.dividerInset,
             endIndent: context.designTokens.transactionGeometry.dividerInset,
-            thickness: context.designTokens.transactionGeometry.dividerThickness,
+            thickness:
+                context.designTokens.transactionGeometry.dividerThickness,
             color: context.transactionItemDivider,
           ),
       ],
@@ -995,8 +996,10 @@ class ButlerlyCategoryBadge extends StatelessWidget {
       ),
       child: Padding(
         padding: EdgeInsets.symmetric(
-          horizontal: context.designTokens.transactionGeometry.badgeHorizontalPadding,
-          vertical: context.designTokens.transactionGeometry.badgeVerticalPadding,
+          horizontal:
+              context.designTokens.transactionGeometry.badgeHorizontalPadding,
+          vertical:
+              context.designTokens.transactionGeometry.badgeVerticalPadding,
         ),
         child: Text(
           label,
