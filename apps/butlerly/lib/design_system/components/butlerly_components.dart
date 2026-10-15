@@ -2,7 +2,6 @@ import 'package:butlerly/design_system/category/butlerly_category_identity.dart'
 import 'package:butlerly/design_system/components/butlerly_category_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_content_surface.dart';
 import 'package:butlerly/design_system/theme/butlerly_button_palette.dart';
-import 'package:butlerly/design_system/theme/butlerly_responsive_design_tokens.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_category_colors.dart';
@@ -921,10 +920,9 @@ class ButlerlyTransactionList extends StatelessWidget {
         if (index < children.length - 1)
           Divider(
             height: 1,
-            indent: context.designTokens.transactionGeometry.dividerInset,
-            endIndent: context.designTokens.transactionGeometry.dividerInset,
-            thickness:
-                context.designTokens.transactionGeometry.dividerThickness,
+            indent: ButlerlyTransactionItemTokens.dividerInset,
+            endIndent: ButlerlyTransactionItemTokens.dividerInset,
+            thickness: ButlerlyTransactionItemTokens.dividerThickness,
             color: context.transactionItemDivider,
           ),
       ],
@@ -995,19 +993,18 @@ class ButlerlyCategoryBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(ButlerlyRadius.full),
       ),
       child: Padding(
-        padding: EdgeInsets.symmetric(
+        padding: const EdgeInsets.symmetric(
           horizontal:
-              context.designTokens.transactionGeometry.badgeHorizontalPadding,
-          vertical:
-              context.designTokens.transactionGeometry.badgeVerticalPadding,
+              ButlerlyTransactionItemTokens.categoryBadgeHorizontalPadding,
+          vertical: ButlerlyTransactionItemTokens.categoryBadgeVerticalPadding,
         ),
         child: Text(
           label,
           softWrap: true,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
             color: foreground,
-            fontSize: context.designTokens.transactionTypography.badge,
-            height: context.designTokens.transactionTypography.badgeLineHeight,
+            fontSize: ButlerlyTransactionItemTokens.categoryBadgeFontSize,
+            height: ButlerlyTransactionItemTokens.categoryBadgeLineHeight,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -1086,13 +1083,13 @@ class ButlerlyTransactionListItem extends StatelessWidget {
   final bool compactSpacing;
   final ButlerlyTransactionRowVariant variant;
 
-  EdgeInsets _rowPadding(BuildContext context) => EdgeInsets.fromLTRB(
-    context.designTokens.transactionGeometry.horizontalInset,
+  EdgeInsets get _rowPadding => EdgeInsets.fromLTRB(
+    ButlerlyTransactionItemTokens.horizontalInset,
     compactSpacing
-        ? context.designTokens.transactionGeometry.compactFirstRowTopPadding
-        : context.designTokens.transactionGeometry.verticalPadding,
-    context.designTokens.transactionGeometry.horizontalInset,
-    context.designTokens.transactionGeometry.verticalPadding,
+        ? ButlerlySpacing.micro
+        : ButlerlyTransactionItemTokens.topPadding,
+    ButlerlyTransactionItemTokens.horizontalInset,
+    ButlerlyTransactionItemTokens.bottomPadding,
   );
 
   @override
@@ -1130,15 +1127,15 @@ class ButlerlyTransactionListItem extends StatelessWidget {
   }
 
   Widget _buildCanonical(BuildContext context) => ConstrainedBox(
-    constraints: BoxConstraints(
-      minHeight: context.designTokens.transactionGeometry.minimumRowHeight,
+    constraints: const BoxConstraints(
+      minHeight: ButlerlyTransactionItemTokens.minTouchHeight,
     ),
     child: Material(
       type: MaterialType.transparency,
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: _rowPadding(context),
+          padding: _rowPadding,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1268,15 +1265,15 @@ class ButlerlyTransactionListItem extends StatelessWidget {
   );
 
   Widget _buildLegacy(BuildContext context) => ConstrainedBox(
-    constraints: BoxConstraints(
-      minHeight: context.designTokens.transactionGeometry.minimumRowHeight,
+    constraints: const BoxConstraints(
+      minHeight: ButlerlyTransactionItemTokens.minTouchHeight,
     ),
     child: Material(
       type: MaterialType.transparency,
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: _rowPadding(context),
+          padding: _rowPadding,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
