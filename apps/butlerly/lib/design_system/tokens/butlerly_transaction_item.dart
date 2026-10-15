@@ -51,71 +51,42 @@ abstract final class ButlerlyTransactionItemTokens {
   );
 }
 
-/// An optional typography override scoped to a single transaction-list subtree.
-/// The regular shared row styling is unchanged when no override is provided.
-class ButlerlyTransactionTypographyScope extends InheritedWidget {
-  const ButlerlyTransactionTypographyScope({
-    required this.typography,
-    required super.child,
-    super.key,
-  });
-
-  final ButlerlyTransactionTypographyTokens? typography;
-
-  static ButlerlyTransactionTypographyTokens? maybeOf(BuildContext context) =>
-      context
-          .dependOnInheritedWidgetOfExactType<ButlerlyTransactionTypographyScope>()
-          ?.typography;
-
-  @override
-  bool updateShouldNotify(ButlerlyTransactionTypographyScope oldWidget) =>
-      typography != oldWidget.typography;
-}
-
 /// Semantic styles for the transaction title, amount, and supporting metadata.
 extension ButlerlyTransactionItemStyles on BuildContext {
   TextStyle get transactionItemAmount {
     final base = Theme.of(this).textTheme.titleMedium!;
-    final homeTypography = ButlerlyTransactionTypographyScope.maybeOf(this);
-    return ButlerlyTypography.denseRowAmount(base).copyWith(
-      fontSize: homeTypography?.amount,
-      height: homeTypography?.primaryLineHeight,
-      color: colors.primaryText,
-      fontFamily: base.fontFamily,
-      fontFamilyFallback: base.fontFamilyFallback,
-    );
+    return designTokens.transactionTypography
+        .amountStyle(base)
+        .copyWith(
+          color: colors.primaryText,
+          fontFamily: base.fontFamily,
+          fontFamilyFallback: base.fontFamilyFallback,
+        );
   }
 
   TextStyle get transactionItemDate =>
       Theme.of(this).textTheme.bodyMedium!.copyWith(
-        fontSize: ButlerlyTransactionTypographyScope.maybeOf(this)?.metadata ??
-            ButlerlyTransactionItemTokens.metadataFontSize,
-        height:
-            ButlerlyTransactionTypographyScope.maybeOf(this)?.metadataLineHeight ??
-            ButlerlyTransactionItemTokens.metadataLineHeight,
+        fontSize: designTokens.transactionTypography.metadata,
+        height: designTokens.transactionTypography.metadataLineHeight,
         fontWeight: FontWeight.w400,
         color: colors.secondaryText,
       );
 
   TextStyle get transactionItemDescription {
     final base = Theme.of(this).textTheme.bodyMedium!;
-    final homeTypography = ButlerlyTransactionTypographyScope.maybeOf(this);
-    return ButlerlyTypography.denseRowTitle(base).copyWith(
-      fontSize: homeTypography?.title,
-      height: homeTypography?.primaryLineHeight,
-      color: colors.primaryText,
-      fontFamily: base.fontFamily,
-      fontFamilyFallback: base.fontFamilyFallback,
-    );
+    return designTokens.transactionTypography
+        .titleStyle(base)
+        .copyWith(
+          color: colors.primaryText,
+          fontFamily: base.fontFamily,
+          fontFamilyFallback: base.fontFamilyFallback,
+        );
   }
 
   TextStyle get transactionItemMetadata =>
       Theme.of(this).textTheme.bodyMedium!.copyWith(
-        fontSize: ButlerlyTransactionTypographyScope.maybeOf(this)?.metadata ??
-            ButlerlyTransactionItemTokens.metadataFontSize,
-        height:
-            ButlerlyTransactionTypographyScope.maybeOf(this)?.metadataLineHeight ??
-            ButlerlyTransactionItemTokens.metadataLineHeight,
+        fontSize: designTokens.transactionTypography.metadata,
+        height: designTokens.transactionTypography.metadataLineHeight,
         fontWeight: FontWeight.w400,
         color: colors.secondaryText,
       );
