@@ -609,6 +609,51 @@ void main() {
     );
   });
 
+  testWidgets('shared transaction rows adapt to Compact Medium and Wide', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    for (final entry in [
+      (size: const Size(390, 844), title: 14.0, meta: 13.0, badge: 11.0),
+      (size: const Size(900, 1200), title: 15.0, meta: 14.0, badge: 12.0),
+      (size: const Size(1200, 800), title: 15.0, meta: 14.0, badge: 12.0),
+    ]) {
+      tester.view.physicalSize = entry.size;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: const Scaffold(
+            body: ButlerlyRecordRow(
+              title: 'Coffee',
+              amount: '20.00',
+              currency: 'USD',
+              categoryLabel: 'Food',
+              showCategoryPill: true,
+              paymentSource: 'Visa',
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<Text>(find.text('Coffee')).style?.fontSize, entry.title);
+      expect(
+        tester.widget<Text>(find.text('−20.00 USD')).style?.fontSize,
+        entry.title,
+      );
+      expect(tester.widget<Text>(find.text('Visa')).style?.fontSize, entry.meta);
+      expect(tester.widget<Text>(find.text('Food')).style?.fontSize, entry.badge);
+      expect(
+        tester.getSize(find.byType(ButlerlyRecordRow)).height,
+        greaterThanOrEqualTo(72),
+      );
+      expect(tester.takeException(), isNull);
+    }
+  });
+
   testWidgets('combined metadata and tags use semantic compact spacing', (
     tester,
   ) async {
