@@ -257,6 +257,33 @@ void main() {
     },
   );
 
+  testWidgets(
+    'Android phone rotation preserves Medium bottom navigation and taps',
+    (tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      await _pumpAt(tester, const Size(390, 900));
+      expect(find.byType(CompactPrimaryShell), findsOneWidget);
+
+      tester.view.physicalSize = const Size(900, 390);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MediumPrimaryShell), findsOneWidget);
+      expect(find.byType(DesktopPrimaryShell), findsNothing);
+      expect(
+        find.byKey(const ValueKey('primary-medium-navigation')),
+        findsOneWidget,
+      );
+      await tester.tap(find.bySemanticsLabel('Transactions'));
+      await tester.pumpAndSettle();
+      expect(
+        appRouter.routeInformationProvider.value.uri.path,
+        '/transactions',
+      );
+      debugDefaultTargetPlatformOverride = null;
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('Wide uses the left navigation shell', (tester) async {
     const size = Size(1200, 800);
     await _pumpAt(tester, size);
