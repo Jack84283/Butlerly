@@ -1,5 +1,6 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/theme/butlerly_responsive_design_tokens.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
@@ -98,7 +99,7 @@ void main() {
         );
         expect(
           transactionTitle.style?.fontSize,
-          ButlerlyTransactionItemTokens.titleFontSize,
+          ButlerlyTransactionTypographyTokens.compact.title,
         );
         expect(transactionTitle.style?.fontWeight, FontWeight.w600);
         expect(transactionTitle.style?.color, colors.primaryText);
