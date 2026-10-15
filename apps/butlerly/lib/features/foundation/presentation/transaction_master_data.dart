@@ -1,4 +1,5 @@
 import 'package:butlerly/core/di/finance_services.dart';
+import 'package:butlerly/design_system/components/butlerly_payment_source_icon.dart';
 import 'package:butlerly/features/foundation/presentation/payment_source_display.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -15,6 +16,7 @@ final class TransactionMasterData {
     this.categoryParentIds = const {},
     this.tagNames = const {},
     this.paymentSourceNames = const {},
+    this.paymentSourceMarks = const {},
   });
 
   final Map<String, String> merchantNames;
@@ -23,6 +25,7 @@ final class TransactionMasterData {
   final Map<String, String?> categoryParentIds;
   final Map<String, String> tagNames;
   final Map<String, String> paymentSourceNames;
+  final Map<String, String> paymentSourceMarks;
 
   String? merchantName(String? id) => id == null ? null : merchantNames[id];
 
@@ -40,6 +43,9 @@ final class TransactionMasterData {
 
   String? paymentSourceName(String? id) =>
       id == null ? null : paymentSourceNames[id];
+
+  String? paymentSourceMark(String? id) =>
+      id == null ? null : paymentSourceMarks[id];
 
   String? summary(TransactionDto transaction) {
     final labels = <String>[
@@ -96,6 +102,10 @@ final class TransactionMasterData {
     paymentSourceNames: {
       for (final value in paymentSources)
         value.id.value: paymentSourceDisplayLabel(value),
+    },
+    paymentSourceMarks: {
+      for (final value in paymentSources)
+        value.id.value: paymentMarkFor(value),
     },
   );
 

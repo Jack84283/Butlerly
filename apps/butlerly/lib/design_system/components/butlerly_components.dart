@@ -1,6 +1,7 @@
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/components/butlerly_category_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_content_surface.dart';
+import 'package:butlerly/design_system/components/butlerly_payment_source_icon.dart';
 import 'package:butlerly/design_system/theme/butlerly_button_palette.dart';
 import 'package:butlerly/design_system/theme/butlerly_responsive_design_tokens.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
@@ -1042,6 +1043,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
     this.categoryLabel,
     this.subcategoryLabel,
     this.paymentSource,
+    this.paymentSourceMark,
     this.tags = const [],
     this.supportingContent,
     this.showDate = false,
@@ -1068,6 +1070,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
   final String? categoryLabel;
   final String? subcategoryLabel;
   final String? paymentSource;
+  final String? paymentSourceMark;
   final List<String> tags;
   final Widget? supportingContent;
   final bool showDate;
@@ -1209,7 +1212,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                           child: _categoryPill(),
                         ),
                       ),
-                    if (_metadataParts.isNotEmpty) ...[
+                    if (_hasMetadata) ...[
                       const SizedBox(
                         height: ButlerlyTransactionItemTokens.headerSpacing,
                       ),
@@ -1219,7 +1222,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
                       Padding(
                         padding: EdgeInsets.only(
                           top:
-                              _metadataParts.isNotEmpty ||
+                              _hasMetadata ||
                                   (showCategoryPill &&
                                       categoryLabel?.trim().isNotEmpty == true)
                               ? ButlerlyTransactionItemTokens.metadataSpacing
@@ -1413,12 +1416,65 @@ class ButlerlyTransactionListItem extends StatelessWidget {
     label: categoryLabel!,
   );
 
-  Widget _metadataText(BuildContext context) => Text(
-    _metadataParts.join(' · '),
+  Widget _metadataText(BuildContext context) {
+    final categoryDetails = _categoryMetadataParts.join(' · ');
+    final sourceLabel = paymentSource?.trim();
+    final hasSource = sourceLabel != null && sourceLabel.isNotEmpty;
+
+    if (context.designTokens.mode == ButlerlyLayoutMode.compact) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (categoryDetails.isNotEmpty)
+            _metadataLabel(context, categoryDetails),
+          if (hasSource)
+            Padding(
+              padding: EdgeInsets.only(
+                top: categoryDetails.isEmpty
+                    ? ButlerlySpacing.none
+                    : ButlerlyTransactionItemTokens.metadataSpacing,
+              ),
+              child: _paymentSourceLine(context, sourceLabel!),
+            ),
+        ],
+      );
+    }
+
+    return Row(
+      children: [
+        if (categoryDetails.isNotEmpty)
+          Flexible(
+            child: _metadataLabel(
+              context,
+              hasSource ? '$categoryDetails ·' : categoryDetails,
+            ),
+          ),
+        if (hasSource) ...[
+          if (categoryDetails.isNotEmpty)
+            const SizedBox(width: ButlerlySpacing.micro),
+          Flexible(child: _paymentSourceLine(context, sourceLabel!)),
+        ],
+      ],
+    );
+  }
+
+  Widget _metadataLabel(BuildContext context, String label) => Text(
+    label,
     maxLines: 1,
     overflow: TextOverflow.ellipsis,
     style: context.transactionItemMetadata,
     textHeightBehavior: ButlerlyTransactionItemTokens.textHeightBehavior,
+  );
+
+  Widget _paymentSourceLine(BuildContext context, String label) => Row(
+    key: const ValueKey('transaction-row-payment-source'),
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      ButlerlyPaymentMarkIcon(mark: paymentSourceMark ?? 'other', size: 18),
+      const SizedBox(width: ButlerlySpacing.micro),
+      Flexible(child: _metadataLabel(context, label)),
+    ],
   );
 
   Widget _signedAmount(BuildContext context) => Text(
@@ -1438,7 +1494,7 @@ class ButlerlyTransactionListItem extends StatelessWidget {
     textHeightBehavior: ButlerlyTransactionItemTokens.textHeightBehavior,
   );
 
-  List<String> get _metadataParts => [
+  List<String> get _categoryMetadataParts => [
     if (!showCategoryPill &&
         categoryLabel != null &&
         categoryLabel!.trim().isNotEmpty)
@@ -1446,9 +1502,11 @@ class ButlerlyTransactionListItem extends StatelessWidget {
     if (subcategoryLabel case final value?
         when value.trim().isNotEmpty && value.trim() != categoryLabel?.trim())
       value.trim(),
-    if (paymentSource case final value? when value.trim().isNotEmpty)
-      value.trim(),
   ];
+
+  bool get _hasMetadata =>
+      _categoryMetadataParts.isNotEmpty ||
+      paymentSource?.trim().isNotEmpty == true;
 
   List<String> get _visibleTags =>
       tags.where((value) => value.trim().isNotEmpty).toList(growable: false);
@@ -1541,6 +1599,7 @@ class ButlerlyRecordRow extends ButlerlyTransactionListItem {
     super.categoryLabel,
     super.subcategoryLabel,
     super.paymentSource,
+    super.paymentSourceMark,
     super.tags,
     super.supportingContent,
     super.showDate,
