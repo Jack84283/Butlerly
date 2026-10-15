@@ -238,6 +238,38 @@ void main() {
     expect(find.byKey(const Key('home-notification-action')), findsNothing);
   });
 
+  testWidgets('Empty Spending Trend fills the Home content width', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    for (final size in [const Size(390, 844), const Size(900, 1000)]) {
+      tester.view.physicalSize = size;
+      await tester.pumpWidget(_testApp(router));
+      await tester.pumpAndSettle();
+
+      final trend = find.byKey(const ValueKey('home-trend-card'));
+      final content = find.byKey(const ValueKey('home-page-content'));
+      expect(trend, findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('home-spending-trend-chart')),
+        findsNothing,
+      );
+      expect(
+        tester.getRect(trend).width,
+        closeTo(tester.getRect(content).width, 0.01),
+        reason: 'The empty trend must use full width at ${size.width}px',
+      );
+      expect(
+        tester.getTopLeft(trend).dx,
+        closeTo(tester.getTopLeft(content).dx, 0.01),
+      );
+    }
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Monthly Summary keeps three desktop-style cards in one row', (
     tester,
   ) async {
