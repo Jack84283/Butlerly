@@ -76,6 +76,7 @@ void main() {
       path: path,
       schemaSql: schema,
       migrations: parseDeploymentMigrations(deployment),
+      targetVersion: 15,
     );
     try {
       await database.open();
