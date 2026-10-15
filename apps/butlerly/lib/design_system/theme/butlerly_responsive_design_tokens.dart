@@ -13,8 +13,6 @@ class ButlerlyResponsiveDesignTokens {
     required this.colors,
     required this.homeTypography,
     required this.homeColors,
-    required this.transactionTypography,
-    required this.transactionGeometry,
     required this.geometry,
   });
 
@@ -22,8 +20,6 @@ class ButlerlyResponsiveDesignTokens {
   final ButlerlySemanticColors colors;
   final ButlerlyHomeTypographyTokens homeTypography;
   final ButlerlyHomeColorTokens homeColors;
-  final ButlerlyTransactionTypographyTokens transactionTypography;
-  final ButlerlyTransactionGeometryTokens transactionGeometry;
   final ButlerlyGeometryTokens geometry;
 
   static ButlerlyResponsiveDesignTokens of(BuildContext context) {
@@ -49,8 +45,6 @@ class ButlerlyResponsiveDesignTokens {
     colors: colors,
     homeTypography: ButlerlyHomeTypographyTokens.forMode(mode),
     homeColors: ButlerlyHomeColorTokens.forMode(mode),
-    transactionTypography: ButlerlyTransactionTypographyTokens.forMode(mode),
-    transactionGeometry: ButlerlyTransactionGeometryTokens.forMode(mode),
     geometry: ButlerlyGeometryTokens.forMode(mode),
   );
 }
@@ -79,6 +73,7 @@ class ButlerlyHomeTypographyTokens {
     required this.categoryMetadata,
     required this.attentionTitle,
     required this.attentionSubtitle,
+    this.recentTransactionTypography,
   });
 
   final double brand;
@@ -95,6 +90,10 @@ class ButlerlyHomeTypographyTokens {
   final double attentionTitle;
   final double attentionSubtitle;
 
+  /// Only the Compact Home recent-transaction list opts into this override.
+  /// A null value preserves the canonical shared row styling.
+  final ButlerlyTransactionTypographyTokens? recentTransactionTypography;
+
   static const compact = ButlerlyHomeTypographyTokens(
     brand: 24,
     greeting: 20,
@@ -109,6 +108,7 @@ class ButlerlyHomeTypographyTokens {
     categoryMetadata: 12,
     attentionTitle: 14,
     attentionSubtitle: 13,
+    recentTransactionTypography: ButlerlyTransactionTypographyTokens.compact,
   );
 
   static const medium = ButlerlyHomeTypographyTokens(
@@ -224,9 +224,8 @@ class ButlerlyHomeColorTokens {
   static ButlerlyHomeColorTokens forMode(ButlerlyLayoutMode mode) => standard;
 }
 
-/// Typography for the *shared* transaction row across Home, Transactions,
-/// Search, and Review. Compact reduces the reading scale one step; Medium and
-/// Wide preserve the approved transaction-list sizes.
+/// Opt-in typography for the Compact Home recent-transaction list only.
+/// Other screens, and Medium/Wide Home, keep ButlerlyTransactionItemTokens.
 @immutable
 class ButlerlyTransactionTypographyTokens {
   const ButlerlyTransactionTypographyTokens({
@@ -256,81 +255,6 @@ class ButlerlyTransactionTypographyTokens {
     metadataLineHeight: 17 / 13,
     badgeLineHeight: 15 / 11,
   );
-
-  static const medium = ButlerlyTransactionTypographyTokens(
-    title: 15,
-    amount: 15,
-    metadata: 14,
-    badge: 12,
-    primaryLineHeight: 20 / 15,
-    metadataLineHeight: 18 / 14,
-    badgeLineHeight: 16 / 12,
-  );
-
-  static const wide = medium;
-
-  static ButlerlyTransactionTypographyTokens forMode(ButlerlyLayoutMode mode) =>
-      switch (mode) {
-        ButlerlyLayoutMode.compact => compact,
-        ButlerlyLayoutMode.medium => medium,
-        ButlerlyLayoutMode.wide => wide,
-      };
-
-  TextStyle titleStyle(TextStyle base) => ButlerlyTypography.denseRowTitle(
-    base,
-  ).copyWith(fontSize: title, height: primaryLineHeight);
-
-  TextStyle amountStyle(TextStyle base) => ButlerlyTypography.denseRowAmount(
-    base,
-  ).copyWith(fontSize: amount, height: primaryLineHeight);
-}
-
-/// Transaction-row geometry is deliberately stable between modes to preserve
-/// touch targets and list alignment when the font size changes.
-@immutable
-class ButlerlyTransactionGeometryTokens {
-  const ButlerlyTransactionGeometryTokens({
-    required this.horizontalInset,
-    required this.verticalPadding,
-    required this.compactFirstRowTopPadding,
-    required this.leadingIconSize,
-    required this.badgeHorizontalPadding,
-    required this.badgeVerticalPadding,
-    required this.dividerInset,
-    required this.dividerThickness,
-  });
-
-  final double horizontalInset;
-  final double verticalPadding;
-  final double compactFirstRowTopPadding;
-  final double leadingIconSize;
-  final double badgeHorizontalPadding;
-  final double badgeVerticalPadding;
-  final double dividerInset;
-  final double dividerThickness;
-
-  double get minimumRowHeight => leadingIconSize + verticalPadding * 2;
-
-  static const compact = ButlerlyTransactionGeometryTokens(
-    horizontalInset: ButlerlySpacing.compact,
-    verticalPadding: ButlerlySpacing.small,
-    compactFirstRowTopPadding: ButlerlySpacing.micro,
-    leadingIconSize: ButlerlySize.preferredTarget,
-    badgeHorizontalPadding: ButlerlySpacing.small,
-    badgeVerticalPadding: ButlerlySpacing.xxs,
-    dividerInset: ButlerlySpacing.compact,
-    dividerThickness: ButlerlySize.dividerWidth,
-  );
-
-  static const medium = compact;
-  static const wide = compact;
-
-  static ButlerlyTransactionGeometryTokens forMode(ButlerlyLayoutMode mode) =>
-      switch (mode) {
-        ButlerlyLayoutMode.compact => compact,
-        ButlerlyLayoutMode.medium => medium,
-        ButlerlyLayoutMode.wide => wide,
-      };
 }
 
 /// Semantic geometry for pages and reusable components. Geometry can vary by
