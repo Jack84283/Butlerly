@@ -2,6 +2,7 @@ import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_action_group.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_button_palette.dart';
+import 'package:butlerly/design_system/theme/butlerly_responsive_design_tokens.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_category_colors.dart';
@@ -356,7 +357,7 @@ void main() {
         );
         expect(
           text.style?.fontSize,
-          ButlerlyTransactionItemTokens.categoryBadgeFontSize,
+          ButlerlyTransactionTypographyTokens.compact.badge,
         );
         expect(contrast, greaterThanOrEqualTo(4.5));
         expect(text.maxLines, isNull);

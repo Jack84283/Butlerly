@@ -221,7 +221,7 @@ void main() {
       summaryAmount.style?.fontFamily,
       isNot(ButlerlyTypography.editorialFontFamily),
     );
-    expect(summaryAmount.style?.fontSize, 24);
+    expect(summaryAmount.style?.fontSize, 20);
     expect(summaryAmount.style?.fontWeight, FontWeight.w800);
     expect(summaryAmount.style?.color, Colors.white);
     expect(find.byKey(const ValueKey('home-attention-card')), findsOneWidget);
@@ -711,6 +711,119 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Compact summary metrics wrap comparison text and tighten gaps', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      _summaryTestApp(
+        homeSummaryForTest(
+          AnalysisOverview(
+            insightUnavailable: false,
+            trend: const [],
+            categories: const [],
+            qualityCount: 0,
+            qualityEvaluated: true,
+            qualityLimited: false,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    for (final entry in const [
+      (
+        tile: 'home-summary-inner-income',
+        content: 'home-summary-metric-income',
+      ),
+      (
+        tile: 'home-summary-inner-spending',
+        content: 'home-summary-metric-spending',
+      ),
+      (
+        tile: 'home-summary-inner-net-position',
+        content: 'home-summary-metric-net-position',
+      ),
+    ]) {
+      final tile = find.byKey(ValueKey(entry.tile));
+      final container = tester.widget<Container>(
+        find.descendant(of: tile, matching: find.byType(Container)).first,
+      );
+      expect(container.padding, const EdgeInsets.fromLTRB(4, 8, 4, 4));
+
+      final content = tester.widget<Column>(
+        find.byKey(ValueKey(entry.content)),
+      );
+      expect((content.children[1] as SizedBox).height, 4);
+      expect((content.children[2] as SizedBox).height, 18);
+      expect((content.children[3] as SizedBox).height, 0);
+      expect((content.children[4] as SizedBox).height, 24);
+      expect((content.children[5] as SizedBox).height, 0);
+
+      final comparison = find.descendant(
+        of: tile,
+        matching: find.text('Comparison unavailable'),
+      );
+      final text = tester.widget<Text>(comparison);
+      expect(text.softWrap, isTrue);
+      expect(text.maxLines, isNull);
+      expect(text.textAlign, TextAlign.center);
+      expect(text.style?.height, 1.1);
+      expect(tester.getSize(comparison).height, greaterThan(20));
+    }
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Medium summary metrics remain single-line', (tester) async {
+    tester.view.physicalSize = const Size(900, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      _summaryTestApp(
+        homeSummaryForTest(
+          AnalysisOverview(
+            insightUnavailable: false,
+            trend: const [],
+            categories: const [],
+            qualityCount: 0,
+            qualityEvaluated: true,
+            qualityLimited: false,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final tile = find.byKey(const ValueKey('home-summary-inner-income'));
+    final container = tester.widget<Container>(
+      find.descendant(of: tile, matching: find.byType(Container)).first,
+    );
+    expect(
+      container.padding,
+      const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+    );
+    final content = tester.widget<Column>(
+      find.byKey(const ValueKey('home-summary-metric-income')),
+    );
+    expect((content.children[1] as SizedBox).height, 6);
+    expect((content.children[2] as SizedBox).height, 20);
+    expect((content.children[3] as SizedBox).height, 4);
+    expect((content.children[4] as SizedBox).height, 28);
+    expect((content.children[5] as SizedBox).height, 4);
+    final comparison = find.descendant(
+      of: tile,
+      matching: find.text('Comparison unavailable'),
+    );
+    expect(tester.widget<Text>(comparison).maxLines, 1);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Home Summary renders empty sum metrics as zero', (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -1161,9 +1274,9 @@ void main() {
 
     final amount = tester.widget<Text>(find.text(r'$1,234,567.89'));
     final percentage = tester.widget<Text>(find.text('25%'));
-    expect(amount.style?.fontSize, 14);
+    expect(amount.style?.fontSize, 13);
     expect(amount.style?.fontWeight, FontWeight.w600);
-    expect(percentage.style?.fontSize, 13);
+    expect(percentage.style?.fontSize, 12);
     expect(percentage.style?.fontWeight, FontWeight.w400);
   });
 

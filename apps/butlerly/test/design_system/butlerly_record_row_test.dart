@@ -1,5 +1,6 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/theme/butlerly_responsive_design_tokens.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_category_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -575,11 +576,11 @@ void main() {
 
     expect(
       tester.widget<Text>(find.text('1.00 USD')).style?.fontSize,
-      ButlerlyTransactionItemTokens.amountFontSize,
+      ButlerlyTransactionTypographyTokens.compact.amount,
     );
     expect(
       tester.widget<Text>(find.text('Description')).style?.fontSize,
-      ButlerlyTransactionItemTokens.titleFontSize,
+      ButlerlyTransactionTypographyTokens.compact.title,
     );
     expect(
       tester.widget<Text>(find.text('Description')).style?.fontWeight,
@@ -591,7 +592,7 @@ void main() {
     );
     expect(
       tester.widget<Text>(find.text('Metadata')).style?.fontSize,
-      ButlerlyTransactionItemTokens.metadataFontSize,
+      ButlerlyTransactionTypographyTokens.compact.metadata,
     );
     expect(
       ButlerlyTransactionItemTokens.horizontalInset,
@@ -606,6 +607,60 @@ void main() {
           ButlerlyTransactionItemTokens.topPadding +
           ButlerlyTransactionItemTokens.bottomPadding,
     );
+  });
+
+  testWidgets('shared transaction rows adapt to Compact Medium and Wide', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    for (final entry in [
+      (size: const Size(390, 844), title: 14.0, meta: 13.0, badge: 11.0),
+      (size: const Size(900, 1200), title: 15.0, meta: 14.0, badge: 12.0),
+      (size: const Size(1200, 800), title: 15.0, meta: 14.0, badge: 12.0),
+    ]) {
+      tester.view.physicalSize = entry.size;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          home: const Scaffold(
+            body: ButlerlyRecordRow(
+              title: 'Coffee',
+              amount: '20.00',
+              currency: 'USD',
+              categoryLabel: 'Food',
+              showCategoryPill: true,
+              paymentSource: 'Visa',
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.widget<Text>(find.text('Coffee')).style?.fontSize,
+        entry.title,
+      );
+      expect(
+        tester.widget<Text>(find.text('−20.00 USD')).style?.fontSize,
+        entry.title,
+      );
+      expect(
+        tester.widget<Text>(find.text('Visa')).style?.fontSize,
+        entry.meta,
+      );
+      expect(
+        tester.widget<Text>(find.text('Food')).style?.fontSize,
+        entry.badge,
+      );
+      expect(
+        tester.getSize(find.byType(ButlerlyRecordRow)).height,
+        greaterThanOrEqualTo(72),
+      );
+      expect(tester.takeException(), isNull);
+    }
   });
 
   testWidgets('combined metadata and tags use semantic compact spacing', (

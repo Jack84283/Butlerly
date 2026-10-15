@@ -175,7 +175,7 @@ The palette is neutral-first and semantic. Butler Red is the default brand theme
 
 ## Layout
 
-Butlerly uses a width-driven responsive model: compact below 600px, medium from 600px to 1023px, and wide at 1024px and above. Compact screens use the bottom navigation shell; wide layouts can use an expanded or collapsed navigation rail. Content is centered inside a readable surface capped at 760px, with 12px content gutters and a spacing rhythm built from 4, 8, 12, 16, 24, 32, 48, and 64px steps. Page chrome may span the viewport, but the readable content surface remains visually distinct.
+Butlerly uses a width-driven responsive model: compact below 801 logical pixels, medium from 801 to 1023 logical pixels, and wide at 1024 logical pixels and above. Qualifying tablet landscape viewports are promoted to wide even below 1024 logical pixels. Compact screens use the bottom navigation shell; wide layouts can use an expanded or collapsed navigation rail. Content is centered inside a readable surface capped at 760px, with 12px content gutters and a spacing rhythm built from 4, 8, 12, 16, 24, 32, 48, and 64px steps. Page chrome may span the viewport, but the readable content surface remains visually distinct.
 
 ## Elevation & Depth
 
@@ -208,7 +208,7 @@ Controls use a compact 6px radius for compact icon controls and a full pill for 
 - **Corner Style:** 16px radius (current `ButlerlyRadius.card`).
 - **Background:** `dashboardSurface` / `cardSurface` from `ButlerlySemanticColors`, selected by appearance.
 - **Shadow Strategy:** 2px card elevation at rest; use tonal separation and no decorative outline.
-- **Internal Padding:** use `ButlerlySpacing.cardPadding` (16px) for standard cards; the shared `ButlerlyTransactionInnerCard` applies `ButlerlySpacing.micro` (4px) of internal padding. Parent widgets determine outer gutters and list spacing.
+- **Internal Padding:** standard card headers and content use `ButlerlySpacing.cardPadding` (16px). Nested transaction-style inner cards use the shared `ButlerlyInsetTransactionCard` wrapper for an 8px outer-to-inner horizontal gutter and `ButlerlyTransactionInnerCard` for 4px internal padding, both sourced from responsive geometry tokens. Keep card-header padding independent of inner-card gutters.
 
 ### Inputs / Fields
 - **Style:** filled subtle-surface background, 12px radius, and a quiet semantic border; exact surface follows the active appearance.
@@ -245,6 +245,19 @@ Controls use a compact 6px radius for compact icon controls and a full pill for 
 - **Don't** treat a desktop-width layout as a scaled-up phone screen; use the existing adaptive shell and readable surface.
 
 
+## Centralized responsive design tokens
+
+All styling decisions must use a named semantic role rather than layout or theme checks scattered across pages. **Layout mode chooses the scale and geometry; theme chooses semantic colors; components consume those resolved tokens.**
+
+- **Mode resolution:** `ButlerlyResponsiveDesignTokens.of(context)` selects Compact, Medium, or Wide, including tablet landscape behavior. It exposes the `homeTypography`, `homeColors`, `geometry`, and `colors` roles. New screens should use the same resolver rather than repeating breakpoint checks inside every widget.
+- **Theme colors:** `ButlerlySemanticColors.palette` remains the source of truth for light/dark appearance and Butler Red, Sky Blue, and Green accents. Avoid literal light/dark colors inside feature widgets.
+- **Font sizes and hierarchy:** `ButlerlyTypography` provides canonical TextStyle roles. The responsive Home typography roles use these styles while choosing size by mode: for example Compact greeting 20, card title 16, amount 20; Medium greeting 24, card title 16, amount 24; desktop toolbar greeting 16 and card title 16. Font family, weight, color, and accessibility text scaling remain in the normal theme and semantic roles.
+- **Spacing and shape:** `ButlerlySpacing`, `ButlerlyRadius`, `ButlerlySize`, and `ButlerlyGeometryTokens` centrally define page gutters, card padding, inner-card padding/gutters, card gaps, section spacing, and component dimensions. Current Home geometry preserves the approved 12 logical-pixel page gutter and inter-card gap; changes must be made in token definitions, not copied as new constants through feature screens.
+- **Scoped typography changes:** Only **Compact Home** uses smaller Home brand, greeting, summary, and chart typography tokens; its card headings use the shared 16px card-title role. The Monthly Summary heading and subtitle align with the Home page's 12px left content gutter, outside the three full-width metric tiles, with no enclosing outer card in Compact mode. Medium and Wide Home retain the standard monthly summary outer card. In Compact Monthly Summary tiles, use 8px top and 4px side/bottom padding, tighten vertical gaps (icon-to-label 4px, label-to-value 0px, value-to-comparison 0px), shorten the Compact label/value boxes to 18px/24px, and allow the comparison text to wrap naturally at 1.1 line height instead of scaling a single line. The three Compact metric tiles use a 4px horizontal gap (8px in Medium/Wide). Medium/Wide tile content spacing is unchanged. **Transaction rows** use one responsive shared component across **all pages**: in Compact mode, title and amount are 14px, metadata 13px, and badge 11px; Medium and Wide preserve their existing 15px/14px/12px row typography. Row geometry, touch targets, color semantics, and shared component behavior remain unchanged. Desktop Home is not restyled by this migration.
+- **Migration status:** Home consumes mode-resolved typography and shared summary color tokens, and transaction rows use mode-resolved typography across pages. Other feature-specific styling is **not yet fully migrated**. Subsequent migrations require separate approval, with comparison tests in Compact, Medium, Wide, light, dark, and large-text states.
+
+The implementation source is `apps/butlerly/lib/design_system/theme/butlerly_responsive_design_tokens.dart`. Keep design documentation, screen implementations, and tests aligned; do not create screen-specific overrides without an explicit design-system role.
+
 ## Implementation token authority (October 2026)
 
 For current UI implementation, use `apps/butlerly/lib/design_system/theme/butlerly_semantic_colors.dart` for light/dark color roles, `apps/butlerly/lib/design_system/tokens/butlerly_tokens.dart` and `butlerly_button.dart` for radius/spacing/navigation/button geometry, `apps/butlerly/lib/design_system/tokens/butlerly_typography.dart` for type roles, and shared components under `apps/butlerly/lib/design_system/components/`. `DESIGN.md` is the current design authority; these code tokens and widgets are implementation evidence that must remain aligned with it. Historical visual references and retired redesign targets are not active requirements.
@@ -272,7 +285,7 @@ The compact navigation uses the existing `PrimaryBottomNavigation` component and
 The following statements describe the current shipped direction. Runtime code, shared tokens, and tests should remain aligned with them.
 
 - **Colors:** use the semantic light/dark palettes above. The default dark mode is a near-black canvas with charcoal dashboard, sheet, and elevated surfaces; the default light mode is a cool gray canvas with white dashboard cards.
-- **Cards:** use shared components, 16px outer card radius, 16px standard card padding, 4px internal padding in `ButlerlyTransactionInnerCard` (outer gutters are caller-controlled), 2px card elevation, and no decorative outline.
+- **Cards:** use shared components, 16px outer card radius, 16px standard card-header padding, 8px nested transaction-card horizontal gutter through `ButlerlyInsetTransactionCard`, 4px internal padding through `ButlerlyTransactionInnerCard`, 2px card elevation, and no decorative outline. Do not reintroduce page-specific nested card insets.
 - **Buttons:** use the shared primary, secondary, tertiary, destructive, compact, and segmented variants. Shared buttons use full-pill geometry, 16px horizontal padding, 12px vertical padding, and a preferred 48px height.
 - **Navigation:** compact and medium layouts expose Home, Transactions, Add, Tools, and More. Wide layouts use the same destinations in a 248px expanded or 72px collapsed rail. Add remains a first-class capture action; Review, Analysis, Insights, payment settlements, master data, and rules are reached through Tools or contextual routes.
 - **Bottom sheets:** use the shared sheet container with 18px top corners, safe-area-aware padding, semantic surfaces, and explicit escape paths. Selection and filter sheets should use shared controls rather than feature-local variants.

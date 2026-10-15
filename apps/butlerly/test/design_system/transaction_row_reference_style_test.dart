@@ -1,5 +1,6 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/theme/butlerly_responsive_design_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -52,21 +53,21 @@ void main() {
 
     expect(
       titleText.style?.fontSize,
-      ButlerlyTransactionItemTokens.titleFontSize,
+      ButlerlyTransactionTypographyTokens.compact.title,
     );
     expect(titleText.style?.fontWeight, FontWeight.w600);
     expect(
       amountText.style?.fontSize,
-      ButlerlyTransactionItemTokens.amountFontSize,
+      ButlerlyTransactionTypographyTokens.compact.amount,
     );
     expect(amountText.style?.fontWeight, FontWeight.w600);
     expect(
       metadataText.style?.fontSize,
-      ButlerlyTransactionItemTokens.metadataFontSize,
+      ButlerlyTransactionTypographyTokens.compact.metadata,
     );
     expect(
       dateText.style?.fontSize,
-      ButlerlyTransactionItemTokens.metadataFontSize,
+      ButlerlyTransactionTypographyTokens.compact.metadata,
     );
 
     expect(

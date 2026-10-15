@@ -619,7 +619,6 @@ class _ReviewPageState extends State<ReviewPage> {
                   groupByFinancialDate: true,
                   collapsibleMonthSections: true,
                   monthSectionsAsCards: true,
-                  innerCardInset: ButlerlySpacing.compact,
                   dashboardRowStyle: true,
                   missingCategoryLabel: context.l10n.text('uncategorized'),
                   supportingContentBuilder: (context, transaction) => Text(
@@ -747,7 +746,6 @@ class _ReviewPageState extends State<ReviewPage> {
                                 groupByFinancialDate: true,
                                 collapsibleMonthSections: true,
                                 monthSectionsAsCards: true,
-                                innerCardInset: ButlerlySpacing.compact,
                                 dashboardRowStyle: true,
                                 missingCategoryLabel: context.l10n.text(
                                   'uncategorized',
@@ -878,22 +876,20 @@ class _ReviewTransactionCardState extends State<_ReviewTransactionCard> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.all(ButlerlySpacing.compact),
-                      child: ButlerlyTransactionInnerCard(
-                        child: TransactionRow(
-                          transaction: transaction,
-                          masterData:
-                              data?.presentation ??
-                              const TransactionMasterData(),
-                          paymentSourceNames: {
-                            for (final source
-                                in data?.paymentSources ?? <PaymentSource>[])
-                              source.id.value: source.name,
-                          },
-                          showDate: true,
-                          onTap: widget.onEdit,
-                        ),
+                    ButlerlyInsetTransactionCard(
+                      topInset: ButlerlySpacing.compact,
+                      bottomInset: ButlerlySpacing.compact,
+                      child: TransactionRow(
+                        transaction: transaction,
+                        masterData:
+                            data?.presentation ?? const TransactionMasterData(),
+                        paymentSourceNames: {
+                          for (final source
+                              in data?.paymentSources ?? <PaymentSource>[])
+                            source.id.value: source.name,
+                        },
+                        showDate: true,
+                        onTap: widget.onEdit,
                       ),
                     ),
                     Padding(

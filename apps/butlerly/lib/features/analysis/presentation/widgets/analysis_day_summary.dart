@@ -98,7 +98,7 @@ class AnalysisDaySummary extends StatelessWidget {
               const SizedBox(height: ButlerlySpacing.micro),
               Padding(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: ButlerlySpacing.small,
+                  horizontal: ButlerlySpacing.compact,
                 ),
                 child: ButlerlyTransactionInnerCard(
                   child: TransactionRecordList(

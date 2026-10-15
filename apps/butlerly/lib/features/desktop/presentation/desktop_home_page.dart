@@ -139,6 +139,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
         return Column(
           children: [
             Container(
+              key: const ValueKey('desktop-home-header'),
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: context.colors.background,
@@ -148,6 +149,17 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
               ),
               child: Row(
                 children: [
+                  Expanded(
+                    child: PersonalizedHomeGreeting(
+                      greetingKey: greetingKeyForTime(DateTime.now()),
+                      textKey: const ValueKey('desktop-home-greeting'),
+                      maxLines: 1,
+                      textAlign: TextAlign.start,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
                   IconButton(
                     style: IconButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
@@ -161,6 +173,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                     icon: const Icon(Icons.chevron_left),
                   ),
                   TextButton.icon(
+                    key: const ValueKey('desktop-home-month-selector'),
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 10,
@@ -201,16 +214,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                     tooltip: context.l10n.text('nextMonth'),
                     onPressed: () => _moveMonth(1, current),
                     icon: const Icon(Icons.chevron_right),
-                  ),
-                  Expanded(
-                    child: PersonalizedHomeGreeting(
-                      greetingKey: greetingKeyForTime(DateTime.now()),
-                      maxLines: 1,
-                      textAlign: TextAlign.end,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
                   ),
                   const SizedBox(width: 16),
                   SizedBox(

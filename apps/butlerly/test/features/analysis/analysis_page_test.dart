@@ -1690,8 +1690,8 @@ void main() {
         find.byKey(const ValueKey('analysis-financial-calendar-card')),
       );
       final innerRect = tester.getRect(innerCard);
-      expect(innerRect.left - outerRect.left, ButlerlySpacing.small);
-      expect(outerRect.right - innerRect.right, ButlerlySpacing.small);
+      expect(innerRect.left - outerRect.left, ButlerlySpacing.compact);
+      expect(outerRect.right - innerRect.right, ButlerlySpacing.compact);
       final recordRows = tester.widgetList<ButlerlyRecordRow>(
         find.byType(ButlerlyRecordRow),
       );

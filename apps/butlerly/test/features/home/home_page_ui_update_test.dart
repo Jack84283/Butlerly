@@ -107,9 +107,9 @@ void main() {
       final brandTagline = find.byKey(const ValueKey('home-brand-tagline'));
       final greeting = find.byKey(const ValueKey('home-greeting'));
       final intro = find.byKey(const ValueKey('home-intro'));
-      expect(tester.widget<Text>(brand).style?.fontSize, 32);
+      expect(tester.widget<Text>(brand).style?.fontSize, 24);
       final taglineText = tester.widget<Text>(brandTagline);
-      expect(taglineText.style?.fontSize, 14);
+      expect(taglineText.style?.fontSize, 13);
       expect(taglineText.maxLines, 1);
       expect(taglineText.softWrap, isFalse);
       expect(
@@ -120,8 +120,8 @@ void main() {
         tester.getTopLeft(monthSurface).dy,
         closeTo(tester.getTopLeft(brand).dy, 1.0),
       );
-      expect(tester.widget<Text>(greeting).style?.fontSize, 24);
-      expect(tester.widget<Text>(intro).style?.fontSize, 14);
+      expect(tester.widget<Text>(greeting).style?.fontSize, 20);
+      expect(tester.widget<Text>(intro).style?.fontSize, 13);
       expect(
         tester.getTopLeft(intro).dy - tester.getBottomLeft(greeting).dy,
         closeTo(ButlerlySpacing.micro, 0.01),
@@ -238,6 +238,38 @@ void main() {
     expect(find.byKey(const Key('home-notification-action')), findsNothing);
   });
 
+  testWidgets('Empty Spending Trend fills the Home content width', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    for (final size in [const Size(390, 844), const Size(900, 1000)]) {
+      tester.view.physicalSize = size;
+      await tester.pumpWidget(_testApp(router));
+      await tester.pumpAndSettle();
+
+      final trend = find.byKey(const ValueKey('home-trend-card'));
+      final content = find.byKey(const ValueKey('home-page-content'));
+      expect(trend, findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('home-spending-trend-chart')),
+        findsNothing,
+      );
+      expect(
+        tester.getRect(trend).width,
+        closeTo(tester.getRect(content).width, 0.01),
+        reason: 'The empty trend must use full width at ${size.width}px',
+      );
+      expect(
+        tester.getTopLeft(trend).dx,
+        closeTo(tester.getTopLeft(content).dx, 0.01),
+      );
+    }
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Monthly Summary keeps three desktop-style cards in one row', (
     tester,
   ) async {
@@ -270,6 +302,14 @@ void main() {
       tester.getTopLeft(spending).dy,
       closeTo(tester.getTopLeft(net).dy, 1),
     );
+    expect(
+      tester.getTopLeft(spending).dx - tester.getTopRight(income).dx,
+      closeTo(ButlerlySpacing.micro, 0.01),
+    );
+    expect(
+      tester.getTopLeft(net).dx - tester.getTopRight(spending).dx,
+      closeTo(ButlerlySpacing.micro, 0.01),
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -297,9 +337,59 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('monthly summary uses the standard card surface in both themes', (
+  testWidgets('Compact monthly summary removes only its outer card', (
     tester,
   ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    for (final theme in [AppTheme.light, AppTheme.dark]) {
+      await tester.pumpWidget(_testApp(router, theme: theme));
+      await tester.pumpAndSettle();
+
+      final section = find.byKey(const ValueKey('home-summary-card'));
+      expect(section, findsOneWidget);
+      expect(tester.widget<Semantics>(section).container, isTrue);
+      expect(
+        find.descendant(of: section, matching: find.byType(ButlerlyCard)),
+        findsNothing,
+      );
+      final income = find.byKey(const ValueKey('home-summary-inner-income'));
+      final net = find.byKey(const ValueKey('home-summary-inner-net-position'));
+      expect(
+        tester.getTopLeft(income).dx,
+        closeTo(tester.getTopLeft(section).dx, 0.01),
+      );
+      expect(
+        tester.getTopRight(net).dx,
+        closeTo(tester.getTopRight(section).dx, 0.01),
+      );
+      final title = find.text('Monthly summary');
+      final subtitle = find.text('vs previous period');
+      final summaryTitle = tester.widget<Text>(title);
+      expect(summaryTitle.style?.fontSize, 16);
+      expect(
+        tester.getTopLeft(title).dx,
+        closeTo(tester.getTopLeft(section).dx, 0.01),
+        reason: 'Compact summary title must align with the page content edge',
+      );
+      expect(
+        tester.getTopLeft(subtitle).dx,
+        closeTo(tester.getTopLeft(section).dx, 0.01),
+      );
+    }
+  });
+
+  testWidgets('Medium and Wide monthly summary retain the outer card', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(900, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     for (final theme in [AppTheme.light, AppTheme.dark]) {
       await tester.pumpWidget(_testApp(router, theme: theme));
       await tester.pumpAndSettle();
@@ -311,6 +401,19 @@ void main() {
       expect(
         theme.cardTheme.color,
         theme.extension<ButlerlySemanticColors>()!.cardSurface,
+      );
+      final income = find.byKey(const ValueKey('home-summary-inner-income'));
+      final spending = find.byKey(
+        const ValueKey('home-summary-inner-spending'),
+      );
+      final net = find.byKey(const ValueKey('home-summary-inner-net-position'));
+      expect(
+        tester.getTopLeft(spending).dx - tester.getTopRight(income).dx,
+        closeTo(ButlerlySpacing.compact, 0.01),
+      );
+      expect(
+        tester.getTopLeft(net).dx - tester.getTopRight(spending).dx,
+        closeTo(ButlerlySpacing.compact, 0.01),
       );
     }
   });
@@ -357,8 +460,13 @@ void main() {
       expect(title, findsOneWidget);
       expect(
         tester.getTopLeft(title).dy - tester.getTopLeft(card).dy,
-        closeTo(ButlerlySpacing.cardPadding, 1.0),
-        reason: '${entry.title} should use the canonical card top inset',
+        closeTo(
+          entry.card == 'home-summary-card'
+              ? ButlerlySpacing.none
+              : ButlerlySpacing.cardPadding,
+          1.0,
+        ),
+        reason: '${entry.title} should use the canonical section top inset',
       );
     }
   });
@@ -497,7 +605,7 @@ void main() {
     expect(chart, findsOneWidget);
     expect(tester.getSize(chart).height, closeTo(112, 0.1));
     if (amount.evaluate().isNotEmpty) {
-      expect(tester.widget<Text>(amount).style?.fontSize, 24);
+      expect(tester.widget<Text>(amount).style?.fontSize, 20);
     }
     final baseline = find.byKey(
       const ValueKey('home-spending-trend-grid-line-4'),

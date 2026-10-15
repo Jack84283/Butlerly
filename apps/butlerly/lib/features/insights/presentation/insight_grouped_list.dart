@@ -1,6 +1,7 @@
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
+import 'package:butlerly/design_system/theme/butlerly_responsive_design_tokens.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
@@ -153,25 +154,39 @@ class InsightGroupedList extends StatelessWidget {
           if (grouped[group] case final items? when items.isNotEmpty)
             ButlerlyCard(
               semanticLabel: _groupTitle(context, group, items),
-              padding: const EdgeInsets.all(ButlerlySpacing.compact),
+              padding: EdgeInsets.zero,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ButlerlyCardHeader(
-                    title: _groupTitle(context, group, items),
-                    subtitle: _groupSubtitle(context, group, items),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      ButlerlySpacing.cardPadding,
+                      ButlerlySpacing.cardPadding,
+                      ButlerlySpacing.cardPadding,
+                      0,
+                    ),
+                    child: ButlerlyCardHeader(
+                      title: _groupTitle(context, group, items),
+                      subtitle: _groupSubtitle(context, group, items),
+                    ),
                   ),
                   if (groupedVisualizations[group] case final chartResults?
                       when chartResults.isNotEmpty) ...[
                     const SizedBox(height: ButlerlySpacing.standard),
-                    InsightGroupVisualizations(
-                      results: chartResults,
-                      masterData: masterData,
-                      embedded: true,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: ButlerlySpacing.cardPadding,
+                      ),
+                      child: InsightGroupVisualizations(
+                        results: chartResults,
+                        masterData: masterData,
+                        embedded: true,
+                      ),
                     ),
                   ],
-                  const SizedBox(height: ButlerlySpacing.standard),
-                  ButlerlyTransactionInnerCard(
+                  const SizedBox(height: ButlerlySpacing.compact),
+                  ButlerlyInsetTransactionCard(
+                    bottomInset: context.designTokens.geometry.innerCardGutter,
                     child: ButlerlyTransactionList(
                       children: [
                         for (var index = 0; index < items.length; index++) ...[
