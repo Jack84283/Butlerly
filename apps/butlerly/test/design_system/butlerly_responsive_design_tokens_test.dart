@@ -13,9 +13,7 @@ void main() {
     final medium = ButlerlyHomeTypographyTokens.forMode(
       ButlerlyLayoutMode.medium,
     );
-    final wide = ButlerlyHomeTypographyTokens.forMode(
-      ButlerlyLayoutMode.wide,
-    );
+    final wide = ButlerlyHomeTypographyTokens.forMode(ButlerlyLayoutMode.wide);
 
     expect(compact.brand, 24);
     expect(compact.greeting, 20);
