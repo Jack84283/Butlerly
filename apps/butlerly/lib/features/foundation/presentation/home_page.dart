@@ -938,9 +938,11 @@ class _HomeSummaryCard extends StatelessWidget {
             const SizedBox(height: ButlerlySpacing.standard),
             Text(
               context.l10n.text('analysisUnavailable'),
-              style: context.designTokens.homeTypography.subtitle(
-                Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
-              ).copyWith(color: context.colors.secondaryText),
+              style: context.designTokens.homeTypography
+                  .subtitle(
+                    Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
+                  )
+                  .copyWith(color: context.colors.secondaryText),
             ),
           ],
         ],
@@ -996,9 +998,8 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 16,
-            backgroundColor: context.designTokens.homeColors.onMetric.withValues(
-              alpha: .20,
-            ),
+            backgroundColor: context.designTokens.homeColors.onMetric
+                .withValues(alpha: .20),
             child: Icon(
               icon,
               color: context.designTokens.homeColors.onMetric,
@@ -1166,10 +1167,11 @@ class _SpendingTrend extends StatelessWidget {
                   padding: EdgeInsetsDirectional.only(end: largeText ? 0 : 132),
                   child: ButlerlyCardHeader(
                     title: context.l10n.text('spendingTrend'),
-                    titleStyle: context.designTokens.homeTypography.sectionTitle(
-                      Theme.of(context).textTheme.titleLarge ??
-                          const TextStyle(),
-                    ),
+                    titleStyle: context.designTokens.homeTypography
+                        .sectionTitle(
+                          Theme.of(context).textTheme.titleLarge ??
+                              const TextStyle(),
+                        ),
                     action: largeText ? trendAction : null,
                     keepActionInlineAtCompactWidth: true,
                   ),
@@ -1205,10 +1207,12 @@ class _SpendingTrend extends StatelessWidget {
                         if (comparisonText.isNotEmpty)
                           Text(
                             comparisonText,
-                            style: context.designTokens.homeTypography.trendComparison(
-                              Theme.of(context).textTheme.bodySmall ??
-                                  const TextStyle(),
-                            ).copyWith(color: context.colors.interactive),
+                            style: context.designTokens.homeTypography
+                                .trendComparison(
+                                  Theme.of(context).textTheme.bodySmall ??
+                                      const TextStyle(),
+                                )
+                                .copyWith(color: context.colors.interactive),
                           ),
                       ],
                     ),
@@ -1274,10 +1278,12 @@ class _HomeTrendPlot extends StatelessWidget {
                             'home-spending-trend-axis-label-$index',
                           ),
                           maxLines: 1,
-                          style: context.designTokens.homeTypography.axisLabel(
-                            Theme.of(context).textTheme.bodySmall ??
-                                const TextStyle(),
-                          ).copyWith(color: context.colors.secondaryText),
+                          style: context.designTokens.homeTypography
+                              .axisLabel(
+                                Theme.of(context).textTheme.bodySmall ??
+                                    const TextStyle(),
+                              )
+                              .copyWith(color: context.colors.secondaryText),
                         ),
                     ],
                   ),
@@ -1359,11 +1365,12 @@ class _HomeTrendPlot extends StatelessWidget {
                             ),
                             maxLines: 1,
                             textAlign: TextAlign.center,
-                            style:
-                                context.designTokens.homeTypography.axisLabel(
+                            style: context.designTokens.homeTypography
+                                .axisLabel(
                                   Theme.of(context).textTheme.bodySmall ??
                                       const TextStyle(),
-                                ).copyWith(
+                                )
+                                .copyWith(
                                   color: point.selected
                                       ? context.colors.interactive
                                       : null,
@@ -1535,10 +1542,11 @@ class _CategorySummaryItem extends StatelessWidget {
                           const SizedBox(width: ButlerlySpacing.compact),
                           Text(
                             percentage,
-                            style: context.designTokens.homeTypography.categoryDetails(
-                              Theme.of(context).textTheme.bodySmall ??
-                                  const TextStyle(),
-                            ),
+                            style: context.designTokens.homeTypography
+                                .categoryDetails(
+                                  Theme.of(context).textTheme.bodySmall ??
+                                      const TextStyle(),
+                                ),
                           ),
                         ],
                       ],
@@ -1555,10 +1563,11 @@ class _CategorySummaryItem extends StatelessWidget {
                       const SizedBox(width: ButlerlySpacing.compact),
                       Text(
                         percentage,
-                        style: context.designTokens.homeTypography.categoryDetails(
-                          Theme.of(context).textTheme.bodySmall ??
-                              const TextStyle(),
-                        ),
+                        style: context.designTokens.homeTypography
+                            .categoryDetails(
+                              Theme.of(context).textTheme.bodySmall ??
+                                  const TextStyle(),
+                            ),
                       ),
                     ],
                   ],
@@ -2112,20 +2121,22 @@ class _HomeInsightCard extends StatelessWidget {
                         children: [
                           Text(
                             preview.title,
-                            style: context.designTokens.homeTypography.reviewTitle(
-                              Theme.of(context).textTheme.titleMedium ??
-                                  const TextStyle(),
-                            ),
+                            style: context.designTokens.homeTypography
+                                .reviewTitle(
+                                  Theme.of(context).textTheme.titleMedium ??
+                                      const TextStyle(),
+                                ),
                           ),
                           const SizedBox(height: ButlerlySpacing.micro),
                           Text(
                             preview.description,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: context.designTokens.homeTypography.reviewSubtitle(
-                              Theme.of(context).textTheme.bodySmall ??
-                                  const TextStyle(),
-                            ),
+                            style: context.designTokens.homeTypography
+                                .reviewSubtitle(
+                                  Theme.of(context).textTheme.bodySmall ??
+                                      const TextStyle(),
+                                ),
                           ),
                         ],
                       ),
