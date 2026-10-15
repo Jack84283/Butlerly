@@ -326,8 +326,19 @@ void main() {
         tester.getTopRight(net).dx,
         closeTo(tester.getTopRight(section).dx, 0.01),
       );
-      final summaryTitle = tester.widget<Text>(find.text('Monthly summary'));
+      final title = find.text('Monthly summary');
+      final subtitle = find.text('vs previous period');
+      final summaryTitle = tester.widget<Text>(title);
       expect(summaryTitle.style?.fontSize, 16);
+      expect(
+        tester.getTopLeft(title).dx,
+        closeTo(tester.getTopLeft(section).dx, 0.01),
+        reason: 'Compact summary title must align with the page content edge',
+      );
+      expect(
+        tester.getTopLeft(subtitle).dx,
+        closeTo(tester.getTopLeft(section).dx, 0.01),
+      );
     }
   });
 
