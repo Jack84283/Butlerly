@@ -715,10 +715,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('4K'), findsOneWidget);
-    expect(find.text('3K'), findsOneWidget);
-    expect(find.text('2K'), findsOneWidget);
-    expect(find.text('1K'), findsOneWidget);
+    expect(find.text('4k'), findsOneWidget);
+    expect(find.text('3k'), findsOneWidget);
+    expect(find.text('2k'), findsOneWidget);
+    expect(find.text('1k'), findsOneWidget);
     expect(find.text('0'), findsOneWidget);
   });
 
