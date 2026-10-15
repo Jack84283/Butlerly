@@ -1182,14 +1182,13 @@ class _DesktopMetric extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 20,
-            backgroundColor: context.designTokens.homeColors.onMetric.withValues(
-                alpha: .20,
-              ),
+            backgroundColor: context.designTokens.homeColors.onMetric
+                .withValues(alpha: .20),
             child: Icon(
-                icon,
-                color: context.designTokens.homeColors.onMetric,
-                size: 22,
-              ),
+              icon,
+              color: context.designTokens.homeColors.onMetric,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 8),
           Expanded(
