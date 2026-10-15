@@ -55,11 +55,13 @@ abstract final class ButlerlyTransactionItemTokens {
 extension ButlerlyTransactionItemStyles on BuildContext {
   TextStyle get transactionItemAmount {
     final base = Theme.of(this).textTheme.titleMedium!;
-    return designTokens.transactionTypography.amountStyle(base).copyWith(
-      color: colors.primaryText,
-      fontFamily: base.fontFamily,
-      fontFamilyFallback: base.fontFamilyFallback,
-    );
+    return designTokens.transactionTypography
+        .amountStyle(base)
+        .copyWith(
+          color: colors.primaryText,
+          fontFamily: base.fontFamily,
+          fontFamilyFallback: base.fontFamilyFallback,
+        );
   }
 
   TextStyle get transactionItemDate =>
@@ -72,11 +74,13 @@ extension ButlerlyTransactionItemStyles on BuildContext {
 
   TextStyle get transactionItemDescription {
     final base = Theme.of(this).textTheme.bodyMedium!;
-    return designTokens.transactionTypography.titleStyle(base).copyWith(
-      color: colors.primaryText,
-      fontFamily: base.fontFamily,
-      fontFamilyFallback: base.fontFamilyFallback,
-    );
+    return designTokens.transactionTypography
+        .titleStyle(base)
+        .copyWith(
+          color: colors.primaryText,
+          fontFamily: base.fontFamily,
+          fontFamilyFallback: base.fontFamilyFallback,
+        );
   }
 
   TextStyle get transactionItemMetadata =>
