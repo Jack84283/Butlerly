@@ -5,6 +5,7 @@ import 'package:butlerly/design_system/category/butlerly_category_identity.dart'
 import 'package:butlerly/design_system/components/butlerly_category_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/theme/butlerly_responsive_design_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_category_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
@@ -1147,11 +1148,12 @@ class _DesktopMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final accent = context.designTokens.homeColors;
     final color = icon == Icons.arrow_upward
-        ? const Color(0xFF009B61)
+        ? accent.income
         : icon == Icons.arrow_downward
-        ? const Color(0xFFE24247)
-        : const Color(0xFF1769E8);
+        ? accent.spending
+        : accent.net;
     final fill = color.withValues(alpha: _desktopHomeTintOpacity);
     final percent = comparison?.percentageChange;
     final usable =
@@ -1180,8 +1182,14 @@ class _DesktopMetric extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 20,
-            backgroundColor: Colors.white.withValues(alpha: .20),
-            child: Icon(icon, color: Colors.white, size: 22),
+            backgroundColor: context.designTokens.homeColors.onMetric.withValues(
+                alpha: .20,
+              ),
+            child: Icon(
+                icon,
+                color: context.designTokens.homeColors.onMetric,
+                size: 22,
+              ),
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -1191,7 +1199,7 @@ class _DesktopMetric extends StatelessWidget {
                 Text(
                   title,
                   style: _desktopHomeCardTitleStyle.copyWith(
-                    color: Colors.white,
+                    color: context.designTokens.homeColors.onMetric,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1214,7 +1222,9 @@ class _DesktopMetric extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: percentValue == null ? Colors.white70 : Colors.white,
+                    color: percentValue == null
+                        ? context.designTokens.homeColors.onMetricMuted
+                        : context.designTokens.homeColors.onMetric,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
