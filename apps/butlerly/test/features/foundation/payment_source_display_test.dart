@@ -2,8 +2,8 @@ import 'package:butlerly/design_system/components/butlerly_payment_source_icon.d
 import 'package:butlerly/features/foundation/presentation/payment_source_display.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('credit-card display includes stored last four digits', () {

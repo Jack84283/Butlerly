@@ -1,7 +1,7 @@
 name: butlerly
 description: "Butlerly's local-first personal operations application."
 publish_to: 'none'
-version: 1.0.0+321
+version: 1.0.0+324
 
 environment:
   sdk: ^3.12.2
