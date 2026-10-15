@@ -736,7 +736,10 @@ void main() {
     await tester.pumpAndSettle();
 
     for (final entry in const [
-      (tile: 'home-summary-inner-income', content: 'home-summary-metric-income'),
+      (
+        tile: 'home-summary-inner-income',
+        content: 'home-summary-metric-income',
+      ),
       (
         tile: 'home-summary-inner-spending',
         content: 'home-summary-metric-spending',
@@ -748,12 +751,11 @@ void main() {
     ]) {
       final tile = find.byKey(ValueKey(entry.tile));
       final container = tester.widget<Container>(tile);
-      expect(
-        container.padding,
-        const EdgeInsets.fromLTRB(4, 8, 4, 4),
-      );
+      expect(container.padding, const EdgeInsets.fromLTRB(4, 8, 4, 4));
 
-      final content = tester.widget<Column>(find.byKey(ValueKey(entry.content)));
+      final content = tester.widget<Column>(
+        find.byKey(ValueKey(entry.content)),
+      );
       expect((content.children[1] as SizedBox).height, 4);
       expect((content.children[3] as SizedBox).height, 2);
       expect((content.children[5] as SizedBox).height, 2);
@@ -771,9 +773,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Medium summary metrics preserve their existing single-line layout', (
-    tester,
-  ) async {
+  testWidgets('Medium summary metrics remain single-line', (tester) async {
     tester.view.physicalSize = const Size(900, 1000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
