@@ -1976,7 +1976,7 @@ class _HomeRecentActivity extends StatelessWidget {
             container: true,
             liveRegion: true,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(
+              padding: EdgeInsets.fromLTRB(
                 ButlerlySpacing.standard,
                 _homeTitleContentGap(context, ButlerlySpacing.small),
                 ButlerlySpacing.standard,
