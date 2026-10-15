@@ -12,7 +12,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('payment icon uses a separate Compact line and inline Medium/Wide', (
+  testWidgets('payment marks use responsive metadata lines', (
     tester,
   ) async {
     tester.view.devicePixelRatio = 1;

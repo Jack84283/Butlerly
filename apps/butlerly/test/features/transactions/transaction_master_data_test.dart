@@ -23,7 +23,7 @@ void main() {
   });
   tearDown(() => database.close());
 
-  test('payment marks resolve by source ID, independent of localized label', () {
+  test('payment marks resolve by source ID', () {
     final sources = [
       PaymentSource(
         id: PaymentSourceId('visa'),
