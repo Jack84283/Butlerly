@@ -97,7 +97,8 @@ class _DesktopPrimaryShellState extends State<DesktopPrimaryShell> {
               onToggleAdd: () => setState(() => _addExpanded = !_addExpanded),
               onToggleTools: () =>
                   setState(() => _toolsExpanded = !_toolsExpanded),
-              onToggleMore: () => setState(() => _moreExpanded = !_moreExpanded),
+              onToggleMore: () =>
+                  setState(() => _moreExpanded = !_moreExpanded),
               moreNavigationKey: _moreNavigationKey,
               onParentSelected: _selectParent,
               onMoreSectionSelected: widget.onMoreSectionSelected,
