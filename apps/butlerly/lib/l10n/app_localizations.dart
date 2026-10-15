@@ -36,6 +36,8 @@ class AppLocalizations {
 
   static const _strings = <String, Map<String, String>>{
     'en': {
+      'alipayBrand': 'Alipay',
+      'wechatPayBrand': 'WeChat Pay',
       'cardNetwork': 'Card network',
       'walletProvider': 'Wallet provider',
       'appName': 'Butlerly',
@@ -912,6 +914,8 @@ class AppLocalizations {
       'subcategory': 'Subcategory',
     },
     'zh': {
+      'alipayBrand': '支付宝',
+      'wechatPayBrand': '微信支付',
       'cardNetwork': '银行卡网络',
       'walletProvider': '电子钱包服务商',
       'appName': 'Butlerly',
@@ -1668,6 +1672,8 @@ class AppLocalizations {
       'subcategory': '子类别',
     },
     'es': {
+      'alipayBrand': 'Alipay',
+      'wechatPayBrand': 'WeChat Pay',
       'cardNetwork': 'Red de tarjeta',
       'walletProvider': 'Proveedor de billetera',
       'appName': 'Butlerly',

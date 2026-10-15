@@ -213,7 +213,11 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                               .entries)
                         DropdownMenuEntry(
                           value: entry.key,
-                          label: entry.value,
+                          label: switch (entry.key) {
+                            'alipay' => context.l10n.text('alipayBrand'),
+                            'wechatPay' => context.l10n.text('wechatPayBrand'),
+                            _ => entry.value,
+                          },
                           leadingIcon: ButlerlyPaymentMarkIcon(
                             mark: entry.key,
                             size: 24,

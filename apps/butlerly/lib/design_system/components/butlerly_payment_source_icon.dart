@@ -17,11 +17,18 @@ const walletPaymentProviderLabels = <String, String>{
   'venmo': 'Venmo',
   'applePay': 'Apple Pay',
   'googlePay': 'Google Pay',
+  'alipay': 'Alipay',
+  'wechatPay': 'WeChat Pay',
 };
 
 /// Only matches explicitly named networks, never an issuer or last-four digits.
 String? paymentNetworkFromText(String? input) {
   if (input == null || input.trim().isEmpty) return null;
+  final raw = input.toLowerCase();
+  if (raw.contains('支付宝')) return 'alipay';
+  if (raw.contains('微信支付') || raw.contains('微信钱包')) {
+    return 'wechatPay';
+  }
   final normalized =
       ' ${input.toLowerCase().replaceAll(RegExp(r'[^a-z]+'), ' ').trim()} ';
   if (normalized.contains(' american express ') ||
@@ -43,6 +50,15 @@ String? paymentNetworkFromText(String? input) {
   if (normalized.contains(' apple pay ')) return 'applePay';
   if (normalized.contains(' google pay ') || normalized.contains(' gpay ')) {
     return 'googlePay';
+  }
+  if (normalized.contains(' alipay ') || normalized.contains(' ali pay ')) {
+    return 'alipay';
+  }
+  if (normalized.contains(' wechat pay ') ||
+      normalized.contains(' wechatpay ') ||
+      normalized.contains(' weixin pay ') ||
+      normalized.contains(' weixinpay ')) {
+    return 'wechatPay';
   }
   return null;
 }
@@ -106,6 +122,8 @@ class ButlerlyPaymentMarkIcon extends StatelessWidget {
       'venmo': 'venmo',
       'applePay': 'applepay',
       'googlePay': 'googlepay',
+      'alipay': 'alipay',
+      'wechatPay': 'wechatpay',
     };
     final name = svgNames[mark];
     Widget symbol;

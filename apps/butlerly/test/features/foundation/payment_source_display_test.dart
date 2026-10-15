@@ -64,6 +64,60 @@ void main() {
     expect(paymentMarkFor(cash), 'cash');
     expect(paymentNetworkFromText('AMEX'), 'americanExpress');
     expect(paymentNetworkFromText('Capital One'), isNull);
+    expect(paymentNetworkFromText('Alipay'), 'alipay');
+    expect(paymentNetworkFromText('Ali Pay'), 'alipay');
+    expect(paymentNetworkFromText('支付宝'), 'alipay');
+    expect(paymentNetworkFromText('WeChat Pay'), 'wechatPay');
+    expect(paymentNetworkFromText('WeChatPay'), 'wechatPay');
+    expect(paymentNetworkFromText('Weixin Pay'), 'wechatPay');
+    expect(paymentNetworkFromText('微信支付'), 'wechatPay');
+    expect(paymentNetworkFromText('微信钱包'), 'wechatPay');
+    expect(paymentNetworkFromText('WeChat messages'), isNull);
+    expect(walletPaymentProviderLabels['alipay'], 'Alipay');
+    expect(walletPaymentProviderLabels['wechatPay'], 'WeChat Pay');
+  });
+
+  testWidgets('Alipay and WeChat Pay use bundled payment SVG marks', (
+    tester,
+  ) async {
+    final sources = [
+      PaymentSource(
+        id: PaymentSourceId('alipay-wallet'),
+        name: '支付宝',
+        type: PaymentSourceType.wallet,
+      ),
+      PaymentSource(
+        id: PaymentSourceId('wechat-pay-wallet'),
+        name: '微信支付',
+        type: PaymentSourceType.wallet,
+      ),
+      PaymentSource(
+        id: PaymentSourceId('explicit-wechat'),
+        name: 'My wallet',
+        type: PaymentSourceType.wallet,
+        network: 'wechatPay',
+      ),
+    ];
+    expect(sources.map(paymentMarkFor), [
+      'alipay',
+      'wechatPay',
+      'wechatPay',
+    ]);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Column(
+            children: [
+              for (final source in sources)
+                ButlerlyPaymentSourceIcon(source: source),
+            ],
+          ),
+        ),
+      ),
+    );
+    expect(find.byType(SvgPicture), findsNWidgets(3));
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('renders transparent marks, cash and unknown fallback', (
