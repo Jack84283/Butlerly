@@ -32,13 +32,14 @@ void main() {
 
     final title = find.text('Whole Foods Market');
     final amount = find.text('−82.47 USD');
-    final metadata = find.text('Groceries · Supermarket · Visa ••••8421');
+    final metadata = find.text('Groceries · Supermarket');
     final date = find.text('Sep 2, 2026');
     final leadingIcon = find.byKey(const Key('transaction-leading-icon'));
 
     expect(title, findsOneWidget);
     expect(amount, findsOneWidget);
     expect(metadata, findsOneWidget);
+    expect(find.text('Visa ••••8421'), findsOneWidget);
     expect(date, findsOneWidget);
     expect(leadingIcon, findsOneWidget);
 
@@ -114,7 +115,8 @@ void main() {
     expect(find.text('Whole Foods Market'), findsOneWidget);
     expect(find.text('-82.47'), findsOneWidget);
     expect(find.text('Food & Drink'), findsOneWidget);
-    expect(find.text('Restaurants · Visa'), findsOneWidget);
+    expect(find.text('Restaurants'), findsOneWidget);
+    expect(find.text('Visa'), findsOneWidget);
     expect(find.text('Sep 2, 2026'), findsOneWidget);
 
     final rowPadding = find.byWidgetPredicate(
