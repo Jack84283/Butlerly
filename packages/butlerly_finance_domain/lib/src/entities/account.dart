@@ -14,6 +14,7 @@ final class PaymentSource {
     this.displayIdentity,
     String? lastFour,
     this.issuer,
+    this.network,
     this.currency,
     this.note,
   }) : name = _requiredName(name),
@@ -26,6 +27,8 @@ final class PaymentSource {
   final String? displayIdentity;
   final String? lastFour;
   final String? issuer;
+  /// Card network or wallet provider, independent of the issuer.
+  final String? network;
   final String? currency;
   final String? note;
 
@@ -37,7 +40,8 @@ final class PaymentSource {
     displayIdentity: displayIdentity,
     lastFour: lastFour,
     issuer: issuer,
-    currency: currency,
+    network: network,
+    currency: currency;
     note: note,
   );
 

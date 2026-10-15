@@ -53,5 +53,6 @@ flutter:
     - assets/analysis_rules/insights/
     - assets/analysis_rules/data_quality/
     - assets/icons/categories/
+    - assets/icons/payment_sources/
     - assets/branding/butlerly_mark.svg
   uses-material-design: true

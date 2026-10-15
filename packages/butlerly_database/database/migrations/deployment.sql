@@ -1064,3 +1064,7 @@ ADD COLUMN statement_rows TEXT NOT NULL DEFAULT '[]';
 -- BUTLERLY_MIGRATION_TARGET: 15
 -- Source: v14_to_v15.sql
 ALTER TABLE user_preferences ADD COLUMN display_name TEXT NOT NULL DEFAULT '';
+
+-- BUTLERLY_MIGRATION_TARGET: 16
+-- Source: v15_to_v16.sql
+ALTER TABLE payment_sources ADD COLUMN network TEXT;
