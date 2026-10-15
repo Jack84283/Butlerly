@@ -175,7 +175,7 @@ The palette is neutral-first and semantic. Butler Red is the default brand theme
 
 ## Layout
 
-Butlerly uses a width-driven responsive model: compact below 600px, medium from 600px to 1023px, and wide at 1024px and above. Compact screens use the bottom navigation shell; wide layouts can use an expanded or collapsed navigation rail. Content is centered inside a readable surface capped at 760px, with 12px content gutters and a spacing rhythm built from 4, 8, 12, 16, 24, 32, 48, and 64px steps. Page chrome may span the viewport, but the readable content surface remains visually distinct.
+Butlerly uses a width-driven responsive model: compact below 801 logical pixels, medium from 801 to 1023 logical pixels, and wide at 1024 logical pixels and above. Qualifying tablet landscape viewports are promoted to wide even below 1024 logical pixels. Compact screens use the bottom navigation shell; wide layouts can use an expanded or collapsed navigation rail. Content is centered inside a readable surface capped at 760px, with 12px content gutters and a spacing rhythm built from 4, 8, 12, 16, 24, 32, 48, and 64px steps. Page chrome may span the viewport, but the readable content surface remains visually distinct.
 
 ## Elevation & Depth
 
@@ -244,6 +244,18 @@ Controls use a compact 6px radius for compact icon controls and a full pill for 
 - **Don't** introduce a new navigation or modal pattern when the shared components already cover the behavior.
 - **Don't** treat a desktop-width layout as a scaled-up phone screen; use the existing adaptive shell and readable surface.
 
+
+## Centralized responsive design tokens
+
+All styling decisions must use a named semantic role rather than layout or theme checks scattered across pages. **Layout mode chooses the scale and geometry; theme chooses semantic colors; components consume those resolved tokens.**
+
+- **Mode resolution:** `ButlerlyResponsiveDesignTokens.of(context)` selects Compact, Medium, or Wide, including tablet landscape behavior. It exposes the `homeTypography`, `homeColors`, `geometry`, and `colors` roles. New screens should use the same resolver rather than repeating breakpoint checks inside every widget.
+- **Theme colors:** `ButlerlySemanticColors.palette` remains the source of truth for light/dark appearance and Butler Red, Sky Blue, and Green accents. Avoid literal light/dark colors inside feature widgets.
+- **Font sizes and hierarchy:** `ButlerlyTypography` provides canonical TextStyle roles. The responsive Home typography roles use these styles while choosing size by mode: for example Compact greeting 20, card title 14, amount 20; Medium greeting 24, card title 16, amount 24; desktop toolbar greeting 16 and card title 16. Font family, weight, color, and accessibility text scaling remain in the normal theme and semantic roles.
+- **Spacing and shape:** `ButlerlySpacing`, `ButlerlyRadius`, `ButlerlySize`, and `ButlerlyGeometryTokens` centrally define page gutters, card padding, inner-card padding/gutters, card gaps, section spacing, and component dimensions. Current Home geometry preserves the approved 12 logical-pixel page gutter and inter-card gap; changes must be made in token definitions, not copied as new constants through feature screens.
+- **Migration status:** Home currently consumes responsive typography and shared summary accent tokens; Desktop Home consumes the shared summary colors and selected typography roles. The remaining legacy components and pages are **not yet fully migrated**. They should adopt these tokens incrementally, with comparison tests in Compact, Medium, Wide, light, dark, and large-text states.
+
+The implementation source is `apps/butlerly/lib/design_system/theme/butlerly_responsive_design_tokens.dart`. Keep design documentation, screen implementations, and tests aligned; do not create screen-specific overrides without an explicit design-system role.
 
 ## Implementation token authority (October 2026)
 
