@@ -798,12 +798,11 @@ void main() {
     await tester.pumpAndSettle();
 
     final tile = find.byKey(const ValueKey('home-summary-inner-income'));
+    final container = tester.widget<Container>(
+      find.descendant(of: tile, matching: find.byType(Container)).first,
+    );
     expect(
-      tester
-          .widget<Container>(
-            find.descendant(of: tile, matching: find.byType(Container)).first,
-          )
-          .padding,
+      container.padding,
       const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
     );
     final content = tester.widget<Column>(
