@@ -96,12 +96,8 @@ class AnalysisDaySummary extends StatelessWidget {
               ),
             if (value.value.isNotEmpty) ...[
               const SizedBox(height: ButlerlySpacing.micro),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: ButlerlySpacing.small,
-                ),
-                child: ButlerlyTransactionInnerCard(
-                  child: TransactionRecordList(
+              ButlerlyInsetTransactionCard(
+                child: TransactionRecordList(
                     transactions: value.value,
                     masterData: masterData ?? const TransactionMasterData(),
                     onTap: onTransactionTap,
