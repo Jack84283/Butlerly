@@ -1211,7 +1211,7 @@ class _DesktopMetric extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w800,
-                      color: Colors.white,
+                      color: context.designTokens.homeColors.onMetric,
                       letterSpacing: -.7,
                     ),
                   ),
