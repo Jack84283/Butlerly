@@ -107,9 +107,9 @@ void main() {
       final brandTagline = find.byKey(const ValueKey('home-brand-tagline'));
       final greeting = find.byKey(const ValueKey('home-greeting'));
       final intro = find.byKey(const ValueKey('home-intro'));
-      expect(tester.widget<Text>(brand).style?.fontSize, 32);
+      expect(tester.widget<Text>(brand).style?.fontSize, 24);
       final taglineText = tester.widget<Text>(brandTagline);
-      expect(taglineText.style?.fontSize, 14);
+      expect(taglineText.style?.fontSize, 13);
       expect(taglineText.maxLines, 1);
       expect(taglineText.softWrap, isFalse);
       expect(
@@ -120,8 +120,8 @@ void main() {
         tester.getTopLeft(monthSurface).dy,
         closeTo(tester.getTopLeft(brand).dy, 1.0),
       );
-      expect(tester.widget<Text>(greeting).style?.fontSize, 24);
-      expect(tester.widget<Text>(intro).style?.fontSize, 14);
+      expect(tester.widget<Text>(greeting).style?.fontSize, 20);
+      expect(tester.widget<Text>(intro).style?.fontSize, 13);
       expect(
         tester.getTopLeft(intro).dy - tester.getBottomLeft(greeting).dy,
         closeTo(ButlerlySpacing.micro, 0.01),
@@ -497,7 +497,7 @@ void main() {
     expect(chart, findsOneWidget);
     expect(tester.getSize(chart).height, closeTo(112, 0.1));
     if (amount.evaluate().isNotEmpty) {
-      expect(tester.widget<Text>(amount).style?.fontSize, 24);
+      expect(tester.widget<Text>(amount).style?.fontSize, 20);
     }
     final baseline = find.byKey(
       const ValueKey('home-spending-trend-grid-line-4'),
