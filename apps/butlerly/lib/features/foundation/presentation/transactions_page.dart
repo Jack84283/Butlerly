@@ -9,6 +9,7 @@ import 'package:butlerly/design_system/components/butlerly_payment_source_icon.d
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/desktop/presentation/desktop_transaction_detail_split_view.dart';
 import 'package:butlerly/features/foundation/presentation/payment_source_display.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_count_label.dart';
@@ -51,6 +52,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
   int _loadGeneration = 0;
   bool _hasLoadedTransactions = false;
   bool _defaultPeriodResolved = false;
+  String? _selectedTransactionId;
 
   FinanceServices? get _finance => services.isRegistered<FinanceServices>()
       ? services<FinanceServices>()
@@ -392,6 +394,11 @@ class _TransactionsPageState extends State<TransactionsPage> {
   Future<void> _openDetail(TransactionDto transaction) async {
     final finance = _finance;
     if (finance == null) return;
+    if (ButlerlyLayout.mode(MediaQuery.sizeOf(context)) ==
+        ButlerlyLayoutMode.wide) {
+      setState(() => _selectedTransactionId = transaction.id);
+      return;
+    }
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) =>
@@ -430,7 +437,12 @@ class _TransactionsPageState extends State<TransactionsPage> {
         final visible = values
             .where((value) => _matchesFilters(value, data))
             .toList(growable: false);
-        return ButlerlyPage(
+        final selectedTransaction = visible
+            .where((value) => value.id == _selectedTransactionId)
+            .firstOrNull;
+        final desktop = ButlerlyLayout.mode(MediaQuery.sizeOf(context)) ==
+            ButlerlyLayoutMode.wide;
+        final resultsPage = ButlerlyPage(
           title: context.l10n.text('transactions'),
           onRefresh: _refresh,
           refreshKey: const ValueKey('transactions-pull-to-refresh'),
@@ -519,6 +531,21 @@ class _TransactionsPageState extends State<TransactionsPage> {
             ],
             const SizedBox(height: ButlerlySpacing.structural),
           ],
+        );
+        return DesktopTransactionDetailSplitView(
+          results: resultsPage,
+          detail: desktop && selectedTransaction != null
+              ? TransactionDetailPage(
+                  key: ValueKey('desktop-detail-${selectedTransaction.id}'),
+                  finance: _finance!,
+                  transaction: selectedTransaction,
+                  onChanged: _refresh,
+                  onClose: (changed) {
+                    setState(() => _selectedTransactionId = null);
+                    if (changed) _refresh();
+                  },
+                )
+              : null,
         );
       },
     );
