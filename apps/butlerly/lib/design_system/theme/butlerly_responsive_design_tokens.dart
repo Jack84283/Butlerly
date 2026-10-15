@@ -243,8 +243,8 @@ class ButlerlyGeometryTokens {
     pageGutter: ButlerlySize.contentGutter,
     cardPadding: ButlerlySpacing.cardPadding,
     cardGap: ButlerlySpacing.cardGap,
-    innerCardGutter: ButlerlySpacing.small,
-    innerCardPadding: ButlerlySpacing.small,
+    innerCardGutter: ButlerlySpacing.compact,
+    innerCardPadding: ButlerlySpacing.micro,
     contentGap: ButlerlySpacing.compact,
   );
 
