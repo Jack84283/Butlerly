@@ -98,11 +98,7 @@ void main() {
         network: 'wechatPay',
       ),
     ];
-    expect(sources.map(paymentMarkFor), [
-      'alipay',
-      'wechatPay',
-      'wechatPay',
-    ]);
+    expect(sources.map(paymentMarkFor), ['alipay', 'wechatPay', 'wechatPay']);
 
     await tester.pumpWidget(
       MaterialApp(
