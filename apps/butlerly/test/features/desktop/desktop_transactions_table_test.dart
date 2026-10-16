@@ -184,6 +184,14 @@ void main() {
 
     expect(find.byType(ButlerlyDesktopTransactionTable), findsNWidgets(2));
     expect(find.text('Merchant'), findsNWidgets(2));
+    expect(
+      tester.widget<Text>(find.text('Corner Store')).style?.fontWeight,
+      FontWeight.bold,
+    );
+    expect(
+      tester.widget<Text>(find.textContaining('25.00')).style?.color,
+      AppTheme.light.colorScheme.error,
+    );
     await tester.tap(
       find.byKey(const ValueKey('desktop-transaction-row-oct-1')),
     );
@@ -193,6 +201,59 @@ void main() {
       find.byKey(const ValueKey('desktop-transaction-row-oct-2')),
     );
     expect(secondSelection, 'oct-2');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Income amounts use the same red in the desktop table', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final income = TransactionDto(
+      id: 'income-1',
+      amount: '500.00',
+      currency: 'USD',
+      direction: 'income',
+      status: 'active',
+      reviewState: 'clear',
+      transactionDate: '2026-10-15',
+      createdAt: now,
+      updatedAt: now,
+      merchantId: 'store',
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        localizationsDelegates: const [AppLocalizations.delegate],
+        supportedLocales: const [Locale('en')],
+        home: Scaffold(
+          body: ButlerlyDesktopTransactionTable(
+            transactions: [data.first, income],
+            masterData: masterData,
+            onTap: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final expenseRow = find.byKey(const ValueKey('desktop-transaction-row-oct-1'));
+    final incomeRow = find.byKey(const ValueKey('desktop-transaction-row-income-1'));
+    for (final row in [expenseRow, incomeRow]) {
+      final amount = find.descendant(
+        of: row,
+        matching: find.textContaining('00'),
+      );
+      // Both directions use red; merchant style is shared as well.
+      expect(amount, findsOneWidget);
+      expect(
+        tester.widget<Text>(amount).style?.color,
+        AppTheme.dark.colorScheme.error,
+      );
+    }
     expect(tester.takeException(), isNull);
   });
 
@@ -477,6 +538,23 @@ void main() {
       expect(
         tester.widget<Text>(homeCell).style,
         tester.widget<Text>(searchCell).style,
+      );
+    }
+    for (final inner in [homeInner, searchInner]) {
+      final merchant = find.descendant(
+        of: inner,
+        matching: find.text('Corner Store'),
+      );
+      final amount = find.descendant(
+        of: inner,
+        matching: find.textContaining('25.00'),
+      );
+      expect(merchant, findsOneWidget);
+      expect(amount, findsOneWidget);
+      expect(tester.widget<Text>(merchant).style?.fontWeight, FontWeight.bold);
+      expect(
+        tester.widget<Text>(amount).style?.color,
+        AppTheme.dark.colorScheme.error,
       );
     }
     expect(tester.takeException(), isNull);
