@@ -282,6 +282,14 @@ void main() {
     expect(find.text('Merchant'), findsOneWidget);
     expect(find.text('Payment source'), findsOneWidget);
 
+    // The Search table must have its own horizontal inset in addition to the
+    // enclosing Home-style inner card. Assert actual rendered positions.
+    final table = find.byKey(const ValueKey('desktop-transactions-table'));
+    final cardRect = tester.getRect(inner);
+    final tableRect = tester.getRect(table);
+    expect(tableRect.left - cardRect.left, closeTo(24, 0.1));
+    expect(cardRect.right - tableRect.right, closeTo(24, 0.1));
+
     final clipped = tester.widget<ClipRRect>(
       find.descendant(of: inner, matching: find.byType(ClipRRect)).first,
     );

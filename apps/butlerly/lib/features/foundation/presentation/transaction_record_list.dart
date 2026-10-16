@@ -217,6 +217,7 @@ class TransactionRecordList extends StatelessWidget {
                       masterData: masterData,
                       paymentSourceNames: paymentSourceNames,
                       missingCategoryLabel: missingCategoryLabel,
+                      horizontalContentPadding: ButlerlySpacing.small,
                       onTap: onTap,
                     )
                   : ButlerlyTransactionList(

@@ -247,6 +247,12 @@ void main() {
     expect(find.byType(ButlerlyDesktopTransactionTable), findsOneWidget);
     expect(find.byType(TransactionRow), findsNothing);
     expect(find.text('Merchant'), findsOneWidget);
+    final cardBounds = tester.getRect(find.byType(ButlerlyDesktopInnerCard));
+    final tableBounds = tester.getRect(
+      find.byKey(const ValueKey('desktop-transactions-table')),
+    );
+    expect(tableBounds.left - cardBounds.left, closeTo(24, 0.1));
+    expect(cardBounds.right - tableBounds.right, closeTo(24, 0.1));
     expect(
       find.byKey(const ValueKey('desktop-transaction-detail-panel')),
       findsNothing,
