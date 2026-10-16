@@ -1120,10 +1120,7 @@ class _DesktopPanel extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          if (showInnerCard)
-            ButlerlyDesktopInnerCard(child: child)
-          else
-            child,
+          if (showInnerCard) ButlerlyDesktopInnerCard(child: child) else child,
         ],
       ),
     );
