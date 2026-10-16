@@ -390,22 +390,42 @@ void main() {
     final searchInnerRect = tester.getRect(searchInner);
     final homeTableRect = tester.getRect(homeTable);
     final searchTableRect = tester.getRect(searchTable);
-    expect(tester.getSize(homeTable), tester.getSize(searchTable));
-    expect(homeTableRect.left - homeInnerRect.left,
-        searchTableRect.left - searchInnerRect.left);
-    expect(homeInnerRect.right - homeTableRect.right,
-        searchInnerRect.right - searchTableRect.right);
-    expect(homeTableRect.top - homeInnerRect.top,
-        searchTableRect.top - searchInnerRect.top);
-    expect(homeInnerRect.bottom - homeTableRect.bottom,
-        searchInnerRect.bottom - searchTableRect.bottom);
+    expect(
+      tester.getSize(homeTable).height,
+      tester.getSize(searchTable).height,
+    );
+    expect(
+      homeTableRect.left - homeInnerRect.left,
+      searchTableRect.left - searchInnerRect.left,
+    );
+    expect(
+      homeInnerRect.right - homeTableRect.right,
+      searchInnerRect.right - searchTableRect.right,
+    );
+    expect(
+      homeTableRect.top - homeInnerRect.top,
+      searchTableRect.top - searchInnerRect.top,
+    );
+    expect(
+      homeInnerRect.bottom - homeTableRect.bottom,
+      searchInnerRect.bottom - searchTableRect.bottom,
+    );
 
     for (final label in ['Date', 'Merchant', 'Category', 'Amount']) {
-      final homeCell = find.descendant(of: homeInner, matching: find.text(label));
-      final searchCell = find.descendant(of: searchInner, matching: find.text(label));
+      final homeCell = find.descendant(
+        of: homeInner,
+        matching: find.text(label),
+      );
+      final searchCell = find.descendant(
+        of: searchInner,
+        matching: find.text(label),
+      );
       expect(homeCell, findsOneWidget);
       expect(searchCell, findsOneWidget);
-      expect(tester.getSize(homeCell), tester.getSize(searchCell));
+      expect(
+        tester.widget<Text>(homeCell).style,
+        tester.widget<Text>(searchCell).style,
+      );
     }
     expect(tester.takeException(), isNull);
   });

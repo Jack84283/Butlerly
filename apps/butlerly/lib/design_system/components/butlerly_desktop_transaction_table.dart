@@ -112,8 +112,7 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
         masterData.categoryName(categoryId) ??
         (categoryId == null
             ? context.l10n.text('uncategorized')
-            : missingCategoryLabel ??
-                  context.l10n.text('unavailableCategory'));
+            : missingCategoryLabel ?? context.l10n.text('unavailableCategory'));
     final subcategoryLabel = masterData.categoryName(subcategoryId);
     final numericAmount = double.tryParse(transaction.amount);
     final amount = numericAmount == null
@@ -175,11 +174,7 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
               ),
               SizedBox(
                 width: 112,
-                child: _rowText(
-                  context,
-                  amount,
-                  align: TextAlign.end,
-                ),
+                child: _rowText(context, amount, align: TextAlign.end),
               ),
             ],
           ),
