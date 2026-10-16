@@ -160,4 +160,5 @@ void main() {
       router.routeInformationProvider.value.uri.queryParameters['create'],
       'true',
     );
-  });}
+  })
+}
