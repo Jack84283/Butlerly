@@ -676,9 +676,6 @@ class _WidePopupAction {
         section: section,
       );
 
-  const _WidePopupAction.divider()
-    : this._(kind: _WidePopupActionKind.divider, label: '');
-
   final _WidePopupActionKind kind;
   final String label;
   final int? branchIndex;
