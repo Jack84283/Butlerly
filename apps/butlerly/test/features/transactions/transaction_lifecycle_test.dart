@@ -245,10 +245,7 @@ void main() {
     expect(find.text('Search panel coffee'), findsOneWidget);
     expect(find.byType(ButlerlyDesktopInnerCard), findsOneWidget);
     expect(find.byType(ButlerlyDesktopTransactionTable), findsOneWidget);
-    expect(
-      find.byType(ButlerlyDesktopTransactionTableCard),
-      findsOneWidget,
-    );
+    expect(find.byType(ButlerlyDesktopTransactionTableCard), findsOneWidget);
     expect(find.byType(TransactionRow), findsNothing);
     expect(find.text('Merchant'), findsOneWidget);
     final cardBounds = tester.getRect(find.byType(ButlerlyDesktopInnerCard));

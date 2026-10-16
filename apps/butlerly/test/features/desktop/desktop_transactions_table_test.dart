@@ -369,10 +369,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(
-      find.byType(ButlerlyDesktopTransactionTableCard),
-      findsNWidgets(2),
-    );
+    expect(find.byType(ButlerlyDesktopTransactionTableCard), findsNWidgets(2));
     final homeInner = find.byKey(const ValueKey('home-reference-inner'));
     final searchInner = find.byKey(
       const ValueKey('transaction-month-inner-card-2026-10'),
