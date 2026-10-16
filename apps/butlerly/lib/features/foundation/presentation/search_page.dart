@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
@@ -476,7 +477,10 @@ class _SearchPageState extends State<SearchPage>
   Future<void> _openDetail(TransactionDto transaction) async {
     final finance = _finance;
     if (finance == null) return;
-    if (ButlerlyLayout.mode(MediaQuery.sizeOf(context)) ==
+    if (effectiveButlerlyLayoutMode(
+          context,
+          MediaQuery.sizeOf(context).width,
+        ) ==
         ButlerlyLayoutMode.wide) {
       setState(() => _selectedTransaction = transaction);
       return;
@@ -513,7 +517,10 @@ class _SearchPageState extends State<SearchPage>
   Widget build(BuildContext context) {
     super.build(context);
     final desktop =
-        ButlerlyLayout.mode(MediaQuery.sizeOf(context)) ==
+        effectiveButlerlyLayoutMode(
+          context,
+          MediaQuery.sizeOf(context).width,
+        ) ==
         ButlerlyLayoutMode.wide;
     final resultsPage = ButlerlyPage(
       title: context.l10n.text('search'),

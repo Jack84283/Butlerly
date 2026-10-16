@@ -206,6 +206,58 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets(
+    'Landscape 950px Search matches desktop Home layout mode and table',
+    (tester) async {
+      // Home and the desktop shell already treat a tablet landscape viewport
+      // below the 1024px width breakpoint as wide. Search must do the same.
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(950, 700);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final finance = services<FinanceServices>();
+      final created = await finance.createTransaction(
+        CreateTransactionCommand(
+          id: 'landscape-desktop-search',
+          provenanceId: 'landscape-desktop-search-source',
+          timing: KnownTransactionTime(DateTime.utc(2026, 10, 12, 12)),
+          money: Money(
+            amount: DecimalValue.parse('8.25'),
+            currency: CurrencyCode('USD'),
+          ),
+          direction: TransactionDirection.expense,
+          transactionDate: '2026-10-12',
+          description: 'Landscape tablet search',
+        ),
+      );
+      expect(created, isA<ApplicationSuccess<TransactionDto>>());
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SearchPage(
+              initialQuery: const ListTransactionsQuery(
+                transactionIds: ['landscape-desktop-search'],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ButlerlyDesktopTransactionTableCard), findsOneWidget);
+      expect(find.byType(ButlerlyDesktopTransactionTable), findsOneWidget);
+      expect(find.byType(ButlerlyDesktopInnerCard), findsOneWidget);
+      expect(find.byType(TransactionRow), findsNothing);
+      expect(
+        tester.widget<ButlerlyPage>(find.byType(ButlerlyPage)).fullWidth,
+        isTrue,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('Wide Search retains results when its detail panel closes', (
     tester,
   ) async {
