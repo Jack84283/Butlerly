@@ -1,4 +1,5 @@
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_desktop_transaction_table.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -30,6 +31,8 @@ class TransactionRecordList extends StatelessWidget {
     this.collapsibleMonthSections = false,
     this.monthSectionsAsCards = false,
     this.dashboardRowStyle = false,
+    this.desktopTableMode = false,
+    this.desktopHomeInnerCardStyle = false,
     this.wrapInCard = false,
     this.showDateInRows = false,
     this.supportingContentBuilder,
@@ -49,6 +52,10 @@ class TransactionRecordList extends StatelessWidget {
   final bool collapsibleMonthSections;
   final bool monthSectionsAsCards;
   final bool dashboardRowStyle;
+  final bool desktopTableMode;
+
+  /// Match the existing desktop Home inner surface, without changing devices.
+  final bool desktopHomeInnerCardStyle;
   final bool wrapInCard;
   final bool showDateInRows;
   final Widget Function(BuildContext, TransactionDto)? supportingContentBuilder;
@@ -149,13 +156,51 @@ class TransactionRecordList extends StatelessWidget {
       locale: locale,
     );
     final summary = _monthCardSummary(context, entry.value);
+    if (monthSectionsAsCards && desktopHomeInnerCardStyle && desktopTableMode) {
+      return ButlerlyDesktopTransactionSection(
+        key: ValueKey('transaction-month-card-${entry.key}'),
+        headerKey: ValueKey('transaction-month-${entry.key}'),
+        innerCardKey: ValueKey('transaction-month-inner-card-${entry.key}'),
+        title: label,
+        transactions: entry.value,
+        masterData: masterData,
+        paymentSourceNames: paymentSourceNames,
+        missingCategoryLabel: missingCategoryLabel,
+        onTap: onTap,
+        collapsible: true,
+        initiallyExpanded: initiallyExpanded,
+        trailing: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              summary.countLabel,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.end,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: ButlerlySpacing.micro),
+            Text(
+              summary.totalLabel,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.end,
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+          ],
+        ),
+      );
+    }
     final tile = ExpansionTile(
       key: ValueKey('transaction-month-${entry.key}'),
       initiallyExpanded: initiallyExpanded,
       tilePadding: monthSectionsAsCards
           ? const EdgeInsets.symmetric(horizontal: ButlerlySpacing.cardPadding)
           : EdgeInsets.zero,
-      childrenPadding: const EdgeInsets.only(bottom: ButlerlySpacing.standard),
+      childrenPadding: desktopHomeInnerCardStyle
+          ? const EdgeInsets.only(bottom: ButlerlyDesktopInnerCard.outerGutter)
+          : const EdgeInsets.only(bottom: ButlerlySpacing.standard),
       shape: const Border(),
       collapsedShape: const Border(),
       controlAffinity: ListTileControlAffinity.leading,
@@ -195,14 +240,46 @@ class TransactionRecordList extends StatelessWidget {
         ],
       ),
       children: [
-        if (monthSectionsAsCards)
+        if (monthSectionsAsCards && desktopHomeInnerCardStyle)
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: ButlerlyDesktopInnerCard.outerGutter,
+            ),
+            child: desktopTableMode
+                ? ButlerlyDesktopTransactionTableCard(
+                    key: ValueKey('transaction-month-inner-card-${entry.key}'),
+                    transactions: entry.value,
+                    masterData: masterData,
+                    paymentSourceNames: paymentSourceNames,
+                    missingCategoryLabel: missingCategoryLabel,
+                    onTap: onTap,
+                  )
+                : ButlerlyDesktopInnerCard(
+                    key: ValueKey('transaction-month-inner-card-${entry.key}'),
+                    child: ButlerlyTransactionList(
+                      children: [
+                        for (final transaction in entry.value)
+                          rows[transaction]!,
+                      ],
+                    ),
+                  ),
+          )
+        else if (monthSectionsAsCards)
           ButlerlyInsetTransactionCard(
             innerCardKey: ValueKey('transaction-month-inner-card-${entry.key}'),
-            child: ButlerlyTransactionList(
-              children: [
-                for (final transaction in entry.value) rows[transaction]!,
-              ],
-            ),
+            child: desktopTableMode
+                ? ButlerlyDesktopTransactionTable(
+                    transactions: entry.value,
+                    masterData: masterData,
+                    paymentSourceNames: paymentSourceNames,
+                    missingCategoryLabel: missingCategoryLabel,
+                    onTap: onTap,
+                  )
+                : ButlerlyTransactionList(
+                    children: [
+                      for (final transaction in entry.value) rows[transaction]!,
+                    ],
+                  ),
           )
         else
           ButlerlyTransactionList(

@@ -4,7 +4,9 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_compact_section_selector.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_desktop_transaction_table.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
+import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/add_page.dart';
@@ -81,6 +83,332 @@ void main() {
   });
 
   tearDown(() => services.reset());
+
+  testWidgets('Wide Transactions opens the existing detail in a side panel', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1600, 1200);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    final finance = services<FinanceServices>();
+    final created = await finance.createTransaction(
+      CreateTransactionCommand(
+        id: 'panel-transaction',
+        provenanceId: 'panel-transaction-source',
+        timing: KnownTransactionTime(DateTime.utc(2026, 10, 14, 12)),
+        money: Money(
+          amount: DecimalValue.parse('19.75'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        transactionDate: '2026-10-14',
+        description: 'Panel coffee',
+      ),
+    );
+    expect(created, isA<ApplicationSuccess<TransactionDto>>());
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TransactionsPage(
+            query: const ListTransactionsQuery(
+              transactionIds: ['panel-transaction'],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final row = find.byKey(
+      const ValueKey('desktop-transaction-row-panel-transaction'),
+    );
+    expect(row, findsOneWidget);
+    expect(find.byType(ButlerlyDesktopTransactionSection), findsOneWidget);
+    expect(find.byType(ButlerlyDesktopInnerCard), findsOneWidget);
+    final transactionsCard = tester.getRect(
+      find.byType(ButlerlyDesktopInnerCard),
+    );
+    final transactionsDateHeader = tester.getRect(find.text('Date'));
+    expect(
+      transactionsDateHeader.left - transactionsCard.left,
+      closeTo(ButlerlyDesktopInnerCard.contentPadding, 0.1),
+    );
+    expect(
+      transactionsDateHeader.top - transactionsCard.top,
+      closeTo(ButlerlyDesktopInnerCard.contentPadding, 0.1),
+    );
+    expect(
+      find.byKey(const ValueKey('desktop-transaction-detail-panel')),
+      findsNothing,
+    );
+
+    await tester.tap(row);
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('desktop-transaction-detail-panel')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('transaction-detail-summary-card')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('transaction-detail-edit-action')),
+      findsOneWidget,
+    );
+    expect(row, findsOneWidget);
+
+    // Edit keeps the same panel and leaves the transactions table mounted.
+    await tester.tap(
+      find.byKey(const ValueKey('transaction-detail-edit-action')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('desktop-transaction-detail-panel')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('transaction-editor-content')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('transaction-detail-summary-card')),
+      findsNothing,
+    );
+    expect(row, findsOneWidget);
+    await tester.tap(
+      find.byKey(const ValueKey('transaction-editor-cancel-panel')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('transaction-detail-summary-card')),
+      findsOneWidget,
+    );
+
+    // Saving returns to the current detail in place with updated values.
+    await tester.tap(
+      find.byKey(const ValueKey('transaction-detail-edit-action')),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('transaction-description-field')),
+      'Panel coffee edited',
+    );
+    await tester.tap(find.byKey(const ValueKey('transaction-save-locally')));
+    await tester.pumpAndSettle();
+    expect(find.text('Panel coffee edited'), findsWidgets);
+    expect(
+      find.byKey(const ValueKey('desktop-transaction-detail-panel')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('transaction-detail-summary-card')),
+      findsOneWidget,
+    );
+    expect(row, findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey('transaction-detail-close-panel')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('desktop-transaction-detail-panel')),
+      findsNothing,
+    );
+    expect(row, findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'Landscape 950px Search matches desktop Home layout mode and table',
+    (tester) async {
+      // Home and the desktop shell already treat a tablet landscape viewport
+      // below the 1024px width breakpoint as wide. Search must do the same.
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(950, 700);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final finance = services<FinanceServices>();
+      final created = await finance.createTransaction(
+        CreateTransactionCommand(
+          id: 'landscape-desktop-search',
+          provenanceId: 'landscape-desktop-search-source',
+          timing: KnownTransactionTime(DateTime.utc(2026, 10, 12, 12)),
+          money: Money(
+            amount: DecimalValue.parse('8.25'),
+            currency: CurrencyCode('USD'),
+          ),
+          direction: TransactionDirection.expense,
+          transactionDate: '2026-10-12',
+          description: 'Landscape tablet search',
+        ),
+      );
+      expect(created, isA<ApplicationSuccess<TransactionDto>>());
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SearchPage(
+              initialQuery: const ListTransactionsQuery(
+                transactionIds: ['landscape-desktop-search'],
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ButlerlyDesktopTransactionTableCard), findsOneWidget);
+      expect(find.byType(ButlerlyDesktopTransactionTable), findsOneWidget);
+      expect(find.byType(ButlerlyDesktopInnerCard), findsOneWidget);
+      expect(find.byType(TransactionRow), findsNothing);
+      final compactWideCard = tester.getRect(
+        find.byType(ButlerlyDesktopInnerCard),
+      );
+      final compactWideDateHeader = tester.getRect(find.text('Date'));
+      expect(
+        compactWideDateHeader.left - compactWideCard.left,
+        closeTo(ButlerlyDesktopInnerCard.contentPadding, 0.1),
+      );
+      expect(
+        compactWideDateHeader.top - compactWideCard.top,
+        closeTo(ButlerlyDesktopInnerCard.contentPadding, 0.1),
+      );
+      expect(
+        tester.widget<ButlerlyPage>(find.byType(ButlerlyPage)).fullWidth,
+        isTrue,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('Wide Search retains results when its detail panel closes', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1500, 1100);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    final finance = services<FinanceServices>();
+    final created = await finance.createTransaction(
+      CreateTransactionCommand(
+        id: 'search-panel-transaction',
+        provenanceId: 'search-panel-source',
+        timing: KnownTransactionTime(DateTime.utc(2026, 10, 12, 12)),
+        money: Money(
+          amount: DecimalValue.parse('6.25'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        transactionDate: '2026-10-12',
+        description: 'Search panel coffee',
+      ),
+    );
+    expect(created, isA<ApplicationSuccess<TransactionDto>>());
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SearchPage(
+            initialQuery: const ListTransactionsQuery(
+              transactionIds: ['search-panel-transaction'],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Search panel coffee'), findsOneWidget);
+    expect(find.byType(ButlerlyDesktopInnerCard), findsOneWidget);
+    expect(find.byType(ButlerlyDesktopTransactionTable), findsOneWidget);
+    expect(find.byType(ButlerlyDesktopTransactionTableCard), findsOneWidget);
+    expect(find.byType(TransactionRow), findsNothing);
+    expect(find.text('Merchant'), findsOneWidget);
+    final cardBounds = tester.getRect(find.byType(ButlerlyDesktopInnerCard));
+    final tableBounds = tester.getRect(
+      find.byKey(const ValueKey('desktop-transactions-table')),
+    );
+    expect(
+      tableBounds.left - cardBounds.left,
+      closeTo(ButlerlyDesktopInnerCard.contentPadding, 0.1),
+    );
+    expect(
+      cardBounds.right - tableBounds.right,
+      closeTo(ButlerlyDesktopInnerCard.contentPadding, 0.1),
+    );
+    expect(
+      tableBounds.top - cardBounds.top,
+      closeTo(ButlerlyDesktopInnerCard.contentPadding, 0.1),
+    );
+    expect(
+      cardBounds.bottom - tableBounds.bottom,
+      closeTo(ButlerlyDesktopInnerCard.contentPadding, 0.1),
+    );
+    final searchDateHeader = tester.getRect(find.text('Date'));
+    expect(
+      searchDateHeader.left - cardBounds.left,
+      closeTo(ButlerlyDesktopInnerCard.contentPadding, 0.1),
+    );
+    expect(
+      searchDateHeader.top - cardBounds.top,
+      closeTo(ButlerlyDesktopInnerCard.contentPadding, 0.1),
+    );
+    expect(
+      find.byKey(const ValueKey('desktop-transaction-detail-panel')),
+      findsNothing,
+    );
+
+    await tester.tap(find.text('Search panel coffee'));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('desktop-transaction-detail-panel')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('transaction-detail-amount-card')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('search-pinned-controls')),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('transaction-detail-edit-action')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('desktop-transaction-detail-panel')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('transaction-editor-content')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('search-pinned-controls')),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('transaction-editor-cancel-panel')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('transaction-detail-amount-card')),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('transaction-detail-close-panel')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('desktop-transaction-detail-panel')),
+      findsNothing,
+    );
+    expect(find.text('Search panel coffee'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'row detail and edit preserve transaction master-data references',

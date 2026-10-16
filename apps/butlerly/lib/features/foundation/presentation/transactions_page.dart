@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
@@ -9,6 +10,7 @@ import 'package:butlerly/design_system/components/butlerly_payment_source_icon.d
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/desktop/presentation/desktop_transaction_detail_split_view.dart';
 import 'package:butlerly/features/foundation/presentation/payment_source_display.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_count_label.dart';
@@ -51,6 +53,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
   int _loadGeneration = 0;
   bool _hasLoadedTransactions = false;
   bool _defaultPeriodResolved = false;
+  String? _selectedTransactionId;
 
   FinanceServices? get _finance => services.isRegistered<FinanceServices>()
       ? services<FinanceServices>()
@@ -329,6 +332,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
       _includeUndated = false;
       _from = null;
       _to = null;
+      _selectedTransactionId = null;
     });
     unawaited(_refresh());
   }
@@ -362,6 +366,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
             _includeUndated = value.includeUndated;
             _from = value.from;
             _to = value.to;
+            _selectedTransactionId = null;
           });
           unawaited(_refresh());
           Navigator.pop(sheetContext);
@@ -380,11 +385,11 @@ class _TransactionsPageState extends State<TransactionsPage> {
         searchFieldKey: const ValueKey('transactions-search-field'),
         controller: _search,
         activeFilterCount: _activeFilterCount,
-        onSearch: () => setState(() {}),
-        onChanged: (_) => setState(() {}),
+        onSearch: () => setState(() => _selectedTransactionId = null),
+        onChanged: (_) => setState(() => _selectedTransactionId = null),
         onClear: () {
           _search.clear();
-          setState(() {});
+          setState(() => _selectedTransactionId = null);
         },
         onFilter: _openFilters,
       );
@@ -392,6 +397,14 @@ class _TransactionsPageState extends State<TransactionsPage> {
   Future<void> _openDetail(TransactionDto transaction) async {
     final finance = _finance;
     if (finance == null) return;
+    if (effectiveButlerlyLayoutMode(
+          context,
+          MediaQuery.sizeOf(context).width,
+        ) ==
+        ButlerlyLayoutMode.wide) {
+      setState(() => _selectedTransactionId = transaction.id);
+      return;
+    }
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) =>
@@ -430,11 +443,21 @@ class _TransactionsPageState extends State<TransactionsPage> {
         final visible = values
             .where((value) => _matchesFilters(value, data))
             .toList(growable: false);
-        return ButlerlyPage(
+        final selectedTransaction = visible
+            .where((value) => value.id == _selectedTransactionId)
+            .firstOrNull;
+        final desktop =
+            effectiveButlerlyLayoutMode(
+              context,
+              MediaQuery.sizeOf(context).width,
+            ) ==
+            ButlerlyLayoutMode.wide;
+        final resultsPage = ButlerlyPage(
           title: context.l10n.text('transactions'),
           onRefresh: _refresh,
           refreshKey: const ValueKey('transactions-pull-to-refresh'),
           pinnedSpacing: ButlerlyPinnedPageSpacing.tightHeader,
+          fullWidth: desktop,
           pinnedHeaderExtent: ButlerlySize.searchPinnedHeaderHeight,
           pinnedHeader: _transactionSearchControls(context),
           children: [
@@ -498,6 +521,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
                       collapsibleMonthSections: true,
                       monthSectionsAsCards: true,
                       dashboardRowStyle: true,
+                      desktopHomeInnerCardStyle: desktop,
+                      desktopTableMode: desktop,
                       missingCategoryLabel: context.l10n.text('uncategorized'),
                       possibleDuplicateIds: data.possibleDuplicateIds,
                       possibleDuplicateLabel: context.l10n.text(
@@ -513,6 +538,21 @@ class _TransactionsPageState extends State<TransactionsPage> {
             ],
             const SizedBox(height: ButlerlySpacing.structural),
           ],
+        );
+        return DesktopTransactionDetailSplitView(
+          results: resultsPage,
+          detail: desktop && selectedTransaction != null
+              ? DesktopTransactionPanel(
+                  key: ValueKey('desktop-panel-${selectedTransaction.id}'),
+                  finance: _finance!,
+                  transaction: selectedTransaction,
+                  onChanged: _refresh,
+                  onClose: (changed) {
+                    setState(() => _selectedTransactionId = null);
+                    if (changed) _refresh();
+                  },
+                )
+              : null,
         );
       },
     );
@@ -563,6 +603,87 @@ final class _TransactionsData {
   final Set<String> possibleDuplicateIds;
 }
 
+/// Shows the existing detail and editor screens in the same desktop panel.
+class DesktopTransactionPanel extends StatefulWidget {
+  const DesktopTransactionPanel({
+    required this.finance,
+    required this.transaction,
+    required this.onClose,
+    required this.onChanged,
+    super.key,
+  });
+
+  final FinanceServices finance;
+  final TransactionDto transaction;
+  final ValueChanged<bool> onClose;
+  final VoidCallback onChanged;
+
+  @override
+  State<DesktopTransactionPanel> createState() =>
+      _DesktopTransactionPanelState();
+}
+
+class _DesktopTransactionPanelState extends State<DesktopTransactionPanel> {
+  bool _editing = false;
+  bool _changed = false;
+  TransactionDto? _savedTransaction;
+
+  @override
+  void didUpdateWidget(covariant DesktopTransactionPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.transaction.id != widget.transaction.id) {
+      _editing = false;
+      _changed = false;
+      _savedTransaction = null;
+    } else if (oldWidget.transaction.updatedAt !=
+        widget.transaction.updatedAt) {
+      _savedTransaction = widget.transaction;
+    }
+  }
+
+  void _completeEdit(TransactionEditorResult result) {
+    if (!mounted) return;
+    switch (result) {
+      case TransactionEditorSaved(:final transaction):
+        setState(() {
+          _savedTransaction = transaction;
+          _changed = true;
+          _editing = false;
+        });
+        widget.onChanged();
+      case TransactionEditorUseExisting():
+        setState(() {
+          _editing = false;
+          _changed = true;
+        });
+        widget.onChanged();
+      case TransactionEditorCancelled():
+        setState(() => _editing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final transaction = _savedTransaction ?? widget.transaction;
+    if (_editing) {
+      return TransactionEditorPage(
+        key: ValueKey('desktop-editor-${transaction.id}'),
+        finance: widget.finance,
+        existing: transaction,
+        onComplete: _completeEdit,
+      );
+    }
+    return TransactionDetailPage(
+      key: ValueKey('desktop-detail-${transaction.id}'),
+      finance: widget.finance,
+      transaction: transaction,
+      onEditRequested: () => setState(() => _editing = true),
+      onChanged: widget.onChanged,
+      onClose: (changed) => widget.onClose(changed || _changed),
+    );
+  }
+}
+
 sealed class TransactionEditorResult {
   const TransactionEditorResult();
   const factory TransactionEditorResult.saved(TransactionDto transaction) =
@@ -591,11 +712,15 @@ class TransactionEditorPage extends StatefulWidget {
   const TransactionEditorPage({
     required this.finance,
     this.existing,
+    this.onComplete,
     super.key,
   });
 
   final FinanceServices finance;
   final TransactionDto? existing;
+
+  /// Completes editing in place when embedded in the desktop panel.
+  final ValueChanged<TransactionEditorResult>? onComplete;
 
   @override
   State<TransactionEditorPage> createState() => _TransactionEditorPageState();
@@ -745,6 +870,14 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
     if (!_classificationOverridden) await _refreshClassification();
   }
 
+  void _complete(TransactionEditorResult result) {
+    if (widget.onComplete case final onComplete?) {
+      onComplete(result);
+    } else {
+      Navigator.of(context).pop(result);
+    }
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     final money = Money(
@@ -808,9 +941,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
       if (decision.decision == ButlerlyDuplicateDecision.useExisting) {
         final selectedId = decision.selectedTransactionId;
         if (selectedId != null) {
-          Navigator.of(
-            context,
-          ).pop(TransactionEditorResult.useExisting(selectedId));
+          _complete(TransactionEditorResult.useExisting(selectedId));
         }
         return;
       }
@@ -873,7 +1004,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
     }
     notifyTransactionChanged();
     if (result case ApplicationSuccess<TransactionDto>(value: final saved)) {
-      Navigator.of(context).pop(TransactionEditorResult.saved(saved));
+      _complete(TransactionEditorResult.saved(saved));
     }
   }
 
@@ -881,6 +1012,17 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: widget.onComplete == null
+            ? null
+            : IconButton(
+                key: const ValueKey('transaction-editor-cancel-panel'),
+                tooltip: context.l10n.text('cancel'),
+                onPressed: _saving
+                    ? null
+                    : () =>
+                          _complete(const TransactionEditorResult.cancelled()),
+                icon: const Icon(Icons.arrow_back_rounded),
+              ),
         title: Text(
           widget.existing == null
               ? context.l10n.text('addTransaction')
@@ -1421,11 +1563,20 @@ class TransactionDetailPage extends StatefulWidget {
   const TransactionDetailPage({
     required this.finance,
     required this.transaction,
+    this.onClose,
+    this.onChanged,
+    this.onEditRequested,
     super.key,
   });
 
   final FinanceServices finance;
   final TransactionDto transaction;
+  final VoidCallback? onEditRequested;
+
+  /// When supplied, embed the existing detail page in a desktop side panel
+  /// instead of popping the primary navigation route.
+  final ValueChanged<bool>? onClose;
+  final VoidCallback? onChanged;
 
   @override
   State<TransactionDetailPage> createState() => _TransactionDetailPageState();
@@ -1441,6 +1592,24 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   void initState() {
     super.initState();
     transaction = widget.transaction;
+  }
+
+  @override
+  void didUpdateWidget(covariant TransactionDetailPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.transaction.id != widget.transaction.id ||
+        oldWidget.transaction.updatedAt != widget.transaction.updatedAt) {
+      transaction = widget.transaction;
+    }
+  }
+
+  void _close({bool? changed}) {
+    final didChange = changed ?? _changed;
+    if (widget.onClose case final onClose?) {
+      onClose(didChange);
+    } else {
+      Navigator.of(context).pop(didChange);
+    }
   }
 
   Future<void> _delete(BuildContext context) async {
@@ -1465,7 +1634,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       }
     }
     await finance.deleteTransactionPermanently(transaction.id);
-    if (context.mounted) Navigator.of(context).pop(true);
+    if (context.mounted) _close(changed: true);
   }
 
   void _showEvidenceCleanupFailure(BuildContext context) {
@@ -1475,6 +1644,10 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
   }
 
   Future<void> _editTransaction() async {
+    if (widget.onEditRequested case final onEditRequested?) {
+      onEditRequested();
+      return;
+    }
     final changed = await Navigator.of(context).push<TransactionEditorResult>(
       MaterialPageRoute(
         builder: (_) =>
@@ -1493,19 +1666,22 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
           _changed = true;
         });
       }
+      widget.onChanged?.call();
     }
   }
 
   @override
-  Widget build(BuildContext context) => PopScope<void>(
-    canPop: false,
-    onPopInvokedWithResult: (didPop, _) {
-      if (!didPop && context.mounted) {
-        Navigator.of(context).pop(_changed);
-      }
-    },
-    child: Scaffold(
+  Widget build(BuildContext context) {
+    final detail = Scaffold(
       appBar: AppBar(
+        leading: widget.onClose == null
+            ? null
+            : IconButton(
+                key: const ValueKey('transaction-detail-close-panel'),
+                tooltip: context.l10n.text('close'),
+                onPressed: () => _close(),
+                icon: const Icon(Icons.close_rounded),
+              ),
         title: Text(context.l10n.text('transactionDetail')),
         actions: [
           IconButton(
@@ -1855,8 +2031,16 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
           ],
         ),
       ),
-    ),
-  );
+    );
+    if (widget.onClose != null) return detail;
+    return PopScope<void>(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && context.mounted) _close();
+      },
+      child: detail,
+    );
+  }
 }
 
 class _EvidenceSection extends StatefulWidget {

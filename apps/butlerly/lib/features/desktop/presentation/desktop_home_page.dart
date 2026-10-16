@@ -3,10 +3,10 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/components/butlerly_category_icon.dart';
+import 'package:butlerly/design_system/components/butlerly_desktop_transaction_table.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
-import 'package:butlerly/design_system/components/butlerly_payment_source_icon.dart';
+import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
-import 'package:butlerly/design_system/tokens/butlerly_category_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
@@ -575,11 +575,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                     ],
                                   ),
                                 );
-                                final recent = _DesktopPanel(
+                                final recent = ButlerlyDesktopTransactionSection(
                                   title: context.l10n.text(
                                     'recentTransactions',
                                   ),
-                                  showInnerCard: true,
                                   trailing: TextButton(
                                     style: TextButton.styleFrom(
                                       padding: const EdgeInsets.symmetric(
@@ -591,237 +590,17 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                     onPressed: () => _go('/search?$query'),
                                     child: Text(context.l10n.text('viewAll')),
                                   ),
-                                  child: Column(
-                                    children: [
-                                      Row(
-                                        children: [
-                                          SizedBox(
-                                            width: 100,
-                                            child: Text(
-                                              context.l10n.text('date'),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          Expanded(
-                                            flex: 3,
-                                            child: Text(
-                                              context.l10n.text('merchant'),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          Expanded(
-                                            flex: 2,
-                                            child: Text(
-                                              context.l10n.text('category'),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          Expanded(
-                                            flex: 2,
-                                            child: Text(
-                                              context.l10n.text('subcategory'),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          Expanded(
-                                            flex: 2,
-                                            child: Text(
-                                              context.l10n.text(
-                                                'paymentSource',
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          SizedBox(
-                                            width: 112,
-                                            child: Text(
-                                              context.l10n.text('amount'),
-                                              textAlign: TextAlign.right,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      Divider(
-                                        height: 12,
-                                        color: context.colors.cardDivider,
-                                      ),
-                                      for (final transaction
-                                          in data.recentTransactions.take(7))
-                                        Column(
-                                          children: [
-                                            InkWell(
-                                              onTap: () => _go(
-                                                '/search?ids=${Uri.encodeQueryComponent(transaction.id)}',
-                                              ),
-                                              child: Padding(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      vertical: 7,
-                                                    ),
-                                                child: Row(
-                                                  children: [
-                                                    SizedBox(
-                                                      width: 100,
-                                                      child: Text(
-                                                        _desktopTransactionDate(
-                                                          context,
-                                                          transaction,
-                                                        ),
-                                                        maxLines: 1,
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                      ),
-                                                    ),
-                                                    Expanded(
-                                                      flex: 3,
-                                                      child: Text(
-                                                        _masterData?.merchantName(
-                                                              transaction
-                                                                  .merchantId,
-                                                            ) ??
-                                                            transaction
-                                                                .rawCounterparty ??
-                                                            transaction
-                                                                .description ??
-                                                            context.l10n.text(
-                                                              'untitledTransaction',
-                                                            ),
-                                                        maxLines: 1,
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                      ),
-                                                    ),
-                                                    Expanded(
-                                                      flex: 2,
-                                                      child: Align(
-                                                        alignment: Alignment
-                                                            .centerLeft,
-                                                        child: Container(
-                                                          padding:
-                                                              const EdgeInsets.symmetric(
-                                                                horizontal: 8,
-                                                                vertical: 3,
-                                                              ),
-                                                          decoration: BoxDecoration(
-                                                            color:
-                                                                _desktopCategoryBadgeColor(
-                                                                  transaction
-                                                                      .categoryId,
-                                                                  context,
-                                                                ).withValues(
-                                                                  alpha:
-                                                                      _desktopHomeTintOpacity,
-                                                                ),
-                                                            borderRadius:
-                                                                BorderRadius.circular(
-                                                                  100,
-                                                                ),
-                                                          ),
-                                                          child: Text(
-                                                            _masterData?.categoryName(
-                                                                  transaction
-                                                                      .categoryId,
-                                                                ) ??
-                                                                (transaction.categoryId ==
-                                                                        null
-                                                                    ? context
-                                                                          .l10n
-                                                                          .text(
-                                                                            'uncategorized',
-                                                                          )
-                                                                    : context
-                                                                          .l10n
-                                                                          .text(
-                                                                            'unavailableCategory',
-                                                                          )),
-                                                            maxLines: 1,
-                                                            overflow:
-                                                                TextOverflow
-                                                                    .ellipsis,
-                                                            style: Theme.of(context)
-                                                                .textTheme
-                                                                .labelSmall
-                                                                ?.copyWith(
-                                                                  color: Colors
-                                                                      .white,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w600,
-                                                                ),
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    Expanded(
-                                                      flex: 2,
-                                                      child: Text(
-                                                        _masterData?.subcategoryName(
-                                                              transaction
-                                                                  .subcategoryId,
-                                                            ) ??
-                                                            '—',
-                                                        maxLines: 1,
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                      ),
-                                                    ),
-                                                    Expanded(
-                                                      flex: 2,
-                                                      child: _DesktopPaymentSourceCell(
-                                                        name: _masterData
-                                                            ?.paymentSourceName(
-                                                              transaction
-                                                                  .paymentSourceId,
-                                                            ),
-                                                        mark: _masterData
-                                                            ?.paymentSourceMark(
-                                                              transaction
-                                                                  .paymentSourceId,
-                                                            ),
-                                                      ),
-                                                    ),
-                                                    SizedBox(
-                                                      width: 112,
-                                                      child: Text(
-                                                        _desktopTransactionAmount(
-                                                          context,
-                                                          transaction,
-                                                        ),
-                                                        textAlign:
-                                                            TextAlign.right,
-                                                        maxLines: 1,
-                                                        overflow: TextOverflow
-                                                            .ellipsis,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                            Divider(
-                                              height: 1,
-                                              thickness: 1,
-                                              color: context.colors.cardDivider,
-                                            ),
-                                          ],
-                                        ),
-                                      if (data.recentTransactions.isEmpty)
-                                        Padding(
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 16,
-                                          ),
-                                          child: Text(
-                                            context.l10n.text('noTransactions'),
-                                          ),
-                                        ),
-                                    ],
+                                  transactions: data.recentTransactions
+                                      .take(7)
+                                      .toList(),
+                                  masterData:
+                                      _masterData ??
+                                      const TransactionMasterData(),
+                                  onTap: (transaction) => _go(
+                                    '/search?ids=${Uri.encodeQueryComponent(transaction.id)}',
+                                  ),
+                                  emptyMessage: context.l10n.text(
+                                    'noTransactions',
                                   ),
                                 );
                                 final insightGroups = _desktopInsightCatalog(
@@ -1078,10 +857,10 @@ class _DesktopPanel extends StatelessWidget {
         borderRadius: BorderRadius.circular(ButlerlyRadius.card),
       ),
       padding: const EdgeInsets.fromLTRB(
-        10,
+        ButlerlyDesktopInnerCard.outerGutter,
         _desktopHomeCardTitleTopInset,
-        10,
-        10,
+        ButlerlyDesktopInnerCard.outerGutter,
+        ButlerlyDesktopInnerCard.outerGutter,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1119,19 +898,7 @@ class _DesktopPanel extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          if (showInnerCard)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: ColoredBox(
-                color: context.colors.subtleSurface,
-                child: Padding(
-                  padding: const EdgeInsets.all(ButlerlySpacing.small),
-                  child: child,
-                ),
-              ),
-            )
-          else
-            child,
+          if (showInnerCard) ButlerlyDesktopInnerCard(child: child) else child,
         ],
       ),
     );
@@ -1560,63 +1327,6 @@ Future<DateTime?> _selectDesktopMonth(BuildContext context, DateTime selected) {
       ),
     ),
   );
-}
-
-class _DesktopPaymentSourceCell extends StatelessWidget {
-  const _DesktopPaymentSourceCell({required this.name, required this.mark});
-
-  final String? name;
-  final String? mark;
-
-  @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      if (name != null) ...[
-        ButlerlyPaymentMarkIcon(mark: mark ?? 'other', size: 20),
-        const SizedBox(width: ButlerlySpacing.micro),
-      ],
-      Expanded(
-        child: Text(name ?? '—', maxLines: 1, overflow: TextOverflow.ellipsis),
-      ),
-    ],
-  );
-}
-
-String _desktopTransactionDate(
-  BuildContext context,
-  TransactionDto transaction,
-) {
-  final date =
-      transaction.financialDate ??
-      DateTime.tryParse(transaction.transactionDate ?? '') ??
-      transaction.occurredAt;
-  if (date == null) return '—';
-  return DateFormat.yMd(
-    Localizations.localeOf(context).toString(),
-  ).format(date);
-}
-
-String _desktopTransactionAmount(
-  BuildContext context,
-  TransactionDto transaction,
-) {
-  final amount = double.tryParse(transaction.amount);
-  if (amount == null) return '—';
-  final formatted = NumberFormat.simpleCurrency(
-    name: transaction.currency,
-    locale: Localizations.localeOf(context).toString(),
-  ).format(amount.abs());
-  return '${transaction.direction == 'income' ? '+' : '−'}$formatted';
-}
-
-Color _desktopCategoryBadgeColor(String? categoryId, BuildContext context) {
-  final identity = categoryId == null
-      ? null
-      : ButlerlyCategoryIdentity.forBuiltInId(categoryId);
-  if (identity != null) {
-    return ButlerlyCategoryColors.color(identity.categoryColorId);
-  }
-  return Theme.of(context).colorScheme.onSurfaceVariant;
 }
 
 /// Keep six standard Insights sections visible even with no findings.

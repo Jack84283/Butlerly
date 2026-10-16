@@ -62,6 +62,7 @@ class ButlerlyPage extends StatelessWidget {
     this.pinnedSpacing = ButlerlyPinnedPageSpacing.defaults,
     this.onRefresh,
     this.refreshKey,
+    this.fullWidth = false,
     super.key,
   });
 
@@ -77,6 +78,10 @@ class ButlerlyPage extends StatelessWidget {
   final ButlerlyPinnedPageSpacing pinnedSpacing;
   final RefreshCallback? onRefresh;
   final Key? refreshKey;
+
+  /// Use the available page width instead of the standard readable-width cap.
+  /// Only opt in from layouts designed for full-width content.
+  final bool fullWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -138,6 +143,7 @@ class ButlerlyPage extends StatelessWidget {
                 extent: pinnedHeaderExtent,
                 topGap: pinnedSpacing.pinnedTopGap,
                 bottomGap: pinnedSpacing.pinnedBottomGap,
+                fullWidth: fullWidth,
               ),
             ),
           if (useCupertinoRefresh)
@@ -148,6 +154,7 @@ class ButlerlyPage extends StatelessWidget {
           ButlerlySliverContentSurface(
             surfaceKey: const ValueKey('butlerly-page-content-surface'),
             surfaceHorizontalPadding: contentPadding.horizontal,
+            fullWidth: fullWidth,
             sliver: SliverMainAxisGroup(
               slivers: [
                 SliverPadding(
@@ -199,12 +206,14 @@ class _ButlerlyPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
     required this.extent,
     required this.topGap,
     required this.bottomGap,
+    required this.fullWidth,
   });
 
   final Widget child;
   final double extent;
   final double topGap;
   final double bottomGap;
+  final bool fullWidth;
 
   @override
   double get minExtent => extent + topGap + bottomGap;
@@ -228,9 +237,9 @@ class _ButlerlyPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
           ),
           child: ConstrainedBox(
             constraints: BoxConstraints(
-              maxWidth: ButlerlyLayout.contentMaxWidth(
-                MediaQuery.sizeOf(context),
-              ),
+              maxWidth: fullWidth
+                  ? double.infinity
+                  : ButlerlyLayout.contentMaxWidth(MediaQuery.sizeOf(context)),
             ),
             child: SizedBox(width: double.infinity, child: child),
           ),
@@ -244,7 +253,8 @@ class _ButlerlyPinnedHeaderDelegate extends SliverPersistentHeaderDelegate {
       oldDelegate.child != child ||
       oldDelegate.extent != extent ||
       oldDelegate.topGap != topGap ||
-      oldDelegate.bottomGap != bottomGap;
+      oldDelegate.bottomGap != bottomGap ||
+      oldDelegate.fullWidth != fullWidth;
 }
 
 enum ButlerlyCardVariant { standard, dashboard }

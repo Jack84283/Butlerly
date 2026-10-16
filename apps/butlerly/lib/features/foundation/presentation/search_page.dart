@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
@@ -7,6 +8,7 @@ import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_search_selection.dart';
+import 'package:butlerly/features/desktop/presentation/desktop_transaction_detail_split_view.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_count_label.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -127,6 +129,7 @@ class _SearchPageState extends State<SearchPage>
   String? _loadedLanguageCode;
   Timer? _searchDebounce;
   int _searchGeneration = 0;
+  TransactionDto? _selectedTransaction;
 
   FinanceServices? get _finance => services.isRegistered<FinanceServices>()
       ? services<FinanceServices>()
@@ -324,6 +327,7 @@ class _SearchPageState extends State<SearchPage>
     if (!mounted) return;
     setState(() {
       _results = _latestSearch(future, generation);
+      _selectedTransaction = null;
     });
   }
 
@@ -473,6 +477,14 @@ class _SearchPageState extends State<SearchPage>
   Future<void> _openDetail(TransactionDto transaction) async {
     final finance = _finance;
     if (finance == null) return;
+    if (effectiveButlerlyLayoutMode(
+          context,
+          MediaQuery.sizeOf(context).width,
+        ) ==
+        ButlerlyLayoutMode.wide) {
+      setState(() => _selectedTransaction = transaction);
+      return;
+    }
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) =>
@@ -504,8 +516,15 @@ class _SearchPageState extends State<SearchPage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    return ButlerlyPage(
+    final desktop =
+        effectiveButlerlyLayoutMode(
+          context,
+          MediaQuery.sizeOf(context).width,
+        ) ==
+        ButlerlyLayoutMode.wide;
+    final resultsPage = ButlerlyPage(
       title: context.l10n.text('search'),
+      fullWidth: desktop,
       onRefresh: () async {
         if (_results == null) return;
         await _refreshAfterTransactionChange();
@@ -625,6 +644,8 @@ class _SearchPageState extends State<SearchPage>
                     collapsibleMonthSections: true,
                     monthSectionsAsCards: true,
                     dashboardRowStyle: true,
+                    desktopHomeInnerCardStyle: desktop,
+                    desktopTableMode: desktop,
                     onTap: _openDetail,
                     navigates: true,
                   ),
@@ -634,6 +655,27 @@ class _SearchPageState extends State<SearchPage>
           ),
         const SizedBox(height: ButlerlySpacing.structural),
       ],
+    );
+    return DesktopTransactionDetailSplitView(
+      results: resultsPage,
+      detail: desktop && _selectedTransaction != null && _finance != null
+          ? DesktopTransactionPanel(
+              key: ValueKey('desktop-search-panel-${_selectedTransaction!.id}'),
+              finance: _finance!,
+              transaction: _selectedTransaction!,
+              onChanged: () {
+                notifyTransactionChanged();
+                _refreshAfterTransactionChange();
+              },
+              onClose: (changed) {
+                setState(() => _selectedTransaction = null);
+                if (changed) {
+                  notifyTransactionChanged();
+                  _refreshAfterTransactionChange();
+                }
+              },
+            )
+          : null,
     );
   }
 }
