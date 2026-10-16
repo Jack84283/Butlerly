@@ -32,6 +32,7 @@ class TransactionRecordList extends StatelessWidget {
     this.monthSectionsAsCards = false,
     this.dashboardRowStyle = false,
     this.desktopTableMode = false,
+    this.desktopHomeInnerCardStyle = false,
     this.wrapInCard = false,
     this.showDateInRows = false,
     this.supportingContentBuilder,
@@ -52,6 +53,9 @@ class TransactionRecordList extends StatelessWidget {
   final bool monthSectionsAsCards;
   final bool dashboardRowStyle;
   final bool desktopTableMode;
+
+  /// Match the existing desktop Home inner surface, without changing devices.
+  final bool desktopHomeInnerCardStyle;
   final bool wrapInCard;
   final bool showDateInRows;
   final Widget Function(BuildContext, TransactionDto)? supportingContentBuilder;
@@ -158,7 +162,9 @@ class TransactionRecordList extends StatelessWidget {
       tilePadding: monthSectionsAsCards
           ? const EdgeInsets.symmetric(horizontal: ButlerlySpacing.cardPadding)
           : EdgeInsets.zero,
-      childrenPadding: const EdgeInsets.only(bottom: ButlerlySpacing.standard),
+      childrenPadding: desktopHomeInnerCardStyle
+          ? const EdgeInsets.only(bottom: ButlerlyDesktopInnerCard.outerGutter)
+          : const EdgeInsets.only(bottom: ButlerlySpacing.standard),
       shape: const Border(),
       collapsedShape: const Border(),
       controlAffinity: ListTileControlAffinity.leading,
@@ -198,7 +204,21 @@ class TransactionRecordList extends StatelessWidget {
         ],
       ),
       children: [
-        if (monthSectionsAsCards)
+        if (monthSectionsAsCards && desktopHomeInnerCardStyle)
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: ButlerlyDesktopInnerCard.outerGutter,
+            ),
+            child: ButlerlyDesktopInnerCard(
+              key: ValueKey('transaction-month-inner-card-${entry.key}'),
+              child: ButlerlyTransactionList(
+                children: [
+                  for (final transaction in entry.value) rows[transaction]!,
+                ],
+              ),
+            ),
+          )
+        else if (monthSectionsAsCards)
           ButlerlyInsetTransactionCard(
             innerCardKey: ValueKey('transaction-month-inner-card-${entry.key}'),
             child: desktopTableMode

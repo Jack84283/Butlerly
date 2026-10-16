@@ -141,6 +141,63 @@ void main() {
     },
   );
 
+  testWidgets('Desktop Search uses the Home inner-card geometry', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        localizationsDelegates: const [AppLocalizations.delegate],
+        supportedLocales: const [Locale('en')],
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: TransactionRecordList(
+              transactions: data.take(2).toList(),
+              masterData: masterData,
+              groupByFinancialDate: true,
+              collapsibleMonthSections: true,
+              monthSectionsAsCards: true,
+              dashboardRowStyle: true,
+              desktopHomeInnerCardStyle: true,
+              onTap: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final inner = find.byType(ButlerlyDesktopInnerCard);
+    expect(inner, findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('transaction-month-inner-card-2026-10')),
+      findsOneWidget,
+    );
+    expect(find.byType(ButlerlyTransactionInnerCard), findsNothing);
+    expect(find.byType(TransactionRow), findsNWidgets(2));
+
+    final clipped = tester.widget<ClipRRect>(
+      find.descendant(of: inner, matching: find.byType(ClipRRect)).first,
+    );
+    expect(
+      clipped.borderRadius,
+      BorderRadius.circular(ButlerlyDesktopInnerCard.cornerRadius),
+    );
+    final padding = tester.widget<Padding>(
+      find.descendant(of: inner, matching: find.byType(Padding)).first,
+    );
+    expect(
+      padding.padding,
+      const EdgeInsets.all(ButlerlyDesktopInnerCard.contentPadding),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Compact and Medium retain canonical transaction rows', (
     tester,
   ) async {

@@ -637,6 +637,7 @@ class _SearchPageState extends State<SearchPage>
                     collapsibleMonthSections: true,
                     monthSectionsAsCards: true,
                     dashboardRowStyle: true,
+                    desktopHomeInnerCardStyle: desktop,
                     onTap: _openDetail,
                     navigates: true,
                   ),

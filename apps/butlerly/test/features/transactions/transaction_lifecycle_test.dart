@@ -5,6 +5,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_compact_section_selector.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
+import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/add_page.dart';
@@ -241,6 +242,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Search panel coffee'), findsOneWidget);
+    expect(find.byType(ButlerlyDesktopInnerCard), findsOneWidget);
     expect(
       find.byKey(const ValueKey('desktop-transaction-detail-panel')),
       findsNothing,
