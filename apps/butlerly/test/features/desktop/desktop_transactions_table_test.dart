@@ -482,6 +482,94 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Desktop typography is identical under different parents', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        localizationsDelegates: const [AppLocalizations.delegate],
+        supportedLocales: const [Locale('en')],
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: Column(
+              children: [
+                DefaultTextStyle(
+                  style: const TextStyle(
+                    fontSize: 30,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.red,
+                  ),
+                  child: SizedBox(
+                    width: 1000,
+                    child: ButlerlyDesktopTransactionSection(
+                      title: 'Recent transactions',
+                      transactions: data.take(2).toList(),
+                      masterData: masterData,
+                      onTap: (_) {},
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                DefaultTextStyle(
+                  style: const TextStyle(
+                    fontSize: 9,
+                    fontWeight: FontWeight.w200,
+                    color: Colors.green,
+                  ),
+                  child: SizedBox(
+                    width: 1000,
+                    child: TransactionRecordList(
+                      transactions: data.take(2).toList(),
+                      masterData: masterData,
+                      groupByFinancialDate: true,
+                      collapsibleMonthSections: true,
+                      monthSectionsAsCards: true,
+                      desktopHomeInnerCardStyle: true,
+                      desktopTableMode: true,
+                      onTap: (_) {},
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final tables = find.byKey(const ValueKey('desktop-transactions-table'));
+    expect(tables, findsNWidgets(2));
+    final headers = find.descendant(of: tables, matching: find.text('Date'));
+    final rows = find.descendant(
+      of: tables,
+      matching: find.text('Corner Store'),
+    );
+    expect(headers, findsNWidgets(2));
+    expect(rows, findsNWidgets(2));
+
+    final headerWidgets = tester.widgetList<Text>(headers).toList();
+    final rowWidgets = tester.widgetList<Text>(rows).toList();
+    expect(headerWidgets.first.style, headerWidgets.last.style);
+    expect(rowWidgets.first.style, rowWidgets.last.style);
+    expect(headerWidgets.first.style?.fontWeight, FontWeight.w600);
+    expect(
+      tester.getSize(headers.at(0)).height,
+      tester.getSize(headers.at(1)).height,
+    );
+    expect(
+      tester.getSize(rows.at(0)).height,
+      tester.getSize(rows.at(1)).height,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Compact and Medium retain canonical transaction rows', (
     tester,
   ) async {
