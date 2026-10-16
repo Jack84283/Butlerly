@@ -124,6 +124,20 @@ void main() {
       const ValueKey('desktop-transaction-row-panel-transaction'),
     );
     expect(row, findsOneWidget);
+    expect(find.byType(ButlerlyDesktopTransactionSection), findsOneWidget);
+    expect(find.byType(ButlerlyDesktopInnerCard), findsOneWidget);
+    final transactionsCard = tester.getRect(
+      find.byType(ButlerlyDesktopInnerCard),
+    );
+    final transactionsDateHeader = tester.getRect(find.text('Date'));
+    expect(
+      transactionsDateHeader.left - transactionsCard.left,
+      closeTo(ButlerlyDesktopInnerCard.contentPadding, 0.1),
+    );
+    expect(
+      transactionsDateHeader.top - transactionsCard.top,
+      closeTo(ButlerlyDesktopInnerCard.contentPadding, 0.1),
+    );
     expect(
       find.byKey(const ValueKey('desktop-transaction-detail-panel')),
       findsNothing,
@@ -250,6 +264,18 @@ void main() {
       expect(find.byType(ButlerlyDesktopTransactionTable), findsOneWidget);
       expect(find.byType(ButlerlyDesktopInnerCard), findsOneWidget);
       expect(find.byType(TransactionRow), findsNothing);
+      final compactWideCard = tester.getRect(
+        find.byType(ButlerlyDesktopInnerCard),
+      );
+      final compactWideDateHeader = tester.getRect(find.text('Date'));
+      expect(
+        compactWideDateHeader.left - compactWideCard.left,
+        closeTo(ButlerlyDesktopInnerCard.contentPadding, 0.1),
+      );
+      expect(
+        compactWideDateHeader.top - compactWideCard.top,
+        closeTo(ButlerlyDesktopInnerCard.contentPadding, 0.1),
+      );
       expect(
         tester.widget<ButlerlyPage>(find.byType(ButlerlyPage)).fullWidth,
         isTrue,
@@ -318,6 +344,15 @@ void main() {
     );
     expect(
       cardBounds.bottom - tableBounds.bottom,
+      closeTo(ButlerlyDesktopInnerCard.contentPadding, 0.1),
+    );
+    final searchDateHeader = tester.getRect(find.text('Date'));
+    expect(
+      searchDateHeader.left - cardBounds.left,
+      closeTo(ButlerlyDesktopInnerCard.contentPadding, 0.1),
+    );
+    expect(
+      searchDateHeader.top - cardBounds.top,
       closeTo(ButlerlyDesktopInnerCard.contentPadding, 0.1),
     );
     expect(
