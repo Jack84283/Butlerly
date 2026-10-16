@@ -184,10 +184,14 @@ void main() {
 
     expect(find.byType(ButlerlyDesktopTransactionTable), findsNWidgets(2));
     expect(find.text('Merchant'), findsNWidgets(2));
-    await tester.tap(find.byKey(const ValueKey('desktop-transaction-row-oct-1')));
+    await tester.tap(
+      find.byKey(const ValueKey('desktop-transaction-row-oct-1')),
+    );
     expect(firstSelection, 'oct-1');
     expect(secondSelection, isNull);
-    await tester.tap(find.byKey(const ValueKey('desktop-transaction-row-oct-2')));
+    await tester.tap(
+      find.byKey(const ValueKey('desktop-transaction-row-oct-2')),
+    );
     expect(secondSelection, 'oct-2');
     expect(tester.takeException(), isNull);
   });
