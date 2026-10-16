@@ -1,5 +1,6 @@
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/components/butlerly_payment_source_icon.dart';
+import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_category_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -8,6 +9,44 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+
+/// Reusable desktop transaction content: one card surface and one table.
+///
+/// A full-width box ensures identical child constraints in Home's panel and
+/// Search's expandable month sections; the single inner card owns all insets.
+class ButlerlyDesktopTransactionTableCard extends StatelessWidget {
+  const ButlerlyDesktopTransactionTableCard({
+    required this.transactions,
+    required this.masterData,
+    required this.onTap,
+    this.paymentSourceNames = const {},
+    this.missingCategoryLabel,
+    this.emptyMessage,
+    super.key,
+  });
+
+  final List<TransactionDto> transactions;
+  final TransactionMasterData masterData;
+  final Map<String, String> paymentSourceNames;
+  final String? missingCategoryLabel;
+  final String? emptyMessage;
+  final ValueChanged<TransactionDto> onTap;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: double.infinity,
+    child: ButlerlyDesktopInnerCard(
+      child: ButlerlyDesktopTransactionTable(
+        transactions: transactions,
+        masterData: masterData,
+        paymentSourceNames: paymentSourceNames,
+        missingCategoryLabel: missingCategoryLabel,
+        emptyMessage: emptyMessage,
+        onTap: onTap,
+      ),
+    ),
+  );
+}
 
 /// The reusable six-column desktop transaction table.
 ///

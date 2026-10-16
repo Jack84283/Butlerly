@@ -340,13 +340,11 @@ void main() {
               children: [
                 SizedBox(
                   width: 1000,
-                  child: ButlerlyDesktopInnerCard(
+                  child: ButlerlyDesktopTransactionTableCard(
                     key: const ValueKey('home-reference-inner'),
-                    child: ButlerlyDesktopTransactionTable(
-                      transactions: data.take(2).toList(),
-                      masterData: masterData,
-                      onTap: (_) {},
-                    ),
+                    transactions: data.take(2).toList(),
+                    masterData: masterData,
+                    onTap: (_) {},
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -371,6 +369,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(
+      find.byType(ButlerlyDesktopTransactionTableCard),
+      findsNWidgets(2),
+    );
     final homeInner = find.byKey(const ValueKey('home-reference-inner'));
     final searchInner = find.byKey(
       const ValueKey('transaction-month-inner-card-2026-10'),
@@ -385,6 +387,20 @@ void main() {
     );
     expect(homeTable, findsOneWidget);
     expect(searchTable, findsOneWidget);
+    expect(
+      find.descendant(
+        of: homeInner,
+        matching: find.byType(ButlerlyDesktopInnerCard),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: searchInner,
+        matching: find.byType(ButlerlyDesktopInnerCard),
+      ),
+      findsOneWidget,
+    );
 
     final homeInnerRect = tester.getRect(homeInner);
     final searchInnerRect = tester.getRect(searchInner);

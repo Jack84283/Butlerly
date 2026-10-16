@@ -209,23 +209,24 @@ class TransactionRecordList extends StatelessWidget {
             padding: const EdgeInsets.symmetric(
               horizontal: ButlerlyDesktopInnerCard.outerGutter,
             ),
-            child: ButlerlyDesktopInnerCard(
-              key: ValueKey('transaction-month-inner-card-${entry.key}'),
-              child: desktopTableMode
-                  ? ButlerlyDesktopTransactionTable(
-                      transactions: entry.value,
-                      masterData: masterData,
-                      paymentSourceNames: paymentSourceNames,
-                      missingCategoryLabel: missingCategoryLabel,
-                      onTap: onTap,
-                    )
-                  : ButlerlyTransactionList(
+            child: desktopTableMode
+                ? ButlerlyDesktopTransactionTableCard(
+                    key: ValueKey('transaction-month-inner-card-${entry.key}'),
+                    transactions: entry.value,
+                    masterData: masterData,
+                    paymentSourceNames: paymentSourceNames,
+                    missingCategoryLabel: missingCategoryLabel,
+                    onTap: onTap,
+                  )
+                : ButlerlyDesktopInnerCard(
+                    key: ValueKey('transaction-month-inner-card-${entry.key}'),
+                    child: ButlerlyTransactionList(
                       children: [
                         for (final transaction in entry.value)
                           rows[transaction]!,
                       ],
                     ),
-            ),
+                  ),
           )
         else if (monthSectionsAsCards)
           ButlerlyInsetTransactionCard(

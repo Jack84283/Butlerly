@@ -579,7 +579,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                   title: context.l10n.text(
                                     'recentTransactions',
                                   ),
-                                  showInnerCard: true,
                                   trailing: TextButton(
                                     style: TextButton.styleFrom(
                                       padding: const EdgeInsets.symmetric(
@@ -591,7 +590,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                     onPressed: () => _go('/search?$query'),
                                     child: Text(context.l10n.text('viewAll')),
                                   ),
-                                  child: ButlerlyDesktopTransactionTable(
+                                  child: ButlerlyDesktopTransactionTableCard(
                                     transactions: data.recentTransactions
                                         .take(7)
                                         .toList(),
