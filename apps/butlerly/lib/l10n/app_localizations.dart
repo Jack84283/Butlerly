@@ -237,6 +237,8 @@ class AppLocalizations {
       'addTransactionManually': 'Add transaction manually',
       'addTransactionManuallySubtitle': 'Enter transaction details yourself',
       'addTransactionFromReceipt': 'Scan receipt',
+      'desktopAddFromReceipt': 'Add transaction from receipts',
+      'desktopImportLocalFile': 'Import from local file',
       'addTransactionFromReceiptSubtitle':
           'Scan a receipt to extract transaction details',
       'addTransactionFromStatement': 'Import statement',
@@ -1088,6 +1090,8 @@ class AppLocalizations {
       'addTransactionManually': '手动添加交易',
       'addTransactionManuallySubtitle': '自行输入交易详情',
       'addTransactionFromReceipt': '扫描收据',
+      'desktopAddFromReceipt': '从收据添加交易',
+      'desktopImportLocalFile': '从本地文件导入',
       'addTransactionFromReceiptSubtitle': '扫描收据以提取交易详情',
       'addTransactionFromStatement': '导入账单',
       'addTransactionFromStatementSubtitle': '扫描账单以审核并添加交易',
@@ -1879,6 +1883,8 @@ class AppLocalizations {
       'addTransactionManuallySubtitle':
           'Introduce los detalles de la transacción',
       'addTransactionFromReceipt': 'Escanear recibo',
+      'desktopAddFromReceipt': 'Añadir transacciones desde recibos',
+      'desktopImportLocalFile': 'Importar desde archivo local',
       'addTransactionFromReceiptSubtitle':
           'Escanea un recibo para extraer los detalles de la transacción',
       'addTransactionFromStatement': 'Importar extracto',

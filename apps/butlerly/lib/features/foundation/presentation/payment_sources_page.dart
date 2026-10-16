@@ -14,9 +14,14 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 class PaymentSourcesPage extends StatefulWidget {
-  const PaymentSourcesPage({this.ocrRecognizer, super.key});
+  const PaymentSourcesPage({
+    this.ocrRecognizer,
+    this.openCreateOnStart = false,
+    super.key,
+  });
 
   final OcrRecognizer? ocrRecognizer;
+  final bool openCreateOnStart;
 
   @override
   State<PaymentSourcesPage> createState() => _PaymentSourcesPageState();
@@ -33,6 +38,11 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
   void initState() {
     super.initState();
     _sources = _load();
+    if (widget.openCreateOnStart) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _add();
+      });
+    }
   }
 
   Future<List<PaymentSource>> _load() async {

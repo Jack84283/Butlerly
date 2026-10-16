@@ -14,7 +14,6 @@ class DesktopPrimaryShell extends StatefulWidget {
     required this.currentIndex,
     required this.onSelected,
     required this.onMoreSectionSelected,
-    required this.onImport,
     super.key,
   });
 
@@ -22,7 +21,6 @@ class DesktopPrimaryShell extends StatefulWidget {
   final int currentIndex;
   final ValueChanged<int> onSelected;
   final ValueChanged<String> onMoreSectionSelected;
-  final Future<void> Function() onImport;
 
   @override
   State<DesktopPrimaryShell> createState() => _DesktopPrimaryShellState();
@@ -33,7 +31,6 @@ class _DesktopPrimaryShellState extends State<DesktopPrimaryShell> {
   // Preserve each rail mode's expansion preference across viewport changes.
   bool _expandedAtWideWidths = true;
   bool _expandedAtNarrowWidths = false;
-  bool _addExpanded = true;
   bool _toolsExpanded = true;
   bool _moreExpanded = true;
   bool _moreVisibilityScheduled = false;
@@ -83,7 +80,6 @@ class _DesktopPrimaryShellState extends State<DesktopPrimaryShell> {
             _WidePrimaryNavigation(
               key: const ValueKey('primary-wide-navigation'),
               expanded: expanded,
-              addExpanded: _addExpanded,
               toolsExpanded: _toolsExpanded,
               moreExpanded: _moreExpanded,
               currentIndex: widget.currentIndex,
@@ -94,7 +90,6 @@ class _DesktopPrimaryShellState extends State<DesktopPrimaryShell> {
                   _expandedAtWideWidths = !expanded;
                 }
               }),
-              onToggleAdd: () => setState(() => _addExpanded = !_addExpanded),
               onToggleTools: () =>
                   setState(() => _toolsExpanded = !_toolsExpanded),
               onToggleMore: () =>
@@ -103,7 +98,6 @@ class _DesktopPrimaryShellState extends State<DesktopPrimaryShell> {
               onParentSelected: _selectParent,
               onMoreSectionSelected: widget.onMoreSectionSelected,
               onNavigate: _navigate,
-              onImport: widget.onImport,
             ),
             Expanded(
               child: ColoredBox(
@@ -123,35 +117,29 @@ class _WidePrimaryNavigation extends StatelessWidget {
   const _WidePrimaryNavigation({
     super.key,
     required this.expanded,
-    required this.addExpanded,
     required this.toolsExpanded,
     required this.moreExpanded,
     required this.currentIndex,
     required this.onToggleExpanded,
-    required this.onToggleAdd,
     required this.onToggleTools,
     required this.onToggleMore,
     required this.moreNavigationKey,
     required this.onParentSelected,
     required this.onMoreSectionSelected,
     required this.onNavigate,
-    required this.onImport,
   });
 
   final bool expanded;
-  final bool addExpanded;
   final bool toolsExpanded;
   final bool moreExpanded;
   final int currentIndex;
   final VoidCallback onToggleExpanded;
-  final VoidCallback onToggleAdd;
   final VoidCallback onToggleTools;
   final VoidCallback onToggleMore;
   final GlobalKey moreNavigationKey;
   final ValueChanged<int> onParentSelected;
   final ValueChanged<String> onMoreSectionSelected;
   final ValueChanged<String> onNavigate;
-  final Future<void> Function() onImport;
 
   bool _selected(int branchIndex) => currentIndex == branchIndex;
 
@@ -206,44 +194,12 @@ class _WidePrimaryNavigation extends StatelessWidget {
         selected: _selected(1),
         onTap: () => onParentSelected(1),
       ),
-      _WideGroup(
+      _WideTopLevelItem(
         semanticKey: const ValueKey('wide-add-navigation'),
-        label: context.l10n.text('add'),
         icon: Icons.add_rounded,
+        label: context.l10n.text('add'),
         selected: _selected(2),
-        expanded: addExpanded,
         onTap: () => onParentSelected(2),
-        onToggle: onToggleAdd,
-        children: [
-          _WideChildItem(
-            icon: Icons.add_card_outlined,
-            label: context.l10n.text('addTransactionManually'),
-            onTap: () => onNavigate('/transactions/add'),
-          ),
-          _WideChildItem(
-            icon: Icons.receipt_long_outlined,
-            label: context.l10n.text('addTransactionFromReceipt'),
-            onTap: () => onNavigate('/receipts/capture'),
-          ),
-          _WideChildItem(
-            icon: Icons.document_scanner_outlined,
-            label: context.l10n.text('addTransactionFromStatement'),
-            onTap: () => onNavigate('/statements'),
-          ),
-          _WideChildItem(
-            icon: Icons.file_open_outlined,
-            label: context.l10n.text('addTransactionFromLocalFile'),
-            onTap: () {
-              onImport();
-            },
-          ),
-          const Divider(height: ButlerlySpacing.standard),
-          _WideChildItem(
-            icon: Icons.account_balance_wallet_outlined,
-            label: context.l10n.text('paymentSources'),
-            onTap: () => onNavigate('/payment-sources'),
-          ),
-        ],
       ),
       _WideGroup(
         semanticKey: const ValueKey('wide-tools-navigation'),
@@ -313,29 +269,7 @@ class _WidePrimaryNavigation extends StatelessWidget {
         icon: Icons.add_rounded,
         label: context.l10n.text('add'),
         selected: _selected(2),
-        onTap: (itemContext) => _openMenu(itemContext, [
-          _WidePopupAction.parent(context.l10n.text('add'), 2),
-          _WidePopupAction.route(
-            context.l10n.text('addTransactionManually'),
-            '/transactions/add',
-          ),
-          _WidePopupAction.route(
-            context.l10n.text('addTransactionFromReceipt'),
-            '/receipts/capture',
-          ),
-          _WidePopupAction.route(
-            context.l10n.text('addTransactionFromStatement'),
-            '/statements',
-          ),
-          _WidePopupAction.importFile(
-            context.l10n.text('addTransactionFromLocalFile'),
-          ),
-          const _WidePopupAction.divider(),
-          _WidePopupAction.route(
-            context.l10n.text('paymentSources'),
-            '/payment-sources',
-          ),
-        ]),
+        onTap: (_) => onParentSelected(2),
       ),
       _WideCollapsedItem(
         key: const ValueKey('wide-collapsed-tools'),
@@ -405,8 +339,6 @@ class _WidePrimaryNavigation extends StatelessWidget {
         onNavigate(selected.route!);
       case _WidePopupActionKind.moreSection:
         onMoreSectionSelected(selected.section!);
-      case _WidePopupActionKind.importFile:
-        await onImport();
       case _WidePopupActionKind.divider:
         break;
     }
@@ -716,7 +648,7 @@ class _WideNavigationSurface extends StatelessWidget {
   );
 }
 
-enum _WidePopupActionKind { parent, route, moreSection, importFile, divider }
+enum _WidePopupActionKind { parent, route, moreSection, divider }
 
 class _WidePopupAction {
   const _WidePopupAction._({
@@ -743,9 +675,6 @@ class _WidePopupAction {
         label: label,
         section: section,
       );
-
-  const _WidePopupAction.importFile(String label)
-    : this._(kind: _WidePopupActionKind.importFile, label: label);
 
   const _WidePopupAction.divider()
     : this._(kind: _WidePopupActionKind.divider, label: '');
