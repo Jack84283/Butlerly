@@ -466,12 +466,15 @@ void main() {
       find.descendant(of: navigation, matching: find.text('Add')),
     );
     await tester.pumpAndSettle();
-    await tester.tap(
+    expect(
       find.descendant(
         of: navigation,
         matching: find.text('Add transaction manually'),
       ),
+      findsNothing,
     );
+    expect(find.byKey(const ValueKey('desktop-add-actions')), findsOneWidget);
+    await tester.tap(find.text('Add transaction manually'));
     await tester.pumpAndSettle();
 
     expect(
@@ -525,9 +528,7 @@ void main() {
       find.descendant(of: navigation, matching: find.text('Add')),
     );
     await tester.pumpAndSettle();
-    await tester.tap(
-      find.descendant(of: navigation, matching: find.text('Scan receipt')),
-    );
+    await tester.tap(find.text('Add transaction from receipts'));
     await tester.pumpAndSettle();
 
     expect(find.byType(ReceiptCapturePage), findsOneWidget);
@@ -849,7 +850,7 @@ void main() {
     );
   });
 
-  testWidgets('collapsed Wide group popups anchor to their own rail items', (
+  testWidgets('collapsed Wide Add opens hub and groups keep anchored popups', (
     tester,
   ) async {
     await _pumpAt(tester, const Size(1200, 800));
@@ -875,10 +876,11 @@ void main() {
       );
     }
 
-    final add = await popupPositionFor(
-      const ValueKey('wide-collapsed-add'),
-      'Add',
-    );
+    await tester.tap(find.byKey(const ValueKey('wide-collapsed-add')));
+    await tester.pumpAndSettle();
+    expect(appRouter.routeInformationProvider.value.uri.path, '/add');
+    expect(find.byKey(const ValueKey('desktop-add-actions')), findsOneWidget);
+
     final tools = await popupPositionFor(
       const ValueKey('wide-collapsed-tools'),
       'Tools',
@@ -889,10 +891,9 @@ void main() {
     );
 
     const tolerance = 8.0;
-    expect(add.popupLeft, closeTo(add.itemRight, tolerance));
     expect(tools.popupLeft, closeTo(tools.itemRight, tolerance));
     expect(more.popupLeft, closeTo(more.itemRight, tolerance));
-    expect({add.popupTop, tools.popupTop, more.popupTop}, hasLength(3));
+    expect({tools.popupTop, more.popupTop}, hasLength(2));
   });
 
   testWidgets(

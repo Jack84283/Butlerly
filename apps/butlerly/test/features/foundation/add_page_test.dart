@@ -94,4 +94,72 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('payment source destination'), findsOneWidget);
   });
+  testWidgets('wide Add offers five cards across the right workspace', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    var fileImportSelected = false;
+    final router = GoRouter(
+      initialLocation: '/add',
+      routes: [
+        GoRoute(
+          path: '/add',
+          builder: (context, _) => AddPage(
+            onLocalFileImport: (_) async {
+              fileImportSelected = true;
+            },
+          ),
+        ),
+        GoRoute(
+          path: '/payment-sources',
+          builder: (_, _) => const Text('payment source destination'),
+        ),
+        GoRoute(
+          path: '/transactions/add',
+          builder: (_, _) => const Text('manual destination'),
+        ),
+        GoRoute(
+          path: '/receipts/capture',
+          builder: (_, _) => const Text('receipt destination'),
+        ),
+        GoRoute(
+          path: '/statements',
+          builder: (_, _) => const Text('statement destination'),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('desktop-add-actions')), findsOneWidget);
+    expect(find.byType(ButlerlyCard), findsNWidgets(5));
+    expect(find.text('Add transaction manually'), findsOneWidget);
+    expect(find.text('Add transaction from receipts'), findsOneWidget);
+    expect(find.text('Import statement'), findsOneWidget);
+    expect(find.text('Import from local file'), findsOneWidget);
+    expect(find.text('Add payment source'), findsOneWidget);
+
+    final first = tester.getRect(find.byType(ButlerlyCard).at(0));
+    final second = tester.getRect(find.byType(ButlerlyCard).at(1));
+    expect(second.left, greaterThan(first.right));
+    expect(first.width, greaterThan(400));
+
+    await tester.tap(find.text('Import from local file'));
+    await tester.pumpAndSettle();
+    expect(fileImportSelected, isTrue);
+
+    await tester.tap(find.text('Add payment source'));
+    await tester.pumpAndSettle();
+    expect(router.routeInformationProvider.value.uri.path, '/payment-sources');
+    expect(
+      router.routeInformationProvider.value.uri.queryParameters['create'],
+      'true',
+    );
+  });
+
 }

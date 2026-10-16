@@ -14,12 +14,11 @@ class AddPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final desktop =
-        effectiveButlerlyLayoutMode(
-          context,
-          MediaQuery.sizeOf(context).width,
-        ) ==
-        ButlerlyLayoutMode.wide;
+    final layoutMode = effectiveButlerlyLayoutMode(
+      context,
+      MediaQuery.sizeOf(context).width,
+    );
+    final desktop = layoutMode == ButlerlyLayoutMode.wide;
     final actions = <ButlerlyActionItem>[
       ButlerlyActionItem(
         icon: Icons.add_card_outlined,
@@ -64,6 +63,7 @@ class AddPage extends StatelessWidget {
       children: [
         if (desktop)
           LayoutBuilder(
+            key: const ValueKey('desktop-add-actions'),
             builder: (context, constraints) {
               const gap = ButlerlySpacing.cardGap;
               final columns = constraints.maxWidth >= 1100 ? 3 : 2;
