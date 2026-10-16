@@ -221,7 +221,12 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
     builder: (context, constraints) {
       // The owning inner card provides the complete content inset.
       // Keep the table itself edge-to-edge within that padded space.
-      final table = _buildTable(context);
+      final table = DefaultTextStyle(
+        // The table's text must not depend on the host page's inherited style.
+        style: (Theme.of(context).textTheme.bodyMedium ?? const TextStyle())
+            .copyWith(color: context.colors.primaryText),
+        child: _buildTable(context),
+      );
       if (constraints.maxWidth >= minimumTableWidth) return table;
       return SingleChildScrollView(
         key: const ValueKey('desktop-transaction-table-horizontal-scroll'),
@@ -267,6 +272,11 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
     TextAlign align = TextAlign.start,
   }) => Text(
     context.l10n.text(label),
+    style: (Theme.of(context).textTheme.bodyMedium ?? const TextStyle())
+        .copyWith(
+          color: context.colors.primaryText,
+          fontWeight: FontWeight.w600,
+        ),
     textAlign: align,
     maxLines: 1,
     overflow: TextOverflow.ellipsis,
@@ -366,6 +376,8 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
     TextAlign align = TextAlign.start,
   }) => Text(
     value,
+    style: (Theme.of(context).textTheme.bodyMedium ?? const TextStyle())
+        .copyWith(color: context.colors.primaryText),
     maxLines: 1,
     overflow: TextOverflow.ellipsis,
     textAlign: align,
