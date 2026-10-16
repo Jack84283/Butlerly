@@ -1,7 +1,7 @@
 import 'package:butlerly/app/theme/app_theme.dart';
+import 'package:butlerly/design_system/components/butlerly_desktop_transaction_table.dart';
 import 'package:butlerly/design_system/components/butlerly_payment_source_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
-import 'package:butlerly/features/desktop/presentation/desktop_transaction_table.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_record_list.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_row.dart';
@@ -113,7 +113,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.byType(ButlerlyTransactionInnerCard), findsOneWidget);
-      expect(find.byType(DesktopTransactionTable), findsOneWidget);
+      expect(find.byType(ButlerlyDesktopTransactionTable), findsOneWidget);
       expect(find.byType(TransactionRow), findsNothing);
       expect(find.text('Merchant'), findsOneWidget);
       expect(find.text('Subcategory'), findsOneWidget);
@@ -131,7 +131,7 @@ void main() {
 
       await tester.tap(find.text('September 2026'));
       await tester.pumpAndSettle();
-      expect(find.byType(DesktopTransactionTable), findsNWidgets(2));
+      expect(find.byType(ButlerlyDesktopTransactionTable), findsNWidgets(2));
       expect(find.text('September cafe'), findsOneWidget);
       expect(
         find.byKey(const ValueKey('transaction-month-inner-card-2026-09')),
@@ -140,6 +140,99 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('Reusable desktop tables accept independent page data and taps', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    String? firstSelection;
+    String? secondSelection;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        localizationsDelegates: const [AppLocalizations.delegate],
+        supportedLocales: const [Locale('en')],
+        home: Scaffold(
+          body: Column(
+            children: [
+              SizedBox(
+                width: 1000,
+                child: ButlerlyDesktopTransactionTable(
+                  transactions: [data[0]],
+                  masterData: masterData,
+                  onTap: (value) => firstSelection = value.id,
+                ),
+              ),
+              SizedBox(
+                width: 1000,
+                child: ButlerlyDesktopTransactionTable(
+                  transactions: [data[1]],
+                  masterData: masterData,
+                  onTap: (value) => secondSelection = value.id,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ButlerlyDesktopTransactionTable), findsNWidgets(2));
+    expect(find.text('Merchant'), findsNWidgets(2));
+    await tester.tap(find.byKey(const ValueKey('desktop-transaction-row-oct-1')));
+    expect(firstSelection, 'oct-1');
+    expect(secondSelection, isNull);
+    await tester.tap(find.byKey(const ValueKey('desktop-transaction-row-oct-2')));
+    expect(secondSelection, 'oct-2');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Reusable desktop table scrolls within a narrow side panel', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        localizationsDelegates: const [AppLocalizations.delegate],
+        supportedLocales: const [Locale('en')],
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: 430,
+              child: ButlerlyDesktopTransactionTable(
+                transactions: [data[0]],
+                masterData: masterData,
+                onTap: (_) {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('desktop-transaction-table-horizontal-scroll')),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('desktop-transactions-table')))
+          .width,
+      ButlerlyDesktopTransactionTable.minimumTableWidth,
+    );
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('Desktop Search uses the Home inner-card geometry', (
     tester,
@@ -226,7 +319,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.byType(DesktopTransactionTable), findsNothing);
+    expect(find.byType(ButlerlyDesktopTransactionTable), findsNothing);
     expect(find.byType(TransactionRow), findsNWidgets(2));
     expect(find.text('2 transactions'), findsOneWidget);
     expect(find.text('Corner Store'), findsOneWidget);
