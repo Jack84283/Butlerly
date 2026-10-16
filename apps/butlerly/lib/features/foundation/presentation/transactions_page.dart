@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
@@ -396,7 +397,10 @@ class _TransactionsPageState extends State<TransactionsPage> {
   Future<void> _openDetail(TransactionDto transaction) async {
     final finance = _finance;
     if (finance == null) return;
-    if (ButlerlyLayout.mode(MediaQuery.sizeOf(context)) ==
+    if (effectiveButlerlyLayoutMode(
+          context,
+          MediaQuery.sizeOf(context).width,
+        ) ==
         ButlerlyLayoutMode.wide) {
       setState(() => _selectedTransactionId = transaction.id);
       return;
@@ -443,16 +447,17 @@ class _TransactionsPageState extends State<TransactionsPage> {
             .where((value) => value.id == _selectedTransactionId)
             .firstOrNull;
         final desktop =
-            ButlerlyLayout.mode(MediaQuery.sizeOf(context)) ==
+            effectiveButlerlyLayoutMode(
+              context,
+              MediaQuery.sizeOf(context).width,
+            ) ==
             ButlerlyLayoutMode.wide;
         final resultsPage = ButlerlyPage(
           title: context.l10n.text('transactions'),
           onRefresh: _refresh,
           refreshKey: const ValueKey('transactions-pull-to-refresh'),
           pinnedSpacing: ButlerlyPinnedPageSpacing.tightHeader,
-          fullWidth:
-              ButlerlyLayout.mode(MediaQuery.sizeOf(context)) ==
-              ButlerlyLayoutMode.wide,
+          fullWidth: desktop,
           pinnedHeaderExtent: ButlerlySize.searchPinnedHeaderHeight,
           pinnedHeader: _transactionSearchControls(context),
           children: [
@@ -516,9 +521,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
                       collapsibleMonthSections: true,
                       monthSectionsAsCards: true,
                       dashboardRowStyle: true,
-                      desktopTableMode:
-                          ButlerlyLayout.mode(MediaQuery.sizeOf(context)) ==
-                          ButlerlyLayoutMode.wide,
+                      desktopHomeInnerCardStyle: desktop,
+                      desktopTableMode: desktop,
                       missingCategoryLabel: context.l10n.text('uncategorized'),
                       possibleDuplicateIds: data.possibleDuplicateIds,
                       possibleDuplicateLabel: context.l10n.text(
