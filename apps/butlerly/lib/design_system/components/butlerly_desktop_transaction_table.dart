@@ -367,6 +367,7 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
                   amount,
                   align: TextAlign.end,
                   color: context.colors.error,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ],
