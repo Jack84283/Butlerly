@@ -261,6 +261,7 @@ void main() {
               monthSectionsAsCards: true,
               dashboardRowStyle: true,
               desktopHomeInnerCardStyle: true,
+              desktopTableMode: true,
               onTap: (_) {},
             ),
           ),
@@ -276,7 +277,10 @@ void main() {
       findsOneWidget,
     );
     expect(find.byType(ButlerlyTransactionInnerCard), findsNothing);
-    expect(find.byType(TransactionRow), findsNWidgets(2));
+    expect(find.byType(ButlerlyDesktopTransactionTable), findsOneWidget);
+    expect(find.byType(TransactionRow), findsNothing);
+    expect(find.text('Merchant'), findsOneWidget);
+    expect(find.text('Payment source'), findsOneWidget);
 
     final clipped = tester.widget<ClipRRect>(
       find.descendant(of: inner, matching: find.byType(ClipRRect)).first,

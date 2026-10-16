@@ -211,11 +211,20 @@ class TransactionRecordList extends StatelessWidget {
             ),
             child: ButlerlyDesktopInnerCard(
               key: ValueKey('transaction-month-inner-card-${entry.key}'),
-              child: ButlerlyTransactionList(
-                children: [
-                  for (final transaction in entry.value) rows[transaction]!,
-                ],
-              ),
+              child: desktopTableMode
+                  ? ButlerlyDesktopTransactionTable(
+                      transactions: entry.value,
+                      masterData: masterData,
+                      paymentSourceNames: paymentSourceNames,
+                      missingCategoryLabel: missingCategoryLabel,
+                      onTap: onTap,
+                    )
+                  : ButlerlyTransactionList(
+                      children: [
+                        for (final transaction in entry.value)
+                          rows[transaction]!,
+                      ],
+                    ),
             ),
           )
         else if (monthSectionsAsCards)

@@ -638,6 +638,7 @@ class _SearchPageState extends State<SearchPage>
                     monthSectionsAsCards: true,
                     dashboardRowStyle: true,
                     desktopHomeInnerCardStyle: desktop,
+                    desktopTableMode: desktop,
                     onTap: _openDetail,
                     navigates: true,
                   ),
