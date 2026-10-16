@@ -340,8 +340,10 @@ void main() {
               children: [
                 SizedBox(
                   width: 1000,
-                  child: ButlerlyDesktopTransactionTableCard(
-                    key: const ValueKey('home-reference-inner'),
+                  child: ButlerlyDesktopTransactionSection(
+                    key: const ValueKey('home-reference-outer'),
+                    innerCardKey: const ValueKey('home-reference-inner'),
+                    title: 'Recent transactions',
                     transactions: data.take(2).toList(),
                     masterData: masterData,
                     onTap: (_) {},
@@ -370,6 +372,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(ButlerlyDesktopTransactionTableCard), findsNWidgets(2));
+    expect(
+      find.byType(ButlerlyDesktopTransactionSection),
+      findsNWidgets(2),
+    );
     final homeInner = find.byKey(const ValueKey('home-reference-inner'));
     final searchInner = find.byKey(
       const ValueKey('transaction-month-inner-card-2026-10'),
@@ -399,6 +405,42 @@ void main() {
       findsOneWidget,
     );
 
+    final homeOuter = find.byKey(const ValueKey('home-reference-outer'));
+    final searchOuter = find.byKey(
+      const ValueKey('transaction-month-card-2026-10'),
+    );
+    final homeOuterRect = tester.getRect(homeOuter);
+    final searchOuterRect = tester.getRect(searchOuter);
+    final homeCardRect = tester.getRect(homeInner);
+    final searchCardRect = tester.getRect(searchInner);
+    for (final offset in [
+      homeCardRect.left - homeOuterRect.left,
+      homeOuterRect.right - homeCardRect.right,
+      searchCardRect.left - searchOuterRect.left,
+      searchOuterRect.right - searchCardRect.right,
+    ]) {
+      expect(
+        offset,
+        closeTo(ButlerlyDesktopTransactionSection.outerPadding, 0.1),
+      );
+    }
+
+    final homeHeader = find.descendant(
+      of: homeOuter,
+      matching: find.text('Recent transactions'),
+    );
+    final searchHeader = find.descendant(
+      of: searchOuter,
+      matching: find.text('October 2026'),
+    );
+    expect(
+      tester.getTopLeft(homeHeader).dx - homeOuterRect.left,
+      closeTo(ButlerlyDesktopTransactionSection.outerPadding, 0.1),
+    );
+    expect(
+      tester.getTopLeft(searchHeader).dx - searchOuterRect.left,
+      closeTo(ButlerlyDesktopTransactionSection.outerPadding, 0.1),
+    );
     final homeInnerRect = tester.getRect(homeInner);
     final searchInnerRect = tester.getRect(searchInner);
     final homeTableRect = tester.getRect(homeTable);

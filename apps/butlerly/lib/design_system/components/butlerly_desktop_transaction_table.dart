@@ -10,6 +10,145 @@ import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+/// The complete desktop transaction section, shared by Home and Search.
+///
+/// Owns the outer card, title/action row, inner-card inset and transaction
+/// table. Hosts provide only their data, labels, actions and optional
+/// expansion state; no parent is allowed to add another card around it.
+class ButlerlyDesktopTransactionSection extends StatefulWidget {
+  const ButlerlyDesktopTransactionSection({
+    required this.title,
+    required this.transactions,
+    required this.masterData,
+    required this.onTap,
+    this.trailing,
+    this.paymentSourceNames = const {},
+    this.missingCategoryLabel,
+    this.emptyMessage,
+    this.collapsible = false,
+    this.initiallyExpanded = true,
+    this.headerKey,
+    this.innerCardKey,
+    super.key,
+  });
+
+  static const double outerPadding = ButlerlyDesktopInnerCard.outerGutter;
+  static const double titleTopPadding = 10;
+  static const double titleContentGap = ButlerlySpacing.compact;
+
+  final String title;
+  final List<TransactionDto> transactions;
+  final TransactionMasterData masterData;
+  final ValueChanged<TransactionDto> onTap;
+  final Widget? trailing;
+  final Map<String, String> paymentSourceNames;
+  final String? missingCategoryLabel;
+  final String? emptyMessage;
+  final bool collapsible;
+  final bool initiallyExpanded;
+  final Key? headerKey;
+  final Key? innerCardKey;
+
+  @override
+  State<ButlerlyDesktopTransactionSection> createState() =>
+      _ButlerlyDesktopTransactionSectionState();
+}
+
+class _ButlerlyDesktopTransactionSectionState
+    extends State<ButlerlyDesktopTransactionSection> {
+  late bool _expanded;
+
+  @override
+  void initState() {
+    super.initState();
+    _expanded = !widget.collapsible || widget.initiallyExpanded;
+  }
+
+  @override
+  void didUpdateWidget(covariant ButlerlyDesktopTransactionSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.collapsible != widget.collapsible ||
+        oldWidget.initiallyExpanded != widget.initiallyExpanded) {
+      _expanded = !widget.collapsible || widget.initiallyExpanded;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final header = Row(
+      children: [
+        Expanded(
+          child: Text(
+            widget.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: context.colors.primaryText,
+            ),
+          ),
+        ),
+        if (widget.trailing case final trailing?)
+          Flexible(
+            child: Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: trailing,
+            ),
+          ),
+        if (widget.collapsible) ...[
+          const SizedBox(width: ButlerlySpacing.compact),
+          Icon(_expanded ? Icons.expand_less : Icons.expand_more),
+        ],
+      ],
+    );
+
+    return Container(
+      decoration: BoxDecoration(
+        color: context.colors.cardSurface,
+        borderRadius: BorderRadius.circular(ButlerlyRadius.card),
+      ),
+      padding: const EdgeInsets.fromLTRB(
+        ButlerlyDesktopTransactionSection.outerPadding,
+        ButlerlyDesktopTransactionSection.titleTopPadding,
+        ButlerlyDesktopTransactionSection.outerPadding,
+        ButlerlyDesktopTransactionSection.outerPadding,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (widget.collapsible)
+            Semantics(
+              button: true,
+              expanded: _expanded,
+              child: InkWell(
+                key: widget.headerKey,
+                onTap: () => setState(() => _expanded = !_expanded),
+                child: header,
+              ),
+            )
+          else
+            header,
+          if (_expanded) ...[
+            const SizedBox(
+              height: ButlerlyDesktopTransactionSection.titleContentGap,
+            ),
+            ButlerlyDesktopTransactionTableCard(
+              key: widget.innerCardKey,
+              transactions: widget.transactions,
+              masterData: widget.masterData,
+              onTap: widget.onTap,
+              paymentSourceNames: widget.paymentSourceNames,
+              missingCategoryLabel: widget.missingCategoryLabel,
+              emptyMessage: widget.emptyMessage,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
 /// Reusable desktop transaction content: one card surface and one table.
 ///
 /// A full-width box ensures identical child constraints in Home's panel and

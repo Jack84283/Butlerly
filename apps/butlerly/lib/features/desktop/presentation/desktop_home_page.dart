@@ -575,7 +575,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                     ],
                                   ),
                                 );
-                                final recent = _DesktopPanel(
+                                final recent = ButlerlyDesktopTransactionSection(
                                   title: context.l10n.text(
                                     'recentTransactions',
                                   ),
@@ -590,19 +590,16 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                     onPressed: () => _go('/search?$query'),
                                     child: Text(context.l10n.text('viewAll')),
                                   ),
-                                  child: ButlerlyDesktopTransactionTableCard(
-                                    transactions: data.recentTransactions
-                                        .take(7)
-                                        .toList(),
-                                    masterData:
-                                        _masterData ??
-                                        const TransactionMasterData(),
-                                    onTap: (transaction) => _go(
-                                      '/search?ids=${Uri.encodeQueryComponent(transaction.id)}',
-                                    ),
-                                    emptyMessage: context.l10n.text(
-                                      'noTransactions',
-                                    ),
+                                  transactions: data.recentTransactions
+                                      .take(7)
+                                      .toList(),
+                                  masterData:
+                                      _masterData ?? const TransactionMasterData(),
+                                  onTap: (transaction) => _go(
+                                    '/search?ids=${Uri.encodeQueryComponent(transaction.id)}',
+                                  ),
+                                  emptyMessage: context.l10n.text(
+                                    'noTransactions',
                                   ),
                                 );
                                 final insightGroups = _desktopInsightCatalog(

@@ -156,6 +156,44 @@ class TransactionRecordList extends StatelessWidget {
       locale: locale,
     );
     final summary = _monthCardSummary(context, entry.value);
+    if (monthSectionsAsCards &&
+        desktopHomeInnerCardStyle &&
+        desktopTableMode) {
+      return ButlerlyDesktopTransactionSection(
+        key: ValueKey('transaction-month-card-${entry.key}'),
+        headerKey: ValueKey('transaction-month-${entry.key}'),
+        innerCardKey: ValueKey('transaction-month-inner-card-${entry.key}'),
+        title: label,
+        transactions: entry.value,
+        masterData: masterData,
+        paymentSourceNames: paymentSourceNames,
+        missingCategoryLabel: missingCategoryLabel,
+        onTap: onTap,
+        collapsible: true,
+        initiallyExpanded: initiallyExpanded,
+        trailing: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              summary.countLabel,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.end,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: ButlerlySpacing.micro),
+            Text(
+              summary.totalLabel,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.end,
+              style: Theme.of(context).textTheme.labelLarge,
+            ),
+          ],
+        ),
+      );
+    }
     final tile = ExpansionTile(
       key: ValueKey('transaction-month-${entry.key}'),
       initiallyExpanded: initiallyExpanded,
