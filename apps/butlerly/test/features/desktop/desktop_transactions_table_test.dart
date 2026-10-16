@@ -240,8 +240,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final expenseRow = find.byKey(const ValueKey('desktop-transaction-row-oct-1'));
-    final incomeRow = find.byKey(const ValueKey('desktop-transaction-row-income-1'));
+    final expenseRow = find.byKey(
+      const ValueKey('desktop-transaction-row-oct-1'),
+    );
+    final incomeRow = find.byKey(
+      const ValueKey('desktop-transaction-row-income-1'),
+    );
     for (final row in [expenseRow, incomeRow]) {
       final amount = find.descendant(
         of: row,
