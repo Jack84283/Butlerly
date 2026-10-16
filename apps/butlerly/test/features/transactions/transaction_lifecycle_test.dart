@@ -251,8 +251,22 @@ void main() {
     final tableBounds = tester.getRect(
       find.byKey(const ValueKey('desktop-transactions-table')),
     );
-    expect(tableBounds.left - cardBounds.left, closeTo(24, 0.1));
-    expect(cardBounds.right - tableBounds.right, closeTo(24, 0.1));
+    expect(
+      tableBounds.left - cardBounds.left,
+      closeTo(ButlerlyDesktopInnerCard.contentPadding, 0.1),
+    );
+    expect(
+      cardBounds.right - tableBounds.right,
+      closeTo(ButlerlyDesktopInnerCard.contentPadding, 0.1),
+    );
+    expect(
+      tableBounds.top - cardBounds.top,
+      closeTo(ButlerlyDesktopInnerCard.contentPadding, 0.1),
+    );
+    expect(
+      cardBounds.bottom - tableBounds.bottom,
+      closeTo(ButlerlyDesktopInnerCard.contentPadding, 0.1),
+    );
     expect(
       find.byKey(const ValueKey('desktop-transaction-detail-panel')),
       findsNothing,

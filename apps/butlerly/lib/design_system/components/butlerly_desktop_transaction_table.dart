@@ -27,7 +27,6 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
     required this.onTap,
     this.paymentSourceNames = const {},
     this.missingCategoryLabel,
-    this.horizontalContentPadding = 0,
     super.key,
   });
 
@@ -37,30 +36,20 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
   final String? missingCategoryLabel;
   final ValueChanged<TransactionDto> onTap;
 
-  /// Extra inset for the table header and every row, independently of its
-  /// surrounding card. Desktop Search uses this for readable cell spacing.
-  final double horizontalContentPadding;
-
   /// Minimum width needed to keep all six desktop columns readable.
   static const double minimumTableWidth = 760;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
-      // Apply padding to the *table contents*, not only to the enclosing
-      // card. Keep this inset inside horizontal scrolling as well.
-      final table = Padding(
-        key: const ValueKey('desktop-transaction-table-content-padding'),
-        padding: EdgeInsets.symmetric(horizontal: horizontalContentPadding),
-        child: _buildTable(context),
-      );
-      final minimumPaddedWidth =
-          minimumTableWidth + horizontalContentPadding * 2;
-      if (constraints.maxWidth >= minimumPaddedWidth) return table;
+      // The owning inner card provides the complete content inset.
+      // Keep the table itself edge-to-edge within that padded space.
+      final table = _buildTable(context);
+      if (constraints.maxWidth >= minimumTableWidth) return table;
       return SingleChildScrollView(
         key: const ValueKey('desktop-transaction-table-horizontal-scroll'),
         scrollDirection: Axis.horizontal,
-        child: SizedBox(width: minimumPaddedWidth, child: table),
+        child: SizedBox(width: minimumTableWidth, child: table),
       );
     },
   );
