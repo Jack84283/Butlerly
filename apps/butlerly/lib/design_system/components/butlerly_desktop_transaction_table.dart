@@ -327,6 +327,7 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
                       transaction.rawCounterparty ??
                       transaction.description ??
                       context.l10n.text('untitledTransaction'),
+                  fontWeight: FontWeight.bold,
                 ),
               ),
               Expanded(
@@ -361,7 +362,12 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
               ),
               SizedBox(
                 width: 112,
-                child: _rowText(context, amount, align: TextAlign.end),
+                child: _rowText(
+                  context,
+                  amount,
+                  align: TextAlign.end,
+                  color: context.colors.error,
+                ),
               ),
             ],
           ),
@@ -374,10 +380,15 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
     BuildContext context,
     String value, {
     TextAlign align = TextAlign.start,
+    FontWeight? fontWeight,
+    Color? color,
   }) => Text(
     value,
     style: (Theme.of(context).textTheme.bodyMedium ?? const TextStyle())
-        .copyWith(color: context.colors.primaryText),
+        .copyWith(
+          color: color ?? context.colors.primaryText,
+          fontWeight: fontWeight,
+        ),
     maxLines: 1,
     overflow: TextOverflow.ellipsis,
     textAlign: align,
