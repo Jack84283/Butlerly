@@ -321,6 +321,95 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Home and Search inner cards render identical table contents', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 1100);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        localizationsDelegates: const [AppLocalizations.delegate],
+        supportedLocales: const [Locale('en')],
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: Column(
+              children: [
+                SizedBox(
+                  width: 1000,
+                  child: ButlerlyDesktopInnerCard(
+                    key: const ValueKey('home-reference-inner'),
+                    child: ButlerlyDesktopTransactionTable(
+                      transactions: data.take(2).toList(),
+                      masterData: masterData,
+                      onTap: (_) {},
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: 1020,
+                  child: TransactionRecordList(
+                    transactions: data.take(2).toList(),
+                    masterData: masterData,
+                    groupByFinancialDate: true,
+                    collapsibleMonthSections: true,
+                    monthSectionsAsCards: true,
+                    desktopHomeInnerCardStyle: true,
+                    desktopTableMode: true,
+                    onTap: (_) {},
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final homeInner = find.byKey(const ValueKey('home-reference-inner'));
+    final searchInner = find.byKey(
+      const ValueKey('transaction-month-inner-card-2026-10'),
+    );
+    final homeTable = find.descendant(
+      of: homeInner,
+      matching: find.byKey(const ValueKey('desktop-transactions-table')),
+    );
+    final searchTable = find.descendant(
+      of: searchInner,
+      matching: find.byKey(const ValueKey('desktop-transactions-table')),
+    );
+    expect(homeTable, findsOneWidget);
+    expect(searchTable, findsOneWidget);
+
+    final homeInnerRect = tester.getRect(homeInner);
+    final searchInnerRect = tester.getRect(searchInner);
+    final homeTableRect = tester.getRect(homeTable);
+    final searchTableRect = tester.getRect(searchTable);
+    expect(tester.getSize(homeTable), tester.getSize(searchTable));
+    expect(homeTableRect.left - homeInnerRect.left,
+        searchTableRect.left - searchInnerRect.left);
+    expect(homeInnerRect.right - homeTableRect.right,
+        searchInnerRect.right - searchTableRect.right);
+    expect(homeTableRect.top - homeInnerRect.top,
+        searchTableRect.top - searchInnerRect.top);
+    expect(homeInnerRect.bottom - homeTableRect.bottom,
+        searchInnerRect.bottom - searchTableRect.bottom);
+
+    for (final label in ['Date', 'Merchant', 'Category', 'Amount']) {
+      final homeCell = find.descendant(of: homeInner, matching: find.text(label));
+      final searchCell = find.descendant(of: searchInner, matching: find.text(label));
+      expect(homeCell, findsOneWidget);
+      expect(searchCell, findsOneWidget);
+      expect(tester.getSize(homeCell), tester.getSize(searchCell));
+    }
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Compact and Medium retain canonical transaction rows', (
     tester,
   ) async {
