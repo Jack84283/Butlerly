@@ -156,9 +156,7 @@ class TransactionRecordList extends StatelessWidget {
       locale: locale,
     );
     final summary = _monthCardSummary(context, entry.value);
-    if (monthSectionsAsCards &&
-        desktopHomeInnerCardStyle &&
-        desktopTableMode) {
+    if (monthSectionsAsCards && desktopHomeInnerCardStyle && desktopTableMode) {
       return ButlerlyDesktopTransactionSection(
         key: ValueKey('transaction-month-card-${entry.key}'),
         headerKey: ValueKey('transaction-month-${entry.key}'),

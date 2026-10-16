@@ -594,7 +594,8 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                       .take(7)
                                       .toList(),
                                   masterData:
-                                      _masterData ?? const TransactionMasterData(),
+                                      _masterData ??
+                                      const TransactionMasterData(),
                                   onTap: (transaction) => _go(
                                     '/search?ids=${Uri.encodeQueryComponent(transaction.id)}',
                                   ),
