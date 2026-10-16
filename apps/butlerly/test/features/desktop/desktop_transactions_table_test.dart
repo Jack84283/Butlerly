@@ -192,6 +192,10 @@ void main() {
       tester.widget<Text>(find.textContaining('25.00')).style?.color,
       AppTheme.light.colorScheme.error,
     );
+    expect(
+      tester.widget<Text>(find.textContaining('25.00')).style?.fontWeight,
+      FontWeight.bold,
+    );
     await tester.tap(
       find.byKey(const ValueKey('desktop-transaction-row-oct-1')),
     );
@@ -257,6 +261,7 @@ void main() {
         tester.widget<Text>(amount).style?.color,
         AppTheme.dark.colorScheme.error,
       );
+      expect(tester.widget<Text>(amount).style?.fontWeight, FontWeight.bold);
     }
     expect(tester.takeException(), isNull);
   });
@@ -560,6 +565,7 @@ void main() {
         tester.widget<Text>(amount).style?.color,
         AppTheme.dark.colorScheme.error,
       );
+      expect(tester.widget<Text>(amount).style?.fontWeight, FontWeight.bold);
     }
     expect(tester.takeException(), isNull);
   });
