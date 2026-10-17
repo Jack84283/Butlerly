@@ -116,7 +116,10 @@ void main() {
         ),
         GoRoute(
           path: '/payment-sources',
-          builder: (_, _) => const Text('payment source destination'),
+          builder: (_, state) => Text(
+            'payment source destination: '
+            "${state.uri.queryParameters['create']}",
+          ),
         ),
         GoRoute(
           path: '/transactions/add',
@@ -155,10 +158,6 @@ void main() {
 
     await tester.tap(find.text('Add payment source'));
     await tester.pumpAndSettle();
-    expect(router.routeInformationProvider.value.uri.path, '/payment-sources');
-    expect(
-      router.routeInformationProvider.value.uri.queryParameters['create'],
-      'true',
-    );
+    expect(find.text('payment source destination: true'), findsOneWidget);
   });
 }
