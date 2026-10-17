@@ -1010,6 +1010,11 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
 
   @override
   Widget build(BuildContext context) {
+    final desktopWide =
+        widget.existing == null &&
+        widget.onComplete == null &&
+        effectiveButlerlyLayoutMode(context, MediaQuery.sizeOf(context).width) ==
+            ButlerlyLayoutMode.wide;
     return Scaffold(
       appBar: AppBar(
         leading: widget.onComplete == null
@@ -1030,6 +1035,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
         ),
       ),
       body: ButlerlyResponsiveBody(
+        fullWidth: desktopWide,
         contentKey: const ValueKey('transaction-editor-content'),
         child: FutureBuilder<_EditorMasterData>(
           future: _masterData,
@@ -1057,311 +1063,358 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                 (selectedCategory != null && selectedCategory.parentId == null
                     ? selectedCategory.id.value
                     : null);
+            final financialCard = ButlerlyCard(
+              key: const ValueKey(
+                'transaction-editor-financial-card',
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _TransactionEditorCardHeader(
+                    icon: Icons.payments_outlined,
+                    title: context.l10n.text('amount'),
+                  ),
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      final amountField = TextFormField(
+                        key: const ValueKey(
+                          'transaction-amount-field',
+                        ),
+                        controller: _amount,
+                        keyboardType:
+                            const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.headlineMedium,
+                        decoration: InputDecoration(
+                          labelText: context.l10n.text('amount'),
+                          prefixIcon: const Icon(
+                            Icons.payments_outlined,
+                          ),
+                        ),
+                        validator: (value) {
+                          try {
+                            DecimalValue.parse(value?.trim() ?? '');
+                            return null;
+                          } on DomainValidationException {
+                            return context.l10n.text(
+                              'invalidAmount',
+                            );
+                          }
+                        },
+                      );
+                      final currencyField = TextFormField(
+                        key: const ValueKey(
+                          'transaction-currency-field',
+                        ),
+                        controller: _currency,
+                        textCapitalization:
+                            TextCapitalization.characters,
+                        decoration: InputDecoration(
+                          labelText: context.l10n.text('currency'),
+                        ),
+                        validator: (value) {
+                          try {
+                            CurrencyCode(value?.trim() ?? '');
+                            return null;
+                          } on DomainValidationException {
+                            return context.l10n.text(
+                              'invalidCurrency',
+                            );
+                          }
+                        },
+                      );
+                      if (constraints.maxWidth < 280) {
+                        return Column(
+                          children: [
+                            amountField,
+                            const SizedBox(
+                              height: ButlerlySpacing.standard,
+                            ),
+                            currencyField,
+                          ],
+                        );
+                      }
+                      return Row(
+                        crossAxisAlignment:
+                            CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: amountField),
+                          const SizedBox(
+                            width: ButlerlySpacing.compact,
+                          ),
+                          SizedBox(
+                            width: 112,
+                            child: currencyField,
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  ButlerlyDirectionSelector(
+                    value: _direction,
+                    expenseLabel: context.l10n.text('expense'),
+                    incomeLabel: context.l10n.text('income'),
+                    onChanged: (value) =>
+                        setState(() => _direction = value),
+                  ),
+                ],
+              ),
+            );
+            
+            final organizationCard = ButlerlyCard(
+              key: const ValueKey(
+                'transaction-editor-organization-card',
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _TransactionEditorCardHeader(
+                    icon: Icons.receipt_long_outlined,
+                    title: context.l10n.text('transactionDetail'),
+                  ),
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  ButlerlyMerchantSelector(
+                    key: const ValueKey(
+                      'transaction-merchant-selector',
+                    ),
+                    label: context.l10n.text('merchant'),
+                    clearLabel: context.l10n.text('clear'),
+                    merchants: data.merchants,
+                    value: _merchantId,
+                    onChanged: _selectMerchant,
+                    onCreate: () => _createMerchant(data),
+                    createTooltip: context.l10n.text('merchant'),
+                  ),
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  ButlerlyCategorySelector(
+                    key: const ValueKey(
+                      'transaction-category-selector',
+                    ),
+                    label: context.l10n.text('category'),
+                    clearLabel: context.l10n.text('clear'),
+                    categories: data.categories,
+                    masterData: TransactionMasterData(
+                      categoryNames: data.categoryLabels,
+                      tagNames: data.tagLabels,
+                    ),
+                    value: selectedParentId,
+                    onChanged: (value) => setState(() {
+                      _classificationOverridden = true;
+                      _categoryId = value;
+                      _subcategoryId = null;
+                    }),
+                  ),
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  ButlerlySubcategorySelector(
+                    key: const ValueKey(
+                      'transaction-subcategory-selector',
+                    ),
+                    label: context.l10n.text('subcategory'),
+                    clearLabel: context.l10n.text('clear'),
+                    categories: data.categories,
+                    masterData: TransactionMasterData(
+                      categoryNames: data.categoryLabels,
+                      tagNames: data.tagLabels,
+                    ),
+                    parentId: selectedParentId,
+                    value: _subcategoryId,
+                    onChanged: (value) => setState(() {
+                      _classificationOverridden = true;
+                      _subcategoryId = value;
+                      _categoryId = selectedParentId;
+                    }),
+                  ),
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  ButlerlyPaymentSourceSelector(
+                    key: const ValueKey(
+                      'transaction-payment-source-selector',
+                    ),
+                    label: context.l10n.text('paymentSource'),
+                    clearLabel: context.l10n.text('clear'),
+                    sources: data.paymentSources,
+                    value: _paymentSourceId,
+                    onChanged: (value) =>
+                        setState(() => _paymentSourceId = value),
+                  ),
+                ],
+              ),
+            );
+            
+            final dateCard = ButlerlyCard(
+              key: const ValueKey('transaction-editor-date-card'),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _TransactionEditorCardHeader(
+                    icon: Icons.calendar_month_outlined,
+                    title: context.l10n.text('date'),
+                  ),
+                  const SizedBox(height: ButlerlySpacing.compact),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      MaterialLocalizations.of(
+                        context,
+                      ).formatFullDate(_date),
+                      textAlign: TextAlign.start,
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.calendar_today_outlined,
+                          color: _transactionCardIconColor(context),
+                        ),
+                      ],
+                    ),
+                    onTap: () async {
+                      final selected = await showButlerlyDatePicker(
+                        context: context,
+                        title: context.l10n.text('date'),
+                        cancelLabel: context.l10n.text('cancel'),
+                        doneLabel: context.l10n.text('done'),
+                        firstDate: DateTime(2000),
+                        lastDate: DateTime(2100),
+                        initialDate: _date,
+                      );
+                      if (selected != null) {
+                        setState(() {
+                          _date = selected;
+                          _dateChanged = true;
+                        });
+                      }
+                    },
+                  ),
+                ],
+              ),
+            );
+            
+            final notesCard = ButlerlyCard(
+              key: const ValueKey(
+                'transaction-editor-description-card',
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _TransactionEditorCardHeader(
+                    icon: Icons.notes_rounded,
+                    title: context.l10n.text('notes'),
+                  ),
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  TextFormField(
+                    key: const ValueKey(
+                      'transaction-description-field',
+                    ),
+                    controller: _description,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.text(
+                        'descriptionOptional',
+                      ),
+                      prefixIcon: const Icon(Icons.notes_rounded),
+                    ),
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  TextFormField(
+                    key: const ValueKey('transaction-notes-field'),
+                    controller: _notes,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.text('notesOptional'),
+                      prefixIcon: const Icon(
+                        Icons.sticky_note_2_outlined,
+                      ),
+                    ),
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  Text(
+                    context.l10n.text('tags'),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  ButlerlyTagPicker(
+                    searchLabel: context.l10n.text('search'),
+                    createLabel: context.l10n.text('addTag'),
+                    tags: data.tags,
+                    masterData: TransactionMasterData(
+                      categoryNames: data.categoryLabels,
+                      tagNames: data.tagLabels,
+                    ),
+                    selected: _tagIds,
+                    onChanged: (value) =>
+                        setState(() => _tagIds = value),
+                    onCreate: () => _createTag(data),
+                  ),
+                ],
+              ),
+            );
             return Form(
               key: _formKey,
               child: Column(
                 children: [
                   Expanded(
-                    child: ListView(
-                      key: const ValueKey('transaction-editor-list'),
-                      // Keep the final field clear of the persistent action.
-                      padding: const EdgeInsets.fromLTRB(
-                        ButlerlySpacing.pagePadding,
-                        ButlerlySpacing.compact,
-                        ButlerlySpacing.pagePadding,
-                        ButlerlySpacing.bottomActionSpacing,
-                      ),
-                      children: [
-                        ButlerlyCard(
-                          key: const ValueKey(
-                            'transaction-editor-financial-card',
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final twoColumns =
+                            desktopWide &&
+                            constraints.maxWidth >= 760 &&
+                            MediaQuery.textScalerOf(context).scale(14) <= 20;
+                        const gap = SizedBox(
+                          height: ButlerlySpacing.cardGap,
+                        );
+                        return ListView(
+                          key: const ValueKey('transaction-editor-list'),
+                          // Keep the final field clear of the persistent action.
+                          padding: const EdgeInsets.fromLTRB(
+                            ButlerlySpacing.pagePadding,
+                            ButlerlySpacing.compact,
+                            ButlerlySpacing.pagePadding,
+                            ButlerlySpacing.bottomActionSpacing,
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _TransactionEditorCardHeader(
-                                icon: Icons.payments_outlined,
-                                title: context.l10n.text('amount'),
-                              ),
-                              const SizedBox(height: ButlerlySpacing.standard),
-                              LayoutBuilder(
-                                builder: (context, constraints) {
-                                  final amountField = TextFormField(
-                                    key: const ValueKey(
-                                      'transaction-amount-field',
-                                    ),
-                                    controller: _amount,
-                                    keyboardType:
-                                        const TextInputType.numberWithOptions(
-                                          decimal: true,
-                                        ),
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.headlineMedium,
-                                    decoration: InputDecoration(
-                                      labelText: context.l10n.text('amount'),
-                                      prefixIcon: const Icon(
-                                        Icons.payments_outlined,
-                                      ),
-                                    ),
-                                    validator: (value) {
-                                      try {
-                                        DecimalValue.parse(value?.trim() ?? '');
-                                        return null;
-                                      } on DomainValidationException {
-                                        return context.l10n.text(
-                                          'invalidAmount',
-                                        );
-                                      }
-                                    },
-                                  );
-                                  final currencyField = TextFormField(
-                                    key: const ValueKey(
-                                      'transaction-currency-field',
-                                    ),
-                                    controller: _currency,
-                                    textCapitalization:
-                                        TextCapitalization.characters,
-                                    decoration: InputDecoration(
-                                      labelText: context.l10n.text('currency'),
-                                    ),
-                                    validator: (value) {
-                                      try {
-                                        CurrencyCode(value?.trim() ?? '');
-                                        return null;
-                                      } on DomainValidationException {
-                                        return context.l10n.text(
-                                          'invalidCurrency',
-                                        );
-                                      }
-                                    },
-                                  );
-                                  if (constraints.maxWidth < 280) {
-                                    return Column(
+                          children: [
+                            if (twoColumns)
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Column(
                                       children: [
-                                        amountField,
-                                        const SizedBox(
-                                          height: ButlerlySpacing.standard,
-                                        ),
-                                        currencyField,
+                                        financialCard,
+                                        gap,
+                                        organizationCard,
                                       ],
-                                    );
-                                  }
-                                  return Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(child: amountField),
-                                      const SizedBox(
-                                        width: ButlerlySpacing.compact,
-                                      ),
-                                      SizedBox(
-                                        width: 112,
-                                        child: currencyField,
-                                      ),
-                                    ],
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: ButlerlySpacing.standard),
-                              ButlerlyDirectionSelector(
-                                value: _direction,
-                                expenseLabel: context.l10n.text('expense'),
-                                incomeLabel: context.l10n.text('income'),
-                                onChanged: (value) =>
-                                    setState(() => _direction = value),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: ButlerlySpacing.cardGap),
-                        ButlerlyCard(
-                          key: const ValueKey(
-                            'transaction-editor-organization-card',
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _TransactionEditorCardHeader(
-                                icon: Icons.receipt_long_outlined,
-                                title: context.l10n.text('transactionDetail'),
-                              ),
-                              const SizedBox(height: ButlerlySpacing.standard),
-                              ButlerlyMerchantSelector(
-                                key: const ValueKey(
-                                  'transaction-merchant-selector',
-                                ),
-                                label: context.l10n.text('merchant'),
-                                clearLabel: context.l10n.text('clear'),
-                                merchants: data.merchants,
-                                value: _merchantId,
-                                onChanged: _selectMerchant,
-                                onCreate: () => _createMerchant(data),
-                                createTooltip: context.l10n.text('merchant'),
-                              ),
-                              const SizedBox(height: ButlerlySpacing.standard),
-                              ButlerlyCategorySelector(
-                                key: const ValueKey(
-                                  'transaction-category-selector',
-                                ),
-                                label: context.l10n.text('category'),
-                                clearLabel: context.l10n.text('clear'),
-                                categories: data.categories,
-                                masterData: TransactionMasterData(
-                                  categoryNames: data.categoryLabels,
-                                  tagNames: data.tagLabels,
-                                ),
-                                value: selectedParentId,
-                                onChanged: (value) => setState(() {
-                                  _classificationOverridden = true;
-                                  _categoryId = value;
-                                  _subcategoryId = null;
-                                }),
-                              ),
-                              const SizedBox(height: ButlerlySpacing.standard),
-                              ButlerlySubcategorySelector(
-                                key: const ValueKey(
-                                  'transaction-subcategory-selector',
-                                ),
-                                label: context.l10n.text('subcategory'),
-                                clearLabel: context.l10n.text('clear'),
-                                categories: data.categories,
-                                masterData: TransactionMasterData(
-                                  categoryNames: data.categoryLabels,
-                                  tagNames: data.tagLabels,
-                                ),
-                                parentId: selectedParentId,
-                                value: _subcategoryId,
-                                onChanged: (value) => setState(() {
-                                  _classificationOverridden = true;
-                                  _subcategoryId = value;
-                                  _categoryId = selectedParentId;
-                                }),
-                              ),
-                              const SizedBox(height: ButlerlySpacing.standard),
-                              ButlerlyPaymentSourceSelector(
-                                key: const ValueKey(
-                                  'transaction-payment-source-selector',
-                                ),
-                                label: context.l10n.text('paymentSource'),
-                                clearLabel: context.l10n.text('clear'),
-                                sources: data.paymentSources,
-                                value: _paymentSourceId,
-                                onChanged: (value) =>
-                                    setState(() => _paymentSourceId = value),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: ButlerlySpacing.cardGap),
-                        ButlerlyCard(
-                          key: const ValueKey('transaction-editor-date-card'),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _TransactionEditorCardHeader(
-                                icon: Icons.calendar_month_outlined,
-                                title: context.l10n.text('date'),
-                              ),
-                              const SizedBox(height: ButlerlySpacing.compact),
-                              ListTile(
-                                contentPadding: EdgeInsets.zero,
-                                title: Text(
-                                  MaterialLocalizations.of(
-                                    context,
-                                  ).formatFullDate(_date),
-                                  textAlign: TextAlign.start,
-                                ),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.calendar_today_outlined,
-                                      color: _transactionCardIconColor(context),
                                     ),
-                                  ],
-                                ),
-                                onTap: () async {
-                                  final selected = await showButlerlyDatePicker(
-                                    context: context,
-                                    title: context.l10n.text('date'),
-                                    cancelLabel: context.l10n.text('cancel'),
-                                    doneLabel: context.l10n.text('done'),
-                                    firstDate: DateTime(2000),
-                                    lastDate: DateTime(2100),
-                                    initialDate: _date,
-                                  );
-                                  if (selected != null) {
-                                    setState(() {
-                                      _date = selected;
-                                      _dateChanged = true;
-                                    });
-                                  }
-                                },
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: ButlerlySpacing.cardGap),
-                        ButlerlyCard(
-                          key: const ValueKey(
-                            'transaction-editor-description-card',
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _TransactionEditorCardHeader(
-                                icon: Icons.notes_rounded,
-                                title: context.l10n.text('notes'),
-                              ),
-                              const SizedBox(height: ButlerlySpacing.standard),
-                              TextFormField(
-                                key: const ValueKey(
-                                  'transaction-description-field',
-                                ),
-                                controller: _description,
-                                decoration: InputDecoration(
-                                  labelText: context.l10n.text(
-                                    'descriptionOptional',
                                   ),
-                                  prefixIcon: const Icon(Icons.notes_rounded),
-                                ),
-                                maxLines: 2,
-                              ),
-                              const SizedBox(height: ButlerlySpacing.standard),
-                              TextFormField(
-                                key: const ValueKey('transaction-notes-field'),
-                                controller: _notes,
-                                decoration: InputDecoration(
-                                  labelText: context.l10n.text('notesOptional'),
-                                  prefixIcon: const Icon(
-                                    Icons.sticky_note_2_outlined,
+                                  const SizedBox(
+                                    width: ButlerlySpacing.cardGap,
                                   ),
-                                ),
-                                maxLines: 3,
-                              ),
-                              const SizedBox(height: ButlerlySpacing.standard),
-                              Text(
-                                context.l10n.text('tags'),
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                              ButlerlyTagPicker(
-                                searchLabel: context.l10n.text('search'),
-                                createLabel: context.l10n.text('addTag'),
-                                tags: data.tags,
-                                masterData: TransactionMasterData(
-                                  categoryNames: data.categoryLabels,
-                                  tagNames: data.tagLabels,
-                                ),
-                                selected: _tagIds,
-                                onChanged: (value) =>
-                                    setState(() => _tagIds = value),
-                                onCreate: () => _createTag(data),
-                              ),
+                                  Expanded(
+                                    child: Column(
+                                      children: [
+                                        dateCard,
+                                        gap,
+                                        notesCard,
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              )
+                            else ...[
+                              financialCard,
+                              gap,
+                              organizationCard,
+                              gap,
+                              dateCard,
+                              gap,
+                              notesCard,
                             ],
-                          ),
-                        ),
-                      ],
+                          ],
+                        );
+                      },
                     ),
                   ),
                   SafeArea(
@@ -1373,15 +1426,20 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                         ButlerlySpacing.pagePadding,
                         ButlerlySpacing.standard,
                       ),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: FilledButton(
-                          key: const ValueKey('transaction-save-locally'),
+                      child: Align(
+                        alignment: desktopWide
+                            ? Alignment.centerRight
+                            : Alignment.center,
+                        child: SizedBox(
+                          width: desktopWide ? 240 : double.infinity,
+                          child: FilledButton(
+                            key: const ValueKey('transaction-save-locally'),
                           onPressed: _saving ? null : _save,
                           child: Text(
                             _saving
                                 ? context.l10n.text('saving')
                                 : context.l10n.text('saveLocally'),
+                            ),
                           ),
                         ),
                       ),
