@@ -836,7 +836,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                             labelText: context.l10n.text('description'),
                           ),
                         ),
-                        SizedBox(height: fieldGap)
+                        SizedBox(height: fieldGap),
                         ButlerlyMerchantSelector(
                           merchants: _merchants,
                           value: _merchantId,
@@ -844,7 +844,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                           clearLabel: context.l10n.text('clear'),
                           onChanged: (value) => _selectMerchant(value),
                         ),
-                        SizedBox(height: fieldGap)
+                        SizedBox(height: fieldGap),
                         TextFormField(
                           controller: _amount,
                           keyboardType: const TextInputType.numberWithOptions(
@@ -862,7 +862,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                             }
                           },
                         ),
-                        SizedBox(height: fieldGap)
+                        SizedBox(height: fieldGap),
                         TextFormField(
                           controller: _currency,
                           textCapitalization: TextCapitalization.characters,
@@ -878,7 +878,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                             }
                           },
                         ),
-                        SizedBox(height: fieldGap)
+                        SizedBox(height: fieldGap),
                         ListTile(
                           contentPadding: EdgeInsets.zero,
                           title: Text(context.l10n.text('purchaseDate')),
@@ -896,7 +896,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                               ),
                             ),
                           ),
-                        SizedBox(height: fieldGap)
+                        SizedBox(height: fieldGap),
                         ButlerlyCategorySelector(
                           label: context.l10n.text('category'),
                           clearLabel: context.l10n.text('clear'),
@@ -909,7 +909,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                             _subcategoryId = null;
                           }),
                         ),
-                        SizedBox(height: fieldGap)
+                        SizedBox(height: fieldGap),
                         ButlerlySubcategorySelector(
                           label: context.l10n.text('subcategory'),
                           clearLabel: context.l10n.text('clear'),
@@ -923,7 +923,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                             _categoryId = selectedParentId;
                           }),
                         ),
-                        SizedBox(height: fieldGap)
+                        SizedBox(height: fieldGap),
                         ButlerlyPaymentSourceSelector(
                           label: context.l10n.text('paymentSource'),
                           clearLabel: context.l10n.text('clear'),
@@ -932,7 +932,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                           onChanged: (value) =>
                               setState(() => _paymentSourceId = value),
                         ),
-                        SizedBox(height: fieldGap)
+                        SizedBox(height: fieldGap),
                         Align(
                           alignment: Alignment.centerLeft,
                           child: Wrap(
@@ -954,7 +954,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                             ],
                           ),
                         ),
-                        SizedBox(height: fieldGap)
+                        SizedBox(height: fieldGap),
                         TextFormField(
                           controller: _notes,
                           maxLines: 2,
