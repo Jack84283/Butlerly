@@ -1025,7 +1025,9 @@ class _ButlerlyTagPickerState extends State<ButlerlyTagPicker> {
                 ),
             ],
           ),
-        if (widget.tags.length > 8)
+        if (widget.tags.length > 8) ...[
+          if (widget.selected.isNotEmpty)
+            const SizedBox(height: ButlerlySpacing.small),
           TextField(
             decoration: InputDecoration(
               labelText: widget.searchLabel,
@@ -1033,6 +1035,8 @@ class _ButlerlyTagPickerState extends State<ButlerlyTagPicker> {
             ),
             onChanged: (value) => setState(() => _query = value),
           ),
+          const SizedBox(height: ButlerlySpacing.small),
+        ],
         Wrap(
           spacing: 8,
           runSpacing: 4,

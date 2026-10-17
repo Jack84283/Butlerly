@@ -251,7 +251,9 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: '/payment-sources',
-          builder: (_, _) => const PaymentSourcesPage(),
+          builder: (_, state) => PaymentSourcesPage(
+            openCreateOnStart: state.uri.queryParameters['create'] == 'true',
+          ),
         ),
         GoRoute(
           path: '/import-export',

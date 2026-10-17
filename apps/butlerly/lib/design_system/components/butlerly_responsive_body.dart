@@ -11,11 +11,13 @@ class ButlerlyResponsiveBody extends StatelessWidget {
   const ButlerlyResponsiveBody({
     required this.child,
     this.contentKey,
+    this.fullWidth = false,
     super.key,
   });
 
   final Widget child;
   final Key? contentKey;
+  final bool fullWidth;
 
   @override
   Widget build(BuildContext context) => ButlerlyContentCanvas(
@@ -23,6 +25,7 @@ class ButlerlyResponsiveBody extends StatelessWidget {
     child: ButlerlyContentSurface(
       surfaceKey: const ValueKey('butlerly-responsive-body-content-surface'),
       contentKey: contentKey,
+      maxWidth: fullWidth ? double.infinity : null,
       child: child,
     ),
   );

@@ -2,7 +2,6 @@ import 'package:butlerly/app/shell/compact/compact_primary_shell.dart';
 import 'package:butlerly/app/shell/medium/medium_primary_shell.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/desktop/presentation/desktop_primary_shell.dart';
-import 'package:butlerly/features/foundation/presentation/contextual_pages.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -156,7 +155,6 @@ class _AdaptiveShellState extends State<AdaptiveShell> {
           currentIndex: _wideParentIndex,
           onSelected: _selectWideDestination,
           onMoreSectionSelected: _selectMoreSection,
-          onImport: () => startLocalFileImport(context),
         );
       },
     );
