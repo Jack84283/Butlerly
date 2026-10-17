@@ -509,6 +509,26 @@ void main() {
     expect(date.left, greaterThan(amount.right));
     expect(details.left, closeTo(amount.left, 0.1));
     expect(details.top, greaterThan(amount.bottom));
+    final merchantField = tester.getRect(
+      find.byKey(const ValueKey('transaction-merchant-selector')),
+    );
+    final categoryField = tester.getRect(
+      find.byKey(const ValueKey('transaction-category-selector')),
+    );
+    expect(
+      categoryField.top - merchantField.bottom,
+      closeTo(ButlerlySpacing.compact, 1),
+    );
+    final descriptionField = tester.getRect(
+      find.byKey(const ValueKey('transaction-description-field')),
+    );
+    final notesField = tester.getRect(
+      find.byKey(const ValueKey('transaction-notes-field')),
+    );
+    expect(
+      notesField.top - descriptionField.bottom,
+      closeTo(ButlerlySpacing.compact, 1),
+    );
     expect(notes.left, closeTo(date.left, 0.1));
     expect(notes.top, greaterThan(date.bottom));
 

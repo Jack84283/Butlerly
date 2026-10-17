@@ -1066,6 +1066,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                 (selectedCategory != null && selectedCategory.parentId == null
                     ? selectedCategory.id.value
                     : null);
+            final fieldSpacing = desktopWide
+                ? ButlerlySpacing.compact
+                : ButlerlySpacing.standard;
             final financialCard = ButlerlyCard(
               key: const ValueKey('transaction-editor-financial-card'),
               child: Column(
@@ -1133,7 +1136,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                       );
                     },
                   ),
-                  const SizedBox(height: ButlerlySpacing.standard),
+                  SizedBox(height: fieldSpacing),
                   ButlerlyDirectionSelector(
                     value: _direction,
                     expenseLabel: context.l10n.text('expense'),
@@ -1164,7 +1167,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                     onCreate: () => _createMerchant(data),
                     createTooltip: context.l10n.text('merchant'),
                   ),
-                  const SizedBox(height: ButlerlySpacing.standard),
+                  SizedBox(height: fieldSpacing),
                   ButlerlyCategorySelector(
                     key: const ValueKey('transaction-category-selector'),
                     label: context.l10n.text('category'),
@@ -1181,7 +1184,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                       _subcategoryId = null;
                     }),
                   ),
-                  const SizedBox(height: ButlerlySpacing.standard),
+                  SizedBox(height: fieldSpacing),
                   ButlerlySubcategorySelector(
                     key: const ValueKey('transaction-subcategory-selector'),
                     label: context.l10n.text('subcategory'),
@@ -1199,7 +1202,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                       _categoryId = selectedParentId;
                     }),
                   ),
-                  const SizedBox(height: ButlerlySpacing.standard),
+                  SizedBox(height: fieldSpacing),
                   ButlerlyPaymentSourceSelector(
                     key: const ValueKey('transaction-payment-source-selector'),
                     label: context.l10n.text('paymentSource'),
@@ -1279,7 +1282,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                     ),
                     maxLines: 2,
                   ),
-                  const SizedBox(height: ButlerlySpacing.standard),
+                  SizedBox(height: fieldSpacing),
                   TextFormField(
                     key: const ValueKey('transaction-notes-field'),
                     controller: _notes,
@@ -1289,7 +1292,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                     ),
                     maxLines: 3,
                   ),
-                  const SizedBox(height: ButlerlySpacing.standard),
+                  SizedBox(height: fieldSpacing),
                   Text(
                     context.l10n.text('tags'),
                     style: Theme.of(context).textTheme.bodySmall,
