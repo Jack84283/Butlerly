@@ -309,12 +309,21 @@ void main() {
       tester.getRect(home).top,
       lessThan(tester.getRect(transactions).top),
     );
+    expect(find.byKey(const ValueKey('wide-add-navigation')), findsOneWidget);
     for (final label in const [
       'Add transaction manually',
       'Scan receipt',
       'Import statement',
       'Import file',
       'Payment sources',
+    ]) {
+      expect(
+        find.descendant(of: navigation, matching: find.text(label)),
+        findsNothing,
+        reason: 'Add entry points are on the right-side Add page.',
+      );
+    }
+    for (final label in const [
       'Review',
       'Analysis',
       'Insights',
