@@ -1,6 +1,7 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/theme/butlerly_button_palette.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -138,6 +139,39 @@ void main() {
     expect(find.byTooltip('清除商户'), findsWidgets);
     await tester.tap(find.byTooltip('清除商户').first);
     expect(value, isNull);
+  });
+
+  testWidgets('tag search keeps space from selected and available chips', (
+    tester,
+  ) async {
+    final tags = List.generate(
+      9,
+      (index) => Tag(id: TagId('tag-$index'), name: 'Tag $index'),
+    );
+    await pump(
+      tester,
+      ButlerlyTagPicker(
+        tags: tags,
+        masterData: labels,
+        selected: const {'tag-0'},
+        searchLabel: 'Search tags',
+        createLabel: 'Add tag',
+        onChanged: (_) {},
+      ),
+    );
+
+    final selected = tester.getRect(find.byType(InputChip).first);
+    final search = tester.getRect(find.byType(TextField));
+    final available = tester.getRect(find.byType(FilterChip).first);
+
+    expect(
+      search.top - selected.bottom,
+      greaterThanOrEqualTo(ButlerlySpacing.small),
+    );
+    expect(
+      available.top - search.bottom,
+      greaterThanOrEqualTo(ButlerlySpacing.small),
+    );
   });
 
   testWidgets('tag picker supports localized search and multi-selection', (
