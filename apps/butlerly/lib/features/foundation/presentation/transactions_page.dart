@@ -1067,7 +1067,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                     ? selectedCategory.id.value
                     : null);
             final fieldSpacing = desktopWide
-                ? ButlerlySpacing.compact
+                ? ButlerlySpacing.micro
                 : ButlerlySpacing.standard;
             final financialCard = ButlerlyCard(
               key: const ValueKey('transaction-editor-financial-card'),
