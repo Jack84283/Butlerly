@@ -517,7 +517,7 @@ void main() {
     );
     expect(
       categoryField.top - merchantField.bottom,
-      closeTo(ButlerlySpacing.compact, 1),
+      closeTo(ButlerlySpacing.micro, 1),
     );
     final descriptionField = tester.getRect(
       find.byKey(const ValueKey('transaction-description-field')),
@@ -527,7 +527,7 @@ void main() {
     );
     expect(
       notesField.top - descriptionField.bottom,
-      closeTo(ButlerlySpacing.compact, 1),
+      closeTo(ButlerlySpacing.micro, 1),
     );
     expect(notes.left, closeTo(date.left, 0.1));
     expect(notes.top, greaterThan(date.bottom));
