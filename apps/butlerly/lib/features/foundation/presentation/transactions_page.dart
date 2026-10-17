@@ -1165,7 +1165,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                 ],
               ),
             );
-            
+
             final organizationCard = ButlerlyCard(
               key: const ValueKey(
                 'transaction-editor-organization-card',
@@ -1244,7 +1244,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                 ],
               ),
             );
-            
+
             final dateCard = ButlerlyCard(
               key: const ValueKey('transaction-editor-date-card'),
               child: Column(
@@ -1293,7 +1293,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                 ],
               ),
             );
-            
+
             final notesCard = ButlerlyCard(
               key: const ValueKey(
                 'transaction-editor-description-card',
@@ -1434,11 +1434,11 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                           width: desktopWide ? 240 : double.infinity,
                           child: FilledButton(
                             key: const ValueKey('transaction-save-locally'),
-                          onPressed: _saving ? null : _save,
-                          child: Text(
-                            _saving
-                                ? context.l10n.text('saving')
-                                : context.l10n.text('saveLocally'),
+                            onPressed: _saving ? null : _save,
+                            child: Text(
+                              _saving
+                                  ? context.l10n.text('saving')
+                                  : context.l10n.text('saveLocally'),
                             ),
                           ),
                         ),

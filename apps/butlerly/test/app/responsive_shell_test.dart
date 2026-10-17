@@ -465,6 +465,99 @@ void main() {
     );
   });
 
+  testWidgets('Wide manual Add fills the right pane and groups form cards', (
+    tester,
+  ) async {
+    await _pumpAt(tester, const Size(1200, 800));
+    services.registerSingleton<FinanceServices>(
+      FinanceServices(
+        MemoryTransactionRepository(),
+        MemoryPaymentSources(),
+        MemoryMerchants(),
+        MemoryCategories(),
+        MemoryTags(),
+        MemoryEvidence(),
+        MemoryUserPreferences(),
+      ),
+    );
+    addTearDown(() => services.unregister<FinanceServices>());
+
+    appRouter.go('/transactions/add');
+    await tester.pumpAndSettle();
+
+    final rightSide = tester.getRect(
+      find.byKey(const ValueKey('primary-wide-body-surface')),
+    );
+    final editor = tester.getRect(
+      find.byKey(const ValueKey('transaction-editor-content')),
+    );
+    expect(editor.width, closeTo(rightSide.width, 0.1));
+    expect(editor.left, closeTo(rightSide.left, 0.1));
+
+    final amount = tester.getRect(
+      find.byKey(const ValueKey('transaction-editor-financial-card')),
+    );
+    final details = tester.getRect(
+      find.byKey(const ValueKey('transaction-editor-organization-card')),
+    );
+    final date = tester.getRect(
+      find.byKey(const ValueKey('transaction-editor-date-card')),
+    );
+    final notes = tester.getRect(
+      find.byKey(const ValueKey('transaction-editor-description-card')),
+    );
+    expect(date.left, greaterThan(amount.right));
+    expect(details.left, closeTo(amount.left, 0.1));
+    expect(details.top, greaterThan(amount.bottom));
+    expect(notes.left, closeTo(date.left, 0.1));
+    expect(notes.top, greaterThan(date.bottom));
+
+    final save = tester.getRect(
+      find.byKey(const ValueKey('transaction-save-locally')),
+    );
+    expect(save.width, 240);
+    expect(save.right, closeTo(rightSide.right - ButlerlySpacing.pagePadding, 1));
+  });
+
+  testWidgets('Compact manual Add preserves the single-column form', (
+    tester,
+  ) async {
+    await _pumpAt(tester, const Size(390, 844));
+    services.registerSingleton<FinanceServices>(
+      FinanceServices(
+        MemoryTransactionRepository(),
+        MemoryPaymentSources(),
+        MemoryMerchants(),
+        MemoryCategories(),
+        MemoryTags(),
+        MemoryEvidence(),
+        MemoryUserPreferences(),
+      ),
+    );
+    addTearDown(() => services.unregister<FinanceServices>());
+
+    appRouter.go('/transactions/add');
+    await tester.pumpAndSettle();
+
+    final amount = tester.getRect(
+      find.byKey(const ValueKey('transaction-editor-financial-card')),
+    );
+    final details = tester.getRect(
+      find.byKey(const ValueKey('transaction-editor-organization-card')),
+    );
+    final date = tester.getRect(
+      find.byKey(const ValueKey('transaction-editor-date-card')),
+    );
+    expect(details.top, greaterThan(amount.bottom));
+    expect(date.top, greaterThan(details.bottom));
+    expect(details.left, closeTo(amount.left, 0.1));
+
+    final save = tester.getRect(
+      find.byKey(const ValueKey('transaction-save-locally')),
+    );
+    expect(save.width, greaterThan(300));
+  });
+
   testWidgets('Wide Add keeps the shell for manual and receipt workflows', (
     tester,
   ) async {
