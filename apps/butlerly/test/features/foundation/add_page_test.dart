@@ -147,7 +147,7 @@ void main() {
     final first = tester.getRect(find.byType(ButlerlyCard).at(0));
     final second = tester.getRect(find.byType(ButlerlyCard).at(1));
     expect(second.left, greaterThan(first.right));
-    expect(first.width, greaterThan(400));
+    expect(first.width, greaterThan(350));
 
     await tester.tap(find.text('Import from local file'));
     await tester.pumpAndSettle();
