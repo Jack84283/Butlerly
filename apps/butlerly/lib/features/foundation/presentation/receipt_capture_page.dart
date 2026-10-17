@@ -764,11 +764,15 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
             ? selectedCategory.id.value
             : null);
 
+    final desktop = MediaQuery.sizeOf(context).width >= 900;
+    final fieldGap = desktop ? ButlerlySpacing.micro : ButlerlySpacing.standard;
+
     return Scaffold(
       appBar: AppBar(title: Text(context.l10n.text('captureReceipt'))),
       body: SafeArea(
         child: ButlerlyResponsiveBody(
           contentKey: const ValueKey('receipt-capture-content'),
+          fullWidth: desktop,
           child: ListView(
             padding: const EdgeInsets.all(ButlerlySpacing.standard),
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -832,7 +836,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                             labelText: context.l10n.text('description'),
                           ),
                         ),
-                        const SizedBox(height: ButlerlySpacing.standard),
+                        SizedBox(height: fieldGap)
                         ButlerlyMerchantSelector(
                           merchants: _merchants,
                           value: _merchantId,
@@ -840,7 +844,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                           clearLabel: context.l10n.text('clear'),
                           onChanged: (value) => _selectMerchant(value),
                         ),
-                        const SizedBox(height: ButlerlySpacing.standard),
+                        SizedBox(height: fieldGap)
                         TextFormField(
                           controller: _amount,
                           keyboardType: const TextInputType.numberWithOptions(
@@ -858,7 +862,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                             }
                           },
                         ),
-                        const SizedBox(height: ButlerlySpacing.standard),
+                        SizedBox(height: fieldGap)
                         TextFormField(
                           controller: _currency,
                           textCapitalization: TextCapitalization.characters,
@@ -874,7 +878,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                             }
                           },
                         ),
-                        const SizedBox(height: ButlerlySpacing.standard),
+                        SizedBox(height: fieldGap)
                         ListTile(
                           contentPadding: EdgeInsets.zero,
                           title: Text(context.l10n.text('purchaseDate')),
@@ -892,7 +896,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                               ),
                             ),
                           ),
-                        const SizedBox(height: ButlerlySpacing.standard),
+                        SizedBox(height: fieldGap)
                         ButlerlyCategorySelector(
                           label: context.l10n.text('category'),
                           clearLabel: context.l10n.text('clear'),
@@ -905,7 +909,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                             _subcategoryId = null;
                           }),
                         ),
-                        const SizedBox(height: ButlerlySpacing.standard),
+                        SizedBox(height: fieldGap)
                         ButlerlySubcategorySelector(
                           label: context.l10n.text('subcategory'),
                           clearLabel: context.l10n.text('clear'),
@@ -919,7 +923,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                             _categoryId = selectedParentId;
                           }),
                         ),
-                        const SizedBox(height: ButlerlySpacing.standard),
+                        SizedBox(height: fieldGap)
                         ButlerlyPaymentSourceSelector(
                           label: context.l10n.text('paymentSource'),
                           clearLabel: context.l10n.text('clear'),
@@ -928,7 +932,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                           onChanged: (value) =>
                               setState(() => _paymentSourceId = value),
                         ),
-                        const SizedBox(height: ButlerlySpacing.standard),
+                        SizedBox(height: fieldGap)
                         Align(
                           alignment: Alignment.centerLeft,
                           child: Wrap(
@@ -950,7 +954,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: ButlerlySpacing.standard),
+                        SizedBox(height: fieldGap)
                         TextFormField(
                           controller: _notes,
                           maxLines: 2,
