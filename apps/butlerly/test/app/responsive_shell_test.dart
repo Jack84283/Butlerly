@@ -516,7 +516,10 @@ void main() {
       find.byKey(const ValueKey('transaction-save-locally')),
     );
     expect(save.width, 240);
-    expect(save.right, closeTo(rightSide.right - ButlerlySpacing.pagePadding, 1));
+    expect(
+      save.right,
+      closeTo(rightSide.right - ButlerlySpacing.pagePadding, 1),
+    );
   });
 
   testWidgets('Compact manual Add preserves the single-column form', (

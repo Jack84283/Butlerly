@@ -1013,7 +1013,10 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
     final desktopWide =
         widget.existing == null &&
         widget.onComplete == null &&
-        effectiveButlerlyLayoutMode(context, MediaQuery.sizeOf(context).width) ==
+        effectiveButlerlyLayoutMode(
+              context,
+              MediaQuery.sizeOf(context).width,
+            ) ==
             ButlerlyLayoutMode.wide;
     return Scaffold(
       appBar: AppBar(
@@ -1064,9 +1067,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                     ? selectedCategory.id.value
                     : null);
             final financialCard = ButlerlyCard(
-              key: const ValueKey(
-                'transaction-editor-financial-card',
-              ),
+              key: const ValueKey('transaction-editor-financial-card'),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -1078,41 +1079,29 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                   LayoutBuilder(
                     builder: (context, constraints) {
                       final amountField = TextFormField(
-                        key: const ValueKey(
-                          'transaction-amount-field',
-                        ),
+                        key: const ValueKey('transaction-amount-field'),
                         controller: _amount,
-                        keyboardType:
-                            const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                        style: Theme.of(
-                          context,
-                        ).textTheme.headlineMedium,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        style: Theme.of(context).textTheme.headlineMedium,
                         decoration: InputDecoration(
                           labelText: context.l10n.text('amount'),
-                          prefixIcon: const Icon(
-                            Icons.payments_outlined,
-                          ),
+                          prefixIcon: const Icon(Icons.payments_outlined),
                         ),
                         validator: (value) {
                           try {
                             DecimalValue.parse(value?.trim() ?? '');
                             return null;
                           } on DomainValidationException {
-                            return context.l10n.text(
-                              'invalidAmount',
-                            );
+                            return context.l10n.text('invalidAmount');
                           }
                         },
                       );
                       final currencyField = TextFormField(
-                        key: const ValueKey(
-                          'transaction-currency-field',
-                        ),
+                        key: const ValueKey('transaction-currency-field'),
                         controller: _currency,
-                        textCapitalization:
-                            TextCapitalization.characters,
+                        textCapitalization: TextCapitalization.characters,
                         decoration: InputDecoration(
                           labelText: context.l10n.text('currency'),
                         ),
@@ -1121,9 +1110,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                             CurrencyCode(value?.trim() ?? '');
                             return null;
                           } on DomainValidationException {
-                            return context.l10n.text(
-                              'invalidCurrency',
-                            );
+                            return context.l10n.text('invalidCurrency');
                           }
                         },
                       );
@@ -1131,25 +1118,17 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                         return Column(
                           children: [
                             amountField,
-                            const SizedBox(
-                              height: ButlerlySpacing.standard,
-                            ),
+                            const SizedBox(height: ButlerlySpacing.standard),
                             currencyField,
                           ],
                         );
                       }
                       return Row(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Expanded(child: amountField),
-                          const SizedBox(
-                            width: ButlerlySpacing.compact,
-                          ),
-                          SizedBox(
-                            width: 112,
-                            child: currencyField,
-                          ),
+                          const SizedBox(width: ButlerlySpacing.compact),
+                          SizedBox(width: 112, child: currencyField),
                         ],
                       );
                     },
@@ -1159,17 +1138,14 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                     value: _direction,
                     expenseLabel: context.l10n.text('expense'),
                     incomeLabel: context.l10n.text('income'),
-                    onChanged: (value) =>
-                        setState(() => _direction = value),
+                    onChanged: (value) => setState(() => _direction = value),
                   ),
                 ],
               ),
             );
 
             final organizationCard = ButlerlyCard(
-              key: const ValueKey(
-                'transaction-editor-organization-card',
-              ),
+              key: const ValueKey('transaction-editor-organization-card'),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -1179,9 +1155,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                   ),
                   const SizedBox(height: ButlerlySpacing.standard),
                   ButlerlyMerchantSelector(
-                    key: const ValueKey(
-                      'transaction-merchant-selector',
-                    ),
+                    key: const ValueKey('transaction-merchant-selector'),
                     label: context.l10n.text('merchant'),
                     clearLabel: context.l10n.text('clear'),
                     merchants: data.merchants,
@@ -1192,9 +1166,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                   ),
                   const SizedBox(height: ButlerlySpacing.standard),
                   ButlerlyCategorySelector(
-                    key: const ValueKey(
-                      'transaction-category-selector',
-                    ),
+                    key: const ValueKey('transaction-category-selector'),
                     label: context.l10n.text('category'),
                     clearLabel: context.l10n.text('clear'),
                     categories: data.categories,
@@ -1211,9 +1183,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                   ),
                   const SizedBox(height: ButlerlySpacing.standard),
                   ButlerlySubcategorySelector(
-                    key: const ValueKey(
-                      'transaction-subcategory-selector',
-                    ),
+                    key: const ValueKey('transaction-subcategory-selector'),
                     label: context.l10n.text('subcategory'),
                     clearLabel: context.l10n.text('clear'),
                     categories: data.categories,
@@ -1231,9 +1201,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                   ),
                   const SizedBox(height: ButlerlySpacing.standard),
                   ButlerlyPaymentSourceSelector(
-                    key: const ValueKey(
-                      'transaction-payment-source-selector',
-                    ),
+                    key: const ValueKey('transaction-payment-source-selector'),
                     label: context.l10n.text('paymentSource'),
                     clearLabel: context.l10n.text('clear'),
                     sources: data.paymentSources,
@@ -1258,9 +1226,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     title: Text(
-                      MaterialLocalizations.of(
-                        context,
-                      ).formatFullDate(_date),
+                      MaterialLocalizations.of(context).formatFullDate(_date),
                       textAlign: TextAlign.start,
                     ),
                     trailing: Row(
@@ -1295,9 +1261,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
             );
 
             final notesCard = ButlerlyCard(
-              key: const ValueKey(
-                'transaction-editor-description-card',
-              ),
+              key: const ValueKey('transaction-editor-description-card'),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -1307,14 +1271,10 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                   ),
                   const SizedBox(height: ButlerlySpacing.standard),
                   TextFormField(
-                    key: const ValueKey(
-                      'transaction-description-field',
-                    ),
+                    key: const ValueKey('transaction-description-field'),
                     controller: _description,
                     decoration: InputDecoration(
-                      labelText: context.l10n.text(
-                        'descriptionOptional',
-                      ),
+                      labelText: context.l10n.text('descriptionOptional'),
                       prefixIcon: const Icon(Icons.notes_rounded),
                     ),
                     maxLines: 2,
@@ -1325,9 +1285,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                     controller: _notes,
                     decoration: InputDecoration(
                       labelText: context.l10n.text('notesOptional'),
-                      prefixIcon: const Icon(
-                        Icons.sticky_note_2_outlined,
-                      ),
+                      prefixIcon: const Icon(Icons.sticky_note_2_outlined),
                     ),
                     maxLines: 3,
                   ),
@@ -1345,8 +1303,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                       tagNames: data.tagLabels,
                     ),
                     selected: _tagIds,
-                    onChanged: (value) =>
-                        setState(() => _tagIds = value),
+                    onChanged: (value) => setState(() => _tagIds = value),
                     onCreate: () => _createTag(data),
                   ),
                 ],
@@ -1363,9 +1320,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                             desktopWide &&
                             constraints.maxWidth >= 760 &&
                             MediaQuery.textScalerOf(context).scale(14) <= 20;
-                        const gap = SizedBox(
-                          height: ButlerlySpacing.cardGap,
-                        );
+                        const gap = SizedBox(height: ButlerlySpacing.cardGap);
                         return ListView(
                           key: const ValueKey('transaction-editor-list'),
                           // Keep the final field clear of the persistent action.
@@ -1394,11 +1349,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                                   ),
                                   Expanded(
                                     child: Column(
-                                      children: [
-                                        dateCard,
-                                        gap,
-                                        notesCard,
-                                      ],
+                                      children: [dateCard, gap, notesCard],
                                     ),
                                   ),
                                 ],
