@@ -767,66 +767,8 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     final desktop = MediaQuery.sizeOf(context).width >= 900;
     final fieldGap = desktop ? ButlerlySpacing.micro : ButlerlySpacing.standard;
 
-    return Scaffold(
-      appBar: AppBar(title: Text(context.l10n.text('captureReceipt'))),
-      body: SafeArea(
-        child: ButlerlyResponsiveBody(
-          contentKey: const ValueKey('receipt-capture-content'),
-          fullWidth: desktop,
-          child: ListView(
-            padding: const EdgeInsets.all(ButlerlySpacing.standard),
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            children: [
-              if (_source == null) ...[
-                Text(
-                  context.l10n.text('addReceipt'),
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-                const SizedBox(height: ButlerlySpacing.small),
-                FilledButton.icon(
-                  onPressed: _camera,
-                  icon: const Icon(Icons.camera_alt_outlined),
-                  label: Text(context.l10n.text('takePhoto')),
-                ),
-                const SizedBox(height: ButlerlySpacing.compact),
-                OutlinedButton.icon(
-                  onPressed: _photo,
-                  icon: const Icon(Icons.photo_library_outlined),
-                  label: Text(context.l10n.text('choosePhotos')),
-                ),
-                const SizedBox(height: ButlerlySpacing.compact),
-                OutlinedButton.icon(
-                  onPressed: _file,
-                  icon: const Icon(Icons.folder_open_outlined),
-                  label: Text(context.l10n.text('chooseFiles')),
-                ),
-              ] else ...[
-                SizedBox(
-                  height: ButlerlySize.sourcePreviewHeight * 3,
-                  child: Image.file(File(_source!.path), fit: BoxFit.contain),
-                ),
-                if (_processing) ...[
-                  const SizedBox(height: ButlerlySpacing.small),
-                  const LinearProgressIndicator(),
-                  const SizedBox(height: ButlerlySpacing.compact),
-                  Text(context.l10n.text('readingReceipt')),
-                ],
-                if (!_processing) ...[
-                  Row(
-                    children: [
-                      TextButton.icon(
-                        onPressed: _camera,
-                        icon: const Icon(Icons.refresh),
-                        label: Text(context.l10n.text('retake')),
-                      ),
-                      TextButton.icon(
-                        onPressed: _photo,
-                        icon: const Icon(Icons.swap_horiz),
-                        label: Text(context.l10n.text('replace')),
-                      ),
-                    ],
-                  ),
-                  Form(
+
+    final receiptForm = Form(
                     key: _formKey,
                     child: Column(
                       children: [
@@ -990,7 +932,120 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                         ),
                       ],
                     ),
+                  );
+    return Scaffold(
+      appBar: AppBar(title: Text(context.l10n.text('captureReceipt'))),
+      body: SafeArea(
+        child: ButlerlyResponsiveBody(
+          contentKey: const ValueKey('receipt-capture-content'),
+          fullWidth: desktop,
+          child: ListView(
+            padding: const EdgeInsets.all(ButlerlySpacing.standard),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            children: [
+              if (_source == null) ...[
+                Text(
+                  context.l10n.text('addReceipt'),
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+                const SizedBox(height: ButlerlySpacing.small),
+                FilledButton.icon(
+                  onPressed: _camera,
+                  icon: const Icon(Icons.camera_alt_outlined),
+                  label: Text(context.l10n.text('takePhoto')),
+                ),
+                const SizedBox(height: ButlerlySpacing.compact),
+                OutlinedButton.icon(
+                  onPressed: _photo,
+                  icon: const Icon(Icons.photo_library_outlined),
+                  label: Text(context.l10n.text('choosePhotos')),
+                ),
+                const SizedBox(height: ButlerlySpacing.compact),
+                OutlinedButton.icon(
+                  onPressed: _file,
+                  icon: const Icon(Icons.folder_open_outlined),
+                  label: Text(context.l10n.text('chooseFiles')),
+                ),
+              ] else ...[
+                if (desktop)
+                  Row(
+                    key: const ValueKey('receipt-desktop-review-layout'),
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            SizedBox(
+                              height: ButlerlySize.sourcePreviewHeight * 3,
+                              child: Image.file(
+                                File(_source!.path),
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                            if (_processing) ...[
+                              const SizedBox(height: ButlerlySpacing.small),
+                              const LinearProgressIndicator(),
+                              const SizedBox(height: ButlerlySpacing.compact),
+                              Text(context.l10n.text('readingReceipt')),
+                            ] else
+                              Wrap(
+                                children: [
+                                  TextButton.icon(
+                                    onPressed: _camera,
+                                    icon: const Icon(Icons.refresh),
+                                    label: Text(context.l10n.text('retake')),
+                                  ),
+                                  TextButton.icon(
+                                    onPressed: _photo,
+                                    icon: const Icon(Icons.swap_horiz),
+                                    label: Text(context.l10n.text('replace')),
+                                  ),
+                                  TextButton.icon(
+                                    onPressed: _file,
+                                    icon: const Icon(Icons.folder_open_outlined),
+                                    label: Text(context.l10n.text('chooseFiles')),
+                                  ),
+                                ],
+                              ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: ButlerlySpacing.cardGap),
+                      Expanded(
+                        child: _processing
+                            ? const SizedBox.shrink()
+                            : receiptForm,
+                      ),
+                    ],
+                  )
+                else ...[
+                  SizedBox(
+                    height: ButlerlySize.sourcePreviewHeight * 3,
+                    child: Image.file(File(_source!.path), fit: BoxFit.contain),
                   ),
+                  if (_processing) ...[
+                    const SizedBox(height: ButlerlySpacing.small),
+                    const LinearProgressIndicator(),
+                    const SizedBox(height: ButlerlySpacing.compact),
+                    Text(context.l10n.text('readingReceipt')),
+                  ] else ...[
+                    Row(
+                      children: [
+                        TextButton.icon(
+                          onPressed: _camera,
+                          icon: const Icon(Icons.refresh),
+                          label: Text(context.l10n.text('retake')),
+                        ),
+                        TextButton.icon(
+                          onPressed: _photo,
+                          icon: const Icon(Icons.swap_horiz),
+                          label: Text(context.l10n.text('replace')),
+                        ),
+                      ],
+                    ),
+                    receiptForm,
+                  ],
                 ],
               ],
             ],
