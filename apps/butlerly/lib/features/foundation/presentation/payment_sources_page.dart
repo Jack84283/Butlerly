@@ -430,6 +430,11 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
               scrollDirection: Axis.horizontal,
               child: DataTable(
                 showCheckboxColumn: false,
+                dataRowMinHeight: 40,
+                dataRowMaxHeight: 40,
+                headingRowHeight: 44,
+                horizontalMargin: ButlerlySpacing.small,
+                columnSpacing: ButlerlySpacing.standard,
                 columns: [
                   for (final title in headers) DataColumn(label: Text(title)),
                 ],
@@ -445,7 +450,7 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                           Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              ButlerlyPaymentSourceIcon(source: source),
+                              ButlerlyPaymentSourceIcon(source: source, size: 24),
                               const SizedBox(width: ButlerlySpacing.compact),
                               Text(paymentSourceDisplayLabel(source)),
                             ],
