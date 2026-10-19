@@ -678,18 +678,20 @@ class _DesktopPaymentSourceEditorState
     try {
       final listed = await widget.finance.listPaymentSources();
       if (!mounted) return;
-      final duplicates = switch (listed) {
-        ApplicationSuccess<List<PaymentSource>>(:final value) =>
-          value.where((source) =>
-            source.id != widget.existing?.id &&
-            source.status == PaymentSourceStatus.active &&
-            safeLastFour.isNotEmpty &&
-            source.lastFour == safeLastFour &&
-            source.type == _type &&
-            (source.issuer ?? '').trim().toLowerCase() ==
-                _issuer.text.trim().toLowerCase()).toList(),
-        ApplicationFailure<List<PaymentSource>>() => <PaymentSource>[],
-      };
+      final List<PaymentSource> duplicates;
+      if (listed is ApplicationSuccess<List<PaymentSource>>) {
+        duplicates = listed.value.where((source) {
+          return source.id != widget.existing?.id &&
+              source.status == PaymentSourceStatus.active &&
+              safeLastFour.isNotEmpty &&
+              source.lastFour == safeLastFour &&
+              source.type == _type &&
+              (source.issuer ?? '').trim().toLowerCase() ==
+                  _issuer.text.trim().toLowerCase();
+        }).toList(growable: false);
+      } else {
+        duplicates = <PaymentSource>[];
+      }
       if (duplicates.isNotEmpty) {
         final createAnyway = await showDialog<bool>(
           context: context,
