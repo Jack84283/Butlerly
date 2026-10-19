@@ -292,7 +292,7 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
             FilledButton(
               onPressed: () async {
                 final safeLastFour = lastFour.text.trim();
-                final validLastFour = RegExp(r'^\d{4}.hasMatch(safeLastFour);
+                final validLastFour = RegExp(r'^\d{4}
                 if ((paymentSourceRequiresLastFour(type) && !validLastFour) ||
                     (safeLastFour.isNotEmpty && !validLastFour)) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -1074,6 +1074,9 @@ String _enumSuffix(String value) =>
               );
             }
             final values = snapshot.requireData;
+            if (_isDesktop(context)) {
+              return _desktopWorkspace(values);
+            }
             if (values.isEmpty) {
               return ButlerlyEmptyState(
                 icon: Icons.account_balance_wallet_outlined,
@@ -1082,9 +1085,6 @@ String _enumSuffix(String value) =>
                 actionLabel: context.l10n.text('addPaymentSource'),
                 onAction: _add,
               );
-            }
-            if (_isDesktop(context)) {
-              return _desktopWorkspace(values);
             }
             return ButlerlyCard(
               padding: EdgeInsets.zero,
