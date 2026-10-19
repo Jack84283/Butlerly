@@ -508,6 +508,9 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
               );
             }
             final values = snapshot.requireData;
+            if (_isDesktop(context)) {
+              return _desktopWorkspace(values);
+            }
             if (values.isEmpty) {
               return ButlerlyEmptyState(
                 icon: Icons.account_balance_wallet_outlined,
@@ -516,9 +519,6 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                 actionLabel: context.l10n.text('addPaymentSource'),
                 onAction: _add,
               );
-            }
-            if (_isDesktop(context)) {
-              return _desktopWorkspace(values);
             }
             return ButlerlyCard(
               padding: EdgeInsets.zero,
