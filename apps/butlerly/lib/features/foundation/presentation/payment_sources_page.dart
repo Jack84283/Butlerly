@@ -416,7 +416,9 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
     ];
     final table = ButlerlyCard(
       padding: const EdgeInsets.all(ButlerlySpacing.small),
-      child: SingleChildScrollView(
+      child: ButlerlyCard(
+        padding: const EdgeInsets.all(ButlerlySpacing.small),
+        child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
           showCheckboxColumn: false,
@@ -430,7 +432,14 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                     _desktopEditorOpen,
                 onSelectChanged: (_) => _openDesktopEditor(existing: source),
                 cells: [
-                  DataCell(Text(paymentSourceDisplayLabel(source))),
+                  DataCell(Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ButlerlyPaymentSourceIcon(source: source),
+                      const SizedBox(width: ButlerlySpacing.compact),
+                      Text(paymentSourceDisplayLabel(source)),
+                    ],
+                  )),
                   DataCell(Text(_typeLabel(context, source.type))),
                   DataCell(Text(source.issuer ?? '—')),
                   DataCell(Text(source.lastFour ?? '—')),
@@ -439,6 +448,7 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                 ],
               ),
           ],
+        ),
         ),
       ),
     );
@@ -634,6 +644,7 @@ class _DesktopPaymentSourceEditorState
   late PaymentSourceType _type;
   String? _network;
   bool _saving = false;
+  bool _active = true;
 
   @override
   void initState() {
@@ -653,6 +664,8 @@ class _DesktopPaymentSourceEditorState
     _note = TextEditingController(text: existing?.note);
     _type = existing?.type ?? scanned?.type ?? PaymentSourceType.account;
     _network = existing?.network ?? detectedNetwork;
+    _active = existing?.status == null ||
+        existing!.status == PaymentSourceStatus.active;
   }
 
   @override
@@ -726,11 +739,20 @@ class _DesktopPaymentSourceEditorState
           network: _network,
           currency: _currency.text.trim().toUpperCase(),
           note: _note.text.trim().isEmpty ? null : _note.text.trim(),
-          status: widget.existing?.status ?? PaymentSourceStatus.active,
+          status: _active ? PaymentSourceStatus.active :
+              (widget.existing?.status ?? PaymentSourceStatus.active),
         ),
       );
       if (!mounted) return;
       if (result is ApplicationSuccess<PaymentSource>) {
+        if (!_active) {
+          final archived = await widget.finance.archivePaymentSource(result.value.id.value);
+          if (!mounted) return;
+          if (archived is ApplicationFailure<PaymentSource>) {
+            widget.onError(context.l10n.text('paymentSourceArchiveFailed'));
+            return;
+          }
+        }
         widget.onSaved();
       } else {
         widget.onError(context.l10n.text('paymentSourceSaveFailed'));
@@ -744,7 +766,7 @@ class _DesktopPaymentSourceEditorState
 
   @override
   Widget build(BuildContext context) {
-    final gap = SizedBox(height: ButlerlySpacing.micro);
+    const gap = SizedBox(height: ButlerlySpacing.small);
     return ButlerlyCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -831,6 +853,13 @@ class _DesktopPaymentSourceEditorState
                   setState(() => _network = value == '' ? null : value),
             ),
           ],
+          const SizedBox(height: ButlerlySpacing.small),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(context.l10n.text('paymentSourceStatusActive')),
+            value: _active,
+            onChanged: (value) => setState(() => _active = value),
+          ),
           const SizedBox(height: ButlerlySpacing.small),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
