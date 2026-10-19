@@ -426,38 +426,41 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
             key: const ValueKey('payment-sources-inner-card'),
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
             padding: const EdgeInsets.all(ButlerlySpacing.small),
-        child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          showCheckboxColumn: false,
-          columns: [
-            for (final title in headers) DataColumn(label: Text(title)),
-          ],
-          rows: [
-            for (final source in values)
-              DataRow(
-                selected: _desktopSelected?.id == source.id &&
-                    _desktopEditorOpen,
-                onSelectChanged: (_) => _openDesktopEditor(existing: source),
-                cells: [
-                  DataCell(Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      ButlerlyPaymentSourceIcon(source: source),
-                      const SizedBox(width: ButlerlySpacing.compact),
-                      Text(paymentSourceDisplayLabel(source)),
-                    ],
-                  )),
-                  DataCell(Text(_typeLabel(context, source.type))),
-                  DataCell(Text(source.issuer ?? '—')),
-                  DataCell(Text(source.lastFour ?? '—')),
-                  DataCell(Text(source.currency ?? '—')),
-                  DataCell(Text(_statusLabel(context, source.status))),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                showCheckboxColumn: false,
+                columns: [
+                  for (final title in headers) DataColumn(label: Text(title)),
+                ],
+                rows: [
+                  for (final source in values)
+                    DataRow(
+                      selected: _desktopSelected?.id == source.id &&
+                          _desktopEditorOpen,
+                      onSelectChanged: (_) =>
+                          _openDesktopEditor(existing: source),
+                      cells: [
+                        DataCell(
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ButlerlyPaymentSourceIcon(source: source),
+                              const SizedBox(width: ButlerlySpacing.compact),
+                              Text(paymentSourceDisplayLabel(source)),
+                            ],
+                          ),
+                        ),
+                        DataCell(Text(_typeLabel(context, source.type))),
+                        DataCell(Text(source.issuer ?? '—')),
+                        DataCell(Text(source.lastFour ?? '—')),
+                        DataCell(Text(source.currency ?? '—')),
+                        DataCell(Text(_statusLabel(context, source.status))),
+                      ],
+                    ),
                 ],
               ),
-          ],
-        ),
-          ),
+            ),
           ),
         ],
       ),
