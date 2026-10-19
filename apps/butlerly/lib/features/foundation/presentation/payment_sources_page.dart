@@ -415,9 +415,17 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
       context.l10n.text('status'),
     ];
     final table = ButlerlyCard(
+      key: const ValueKey('payment-sources-outer-card'),
       padding: const EdgeInsets.all(ButlerlySpacing.small),
-      child: ButlerlyCard(
-        padding: const EdgeInsets.all(ButlerlySpacing.small),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ButlerlyCardHeader(title: context.l10n.text('paymentSources')),
+          const SizedBox(height: ButlerlySpacing.compact),
+          ButlerlyCard(
+            key: const ValueKey('payment-sources-inner-card'),
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            padding: const EdgeInsets.all(ButlerlySpacing.small),
         child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
@@ -449,7 +457,8 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
               ),
           ],
         ),
-        ),
+          ),
+        ],
       ),
     );
     if (!_desktopEditorOpen) return table;
