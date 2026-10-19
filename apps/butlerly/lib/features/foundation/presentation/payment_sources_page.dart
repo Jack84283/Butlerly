@@ -432,7 +432,7 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                 showCheckboxColumn: false,
                 dataRowMinHeight: 40,
                 dataRowMaxHeight: 40,
-                headingRowHeight: 44,
+                headingRowHeight: 36,
                 horizontalMargin: ButlerlySpacing.small,
                 columnSpacing: ButlerlySpacing.standard,
                 columns: [
