@@ -668,15 +668,7 @@ class _DesktopPaymentSourceEditorState
   Future<void> _save() async {
     if (_saving) return;
     final safeLastFour = _lastFour.text.trim();
-    final validLastFour = RegExp(r'^\d{4}BuildContext context, PaymentSourceType value) =>
-    context.l10n.text('paymentSourceType${_enumSuffix(value.name)}');
-
-String _statusLabel(BuildContext context, PaymentSourceStatus value) =>
-    context.l10n.text('paymentSourceStatus${_enumSuffix(value.name)}');
-
-String _enumSuffix(String value) =>
-    '${value[0].toUpperCase()}${value.substring(1)}';
-).hasMatch(safeLastFour);
+    final validLastFour = RegExp(r'^\d{4}$').hasMatch(safeLastFour);
     if ((paymentSourceRequiresLastFour(_type) && !validLastFour) ||
         (safeLastFour.isNotEmpty && !validLastFour)) {
       widget.onError(context.l10n.text('invalidLastFour'));
