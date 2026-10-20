@@ -470,7 +470,9 @@ class ButlerlyCompactSelector extends StatelessWidget {
     enabled: onPressed != null,
     label: semanticLabel ?? label,
     child: ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: ButlerlyButtonTokens.iconTouchTarget),
+      constraints: const BoxConstraints(
+        minHeight: ButlerlyButtonTokens.iconTouchTarget,
+      ),
       child: TextButton(
         key: buttonKey,
         onPressed: onPressed,
