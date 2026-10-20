@@ -1,6 +1,8 @@
+import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_action_group.dart';
+import 'package:butlerly/design_system/components/butlerly_desktop_transaction_table.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
@@ -124,6 +126,12 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final desktop =
+        effectiveButlerlyLayoutMode(
+          context,
+          MediaQuery.sizeOf(context).width,
+        ) ==
+        ButlerlyLayoutMode.wide;
     if (_finance?.listPaymentSettlements == null) {
       return ButlerlyEmptyState(
         icon: Icons.storage_outlined,
@@ -150,6 +158,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
         final data = snapshot.requireData;
         return ButlerlyPage(
           title: context.l10n.text('paymentSettlements'),
+          fullWidth: desktop,
           subtitle: context.l10n.text('paymentSettlementsSubtitle'),
           onRefresh: _refresh,
           actions: [
@@ -192,7 +201,14 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
                 actionLabel: context.l10n.text('addPaymentSettlement'),
                 onAction: () => _createSettlement(data),
               )
-            else ...[
+            else if (desktop) ...[
+              _SettlementDesktopOverview(data: data),
+              const SizedBox(height: ButlerlySpacing.cardGap),
+              _SettlementDesktopTable(
+                data: data,
+                onOpen: (settlement) => _openSettlement(settlement, data),
+              ),
+            ] else ...[
               for (final settlement in data.settlements) ...[
                 _SettlementCard(
                   settlement: settlement,
@@ -410,6 +426,12 @@ class _PaymentSettlementDetailPageState
 
   @override
   Widget build(BuildContext context) {
+    final desktop =
+        effectiveButlerlyLayoutMode(
+          context,
+          MediaQuery.sizeOf(context).width,
+        ) ==
+        ButlerlyLayoutMode.wide;
     return FutureBuilder<PaymentSettlementDetailDto>(
       future: _detail,
       builder: (context, snapshot) {
@@ -438,6 +460,7 @@ class _PaymentSettlementDetailPageState
         return Scaffold(
           body: ButlerlyPage(
             title: context.l10n.text('paymentSettlement'),
+            fullWidth: desktop,
             onRefresh: _refresh,
             actions: [
               IconButton(
@@ -469,6 +492,13 @@ class _PaymentSettlementDetailPageState
                   title: context.l10n.text('noTransactions'),
                   message: context.l10n.text('noActivityInPeriod'),
                 )
+              else if (desktop)
+                ButlerlyDesktopTransactionTableCard(
+                  transactions: detail.transactions,
+                  masterData: _masterData,
+                  paymentSourceNames: widget.sourceNames,
+                  onTap: _openTransaction,
+                )
               else
                 ButlerlyTransactionInnerCard(
                   child: ButlerlyTransactionList(
@@ -490,6 +520,210 @@ class _PaymentSettlementDetailPageState
           ),
         );
       },
+    );
+  }
+}
+
+/// High-level desktop counters. These are counts, never summed across currencies.
+class _SettlementDesktopOverview extends StatelessWidget {
+  const _SettlementDesktopOverview({required this.data});
+
+  final _SettlementListData data;
+
+  @override
+  Widget build(BuildContext context) {
+    final settlements = data.settlements;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cards = <Widget>[
+          _SettlementCounterCard(
+            label: context.l10n.text('paymentSettlements'),
+            count: settlements.length,
+          ),
+          _SettlementCounterCard(
+            label: context.l10n.text('paymentSettlementOpen'),
+            count: settlements
+                .where((value) => value.status == PaymentSettlementStatus.open)
+                .length,
+          ),
+          _SettlementCounterCard(
+            label: context.l10n.text('paymentSettlementReconciled'),
+            count: settlements
+                .where(
+                  (value) => value.status == PaymentSettlementStatus.reconciled,
+                )
+                .length,
+          ),
+          _SettlementCounterCard(
+            label: context.l10n.text('needsReview'),
+            count: settlements
+                .where(
+                  (value) => value.status == PaymentSettlementStatus.needsReview,
+                )
+                .length,
+          ),
+        ];
+        const gap = ButlerlySpacing.cardGap;
+        final columns = constraints.maxWidth >= 900 ? 4 : 2;
+        final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            for (final card in cards) SizedBox(width: width, child: card),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _SettlementCounterCard extends StatelessWidget {
+  const _SettlementCounterCard({required this.label, required this.count});
+
+  final String label;
+  final int count;
+
+  @override
+  Widget build(BuildContext context) => ButlerlyCard(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: Theme.of(context).textTheme.bodyMedium),
+        const SizedBox(height: ButlerlySpacing.small),
+        Text('$count', style: Theme.of(context).textTheme.headlineMedium),
+      ],
+    ),
+  );
+}
+
+class _SettlementDesktopTable extends StatelessWidget {
+  const _SettlementDesktopTable({
+    required this.data,
+    required this.onOpen,
+  });
+
+  final _SettlementListData data;
+  final ValueChanged<PaymentSettlementDto> onOpen;
+
+  static const double minimumWidth = 920;
+
+  @override
+  Widget build(BuildContext context) => ButlerlyCard(
+    padding: const EdgeInsets.all(ButlerlySpacing.cardGap),
+    child: ButlerlyDesktopInnerCard(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final table = Column(
+            key: const ValueKey('desktop-payment-settlements-table'),
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(flex: 3, child: _heading(context, 'paymentSource')),
+                  SizedBox(width: 110, child: _heading(context, 'date')),
+                  Expanded(
+                    flex: 3,
+                    child: _heading(context, 'paymentSettlementPeriod'),
+                  ),
+                  SizedBox(
+                    width: 145,
+                    child: _heading(context, 'paymentSettlementAmount'),
+                  ),
+                  SizedBox(width: 135, child: _heading(context, 'status')),
+                  const SizedBox(width: 24),
+                ],
+              ),
+              const SizedBox(height: ButlerlyTableTokens.headerToRowsGap),
+              _divider(context),
+              for (final settlement in data.settlements) ...[
+                _row(context, settlement),
+                _divider(context),
+              ],
+            ],
+          );
+          if (constraints.maxWidth >= minimumWidth) return table;
+          return SingleChildScrollView(
+            key: const ValueKey('desktop-payment-settlements-horizontal-scroll'),
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(width: minimumWidth, child: table),
+          );
+        },
+      ),
+    ),
+  );
+
+  Widget _heading(BuildContext context, String key) => Text(
+    context.l10n.text(key),
+    style: ButlerlyTableTokens.headerTextStyle(context),
+    maxLines: 1,
+    overflow: TextOverflow.ellipsis,
+  );
+
+  Widget _divider(BuildContext context) => Divider(
+    height: ButlerlyTableTokens.dividerThickness,
+    thickness: ButlerlyTableTokens.dividerThickness,
+    color: ButlerlyTableTokens.dividerColor(context),
+  );
+
+  Widget _row(BuildContext context, PaymentSettlementDto settlement) {
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    final paymentDate = DateTime.tryParse(settlement.paymentDate);
+    final date = paymentDate == null
+        ? settlement.paymentDate
+        : DateFormat.yMMMd(locale).format(paymentDate);
+    final amount =
+        '${settlement.payment.currency.value} '
+        '${localizedTransactionAmount(context, settlement.payment.amount.toString())}';
+    return Material(
+      type: MaterialType.transparency,
+      child: InkWell(
+        key: ValueKey('desktop-payment-settlement-${settlement.id}'),
+        onTap: () => onOpen(settlement),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            vertical: ButlerlyTableTokens.rowVerticalPadding,
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: Text(
+                  data.sourceNames[settlement.paymentSourceId] ??
+                      settlement.paymentSourceId,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              SizedBox(width: 110, child: Text(date)),
+              Expanded(
+                flex: 3,
+                child: Text(
+                  '${settlement.periodStart} – ${settlement.periodEnd}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              SizedBox(
+                width: 145,
+                child: Text(amount, maxLines: 1, overflow: TextOverflow.ellipsis),
+              ),
+              SizedBox(
+                width: 135,
+                child: Text(
+                  context.l10n.text(switch (settlement.status) {
+                    PaymentSettlementStatus.open => 'paymentSettlementOpen',
+                    PaymentSettlementStatus.reconciled =>
+                      'paymentSettlementReconciled',
+                    PaymentSettlementStatus.needsReview => 'needsReview',
+                  }),
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded, size: 24),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
