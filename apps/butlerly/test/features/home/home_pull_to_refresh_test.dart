@@ -829,7 +829,7 @@ void main() {
     );
     expect(
       container.padding,
-      const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+      const EdgeInsets.fromLTRB(4, 10, 4, ButlerlySpacing.small),
     );
     final content = tester.widget<Column>(
       find.byKey(const ValueKey('home-summary-metric-income')),
