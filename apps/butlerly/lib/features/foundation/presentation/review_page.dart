@@ -1196,6 +1196,10 @@ class _StatementDuplicateGroupCardState
                               () => _selectedTransactionId =
                                   TransactionId(transaction.id),
                             ),
+                            selectedTransactionId: _selectedTransactionId?.value,
+                            onSelectionChanged: (id) => setState(
+                              () => _selectedTransactionId = TransactionId(id),
+                            ),
                           )
                         else
                           RadioGroup<TransactionId>(
@@ -1417,6 +1421,10 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
                       },
                       onTap: (transaction) => setState(
                         () => _selectedTransactionId = TransactionId(transaction.id),
+                      ),
+                      selectedTransactionId: _selectedTransactionId?.value,
+                      onSelectionChanged: (id) => setState(
+                        () => _selectedTransactionId = TransactionId(id),
                       ),
                     );
                   }
