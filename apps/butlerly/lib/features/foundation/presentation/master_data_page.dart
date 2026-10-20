@@ -504,6 +504,7 @@ class _MasterDataList extends StatelessWidget {
       children: [
         for (final category in values)
           _Row(
+            desktop: desktop,
             title: data.categoryLabel(category),
             subtitle: index == 1
                 ? data.categories
