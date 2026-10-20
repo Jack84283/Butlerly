@@ -384,6 +384,20 @@ void main() {
     expect(greeting, findsOneWidget);
     expect(month, findsOneWidget);
     expect(tester.widget<Text>(greeting).textAlign, TextAlign.start);
+    final headerWidget = tester.widget<Container>(header);
+    expect(tester.getSize(header).height, ButlerlySize.pageToolbarHeight);
+    expect(
+      headerWidget.padding,
+      const EdgeInsets.symmetric(horizontal: ButlerlySize.contentGutter),
+    );
+    final appBarTitleStyle = Theme.of(
+      tester.element(greeting),
+    ).appBarTheme.titleTextStyle;
+    expect(tester.widget<Text>(greeting).style, appBarTitleStyle);
+    expect(
+      tester.getRect(greeting).left - tester.getRect(header).left,
+      closeTo(ButlerlySize.contentGutter, 0.01),
+    );
     expect(
       tester.getRect(greeting).right,
       lessThanOrEqualTo(tester.getRect(previous).left),
