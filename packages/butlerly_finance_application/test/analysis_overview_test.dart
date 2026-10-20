@@ -38,6 +38,31 @@ void main() {
     expect(overview.transactionCount, same(count.metric));
   });
 
+  test('projects the transaction-count prior-period comparison', () {
+    final count = _result(
+      'ANL-R704',
+      '12',
+      role: AnalysisSemanticRole.eligibleTransactionCount,
+    );
+    final comparison = AnalysisComparison(
+      currentValue: DecimalValue.parse('12'),
+      baselineValue: DecimalValue.parse('8'),
+      absoluteChange: DecimalValue.parse('4'),
+      percentageChange: DecimalValue.parse('50'),
+      availability: AnalysisDataAvailability.sufficient,
+    );
+    final overview = AnalysisOverview.fromResults([
+      RuleExecutionResult(
+        rule: count.rule,
+        metric: count.metric,
+        comparison: comparison,
+      ),
+    ]);
+
+    expect(overview.transactionCount?.value, DecimalValue.parse('12'));
+    expect(overview.transactionCountComparison, same(comparison));
+  });
+
   test('derives savings and category shares from authoritative metrics', () {
     final spending = _result(
       'ANL-R701',
