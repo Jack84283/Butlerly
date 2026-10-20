@@ -43,6 +43,18 @@ void main() {
       AppTheme.light.colorScheme.onPrimaryContainer,
     );
     expect(selectedButton.style?.side?.resolve({}), BorderSide.none);
+    expect(
+      selectedButton.style?.minimumSize,
+      isNotNull,
+    );
+    expect(
+      selectedButton.style?.minimumSize?.width,
+      120,
+    );
+    expect(
+      selectedButton.style?.minimumSize?.height,
+      32,
+    );
     final first = tester.getRect(find.text('All'));
     final last = tester.getRect(find.text('Archived'));
     final selectorCenter = tester.getCenter(
