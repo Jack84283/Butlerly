@@ -807,24 +807,12 @@ class _DesktopPaymentSourceEditorState
         duplicates = <PaymentSource>[];
       }
       if (duplicates.isNotEmpty) {
-        final createAnyway = await showDialog<bool>(
+        final createAnyway = await showButlerlyConfirmationSheet(
           context: context,
-          builder: (dialogContext) => AlertDialog(
-            title: Text(dialogContext.l10n.text('duplicatePaymentSource')),
-            content: Text(
-              dialogContext.l10n.text('duplicatePaymentSourceBody'),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext, false),
-                child: Text(dialogContext.l10n.text('useExisting')),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(dialogContext, true),
-                child: Text(dialogContext.l10n.text('createAnyway')),
-              ),
-            ],
-          ),
+          title: context.l10n.text('duplicatePaymentSource'),
+          message: context.l10n.text('duplicatePaymentSourceBody'),
+          cancelLabel: context.l10n.text('useExisting'),
+          confirmLabel: context.l10n.text('createAnyway'),
         );
         if (!mounted || createAnyway != true) return;
       }
