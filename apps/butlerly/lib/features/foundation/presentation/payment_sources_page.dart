@@ -460,8 +460,9 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                             ),
                         ],
                       ),
+                      const SizedBox(height: ButlerlyTableTokens.headerToRowsGap),
                       Divider(
-                        height: ButlerlyTableTokens.headerToRowsGap,
+                        height: ButlerlyTableTokens.dividerThickness,
                         thickness: ButlerlyTableTokens.dividerThickness,
                         color: ButlerlyTableTokens.dividerColor(context),
                       ),
