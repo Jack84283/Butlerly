@@ -111,6 +111,7 @@ class InsightGroupedList extends StatelessWidget {
     required this.masterData,
     required this.canViewTransactions,
     required this.onViewTransactions,
+    this.desktopGrid = false,
   });
 
   final List<InsightResult> results;
@@ -118,6 +119,7 @@ class InsightGroupedList extends StatelessWidget {
   final TransactionMasterData masterData;
   final bool Function(InsightResult) canViewTransactions;
   final ValueChanged<InsightResult> onViewTransactions;
+  final bool desktopGrid;
 
   @override
   Widget build(BuildContext context) {
@@ -147,9 +149,8 @@ class InsightGroupedList extends StatelessWidget {
           .add(result);
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: _withGroupedInsightCardSpacing([
+    final cards = <Widget>[
+
         for (final group in insightPresentationGroupOrder)
           if (grouped[group] case final items? when items.isNotEmpty)
             ButlerlyCard(
@@ -219,7 +220,30 @@ class InsightGroupedList extends StatelessWidget {
                 ],
               ),
             ),
-      ]),
+    ];
+
+    if (!desktopGrid) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: _withGroupedInsightCardSpacing(cards),
+      );
+    }
+
+    return LayoutBuilder(
+      key: const ValueKey('desktop-insights-findings-grid'),
+      builder: (context, constraints) {
+        const gap = ButlerlySpacing.cardGap;
+        final columns = constraints.maxWidth >= 900 ? 2 : 1;
+        final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            for (final card in cards)
+              SizedBox(width: width, child: card),
+          ],
+        );
+      },
     );
   }
 }
