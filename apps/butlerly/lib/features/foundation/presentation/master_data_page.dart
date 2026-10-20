@@ -1,8 +1,10 @@
+import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_compact_section_selector.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -296,8 +298,16 @@ class _MasterDataPageState extends State<MasterDataPage> {
   }
 
   @override
-  Widget build(BuildContext context) => ButlerlyPage(
+  Widget build(BuildContext context) {
+    final desktop =
+        effectiveButlerlyLayoutMode(
+          context,
+          MediaQuery.sizeOf(context).width,
+        ) ==
+        ButlerlyLayoutMode.wide;
+    return ButlerlyPage(
     title: context.l10n.text('masterData'),
+    fullWidth: desktop,
     pinnedSpacing: ButlerlyPinnedPageSpacing.tightHeader,
     actions: [
       Padding(
@@ -349,6 +359,7 @@ class _MasterDataPageState extends State<MasterDataPage> {
           }
           final data = snapshot.requireData;
           return _MasterDataList(
+            desktop: desktop,
             index: _sectionIndex,
             data: data,
             onChanged: _refresh,
@@ -360,6 +371,7 @@ class _MasterDataPageState extends State<MasterDataPage> {
       const SizedBox(height: ButlerlySpacing.structural),
     ],
   );
+  }
 }
 
 final class _MasterData {
@@ -385,6 +397,7 @@ final class _MasterData {
 
 class _MasterDataList extends StatelessWidget {
   const _MasterDataList({
+    required this.desktop,
     required this.index,
     required this.data,
     required this.onChanged,
@@ -392,6 +405,7 @@ class _MasterDataList extends StatelessWidget {
     required this.onEdit,
   });
 
+  final bool desktop;
   final int index;
   final _MasterData data;
   final VoidCallback onChanged;
@@ -409,9 +423,11 @@ class _MasterDataList extends StatelessWidget {
   Widget build(BuildContext context) {
     if (index == 2) {
       return _ListCard(
+        desktop: desktop,
         children: [
           for (final tag in data.tags)
             _Row(
+              desktop: desktop,
               title: data.tagLabel(tag),
               origin: tag.id.value.startsWith('tag.')
                   ? context.l10n.text('builtin')
@@ -441,9 +457,11 @@ class _MasterDataList extends StatelessWidget {
 
     if (index == 3) {
       return _ListCard(
+        desktop: desktop,
         children: [
           for (final merchant in data.merchants)
             _Row(
+              desktop: desktop,
               title: merchant.name,
               origin: merchant.isBuiltIn
                   ? context.l10n.text('builtin')
@@ -482,6 +500,7 @@ class _MasterDataList extends StatelessWidget {
           index == 0 ? category.parentId == null : category.parentId != null,
     );
     return _ListCard(
+        desktop: desktop,
       children: [
         for (final category in values)
           _Row(
@@ -525,25 +544,107 @@ class _MasterDataList extends StatelessWidget {
 }
 
 class _ListCard extends StatelessWidget {
-  const _ListCard({required this.children});
+  const _ListCard({required this.children, required this.desktop});
 
   final List<Widget> children;
+  final bool desktop;
+
+  static const double minimumTableWidth = 800;
+  static const double originWidth = 112;
+  static const double statusWidth = 112;
+  static const double actionsWidth = 116;
 
   @override
-  Widget build(BuildContext context) => children.isEmpty
-      ? ButlerlyEmptyState(
-          icon: Icons.folder_open_outlined,
-          title: context.l10n.text('noMasterData'),
-          message: context.l10n.text('masterDataSubtitle'),
-        )
-      : ButlerlyCard(
-          padding: EdgeInsets.zero,
-          child: ButlerlySeparatedList(children: children),
-        );
+  Widget build(BuildContext context) {
+    if (children.isEmpty) {
+      return ButlerlyEmptyState(
+        icon: Icons.folder_open_outlined,
+        title: context.l10n.text('noMasterData'),
+        message: context.l10n.text('masterDataSubtitle'),
+      );
+    }
+    if (!desktop) {
+      return ButlerlyCard(
+        padding: EdgeInsets.zero,
+        child: ButlerlySeparatedList(children: children),
+      );
+    }
+    return ButlerlyCard(
+      padding: const EdgeInsets.all(ButlerlySpacing.cardGap),
+      child: ButlerlyDesktopInnerCard(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final table = Column(
+              key: const ValueKey('desktop-master-data-table'),
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(flex: 3, child: _heading(context, 'name')),
+                    Expanded(
+                      flex: 3,
+                      child: _heading(context, 'masterDataTableDetails'),
+                    ),
+                    SizedBox(
+                      width: originWidth,
+                      child: _heading(context, 'origin'),
+                    ),
+                    SizedBox(
+                      width: statusWidth,
+                      child: _heading(context, 'status'),
+                    ),
+                    SizedBox(
+                      width: actionsWidth,
+                      child: _heading(
+                        context,
+                        'masterDataTableActions',
+                        align: TextAlign.end,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: ButlerlyTableTokens.headerToRowsGap),
+                _divider(context),
+                for (final child in children) ...[
+                  child,
+                  _divider(context),
+                ],
+              ],
+            );
+            if (constraints.maxWidth >= minimumTableWidth) return table;
+            return SingleChildScrollView(
+              key: const ValueKey('desktop-master-data-horizontal-scroll'),
+              scrollDirection: Axis.horizontal,
+              child: SizedBox(width: minimumTableWidth, child: table),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _heading(
+    BuildContext context,
+    String key, {
+    TextAlign align = TextAlign.start,
+  }) => Text(
+    context.l10n.text(key),
+    style: ButlerlyTableTokens.headerTextStyle(context),
+    textAlign: align,
+    maxLines: 1,
+    overflow: TextOverflow.ellipsis,
+  );
+
+  Widget _divider(BuildContext context) => Divider(
+    height: ButlerlyTableTokens.dividerThickness,
+    thickness: ButlerlyTableTokens.dividerThickness,
+    color: ButlerlyTableTokens.dividerColor(context),
+  );
 }
 
 class _Row extends StatelessWidget {
   const _Row({
+    required this.desktop,
     required this.title,
     required this.origin,
     required this.active,
@@ -552,6 +653,7 @@ class _Row extends StatelessWidget {
     this.subtitle,
   });
 
+  final bool desktop;
   final String title;
   final String? subtitle;
   final String origin;
@@ -560,7 +662,9 @@ class _Row extends StatelessWidget {
   final VoidCallback? onEdit;
 
   @override
-  Widget build(BuildContext context) => ListTile(
+  Widget build(BuildContext context) => desktop
+      ? _desktopRow(context)
+      : ListTile(
     title: Text(title),
     subtitle: Text(
       [
@@ -594,6 +698,69 @@ class _Row extends StatelessWidget {
                 ),
             ],
           ),
+  );
+  
+  Widget _desktopRow(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(
+      vertical: ButlerlyTableTokens.rowVerticalPadding,
+    ),
+    child: Row(
+      children: [
+        Expanded(
+          flex: 3,
+          child: Text(
+            title,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 2,
+          ),
+        ),
+        Expanded(
+          flex: 3,
+          child: Text(
+            subtitle ?? '—',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        SizedBox(width: _ListCard.originWidth, child: Text(origin)),
+        SizedBox(
+          width: _ListCard.statusWidth,
+          child: Text(
+            context.l10n.text(active ? 'active' : 'archived'),
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ),
+        SizedBox(
+          width: _ListCard.actionsWidth,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              if (onEdit != null)
+                IconButton(
+                  tooltip: context.l10n.text('edit'),
+                  icon: const Icon(Icons.edit_outlined),
+                  onPressed: onEdit,
+                ),
+              if (onToggle != null)
+                IconButton(
+                  tooltip: context.l10n.text(
+                    active ? 'deactivate' : 'reactivate',
+                  ),
+                  icon: Icon(
+                    active
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                  ),
+                  onPressed: onToggle,
+                ),
+            ],
+          ),
+        ),
+      ],
+    ),
   );
 }
 
