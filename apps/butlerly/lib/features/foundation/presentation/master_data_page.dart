@@ -750,6 +750,8 @@ class _Row extends StatelessWidget {
                   icon: const Icon(Icons.edit_outlined),
                   onPressed: onEdit,
                 ),
+              if (onEdit != null && onToggle != null)
+                const SizedBox(width: ButlerlySpacing.small),
               if (onToggle != null)
                 IconButton(
                   constraints: const BoxConstraints.tightFor(width: 24, height: 24),
