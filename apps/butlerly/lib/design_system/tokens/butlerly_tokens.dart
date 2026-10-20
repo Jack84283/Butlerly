@@ -58,6 +58,12 @@ abstract final class ButlerlyTableTokens {
   static const horizontalMargin = ButlerlySpacing.small;
   static const columnSpacing = ButlerlySpacing.standard;
   static const dividerThickness = 0.5;
+
+  static TextStyle headerTextStyle(BuildContext context) =>
+      (Theme.of(context).textTheme.bodyMedium ?? const TextStyle()).copyWith(
+        color: Theme.of(context).colorScheme.onSurface,
+        fontWeight: FontWeight.w600,
+      );
 }
 
 /// Shared geometry for standard Butlerly modal bottom sheets.
