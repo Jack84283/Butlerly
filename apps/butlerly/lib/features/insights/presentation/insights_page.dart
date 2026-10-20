@@ -290,59 +290,59 @@ class _InsightsPageState extends State<InsightsPage> {
         ) ==
         ButlerlyLayoutMode.wide;
     return Scaffold(
-    body: FutureBuilder<ApplicationResult<InsightsEvaluation>>(
-      future: _result,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return ButlerlyPage(
-            title: context.l10n.text('insights'),
-            fullWidth: desktop,
+      body: FutureBuilder<ApplicationResult<InsightsEvaluation>>(
+        future: _result,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return ButlerlyPage(
+              title: context.l10n.text('insights'),
+              fullWidth: desktop,
+              onRefresh: _reload,
+              refreshKey: const ValueKey('insights-pull-to-refresh'),
+              children: const [Center(child: CircularProgressIndicator())],
+            );
+          }
+          final result = snapshot.data;
+          if (result is! ApplicationSuccess<InsightsEvaluation>) {
+            return ButlerlyPage(
+              title: context.l10n.text('insights'),
+              fullWidth: desktop,
+              onRefresh: _reload,
+              refreshKey: const ValueKey('insights-pull-to-refresh'),
+              children: [
+                ButlerlyErrorState(
+                  title: context.l10n.text('insightsUnavailable'),
+                  message: context.l10n.text('insightsUnavailableBody'),
+                  preserved: context.l10n.text('dataPreserved'),
+                  actionLabel: context.l10n.text('tryAgain'),
+                  onAction: _reload,
+                ),
+              ],
+            );
+          }
+          return _InsightsContent(
+            evaluation: result.value,
+            masterData: _presentation,
+            period: _period,
+            onPeriodChanged: (value) => value == 'selected_period'
+                ? _chooseCustomPeriod()
+                : _selectPeriod(value),
             onRefresh: _reload,
-            refreshKey: const ValueKey('insights-pull-to-refresh'),
-            children: const [Center(child: CircularProgressIndicator())],
+            onViewTransactions: (insight) {
+              if (!_hasPreciseDrillDown(insight)) return;
+              final path = Uri(
+                path: '/search',
+                queryParameters: _drillDownQueryParameters(insight),
+              ).toString();
+              if (widget.onNavigationRequested case final callback?) {
+                callback(path);
+              } else {
+                context.push(path);
+              }
+            },
           );
-        }
-        final result = snapshot.data;
-        if (result is! ApplicationSuccess<InsightsEvaluation>) {
-          return ButlerlyPage(
-            title: context.l10n.text('insights'),
-            fullWidth: desktop,
-            onRefresh: _reload,
-            refreshKey: const ValueKey('insights-pull-to-refresh'),
-            children: [
-              ButlerlyErrorState(
-                title: context.l10n.text('insightsUnavailable'),
-                message: context.l10n.text('insightsUnavailableBody'),
-                preserved: context.l10n.text('dataPreserved'),
-                actionLabel: context.l10n.text('tryAgain'),
-                onAction: _reload,
-              ),
-            ],
-          );
-        }
-        return _InsightsContent(
-          evaluation: result.value,
-          masterData: _presentation,
-          period: _period,
-          onPeriodChanged: (value) => value == 'selected_period'
-              ? _chooseCustomPeriod()
-              : _selectPeriod(value),
-          onRefresh: _reload,
-          onViewTransactions: (insight) {
-            if (!_hasPreciseDrillDown(insight)) return;
-            final path = Uri(
-              path: '/search',
-              queryParameters: _drillDownQueryParameters(insight),
-            ).toString();
-            if (widget.onNavigationRequested case final callback?) {
-              callback(path);
-            } else {
-              context.push(path);
-            }
-          },
-        );
-      },
-    ),
+        },
+      ),
     );
   }
 }
@@ -394,55 +394,54 @@ class _InsightsContent extends StatelessWidget {
         ) ==
         ButlerlyLayoutMode.wide;
     final overviewCards = <Widget>[
-
-        _PeriodSummaryCard(summary: evaluation.summary),
-        if (summaryPieResults.isNotEmpty)
-          InsightGroupVisualizations(
-            results: summaryPieResults,
-            masterData: masterData,
-            externalTitle: true,
-            pieDensity: ButlerlyVisualizationDensity.regular,
-            pieLegendBelow: true,
-            pieValueLabel: (result) {
-              final shareText = result.currentValue?.toString();
-              final amount = result.impactValue;
-              if (amount == null) {
-                return shareText == null
-                    ? '—'
-                    : '${localizedDecimal(context, shareText)}%';
-              }
-              final currency = evaluation.summary.currency?.value ?? '';
-              return '${localizedDecimal(context, amount.toString())}${currency.isEmpty ? '' : ' $currency'}';
-            },
-          ),
-        if (evaluation.limitations.isNotEmpty)
-          ButlerlyCard(
-            semanticLabel: context.l10n.text('dataQualityLimitations'),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ButlerlyCardHeader(
-                  title: context.l10n.text('dataQualityLimitations'),
-                ),
-                const SizedBox(height: ButlerlySpacing.standard),
-                ...evaluation.limitations
-                    .fold<Map<String, DataQualityIssue>>(
-                      {},
-                      (issues, issue) =>
-                          issues..putIfAbsent(issue.code, () => issue),
-                    )
-                    .values
-                    .map(
-                      (issue) => Padding(
-                        padding: const EdgeInsets.only(
-                          bottom: ButlerlySpacing.micro,
-                        ),
-                        child: Text(_qualityIssueText(context, issue.code)),
+      _PeriodSummaryCard(summary: evaluation.summary),
+      if (summaryPieResults.isNotEmpty)
+        InsightGroupVisualizations(
+          results: summaryPieResults,
+          masterData: masterData,
+          externalTitle: true,
+          pieDensity: ButlerlyVisualizationDensity.regular,
+          pieLegendBelow: true,
+          pieValueLabel: (result) {
+            final shareText = result.currentValue?.toString();
+            final amount = result.impactValue;
+            if (amount == null) {
+              return shareText == null
+                  ? '—'
+                  : '${localizedDecimal(context, shareText)}%';
+            }
+            final currency = evaluation.summary.currency?.value ?? '';
+            return '${localizedDecimal(context, amount.toString())}${currency.isEmpty ? '' : ' $currency'}';
+          },
+        ),
+      if (evaluation.limitations.isNotEmpty)
+        ButlerlyCard(
+          semanticLabel: context.l10n.text('dataQualityLimitations'),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ButlerlyCardHeader(
+                title: context.l10n.text('dataQualityLimitations'),
+              ),
+              const SizedBox(height: ButlerlySpacing.standard),
+              ...evaluation.limitations
+                  .fold<Map<String, DataQualityIssue>>(
+                    {},
+                    (issues, issue) =>
+                        issues..putIfAbsent(issue.code, () => issue),
+                  )
+                  .values
+                  .map(
+                    (issue) => Padding(
+                      padding: const EdgeInsets.only(
+                        bottom: ButlerlySpacing.micro,
                       ),
+                      child: Text(_qualityIssueText(context, issue.code)),
                     ),
-              ],
-            ),
+                  ),
+            ],
           ),
+        ),
     ];
 
     return ButlerlyPage(
