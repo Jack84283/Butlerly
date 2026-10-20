@@ -654,6 +654,7 @@ class _AnalysisContent extends StatelessWidget {
     final merchantCard = model.merchants.isEmpty
         ? null
         : AnalysisMerchantBreakdown(
+            fillToFiveRows: desktop,
             model: model,
             masterData: masterData,
             onMetricTap: (metric) {
@@ -668,6 +669,7 @@ class _AnalysisContent extends StatelessWidget {
     final subcategoryCard = model.subcategories.isEmpty
         ? null
         : AnalysisSubcategoryBreakdown(
+            fillToFiveRows: desktop,
             model: model,
             masterData: masterData,
             onMetricTap: (metric) {
