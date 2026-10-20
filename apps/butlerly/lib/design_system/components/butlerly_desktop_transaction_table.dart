@@ -256,14 +256,14 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
       Divider(
         height: ButlerlyTableTokens.headerToRowsGap,
         thickness: ButlerlyTableTokens.dividerThickness,
-        color: context.colors.cardDivider,
+        color: ButlerlyTableTokens.dividerColor(context),
       ),
       for (final transaction in transactions) ...[
         _transactionRow(context, transaction),
         Divider(
           height: ButlerlyTableTokens.dividerThickness,
           thickness: ButlerlyTableTokens.dividerThickness,
-          color: context.colors.cardDivider,
+          color: ButlerlyTableTokens.dividerColor(context),
         ),
       ],
       if (transactions.isEmpty && emptyMessage != null)
