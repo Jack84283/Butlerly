@@ -701,7 +701,7 @@ class _Row extends StatelessWidget {
 
   Widget _desktopRow(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(
-      vertical: ButlerlySpacing.micro,
+      vertical: ButlerlyTableTokens.rowVerticalPadding,
     ),
     child: Row(
       children: [
