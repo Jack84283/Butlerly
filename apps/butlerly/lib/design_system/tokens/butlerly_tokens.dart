@@ -41,6 +41,20 @@ abstract final class ButlerlySpacing {
   static const headerActionTrailing = standard;
 }
 
+/// Compact layout shared by desktop transaction and payment-source tables.
+abstract final class ButlerlyTableTokens {
+  static const rowHeight = 32.0;
+  static const headingHeight = 32.0;
+  static const rowVerticalPadding = 7.0;
+  static const headerToRowsGap = 0.0;
+  static const outerPadding = ButlerlySpacing.small;
+  static const innerHorizontalPadding = ButlerlySpacing.small;
+  static const innerVerticalPadding = ButlerlySpacing.none;
+  static const horizontalMargin = ButlerlySpacing.small;
+  static const columnSpacing = ButlerlySpacing.standard;
+  static const dividerThickness = 0.5;
+}
+
 /// Shared geometry for standard Butlerly modal bottom sheets.
 abstract final class ButlerlySheetTokens {
   static const maxHeightFactor = .9;
