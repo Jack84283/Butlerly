@@ -71,14 +71,14 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
   /// Quiet-premium neutral foundation. Brand palettes only replace the accent
   /// roles so financial semantic colors remain stable and meaningful.
   static const dark = ButlerlySemanticColors(
-    background: Color(0xFF030405),
-    surface: Color(0xFF1F2123),
-    dashboardSurface: Color(0xFF141516),
+    background: Color(0xFF0D0D0D),
+    surface: Color(0xFF181818),
+    dashboardSurface: Color(0xFF181818),
     elevatedSurface: Color(0xFF292B2D),
-    subtleSurface: Color(0xFF1B1D1F),
-    overlaySurface: Color(0xFF1F2123),
-    sheetSurface: Color(0xFF1B1D1F),
-    footerSurface: Color(0xFF141516),
+    subtleSurface: Color(0xFF222222),
+    overlaySurface: Color(0xFF222222),
+    sheetSurface: Color(0xFF222222),
+    footerSurface: Color(0xFF181818),
     primaryText: Color(0xFFFFFFFF),
     secondaryText: Color(0xFFB4B4B4),
     tertiaryText: Color(0xFF9A9A9A),

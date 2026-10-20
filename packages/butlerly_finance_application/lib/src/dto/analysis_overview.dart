@@ -106,6 +106,9 @@ class AnalysisOverview {
       savingsRate: savingsRate,
       net: metric(AnalysisSemanticRole.netCashFlow),
       transactionCount: metric(AnalysisSemanticRole.eligibleTransactionCount),
+      transactionCountComparison: comparisonFor(
+        AnalysisSemanticRole.eligibleTransactionCount,
+      ),
       insight: finding,
       comparison: results
           .map((result) => result.comparison)
@@ -134,6 +137,7 @@ class AnalysisOverview {
     this.income,
     this.net,
     this.transactionCount,
+    this.transactionCountComparison,
     this.insight,
     required this.insightUnavailable,
     required this.trend,
@@ -158,6 +162,7 @@ class AnalysisOverview {
   final DecimalValue? savingsRate;
   final AnalysisMetric? net;
   final AnalysisMetric? transactionCount;
+  final AnalysisComparison? transactionCountComparison;
   final AnalysisFinding? insight;
   final bool insightUnavailable;
   final List<AnalysisMetric> trend;

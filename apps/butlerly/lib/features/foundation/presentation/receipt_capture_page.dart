@@ -764,11 +764,165 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
             ? selectedCategory.id.value
             : null);
 
+    final desktop = MediaQuery.sizeOf(context).width >= 900;
+    final fieldGap = desktop ? ButlerlySpacing.micro : ButlerlySpacing.standard;
+
+    final receiptForm = Form(
+      key: _formKey,
+      child: Column(
+        children: [
+          TextFormField(
+            controller: _merchantRaw,
+            decoration: InputDecoration(
+              labelText: context.l10n.text('description'),
+            ),
+          ),
+          SizedBox(height: fieldGap),
+          ButlerlyMerchantSelector(
+            merchants: _merchants,
+            value: _merchantId,
+            label: context.l10n.text('merchant'),
+            clearLabel: context.l10n.text('clear'),
+            onChanged: (value) => _selectMerchant(value),
+          ),
+          SizedBox(height: fieldGap),
+          TextFormField(
+            controller: _amount,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(labelText: context.l10n.text('amount')),
+            validator: (value) {
+              try {
+                DecimalValue.parse(value?.trim() ?? '');
+                return null;
+              } on DomainValidationException {
+                return context.l10n.text('invalidAmount');
+              }
+            },
+          ),
+          SizedBox(height: fieldGap),
+          TextFormField(
+            controller: _currency,
+            textCapitalization: TextCapitalization.characters,
+            decoration: InputDecoration(
+              labelText: context.l10n.text('currency'),
+            ),
+            validator: (value) {
+              try {
+                CurrencyCode(value?.trim() ?? '');
+                return null;
+              } on DomainValidationException {
+                return context.l10n.text('invalidCurrency');
+              }
+            },
+          ),
+          SizedBox(height: fieldGap),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(context.l10n.text('purchaseDate')),
+            subtitle: Text(_date == null ? '—' : _iso(_date!)),
+            trailing: const Icon(Icons.calendar_today_outlined),
+            onTap: _pickDate,
+          ),
+          if (_dateNeedsReview)
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Text(
+                context.l10n.text('dateNeedsReview'),
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+          SizedBox(height: fieldGap),
+          ButlerlyCategorySelector(
+            label: context.l10n.text('category'),
+            clearLabel: context.l10n.text('clear'),
+            categories: activeCategories,
+            masterData: _masterData,
+            value: selectedParentId,
+            onChanged: (value) => setState(() {
+              _classificationOverridden = true;
+              _categoryId = value;
+              _subcategoryId = null;
+            }),
+          ),
+          SizedBox(height: fieldGap),
+          ButlerlySubcategorySelector(
+            label: context.l10n.text('subcategory'),
+            clearLabel: context.l10n.text('clear'),
+            categories: activeCategories,
+            masterData: _masterData,
+            parentId: selectedParentId,
+            value: _subcategoryId,
+            onChanged: (value) => setState(() {
+              _classificationOverridden = true;
+              _subcategoryId = value;
+              _categoryId = selectedParentId;
+            }),
+          ),
+          SizedBox(height: fieldGap),
+          ButlerlyPaymentSourceSelector(
+            label: context.l10n.text('paymentSource'),
+            clearLabel: context.l10n.text('clear'),
+            sources: _sources,
+            value: _paymentSourceId,
+            onChanged: (value) => setState(() => _paymentSourceId = value),
+          ),
+          SizedBox(height: fieldGap),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Wrap(
+              spacing: ButlerlySpacing.compact,
+              runSpacing: ButlerlySpacing.micro,
+              children: [
+                ButlerlyTagPicker(
+                  searchLabel: context.l10n.text('search'),
+                  createLabel: context.l10n.text('addTag'),
+                  tags: _tags,
+                  masterData: _masterData,
+                  selected: _tagIds,
+                  onChanged: (value) => setState(() {
+                    _tagIds
+                      ..clear()
+                      ..addAll(value);
+                  }),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: fieldGap),
+          TextFormField(
+            controller: _notes,
+            maxLines: 2,
+            decoration: InputDecoration(labelText: context.l10n.text('notes')),
+          ),
+          if (_ocrResult != null)
+            ExpansionTile(
+              title: Text(context.l10n.text('extractedSourceText')),
+              subtitle: Text(context.l10n.text('originalOcrPreserved')),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(ButlerlySpacing.small),
+                  child: SelectableText(_ocrResult!.rawText),
+                ),
+              ],
+            ),
+          const SizedBox(height: ButlerlySpacing.section),
+          FilledButton(
+            onPressed: _saving ? null : _save,
+            child: Text(
+              _saving
+                  ? context.l10n.text('saving')
+                  : context.l10n.text('saveReceiptTransaction'),
+            ),
+          ),
+        ],
+      ),
+    );
     return Scaffold(
       appBar: AppBar(title: Text(context.l10n.text('captureReceipt'))),
       body: SafeArea(
         child: ButlerlyResponsiveBody(
           contentKey: const ValueKey('receipt-capture-content'),
+          fullWidth: desktop,
           child: ListView(
             padding: const EdgeInsets.all(ButlerlySpacing.standard),
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
@@ -797,196 +951,89 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                   label: Text(context.l10n.text('chooseFiles')),
                 ),
               ] else ...[
-                SizedBox(
-                  height: ButlerlySize.sourcePreviewHeight * 3,
-                  child: Image.file(File(_source!.path), fit: BoxFit.contain),
-                ),
-                if (_processing) ...[
-                  const SizedBox(height: ButlerlySpacing.small),
-                  const LinearProgressIndicator(),
-                  const SizedBox(height: ButlerlySpacing.compact),
-                  Text(context.l10n.text('readingReceipt')),
-                ],
-                if (!_processing) ...[
+                if (desktop)
                   Row(
+                    key: const ValueKey('receipt-desktop-review-layout'),
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      TextButton.icon(
-                        onPressed: _camera,
-                        icon: const Icon(Icons.refresh),
-                        label: Text(context.l10n.text('retake')),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            SizedBox(
+                              height: ButlerlySize.sourcePreviewHeight * 3,
+                              child: Image.file(
+                                File(_source!.path),
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                            if (_processing) ...[
+                              const SizedBox(height: ButlerlySpacing.small),
+                              const LinearProgressIndicator(),
+                              const SizedBox(height: ButlerlySpacing.compact),
+                              Text(context.l10n.text('readingReceipt')),
+                            ] else
+                              Wrap(
+                                children: [
+                                  TextButton.icon(
+                                    onPressed: _camera,
+                                    icon: const Icon(Icons.refresh),
+                                    label: Text(context.l10n.text('retake')),
+                                  ),
+                                  TextButton.icon(
+                                    onPressed: _photo,
+                                    icon: const Icon(Icons.swap_horiz),
+                                    label: Text(context.l10n.text('replace')),
+                                  ),
+                                  TextButton.icon(
+                                    onPressed: _file,
+                                    icon: const Icon(
+                                      Icons.folder_open_outlined,
+                                    ),
+                                    label: Text(
+                                      context.l10n.text('chooseFiles'),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                          ],
+                        ),
                       ),
-                      TextButton.icon(
-                        onPressed: _photo,
-                        icon: const Icon(Icons.swap_horiz),
-                        label: Text(context.l10n.text('replace')),
+                      const SizedBox(width: ButlerlySpacing.cardGap),
+                      Expanded(
+                        child: _processing
+                            ? const SizedBox.shrink()
+                            : receiptForm,
                       ),
                     ],
+                  )
+                else ...[
+                  SizedBox(
+                    height: ButlerlySize.sourcePreviewHeight * 3,
+                    child: Image.file(File(_source!.path), fit: BoxFit.contain),
                   ),
-                  Form(
-                    key: _formKey,
-                    child: Column(
+                  if (_processing) ...[
+                    const SizedBox(height: ButlerlySpacing.small),
+                    const LinearProgressIndicator(),
+                    const SizedBox(height: ButlerlySpacing.compact),
+                    Text(context.l10n.text('readingReceipt')),
+                  ] else ...[
+                    Row(
                       children: [
-                        TextFormField(
-                          controller: _merchantRaw,
-                          decoration: InputDecoration(
-                            labelText: context.l10n.text('description'),
-                          ),
+                        TextButton.icon(
+                          onPressed: _camera,
+                          icon: const Icon(Icons.refresh),
+                          label: Text(context.l10n.text('retake')),
                         ),
-                        const SizedBox(height: ButlerlySpacing.standard),
-                        ButlerlyMerchantSelector(
-                          merchants: _merchants,
-                          value: _merchantId,
-                          label: context.l10n.text('merchant'),
-                          clearLabel: context.l10n.text('clear'),
-                          onChanged: (value) => _selectMerchant(value),
-                        ),
-                        const SizedBox(height: ButlerlySpacing.standard),
-                        TextFormField(
-                          controller: _amount,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          decoration: InputDecoration(
-                            labelText: context.l10n.text('amount'),
-                          ),
-                          validator: (value) {
-                            try {
-                              DecimalValue.parse(value?.trim() ?? '');
-                              return null;
-                            } on DomainValidationException {
-                              return context.l10n.text('invalidAmount');
-                            }
-                          },
-                        ),
-                        const SizedBox(height: ButlerlySpacing.standard),
-                        TextFormField(
-                          controller: _currency,
-                          textCapitalization: TextCapitalization.characters,
-                          decoration: InputDecoration(
-                            labelText: context.l10n.text('currency'),
-                          ),
-                          validator: (value) {
-                            try {
-                              CurrencyCode(value?.trim() ?? '');
-                              return null;
-                            } on DomainValidationException {
-                              return context.l10n.text('invalidCurrency');
-                            }
-                          },
-                        ),
-                        const SizedBox(height: ButlerlySpacing.standard),
-                        ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(context.l10n.text('purchaseDate')),
-                          subtitle: Text(_date == null ? '—' : _iso(_date!)),
-                          trailing: const Icon(Icons.calendar_today_outlined),
-                          onTap: _pickDate,
-                        ),
-                        if (_dateNeedsReview)
-                          Align(
-                            alignment: AlignmentDirectional.centerStart,
-                            child: Text(
-                              context.l10n.text('dateNeedsReview'),
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.error,
-                              ),
-                            ),
-                          ),
-                        const SizedBox(height: ButlerlySpacing.standard),
-                        ButlerlyCategorySelector(
-                          label: context.l10n.text('category'),
-                          clearLabel: context.l10n.text('clear'),
-                          categories: activeCategories,
-                          masterData: _masterData,
-                          value: selectedParentId,
-                          onChanged: (value) => setState(() {
-                            _classificationOverridden = true;
-                            _categoryId = value;
-                            _subcategoryId = null;
-                          }),
-                        ),
-                        const SizedBox(height: ButlerlySpacing.standard),
-                        ButlerlySubcategorySelector(
-                          label: context.l10n.text('subcategory'),
-                          clearLabel: context.l10n.text('clear'),
-                          categories: activeCategories,
-                          masterData: _masterData,
-                          parentId: selectedParentId,
-                          value: _subcategoryId,
-                          onChanged: (value) => setState(() {
-                            _classificationOverridden = true;
-                            _subcategoryId = value;
-                            _categoryId = selectedParentId;
-                          }),
-                        ),
-                        const SizedBox(height: ButlerlySpacing.standard),
-                        ButlerlyPaymentSourceSelector(
-                          label: context.l10n.text('paymentSource'),
-                          clearLabel: context.l10n.text('clear'),
-                          sources: _sources,
-                          value: _paymentSourceId,
-                          onChanged: (value) =>
-                              setState(() => _paymentSourceId = value),
-                        ),
-                        const SizedBox(height: ButlerlySpacing.standard),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Wrap(
-                            spacing: ButlerlySpacing.compact,
-                            runSpacing: ButlerlySpacing.micro,
-                            children: [
-                              ButlerlyTagPicker(
-                                searchLabel: context.l10n.text('search'),
-                                createLabel: context.l10n.text('addTag'),
-                                tags: _tags,
-                                masterData: _masterData,
-                                selected: _tagIds,
-                                onChanged: (value) => setState(() {
-                                  _tagIds
-                                    ..clear()
-                                    ..addAll(value);
-                                }),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: ButlerlySpacing.standard),
-                        TextFormField(
-                          controller: _notes,
-                          maxLines: 2,
-                          decoration: InputDecoration(
-                            labelText: context.l10n.text('notes'),
-                          ),
-                        ),
-                        if (_ocrResult != null)
-                          ExpansionTile(
-                            title: Text(
-                              context.l10n.text('extractedSourceText'),
-                            ),
-                            subtitle: Text(
-                              context.l10n.text('originalOcrPreserved'),
-                            ),
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.all(
-                                  ButlerlySpacing.small,
-                                ),
-                                child: SelectableText(_ocrResult!.rawText),
-                              ),
-                            ],
-                          ),
-                        const SizedBox(height: ButlerlySpacing.section),
-                        FilledButton(
-                          onPressed: _saving ? null : _save,
-                          child: Text(
-                            _saving
-                                ? context.l10n.text('saving')
-                                : context.l10n.text('saveReceiptTransaction'),
-                          ),
+                        TextButton.icon(
+                          onPressed: _photo,
+                          icon: const Icon(Icons.swap_horiz),
+                          label: Text(context.l10n.text('replace')),
                         ),
                       ],
                     ),
-                  ),
+                    receiptForm,
+                  ],
                 ],
               ],
             ],

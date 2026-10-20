@@ -5,18 +5,26 @@ import 'package:butlerly/core/evidence/platform_ocr_recognizer.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_payment_source_icon.dart';
+import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
+import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/payment_source_display.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
+import 'package:file_selector/file_selector.dart' as files;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 class PaymentSourcesPage extends StatefulWidget {
-  const PaymentSourcesPage({this.ocrRecognizer, super.key});
+  const PaymentSourcesPage({
+    this.ocrRecognizer,
+    this.openCreateOnStart = false,
+    super.key,
+  });
 
   final OcrRecognizer? ocrRecognizer;
+  final bool openCreateOnStart;
 
   @override
   State<PaymentSourcesPage> createState() => _PaymentSourcesPageState();
@@ -24,6 +32,22 @@ class PaymentSourcesPage extends StatefulWidget {
 
 class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
   late Future<List<PaymentSource>> _sources;
+  bool _desktopEditorOpen = false;
+  PaymentSource? _desktopSelected;
+  CardScanResult? _desktopScanned;
+  int _editorRevision = 0;
+
+  bool _isDesktop(BuildContext context) =>
+      MediaQuery.sizeOf(context).width >= 900;
+
+  void _openDesktopEditor({PaymentSource? existing, CardScanResult? scanned}) {
+    setState(() {
+      _desktopEditorOpen = true;
+      _desktopSelected = existing;
+      _desktopScanned = scanned;
+      _editorRevision++;
+    });
+  }
 
   FinanceServices? get _finance => services.isRegistered<FinanceServices>()
       ? services<FinanceServices>()
@@ -33,6 +57,11 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
   void initState() {
     super.initState();
     _sources = _load();
+    if (widget.openCreateOnStart) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _add();
+      });
+    }
   }
 
   Future<List<PaymentSource>> _load() async {
@@ -54,12 +83,32 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
     });
   }
 
-  Future<void> _add() => _edit();
+  Future<void> _add() async {
+    if (_isDesktop(context)) {
+      _openDesktopEditor();
+    } else {
+      await _edit();
+    }
+  }
 
   Future<void> _scanCard() async {
     try {
-      final image = await ImagePicker().pickImage(source: ImageSource.camera);
-      if (image == null || !mounted) return;
+      final String? path;
+      if (_isDesktop(context)) {
+        final image = await files.openFile(
+          acceptedTypeGroups: [
+            files.XTypeGroup(
+              label: context.l10n.text('receiptImages'),
+              extensions: ['jpg', 'jpeg', 'png', 'heic', 'webp'],
+            ),
+          ],
+        );
+        path = image?.path;
+      } else {
+        final image = await ImagePicker().pickImage(source: ImageSource.camera);
+        path = image?.path;
+      }
+      if (path == null || !mounted) return;
       final recognizer =
           widget.ocrRecognizer ??
           (services.isRegistered<OcrRecognizer>()
@@ -67,7 +116,7 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
               : platformOcrRecognizer());
       final document = await recognizer.recognize(
         OcrRequest(
-          source: OcrSource(path: image.path, kind: OcrSourceKind.image),
+          source: OcrSource(path: path, kind: OcrSourceKind.image),
           intent: OcrIntent.paymentCard,
         ),
       );
@@ -76,7 +125,11 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
       }
       final result = CardTextParser.parse(document.text, document.observations);
       if (!mounted) return;
-      await _edit(scanned: result);
+      if (_isDesktop(context)) {
+        _openDesktopEditor(scanned: result);
+      } else {
+        await _edit(scanned: result);
+      }
     } on FormatException catch (error) {
       if (mounted) _showMessage(error.message);
     } catch (_) {
@@ -344,9 +397,189 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
     });
   }
 
+  Future<void> _openSource(PaymentSource value) async {
+    if (_isDesktop(context)) {
+      _openDesktopEditor(existing: value);
+    } else {
+      await _edit(existing: value);
+    }
+  }
+
+  Widget _desktopWorkspace(List<PaymentSource> values) {
+    final headers = [
+      context.l10n.text('name'),
+      context.l10n.text('type'),
+      context.l10n.text('issuer'),
+      context.l10n.text('lastFour'),
+      context.l10n.text('currency'),
+      context.l10n.text('status'),
+    ];
+    final table = Container(
+      key: const ValueKey('payment-sources-outer-card'),
+      decoration: BoxDecoration(
+        color: context.colors.cardSurface,
+        borderRadius: BorderRadius.circular(ButlerlyRadius.card),
+      ),
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            context.l10n.text('paymentSources'),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: context.colors.primaryText,
+            ),
+          ),
+          const SizedBox(height: ButlerlySpacing.compact),
+          ButlerlyDesktopInnerCard(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                const minimumTableWidth = 660.0;
+                final content = SizedBox(
+                  width: constraints.maxWidth < minimumTableWidth
+                      ? minimumTableWidth
+                      : constraints.maxWidth,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          for (var index = 0; index < headers.length; index++)
+                            Expanded(
+                              flex: index == 0 ? 3 : 2,
+                              child: Text(
+                                headers[index],
+                                style: ButlerlyTableTokens.headerTextStyle(
+                                  context,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(
+                        height: ButlerlyTableTokens.headerToRowsGap,
+                      ),
+                      Divider(
+                        height: ButlerlyTableTokens.dividerThickness,
+                        thickness: ButlerlyTableTokens.dividerThickness,
+                        color: ButlerlyTableTokens.dividerColor(context),
+                      ),
+                      for (final source in values) ...[
+                        Material(
+                          type: MaterialType.transparency,
+                          child: InkWell(
+                            onTap: () => _openDesktopEditor(existing: source),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical:
+                                    ButlerlyTableTokens.rowVerticalPadding,
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    flex: 3,
+                                    child: Row(
+                                      children: [
+                                        ButlerlyPaymentSourceIcon(
+                                          source: source,
+                                          size: 24,
+                                        ),
+                                        const SizedBox(
+                                          width: ButlerlySpacing.compact,
+                                        ),
+                                        Flexible(
+                                          child: Text(
+                                            paymentSourceDisplayLabel(source),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Expanded(
+                                    flex: 2,
+                                    child: Text(
+                                      _typeLabel(context, source.type),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    flex: 2,
+                                    child: Text(source.issuer ?? '—'),
+                                  ),
+                                  Expanded(
+                                    flex: 2,
+                                    child: Text(source.lastFour ?? '—'),
+                                  ),
+                                  Expanded(
+                                    flex: 2,
+                                    child: Text(source.currency ?? '—'),
+                                  ),
+                                  Expanded(
+                                    flex: 2,
+                                    child: Text(
+                                      _statusLabel(context, source.status),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        Divider(
+                          height: ButlerlyTableTokens.dividerThickness,
+                          thickness: ButlerlyTableTokens.dividerThickness,
+                          color: ButlerlyTableTokens.dividerColor(context),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+                if (constraints.maxWidth >= minimumTableWidth) return content;
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: content,
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+    if (!_desktopEditorOpen) return table;
+    return Row(
+      key: const ValueKey('desktop-payment-source-workspace'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(flex: 3, child: table),
+        const SizedBox(width: ButlerlySpacing.cardGap),
+        Expanded(
+          flex: 2,
+          child: _DesktopPaymentSourceEditor(
+            key: ValueKey('desktop-payment-editor-$_editorRevision'),
+            finance: _finance!,
+            existing: _desktopSelected,
+            scanned: _desktopScanned,
+            onCancel: () => setState(() => _desktopEditorOpen = false),
+            onSaved: () {
+              setState(() => _desktopEditorOpen = false);
+              _refresh();
+            },
+            onError: _showMessage,
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) => ButlerlyPage(
     title: context.l10n.text('paymentSources'),
+    fullWidth: _isDesktop(context),
     actions: [
       IconButton(
         onPressed: _add,
@@ -383,6 +616,9 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
               );
             }
             final values = snapshot.requireData;
+            if (_isDesktop(context)) {
+              return _desktopWorkspace(values);
+            }
             if (values.isEmpty) {
               return ButlerlyEmptyState(
                 icon: Icons.account_balance_wallet_outlined,
@@ -413,7 +649,7 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                             _statusLabel(context, value.status),
                           ].join(' · '),
                         ),
-                        onTap: () => _edit(existing: value),
+                        onTap: () => _openSource(value),
                         trailing: IconButton(
                           tooltip: context.l10n.text(
                             value.status == PaymentSourceStatus.active
@@ -470,6 +706,282 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
         ),
     ],
   );
+}
+
+class _DesktopPaymentSourceEditor extends StatefulWidget {
+  const _DesktopPaymentSourceEditor({
+    required this.finance,
+    required this.existing,
+    required this.scanned,
+    required this.onCancel,
+    required this.onSaved,
+    required this.onError,
+    super.key,
+  });
+
+  final FinanceServices finance;
+  final PaymentSource? existing;
+  final CardScanResult? scanned;
+  final VoidCallback onCancel;
+  final VoidCallback onSaved;
+  final ValueChanged<String> onError;
+
+  @override
+  State<_DesktopPaymentSourceEditor> createState() =>
+      _DesktopPaymentSourceEditorState();
+}
+
+class _DesktopPaymentSourceEditorState
+    extends State<_DesktopPaymentSourceEditor> {
+  late final TextEditingController _name;
+  late final TextEditingController _issuer;
+  late final TextEditingController _lastFour;
+  late final TextEditingController _currency;
+  late final TextEditingController _note;
+  late PaymentSourceType _type;
+  String? _network;
+  bool _saving = false;
+  bool _active = true;
+
+  @override
+  void initState() {
+    super.initState();
+    final existing = widget.existing;
+    final scanned = widget.scanned;
+    final detectedNetwork = paymentNetworkFromText(scanned?.issuer);
+    _name = TextEditingController(text: existing?.name);
+    _issuer = TextEditingController(
+      text:
+          existing?.issuer ??
+          (detectedNetwork == null ? scanned?.issuer : null),
+    );
+    _lastFour = TextEditingController(
+      text: existing?.lastFour ?? scanned?.lastFour,
+    );
+    _currency = TextEditingController(text: existing?.currency ?? 'USD');
+    _note = TextEditingController(text: existing?.note);
+    _type = existing?.type ?? scanned?.type ?? PaymentSourceType.account;
+    _network = existing?.network ?? detectedNetwork;
+    _active =
+        existing?.status == null ||
+        existing!.status == PaymentSourceStatus.active;
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _issuer.dispose();
+    _lastFour.dispose();
+    _currency.dispose();
+    _note.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (_saving) return;
+    final safeLastFour = _lastFour.text.trim();
+    final validLastFour = RegExp(r'^\d{4}$').hasMatch(safeLastFour);
+    if ((paymentSourceRequiresLastFour(_type) && !validLastFour) ||
+        (safeLastFour.isNotEmpty && !validLastFour)) {
+      widget.onError(context.l10n.text('invalidLastFour'));
+      return;
+    }
+    setState(() => _saving = true);
+    try {
+      final listed = await widget.finance.listPaymentSources();
+      if (!mounted) return;
+      final List<PaymentSource> duplicates;
+      if (listed is ApplicationSuccess<List<PaymentSource>>) {
+        duplicates = listed.value
+            .where((source) {
+              return source.id != widget.existing?.id &&
+                  source.status == PaymentSourceStatus.active &&
+                  safeLastFour.isNotEmpty &&
+                  source.lastFour == safeLastFour &&
+                  source.type == _type &&
+                  (source.issuer ?? '').trim().toLowerCase() ==
+                      _issuer.text.trim().toLowerCase();
+            })
+            .toList(growable: false);
+      } else {
+        duplicates = <PaymentSource>[];
+      }
+      if (duplicates.isNotEmpty) {
+        final createAnyway = await showButlerlyConfirmationSheet(
+          context: context,
+          title: context.l10n.text('duplicatePaymentSource'),
+          message: context.l10n.text('duplicatePaymentSourceBody'),
+          cancelLabel: context.l10n.text('useExisting'),
+          confirmLabel: context.l10n.text('createAnyway'),
+        );
+        if (!mounted || createAnyway != true) return;
+      }
+      final result = await widget.finance.savePaymentSource(
+        PaymentSource(
+          id:
+              widget.existing?.id ??
+              PaymentSourceId(
+                'source-${DateTime.now().microsecondsSinceEpoch}',
+              ),
+          name: _name.text,
+          type: _type,
+          displayIdentity: _name.text,
+          lastFour: safeLastFour.isEmpty ? null : safeLastFour,
+          issuer: _issuer.text.trim().isEmpty ? null : _issuer.text.trim(),
+          network: _network,
+          currency: _currency.text.trim().toUpperCase(),
+          note: _note.text.trim().isEmpty ? null : _note.text.trim(),
+          status: _active
+              ? PaymentSourceStatus.active
+              : (widget.existing?.status ?? PaymentSourceStatus.active),
+        ),
+      );
+      if (!mounted) return;
+      if (result is ApplicationSuccess<PaymentSource>) {
+        if (!_active) {
+          final archived = await widget.finance.archivePaymentSource(
+            result.value.id.value,
+          );
+          if (!mounted) return;
+          if (archived is ApplicationFailure<PaymentSource>) {
+            widget.onError(context.l10n.text('paymentSourceArchiveFailed'));
+            return;
+          }
+        }
+        widget.onSaved();
+      } else {
+        widget.onError(context.l10n.text('paymentSourceSaveFailed'));
+      }
+    } catch (_) {
+      if (mounted) widget.onError(context.l10n.text('paymentSourceSaveFailed'));
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    const gap = SizedBox(height: ButlerlySpacing.small);
+    return ButlerlyCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            context.l10n.text(
+              widget.existing == null
+                  ? 'addPaymentSource'
+                  : 'editPaymentSource',
+            ),
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          const SizedBox(height: ButlerlySpacing.small),
+          TextField(
+            controller: _name,
+            decoration: InputDecoration(labelText: context.l10n.text('name')),
+          ),
+          gap,
+          TextField(
+            controller: _issuer,
+            decoration: InputDecoration(labelText: context.l10n.text('issuer')),
+          ),
+          gap,
+          TextField(
+            controller: _lastFour,
+            maxLength: 4,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: context.l10n.text('lastFour'),
+            ),
+          ),
+          gap,
+          TextField(
+            controller: _currency,
+            textCapitalization: TextCapitalization.characters,
+            decoration: InputDecoration(
+              labelText: context.l10n.text('currency'),
+            ),
+          ),
+          gap,
+          TextField(
+            controller: _note,
+            maxLines: 2,
+            decoration: InputDecoration(
+              labelText: context.l10n.text('notesOptional'),
+            ),
+          ),
+          gap,
+          ButlerlySelectField<PaymentSourceType>(
+            label: context.l10n.text('type'),
+            value: _type,
+            entries: [
+              for (final type in PaymentSourceType.values)
+                DropdownMenuEntry(
+                  value: type,
+                  label: _typeLabel(context, type),
+                ),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                setState(() {
+                  if (_type != value) _network = null;
+                  _type = value;
+                });
+              }
+            },
+          ),
+          if (_type == PaymentSourceType.card ||
+              _type == PaymentSourceType.debitCard ||
+              _type == PaymentSourceType.wallet) ...[
+            gap,
+            ButlerlySelectField<String>(
+              label: context.l10n.text(
+                _type == PaymentSourceType.wallet
+                    ? 'walletProvider'
+                    : 'cardNetwork',
+              ),
+              value: _network ?? '',
+              entries: [
+                DropdownMenuEntry(
+                  value: '',
+                  label: context.l10n.text('notSet'),
+                ),
+                for (final entry
+                    in (_type == PaymentSourceType.wallet
+                            ? walletPaymentProviderLabels
+                            : cardPaymentNetworkLabels)
+                        .entries)
+                  DropdownMenuEntry(value: entry.key, label: entry.value),
+              ],
+              onChanged: (value) =>
+                  setState(() => _network = value == '' ? null : value),
+            ),
+          ],
+          const SizedBox(height: ButlerlySpacing.small),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(context.l10n.text('paymentSourceStatusActive')),
+            value: _active,
+            onChanged: (value) => setState(() => _active = value),
+          ),
+          const SizedBox(height: ButlerlySpacing.small),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              ButlerlyCancelButton(
+                onPressed: widget.onCancel,
+                child: Text(context.l10n.text('cancel')),
+              ),
+              const SizedBox(width: ButlerlySpacing.compact),
+              FilledButton(
+                onPressed: _saving ? null : _save,
+                child: Text(context.l10n.text('save')),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 String _typeLabel(BuildContext context, PaymentSourceType value) =>

@@ -1025,14 +1025,8 @@ class _ButlerlyTagPickerState extends State<ButlerlyTagPicker> {
                 ),
             ],
           ),
-        if (widget.tags.length > 8)
-          TextField(
-            decoration: InputDecoration(
-              labelText: widget.searchLabel,
-              prefixIcon: const Icon(Icons.search),
-            ),
-            onChanged: (value) => setState(() => _query = value),
-          ),
+        if (widget.selected.isNotEmpty)
+          const SizedBox(height: ButlerlySpacing.small),
         Wrap(
           spacing: 8,
           runSpacing: 4,
@@ -1061,6 +1055,16 @@ class _ButlerlyTagPickerState extends State<ButlerlyTagPicker> {
               ),
           ],
         ),
+        if (widget.tags.length > 8) ...[
+          const SizedBox(height: ButlerlySpacing.small),
+          TextField(
+            decoration: InputDecoration(
+              labelText: widget.searchLabel,
+              prefixIcon: const Icon(Icons.search),
+            ),
+            onChanged: (value) => setState(() => _query = value),
+          ),
+        ],
       ],
     );
   }

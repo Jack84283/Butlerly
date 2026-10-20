@@ -170,10 +170,11 @@ void main() {
     final positions = cards.map((card) => tester.getTopLeft(card).dy).toList();
     expect(positions, orderedEquals([...positions]..sort()));
     expect(find.text('Monthly summary'), findsOneWidget);
-    expect(find.text('Spending'), findsOneWidget);
+    expect(find.text('Expenses'), findsOneWidget);
     expect(find.text('Spending trend'), findsOneWidget);
     expect(find.text('Top categories'), findsOneWidget);
     expect(find.text('Savings'), findsNothing);
+    expect(find.text('Transactions'), findsOneWidget);
     expect(find.text('Net cash flow'), findsOneWidget);
     expect(find.text('Recent transactions'), findsOneWidget);
     expect(find.text('Insights'), findsOneWidget);
@@ -622,18 +623,27 @@ void main() {
 
     expect(find.byKey(const ValueKey('home-summary-card')), findsOneWidget);
     expect(find.byKey(const ValueKey('home-category-card')), findsOneWidget);
-    final metricKeys = [
-      const ValueKey('home-summary-metric-spending'),
-      const ValueKey('home-summary-metric-income'),
-      const ValueKey('home-summary-metric-net-position'),
-    ];
-    final metricPositions = [
-      for (final key in metricKeys) tester.getTopLeft(find.byKey(key)),
-    ];
-    for (var index = 1; index < metricPositions.length; index++) {
-      expect(metricPositions[index].dy, closeTo(metricPositions.first.dy, 1));
-    }
-    for (final label in ['Spending', 'Income', 'Net cash flow']) {
+    final spending = find.byKey(const ValueKey('home-summary-metric-spending'));
+    final transactions = find.byKey(
+      const ValueKey('home-summary-metric-transactions'),
+    );
+    final income = find.byKey(const ValueKey('home-summary-metric-income'));
+    final net = find.byKey(const ValueKey('home-summary-metric-net-position'));
+    expect(
+      tester.getTopLeft(spending).dy,
+      closeTo(tester.getTopLeft(transactions).dy, 1),
+    );
+    expect(tester.getTopLeft(income).dy, closeTo(tester.getTopLeft(net).dy, 1));
+    expect(
+      tester.getTopLeft(income).dy,
+      greaterThan(tester.getTopLeft(spending).dy),
+    );
+    for (final label in [
+      'Expenses',
+      'Transactions',
+      'Income',
+      'Net cash flow',
+    ]) {
       expect(find.text(label), findsOneWidget);
     }
     expect(
@@ -667,16 +677,22 @@ void main() {
 
     for (final entry in [
       (
+        'home-summary-inner-spending',
+        'Expenses',
+        const Color(0xFFE24247),
+        Icons.arrow_downward,
+      ),
+      (
+        'home-summary-inner-transactions',
+        'Transactions',
+        const Color(0xFF8051CF),
+        Icons.receipt_long_outlined,
+      ),
+      (
         'home-summary-inner-income',
         'Income',
         const Color(0xFF009B61),
         Icons.arrow_upward,
-      ),
-      (
-        'home-summary-inner-spending',
-        'Spending',
-        const Color(0xFFE24247),
-        Icons.arrow_downward,
       ),
       (
         'home-summary-inner-net-position',
@@ -737,12 +753,16 @@ void main() {
 
     for (final entry in const [
       (
-        tile: 'home-summary-inner-income',
-        content: 'home-summary-metric-income',
-      ),
-      (
         tile: 'home-summary-inner-spending',
         content: 'home-summary-metric-spending',
+      ),
+      (
+        tile: 'home-summary-inner-transactions',
+        content: 'home-summary-metric-transactions',
+      ),
+      (
+        tile: 'home-summary-inner-income',
+        content: 'home-summary-metric-income',
       ),
       (
         tile: 'home-summary-inner-net-position',
@@ -753,7 +773,10 @@ void main() {
       final container = tester.widget<Container>(
         find.descendant(of: tile, matching: find.byType(Container)).first,
       );
-      expect(container.padding, const EdgeInsets.fromLTRB(4, 8, 4, 4));
+      expect(
+        container.padding,
+        const EdgeInsets.fromLTRB(4, 8, 4, ButlerlySpacing.small),
+      );
 
       final content = tester.widget<Column>(
         find.byKey(ValueKey(entry.content)),
@@ -773,7 +796,7 @@ void main() {
       expect(text.maxLines, isNull);
       expect(text.textAlign, TextAlign.center);
       expect(text.style?.height, 1.1);
-      expect(tester.getSize(comparison).height, greaterThan(20));
+      expect(tester.getSize(comparison).height, greaterThan(10));
     }
     expect(tester.takeException(), isNull);
   });
@@ -806,7 +829,7 @@ void main() {
     );
     expect(
       container.padding,
-      const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+      const EdgeInsets.fromLTRB(4, 10, 4, ButlerlySpacing.small),
     );
     final content = tester.widget<Column>(
       find.byKey(const ValueKey('home-summary-metric-income')),
@@ -990,7 +1013,7 @@ void main() {
     expect(find.text(r'$0.00'), findsNothing);
   });
 
-  testWidgets('Home Summary keeps desktop-style metrics in one row on phones', (
+  testWidgets('Home Summary arranges four metrics in two rows on phones', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -1013,17 +1036,21 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    final income = tester.getTopLeft(
-      find.byKey(const ValueKey('home-summary-inner-income')),
-    );
     final spending = tester.getTopLeft(
       find.byKey(const ValueKey('home-summary-inner-spending')),
+    );
+    final transactions = tester.getTopLeft(
+      find.byKey(const ValueKey('home-summary-inner-transactions')),
+    );
+    final income = tester.getTopLeft(
+      find.byKey(const ValueKey('home-summary-inner-income')),
     );
     final net = tester.getTopLeft(
       find.byKey(const ValueKey('home-summary-inner-net-position')),
     );
-    expect(income.dy, closeTo(spending.dy, 1));
-    expect(spending.dy, closeTo(net.dy, 1));
+    expect(spending.dy, closeTo(transactions.dy, 1));
+    expect(income.dy, closeTo(net.dy, 1));
+    expect(income.dy, greaterThan(spending.dy));
     expect(tester.takeException(), isNull);
   });
 

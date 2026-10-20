@@ -60,10 +60,10 @@ void main() {
   test('dark theme uses the approved near-black surface palette', () {
     final colors = AppTheme.dark.extension<ButlerlySemanticColors>()!;
 
-    expect(colors.background, const Color(0xFF030405));
-    expect(colors.subtleSurface, const Color(0xFF1B1D1F));
-    expect(colors.surface, const Color(0xFF1F2123));
-    expect(colors.dashboardSurface, const Color(0xFF141516));
+    expect(colors.background, const Color(0xFF0D0D0D));
+    expect(colors.subtleSurface, const Color(0xFF222222));
+    expect(colors.surface, const Color(0xFF181818));
+    expect(colors.dashboardSurface, const Color(0xFF181818));
     expect(colors.elevatedSurface, const Color(0xFF292B2D));
     expect(colors.secondaryText, const Color(0xFFB4B4B4));
     expect(colors.primaryText, const Color(0xFFFFFFFF));

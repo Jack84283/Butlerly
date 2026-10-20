@@ -309,12 +309,21 @@ void main() {
       tester.getRect(home).top,
       lessThan(tester.getRect(transactions).top),
     );
+    expect(find.byKey(const ValueKey('wide-add-navigation')), findsOneWidget);
     for (final label in const [
       'Add transaction manually',
       'Scan receipt',
       'Import statement',
       'Import file',
       'Payment sources',
+    ]) {
+      expect(
+        find.descendant(of: navigation, matching: find.text(label)),
+        findsNothing,
+        reason: 'Add entry points are on the right-side Add page.',
+      );
+    }
+    for (final label in const [
       'Review',
       'Analysis',
       'Insights',
@@ -375,6 +384,20 @@ void main() {
     expect(greeting, findsOneWidget);
     expect(month, findsOneWidget);
     expect(tester.widget<Text>(greeting).textAlign, TextAlign.start);
+    final headerWidget = tester.widget<Container>(header);
+    expect(tester.getSize(header).height, ButlerlySize.pageToolbarHeight);
+    expect(
+      headerWidget.padding,
+      const EdgeInsets.symmetric(horizontal: ButlerlySize.contentGutter),
+    );
+    final appBarTitleStyle = Theme.of(
+      tester.element(greeting),
+    ).appBarTheme.titleTextStyle;
+    expect(tester.widget<Text>(greeting).style, appBarTitleStyle);
+    expect(
+      tester.getRect(greeting).left - tester.getRect(header).left,
+      closeTo(ButlerlySize.contentGutter, 0.01),
+    );
     expect(
       tester.getRect(greeting).right,
       lessThanOrEqualTo(tester.getRect(previous).left),
@@ -456,6 +479,122 @@ void main() {
     );
   });
 
+  testWidgets('Wide manual Add fills the right pane and groups form cards', (
+    tester,
+  ) async {
+    await _pumpAt(tester, const Size(1200, 800));
+    services.registerSingleton<FinanceServices>(
+      FinanceServices(
+        MemoryTransactionRepository(),
+        MemoryPaymentSources(),
+        MemoryMerchants(),
+        MemoryCategories(),
+        MemoryTags(),
+        MemoryEvidence(),
+        MemoryUserPreferences(),
+      ),
+    );
+    addTearDown(() => services.unregister<FinanceServices>());
+
+    appRouter.go('/transactions/add');
+    await tester.pumpAndSettle();
+
+    final rightSide = tester.getRect(
+      find.byKey(const ValueKey('primary-wide-body-surface')),
+    );
+    final editor = tester.getRect(
+      find.byKey(const ValueKey('transaction-editor-content')),
+    );
+    expect(editor.width, closeTo(rightSide.width, 0.1));
+    expect(editor.left, closeTo(rightSide.left, 0.1));
+
+    final amount = tester.getRect(
+      find.byKey(const ValueKey('transaction-editor-financial-card')),
+    );
+    final details = tester.getRect(
+      find.byKey(const ValueKey('transaction-editor-organization-card')),
+    );
+    final date = tester.getRect(
+      find.byKey(const ValueKey('transaction-editor-date-card')),
+    );
+    final notes = tester.getRect(
+      find.byKey(const ValueKey('transaction-editor-description-card')),
+    );
+    expect(date.left, greaterThan(amount.right));
+    expect(details.left, closeTo(amount.left, 0.1));
+    expect(details.top, greaterThan(amount.bottom));
+    final merchantField = tester.getRect(
+      find.byKey(const ValueKey('transaction-merchant-selector')),
+    );
+    final categoryField = tester.getRect(
+      find.byKey(const ValueKey('transaction-category-selector')),
+    );
+    expect(
+      categoryField.top - merchantField.bottom,
+      closeTo(ButlerlySpacing.small, 1),
+    );
+    final descriptionField = tester.getRect(
+      find.byKey(const ValueKey('transaction-description-field')),
+    );
+    final notesField = tester.getRect(
+      find.byKey(const ValueKey('transaction-notes-field')),
+    );
+    expect(
+      notesField.top - descriptionField.bottom,
+      closeTo(ButlerlySpacing.small, 1),
+    );
+    expect(notes.left, closeTo(date.left, 0.1));
+    expect(notes.top, greaterThan(date.bottom));
+
+    final save = tester.getRect(
+      find.byKey(const ValueKey('transaction-save-locally')),
+    );
+    expect(save.width, 240);
+    expect(
+      save.right,
+      closeTo(rightSide.right - ButlerlySpacing.pagePadding, 1),
+    );
+  });
+
+  testWidgets('Compact manual Add preserves the single-column form', (
+    tester,
+  ) async {
+    await _pumpAt(tester, const Size(390, 844));
+    services.registerSingleton<FinanceServices>(
+      FinanceServices(
+        MemoryTransactionRepository(),
+        MemoryPaymentSources(),
+        MemoryMerchants(),
+        MemoryCategories(),
+        MemoryTags(),
+        MemoryEvidence(),
+        MemoryUserPreferences(),
+      ),
+    );
+    addTearDown(() => services.unregister<FinanceServices>());
+
+    appRouter.go('/transactions/add');
+    await tester.pumpAndSettle();
+
+    final amount = tester.getRect(
+      find.byKey(const ValueKey('transaction-editor-financial-card')),
+    );
+    final details = tester.getRect(
+      find.byKey(const ValueKey('transaction-editor-organization-card')),
+    );
+    final date = tester.getRect(
+      find.byKey(const ValueKey('transaction-editor-date-card')),
+    );
+    expect(details.top, greaterThan(amount.bottom));
+    expect(date.top, greaterThan(details.bottom));
+    expect(details.left, closeTo(amount.left, 0.1));
+
+    final save = tester.getRect(
+      find.byKey(const ValueKey('transaction-save-locally')),
+    );
+    expect(save.width, greaterThan(300));
+  });
+
   testWidgets('Wide Add keeps the shell for manual and receipt workflows', (
     tester,
   ) async {
@@ -466,12 +605,15 @@ void main() {
       find.descendant(of: navigation, matching: find.text('Add')),
     );
     await tester.pumpAndSettle();
-    await tester.tap(
+    expect(
       find.descendant(
         of: navigation,
         matching: find.text('Add transaction manually'),
       ),
+      findsNothing,
     );
+    expect(find.byKey(const ValueKey('desktop-add-actions')), findsOneWidget);
+    await tester.tap(find.text('Add transaction manually'));
     await tester.pumpAndSettle();
 
     expect(
@@ -525,9 +667,7 @@ void main() {
       find.descendant(of: navigation, matching: find.text('Add')),
     );
     await tester.pumpAndSettle();
-    await tester.tap(
-      find.descendant(of: navigation, matching: find.text('Scan receipt')),
-    );
+    await tester.tap(find.text('Add transaction from receipts'));
     await tester.pumpAndSettle();
 
     expect(find.byType(ReceiptCapturePage), findsOneWidget);
@@ -849,7 +989,7 @@ void main() {
     );
   });
 
-  testWidgets('collapsed Wide group popups anchor to their own rail items', (
+  testWidgets('collapsed Wide Add opens hub and groups keep anchored popups', (
     tester,
   ) async {
     await _pumpAt(tester, const Size(1200, 800));
@@ -875,10 +1015,11 @@ void main() {
       );
     }
 
-    final add = await popupPositionFor(
-      const ValueKey('wide-collapsed-add'),
-      'Add',
-    );
+    await tester.tap(find.byKey(const ValueKey('wide-collapsed-add')));
+    await tester.pumpAndSettle();
+    expect(appRouter.routeInformationProvider.value.uri.path, '/add');
+    expect(find.byKey(const ValueKey('desktop-add-actions')), findsOneWidget);
+
     final tools = await popupPositionFor(
       const ValueKey('wide-collapsed-tools'),
       'Tools',
@@ -889,10 +1030,9 @@ void main() {
     );
 
     const tolerance = 8.0;
-    expect(add.popupLeft, closeTo(add.itemRight, tolerance));
     expect(tools.popupLeft, closeTo(tools.itemRight, tolerance));
     expect(more.popupLeft, closeTo(more.itemRight, tolerance));
-    expect({add.popupTop, tools.popupTop, more.popupTop}, hasLength(3));
+    expect({tools.popupTop, more.popupTop}, hasLength(2));
   });
 
   testWidgets(

@@ -10,7 +10,7 @@ rules:
     ruleVersion: "1.3.0"
     file: metrics/ANL-R003.yaml
   - ruleId: ANL-R004
-    ruleVersion: "1.3.0"
+    ruleVersion: "1.4.0"
     file: metrics/ANL-R004.yaml
   - ruleId: ANL-R010
     ruleVersion: "1.1.0"

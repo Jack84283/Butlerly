@@ -270,7 +270,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Monthly Summary keeps three desktop-style cards in one row', (
+  testWidgets('Compact Monthly Summary has four tiles in a two-by-two grid', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(320, 568);
@@ -288,27 +288,37 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final income = find.byKey(const ValueKey('home-summary-inner-income'));
     final spending = find.byKey(const ValueKey('home-summary-inner-spending'));
-    final net = find.byKey(const ValueKey('home-summary-inner-net-position'));
-    expect(income, findsOneWidget);
-    expect(spending, findsOneWidget);
-    expect(net, findsOneWidget);
-    expect(
-      tester.getTopLeft(income).dy,
-      closeTo(tester.getTopLeft(spending).dy, 1),
+    final transactions = find.byKey(
+      const ValueKey('home-summary-inner-transactions'),
     );
+    final income = find.byKey(const ValueKey('home-summary-inner-income'));
+    final net = find.byKey(const ValueKey('home-summary-inner-net-position'));
+    expect(spending, findsOneWidget);
+    expect(transactions, findsOneWidget);
+    expect(income, findsOneWidget);
+    expect(net, findsOneWidget);
+
     expect(
       tester.getTopLeft(spending).dy,
-      closeTo(tester.getTopLeft(net).dy, 1),
+      closeTo(tester.getTopLeft(transactions).dy, 1),
+    );
+    expect(tester.getTopLeft(income).dy, closeTo(tester.getTopLeft(net).dy, 1));
+    final firstRowBottom = [
+      tester.getBottomLeft(spending).dy,
+      tester.getBottomLeft(transactions).dy,
+    ]..sort();
+    expect(
+      tester.getTopLeft(income).dy - firstRowBottom.last,
+      closeTo(ButlerlySpacing.compact, 0.01),
     );
     expect(
-      tester.getTopLeft(spending).dx - tester.getTopRight(income).dx,
-      closeTo(ButlerlySpacing.micro, 0.01),
+      tester.getTopLeft(transactions).dx - tester.getTopRight(spending).dx,
+      closeTo(ButlerlySpacing.compact, 0.01),
     );
     expect(
-      tester.getTopLeft(net).dx - tester.getTopRight(spending).dx,
-      closeTo(ButlerlySpacing.micro, 0.01),
+      tester.getTopLeft(net).dx - tester.getTopRight(income).dx,
+      closeTo(ButlerlySpacing.compact, 0.01),
     );
     expect(tester.takeException(), isNull);
   });
@@ -356,8 +366,22 @@ void main() {
         find.descendant(of: section, matching: find.byType(ButlerlyCard)),
         findsNothing,
       );
+      final spending = find.byKey(
+        const ValueKey('home-summary-inner-spending'),
+      );
+      final transactions = find.byKey(
+        const ValueKey('home-summary-inner-transactions'),
+      );
       final income = find.byKey(const ValueKey('home-summary-inner-income'));
       final net = find.byKey(const ValueKey('home-summary-inner-net-position'));
+      expect(
+        tester.getTopLeft(spending).dx,
+        closeTo(tester.getTopLeft(section).dx, 0.01),
+      );
+      expect(
+        tester.getTopRight(transactions).dx,
+        closeTo(tester.getTopRight(section).dx, 0.01),
+      );
       expect(
         tester.getTopLeft(income).dx,
         closeTo(tester.getTopLeft(section).dx, 0.01),
@@ -402,17 +426,24 @@ void main() {
         theme.cardTheme.color,
         theme.extension<ButlerlySemanticColors>()!.cardSurface,
       );
-      final income = find.byKey(const ValueKey('home-summary-inner-income'));
       final spending = find.byKey(
         const ValueKey('home-summary-inner-spending'),
       );
+      final transactions = find.byKey(
+        const ValueKey('home-summary-inner-transactions'),
+      );
+      final income = find.byKey(const ValueKey('home-summary-inner-income'));
       final net = find.byKey(const ValueKey('home-summary-inner-net-position'));
       expect(
-        tester.getTopLeft(spending).dx - tester.getTopRight(income).dx,
+        tester.getTopLeft(transactions).dx - tester.getTopRight(spending).dx,
         closeTo(ButlerlySpacing.compact, 0.01),
       );
       expect(
-        tester.getTopLeft(net).dx - tester.getTopRight(spending).dx,
+        tester.getTopLeft(income).dx - tester.getTopRight(transactions).dx,
+        closeTo(ButlerlySpacing.compact, 0.01),
+      );
+      expect(
+        tester.getTopLeft(net).dx - tester.getTopRight(income).dx,
         closeTo(ButlerlySpacing.compact, 0.01),
       );
     }

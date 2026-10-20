@@ -202,6 +202,7 @@ class ButlerlyHomeColorTokens {
   const ButlerlyHomeColorTokens({
     required this.income,
     required this.spending,
+    required this.transactions,
     required this.net,
     required this.onMetric,
     required this.onMetricMuted,
@@ -209,6 +210,7 @@ class ButlerlyHomeColorTokens {
 
   final Color income;
   final Color spending;
+  final Color transactions;
   final Color net;
   final Color onMetric;
   final Color onMetricMuted;
@@ -216,6 +218,7 @@ class ButlerlyHomeColorTokens {
   static const standard = ButlerlyHomeColorTokens(
     income: Color(0xFF009B61),
     spending: Color(0xFFE24247),
+    transactions: Color(0xFF8051CF),
     net: Color(0xFF1769E8),
     onMetric: Colors.white,
     onMetricMuted: Colors.white70,
