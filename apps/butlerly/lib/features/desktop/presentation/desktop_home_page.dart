@@ -185,7 +185,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                         horizontal: 6,
                         vertical: 2,
                       ),
-                      minimumSize: const Size.square(ButlerlyButtonTokens.iconTouchTarget),
+                      minimumSize: const Size.square(
+                        ButlerlyButtonTokens.iconTouchTarget,
+                      ),
                     ),
                     tooltip: context.l10n.text('previousMonth'),
                     onPressed: () => _moveMonth(-1, current),
@@ -231,7 +233,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                         horizontal: 6,
                         vertical: 2,
                       ),
-                      minimumSize: const Size.square(ButlerlyButtonTokens.iconTouchTarget),
+                      minimumSize: const Size.square(
+                        ButlerlyButtonTokens.iconTouchTarget,
+                      ),
                     ),
                     tooltip: context.l10n.text('nextMonth'),
                     onPressed: () => _moveMonth(1, current),
@@ -247,9 +251,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                           vertical: 4,
                         ),
                         minimumSize: const Size(
-                        ButlerlyButtonTokens.minimumWidth,
-                        ButlerlyButtonTokens.height,
-                      ),
+                          ButlerlyButtonTokens.minimumWidth,
+                          ButlerlyButtonTokens.height,
+                        ),
                       ),
                       onPressed: () => _go('/search'),
                       icon: const Icon(Icons.search),
@@ -333,9 +337,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                         vertical: 4,
                                       ),
                                       minimumSize: const Size(
-                        ButlerlyButtonTokens.minimumWidth,
-                        ButlerlyButtonTokens.height,
-                      ),
+                                        ButlerlyButtonTokens.minimumWidth,
+                                        ButlerlyButtonTokens.height,
+                                      ),
                                     ),
                                     onPressed: () => setState(_reload),
                                     child: Text(
@@ -477,9 +481,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                           vertical: 4,
                                         ),
                                         minimumSize: const Size(
-                        ButlerlyButtonTokens.minimumWidth,
-                        ButlerlyButtonTokens.height,
-                      ),
+                                          ButlerlyButtonTokens.minimumWidth,
+                                          ButlerlyButtonTokens.height,
+                                        ),
                                       ),
                                       onPressed: () => _go('/analysis?$query'),
                                       child: Text(context.l10n.text('viewAll')),
@@ -646,9 +650,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                         vertical: 4,
                                       ),
                                       minimumSize: const Size(
-                        ButlerlyButtonTokens.minimumWidth,
-                        ButlerlyButtonTokens.height,
-                      ),
+                                        ButlerlyButtonTokens.minimumWidth,
+                                        ButlerlyButtonTokens.height,
+                                      ),
                                     ),
                                     onPressed: () => _go('/search?$query'),
                                     child: Text(context.l10n.text('viewAll')),
@@ -1325,7 +1329,9 @@ Future<DateTime?> _selectDesktopMonth(BuildContext context, DateTime selected) {
             IconButton(
               style: IconButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                minimumSize: const Size.square(ButlerlyButtonTokens.iconTouchTarget),
+                minimumSize: const Size.square(
+                  ButlerlyButtonTokens.iconTouchTarget,
+                ),
               ),
               tooltip: context.l10n.text('desktopPreviousYear'),
               icon: const Icon(Icons.chevron_left),
@@ -1335,7 +1341,9 @@ Future<DateTime?> _selectDesktopMonth(BuildContext context, DateTime selected) {
             IconButton(
               style: IconButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                minimumSize: const Size.square(ButlerlyButtonTokens.iconTouchTarget),
+                minimumSize: const Size.square(
+                  ButlerlyButtonTokens.iconTouchTarget,
+                ),
               ),
               tooltip: context.l10n.text('desktopNextYear'),
               icon: const Icon(Icons.chevron_right),
@@ -1390,9 +1398,9 @@ Future<DateTime?> _selectDesktopMonth(BuildContext context, DateTime selected) {
             style: FilledButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               minimumSize: const Size(
-                        ButlerlyButtonTokens.minimumWidth,
-                        ButlerlyButtonTokens.height,
-                      ),
+                ButlerlyButtonTokens.minimumWidth,
+                ButlerlyButtonTokens.height,
+              ),
             ),
             onPressed: () => Navigator.pop(sheetContext, DateTime(year, month)),
             child: Text(context.l10n.text('desktopApply')),
