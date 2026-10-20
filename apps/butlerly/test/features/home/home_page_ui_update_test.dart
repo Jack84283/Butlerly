@@ -304,17 +304,21 @@ void main() {
       closeTo(tester.getTopLeft(transactions).dy, 1),
     );
     expect(tester.getTopLeft(income).dy, closeTo(tester.getTopLeft(net).dy, 1));
+    final firstRowBottom = [
+      tester.getBottomLeft(spending).dy,
+      tester.getBottomLeft(transactions).dy,
+    ]..sort();
     expect(
-      tester.getTopLeft(income).dy,
-      greaterThan(tester.getBottomLeft(spending).dy),
+      tester.getTopLeft(income).dy - firstRowBottom.last,
+      closeTo(ButlerlySpacing.compact, 0.01),
     );
     expect(
       tester.getTopLeft(transactions).dx - tester.getTopRight(spending).dx,
-      closeTo(ButlerlySpacing.micro, 0.01),
+      closeTo(ButlerlySpacing.compact, 0.01),
     );
     expect(
       tester.getTopLeft(net).dx - tester.getTopRight(income).dx,
-      closeTo(ButlerlySpacing.micro, 0.01),
+      closeTo(ButlerlySpacing.compact, 0.01),
     );
     expect(tester.takeException(), isNull);
   });
