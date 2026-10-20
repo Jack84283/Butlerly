@@ -8,7 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets(
-    'Cancel has an outline only in dark mode; other text buttons stay borderless',
+    'Cancel uses the same outlined secondary role in both themes',
     (tester) async {
       for (final theme in [AppTheme.light, AppTheme.dark]) {
         var tapCount = 0;
@@ -35,16 +35,21 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        final cancel = tester.widget<TextButton>(
+        final cancel = tester.widget<OutlinedButton>(
           find.descendant(
             of: find.byKey(const ValueKey('cancel-action')),
-            matching: find.byType(TextButton),
+            matching: find.byType(OutlinedButton),
           ),
         );
-        final expectedSide = theme.brightness == Brightness.dark
-            ? theme.outlinedButtonTheme.style?.side?.resolve({})
-            : BorderSide.none;
-        expect(cancel.style?.side?.resolve({}), expectedSide);
+        expect(cancel.onPressed, isNotNull);
+        expect(
+          theme.outlinedButtonTheme.style?.minimumSize?.resolve({}),
+          const Size(120, 32),
+        );
+        expect(
+          theme.outlinedButtonTheme.style?.side?.resolve({}),
+          isNot(BorderSide.none),
+        );
 
         final regular = tester.widget<TextButton>(
           find.widgetWithText(TextButton, 'Other text action'),
