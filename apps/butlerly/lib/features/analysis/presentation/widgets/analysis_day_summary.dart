@@ -1,3 +1,5 @@
+import 'package:butlerly/app/shell/adaptive_shell.dart';
+import 'package:butlerly/design_system/components/butlerly_desktop_transaction_table.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_count_label.dart';
@@ -100,16 +102,28 @@ class AnalysisDaySummary extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(
                   horizontal: ButlerlySpacing.compact,
                 ),
-                child: ButlerlyTransactionInnerCard(
-                  child: TransactionRecordList(
-                    transactions: value.value,
-                    masterData: masterData ?? const TransactionMasterData(),
-                    onTap: onTransactionTap,
-                    dashboardRowStyle: true,
-                    showDateInRows: true,
-                    missingCategoryLabel: context.l10n.text('uncategorized'),
-                  ),
-                ),
+                child: effectiveButlerlyLayoutMode(
+                          context,
+                          MediaQuery.sizeOf(context).width,
+                        ) ==
+                        ButlerlyLayoutMode.wide
+                    ? ButlerlyDesktopTransactionTableCard(
+                        transactions: value.value,
+                        masterData: masterData ?? const TransactionMasterData(),
+                        onTap: onTransactionTap,
+                        missingCategoryLabel: context.l10n.text('uncategorized'),
+                      )
+                    : ButlerlyTransactionInnerCard(
+                        child: TransactionRecordList(
+                          transactions: value.value,
+                          masterData: masterData ??
+                              const TransactionMasterData(),
+                          onTap: onTransactionTap,
+                          dashboardRowStyle: true,
+                          showDateInRows: true,
+                          missingCategoryLabel: context.l10n.text('uncategorized'),
+                        ),
+                      ),
               ),
             ],
           ],
