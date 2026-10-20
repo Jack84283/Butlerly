@@ -629,8 +629,7 @@ class _AnalysisContent extends StatelessWidget {
           MediaQuery.sizeOf(context).width,
         ) ==
         ButlerlyLayoutMode.wide;
-    final breakdowns = <Widget>[
-      AnalysisSpendingBreakdown(
+    final spendingCard = AnalysisSpendingBreakdown(
         model: model,
         masterData: masterData,
         onCategoryTap: analysisContext == null
@@ -651,8 +650,10 @@ class _AnalysisContent extends StatelessWidget {
               )
             : null,
       ),
-      if (model.merchants.isNotEmpty)
-        AnalysisMerchantBreakdown(
+
+    final merchantCard = model.merchants.isEmpty
+        ? null
+        : AnalysisMerchantBreakdown(
           model: model,
           masterData: masterData,
           onMetricTap: (metric) {
@@ -663,8 +664,10 @@ class _AnalysisContent extends StatelessWidget {
             );
           },
         ),
-      if (model.subcategories.isNotEmpty)
-        AnalysisSubcategoryBreakdown(
+
+    final subcategoryCard = model.subcategories.isEmpty
+        ? null
+        : AnalysisSubcategoryBreakdown(
           model: model,
           masterData: masterData,
           onMetricTap: (metric) {
@@ -674,8 +677,7 @@ class _AnalysisContent extends StatelessWidget {
               transactionIds: _metricTransactionIds(metric),
             );
           },
-        ),
-    ];
+        );
 
     return ButlerlyPage(
       title: context.l10n.text('analysis'),
@@ -690,11 +692,26 @@ class _AnalysisContent extends StatelessWidget {
       ),
       fullWidth: desktop,
       children: _withAnalysisCardSpacing([
-        AnalysisSummary(model: model),
-        if (desktop)
-          _AnalysisDesktopBreakdownGrid(cards: breakdowns)
-        else
-          ...breakdowns,
+        if (desktop) ...[
+          _AnalysisDesktopCardPair(
+            first: AnalysisSummary(model: model),
+            second: spendingCard,
+          ),
+          if (merchantCard != null && subcategoryCard != null)
+            _AnalysisDesktopCardPair(
+              first: merchantCard,
+              second: subcategoryCard,
+            )
+          else ...[
+            ?merchantCard,
+            ?subcategoryCard,
+          ],
+        ] else ...[
+          AnalysisSummary(model: model),
+          spendingCard,
+          ?merchantCard,
+          ?subcategoryCard,
+        ],
         if (recurringPatterns != null)
           AnalysisRecurringPatterns(
             patterns: recurringPatterns!,
@@ -821,29 +838,39 @@ class _AnalysisContent extends StatelessWidget {
       evidence.map((value) => value.transactionId.value).toSet().toList();
 }
 
-/// Responsive desktop dashboard: full-width outer sections with compact
-/// breakdown cards arranged in columns only when each card remains readable.
-class _AnalysisDesktopBreakdownGrid extends StatelessWidget {
-  const _AnalysisDesktopBreakdownGrid({required this.cards});
+/// Keep paired desktop Analysis cards equal-height without changing the
+/// single-column device layout. Stack them if the content width is too narrow.
+class _AnalysisDesktopCardPair extends StatelessWidget {
+  const _AnalysisDesktopCardPair({
+    required this.first,
+    required this.second,
+  });
 
-  final List<Widget> cards;
+  final Widget first;
+  final Widget second;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
-      const gap = ButlerlySpacing.cardGap;
-      final columns = constraints.maxWidth >= 1200
-          ? 3
-          : constraints.maxWidth >= 780
-          ? 2
-          : 1;
-      final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
-      return Wrap(
-        spacing: gap,
-        runSpacing: gap,
-        children: [
-          for (final card in cards) SizedBox(width: width, child: card),
-        ],
+      if (constraints.maxWidth < 820) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            first,
+            const SizedBox(height: ButlerlySpacing.cardGap),
+            second,
+          ],
+        );
+      }
+      return IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: first),
+            const SizedBox(width: ButlerlySpacing.cardGap),
+            Expanded(child: second),
+          ],
+        ),
       );
     },
   );
