@@ -1,3 +1,4 @@
+import 'package:butlerly/design_system/components/butlerly_month_picker.dart';
 import 'package:butlerly/app/locale/home_greeting.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
@@ -209,9 +210,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                       shadowColor: Colors.transparent,
                     ),
                     onPressed: () async {
-                      final picked = await _selectDesktopMonth(
+                      final picked = await showButlerlyMonthPicker(
                         context,
-                        current,
+                        selectedMonth: current,
+                        currentMonth: DateTime.now(),
                       );
                       if (picked != null && mounted) {
                         setState(() {
@@ -1314,101 +1316,6 @@ class _DesktopTrend extends StatelessWidget {
       ),
     );
   }
-}
-
-Future<DateTime?> _selectDesktopMonth(BuildContext context, DateTime selected) {
-  var year = selected.year;
-  var month = selected.month;
-  return showButlerlyBottomSheet<DateTime>(
-    context: context,
-    builder: (sheetContext) => StatefulBuilder(
-      builder: (sheetContext, update) => ButlerlySheet(
-        title: Row(
-          children: [
-            Expanded(child: Text(context.l10n.text('desktopSelectMonth'))),
-            IconButton(
-              style: IconButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                minimumSize: const Size.square(
-                  ButlerlyButtonTokens.iconTouchTarget,
-                ),
-              ),
-              tooltip: context.l10n.text('desktopPreviousYear'),
-              icon: const Icon(Icons.chevron_left),
-              onPressed: year > 2000 ? () => update(() => year--) : null,
-            ),
-            Text('$year'),
-            IconButton(
-              style: IconButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                minimumSize: const Size.square(
-                  ButlerlyButtonTokens.iconTouchTarget,
-                ),
-              ),
-              tooltip: context.l10n.text('desktopNextYear'),
-              icon: const Icon(Icons.chevron_right),
-              onPressed: year < 2100 ? () => update(() => year++) : null,
-            ),
-          ],
-        ),
-        content: SizedBox(
-          width: 400,
-          child: GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: 12,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              childAspectRatio: 2.5,
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
-            ),
-            itemBuilder: (context, index) {
-              final candidate = index + 1;
-              return OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  minimumSize: const Size(
-                    ButlerlyButtonTokens.minimumWidth,
-                    ButlerlyButtonTokens.height,
-                  ),
-                  backgroundColor: candidate == month
-                      ? Theme.of(context).colorScheme.primaryContainer
-                      : Colors.transparent,
-                ),
-                onPressed: () => update(() => month = candidate),
-                child: Text(
-                  DateFormat.MMM(
-                    Localizations.localeOf(context).toLanguageTag(),
-                  ).format(DateTime(year, candidate)),
-                ),
-              );
-            },
-          ),
-        ),
-        actions: [
-          ButlerlyCancelButton(
-            onPressed: () => Navigator.pop(sheetContext),
-            child: Text(context.l10n.text('cancel')),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              minimumSize: const Size(
-                ButlerlyButtonTokens.minimumWidth,
-                ButlerlyButtonTokens.height,
-              ),
-            ),
-            onPressed: () => Navigator.pop(sheetContext, DateTime(year, month)),
-            child: Text(context.l10n.text('desktopApply')),
-          ),
-        ],
-      ),
-    ),
-  );
 }
 
 /// Keep six standard Insights sections visible even with no findings.
