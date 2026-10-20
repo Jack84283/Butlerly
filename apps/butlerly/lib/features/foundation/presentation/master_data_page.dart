@@ -739,18 +739,18 @@ class _Row extends StatelessWidget {
             children: [
               if (onEdit != null)
                 IconButton(
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  constraints: const BoxConstraints.tightFor(width: 24, height: 24),
                   padding: EdgeInsets.zero,
-                  iconSize: 18,
+                  iconSize: 16,
                   tooltip: context.l10n.text('edit'),
                   icon: const Icon(Icons.edit_outlined),
                   onPressed: onEdit,
                 ),
               if (onToggle != null)
                 IconButton(
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  constraints: const BoxConstraints.tightFor(width: 24, height: 24),
                   padding: EdgeInsets.zero,
-                  iconSize: 18,
+                  iconSize: 16,
                   tooltip: context.l10n.text(
                     active ? 'deactivate' : 'reactivate',
                   ),
