@@ -37,7 +37,15 @@ void main() {
       }
       expect(
         theme.iconButtonTheme.style?.minimumSize?.resolve({}),
-        const Size(44, 44),
+        const Size(32, 32),
+      );
+      expect(
+        theme.iconButtonTheme.style?.backgroundColor?.resolve({}),
+        colors.subtleSurface,
+      );
+      expect(
+        theme.iconButtonTheme.style?.tapTargetSize,
+        MaterialTapTargetSize.padded,
       );
       expect(theme.iconButtonTheme.style?.iconSize?.resolve({}), 18);
       expect(theme.filledButtonTheme.style?.shape?.resolve({}), expectedShape);
