@@ -701,7 +701,7 @@ class _Row extends StatelessWidget {
 
   Widget _desktopRow(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(
-      vertical: ButlerlyTableTokens.rowVerticalPadding,
+      vertical: ButlerlySpacing.micro,
     ),
     child: Row(
       children: [
@@ -739,12 +739,18 @@ class _Row extends StatelessWidget {
             children: [
               if (onEdit != null)
                 IconButton(
+                  constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                  padding: EdgeInsets.zero,
+                  iconSize: 20,
                   tooltip: context.l10n.text('edit'),
                   icon: const Icon(Icons.edit_outlined),
                   onPressed: onEdit,
                 ),
               if (onToggle != null)
                 IconButton(
+                  constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                  padding: EdgeInsets.zero,
+                  iconSize: 20,
                   tooltip: context.l10n.text(
                     active ? 'deactivate' : 'reactivate',
                   ),
