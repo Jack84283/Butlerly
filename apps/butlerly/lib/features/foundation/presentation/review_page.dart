@@ -1,4 +1,6 @@
+import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/finance_services.dart';
+import 'package:butlerly/design_system/components/butlerly_desktop_transaction_table.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_compact_section_selector.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
@@ -479,6 +481,10 @@ class _ReviewPageState extends State<ReviewPage> {
 
   @override
   Widget build(BuildContext context) {
+    final desktop = effectiveButlerlyLayoutMode(
+      context,
+      MediaQuery.sizeOf(context).width,
+    ) == ButlerlyLayoutMode.wide;
     if (_finance == null) {
       return ButlerlyEmptyState(
         icon: Icons.fact_check_outlined,
@@ -490,6 +496,7 @@ class _ReviewPageState extends State<ReviewPage> {
       return ButlerlyPage(
         title: context.l10n.text('review'),
         pinnedSpacing: ButlerlyPinnedPageSpacing.primary,
+        fullWidth: desktop,
         children: [
           ButlerlyEmptyState(
             icon: Icons.error_outline_rounded,
@@ -504,6 +511,7 @@ class _ReviewPageState extends State<ReviewPage> {
       onRefresh: _pullToRefresh,
       refreshKey: ValueKey('review-pull-to-refresh-${_view.name}'),
       pinnedSpacing: ButlerlyPinnedPageSpacing.primary,
+      fullWidth: desktop,
       pinnedHeader: _hasReviewScope && !widget.showReviewOverview
           ? null
           : FutureBuilder<List<DuplicateCandidateGroup>>(
@@ -605,7 +613,20 @@ class _ReviewPageState extends State<ReviewPage> {
               }
               return FutureBuilder<TransactionMasterDataSnapshot>(
                 future: _masterData,
-                builder: (context, masterSnapshot) => TransactionRecordList(
+                builder: (context, masterSnapshot) => desktop
+                    ? ButlerlyDesktopTransactionSection(
+                        title: context.l10n.text('uncategorized'),
+                        transactions: values,
+                        masterData: masterSnapshot.data?.presentation ??
+                            const TransactionMasterData(),
+                        paymentSourceNames: {
+                          for (final source in masterSnapshot.data?.paymentSources ?? <PaymentSource>[])
+                            source.id.value: source.name,
+                        },
+                        missingCategoryLabel: context.l10n.text('uncategorized'),
+                        onTap: _openUncategorized,
+                      )
+                    : TransactionRecordList(
                   transactions: values,
                   masterData:
                       masterSnapshot.data?.presentation ??
@@ -729,8 +750,20 @@ class _ReviewPageState extends State<ReviewPage> {
                       if (items.isNotEmpty)
                         FutureBuilder<TransactionMasterDataSnapshot>(
                           future: _masterData,
-                          builder: (context, masterSnapshot) =>
-                              TransactionRecordList(
+                          builder: (context, masterSnapshot) => desktop
+                              ? ButlerlyDesktopTransactionSection(
+                                  title: context.l10n.text('needsReview'),
+                                  transactions: items.map((entry) => entry.transaction).toList(),
+                                  masterData: masterSnapshot.data?.presentation ??
+                                      const TransactionMasterData(),
+                                  paymentSourceNames: {
+                                    for (final source in masterSnapshot.data?.paymentSources ?? <PaymentSource>[])
+                                      source.id.value: source.name,
+                                  },
+                                  missingCategoryLabel: context.l10n.text('uncategorized'),
+                                  onTap: (transaction) => _openReview(byId[transaction.id]!),
+                                )
+                              : TransactionRecordList(
                                 transactions: items
                                     .map((entry) => entry.transaction)
                                     .toList(),
