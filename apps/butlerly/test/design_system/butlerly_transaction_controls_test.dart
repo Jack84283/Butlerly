@@ -203,7 +203,7 @@ void main() {
     await tester.pump();
     expect(find.text('家庭'), findsNothing);
     expect(find.text('工作'), findsWidgets);
-    await tester.tap(find.text('工作').last);
+    await tester.tap(find.widgetWithText(FilterChip, '工作'));
     await tester.pump();
     expect(selected, contains('work'));
   });
