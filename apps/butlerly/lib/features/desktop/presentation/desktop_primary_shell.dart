@@ -1,7 +1,6 @@
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
-import 'package:butlerly/features/tools/presentation/tools_navigation.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -31,7 +30,6 @@ class _DesktopPrimaryShellState extends State<DesktopPrimaryShell> {
   // Preserve each rail mode's expansion preference across viewport changes.
   bool _expandedAtWideWidths = true;
   bool _expandedAtNarrowWidths = false;
-  bool _toolsExpanded = true;
   bool _moreExpanded = true;
   bool _moreVisibilityScheduled = false;
 
@@ -80,7 +78,6 @@ class _DesktopPrimaryShellState extends State<DesktopPrimaryShell> {
             _WidePrimaryNavigation(
               key: const ValueKey('primary-wide-navigation'),
               expanded: expanded,
-              toolsExpanded: _toolsExpanded,
               moreExpanded: _moreExpanded,
               currentIndex: widget.currentIndex,
               onToggleExpanded: () => setState(() {
@@ -90,8 +87,6 @@ class _DesktopPrimaryShellState extends State<DesktopPrimaryShell> {
                   _expandedAtWideWidths = !expanded;
                 }
               }),
-              onToggleTools: () =>
-                  setState(() => _toolsExpanded = !_toolsExpanded),
               onToggleMore: () =>
                   setState(() => _moreExpanded = !_moreExpanded),
               moreNavigationKey: _moreNavigationKey,
@@ -117,11 +112,9 @@ class _WidePrimaryNavigation extends StatelessWidget {
   const _WidePrimaryNavigation({
     super.key,
     required this.expanded,
-    required this.toolsExpanded,
     required this.moreExpanded,
     required this.currentIndex,
     required this.onToggleExpanded,
-    required this.onToggleTools,
     required this.onToggleMore,
     required this.moreNavigationKey,
     required this.onParentSelected,
@@ -130,11 +123,9 @@ class _WidePrimaryNavigation extends StatelessWidget {
   });
 
   final bool expanded;
-  final bool toolsExpanded;
   final bool moreExpanded;
   final int currentIndex;
   final VoidCallback onToggleExpanded;
-  final VoidCallback onToggleTools;
   final VoidCallback onToggleMore;
   final GlobalKey moreNavigationKey;
   final ValueChanged<int> onParentSelected;
@@ -201,22 +192,12 @@ class _WidePrimaryNavigation extends StatelessWidget {
         selected: _selected(2),
         onTap: () => onParentSelected(2),
       ),
-      _WideGroup(
+      _WideTopLevelItem(
         semanticKey: const ValueKey('wide-tools-navigation'),
-        label: context.l10n.text('tools'),
         icon: Icons.bar_chart_rounded,
+        label: context.l10n.text('tools'),
         selected: _selected(3),
-        expanded: toolsExpanded,
         onTap: () => onParentSelected(3),
-        onToggle: onToggleTools,
-        children: [
-          for (final tool in toolNavigationItems(context))
-            _WideChildItem(
-              icon: tool.icon,
-              label: tool.title,
-              onTap: () => onNavigate(tool.route),
-            ),
-        ],
       ),
       _WideGroup(
         key: moreNavigationKey,
@@ -276,11 +257,7 @@ class _WidePrimaryNavigation extends StatelessWidget {
         icon: Icons.bar_chart_rounded,
         label: context.l10n.text('tools'),
         selected: _selected(3),
-        onTap: (itemContext) => _openMenu(itemContext, [
-          _WidePopupAction.parent(context.l10n.text('tools'), 3),
-          for (final tool in toolNavigationItems(context))
-            _WidePopupAction.route(tool.title, tool.route),
-        ]),
+        onTap: (_) => onParentSelected(3),
       ),
       _WideCollapsedItem(
         key: const ValueKey('wide-collapsed-more'),
