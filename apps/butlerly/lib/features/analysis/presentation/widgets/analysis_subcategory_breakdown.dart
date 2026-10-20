@@ -68,7 +68,11 @@ class AnalysisSubcategoryBreakdown extends StatelessWidget {
             ),
           ],
           if (fillToFiveRows)
-            for (var index = model.subcategories.length; index < 5; index++) ...[
+            for (
+              var index = model.subcategories.length;
+              index < 5;
+              index++
+            ) ...[
               const SizedBox(height: ButlerlySpacing.compact),
               const SizedBox(height: 44),
             ],
