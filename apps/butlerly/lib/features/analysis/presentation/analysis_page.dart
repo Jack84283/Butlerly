@@ -859,15 +859,15 @@ class _AnalysisDesktopCardPair extends StatelessWidget {
           ],
         );
       }
-      return IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(child: first),
-            const SizedBox(width: ButlerlySpacing.cardGap),
-            Expanded(child: second),
-          ],
-        ),
+      // Avoid intrinsic measurement of charts and layout-builder children:
+      // those widgets cannot always report intrinsic heights.
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: first),
+          const SizedBox(width: ButlerlySpacing.cardGap),
+          Expanded(child: second),
+        ],
       );
     },
   );
