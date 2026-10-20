@@ -425,14 +425,23 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
           ButlerlyCard(
             key: const ValueKey('payment-sources-inner-card'),
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            padding: const EdgeInsets.all(ButlerlySpacing.small),
+            padding: const EdgeInsets.symmetric(
+              horizontal: ButlerlySpacing.small,
+            ),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
                 showCheckboxColumn: false,
-                dataRowMinHeight: 40,
-                dataRowMaxHeight: 40,
-                headingRowHeight: 36,
+                dataRowMinHeight: 32,
+                dataRowMaxHeight: 32,
+                headingRowHeight: 32,
+                dividerThickness: 0.5,
+                border: TableBorder(
+                  horizontalInside: BorderSide(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                    width: 0.5,
+                  ),
+                ),
                 horizontalMargin: ButlerlySpacing.small,
                 columnSpacing: ButlerlySpacing.standard,
                 columns: [
