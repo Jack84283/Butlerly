@@ -46,7 +46,10 @@ void main() {
         );
         expect(button.style?.side?.resolve({}), BorderSide.none);
         expect(tester.getSize(finder), const Size(44, 44));
-        expect(tester.widget<Icon>(find.byIcon(Icons.more_horiz_rounded)).size, 18);
+        expect(
+          tester.widget<Icon>(find.byIcon(Icons.more_horiz_rounded)).size,
+          18,
+        );
         expect(find.byTooltip('More options'), findsOneWidget);
 
         await tester.tap(finder);
