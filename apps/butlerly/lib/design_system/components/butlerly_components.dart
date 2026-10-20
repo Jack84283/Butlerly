@@ -438,7 +438,7 @@ class ButlerlyTransparentIconButton extends StatelessWidget {
   );
 }
 
-/// Shared compact bordered selector used by dashboard controls.
+/// Shared compact outlined or transparent selector used by dashboard controls.
 ///
 /// The selector keeps its visual treatment independent of the field's meaning
 /// while callers provide the localized label and action. Its outer size is a
@@ -500,7 +500,7 @@ class ButlerlyCompactSelector extends StatelessWidget {
                     ? Colors.transparent
                     : context.colors.subtleSurface,
                 border: Border.all(color: context.colors.border),
-                borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+                borderRadius: BorderRadius.circular(ButlerlyRadius.pill),
               ),
               child: Padding(
                 padding: EdgeInsets.symmetric(
