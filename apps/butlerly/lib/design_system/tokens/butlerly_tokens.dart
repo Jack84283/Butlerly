@@ -46,13 +46,14 @@ abstract final class ButlerlyTableTokens {
   static const rowHeight = 32.0;
   static const headingHeight = 32.0;
   static const rowVerticalPadding = 7.0;
+
   /// Clear space below the header text, independent of divider height.
   static const headerToRowsGap = ButlerlySpacing.small;
 
   static Color dividerColor(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark
-          ? const Color(0xFF52565B)
-          : Theme.of(context).dividerColor;
+      ? const Color(0xFF52565B)
+      : Theme.of(context).dividerColor;
   static const outerPadding = ButlerlySpacing.small;
   static const innerHorizontalPadding = ButlerlySpacing.small;
   static const innerVerticalPadding = ButlerlySpacing.none;
