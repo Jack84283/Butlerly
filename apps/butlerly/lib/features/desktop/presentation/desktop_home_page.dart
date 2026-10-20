@@ -154,7 +154,11 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
           children: [
             Container(
               key: const ValueKey('desktop-home-header'),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: ButlerlySize.contentGutter),
+              constraints: const BoxConstraints(
+                minHeight: ButlerlySize.pageToolbarHeight,
+                maxHeight: ButlerlySize.pageToolbarHeight,
+              ),
               decoration: BoxDecoration(
                 color: context.colors.background,
                 border: Border(
@@ -169,9 +173,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                       textKey: const ValueKey('desktop-home-greeting'),
                       maxLines: 1,
                       textAlign: TextAlign.start,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: theme.appBarTheme.titleTextStyle,
                     ),
                   ),
                   IconButton(
