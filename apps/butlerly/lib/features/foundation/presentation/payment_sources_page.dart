@@ -6,6 +6,7 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_payment_source_icon.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/features/foundation/presentation/payment_source_display.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -439,7 +440,7 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                 dividerThickness: ButlerlyTableTokens.dividerThickness,
                 border: TableBorder(
                   horizontalInside: BorderSide(
-                    color: Theme.of(context).colorScheme.outlineVariant,
+                    color: context.colors.cardDivider,
                     width: ButlerlyTableTokens.dividerThickness,
                   ),
                 ),
