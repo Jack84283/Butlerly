@@ -238,7 +238,8 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
             .copyWith(color: context.colors.primaryText),
         child: _buildTable(context),
       );
-      final minimumWidth = minimumTableWidth +
+      final minimumWidth =
+          minimumTableWidth +
           (onSelectionChanged == null ? 0 : selectionColumnWidth);
       if (constraints.maxWidth >= minimumWidth) return table;
       return SingleChildScrollView(
