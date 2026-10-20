@@ -1,3 +1,4 @@
+import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
@@ -474,13 +475,20 @@ class _AnalysisPageState extends State<AnalysisPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) {
+    final desktop = effectiveButlerlyLayoutMode(
+          context,
+          MediaQuery.sizeOf(context).width,
+        ) ==
+        ButlerlyLayoutMode.wide;
+    return Scaffold(
     body: FutureBuilder<ApplicationResult<List<RuleExecutionResult>>>(
       future: _result,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return ButlerlyPage(
             title: context.l10n.text('analysis'),
+            fullWidth: desktop,
             onRefresh: _refresh,
             refreshKey: const ValueKey('analysis-pull-to-refresh'),
             children: const [AnalysisSkeleton()],
@@ -490,6 +498,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
         if (result is! ApplicationSuccess<List<RuleExecutionResult>>) {
           return ButlerlyPage(
             title: context.l10n.text('analysis'),
+            fullWidth: desktop,
             onRefresh: _refresh,
             refreshKey: const ValueKey('analysis-pull-to-refresh'),
             children: [
@@ -542,7 +551,8 @@ class _AnalysisPageState extends State<AnalysisPage> {
         );
       },
     ),
-  );
+    );
+  }
 
   Future<ApplicationResult<AnalysisCalendarResult>>?
   _loadCalendarForTestOnly() {
@@ -612,19 +622,13 @@ class _AnalysisContent extends StatelessWidget {
       period,
       analysisContext?.period,
     );
-    return ButlerlyPage(
-      title: context.l10n.text('analysis'),
-      onRefresh: onRefresh,
-      refreshKey: const ValueKey('analysis-pull-to-refresh'),
-      pinnedSpacing: ButlerlyPinnedPageSpacing.tightHeader,
-      pinnedHeaderExtent: AnalysisPeriodPinnedHeader.extent(context, subtitle),
-      pinnedHeader: AnalysisPeriodPinnedHeader(
-        subtitle: subtitle,
-        value: period,
-        onChanged: onPeriodChanged,
-      ),
-      children: _withAnalysisCardSpacing([
-        AnalysisSummary(model: model),
+    final desktop =
+        effectiveButlerlyLayoutMode(
+          context,
+          MediaQuery.sizeOf(context).width,
+        ) ==
+        ButlerlyLayoutMode.wide;
+    final breakdowns = <Widget>[
         AnalysisSpendingBreakdown(
           model: model,
           masterData: masterData,
@@ -646,7 +650,8 @@ class _AnalysisContent extends StatelessWidget {
                 )
               : null,
         ),
-        AnalysisMerchantBreakdown(
+        if (model.merchants.isNotEmpty)
+          AnalysisMerchantBreakdown(
           model: model,
           masterData: masterData,
           onMetricTap: (metric) {
@@ -657,7 +662,8 @@ class _AnalysisContent extends StatelessWidget {
             );
           },
         ),
-        AnalysisSubcategoryBreakdown(
+        if (model.subcategories.isNotEmpty)
+          AnalysisSubcategoryBreakdown(
           model: model,
           masterData: masterData,
           onMetricTap: (metric) {
@@ -668,6 +674,26 @@ class _AnalysisContent extends StatelessWidget {
             );
           },
         ),
+    ];
+
+    return ButlerlyPage(
+      title: context.l10n.text('analysis'),
+      onRefresh: onRefresh,
+      refreshKey: const ValueKey('analysis-pull-to-refresh'),
+      pinnedSpacing: ButlerlyPinnedPageSpacing.tightHeader,
+      pinnedHeaderExtent: AnalysisPeriodPinnedHeader.extent(context, subtitle),
+      pinnedHeader: AnalysisPeriodPinnedHeader(
+        subtitle: subtitle,
+        value: period,
+        onChanged: onPeriodChanged,
+      ),
+      fullWidth: desktop,
+      children: _withAnalysisCardSpacing([
+        AnalysisSummary(model: model),
+        if (desktop)
+          _AnalysisDesktopBreakdownGrid(cards: breakdowns)
+        else
+          ...breakdowns,
         if (recurringPatterns != null)
           AnalysisRecurringPatterns(
             patterns: recurringPatterns!,
@@ -792,6 +818,34 @@ class _AnalysisContent extends StatelessWidget {
 
   List<String> _evidenceTransactionIds(Iterable<EvidenceReference> evidence) =>
       evidence.map((value) => value.transactionId.value).toSet().toList();
+}
+
+/// Responsive desktop dashboard: full-width outer sections with compact
+/// breakdown cards arranged in columns only when each card remains readable.
+class _AnalysisDesktopBreakdownGrid extends StatelessWidget {
+  const _AnalysisDesktopBreakdownGrid({required this.cards});
+
+  final List<Widget> cards;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      const gap = ButlerlySpacing.cardGap;
+      final columns = constraints.maxWidth >= 1200
+          ? 3
+          : constraints.maxWidth >= 780
+              ? 2
+              : 1;
+      final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
+      return Wrap(
+        spacing: gap,
+        runSpacing: gap,
+        children: [
+          for (final card in cards) SizedBox(width: width, child: card),
+        ],
+      );
+    },
+  );
 }
 
 /// Match the consistent card-to-card separation used on the Home page.
