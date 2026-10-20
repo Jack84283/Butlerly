@@ -16,11 +16,8 @@ class ButlerlyCancelButton extends StatelessWidget {
   final bool autofocus;
 
   @override
-  Widget build(BuildContext context) => OutlinedButton(
-    onPressed: onPressed,
-    autofocus: autofocus,
-    child: child,
-  );
+  Widget build(BuildContext context) =>
+      OutlinedButton(onPressed: onPressed, autofocus: autofocus, child: child);
 }
 
 class ButlerlySheet extends StatelessWidget {
