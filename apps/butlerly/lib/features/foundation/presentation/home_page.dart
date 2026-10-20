@@ -834,6 +834,18 @@ bool _allKnownSummaryValuesEmpty(AnalysisModel model) {
       availabilities.every((value) => value == AnalysisDataAvailability.empty);
 }
 
+String _homeTransactionCount(BuildContext context, AnalysisMetric? metric) {
+  if (metric == null ||
+      metric.availability == AnalysisDataAvailability.insufficient) {
+    return '—';
+  }
+  final count = int.tryParse(metric.value.toString());
+  if (count == null) return '—';
+  return NumberFormat.decimalPattern(
+    Localizations.localeOf(context).toLanguageTag(),
+  ).format(count);
+}
+
 class _HomeSummaryCard extends StatelessWidget {
   const _HomeSummaryCard({
     required this.model,
@@ -871,6 +883,26 @@ class _HomeSummaryCard extends StatelessWidget {
           builder: (context, constraints) {
             final metrics = [
               (
+                key: const ValueKey('home-summary-metric-spending'),
+                tileKey: const ValueKey('home-summary-inner-spending'),
+                label: context.l10n.text('desktopExpenses'),
+                value: model?.spending,
+                comparison: model?.spendingComparison,
+                icon: Icons.arrow_downward,
+                color: context.designTokens.homeColors.spending,
+                isCount: false,
+              ),
+              (
+                key: const ValueKey('home-summary-metric-transactions'),
+                tileKey: const ValueKey('home-summary-inner-transactions'),
+                label: context.l10n.text('transactions'),
+                value: model?.transactionCount,
+                comparison: model?.transactionCountComparison,
+                icon: Icons.receipt_long_outlined,
+                color: context.designTokens.homeColors.transactions,
+                isCount: true,
+              ),
+              (
                 key: const ValueKey('home-summary-metric-income'),
                 tileKey: const ValueKey('home-summary-inner-income'),
                 label: context.l10n.text('income'),
@@ -878,15 +910,7 @@ class _HomeSummaryCard extends StatelessWidget {
                 comparison: model?.incomeComparison,
                 icon: Icons.arrow_upward,
                 color: context.designTokens.homeColors.income,
-              ),
-              (
-                key: const ValueKey('home-summary-metric-spending'),
-                tileKey: const ValueKey('home-summary-inner-spending'),
-                label: context.l10n.text('spending'),
-                value: model?.spending,
-                comparison: model?.spendingComparison,
-                icon: Icons.arrow_downward,
-                color: context.designTokens.homeColors.spending,
+                isCount: false,
               ),
               (
                 key: const ValueKey('home-summary-metric-net-position'),
@@ -896,6 +920,7 @@ class _HomeSummaryCard extends StatelessWidget {
                 comparison: model?.netComparison,
                 icon: Icons.show_chart,
                 color: context.designTokens.homeColors.net,
+                isCount: false,
               ),
             ];
             final cards = [
@@ -904,8 +929,9 @@ class _HomeSummaryCard extends StatelessWidget {
                   key: metric.tileKey,
                   titleKey: metric.key,
                   label: metric.label,
-                  amount:
-                      metric.value == null ||
+                  amount: metric.isCount
+                      ? _homeTransactionCount(context, metric.value)
+                      : metric.value == null ||
                           metric.value!.availability ==
                               AnalysisDataAvailability.insufficient
                       ? showMissingValuesAsZero
@@ -928,16 +954,25 @@ class _HomeSummaryCard extends StatelessWidget {
                   color: metric.color,
                 ),
             ];
-            return Row(
+            Widget metricRow(int start, int end) => Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                for (var index = 0; index < cards.length; index++) ...[
-                  if (index > 0)
+                for (var index = start; index < end; index++) ...[
+                  if (index > start)
                     SizedBox(width: compact ? ButlerlySpacing.micro : 8),
                   Expanded(child: cards[index]),
                 ],
               ],
             );
+            return compact
+                ? Column(
+                    children: [
+                      metricRow(0, 2),
+                      const SizedBox(height: ButlerlySpacing.micro),
+                      metricRow(2, 4),
+                    ],
+                  )
+                : metricRow(0, cards.length);
           },
         ),
         if (analysisUnavailable) ...[
@@ -954,7 +989,7 @@ class _HomeSummaryCard extends StatelessWidget {
       ],
     );
     if (compact) {
-      // Remove the enclosing surface so all three metrics can use the full
+      // Remove the enclosing surface so all four metrics can use the full
       // readable content width. Keep the section key for navigation and tests.
       return Semantics(
         key: const ValueKey('home-summary-card'),
