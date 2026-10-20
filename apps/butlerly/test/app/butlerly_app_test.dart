@@ -56,14 +56,14 @@ void main() {
     expect(
       theme.outlinedButtonTheme.style?.minimumSize?.resolve({}),
       const Size(
-        ButlerlyButtonTokens.compactHeight,
+        ButlerlyButtonTokens.minimumWidth,
         ButlerlyButtonTokens.height,
       ),
     );
     expect(
       theme.textButtonTheme.style?.minimumSize?.resolve({}),
       const Size(
-        ButlerlyButtonTokens.compactHeight,
+        ButlerlyButtonTokens.minimumWidth,
         ButlerlyButtonTokens.height,
       ),
     );
@@ -76,7 +76,7 @@ void main() {
     );
     expect(
       theme.iconButtonTheme.style?.minimumSize?.resolve({}),
-      const Size.square(ButlerlySize.minimumTarget),
+      const Size.square(ButlerlyButtonTokens.iconVisualSize),
     );
     expect(
       theme.iconButtonTheme.style?.iconSize?.resolve({}),
