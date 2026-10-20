@@ -280,11 +280,7 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
     TextAlign align = TextAlign.start,
   }) => Text(
     context.l10n.text(label),
-    style: (Theme.of(context).textTheme.bodyMedium ?? const TextStyle())
-        .copyWith(
-          color: context.colors.primaryText,
-          fontWeight: FontWeight.w600,
-        ),
+    style: ButlerlyTableTokens.headerTextStyle(context),
     textAlign: align,
     maxLines: 1,
     overflow: TextOverflow.ellipsis,
