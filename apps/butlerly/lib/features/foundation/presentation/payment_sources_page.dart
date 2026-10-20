@@ -430,17 +430,20 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
               horizontal: ButlerlyTableTokens.innerHorizontalPadding,
               vertical: ButlerlyTableTokens.innerVerticalPadding,
             ),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: DataTable(
+            child: LayoutBuilder(
+              builder: (context, constraints) => SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                  child: DataTable(
                 showCheckboxColumn: false,
                 dataRowMinHeight: ButlerlyTableTokens.rowHeight,
                 dataRowMaxHeight: ButlerlyTableTokens.rowHeight,
-                headingRowHeight: ButlerlyTableTokens.headingHeight,
-                dividerThickness: ButlerlyTableTokens.dividerThickness,
+                headingRowHeight: ButlerlyTableTokens.headingHeight +
+                    ButlerlyTableTokens.headerToRowsGap,
                 border: TableBorder(
                   horizontalInside: BorderSide(
-                    color: context.colors.cardDivider,
+                    color: ButlerlyTableTokens.dividerColor(context),
                     width: ButlerlyTableTokens.dividerThickness,
                   ),
                 ),
@@ -475,6 +478,8 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                       ],
                     ),
                 ],
+                  ),
+                ),
               ),
             ),
           ),
