@@ -1,3 +1,4 @@
+import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
@@ -281,13 +282,21 @@ class _InsightsPageState extends State<InsightsPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) {
+    final desktop =
+        effectiveButlerlyLayoutMode(
+          context,
+          MediaQuery.sizeOf(context).width,
+        ) ==
+        ButlerlyLayoutMode.wide;
+    return Scaffold(
     body: FutureBuilder<ApplicationResult<InsightsEvaluation>>(
       future: _result,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return ButlerlyPage(
             title: context.l10n.text('insights'),
+            fullWidth: desktop,
             onRefresh: _reload,
             refreshKey: const ValueKey('insights-pull-to-refresh'),
             children: const [Center(child: CircularProgressIndicator())],
@@ -297,6 +306,7 @@ class _InsightsPageState extends State<InsightsPage> {
         if (result is! ApplicationSuccess<InsightsEvaluation>) {
           return ButlerlyPage(
             title: context.l10n.text('insights'),
+            fullWidth: desktop,
             onRefresh: _reload,
             refreshKey: const ValueKey('insights-pull-to-refresh'),
             children: [
@@ -333,7 +343,8 @@ class _InsightsPageState extends State<InsightsPage> {
         );
       },
     ),
-  );
+    );
+  }
 }
 
 class _InsightsContent extends StatelessWidget {
@@ -376,18 +387,14 @@ class _InsightsContent extends StatelessWidget {
       period,
       evaluation.summary.context.period,
     );
-    return ButlerlyPage(
-      title: context.l10n.text('insights'),
-      onRefresh: onRefresh,
-      refreshKey: const ValueKey('insights-pull-to-refresh'),
-      pinnedSpacing: ButlerlyPinnedPageSpacing.tightHeader,
-      pinnedHeaderExtent: AnalysisPeriodPinnedHeader.extent(context, subtitle),
-      pinnedHeader: AnalysisPeriodPinnedHeader(
-        subtitle: subtitle,
-        value: period,
-        onChanged: onPeriodChanged,
-      ),
-      children: _withInsightCardSpacing([
+    final desktop =
+        effectiveButlerlyLayoutMode(
+          context,
+          MediaQuery.sizeOf(context).width,
+        ) ==
+        ButlerlyLayoutMode.wide;
+    final overviewCards = <Widget>[
+
         _PeriodSummaryCard(summary: evaluation.summary),
         if (summaryPieResults.isNotEmpty)
           InsightGroupVisualizations(
@@ -436,8 +443,28 @@ class _InsightsContent extends StatelessWidget {
               ],
             ),
           ),
+    ];
+
+    return ButlerlyPage(
+      title: context.l10n.text('insights'),
+      onRefresh: onRefresh,
+      refreshKey: const ValueKey('insights-pull-to-refresh'),
+      pinnedSpacing: ButlerlyPinnedPageSpacing.tightHeader,
+      fullWidth: desktop,
+      pinnedHeaderExtent: AnalysisPeriodPinnedHeader.extent(context, subtitle),
+      pinnedHeader: AnalysisPeriodPinnedHeader(
+        subtitle: subtitle,
+        value: period,
+        onChanged: onPeriodChanged,
+      ),
+      children: _withInsightCardSpacing([
+        if (desktop)
+          _InsightsDesktopCardGrid(cards: overviewCards)
+        else
+          ...overviewCards,
         if (activeFindings.isNotEmpty)
           InsightGroupedList(
+            desktopGrid: desktop,
             results: activeFindings,
             visualizationResults: evaluation.results,
             masterData: masterData,
@@ -459,6 +486,30 @@ class _InsightsContent extends StatelessWidget {
       ]),
     );
   }
+}
+
+/// Two cards per desktop row when each card can remain comfortably readable.
+class _InsightsDesktopCardGrid extends StatelessWidget {
+  const _InsightsDesktopCardGrid({required this.cards});
+
+  final List<Widget> cards;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    key: const ValueKey('desktop-insights-overview-grid'),
+    builder: (context, constraints) {
+      const gap = ButlerlySpacing.cardGap;
+      final columns = constraints.maxWidth >= 900 ? 2 : 1;
+      final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
+      return Wrap(
+        spacing: gap,
+        runSpacing: gap,
+        children: [
+          for (final card in cards) SizedBox(width: width, child: card),
+        ],
+      );
+    },
+  );
 }
 
 List<Widget> _withInsightCardSpacing(List<Widget> children) => [
