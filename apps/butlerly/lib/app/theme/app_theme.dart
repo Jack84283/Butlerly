@@ -219,7 +219,7 @@ abstract final class AppTheme {
       ),
       iconButtonTheme: IconButtonThemeData(
         style: IconButton.styleFrom(
-          minimumSize: const Size.square(ButlerlyButtonTokens.minimumWidth),
+          minimumSize: const Size.square(ButlerlyButtonTokens.iconTouchTarget),
           iconSize: ButlerlyButtonTokens.iconSize,
           padding: const EdgeInsets.all(ButlerlySpacing.compact),
           foregroundColor: colors.primaryText,
