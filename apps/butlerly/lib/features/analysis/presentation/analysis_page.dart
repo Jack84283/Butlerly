@@ -649,7 +649,7 @@ class _AnalysisContent extends StatelessWidget {
                 ),
               )
             : null,
-      ),
+      );
 
     final merchantCard = model.merchants.isEmpty
         ? null
@@ -663,7 +663,7 @@ class _AnalysisContent extends StatelessWidget {
               transactionIds: _metricTransactionIds(metric),
             );
           },
-        ),
+        );
 
     final subcategoryCard = model.subcategories.isEmpty
         ? null
