@@ -389,7 +389,7 @@ class ButlerlyTransparentIconButton extends StatelessWidget {
     required this.semanticLabel,
     this.onPressed,
     this.buttonKey,
-    this.iconSize = 22,
+    this.iconSize = ButlerlyButtonTokens.iconSize,
     this.alignment = Alignment.center,
     super.key,
   });
@@ -470,7 +470,7 @@ class ButlerlyCompactSelector extends StatelessWidget {
     enabled: onPressed != null,
     label: semanticLabel ?? label,
     child: ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: ButlerlySize.minimumTarget),
+      constraints: const BoxConstraints(minHeight: ButlerlyButtonTokens.iconTouchTarget),
       child: TextButton(
         key: buttonKey,
         onPressed: onPressed,
@@ -480,7 +480,10 @@ class ButlerlyCompactSelector extends StatelessWidget {
               : context.colors.primaryText,
           backgroundColor: Colors.transparent,
           disabledBackgroundColor: Colors.transparent,
-          minimumSize: const Size(0, ButlerlySize.minimumTarget),
+          minimumSize: const Size(
+            ButlerlyButtonTokens.minimumWidth,
+            ButlerlyButtonTokens.iconTouchTarget,
+          ),
           side: BorderSide.none,
           padding: EdgeInsets.zero,
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -521,7 +524,10 @@ class ButlerlyCompactSelector extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: ButlerlySpacing.micro),
-                    const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                    const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: ButlerlyButtonTokens.iconSize,
+                    ),
                   ],
                 ),
               ),
@@ -841,8 +847,8 @@ class ButlerlyButtonBar extends StatelessWidget {
             padding: WidgetStatePropertyAll(compactPadding),
             minimumSize: const WidgetStatePropertyAll(
               Size(
-                ButlerlyButtonTokens.compactMinimumHeight,
-                ButlerlyButtonTokens.compactVisualHeight,
+                ButlerlyButtonTokens.minimumWidth,
+                ButlerlyButtonTokens.height,
               ),
             ),
             tapTargetSize: MaterialTapTargetSize.padded,
@@ -853,8 +859,8 @@ class ButlerlyButtonBar extends StatelessWidget {
             padding: WidgetStatePropertyAll(compactPadding),
             minimumSize: const WidgetStatePropertyAll(
               Size(
-                ButlerlyButtonTokens.compactMinimumHeight,
-                ButlerlyButtonTokens.compactVisualHeight,
+                ButlerlyButtonTokens.minimumWidth,
+                ButlerlyButtonTokens.height,
               ),
             ),
             tapTargetSize: MaterialTapTargetSize.padded,
@@ -865,8 +871,8 @@ class ButlerlyButtonBar extends StatelessWidget {
             padding: WidgetStatePropertyAll(compactPadding),
             minimumSize: const WidgetStatePropertyAll(
               Size(
-                ButlerlyButtonTokens.compactMinimumHeight,
-                ButlerlyButtonTokens.compactVisualHeight,
+                ButlerlyButtonTokens.minimumWidth,
+                ButlerlyButtonTokens.height,
               ),
             ),
             tapTargetSize: MaterialTapTargetSize.padded,
