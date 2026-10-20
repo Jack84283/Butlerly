@@ -739,7 +739,10 @@ class _Row extends StatelessWidget {
             children: [
               if (onEdit != null)
                 IconButton(
-                  constraints: const BoxConstraints.tightFor(width: 24, height: 24),
+                  constraints: const BoxConstraints.tightFor(
+                    width: 24,
+                    height: 24,
+                  ),
                   padding: EdgeInsets.zero,
                   visualDensity: VisualDensity.compact,
                   style: IconButton.styleFrom(
@@ -754,7 +757,10 @@ class _Row extends StatelessWidget {
                 const SizedBox(width: ButlerlySpacing.small),
               if (onToggle != null)
                 IconButton(
-                  constraints: const BoxConstraints.tightFor(width: 24, height: 24),
+                  constraints: const BoxConstraints.tightFor(
+                    width: 24,
+                    height: 24,
+                  ),
                   padding: EdgeInsets.zero,
                   visualDensity: VisualDensity.compact,
                   style: IconButton.styleFrom(
