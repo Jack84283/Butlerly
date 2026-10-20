@@ -20,6 +20,32 @@ void main() {
       );
 
       expect(ButlerlyButtonTokens.radius, ButlerlyRadius.full);
+      expect(ButlerlyButtonTokens.height, 32);
+      expect(ButlerlyButtonTokens.minimumWidth, 120);
+      expect(ButlerlyButtonTokens.iconSize, 18);
+      for (final buttonStyle in [
+        theme.filledButtonTheme.style!,
+        theme.outlinedButtonTheme.style!,
+        theme.textButtonTheme.style!,
+      ]) {
+        expect(
+          buttonStyle.minimumSize?.resolve({}),
+          const Size(120, 32),
+        );
+        expect(
+          buttonStyle.padding?.resolve({}),
+          const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        );
+        expect(buttonStyle.textStyle?.resolve({})?.fontSize, 14);
+      }
+      expect(
+        theme.iconButtonTheme.style?.minimumSize?.resolve({}),
+        const Size(44, 44),
+      );
+      expect(
+        theme.iconButtonTheme.style?.iconSize?.resolve({}),
+        18,
+      );
       expect(theme.filledButtonTheme.style?.shape?.resolve({}), expectedShape);
       expect(
         theme.outlinedButtonTheme.style?.shape?.resolve({}),
