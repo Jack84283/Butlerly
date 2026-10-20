@@ -436,48 +436,48 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                 child: ConstrainedBox(
                   constraints: BoxConstraints(minWidth: constraints.maxWidth),
                   child: DataTable(
-                showCheckboxColumn: false,
-                dataRowMinHeight: ButlerlyTableTokens.rowHeight,
-                dataRowMaxHeight: ButlerlyTableTokens.rowHeight,
-                headingRowHeight: ButlerlyTableTokens.headingHeight +
-                    ButlerlyTableTokens.headerToRowsGap,
-                border: TableBorder(
-                  horizontalInside: BorderSide(
-                    color: ButlerlyTableTokens.dividerColor(context),
-                    width: ButlerlyTableTokens.dividerThickness,
-                  ),
-                ),
-                horizontalMargin: ButlerlyTableTokens.horizontalMargin,
-                columnSpacing: ButlerlyTableTokens.columnSpacing,
-                columns: [
-                  for (final title in headers) DataColumn(label: Text(title)),
-                ],
-                rows: [
-                  for (final source in values)
-                    DataRow(
-                      selected: _desktopSelected?.id == source.id &&
-                          _desktopEditorOpen,
-                      onSelectChanged: (_) =>
-                          _openDesktopEditor(existing: source),
-                      cells: [
-                        DataCell(
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              ButlerlyPaymentSourceIcon(source: source, size: 24),
-                              const SizedBox(width: ButlerlySpacing.compact),
-                              Text(paymentSourceDisplayLabel(source)),
-                            ],
-                          ),
-                        ),
-                        DataCell(Text(_typeLabel(context, source.type))),
-                        DataCell(Text(source.issuer ?? '—')),
-                        DataCell(Text(source.lastFour ?? '—')),
-                        DataCell(Text(source.currency ?? '—')),
-                        DataCell(Text(_statusLabel(context, source.status))),
-                      ],
+                    showCheckboxColumn: false,
+                    dataRowMinHeight: ButlerlyTableTokens.rowHeight,
+                    dataRowMaxHeight: ButlerlyTableTokens.rowHeight,
+                    headingRowHeight: ButlerlyTableTokens.headingHeight +
+                        ButlerlyTableTokens.headerToRowsGap,
+                    border: TableBorder(
+                      horizontalInside: BorderSide(
+                        color: ButlerlyTableTokens.dividerColor(context),
+                        width: ButlerlyTableTokens.dividerThickness,
+                      ),
                     ),
-                ],
+                    horizontalMargin: ButlerlyTableTokens.horizontalMargin,
+                    columnSpacing: ButlerlyTableTokens.columnSpacing,
+                    columns: [
+                      for (final title in headers) DataColumn(label: Text(title)),
+                    ],
+                    rows: [
+                      for (final source in values)
+                        DataRow(
+                          selected: _desktopSelected?.id == source.id &&
+                              _desktopEditorOpen,
+                          onSelectChanged: (_) =>
+                              _openDesktopEditor(existing: source),
+                          cells: [
+                            DataCell(
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  ButlerlyPaymentSourceIcon(source: source, size: 24),
+                                  const SizedBox(width: ButlerlySpacing.compact),
+                                  Text(paymentSourceDisplayLabel(source)),
+                                ],
+                              ),
+                            ),
+                            DataCell(Text(_typeLabel(context, source.type))),
+                            DataCell(Text(source.issuer ?? '—')),
+                            DataCell(Text(source.lastFour ?? '—')),
+                            DataCell(Text(source.currency ?? '—')),
+                            DataCell(Text(_statusLabel(context, source.status))),
+                          ],
+                        ),
+                    ],
                   ),
                 ),
               ),
