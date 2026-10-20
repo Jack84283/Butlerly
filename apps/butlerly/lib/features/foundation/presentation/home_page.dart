@@ -932,8 +932,8 @@ class _HomeSummaryCard extends StatelessWidget {
                   amount: metric.isCount
                       ? _homeTransactionCount(context, metric.value)
                       : metric.value == null ||
-                          metric.value!.availability ==
-                              AnalysisDataAvailability.insufficient
+                            metric.value!.availability ==
+                                AnalysisDataAvailability.insufficient
                       ? showMissingValuesAsZero
                             ? localizedCompactMoney(
                                 context,
