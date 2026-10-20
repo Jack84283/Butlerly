@@ -49,7 +49,6 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
     });
   }
 
-
   FinanceServices? get _finance => services.isRegistered<FinanceServices>()
       ? services<FinanceServices>()
       : null;
@@ -406,7 +405,6 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
     }
   }
 
-
   Widget _desktopWorkspace(List<PaymentSource> values) {
     final headers = [
       context.l10n.text('name'),
@@ -453,14 +451,18 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                               flex: index == 0 ? 3 : 2,
                               child: Text(
                                 headers[index],
-                                style: ButlerlyTableTokens.headerTextStyle(context),
+                                style: ButlerlyTableTokens.headerTextStyle(
+                                  context,
+                                ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
                         ],
                       ),
-                      const SizedBox(height: ButlerlyTableTokens.headerToRowsGap),
+                      const SizedBox(
+                        height: ButlerlyTableTokens.headerToRowsGap,
+                      ),
                       Divider(
                         height: ButlerlyTableTokens.dividerThickness,
                         thickness: ButlerlyTableTokens.dividerThickness,
@@ -473,7 +475,8 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                             onTap: () => _openDesktopEditor(existing: source),
                             child: Padding(
                               padding: const EdgeInsets.symmetric(
-                                vertical: ButlerlyTableTokens.rowVerticalPadding,
+                                vertical:
+                                    ButlerlyTableTokens.rowVerticalPadding,
                               ),
                               child: Row(
                                 children: [
@@ -481,8 +484,13 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                                     flex: 3,
                                     child: Row(
                                       children: [
-                                        ButlerlyPaymentSourceIcon(source: source, size: 24),
-                                        const SizedBox(width: ButlerlySpacing.compact),
+                                        ButlerlyPaymentSourceIcon(
+                                          source: source,
+                                          size: 24,
+                                        ),
+                                        const SizedBox(
+                                          width: ButlerlySpacing.compact,
+                                        ),
                                         Flexible(
                                           child: Text(
                                             paymentSourceDisplayLabel(source),
@@ -493,11 +501,30 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                                       ],
                                     ),
                                   ),
-                                  Expanded(flex: 2, child: Text(_typeLabel(context, source.type))),
-                                  Expanded(flex: 2, child: Text(source.issuer ?? '—')),
-                                  Expanded(flex: 2, child: Text(source.lastFour ?? '—')),
-                                  Expanded(flex: 2, child: Text(source.currency ?? '—')),
-                                  Expanded(flex: 2, child: Text(_statusLabel(context, source.status))),
+                                  Expanded(
+                                    flex: 2,
+                                    child: Text(
+                                      _typeLabel(context, source.type),
+                                    ),
+                                  ),
+                                  Expanded(
+                                    flex: 2,
+                                    child: Text(source.issuer ?? '—'),
+                                  ),
+                                  Expanded(
+                                    flex: 2,
+                                    child: Text(source.lastFour ?? '—'),
+                                  ),
+                                  Expanded(
+                                    flex: 2,
+                                    child: Text(source.currency ?? '—'),
+                                  ),
+                                  Expanded(
+                                    flex: 2,
+                                    child: Text(
+                                      _statusLabel(context, source.status),
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -681,7 +708,6 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
   );
 }
 
-
 class _DesktopPaymentSourceEditor extends StatefulWidget {
   const _DesktopPaymentSourceEditor({
     required this.finance,
@@ -725,7 +751,8 @@ class _DesktopPaymentSourceEditorState
     final detectedNetwork = paymentNetworkFromText(scanned?.issuer);
     _name = TextEditingController(text: existing?.name);
     _issuer = TextEditingController(
-      text: existing?.issuer ??
+      text:
+          existing?.issuer ??
           (detectedNetwork == null ? scanned?.issuer : null),
     );
     _lastFour = TextEditingController(
@@ -735,7 +762,8 @@ class _DesktopPaymentSourceEditorState
     _note = TextEditingController(text: existing?.note);
     _type = existing?.type ?? scanned?.type ?? PaymentSourceType.account;
     _network = existing?.network ?? detectedNetwork;
-    _active = existing?.status == null ||
+    _active =
+        existing?.status == null ||
         existing!.status == PaymentSourceStatus.active;
   }
 
@@ -764,15 +792,17 @@ class _DesktopPaymentSourceEditorState
       if (!mounted) return;
       final List<PaymentSource> duplicates;
       if (listed is ApplicationSuccess<List<PaymentSource>>) {
-        duplicates = listed.value.where((source) {
-          return source.id != widget.existing?.id &&
-              source.status == PaymentSourceStatus.active &&
-              safeLastFour.isNotEmpty &&
-              source.lastFour == safeLastFour &&
-              source.type == _type &&
-              (source.issuer ?? '').trim().toLowerCase() ==
-                  _issuer.text.trim().toLowerCase();
-        }).toList(growable: false);
+        duplicates = listed.value
+            .where((source) {
+              return source.id != widget.existing?.id &&
+                  source.status == PaymentSourceStatus.active &&
+                  safeLastFour.isNotEmpty &&
+                  source.lastFour == safeLastFour &&
+                  source.type == _type &&
+                  (source.issuer ?? '').trim().toLowerCase() ==
+                      _issuer.text.trim().toLowerCase();
+            })
+            .toList(growable: false);
       } else {
         duplicates = <PaymentSource>[];
       }
@@ -781,7 +811,9 @@ class _DesktopPaymentSourceEditorState
           context: context,
           builder: (dialogContext) => AlertDialog(
             title: Text(dialogContext.l10n.text('duplicatePaymentSource')),
-            content: Text(dialogContext.l10n.text('duplicatePaymentSourceBody')),
+            content: Text(
+              dialogContext.l10n.text('duplicatePaymentSourceBody'),
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext, false),
@@ -798,7 +830,8 @@ class _DesktopPaymentSourceEditorState
       }
       final result = await widget.finance.savePaymentSource(
         PaymentSource(
-          id: widget.existing?.id ??
+          id:
+              widget.existing?.id ??
               PaymentSourceId(
                 'source-${DateTime.now().microsecondsSinceEpoch}',
               ),
@@ -810,14 +843,17 @@ class _DesktopPaymentSourceEditorState
           network: _network,
           currency: _currency.text.trim().toUpperCase(),
           note: _note.text.trim().isEmpty ? null : _note.text.trim(),
-          status: _active ? PaymentSourceStatus.active :
-              (widget.existing?.status ?? PaymentSourceStatus.active),
+          status: _active
+              ? PaymentSourceStatus.active
+              : (widget.existing?.status ?? PaymentSourceStatus.active),
         ),
       );
       if (!mounted) return;
       if (result is ApplicationSuccess<PaymentSource>) {
         if (!_active) {
-          final archived = await widget.finance.archivePaymentSource(result.value.id.value);
+          final archived = await widget.finance.archivePaymentSource(
+            result.value.id.value,
+          );
           if (!mounted) return;
           if (archived is ApplicationFailure<PaymentSource>) {
             widget.onError(context.l10n.text('paymentSourceArchiveFailed'));
@@ -844,7 +880,9 @@ class _DesktopPaymentSourceEditorState
         children: [
           Text(
             context.l10n.text(
-              widget.existing == null ? 'addPaymentSource' : 'editPaymentSource',
+              widget.existing == null
+                  ? 'addPaymentSource'
+                  : 'editPaymentSource',
             ),
             style: Theme.of(context).textTheme.titleMedium,
           ),
@@ -863,19 +901,25 @@ class _DesktopPaymentSourceEditorState
             controller: _lastFour,
             maxLength: 4,
             keyboardType: TextInputType.number,
-            decoration: InputDecoration(labelText: context.l10n.text('lastFour')),
+            decoration: InputDecoration(
+              labelText: context.l10n.text('lastFour'),
+            ),
           ),
           gap,
           TextField(
             controller: _currency,
             textCapitalization: TextCapitalization.characters,
-            decoration: InputDecoration(labelText: context.l10n.text('currency')),
+            decoration: InputDecoration(
+              labelText: context.l10n.text('currency'),
+            ),
           ),
           gap,
           TextField(
             controller: _note,
             maxLines: 2,
-            decoration: InputDecoration(labelText: context.l10n.text('notesOptional')),
+            decoration: InputDecoration(
+              labelText: context.l10n.text('notesOptional'),
+            ),
           ),
           gap,
           ButlerlySelectField<PaymentSourceType>(
@@ -904,7 +948,8 @@ class _DesktopPaymentSourceEditorState
             ButlerlySelectField<String>(
               label: context.l10n.text(
                 _type == PaymentSourceType.wallet
-                    ? 'walletProvider' : 'cardNetwork',
+                    ? 'walletProvider'
+                    : 'cardNetwork',
               ),
               value: _network ?? '',
               entries: [
@@ -912,13 +957,12 @@ class _DesktopPaymentSourceEditorState
                   value: '',
                   label: context.l10n.text('notSet'),
                 ),
-                for (final entry in (_type == PaymentSourceType.wallet
-                        ? walletPaymentProviderLabels
-                        : cardPaymentNetworkLabels).entries)
-                  DropdownMenuEntry(
-                    value: entry.key,
-                    label: entry.value,
-                  ),
+                for (final entry
+                    in (_type == PaymentSourceType.wallet
+                            ? walletPaymentProviderLabels
+                            : cardPaymentNetworkLabels)
+                        .entries)
+                  DropdownMenuEntry(value: entry.key, label: entry.value),
               ],
               onChanged: (value) =>
                   setState(() => _network = value == '' ? null : value),
@@ -960,4 +1004,3 @@ String _statusLabel(BuildContext context, PaymentSourceStatus value) =>
 
 String _enumSuffix(String value) =>
     '${value[0].toUpperCase()}${value.substring(1)}';
-
