@@ -102,7 +102,8 @@ class AnalysisDaySummary extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(
                   horizontal: ButlerlySpacing.compact,
                 ),
-                child: effectiveButlerlyLayoutMode(
+                child:
+                    effectiveButlerlyLayoutMode(
                           context,
                           MediaQuery.sizeOf(context).width,
                         ) ==
@@ -111,17 +112,21 @@ class AnalysisDaySummary extends StatelessWidget {
                         transactions: value.value,
                         masterData: masterData ?? const TransactionMasterData(),
                         onTap: onTransactionTap,
-                        missingCategoryLabel: context.l10n.text('uncategorized'),
+                        missingCategoryLabel: context.l10n.text(
+                          'uncategorized',
+                        ),
                       )
                     : ButlerlyTransactionInnerCard(
                         child: TransactionRecordList(
                           transactions: value.value,
-                          masterData: masterData ??
-                              const TransactionMasterData(),
+                          masterData:
+                              masterData ?? const TransactionMasterData(),
                           onTap: onTransactionTap,
                           dashboardRowStyle: true,
                           showDateInRows: true,
-                          missingCategoryLabel: context.l10n.text('uncategorized'),
+                          missingCategoryLabel: context.l10n.text(
+                            'uncategorized',
+                          ),
                         ),
                       ),
               ),
