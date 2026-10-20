@@ -189,7 +189,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('home-month-selector')));
     await tester.pumpAndSettle();
-    final future = tester.widget<OutlinedButton>(
+    final future = tester.widget<TextButton>(
       find.byKey(const Key('home-month-2026-9')),
     );
     expect(future.onPressed, isNull);
