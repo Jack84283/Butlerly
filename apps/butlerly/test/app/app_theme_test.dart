@@ -28,10 +28,7 @@ void main() {
         theme.outlinedButtonTheme.style!,
         theme.textButtonTheme.style!,
       ]) {
-        expect(
-          buttonStyle.minimumSize?.resolve({}),
-          const Size(120, 32),
-        );
+        expect(buttonStyle.minimumSize?.resolve({}), const Size(120, 32));
         expect(
           buttonStyle.padding?.resolve({}),
           const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -42,10 +39,7 @@ void main() {
         theme.iconButtonTheme.style?.minimumSize?.resolve({}),
         const Size(44, 44),
       );
-      expect(
-        theme.iconButtonTheme.style?.iconSize?.resolve({}),
-        18,
-      );
+      expect(theme.iconButtonTheme.style?.iconSize?.resolve({}), 18);
       expect(theme.filledButtonTheme.style?.shape?.resolve({}), expectedShape);
       expect(
         theme.outlinedButtonTheme.style?.shape?.resolve({}),
