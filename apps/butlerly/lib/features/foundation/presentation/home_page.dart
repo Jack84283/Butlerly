@@ -959,7 +959,7 @@ class _HomeSummaryCard extends StatelessWidget {
               children: [
                 for (var index = start; index < end; index++) ...[
                   if (index > start)
-                    SizedBox(width: compact ? ButlerlySpacing.micro : 8),
+                    const SizedBox(width: ButlerlySpacing.compact),
                   Expanded(child: cards[index]),
                 ],
               ],
@@ -968,7 +968,7 @@ class _HomeSummaryCard extends StatelessWidget {
                 ? Column(
                     children: [
                       metricRow(0, 2),
-                      const SizedBox(height: ButlerlySpacing.micro),
+                      const SizedBox(height: ButlerlySpacing.compact),
                       metricRow(2, 4),
                     ],
                   )
@@ -1059,9 +1059,14 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
               ButlerlySpacing.micro,
               ButlerlySpacing.compact,
               ButlerlySpacing.micro,
-              ButlerlySpacing.micro,
+              ButlerlySpacing.small,
             )
-          : const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+          : const EdgeInsets.fromLTRB(
+              ButlerlySpacing.micro,
+              10,
+              ButlerlySpacing.micro,
+              ButlerlySpacing.small,
+            ),
       child: Column(
         key: titleKey,
         mainAxisSize: MainAxisSize.min,
