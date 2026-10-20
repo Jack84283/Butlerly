@@ -67,7 +67,7 @@ class _ButlerlyCompactSectionSelectorState
     final colors = Theme.of(context).colorScheme;
     return SizedBox(
       key: const ValueKey('compact-section-selector'),
-      height: ButlerlySize.minimumTarget,
+      height: ButlerlyButtonTokens.iconTouchTarget,
       child: Stack(
         children: [
           NotificationListener<ScrollMetricsNotification>(
