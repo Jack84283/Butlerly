@@ -14,7 +14,8 @@ abstract final class ButlerlyButtonTokens {
   static const horizontalPadding = ButlerlySpacing.small;
   static const verticalPadding = ButlerlySpacing.micro;
   static const compactVisualHeight = height;
-  static const compactMinimumHeight = minimumWidth;
+  static const compactMinimumHeight = height;
+  static const compactMinimumWidth = minimumWidth;
   static const compactHorizontalPadding = ButlerlySpacing.small;
   static const compactVerticalPadding = ButlerlySpacing.micro;
   static const iconTouchTarget = ButlerlySize.minimumTarget;
