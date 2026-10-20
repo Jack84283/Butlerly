@@ -110,7 +110,8 @@ class _ButlerlyCompactSectionSelectorState
                                   ButlerlyButtonTokens.height,
                                 ),
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: ButlerlyButtonTokens.horizontalPadding,
+                                  horizontal:
+                                      ButlerlyButtonTokens.horizontalPadding,
                                 ),
                                 foregroundColor: index == widget.selectedIndex
                                     ? colors.onPrimaryContainer
