@@ -253,10 +253,18 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
           ),
         ],
       ),
-      Divider(height: 12, color: context.colors.cardDivider),
+      Divider(
+        height: ButlerlyTableTokens.headerToRowsGap,
+        thickness: ButlerlyTableTokens.dividerThickness,
+        color: context.colors.cardDivider,
+      ),
       for (final transaction in transactions) ...[
         _transactionRow(context, transaction),
-        Divider(height: 1, thickness: 1, color: context.colors.cardDivider),
+        Divider(
+          height: ButlerlyTableTokens.dividerThickness,
+          thickness: ButlerlyTableTokens.dividerThickness,
+          color: context.colors.cardDivider,
+        ),
       ],
       if (transactions.isEmpty && emptyMessage != null)
         Padding(
@@ -312,7 +320,9 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
         key: ValueKey('desktop-transaction-row-${transaction.id}'),
         onTap: () => onTap(transaction),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 7),
+          padding: const EdgeInsets.symmetric(
+            vertical: ButlerlyTableTokens.rowVerticalPadding,
+          ),
           child: Row(
             children: [
               SizedBox(
