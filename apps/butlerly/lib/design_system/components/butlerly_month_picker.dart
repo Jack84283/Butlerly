@@ -63,13 +63,16 @@ class _ButlerlyMonthPickerState extends State<ButlerlyMonthPicker> {
           ),
           itemBuilder: (context, index) {
             final candidate = DateTime(_year, index + 1);
-            final selected = candidate.year == widget.selectedMonth.year &&
+            final selected =
+                candidate.year == widget.selectedMonth.year &&
                 candidate.month == widget.selectedMonth.month;
             final disabled = _isFuture(candidate);
             final label = DateFormat.MMM(locale).format(candidate);
             return TextButton(
               key: Key('home-month-${candidate.year}-${candidate.month}'),
-              onPressed: disabled ? null : () => Navigator.of(context).pop(candidate),
+              onPressed: disabled
+                  ? null
+                  : () => Navigator.of(context).pop(candidate),
               style: TextButton.styleFrom(
                 minimumSize: const Size(0, ButlerlySize.minimumTarget),
                 padding: EdgeInsets.zero,
@@ -83,8 +86,12 @@ class _ButlerlyMonthPickerState extends State<ButlerlyMonthPicker> {
                   width: double.infinity,
                   child: DecoratedBox(
                     decoration: BoxDecoration(
-                      color: selected ? colors.controlPrimary : colors.cardSurface,
-                      border: selected ? null : Border.all(color: colors.border),
+                      color: selected
+                          ? colors.controlPrimary
+                          : colors.cardSurface,
+                      border: selected
+                          ? null
+                          : Border.all(color: colors.border),
                       borderRadius: BorderRadius.circular(ButlerlyRadius.full),
                     ),
                     child: Center(
@@ -94,8 +101,8 @@ class _ButlerlyMonthPickerState extends State<ButlerlyMonthPicker> {
                           color: disabled
                               ? colors.tertiaryText
                               : selected
-                                  ? Theme.of(context).colorScheme.onPrimary
-                                  : colors.primaryText,
+                              ? Theme.of(context).colorScheme.onPrimary
+                              : colors.primaryText,
                         ),
                       ),
                     ),
