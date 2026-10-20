@@ -139,7 +139,7 @@ void main() {
     readGate.complete();
     transactions.readGate = null;
     await tester.pumpAndSettle();
-    e    expect(tester.takeException(), isNull);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('Home uses the approved card order for useful activity', (
@@ -1052,7 +1052,7 @@ void main() {
     expect(spending.dy, closeTo(transactions.dy, 1));
     expect(income.dy, closeTo(net.dy, 1));
     expect(income.dy, greaterThan(spending.dy));
-xpect(tester.takeException(), isNull);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('Home Summary fits large text and amounts without overflow', (
