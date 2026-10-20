@@ -416,7 +416,7 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
     ];
     final table = ButlerlyCard(
       key: const ValueKey('payment-sources-outer-card'),
-      padding: const EdgeInsets.all(ButlerlySpacing.small),
+      padding: const EdgeInsets.all(ButlerlyTableTokens.outerPadding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -426,24 +426,25 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
             key: const ValueKey('payment-sources-inner-card'),
             color: Theme.of(context).colorScheme.surfaceContainerHighest,
             padding: const EdgeInsets.symmetric(
-              horizontal: ButlerlySpacing.small,
+              horizontal: ButlerlyTableTokens.innerHorizontalPadding,
+              vertical: ButlerlyTableTokens.innerVerticalPadding,
             ),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
                 showCheckboxColumn: false,
-                dataRowMinHeight: 32,
-                dataRowMaxHeight: 32,
-                headingRowHeight: 32,
-                dividerThickness: 0.5,
+                dataRowMinHeight: ButlerlyTableTokens.rowHeight,
+                dataRowMaxHeight: ButlerlyTableTokens.rowHeight,
+                headingRowHeight: ButlerlyTableTokens.headingHeight,
+                dividerThickness: ButlerlyTableTokens.dividerThickness,
                 border: TableBorder(
                   horizontalInside: BorderSide(
                     color: Theme.of(context).colorScheme.outlineVariant,
-                    width: 0.5,
+                    width: ButlerlyTableTokens.dividerThickness,
                   ),
                 ),
-                horizontalMargin: ButlerlySpacing.small,
-                columnSpacing: ButlerlySpacing.standard,
+                horizontalMargin: ButlerlyTableTokens.horizontalMargin,
+                columnSpacing: ButlerlyTableTokens.columnSpacing,
                 columns: [
                   for (final title in headers) DataColumn(label: Text(title)),
                 ],
