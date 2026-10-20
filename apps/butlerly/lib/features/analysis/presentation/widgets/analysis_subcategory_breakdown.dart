@@ -14,11 +14,13 @@ class AnalysisSubcategoryBreakdown extends StatelessWidget {
     required this.model,
     required this.masterData,
     this.onMetricTap,
+    this.fillToFiveRows = false,
   });
 
   final AnalysisModel model;
   final TransactionMasterData? masterData;
   final ValueChanged<AnalysisMetric>? onMetricTap;
+  final bool fillToFiveRows;
 
   @override
   Widget build(BuildContext context) {
@@ -65,6 +67,11 @@ class AnalysisSubcategoryBreakdown extends StatelessWidget {
               ),
             ),
           ],
+          if (fillToFiveRows)
+            for (var index = model.subcategories.length; index < 5; index++) ...[
+              const SizedBox(height: ButlerlySpacing.compact),
+              const SizedBox(height: 44),
+            ],
         ],
       ),
     );
