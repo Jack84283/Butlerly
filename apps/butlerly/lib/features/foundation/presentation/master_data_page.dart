@@ -713,14 +713,14 @@ class _Row extends StatelessWidget {
               context,
             ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
             overflow: TextOverflow.ellipsis,
-            maxLines: 2,
+            maxLines: 1,
           ),
         ),
         Expanded(
           flex: 3,
           child: Text(
             subtitle ?? '—',
-            maxLines: 2,
+            maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -741,6 +741,10 @@ class _Row extends StatelessWidget {
                 IconButton(
                   constraints: const BoxConstraints.tightFor(width: 24, height: 24),
                   padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                  style: IconButton.styleFrom(
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
                   iconSize: 16,
                   tooltip: context.l10n.text('edit'),
                   icon: const Icon(Icons.edit_outlined),
@@ -750,6 +754,10 @@ class _Row extends StatelessWidget {
                 IconButton(
                   constraints: const BoxConstraints.tightFor(width: 24, height: 24),
                   padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                  style: IconButton.styleFrom(
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
                   iconSize: 16,
                   tooltip: context.l10n.text(
                     active ? 'deactivate' : 'reactivate',
