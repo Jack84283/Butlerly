@@ -70,7 +70,7 @@ void main() {
     await tester.pumpAndSettle();
     final reopened = tester.widget<TextFormField>(input);
     expect(reopened.initialValue, 'Mia');
-    await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Cancel'));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
