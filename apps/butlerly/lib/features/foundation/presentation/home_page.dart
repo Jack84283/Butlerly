@@ -1,3 +1,4 @@
+import 'package:butlerly/design_system/components/butlerly_month_picker.dart';
 import 'dart:math' as math;
 
 import 'package:butlerly/app/locale/home_greeting.dart';
@@ -195,7 +196,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> _selectMonth(_HomeData data) async {
     final selected = await showButlerlyBottomSheet<DateTime>(
       context: context,
-      builder: (context) => _HomeMonthPicker(
+      builder: (context) => ButlerlyMonthPicker(
         selectedMonth: data.displayMonth,
         currentMonth: data.currentFinancialMonth,
       ),
@@ -2567,97 +2568,6 @@ class _HomeTrend extends StatelessWidget {
           onRangeChanged: (_) => onRangeChanged(),
         );
       },
-    );
-  }
-}
-
-class _HomeMonthPicker extends StatefulWidget {
-  const _HomeMonthPicker({
-    required this.selectedMonth,
-    required this.currentMonth,
-  });
-
-  final DateTime selectedMonth;
-  final DateTime currentMonth;
-
-  @override
-  State<_HomeMonthPicker> createState() => _HomeMonthPickerState();
-}
-
-class _HomeMonthPickerState extends State<_HomeMonthPicker> {
-  late int _year;
-
-  @override
-  void initState() {
-    super.initState();
-    _year = widget.selectedMonth.year;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final locale = Localizations.localeOf(context).toLanguageTag();
-    return ButlerlySheet(
-      title: Row(
-        children: [
-          IconButton(
-            onPressed: () => setState(() => _year--),
-            icon: Icon(
-              _homeIcon(
-                context,
-                material: Icons.chevron_left_rounded,
-                cupertino: CupertinoIcons.chevron_left,
-              ),
-            ),
-          ),
-          Expanded(child: Text('$_year', textAlign: TextAlign.center)),
-          IconButton(
-            onPressed: _year < widget.currentMonth.year
-                ? () => setState(() => _year++)
-                : null,
-            icon: Icon(
-              _homeIcon(
-                context,
-                material: Icons.chevron_right_rounded,
-                cupertino: CupertinoIcons.chevron_right,
-              ),
-            ),
-          ),
-        ],
-      ),
-      content: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: 12,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          childAspectRatio: 2.4,
-          crossAxisSpacing: ButlerlySpacing.compact,
-          mainAxisSpacing: ButlerlySpacing.compact,
-        ),
-        itemBuilder: (context, index) {
-          final candidate = DateTime(_year, index + 1, 1);
-          final future = _monthStart(
-            candidate,
-          ).isAfter(_monthStart(widget.currentMonth));
-          final selected = _sameMonth(candidate, widget.selectedMonth);
-          final label = DateFormat.MMM(locale).format(candidate);
-          return selected
-              ? FilledButton(
-                  key: Key('home-month-${candidate.year}-${candidate.month}'),
-                  onPressed: future
-                      ? null
-                      : () => Navigator.of(context).pop(candidate),
-                  child: Text(label),
-                )
-              : OutlinedButton(
-                  key: Key('home-month-${candidate.year}-${candidate.month}'),
-                  onPressed: future
-                      ? null
-                      : () => Navigator.of(context).pop(candidate),
-                  child: Text(label),
-                );
-        },
-      ),
     );
   }
 }
