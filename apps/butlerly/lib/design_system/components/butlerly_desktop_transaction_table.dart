@@ -253,8 +253,9 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
           ),
         ],
       ),
+      const SizedBox(height: ButlerlyTableTokens.headerToRowsGap),
       Divider(
-        height: ButlerlyTableTokens.headerToRowsGap,
+        height: ButlerlyTableTokens.dividerThickness,
         thickness: ButlerlyTableTokens.dividerThickness,
         color: ButlerlyTableTokens.dividerColor(context),
       ),
