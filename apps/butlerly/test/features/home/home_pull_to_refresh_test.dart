@@ -773,7 +773,10 @@ void main() {
       final container = tester.widget<Container>(
         find.descendant(of: tile, matching: find.byType(Container)).first,
       );
-      expect(container.padding, const EdgeInsets.fromLTRB(4, 8, 4, 4));
+      expect(
+        container.padding,
+        const EdgeInsets.fromLTRB(4, 8, 4, ButlerlySpacing.small),
+      );
 
       final content = tester.widget<Column>(
         find.byKey(ValueKey(entry.content)),
