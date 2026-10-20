@@ -315,8 +315,8 @@ class _MasterDataPageState extends State<MasterDataPage> {
                 ? context.colors.background
                 : Colors.white,
             shape: const CircleBorder(),
-            minimumSize: const Size.square(ButlerlySize.minimumTarget),
-            maximumSize: const Size.square(ButlerlySize.minimumTarget),
+            minimumSize: const Size.square(32),
+            maximumSize: const Size.square(32),
           ),
         ),
       ),

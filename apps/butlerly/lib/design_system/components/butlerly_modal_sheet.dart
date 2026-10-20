@@ -2,9 +2,7 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:flutter/material.dart';
 
-/// A Cancel action that is outlined only in dark mode.
-///
-/// Other text actions remain borderless, including dropdown choices.
+/// Neutral outlined Cancel action shared across light and dark modes.
 class ButlerlyCancelButton extends StatelessWidget {
   const ButlerlyCancelButton({
     required this.onPressed,
@@ -18,19 +16,8 @@ class ButlerlyCancelButton extends StatelessWidget {
   final bool autofocus;
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final side = theme.brightness == Brightness.dark
-        ? theme.outlinedButtonTheme.style?.side?.resolve({}) ??
-              BorderSide(color: theme.colorScheme.outline)
-        : BorderSide.none;
-    return TextButton(
-      onPressed: onPressed,
-      autofocus: autofocus,
-      style: TextButton.styleFrom(side: side),
-      child: child,
-    );
-  }
+  Widget build(BuildContext context) =>
+      OutlinedButton(onPressed: onPressed, autofocus: autofocus, child: child);
 }
 
 class ButlerlySheet extends StatelessWidget {

@@ -1,3 +1,4 @@
+import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:flutter/material.dart';
 
@@ -66,7 +67,7 @@ class _ButlerlyCompactSectionSelectorState
     final colors = Theme.of(context).colorScheme;
     return SizedBox(
       key: const ValueKey('compact-section-selector'),
-      height: ButlerlySize.minimumTarget,
+      height: ButlerlyButtonTokens.iconTouchTarget,
       child: Stack(
         children: [
           NotificationListener<ScrollMetricsNotification>(
@@ -105,11 +106,12 @@ class _ButlerlyCompactSectionSelectorState
                               key: ValueKey('compact-section-$index'),
                               style: TextButton.styleFrom(
                                 minimumSize: const Size(
-                                  ButlerlySize.minimumTarget,
-                                  ButlerlySize.minimumTarget,
+                                  ButlerlyButtonTokens.minimumWidth,
+                                  ButlerlyButtonTokens.height,
                                 ),
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: ButlerlySpacing.small,
+                                  horizontal:
+                                      ButlerlyButtonTokens.horizontalPadding,
                                 ),
                                 foregroundColor: index == widget.selectedIndex
                                     ? colors.onPrimaryContainer

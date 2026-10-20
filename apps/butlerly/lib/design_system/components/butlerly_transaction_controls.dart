@@ -3,6 +3,7 @@ import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_payment_source_icon.dart';
 import 'package:butlerly/design_system/theme/butlerly_button_palette.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/payment_source_display.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -715,7 +716,7 @@ class ButlerlyDirectionSelector extends StatelessWidget {
     );
     return Container(
       key: const ValueKey('transaction-direction-switch'),
-      padding: const EdgeInsets.all(ButlerlySpacing.micro),
+      padding: const EdgeInsets.all(ButlerlySpacing.xxs),
       decoration: BoxDecoration(
         color: palette.segmentFill,
         border: Border.all(color: palette.segmentBorder),
@@ -772,7 +773,8 @@ class _TransactionDirectionSwitchOption extends StatelessWidget {
             duration: const Duration(milliseconds: 160),
             curve: Curves.easeOut,
             constraints: const BoxConstraints(
-              minHeight: ButlerlySize.minimumTarget,
+              minHeight: ButlerlyButtonTokens.height,
+              minWidth: ButlerlyButtonTokens.minimumWidth,
             ),
             alignment: Alignment.center,
             decoration: BoxDecoration(
@@ -785,8 +787,8 @@ class _TransactionDirectionSwitchOption extends StatelessWidget {
               borderRadius: BorderRadius.circular(ButlerlyRadius.full),
             ),
             padding: const EdgeInsets.symmetric(
-              horizontal: ButlerlySpacing.standard,
-              vertical: ButlerlySpacing.compact,
+              horizontal: ButlerlyButtonTokens.horizontalPadding,
+              vertical: ButlerlyButtonTokens.verticalPadding,
             ),
             child: Text(
               label,

@@ -2,20 +2,23 @@ import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 
 /// Shared geometry for all Butlerly button roles.
 abstract final class ButlerlyButtonTokens {
-  static const height = ButlerlySize.preferredTarget;
-  static const compactHeight = ButlerlySize.minimumTarget;
-  static const iconSize = 24.0;
+  static const height = 32.0;
+  static const compactHeight = height;
+  static const iconSize = 18.0;
 
-  /// Minimum accessible width for compact and icon controls.
-  static const minimumWidth = ButlerlySize.minimumTarget;
+  /// Minimum visual width for text actions (icon-only controls are exempt).
+  static const minimumWidth = 120.0;
 
-  /// Consistent recommended width for normal text actions.
+  /// Canonical width for normal text actions.
   static const standardWidth = 120.0;
-  static const horizontalPadding = ButlerlySpacing.standard;
-  static const verticalPadding = ButlerlySpacing.small;
-  static const compactVisualHeight = 40.0;
-  static const compactMinimumHeight = ButlerlySize.minimumTarget;
+  static const horizontalPadding = ButlerlySpacing.small;
+  static const verticalPadding = ButlerlySpacing.micro;
+  static const compactVisualHeight = height;
+  static const compactMinimumHeight = height;
+  static const compactMinimumWidth = minimumWidth;
   static const compactHorizontalPadding = ButlerlySpacing.small;
-  static const compactVerticalPadding = ButlerlySpacing.compact;
+  static const compactVerticalPadding = ButlerlySpacing.micro;
+  static const iconTouchTarget = ButlerlySize.minimumTarget;
+  static const iconVisualSize = 32.0;
   static const radius = ButlerlyRadius.full;
 }

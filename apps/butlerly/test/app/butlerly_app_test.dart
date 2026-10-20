@@ -5,7 +5,6 @@ import 'package:butlerly/app/router/app_router.dart';
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_button.dart';
-import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -56,14 +55,14 @@ void main() {
     expect(
       theme.outlinedButtonTheme.style?.minimumSize?.resolve({}),
       const Size(
-        ButlerlyButtonTokens.compactHeight,
+        ButlerlyButtonTokens.minimumWidth,
         ButlerlyButtonTokens.height,
       ),
     );
     expect(
       theme.textButtonTheme.style?.minimumSize?.resolve({}),
       const Size(
-        ButlerlyButtonTokens.compactHeight,
+        ButlerlyButtonTokens.minimumWidth,
         ButlerlyButtonTokens.height,
       ),
     );
@@ -76,7 +75,7 @@ void main() {
     );
     expect(
       theme.iconButtonTheme.style?.minimumSize?.resolve({}),
-      const Size.square(ButlerlySize.minimumTarget),
+      const Size.square(ButlerlyButtonTokens.iconVisualSize),
     );
     expect(
       theme.iconButtonTheme.style?.iconSize?.resolve({}),
@@ -190,7 +189,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('home-month-selector')));
     await tester.pumpAndSettle();
-    final future = tester.widget<OutlinedButton>(
+    final future = tester.widget<TextButton>(
       find.byKey(const Key('home-month-2026-9')),
     );
     expect(future.onPressed, isNull);
