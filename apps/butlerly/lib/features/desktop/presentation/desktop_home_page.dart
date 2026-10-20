@@ -154,7 +154,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
           children: [
             Container(
               key: const ValueKey('desktop-home-header'),
-              padding: const EdgeInsets.symmetric(horizontal: ButlerlySize.contentGutter),
+              padding: const EdgeInsets.symmetric(
+                horizontal: ButlerlySize.contentGutter,
+              ),
               constraints: const BoxConstraints(
                 minHeight: ButlerlySize.pageToolbarHeight,
                 maxHeight: ButlerlySize.pageToolbarHeight,
