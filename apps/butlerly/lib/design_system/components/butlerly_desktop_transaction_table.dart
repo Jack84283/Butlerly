@@ -236,7 +236,15 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
         // The table's text must not depend on the host page's inherited style.
         style: (Theme.of(context).textTheme.bodyMedium ?? const TextStyle())
             .copyWith(color: context.colors.primaryText),
-        child: _buildTable(context),
+        child: onSelectionChanged == null
+            ? _buildTable(context)
+            : RadioGroup<String>(
+                groupValue: selectedTransactionId,
+                onChanged: (value) {
+                  if (value != null) onSelectionChanged!(value);
+                },
+                child: _buildTable(context),
+              ),
       );
       final minimumWidth =
           minimumTableWidth +
@@ -344,10 +352,6 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
                   child: Radio<String>(
                     key: ValueKey('duplicate-select-${transaction.id}'),
                     value: transaction.id,
-                    groupValue: selectedTransactionId,
-                    onChanged: (value) {
-                      if (value != null) onSelectionChanged!(value);
-                    },
                   ),
                 ),
               SizedBox(
