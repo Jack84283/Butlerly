@@ -303,11 +303,11 @@ void main() {
       tester.getTopLeft(spending).dy,
       closeTo(tester.getTopLeft(transactions).dy, 1),
     );
+    expect(tester.getTopLeft(income).dy, closeTo(tester.getTopLeft(net).dy, 1));
     expect(
       tester.getTopLeft(income).dy,
-      closeTo(tester.getTopLeft(net).dy, 1),
+      greaterThan(tester.getBottomLeft(spending).dy),
     );
-    expect(tester.getTopLeft(income).dy, greaterThan(tester.getBottomLeft(spending).dy));
     expect(
       tester.getTopLeft(transactions).dx - tester.getTopRight(spending).dx,
       closeTo(ButlerlySpacing.micro, 0.01),
