@@ -9,13 +9,13 @@ void main() {
   test('dark mode uses near-black canvas and layered neutral surfaces', () {
     final colors = AppTheme.dark.extension<ButlerlySemanticColors>()!;
     expect(colors.background, const Color(0xFF0D0D0D));
-    expect(colors.cardSurface, const Color(0xFF111111));
-    expect(colors.surface, const Color(0xFF111111));
+    expect(colors.cardSurface, const Color(0xFF181818));
+    expect(colors.surface, const Color(0xFF181818));
     expect(colors.elevatedSurface, const Color(0xFF292B2D));
-    expect(colors.subtleSurface, const Color(0xFF1E1E1E));
-    expect(colors.overlaySurface, const Color(0xFF1E1E1E));
-    expect(colors.sheetSurface, const Color(0xFF1E1E1E));
-    expect(colors.footerSurface, const Color(0xFF111111));
+    expect(colors.subtleSurface, const Color(0xFF222222));
+    expect(colors.overlaySurface, const Color(0xFF222222));
+    expect(colors.sheetSurface, const Color(0xFF222222));
+    expect(colors.footerSurface, const Color(0xFF181818));
     expect(colors.primaryText, const Color(0xFFFFFFFF));
     expect(colors.secondaryText, const Color(0xFFB4B4B4));
     expect(colors.tertiaryText, const Color(0xFF9A9A9A));
