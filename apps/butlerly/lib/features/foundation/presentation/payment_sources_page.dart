@@ -450,7 +450,20 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                     horizontalMargin: ButlerlyTableTokens.horizontalMargin,
                     columnSpacing: ButlerlyTableTokens.columnSpacing,
                     columns: [
-                      for (final title in headers) DataColumn(label: Text(title)),
+                      for (final title in headers)
+                        DataColumn(
+                          label: Padding(
+                            padding: const EdgeInsets.only(
+                              bottom: ButlerlyTableTokens.headerToRowsGap,
+                            ),
+                            child: Text(
+                              title,
+                              style: ButlerlyTableTokens.headerTextStyle(context),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
                     ],
                     rows: [
                       for (final source in values)
