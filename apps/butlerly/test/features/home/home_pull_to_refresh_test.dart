@@ -623,31 +623,27 @@ void main() {
 
     expect(find.byKey(const ValueKey('home-summary-card')), findsOneWidget);
     expect(find.byKey(const ValueKey('home-category-card')), findsOneWidget);
-    final spending = find.byKey(
-      const ValueKey('home-summary-metric-spending'),
-    );
+    final spending = find.byKey(const ValueKey('home-summary-metric-spending'));
     final transactions = find.byKey(
       const ValueKey('home-summary-metric-transactions'),
     );
-    final income = find.byKey(
-      const ValueKey('home-summary-metric-income'),
-    );
-    final net = find.byKey(
-      const ValueKey('home-summary-metric-net-position'),
-    );
+    final income = find.byKey(const ValueKey('home-summary-metric-income'));
+    final net = find.byKey(const ValueKey('home-summary-metric-net-position'));
     expect(
       tester.getTopLeft(spending).dy,
       closeTo(tester.getTopLeft(transactions).dy, 1),
     );
-    expect(
-      tester.getTopLeft(income).dy,
-      closeTo(tester.getTopLeft(net).dy, 1),
-    );
+    expect(tester.getTopLeft(income).dy, closeTo(tester.getTopLeft(net).dy, 1));
     expect(
       tester.getTopLeft(income).dy,
       greaterThan(tester.getTopLeft(spending).dy),
     );
-    for (final label in ['Expenses', 'Transactions', 'Income', 'Net cash flow']) {
+    for (final label in [
+      'Expenses',
+      'Transactions',
+      'Income',
+      'Net cash flow',
+    ]) {
       expect(find.text(label), findsOneWidget);
     }
     expect(
