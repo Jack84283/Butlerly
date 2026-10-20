@@ -14,11 +14,13 @@ class AnalysisMerchantBreakdown extends StatelessWidget {
     required this.model,
     required this.masterData,
     this.onMetricTap,
+    this.fillToFiveRows = false,
   });
 
   final AnalysisModel model;
   final TransactionMasterData? masterData;
   final ValueChanged<AnalysisMetric>? onMetricTap;
+  final bool fillToFiveRows;
 
   @override
   Widget build(BuildContext context) {
@@ -65,6 +67,11 @@ class AnalysisMerchantBreakdown extends StatelessWidget {
               ),
             ),
           ],
+          if (fillToFiveRows)
+            for (var index = model.merchants.length; index < 5; index++) ...[
+              const SizedBox(height: ButlerlySpacing.compact),
+              const SizedBox(height: 44),
+            ],
         ],
       ),
     );
