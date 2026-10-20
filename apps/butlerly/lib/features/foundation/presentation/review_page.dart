@@ -1181,45 +1181,62 @@ class _StatementDuplicateGroupCardState
                           context.l10n.text('existingTransactionFound'),
                           style: Theme.of(context).textTheme.titleSmall,
                         ),
-                        RadioGroup<TransactionId>(
-                          groupValue: _selectedTransactionId,
-                          onChanged: (id) =>
-                              setState(() => _selectedTransactionId = id),
-                          child: ButlerlyTransactionList(
-                            children: [
-                              for (final transaction in transactions)
-                                TransactionRow(
-                                  transaction: transaction,
-                                  masterData: masterData.presentation,
-                                  paymentSourceNames: {
-                                    for (final source
-                                        in masterData.paymentSources)
-                                      source.id.value: source.name,
-                                  },
-                                  showDate: true,
-                                  supportingContent:
-                                      transaction.provenance.isEmpty
-                                      ? null
-                                      : Text(
-                                          _transactionEvidenceLabel(
-                                            context,
-                                            transaction,
+                        if (effectiveButlerlyLayoutMode(
+                              context,
+                              MediaQuery.sizeOf(context).width,
+                            ) == ButlerlyLayoutMode.wide)
+                          ButlerlyDesktopTransactionTableCard(
+                            transactions: transactions,
+                            masterData: masterData.presentation,
+                            paymentSourceNames: {
+                              for (final source in masterData.paymentSources)
+                                source.id.value: source.name,
+                            },
+                            onTap: (transaction) => setState(
+                              () => _selectedTransactionId =
+                                  TransactionId(transaction.id),
+                            ),
+                          )
+                        else
+                          RadioGroup<TransactionId>(
+                            groupValue: _selectedTransactionId,
+                            onChanged: (id) =>
+                                setState(() => _selectedTransactionId = id),
+                            child: ButlerlyTransactionList(
+                              children: [
+                                for (final transaction in transactions)
+                                  TransactionRow(
+                                    transaction: transaction,
+                                    masterData: masterData.presentation,
+                                    paymentSourceNames: {
+                                      for (final source
+                                          in masterData.paymentSources)
+                                        source.id.value: source.name,
+                                    },
+                                    showDate: true,
+                                    supportingContent:
+                                        transaction.provenance.isEmpty
+                                        ? null
+                                        : Text(
+                                            _transactionEvidenceLabel(
+                                              context,
+                                              transaction,
+                                            ),
+                                            style:
+                                                context.transactionItemMetadata,
                                           ),
-                                          style:
-                                              context.transactionItemMetadata,
-                                        ),
-                                  selectionControl:
-                                      ButlerlyTransactionSelectionControl<
-                                        TransactionId
-                                      >(value: TransactionId(transaction.id)),
-                                  onTap: () => setState(
-                                    () => _selectedTransactionId =
-                                        TransactionId(transaction.id),
+                                    selectionControl:
+                                        ButlerlyTransactionSelectionControl<
+                                          TransactionId
+                                        >(value: TransactionId(transaction.id)),
+                                    onTap: () => setState(
+                                      () => _selectedTransactionId =
+                                          TransactionId(transaction.id),
+                                    ),
                                   ),
-                                ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
                       ],
                     ],
                   );
@@ -1386,6 +1403,23 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
                 builder: (context, snapshot) {
                   final transactions = snapshot.data?.$1 ?? const [];
                   final masterData = snapshot.data?.$2;
+                  if (effectiveButlerlyLayoutMode(
+                        context,
+                        MediaQuery.sizeOf(context).width,
+                      ) == ButlerlyLayoutMode.wide) {
+                    return ButlerlyDesktopTransactionTableCard(
+                      transactions: transactions,
+                      masterData: masterData?.presentation ??
+                          const TransactionMasterData(),
+                      paymentSourceNames: {
+                        for (final source in masterData?.paymentSources ?? <PaymentSource>[])
+                          source.id.value: source.name,
+                      },
+                      onTap: (transaction) => setState(
+                        () => _selectedTransactionId = TransactionId(transaction.id),
+                      ),
+                    );
+                  }
                   return RadioGroup<TransactionId>(
                     groupValue: _selectedTransactionId,
                     onChanged: (id) =>
