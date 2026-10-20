@@ -5,6 +5,7 @@ import 'package:butlerly/core/evidence/platform_ocr_recognizer.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_payment_source_icon.dart';
+import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/features/foundation/presentation/payment_source_display.dart';
@@ -415,85 +416,107 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
       context.l10n.text('currency'),
       context.l10n.text('status'),
     ];
-    final table = ButlerlyCard(
+    final table = Container(
       key: const ValueKey('payment-sources-outer-card'),
-      padding: const EdgeInsets.all(ButlerlyTableTokens.outerPadding),
+      decoration: BoxDecoration(
+        color: context.colors.cardSurface,
+        borderRadius: BorderRadius.circular(ButlerlyRadius.card),
+      ),
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ButlerlyCardHeader(title: context.l10n.text('paymentSources')),
-          const SizedBox(height: ButlerlySpacing.compact),
-          ButlerlyCard(
-            key: const ValueKey('payment-sources-inner-card'),
-            color: Theme.of(context).colorScheme.surfaceContainerHighest,
-            padding: const EdgeInsets.symmetric(
-              horizontal: ButlerlyTableTokens.innerHorizontalPadding,
-              vertical: ButlerlyTableTokens.innerVerticalPadding,
+          Text(
+            context.l10n.text('paymentSources'),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: context.colors.primaryText,
             ),
+          ),
+          const SizedBox(height: ButlerlySpacing.compact),
+          ButlerlyDesktopInnerCard(
             child: LayoutBuilder(
-              builder: (context, constraints) => SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                  child: DataTable(
-                    showCheckboxColumn: false,
-                    dataRowMinHeight: ButlerlyTableTokens.rowHeight,
-                    dataRowMaxHeight: ButlerlyTableTokens.rowHeight,
-                    headingRowHeight: ButlerlyTableTokens.headingHeight +
-                        ButlerlyTableTokens.headerToRowsGap,
-                    border: TableBorder(
-                      horizontalInside: BorderSide(
-                        color: ButlerlyTableTokens.dividerColor(context),
-                        width: ButlerlyTableTokens.dividerThickness,
+              builder: (context, constraints) {
+                const minimumTableWidth = 660.0;
+                final content = SizedBox(
+                  width: constraints.maxWidth < minimumTableWidth
+                      ? minimumTableWidth
+                      : constraints.maxWidth,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          for (var index = 0; index < headers.length; index++)
+                            Expanded(
+                              flex: index == 0 ? 3 : 2,
+                              child: Text(
+                                headers[index],
+                                style: ButlerlyTableTokens.headerTextStyle(context),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                        ],
                       ),
-                    ),
-                    horizontalMargin: ButlerlyTableTokens.horizontalMargin,
-                    columnSpacing: ButlerlyTableTokens.columnSpacing,
-                    columns: [
-                      for (final title in headers)
-                        DataColumn(
-                          label: Padding(
-                            padding: const EdgeInsets.only(
-                              bottom: ButlerlyTableTokens.headerToRowsGap,
-                            ),
-                            child: Text(
-                              title,
-                              style: ButlerlyTableTokens.headerTextStyle(context),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ),
-                    ],
-                    rows: [
-                      for (final source in values)
-                        DataRow(
-                          selected: _desktopSelected?.id == source.id &&
-                              _desktopEditorOpen,
-                          onSelectChanged: (_) =>
-                              _openDesktopEditor(existing: source),
-                          cells: [
-                            DataCell(
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
+                      Divider(
+                        height: ButlerlyTableTokens.headerToRowsGap,
+                        thickness: ButlerlyTableTokens.dividerThickness,
+                        color: ButlerlyTableTokens.dividerColor(context),
+                      ),
+                      for (final source in values) ...[
+                        Material(
+                          type: MaterialType.transparency,
+                          child: InkWell(
+                            onTap: () => _openDesktopEditor(existing: source),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: ButlerlyTableTokens.rowVerticalPadding,
+                              ),
+                              child: Row(
                                 children: [
-                                  ButlerlyPaymentSourceIcon(source: source, size: 24),
-                                  const SizedBox(width: ButlerlySpacing.compact),
-                                  Text(paymentSourceDisplayLabel(source)),
+                                  Expanded(
+                                    flex: 3,
+                                    child: Row(
+                                      children: [
+                                        ButlerlyPaymentSourceIcon(source: source, size: 24),
+                                        const SizedBox(width: ButlerlySpacing.compact),
+                                        Flexible(
+                                          child: Text(
+                                            paymentSourceDisplayLabel(source),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Expanded(flex: 2, child: Text(_typeLabel(context, source.type))),
+                                  Expanded(flex: 2, child: Text(source.issuer ?? '—')),
+                                  Expanded(flex: 2, child: Text(source.lastFour ?? '—')),
+                                  Expanded(flex: 2, child: Text(source.currency ?? '—')),
+                                  Expanded(flex: 2, child: Text(_statusLabel(context, source.status))),
                                 ],
                               ),
                             ),
-                            DataCell(Text(_typeLabel(context, source.type))),
-                            DataCell(Text(source.issuer ?? '—')),
-                            DataCell(Text(source.lastFour ?? '—')),
-                            DataCell(Text(source.currency ?? '—')),
-                            DataCell(Text(_statusLabel(context, source.status))),
-                          ],
+                          ),
                         ),
+                        Divider(
+                          height: ButlerlyTableTokens.dividerThickness,
+                          thickness: ButlerlyTableTokens.dividerThickness,
+                          color: ButlerlyTableTokens.dividerColor(context),
+                        ),
+                      ],
                     ],
                   ),
-                ),
-              ),
+                );
+                if (constraints.maxWidth >= minimumTableWidth) return content;
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: content,
+                );
+              },
             ),
           ),
         ],
