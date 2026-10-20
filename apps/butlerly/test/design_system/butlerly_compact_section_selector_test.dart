@@ -46,8 +46,12 @@ void main() {
     expect(selectedButton.style?.minimumSize, isNotNull);
     expect(selectedButton.style?.minimumSize?.resolve({})?.width, 120);
     expect(selectedButton.style?.minimumSize?.resolve({})?.height, 32);
-    final first = tester.getRect(find.text('All'));
-    final last = tester.getRect(find.text('Archived'));
+    final first = tester.getRect(
+      find.byKey(const ValueKey('compact-section-0')),
+    );
+    final last = tester.getRect(
+      find.byKey(const ValueKey('compact-section-3')),
+    );
     final selectorCenter = tester.getCenter(
       find.byKey(const ValueKey('compact-section-selector')),
     );
