@@ -558,7 +558,8 @@ class _SettlementDesktopOverview extends StatelessWidget {
             label: context.l10n.text('needsReview'),
             count: settlements
                 .where(
-                  (value) => value.status == PaymentSettlementStatus.needsReview,
+                  (value) =>
+                      value.status == PaymentSettlementStatus.needsReview,
                 )
                 .length,
           ),
@@ -598,10 +599,7 @@ class _SettlementCounterCard extends StatelessWidget {
 }
 
 class _SettlementDesktopTable extends StatelessWidget {
-  const _SettlementDesktopTable({
-    required this.data,
-    required this.onOpen,
-  });
+  const _SettlementDesktopTable({required this.data, required this.onOpen});
 
   final _SettlementListData data;
   final ValueChanged<PaymentSettlementDto> onOpen;
@@ -644,7 +642,9 @@ class _SettlementDesktopTable extends StatelessWidget {
           );
           if (constraints.maxWidth >= minimumWidth) return table;
           return SingleChildScrollView(
-            key: const ValueKey('desktop-payment-settlements-horizontal-scroll'),
+            key: const ValueKey(
+              'desktop-payment-settlements-horizontal-scroll',
+            ),
             scrollDirection: Axis.horizontal,
             child: SizedBox(width: minimumWidth, child: table),
           );
@@ -706,7 +706,11 @@ class _SettlementDesktopTable extends StatelessWidget {
               ),
               SizedBox(
                 width: 145,
-                child: Text(amount, maxLines: 1, overflow: TextOverflow.ellipsis),
+                child: Text(
+                  amount,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               SizedBox(
                 width: 135,
