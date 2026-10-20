@@ -94,7 +94,7 @@ class _ButlerlyMonthPickerState extends State<ButlerlyMonthPicker> {
                           color: disabled
                               ? colors.tertiaryText
                               : selected
-                                  ? colors.onControlPrimary
+                                  ? Theme.of(context).colorScheme.onPrimary
                                   : colors.primaryText,
                         ),
                       ),
