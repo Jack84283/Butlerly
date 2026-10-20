@@ -788,12 +788,8 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
           SizedBox(height: fieldGap),
           TextFormField(
             controller: _amount,
-            keyboardType: const TextInputType.numberWithOptions(
-              decimal: true,
-            ),
-            decoration: InputDecoration(
-              labelText: context.l10n.text('amount'),
-            ),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(labelText: context.l10n.text('amount')),
             validator: (value) {
               try {
                 DecimalValue.parse(value?.trim() ?? '');
@@ -832,9 +828,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
               alignment: AlignmentDirectional.centerStart,
               child: Text(
                 context.l10n.text('dateNeedsReview'),
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.error,
-                ),
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ),
           SizedBox(height: fieldGap),
@@ -870,8 +864,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
             clearLabel: context.l10n.text('clear'),
             sources: _sources,
             value: _paymentSourceId,
-            onChanged: (value) =>
-                setState(() => _paymentSourceId = value),
+            onChanged: (value) => setState(() => _paymentSourceId = value),
           ),
           SizedBox(height: fieldGap),
           Align(
@@ -899,23 +892,15 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
           TextFormField(
             controller: _notes,
             maxLines: 2,
-            decoration: InputDecoration(
-              labelText: context.l10n.text('notes'),
-            ),
+            decoration: InputDecoration(labelText: context.l10n.text('notes')),
           ),
           if (_ocrResult != null)
             ExpansionTile(
-              title: Text(
-                context.l10n.text('extractedSourceText'),
-              ),
-              subtitle: Text(
-                context.l10n.text('originalOcrPreserved'),
-              ),
+              title: Text(context.l10n.text('extractedSourceText')),
+              subtitle: Text(context.l10n.text('originalOcrPreserved')),
               children: [
                 Padding(
-                  padding: const EdgeInsets.all(
-                    ButlerlySpacing.small,
-                  ),
+                  padding: const EdgeInsets.all(ButlerlySpacing.small),
                   child: SelectableText(_ocrResult!.rawText),
                 ),
               ],
@@ -1002,8 +987,12 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                                   ),
                                   TextButton.icon(
                                     onPressed: _file,
-                                    icon: const Icon(Icons.folder_open_outlined),
-                                    label: Text(context.l10n.text('chooseFiles')),
+                                    icon: const Icon(
+                                      Icons.folder_open_outlined,
+                                    ),
+                                    label: Text(
+                                      context.l10n.text('chooseFiles'),
+                                    ),
                                   ),
                                 ],
                               ),
