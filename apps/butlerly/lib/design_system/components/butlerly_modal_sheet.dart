@@ -16,17 +16,11 @@ class ButlerlyCancelButton extends StatelessWidget {
   final bool autofocus;
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final side = theme.outlinedButtonTheme.style?.side?.resolve({}) ??
-        BorderSide(color: theme.colorScheme.outline);
-    return TextButton(
-      onPressed: onPressed,
-      autofocus: autofocus,
-      style: TextButton.styleFrom(side: side),
-      child: child,
-    );
-  }
+  Widget build(BuildContext context) => OutlinedButton(
+    onPressed: onPressed,
+    autofocus: autofocus,
+    child: child,
+  );
 }
 
 class ButlerlySheet extends StatelessWidget {
