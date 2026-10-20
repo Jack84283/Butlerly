@@ -219,9 +219,12 @@ abstract final class AppTheme {
       ),
       iconButtonTheme: IconButtonThemeData(
         style: IconButton.styleFrom(
-          minimumSize: const Size.square(ButlerlyButtonTokens.iconTouchTarget),
+          minimumSize: const Size.square(ButlerlyButtonTokens.iconVisualSize),
           iconSize: ButlerlyButtonTokens.iconSize,
-          padding: const EdgeInsets.all(ButlerlySpacing.compact),
+          padding: const EdgeInsets.all(7),
+          tapTargetSize: MaterialTapTargetSize.padded,
+          backgroundColor: colors.subtleSurface,
+          shape: const CircleBorder(),
           foregroundColor: colors.primaryText,
           disabledForegroundColor: colors.tertiaryText,
         ),
