@@ -8,6 +8,7 @@ import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/theme/butlerly_responsive_design_tokens.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
@@ -184,7 +185,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                         horizontal: 6,
                         vertical: 2,
                       ),
-                      minimumSize: const Size(34, 32),
+                      minimumSize: const Size.square(ButlerlyButtonTokens.iconTouchTarget),
                     ),
                     tooltip: context.l10n.text('previousMonth'),
                     onPressed: () => _moveMonth(-1, current),
@@ -197,7 +198,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                         horizontal: 10,
                         vertical: 4,
                       ),
-                      minimumSize: const Size(0, 32),
+                      minimumSize: const Size(
+                        ButlerlyButtonTokens.minimumWidth,
+                        ButlerlyButtonTokens.height,
+                      ),
                       backgroundColor: Colors.transparent,
                       surfaceTintColor: Colors.transparent,
                       shadowColor: Colors.transparent,
@@ -227,7 +231,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                         horizontal: 6,
                         vertical: 2,
                       ),
-                      minimumSize: const Size(34, 32),
+                      minimumSize: const Size.square(ButlerlyButtonTokens.iconTouchTarget),
                     ),
                     tooltip: context.l10n.text('nextMonth'),
                     onPressed: () => _moveMonth(1, current),
@@ -242,7 +246,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                           horizontal: 12,
                           vertical: 4,
                         ),
-                        minimumSize: const Size(0, 32),
+                        minimumSize: const Size(
+                        ButlerlyButtonTokens.minimumWidth,
+                        ButlerlyButtonTokens.height,
+                      ),
                       ),
                       onPressed: () => _go('/search'),
                       icon: const Icon(Icons.search),
@@ -258,7 +265,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                         horizontal: 12,
                         vertical: 4,
                       ),
-                      minimumSize: const Size(0, 32),
+                      minimumSize: const Size(
+                        ButlerlyButtonTokens.minimumWidth,
+                        ButlerlyButtonTokens.height,
+                      ),
                     ),
                     onPressed: () => _go('/transactions/add'),
                     icon: const Icon(Icons.add),
@@ -322,7 +332,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                         horizontal: 12,
                                         vertical: 4,
                                       ),
-                                      minimumSize: const Size(0, 32),
+                                      minimumSize: const Size(
+                        ButlerlyButtonTokens.minimumWidth,
+                        ButlerlyButtonTokens.height,
+                      ),
                                     ),
                                     onPressed: () => setState(_reload),
                                     child: Text(
@@ -463,7 +476,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                           horizontal: 12,
                                           vertical: 4,
                                         ),
-                                        minimumSize: const Size(0, 32),
+                                        minimumSize: const Size(
+                        ButlerlyButtonTokens.minimumWidth,
+                        ButlerlyButtonTokens.height,
+                      ),
                                       ),
                                       onPressed: () => _go('/analysis?$query'),
                                       child: Text(context.l10n.text('viewAll')),
@@ -629,7 +645,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                         horizontal: 12,
                                         vertical: 4,
                                       ),
-                                      minimumSize: const Size(0, 32),
+                                      minimumSize: const Size(
+                        ButlerlyButtonTokens.minimumWidth,
+                        ButlerlyButtonTokens.height,
+                      ),
                                     ),
                                     onPressed: () => _go('/search?$query'),
                                     child: Text(context.l10n.text('viewAll')),
@@ -1306,7 +1325,7 @@ Future<DateTime?> _selectDesktopMonth(BuildContext context, DateTime selected) {
             IconButton(
               style: IconButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                minimumSize: const Size(34, 32),
+                minimumSize: const Size.square(ButlerlyButtonTokens.iconTouchTarget),
               ),
               tooltip: context.l10n.text('desktopPreviousYear'),
               icon: const Icon(Icons.chevron_left),
@@ -1316,7 +1335,7 @@ Future<DateTime?> _selectDesktopMonth(BuildContext context, DateTime selected) {
             IconButton(
               style: IconButton.styleFrom(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                minimumSize: const Size(34, 32),
+                minimumSize: const Size.square(ButlerlyButtonTokens.iconTouchTarget),
               ),
               tooltip: context.l10n.text('desktopNextYear'),
               icon: const Icon(Icons.chevron_right),
@@ -1344,7 +1363,10 @@ Future<DateTime?> _selectDesktopMonth(BuildContext context, DateTime selected) {
                     horizontal: 8,
                     vertical: 3,
                   ),
-                  minimumSize: const Size(0, 30),
+                  minimumSize: const Size(
+                    ButlerlyButtonTokens.minimumWidth,
+                    ButlerlyButtonTokens.height,
+                  ),
                   backgroundColor: candidate == month
                       ? Theme.of(context).colorScheme.primaryContainer
                       : Colors.transparent,
@@ -1367,7 +1389,10 @@ Future<DateTime?> _selectDesktopMonth(BuildContext context, DateTime selected) {
           FilledButton(
             style: FilledButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              minimumSize: const Size(0, 32),
+              minimumSize: const Size(
+                        ButlerlyButtonTokens.minimumWidth,
+                        ButlerlyButtonTokens.height,
+                      ),
             ),
             onPressed: () => Navigator.pop(sheetContext, DateTime(year, month)),
             child: Text(context.l10n.text('desktopApply')),
