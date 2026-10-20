@@ -151,9 +151,7 @@ class _WidePrimaryNavigation extends StatelessWidget {
         ? ButlerlySize.wideNavigationExpandedWidth
         : ButlerlySize.wideNavigationCollapsedWidth,
     decoration: BoxDecoration(
-      color: Theme.of(context).brightness == Brightness.dark
-          ? context.colors.background
-          : context.colors.surface,
+      color: context.colors.surface,
       border: Border(right: BorderSide(color: context.colors.cardDivider)),
     ),
     child: SafeArea(
