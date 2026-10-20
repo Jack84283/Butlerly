@@ -141,7 +141,7 @@ void main() {
     expect(value, isNull);
   });
 
-  testWidgets('tag search keeps space from selected and available chips', (
+  testWidgets('tag search follows available chips with consistent spacing', (
     tester,
   ) async {
     final tags = List.generate(
@@ -165,11 +165,11 @@ void main() {
     final available = tester.getRect(find.byType(FilterChip).first);
 
     expect(
-      search.top - selected.bottom,
+      available.top - selected.bottom,
       greaterThanOrEqualTo(ButlerlySpacing.small),
     );
     expect(
-      available.top - search.bottom,
+      search.top - tester.getRect(find.byType(FilterChip).last).bottom,
       greaterThanOrEqualTo(ButlerlySpacing.small),
     );
   });
