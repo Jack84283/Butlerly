@@ -336,9 +336,16 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                 children: [
                                   Expanded(
                                     child: _DesktopMetric(
-                                      key: const ValueKey('desktop-home-summary-expenses'),
-                                      title: context.l10n.text('desktopExpenses'),
-                                      value: _money(analysis?.spending, currency),
+                                      key: const ValueKey(
+                                        'desktop-home-summary-expenses',
+                                      ),
+                                      title: context.l10n.text(
+                                        'desktopExpenses',
+                                      ),
+                                      value: _money(
+                                        analysis?.spending,
+                                        currency,
+                                      ),
                                       icon: Icons.arrow_downward,
                                       comparison: analysis?.spendingComparison,
                                     ),
@@ -346,20 +353,27 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: _DesktopMetric(
-                                      key: const ValueKey('desktop-home-summary-transactions'),
+                                      key: const ValueKey(
+                                        'desktop-home-summary-transactions',
+                                      ),
                                       title: context.l10n.text('transactions'),
                                       value: _transactionCount(
                                         analysis?.transactionCount,
                                       ),
                                       icon: Icons.receipt_long_outlined,
-                                      comparison: analysis?.transactionCountComparison,
-                                      accentColor: ButlerlyHomeColorTokens.standard.transactions,
+                                      comparison:
+                                          analysis?.transactionCountComparison,
+                                      accentColor: ButlerlyHomeColorTokens
+                                          .standard
+                                          .transactions,
                                     ),
                                   ),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: _DesktopMetric(
-                                      key: const ValueKey('desktop-home-summary-income'),
+                                      key: const ValueKey(
+                                        'desktop-home-summary-income',
+                                      ),
                                       title: context.l10n.text('income'),
                                       value: _money(analysis?.income, currency),
                                       icon: Icons.arrow_upward,
@@ -369,7 +383,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: _DesktopMetric(
-                                      key: const ValueKey('desktop-home-summary-net'),
+                                      key: const ValueKey(
+                                        'desktop-home-summary-net',
+                                      ),
                                       title: context.l10n.text('netCashFlow'),
                                       value: _money(analysis?.net, currency),
                                       icon: Icons.show_chart,
@@ -947,11 +963,13 @@ class _DesktopMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = accentColor ?? (icon == Icons.arrow_upward
-        ? const Color(0xFF009B61)
-        : icon == Icons.arrow_downward
-        ? const Color(0xFFE24247)
-        : const Color(0xFF1769E8));
+    final color =
+        accentColor ??
+        (icon == Icons.arrow_upward
+            ? const Color(0xFF009B61)
+            : icon == Icons.arrow_downward
+            ? const Color(0xFFE24247)
+            : const Color(0xFF1769E8));
     final fill = color.withValues(alpha: _desktopHomeTintOpacity);
     final percent = comparison?.percentageChange;
     final usable =
