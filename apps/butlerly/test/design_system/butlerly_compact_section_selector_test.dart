@@ -48,11 +48,11 @@ void main() {
       isNotNull,
     );
     expect(
-      selectedButton.style?.minimumSize?.width,
+      selectedButton.style?.minimumSize?.resolve({})?.width,
       120,
     );
     expect(
-      selectedButton.style?.minimumSize?.height,
+      selectedButton.style?.minimumSize?.resolve({})?.height,
       32,
     );
     final first = tester.getRect(find.text('All'));
