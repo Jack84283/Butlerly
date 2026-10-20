@@ -715,7 +715,7 @@ class ButlerlyDirectionSelector extends StatelessWidget {
     );
     return Container(
       key: const ValueKey('transaction-direction-switch'),
-      padding: const EdgeInsets.all(ButlerlySpacing.micro),
+      padding: const EdgeInsets.all(ButlerlySpacing.xxs),
       decoration: BoxDecoration(
         color: palette.segmentFill,
         border: Border.all(color: palette.segmentBorder),
@@ -772,7 +772,8 @@ class _TransactionDirectionSwitchOption extends StatelessWidget {
             duration: const Duration(milliseconds: 160),
             curve: Curves.easeOut,
             constraints: const BoxConstraints(
-              minHeight: ButlerlySize.minimumTarget,
+              minHeight: ButlerlyButtonTokens.height,
+              minWidth: ButlerlyButtonTokens.minimumWidth,
             ),
             alignment: Alignment.center,
             decoration: BoxDecoration(
@@ -785,8 +786,8 @@ class _TransactionDirectionSwitchOption extends StatelessWidget {
               borderRadius: BorderRadius.circular(ButlerlyRadius.full),
             ),
             padding: const EdgeInsets.symmetric(
-              horizontal: ButlerlySpacing.standard,
-              vertical: ButlerlySpacing.compact,
+              horizontal: ButlerlyButtonTokens.horizontalPadding,
+              vertical: ButlerlyButtonTokens.verticalPadding,
             ),
             child: Text(
               label,
