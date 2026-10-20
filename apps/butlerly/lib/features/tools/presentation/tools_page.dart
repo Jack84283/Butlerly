@@ -15,10 +15,12 @@ class ToolsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final desktop = effectiveButlerlyLayoutMode(
-      context,
-      MediaQuery.sizeOf(context).width,
-    ) == ButlerlyLayoutMode.wide;
+    final desktop =
+        effectiveButlerlyLayoutMode(
+          context,
+          MediaQuery.sizeOf(context).width,
+        ) ==
+        ButlerlyLayoutMode.wide;
     final tools = _tools(context);
 
     return ButlerlyPage(
