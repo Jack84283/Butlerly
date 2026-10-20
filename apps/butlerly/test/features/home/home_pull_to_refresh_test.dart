@@ -139,7 +139,7 @@ void main() {
     readGate.complete();
     transactions.readGate = null;
     await tester.pumpAndSettle();
-    expect(tester.takeException(), isNull);
+    e    expect(tester.takeException(), isNull);
   });
 
   testWidgets('Home uses the approved card order for useful activity', (
@@ -1037,7 +1037,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    f    final spending = tester.getTopLeft(
+    final spending = tester.getTopLeft(
       find.byKey(const ValueKey('home-summary-inner-spending')),
     );
     final transactions = tester.getTopLeft(
