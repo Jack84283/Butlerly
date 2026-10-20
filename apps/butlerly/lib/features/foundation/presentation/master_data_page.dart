@@ -306,71 +306,72 @@ class _MasterDataPageState extends State<MasterDataPage> {
         ) ==
         ButlerlyLayoutMode.wide;
     return ButlerlyPage(
-    title: context.l10n.text('masterData'),
-    fullWidth: desktop,
-    pinnedSpacing: ButlerlyPinnedPageSpacing.tightHeader,
-    actions: [
-      Padding(
-        padding: const EdgeInsetsDirectional.only(
-          end: ButlerlySpacing.headerActionTrailing,
-        ),
-        child: IconButton.filled(
-          key: const ValueKey('master-data-add'),
-          tooltip: context.l10n.text('add'),
-          onPressed: _add,
-          icon: const Icon(Icons.add),
-          style: IconButton.styleFrom(
-            backgroundColor: context.colors.interactive,
-            foregroundColor: context.colors.interactive.computeLuminance() > 0.5
-                ? context.colors.background
-                : Colors.white,
-            shape: const CircleBorder(),
-            minimumSize: const Size.square(32),
-            maximumSize: const Size.square(32),
+      title: context.l10n.text('masterData'),
+      fullWidth: desktop,
+      pinnedSpacing: ButlerlyPinnedPageSpacing.tightHeader,
+      actions: [
+        Padding(
+          padding: const EdgeInsetsDirectional.only(
+            end: ButlerlySpacing.headerActionTrailing,
+          ),
+          child: IconButton.filled(
+            key: const ValueKey('master-data-add'),
+            tooltip: context.l10n.text('add'),
+            onPressed: _add,
+            icon: const Icon(Icons.add),
+            style: IconButton.styleFrom(
+              backgroundColor: context.colors.interactive,
+              foregroundColor:
+                  context.colors.interactive.computeLuminance() > 0.5
+                  ? context.colors.background
+                  : Colors.white,
+              shape: const CircleBorder(),
+              minimumSize: const Size.square(32),
+              maximumSize: const Size.square(32),
+            ),
           ),
         ),
-      ),
-    ],
-    pinnedHeader: ButlerlyCompactSectionSelector(
-      labels: [
-        context.l10n.text('categories'),
-        context.l10n.text('subcategories'),
-        context.l10n.text('tags'),
-        context.l10n.text('merchants'),
       ],
-      selectedIndex: _sectionIndex,
-      onSelected: (index) => setState(() => _sectionIndex = index),
-    ),
-    children: [
-      FutureBuilder<_MasterData>(
-        future: _data,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const ButlerlyLoadingState();
-          }
-          if (snapshot.hasError) {
-            return ButlerlyErrorState(
-              title: context.l10n.text('reviewLoadError'),
-              message: context.l10n.text('tryAgain'),
-              preserved: context.l10n.text('dataPreserved'),
-              actionLabel: context.l10n.text('tryAgain'),
-              onAction: _refresh,
-            );
-          }
-          final data = snapshot.requireData;
-          return _MasterDataList(
-            desktop: desktop,
-            index: _sectionIndex,
-            data: data,
-            onChanged: _refresh,
-            finance: _finance,
-            onEdit: _editExisting,
-          );
-        },
+      pinnedHeader: ButlerlyCompactSectionSelector(
+        labels: [
+          context.l10n.text('categories'),
+          context.l10n.text('subcategories'),
+          context.l10n.text('tags'),
+          context.l10n.text('merchants'),
+        ],
+        selectedIndex: _sectionIndex,
+        onSelected: (index) => setState(() => _sectionIndex = index),
       ),
-      const SizedBox(height: ButlerlySpacing.structural),
-    ],
-  );
+      children: [
+        FutureBuilder<_MasterData>(
+          future: _data,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const ButlerlyLoadingState();
+            }
+            if (snapshot.hasError) {
+              return ButlerlyErrorState(
+                title: context.l10n.text('reviewLoadError'),
+                message: context.l10n.text('tryAgain'),
+                preserved: context.l10n.text('dataPreserved'),
+                actionLabel: context.l10n.text('tryAgain'),
+                onAction: _refresh,
+              );
+            }
+            final data = snapshot.requireData;
+            return _MasterDataList(
+              desktop: desktop,
+              index: _sectionIndex,
+              data: data,
+              onChanged: _refresh,
+              finance: _finance,
+              onEdit: _editExisting,
+            );
+          },
+        ),
+        const SizedBox(height: ButlerlySpacing.structural),
+      ],
+    );
   }
 }
 
@@ -500,7 +501,7 @@ class _MasterDataList extends StatelessWidget {
           index == 0 ? category.parentId == null : category.parentId != null,
     );
     return _ListCard(
-        desktop: desktop,
+      desktop: desktop,
       children: [
         for (final category in values)
           _Row(
@@ -606,10 +607,7 @@ class _ListCard extends StatelessWidget {
                 ),
                 const SizedBox(height: ButlerlyTableTokens.headerToRowsGap),
                 _divider(context),
-                for (final child in children) ...[
-                  child,
-                  _divider(context),
-                ],
+                for (final child in children) ...[child, _divider(context)],
               ],
             );
             if (constraints.maxWidth >= minimumTableWidth) return table;
@@ -666,41 +664,41 @@ class _Row extends StatelessWidget {
   Widget build(BuildContext context) => desktop
       ? _desktopRow(context)
       : ListTile(
-    title: Text(title),
-    subtitle: Text(
-      [
-        ?subtitle,
-        origin,
-        if (!active) context.l10n.text('archived'),
-      ].join(' · '),
-    ),
-    trailing: onToggle == null && onEdit == null
-        ? null
-        : Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (onEdit != null)
-                IconButton(
-                  tooltip: context.l10n.text('edit'),
-                  icon: const Icon(Icons.edit_outlined),
-                  onPressed: onEdit,
-                ),
-              if (onToggle != null)
-                IconButton(
-                  tooltip: context.l10n.text(
-                    active ? 'deactivate' : 'reactivate',
-                  ),
-                  icon: Icon(
-                    active
-                        ? Icons.visibility_outlined
-                        : Icons.visibility_off_outlined,
-                  ),
-                  onPressed: onToggle,
-                ),
-            ],
+          title: Text(title),
+          subtitle: Text(
+            [
+              ?subtitle,
+              origin,
+              if (!active) context.l10n.text('archived'),
+            ].join(' · '),
           ),
-  );
-  
+          trailing: onToggle == null && onEdit == null
+              ? null
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (onEdit != null)
+                      IconButton(
+                        tooltip: context.l10n.text('edit'),
+                        icon: const Icon(Icons.edit_outlined),
+                        onPressed: onEdit,
+                      ),
+                    if (onToggle != null)
+                      IconButton(
+                        tooltip: context.l10n.text(
+                          active ? 'deactivate' : 'reactivate',
+                        ),
+                        icon: Icon(
+                          active
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                        ),
+                        onPressed: onToggle,
+                      ),
+                  ],
+                ),
+        );
+
   Widget _desktopRow(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(
       vertical: ButlerlyTableTokens.rowVerticalPadding,
@@ -711,9 +709,9 @@ class _Row extends StatelessWidget {
           flex: 3,
           child: Text(
             title,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
             overflow: TextOverflow.ellipsis,
             maxLines: 2,
           ),
