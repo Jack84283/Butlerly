@@ -630,54 +630,54 @@ class _AnalysisContent extends StatelessWidget {
         ) ==
         ButlerlyLayoutMode.wide;
     final spendingCard = AnalysisSpendingBreakdown(
-        model: model,
-        masterData: masterData,
-        onCategoryTap: analysisContext == null
-            ? null
-            : (metric) => _openAnalysisSearch(
-                context,
-                metric: metric,
-                transactionIds: _metricTransactionIds(metric),
+      model: model,
+      masterData: masterData,
+      onCategoryTap: analysisContext == null
+          ? null
+          : (metric) => _openAnalysisSearch(
+              context,
+              metric: metric,
+              transactionIds: _metricTransactionIds(metric),
+            ),
+      onViewAll: analysisContext != null && model.categories.length > 5
+          ? () => _openAnalysisSearch(
+              context,
+              selectionContext: analysisContext!,
+              ruleId: model.categories.first.rule.identity.value,
+              transactionIds: _evidenceTransactionIds(
+                model.categories.expand((metric) => metric.evidence),
               ),
-        onViewAll: analysisContext != null && model.categories.length > 5
-            ? () => _openAnalysisSearch(
-                context,
-                selectionContext: analysisContext!,
-                ruleId: model.categories.first.rule.identity.value,
-                transactionIds: _evidenceTransactionIds(
-                  model.categories.expand((metric) => metric.evidence),
-                ),
-              )
-            : null,
-      );
+            )
+          : null,
+    );
 
     final merchantCard = model.merchants.isEmpty
         ? null
         : AnalysisMerchantBreakdown(
-          model: model,
-          masterData: masterData,
-          onMetricTap: (metric) {
-            _openAnalysisSearch(
-              context,
-              metric: metric,
-              transactionIds: _metricTransactionIds(metric),
-            );
-          },
-        );
+            model: model,
+            masterData: masterData,
+            onMetricTap: (metric) {
+              _openAnalysisSearch(
+                context,
+                metric: metric,
+                transactionIds: _metricTransactionIds(metric),
+              );
+            },
+          );
 
     final subcategoryCard = model.subcategories.isEmpty
         ? null
         : AnalysisSubcategoryBreakdown(
-          model: model,
-          masterData: masterData,
-          onMetricTap: (metric) {
-            _openAnalysisSearch(
-              context,
-              metric: metric,
-              transactionIds: _metricTransactionIds(metric),
-            );
-          },
-        );
+            model: model,
+            masterData: masterData,
+            onMetricTap: (metric) {
+              _openAnalysisSearch(
+                context,
+                metric: metric,
+                transactionIds: _metricTransactionIds(metric),
+              );
+            },
+          );
 
     return ButlerlyPage(
       title: context.l10n.text('analysis'),
@@ -841,10 +841,7 @@ class _AnalysisContent extends StatelessWidget {
 /// Keep paired desktop Analysis cards equal-height without changing the
 /// single-column device layout. Stack them if the content width is too narrow.
 class _AnalysisDesktopCardPair extends StatelessWidget {
-  const _AnalysisDesktopCardPair({
-    required this.first,
-    required this.second,
-  });
+  const _AnalysisDesktopCardPair({required this.first, required this.second});
 
   final Widget first;
   final Widget second;
