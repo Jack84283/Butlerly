@@ -48,8 +48,18 @@ INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('cate
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.health.vision','Vision','system','category.health','active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.health.mental','Mental Health','system','category.health','active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.health.fitness','Fitness','system','category.health','active');
-INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.entertainment','Entertainment','system',NULL,'active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.sports','Sports','system',NULL,'active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.sports.equipment_sportswear','Equipment & Sportswear','system','category.sports','active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.sports.coaching_lessons','Coaching & Lessons','system','category.sports','active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.sports.facilities_rentals','Facilities & Rentals','system','category.sports','active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.sports.registration_entry_fees','Registration & Entry Fees','system','category.sports','active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.sports.tickets','Sports Tickets','system','category.sports','active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.entertainment','Leisure & Entertainment','system',NULL,'active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.entertainment.events','Events','system','category.entertainment','active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.entertainment.movies','Movies','system','category.entertainment','active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.entertainment.games','Games','system','category.entertainment','active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.entertainment.hobbies_crafts','Hobbies & Crafts','system','category.entertainment','active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.entertainment.attractions_recreation','Attractions & Recreation','system','category.entertainment','active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.digital_services','Digital Services','system',NULL,'active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.digital_services.cloud_storage','Cloud Storage','system','category.digital_services','active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.digital_services.software_subscription','Software Subscription','system','category.digital_services','active');
@@ -65,10 +75,21 @@ INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('cate
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.education.tuition_fees','Tuition & School Fees','system','category.education','active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.education.books_supplies','Books & Supplies','system','category.education','active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.education.training_courses','Training & Courses','system','category.education','active');
-INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.personal','Personal Care','system',NULL,'active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.pets','Pets','system',NULL,'active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.pets.food_treats','Food & Treats','system','category.pets','active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.pets.supplies_accessories','Supplies & Accessories','system','category.pets','active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.pets.veterinary_care','Veterinary Care','system','category.pets','active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.pets.grooming','Grooming','system','category.pets','active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.pets.boarding_pet_sitting','Boarding & Pet Sitting','system','category.pets','active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.pets.training','Training','system','category.pets','active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.personal','Beauty & Personal Care','system',NULL,'active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.personal.oral','Oral Care','system','category.personal','active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.personal.hair','Hair Care','system','category.personal','active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.personal.bath_body','Bath & Body','system','category.personal','active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.personal.skincare','Skincare','system','category.personal','active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.personal.cosmetics_makeup','Cosmetics & Makeup','system','category.personal','active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.personal.nails','Nails','system','category.personal','active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.personal.beauty_treatments','Beauty Treatments','system','category.personal','active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.gifts','Gifts & Donations','system',NULL,'active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.gifts.personal','Personal Gifts','system','category.gifts','active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.gifts.family_support','Family Support','system','category.gifts','active');
@@ -81,6 +102,11 @@ INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('cate
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.insurance.homeowners','Homeowners Insurance','system','category.insurance','active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.insurance.health','Health Insurance','system','category.insurance','active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.insurance.life','Life Insurance','system','category.insurance','active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.insurance.pet','Pet Insurance','system','category.insurance','active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.insurance.renters','Renters Insurance','system','category.insurance','active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.insurance.travel','Travel Insurance','system','category.insurance','active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.insurance.disability','Disability Insurance','system','category.insurance','active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.insurance.umbrella_liability','Umbrella Liability Insurance','system','category.insurance','active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.insurance.other','Other Insurance','system','category.insurance','active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.taxes','Taxes','system',NULL,'active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.taxes.income','Income Tax','system','category.taxes','active');
@@ -101,6 +127,11 @@ INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('cate
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.professional_services.accounting','Accounting & Bookkeeping','system','category.professional_services','active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.professional_services.legal','Legal Services','system','category.professional_services','active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.professional_services.consulting','Consulting','system','category.professional_services','active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.postage_shipping','Postage & Shipping','system',NULL,'active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.postage_shipping.letters_stamps','Letters & Stamps','system','category.postage_shipping','active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.postage_shipping.packages_courier','Packages & Courier','system','category.postage_shipping','active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.postage_shipping.shipping_supplies','Shipping Supplies','system','category.postage_shipping','active');
+INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.postage_shipping.mailbox_rental','Mailbox Rental','system','category.postage_shipping','active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.transfer','Transfer','system',NULL,'active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.transfer.own_accounts','Between Own Accounts','system','category.transfer','active');
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.transfer.credit_card_payment','Credit Card Payment','system','category.transfer','active');
@@ -125,6 +156,10 @@ INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('cate
 INSERT OR IGNORE INTO categories (id,name,origin,parent_id,status) VALUES ('category.entertainment.events','Events','system','category.entertainment','active');
 
 -- Built-in merchant defaults are suggestions only; users may classify them differently.
+INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.usps','USPS','usps','category.postage_shipping',NULL,1,'active');
+INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.ups','UPS','ups','category.postage_shipping',NULL,1,'active');
+INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.fedex','FedEx','fedex','category.postage_shipping',NULL,1,'active');
+INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.dhl','DHL','dhl','category.postage_shipping',NULL,1,'active');
 INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.safeway','Safeway','safeway','category.food','category.food.groceries',1,'active');
 INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.kroger','Kroger','kroger','category.food','category.food.groceries',1,'active');
 INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.heb','H-E-B','h e b','category.food','category.food.groceries',1,'active');
@@ -293,6 +328,99 @@ INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,def
 INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.costco_gas','Costco Gas','costco gas','category.transportation','category.transportation.fuel',1,'active');
 INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.walmart_pharmacy','Walmart Pharmacy','walmart pharmacy','category.health','category.health.pharmacy',1,'active');
 INSERT OR IGNORE INTO merchants (id,name,normalized_name,default_category_id,default_subcategory_id,is_built_in,status) VALUES ('merchant.cvs_pharmacy','CVS Pharmacy','cvs pharmacy','category.health','category.health.pharmacy',1,'active');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.insurance.renters','en','Renters Insurance');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.insurance.renters','zh-Hans','租客保险');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.insurance.renters','es','Seguro de inquilinos');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.insurance.travel','en','Travel Insurance');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.insurance.travel','zh-Hans','旅行保险');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.insurance.travel','es','Seguro de viaje');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.insurance.disability','en','Disability Insurance');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.insurance.disability','zh-Hans','失能保险');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.insurance.disability','es','Seguro por discapacidad');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.insurance.umbrella_liability','en','Umbrella Liability Insurance');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.insurance.umbrella_liability','zh-Hans','伞式责任保险');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.insurance.umbrella_liability','es','Seguro de responsabilidad civil adicional');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.entertainment.movies','en','Movies');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.entertainment.movies','zh-Hans','电影');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.entertainment.movies','es','Cine');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.entertainment.games','en','Games');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.entertainment.games','zh-Hans','游戏');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.entertainment.games','es','Juegos');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.entertainment.hobbies_crafts','en','Hobbies & Crafts');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.entertainment.hobbies_crafts','zh-Hans','爱好与手工');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.entertainment.hobbies_crafts','es','Aficiones y manualidades');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.entertainment.attractions_recreation','en','Attractions & Recreation');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.entertainment.attractions_recreation','zh-Hans','景点与休闲活动');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.entertainment.attractions_recreation','es','Atracciones y recreación');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.pets','en','Pets');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.pets','zh-Hans','宠物');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.pets','es','Mascotas');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.pets.food_treats','en','Food & Treats');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.pets.food_treats','zh-Hans','宠物食品与零食');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.pets.food_treats','es','Alimentos y premios');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.pets.supplies_accessories','en','Supplies & Accessories');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.pets.supplies_accessories','zh-Hans','宠物用品与配件');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.pets.supplies_accessories','es','Suministros y accesorios');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.pets.veterinary_care','en','Veterinary Care');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.pets.veterinary_care','zh-Hans','兽医护理');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.pets.veterinary_care','es','Atención veterinaria');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.pets.grooming','en','Grooming');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.pets.grooming','zh-Hans','宠物美容');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.pets.grooming','es','Peluquería para mascotas');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.pets.boarding_pet_sitting','en','Boarding & Pet Sitting');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.pets.boarding_pet_sitting','zh-Hans','宠物寄养与看护');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.pets.boarding_pet_sitting','es','Alojamiento y cuidado de mascotas');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.pets.training','en','Training');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.pets.training','zh-Hans','宠物训练');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.pets.training','es','Adiestramiento');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.insurance.pet','en','Pet Insurance');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.insurance.pet','zh-Hans','宠物保险');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.insurance.pet','es','Seguro para mascotas');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.personal.skincare','en','Skincare');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.personal.skincare','zh-Hans','护肤');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.personal.skincare','es','Cuidado de la piel');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.personal.cosmetics_makeup','en','Cosmetics & Makeup');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.personal.cosmetics_makeup','zh-Hans','化妆品与彩妆');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.personal.cosmetics_makeup','es','Cosméticos y maquillaje');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.personal.nails','en','Nails');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.personal.nails','zh-Hans','美甲');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.personal.nails','es','Cuidado de uñas');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.personal.beauty_treatments','en','Beauty Treatments');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.personal.beauty_treatments','zh-Hans','美容护理');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.personal.beauty_treatments','es','Tratamientos de belleza');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.sports','en','Sports');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.sports','zh-Hans','体育运动');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.sports','es','Deportes');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.sports.equipment_sportswear','en','Equipment & Sportswear');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.sports.equipment_sportswear','zh-Hans','运动装备与服饰');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.sports.equipment_sportswear','es','Equipamiento y ropa deportiva');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.sports.coaching_lessons','en','Coaching & Lessons');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.sports.coaching_lessons','zh-Hans','教练与课程');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.sports.coaching_lessons','es','Entrenamiento y clases');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.sports.facilities_rentals','en','Facilities & Rentals');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.sports.facilities_rentals','zh-Hans','场地与租赁');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.sports.facilities_rentals','es','Instalaciones y alquileres');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.sports.registration_entry_fees','en','Registration & Entry Fees');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.sports.registration_entry_fees','zh-Hans','报名与参赛费');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.sports.registration_entry_fees','es','Inscripción y participación');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.sports.tickets','en','Sports Tickets');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.sports.tickets','zh-Hans','体育赛事门票');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.sports.tickets','es','Entradas para eventos deportivos');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.postage_shipping','en','Postage & Shipping');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.postage_shipping','zh-Hans','邮政与快递');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.postage_shipping','es','Correo y envíos');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.postage_shipping.letters_stamps','en','Letters & Stamps');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.postage_shipping.letters_stamps','zh-Hans','信件与邮票');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.postage_shipping.letters_stamps','es','Cartas y sellos');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.postage_shipping.packages_courier','en','Packages & Courier');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.postage_shipping.packages_courier','zh-Hans','包裹与快递');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.postage_shipping.packages_courier','es','Paquetes y mensajería');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.postage_shipping.shipping_supplies','en','Shipping Supplies');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.postage_shipping.shipping_supplies','zh-Hans','邮寄用品');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.postage_shipping.shipping_supplies','es','Materiales de envío');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.postage_shipping.mailbox_rental','en','Mailbox Rental');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.postage_shipping.mailbox_rental','zh-Hans','邮箱租赁');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.postage_shipping.mailbox_rental','es','Alquiler de buzón');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.income','en','Income');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.income.salary','en','Salary');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.income.bonus','en','Bonus');
@@ -345,7 +473,7 @@ INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.health.vision','en','Vision');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.health.mental','en','Mental Health');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.health.fitness','en','Fitness');
-INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.entertainment','en','Entertainment');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.entertainment','en','Leisure & Entertainment');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.entertainment.streaming','en','Streaming & Subscriptions');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.entertainment.events','en','Events');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.digital_services','en','Digital Services');
@@ -363,7 +491,7 @@ INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.education.tuition_fees','en','Tuition & School Fees');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.education.books_supplies','en','Books & Supplies');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.education.training_courses','en','Training & Courses');
-INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.personal','en','Personal Care');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.personal','en','Beauty & Personal Care');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.personal.oral','en','Oral Care');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.personal.hair','en','Hair Care');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.personal.bath_body','en','Bath & Body');
@@ -467,7 +595,7 @@ INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.health.vision','zh-Hans','视力护理');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.health.mental','zh-Hans','心理健康');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.health.fitness','zh-Hans','健身');
-INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.entertainment','zh-Hans','娱乐');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.entertainment','zh-Hans','休闲与娱乐');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.entertainment.streaming','zh-Hans','流媒体与订阅');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.entertainment.events','zh-Hans','活动');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.digital_services','zh-Hans','数字服务');
@@ -485,7 +613,7 @@ INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.education.tuition_fees','zh-Hans','学费与学校费用');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.education.books_supplies','zh-Hans','书籍与学习用品');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.education.training_courses','zh-Hans','培训与课程');
-INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.personal','zh-Hans','个人护理');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.personal','zh-Hans','美容与个人护理');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.personal.oral','zh-Hans','口腔护理');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.personal.hair','zh-Hans','头发护理');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.personal.bath_body','zh-Hans','沐浴与身体护理');
@@ -589,7 +717,7 @@ INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.health.vision','es','Visión');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.health.mental','es','Salud mental');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.health.fitness','es','Fitness');
-INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.entertainment','es','Entretenimiento');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.entertainment','es','Ocio y entretenimiento');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.entertainment.streaming','es','Streaming y suscripciones');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.entertainment.events','es','Eventos');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.digital_services','es','Servicios digitales');
@@ -607,7 +735,7 @@ INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.education.tuition_fees','es','Matrícula y cuotas escolares');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.education.books_supplies','es','Libros y materiales');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.education.training_courses','es','Formación y cursos');
-INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.personal','es','Cuidado personal');
+INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.personal','es','Belleza y cuidado personal');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.personal.oral','es','Cuidado bucal');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.personal.hair','es','Cuidado del cabello');
 INSERT OR IGNORE INTO category_translations (category_id,locale,label) VALUES ('category.personal.bath_body','es','Baño y cuerpo');
@@ -761,3 +889,30 @@ INSERT OR IGNORE INTO reference_data_translations (reference_data_id,locale,labe
 INSERT OR IGNORE INTO reference_data (id,code,type,origin,status) VALUES ('analysis.finding.data_quality','data_quality','analysis.finding','system','active');
 INSERT OR IGNORE INTO reference_data_translations (reference_data_id,locale,label) VALUES ('analysis.finding.data_quality','en','Data Quality');
 INSERT OR IGNORE INTO reference_data_translations (reference_data_id,locale,label) VALUES ('analysis.finding.data_quality','zh-Hans','数据质量');
+
+-- Explicit idempotent catalog upgrade for installed databases and restored backups.
+-- Keep the stable category ID and preserve customized names, labels and status.
+UPDATE categories SET name = 'Beauty & Personal Care'
+WHERE id = 'category.personal' AND origin = 'system' AND name = 'Personal Care';
+UPDATE category_translations SET label = 'Beauty & Personal Care'
+WHERE category_id = 'category.personal' AND locale = 'en' AND label = 'Personal Care'
+  AND EXISTS (SELECT 1 FROM categories WHERE id = 'category.personal' AND origin = 'system');
+UPDATE category_translations SET label = '美容与个人护理'
+WHERE category_id = 'category.personal' AND locale = 'zh-Hans' AND label = '个人护理'
+  AND EXISTS (SELECT 1 FROM categories WHERE id = 'category.personal' AND origin = 'system');
+UPDATE category_translations SET label = 'Belleza y cuidado personal'
+WHERE category_id = 'category.personal' AND locale = 'es' AND label = 'Cuidado personal'
+  AND EXISTS (SELECT 1 FROM categories WHERE id = 'category.personal' AND origin = 'system');
+
+-- Upgrade the built-in Leisure label without changing IDs or customized values.
+UPDATE categories SET name = 'Leisure & Entertainment'
+WHERE id = 'category.entertainment' AND origin = 'system' AND name = 'Entertainment';
+UPDATE category_translations SET label = 'Leisure & Entertainment'
+WHERE category_id = 'category.entertainment' AND locale = 'en' AND label = 'Entertainment'
+  AND EXISTS (SELECT 1 FROM categories WHERE id = 'category.entertainment' AND origin = 'system');
+UPDATE category_translations SET label = '休闲与娱乐'
+WHERE category_id = 'category.entertainment' AND locale = 'zh-Hans' AND label = '娱乐'
+  AND EXISTS (SELECT 1 FROM categories WHERE id = 'category.entertainment' AND origin = 'system');
+UPDATE category_translations SET label = 'Ocio y entretenimiento'
+WHERE category_id = 'category.entertainment' AND locale = 'es' AND label = 'Entretenimiento'
+  AND EXISTS (SELECT 1 FROM categories WHERE id = 'category.entertainment' AND origin = 'system');
