@@ -27,6 +27,7 @@ class AnalysisMerchantBreakdown extends StatelessWidget {
     if (model.merchants.isEmpty && !desktopFourRows) {
       return const SizedBox.shrink();
     }
+    final visibleRows = desktopFourRows ? 4 : 5;
     return ButlerlyCard(
       key: const ValueKey('analysis-merchant-breakdown-card'),
       child: Column(
@@ -45,7 +46,7 @@ class AnalysisMerchantBreakdown extends StatelessWidget {
                 child: Text(context.l10n.text('noSpendingInPeriod')),
               ),
             ),
-          for (final metric in model.merchants.take(desktopFourRows ? 4 : 5)) ...[
+          for (final metric in model.merchants.take(visibleRows)) ...[
             if (metric != model.merchants.first)
               const SizedBox(height: ButlerlySpacing.compact),
             InkWell(
