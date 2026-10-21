@@ -51,8 +51,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Rules'), findsOneWidget);
-    expect(find.textContaining('Rules help you automatically organize'), findsOneWidget);
-    expect(find.textContaining('You can test a rule against existing transactions'), findsOneWidget);
+    expect(
+      find.textContaining('Rules help you automatically organize'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('You can test a rule against existing transactions'),
+      findsOneWidget,
+    );
     expect(find.text('Classify fuel'), findsOneWidget);
     expect(find.text('fuel\nCategory: Transport'), findsOneWidget);
 
