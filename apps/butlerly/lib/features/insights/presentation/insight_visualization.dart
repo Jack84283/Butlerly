@@ -124,12 +124,14 @@ class InsightDonutVisualization extends StatelessWidget {
     required this.percentageLabel,
     this.density = ButlerlyVisualizationDensity.compact,
     this.legendBelow = false,
+    this.equalWidthColumns = false,
   });
 
   final List<InsightChartDatum> data;
   final String Function(double value) percentageLabel;
   final ButlerlyVisualizationDensity density;
   final bool legendBelow;
+  final bool equalWidthColumns;
 
   @override
   Widget build(BuildContext context) => ButlerlyDonutVisualization(
@@ -137,6 +139,7 @@ class InsightDonutVisualization extends StatelessWidget {
     valueLabel: (value, total) => percentageLabel(value / total * 100),
     density: density,
     legendBelow: legendBelow,
+    equalWidthColumns: equalWidthColumns,
   );
 }
 
