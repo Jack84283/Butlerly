@@ -250,9 +250,11 @@ void main() {
     expect(
       tester.getCenter(find.byKey(const ValueKey('butlerly-donut-chart'))).dy,
       closeTo(
-        tester.getCenter(
-          find.byKey(const ValueKey('butlerly-donut-legend-column')),
-        ).dy,
+        tester
+            .getCenter(
+              find.byKey(const ValueKey('butlerly-donut-legend-column')),
+            )
+            .dy,
         1,
       ),
     );
