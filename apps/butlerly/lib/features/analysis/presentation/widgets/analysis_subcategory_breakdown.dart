@@ -27,6 +27,7 @@ class AnalysisSubcategoryBreakdown extends StatelessWidget {
     if (model.subcategories.isEmpty && !desktopFourRows) {
       return const SizedBox.shrink();
     }
+    final visibleRows = desktopFourRows ? 4 : 5;
     return ButlerlyCard(
       key: const ValueKey('analysis-subcategory-breakdown-card'),
       child: Column(
@@ -45,7 +46,7 @@ class AnalysisSubcategoryBreakdown extends StatelessWidget {
                 child: Text(context.l10n.text('noSpendingInPeriod')),
               ),
             ),
-          for (final metric in model.subcategories.take(desktopFourRows ? 4 : 5)) ...[
+          for (final metric in model.subcategories.take(visibleRows)) ...[
             if (metric != model.subcategories.first)
               const SizedBox(height: ButlerlySpacing.compact),
             InkWell(
