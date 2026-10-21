@@ -680,6 +680,8 @@ class AppLocalizations {
       'analysisEvidenceSelection': 'Analysis selection',
       'analysisEvidenceExplanation':
           'Date and group describe the Analysis calculation. Results follow supporting transaction evidence, not extra live filters.',
+      'analysisCategoryBreakdownSubtitle':
+          'Top categories for the selected period',
       'analysisMerchantBreakdownSubtitle':
           'Top merchants for the selected period',
       'analysisSubcategoryBreakdownSubtitle':
@@ -1491,6 +1493,7 @@ class AppLocalizations {
       'analysisEvidenceSelection': '分析结果选择',
       'analysisEvidenceExplanation':
           '日期和分组说明分析计算的范围。结果根据关联交易证据显示，不会再次使用实时筛选条件。',
+      'analysisCategoryBreakdownSubtitle': '所选期间支出最多的类别',
       'analysisMerchantBreakdownSubtitle': '所选期间支出最多的商户',
       'analysisSubcategoryBreakdownSubtitle': '所选期间支出最多的子类别',
       'recurringPatterns': '周期性模式',
@@ -2339,6 +2342,8 @@ class AppLocalizations {
       'analysisEvidenceSelection': 'Selección de análisis',
       'analysisEvidenceExplanation':
           'La fecha y el grupo describen el cálculo. Los resultados siguen las transacciones de respaldo, no filtros adicionales en vivo.',
+      'analysisCategoryBreakdownSubtitle':
+          'Categorías principales del periodo seleccionado',
       'analysisMerchantBreakdownSubtitle':
           'Principales comercios del periodo seleccionado',
       'analysisSubcategoryBreakdownSubtitle':
