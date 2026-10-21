@@ -453,7 +453,9 @@ void main() {
       expect(chineseMcDonalds['name'], '麦当劳');
       expect(englishMcDonalds['name'], "McDonald's");
       expect(
-        merchants.where((row) => (row['id'] as String).startsWith('merchant.zh_')),
+        merchants.where(
+          (row) => (row['id'] as String).startsWith('merchant.zh_'),
+        ),
         hasLength(52),
       );
       final sfExpress = merchants.singleWhere(
