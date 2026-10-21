@@ -260,14 +260,21 @@ void main() {
       closeTo(ButlerlyDesktopInnerCard.contentPadding, 0.1),
     );
 
-    // Five equal-width columns apply to both headers and data rows.
-    double? columnWidth;
+    // The first two columns flex equally. Three fixed-width columns keep
+    // full labels visible; header and cell boundaries must line up.
+    final expectedWidths = <String, double>{
+      'previousPeriod': 160,
+      'currentPeriod': 160,
+      'transactions': 152,
+    };
+    double? previousRight;
+    double? flexibleWidth;
     for (final name in [
       'insights',
+      'difference',
       'previousPeriod',
       'currentPeriod',
-      'difference',
-      'viewTransactions',
+      'transactions',
     ]) {
       final headerColumn = find.byKey(
         ValueKey('desktop-insights-column-category-$name'),
@@ -279,9 +286,17 @@ void main() {
       expect(dataColumn, findsOneWidget);
       final headerWidth = tester.getSize(headerColumn).width;
       final dataWidth = tester.getSize(dataColumn).width;
-      columnWidth ??= headerWidth;
-      expect(headerWidth, closeTo(columnWidth, 0.1));
-      expect(dataWidth, closeTo(columnWidth, 0.1));
+      expect(dataWidth, closeTo(headerWidth, 0.1));
+      if (previousRight != null) {
+        expect(tester.getTopLeft(headerColumn).dx, closeTo(previousRight, 0.1));
+      }
+      previousRight = tester.getTopRight(headerColumn).dx;
+      if (expectedWidths[name] case final width?) {
+        expect(headerWidth, closeTo(width, 0.1));
+      } else {
+        flexibleWidth ??= headerWidth;
+        expect(headerWidth, closeTo(flexibleWidth, 0.1));
+      }
     }
 
     // Desktop title/subtitle spacing is 12px; only cards with a subtitle
@@ -302,6 +317,8 @@ void main() {
     expect(find.text('Previous period'), findsWidgets);
     expect(find.text('Current period'), findsWidgets);
     expect(find.text('Difference'), findsWidgets);
+    expect(find.text('Transactions'), findsWidgets);
+    expect(find.text('View transactions'), findsNothing);
     expect(find.text('Food'), findsOneWidget);
     expect(find.text('Restaurants'), findsOneWidget);
     expect(find.text('Corner Shop'), findsOneWidget);
@@ -309,7 +326,7 @@ void main() {
     expect(find.text('10.00 USD'), findsWidgets);
     final row = find.byKey(const ValueKey('desktop-insight-row-category-0'));
     final countCell = find.byKey(
-      const ValueKey('desktop-insights-cell-category-0-viewTransactions'),
+      const ValueKey('desktop-insights-cell-category-0-transactions'),
     );
     expect(row, findsOneWidget);
     expect(
@@ -319,6 +336,10 @@ void main() {
     expect(
       find.descendant(of: countCell, matching: find.text('3')),
       findsOneWidget,
+    );
+    expect(
+      find.descendant(of: countCell, matching: find.text('3.00')),
+      findsNothing,
     );
     // A single-line category row uses compact padding and a smaller icon.
     // It is no taller than the Home/Transactions desktop table rows.
@@ -371,7 +392,7 @@ void main() {
     expect(
       find.descendant(
         of: find.byKey(
-          const ValueKey('desktop-insights-cell-category-0-viewTransactions'),
+          const ValueKey('desktop-insights-cell-category-0-transactions'),
         ),
         matching: find.text('—'),
       ),
