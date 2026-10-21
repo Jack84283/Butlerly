@@ -113,7 +113,7 @@ class AppLocalizations {
           'Manage local rules for repeatable transaction classification.',
       'ruleManagementHowItWorks':
           'Rules help you automatically organize transactions by assigning merchants, categories, payment sources, or tags based on conditions you define. '
-          'You can test a rule against existing transactions before saving it, and Butlerly will automatically apply enabled rules to matching new transactions.'
+          'You can test a rule against existing transactions before saving it, and Butlerly will automatically apply enabled rules to matching new transactions.',
       'rules': 'Rules',
       'addRule': 'Add rule',
       'editRule': 'Edit rule',
@@ -1007,7 +1007,7 @@ class AppLocalizations {
       'ruleManagementSubtitle': '管理用于重复交易分类的本地规则。',
       'ruleManagementHowItWorks':
           '规则可根据您设定的条件，自动为交易指定商户、类别、付款来源或标签，帮助您整理交易记录。'
-          '您可以在保存规则前使用已有交易进行测试；保存后，Butlerly 会自动将已启用的规则应用于符合条件的新交易。'
+          '您可以在保存规则前使用已有交易进行测试；保存后，Butlerly 会自动将已启用的规则应用于符合条件的新交易。',
       'rules': '规则',
       'addRule': '添加规则',
       'editRule': '编辑规则',
@@ -1796,7 +1796,7 @@ class AppLocalizations {
           'Administra reglas locales para clasificar transacciones repetidas.',
       'ruleManagementHowItWorks':
           'Las reglas te ayudan a organizar las transacciones automáticamente al asignar comercios, categorías, fuentes de pago o etiquetas según las condiciones que definas. '
-          'Puedes probar una regla con transacciones existentes antes de guardarla, y Butlerly aplicará automáticamente las reglas activadas a las nuevas transacciones que coincidan.'
+          'Puedes probar una regla con transacciones existentes antes de guardarla, y Butlerly aplicará automáticamente las reglas activadas a las nuevas transacciones que coincidan.',
       'rules': 'Reglas',
       'addRule': 'Añadir regla',
       'editRule': 'Editar regla',
