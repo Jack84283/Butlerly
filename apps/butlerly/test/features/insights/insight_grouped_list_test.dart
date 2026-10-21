@@ -1,6 +1,9 @@
+import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/insights/presentation/insight_grouped_list.dart';
+import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -133,6 +136,160 @@ void main() {
     );
   });
 
+  testWidgets('desktop insight groups render tables with drilldown', (
+    tester,
+  ) async {
+    InsightResult? requested;
+    final items = [
+      _insight(
+        RuleGrouping.transaction,
+        semanticType: InsightSemanticType.attention,
+        withComparison: true,
+      ),
+      _insight(
+        RuleGrouping.transaction,
+        role: 'largePurchase',
+        semanticType: InsightSemanticType.attention,
+      ),
+      _insight(
+        RuleGrouping.category,
+        dimension: 'food',
+        withComparison: true,
+      ),
+      _insight(RuleGrouping.subcategory, dimension: 'restaurants'),
+      _insight(RuleGrouping.merchant, dimension: 'merchant-1'),
+      _insight(RuleGrouping.none),
+    ];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: SingleChildScrollView(
+            child: InsightGroupedList(
+              desktopGrid: true,
+              results: items,
+              masterData: const TransactionMasterData(
+                categoryNames: {'food': 'Food'},
+                subcategoryNames: {'restaurants': 'Restaurants'},
+                merchantNames: {'merchant-1': 'Corner Shop'},
+              ),
+              canViewTransactions: (_) => true,
+              onViewTransactions: (insight) => requested = insight,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    for (final group in [
+      'unusual',
+      'largePurchase',
+      'category',
+      'subcategory',
+      'merchant',
+      'other',
+    ]) {
+      expect(
+        find.byKey(ValueKey('desktop-insights-table-$group')),
+        findsOneWidget,
+      );
+    }
+    expect(find.text('Previous period'), findsWidgets);
+    expect(find.text('Current period'), findsWidgets);
+    expect(find.text('Difference'), findsWidgets);
+    expect(find.text('Food'), findsOneWidget);
+    expect(find.text('Restaurants'), findsOneWidget);
+    expect(find.text('Corner Shop'), findsOneWidget);
+    expect(find.text('5.00 USD'), findsWidgets);
+    expect(find.text('10.00 USD'), findsWidgets);
+    final action = find.descendant(
+      of: find.byKey(const ValueKey('desktop-insight-row-category-0')),
+      matching: find.byType(TextButton),
+    );
+    expect(action, findsOneWidget);
+    await tester.ensureVisible(action);
+    await tester.tap(action);
+    expect(requested?.dimension, 'food');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('narrow desktop insight cards scroll tables horizontally', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: SizedBox(
+            width: 460,
+            child: InsightGroupedList(
+              desktopGrid: true,
+              results: [_insight(RuleGrouping.category, dimension: 'food')],
+              masterData: const TransactionMasterData(
+                categoryNames: {'food': 'Food'},
+              ),
+              canViewTransactions: (_) => false,
+              onViewTransactions: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('desktop-insights-table-scroll-category')),
+      findsOneWidget,
+    );
+    expect(find.text('Food'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('device Insight groups retain their original list rows', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: InsightGroupedList(
+            results: [_insight(RuleGrouping.category, dimension: 'food')],
+            masterData: const TransactionMasterData(
+              categoryNames: {'food': 'Food'},
+            ),
+            canViewTransactions: (_) => false,
+            onViewTransactions: (_) {},
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('desktop-insights-table-category')), findsNothing);
+    expect(find.text('Food'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   test('recognizes an all-positive fallback group', () {
     expect(
       insightGroupIsPositiveOnly([
@@ -161,6 +318,8 @@ InsightResult _insight(
   RuleOperation operation = RuleOperation.sum,
   InsightVisualizationType visualizationType = InsightVisualizationType.none,
   String? role,
+  String? dimension,
+  bool withComparison = false,
 }) {
   final context = AnalysisContext(
     period: AnalysisPeriod(
@@ -205,6 +364,10 @@ InsightResult _insight(
     rule: rule,
     context: context,
     currentValue: DecimalValue.parse('10'),
+    baselineValue: withComparison ? DecimalValue.parse('5') : null,
+    absoluteChange: withComparison ? DecimalValue.parse('5') : null,
+    percentageChange: withComparison ? DecimalValue.parse('100') : null,
+    dimension: dimension,
     currency: CurrencyCode('USD'),
   );
 }
