@@ -456,8 +456,33 @@ void main() {
         merchants.where(
           (row) => (row['id'] as String).startsWith('merchant.zh_'),
         ),
-        hasLength(52),
+        hasLength(204),
       );
+      // Representative expanded seed categories and independent identities.
+      for (final (id, name, categoryId, subcategoryId) in <(
+        String,
+        String,
+        String,
+        String?
+      )>[
+        ('merchant.zh_meiyijia', '美宜佳', 'category.shopping', 'category.shopping.general'),
+        ('merchant.zh_laoxiangji', '老乡鸡', 'category.food', 'category.food.restaurants'),
+        ('merchant.zh_chagee', '霸王茶姬', 'category.food', 'category.food.coffee'),
+        ('merchant.zh_xiaomi_store', '小米之家', 'category.shopping', 'category.shopping.electronics'),
+        ('merchant.zh_quanji', '全季酒店', 'category.travel', 'category.travel.hotel'),
+        ('merchant.zh_dingding', '钉钉', 'category.digital_services', 'category.digital_services.productivity'),
+        ('merchant.zh_jtexpress', '极兔速递', 'category.postage_shipping', 'category.postage_shipping.packages_courier'),
+        ('merchant.zh_dashenlin', '大参林', 'category.health', 'category.health.pharmacy'),
+        ('merchant.zh_new_china_life', '新华保险', 'category.insurance', 'category.insurance.life'),
+        ('merchant.zh_state_grid', '国家电网', 'category.utilities', 'category.utilities.electricity'),
+        ('merchant.zh_ruipeng', '瑞鹏宠物医院', 'category.pets', 'category.pets.veterinary_care'),
+      ]) {
+        final merchant = merchants.singleWhere((row) => row['id'] == id);
+        expect(merchant['name'], name);
+        expect(merchant['default_category_id'], categoryId);
+        expect(merchant['default_subcategory_id'], subcategoryId);
+        expect(merchant['is_built_in'], 1);
+      }
       final sfExpress = merchants.singleWhere(
         (row) => row['id'] == 'merchant.zh_sf_express',
       );
