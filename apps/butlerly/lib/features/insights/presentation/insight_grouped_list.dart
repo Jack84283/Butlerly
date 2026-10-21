@@ -219,8 +219,9 @@ class InsightGroupedList extends StatelessWidget {
                                     ),
                                     onViewTransactions:
                                         canViewTransactions(drillDownInsight)
-                                        ? () =>
-                                              onViewTransactions(drillDownInsight)
+                                        ? () => onViewTransactions(
+                                            drillDownInsight,
+                                          )
                                         : null,
                                   );
                                 },
@@ -467,17 +468,14 @@ class _InsightDesktopTable extends StatelessWidget {
     },
   );
 
-  Widget _header(
-    BuildContext context,
-    String key, {
-    bool right = false,
-  }) => Text(
-    context.l10n.text(key),
-    style: ButlerlyTableTokens.headerTextStyle(context),
-    textAlign: right ? TextAlign.end : TextAlign.start,
-    maxLines: 1,
-    overflow: TextOverflow.ellipsis,
-  );
+  Widget _header(BuildContext context, String key, {bool right = false}) =>
+      Text(
+        context.l10n.text(key),
+        style: ButlerlyTableTokens.headerTextStyle(context),
+        textAlign: right ? TextAlign.end : TextAlign.start,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      );
 
   Widget _divider(BuildContext context) => Divider(
     height: ButlerlyTableTokens.dividerThickness,
@@ -485,15 +483,11 @@ class _InsightDesktopTable extends StatelessWidget {
     color: ButlerlyTableTokens.dividerColor(context),
   );
 
-  Widget _row(
-    BuildContext context,
-    _PresentedInsight item,
-    int index,
-  ) {
+  Widget _row(BuildContext context, _PresentedInsight item, int index) {
     final insight = item.primary;
     final escalation = item.escalation;
-    final drillDownInsight = escalation != null &&
-            canViewTransactions(escalation)
+    final drillDownInsight =
+        escalation != null && canViewTransactions(escalation)
         ? escalation
         : insight;
     final canOpen = canViewTransactions(drillDownInsight);
@@ -558,8 +552,7 @@ class _InsightDesktopTable extends StatelessWidget {
                           style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(fontWeight: FontWeight.w600),
                         ),
-                        if (showRuleCopy && identity != null)
-                          Text(ruleName),
+                        if (showRuleCopy && identity != null) Text(ruleName),
                         if (showRuleCopy)
                           Text(
                             context.l10n.text(insight.rule.descriptionKey),
@@ -610,8 +603,7 @@ class _InsightDesktopTable extends StatelessWidget {
                       child: Tooltip(
                         message: actionLabel,
                         child: TextButton.icon(
-                          onPressed: () =>
-                              onViewTransactions(drillDownInsight),
+                          onPressed: () => onViewTransactions(drillDownInsight),
                           style: TextButton.styleFrom(
                             padding: const EdgeInsets.symmetric(horizontal: 4),
                             minimumSize: const Size(0, 32),
@@ -642,11 +634,7 @@ class _InsightDesktopTable extends StatelessWidget {
     );
   }
 
-  Widget _value(
-    BuildContext context,
-    String value, {
-    Color? color,
-  }) => Text(
+  Widget _value(BuildContext context, String value, {Color? color}) => Text(
     value,
     textAlign: TextAlign.end,
     maxLines: 1,
