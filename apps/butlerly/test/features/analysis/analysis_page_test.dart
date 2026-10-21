@@ -1331,7 +1331,7 @@ void main() {
     final chart = find.byKey(const ValueKey('butlerly-donut-chart'));
     final legend = find.descendant(
       of: find.byType(AnalysisSpendingBreakdown),
-      matching: find.text('One'),
+      matching: find.text('Six'),
     );
     expect(chart, findsOneWidget);
     expect(legend, findsOneWidget);
