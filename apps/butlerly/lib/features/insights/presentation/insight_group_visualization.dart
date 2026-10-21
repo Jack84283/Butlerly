@@ -20,6 +20,7 @@ class InsightGroupVisualizations extends StatelessWidget {
     this.externalTitle = false,
     this.pieDensity = ButlerlyVisualizationDensity.compact,
     this.pieLegendBelow = false,
+    this.pieEqualWidthColumns = false,
     this.pieValueLabel,
   });
 
@@ -29,6 +30,7 @@ class InsightGroupVisualizations extends StatelessWidget {
   final bool externalTitle;
   final ButlerlyVisualizationDensity pieDensity;
   final bool pieLegendBelow;
+  final bool pieEqualWidthColumns;
   final String Function(InsightResult result)? pieValueLabel;
 
   @override
@@ -85,6 +87,7 @@ class InsightGroupVisualizations extends StatelessWidget {
           percentageLabel: percentage,
           density: pieDensity,
           legendBelow: pieLegendBelow,
+          equalWidthColumns: pieEqualWidthColumns,
         ),
         InsightVisualizationType.bar => InsightBarVisualization(
           data: data,
