@@ -14,17 +14,17 @@ class AnalysisSubcategoryBreakdown extends StatelessWidget {
     required this.model,
     required this.masterData,
     this.onMetricTap,
-    this.fillToFiveRows = false,
+    this.desktopFourRows = false,
   });
 
   final AnalysisModel model;
   final TransactionMasterData? masterData;
   final ValueChanged<AnalysisMetric>? onMetricTap;
-  final bool fillToFiveRows;
+  final bool desktopFourRows;
 
   @override
   Widget build(BuildContext context) {
-    if (model.subcategories.isEmpty && !fillToFiveRows) {
+    if (model.subcategories.isEmpty && !desktopFourRows) {
       return const SizedBox.shrink();
     }
     return ButlerlyCard(
@@ -45,7 +45,7 @@ class AnalysisSubcategoryBreakdown extends StatelessWidget {
                 child: Text(context.l10n.text('noSpendingInPeriod')),
               ),
             ),
-          for (final metric in model.subcategories.take(5)) ...[
+          for (final metric in model.subcategories.take(desktopFourRows ? 4 : 5)) ...[
             if (metric != model.subcategories.first)
               const SizedBox(height: ButlerlySpacing.compact),
             InkWell(
@@ -78,12 +78,12 @@ class AnalysisSubcategoryBreakdown extends StatelessWidget {
               ),
             ),
           ],
-          if (fillToFiveRows)
+          if (desktopFourRows)
             for (
               var index = model.subcategories.isEmpty
                   ? 1
-                  : model.subcategories.length;
-              index < 5;
+                  : model.subcategories.take(4).length;
+              index < 4;
               index++
             ) ...[
               const SizedBox(height: ButlerlySpacing.compact),
