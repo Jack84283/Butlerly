@@ -394,12 +394,17 @@ class _InsightsContent extends StatelessWidget {
         ) ==
         ButlerlyLayoutMode.wide;
     final overviewCards = <Widget>[
-      _PeriodSummaryCard(summary: evaluation.summary),
+      _PeriodSummaryCard(
+        key: const ValueKey('insights-period-summary-card'),
+        summary: evaluation.summary,
+      ),
       if (summaryPieResults.isNotEmpty)
         InsightGroupVisualizations(
+          key: const ValueKey('insights-spending-concentration-card'),
           results: summaryPieResults,
           masterData: masterData,
           externalTitle: true,
+          fillAvailableHeight: desktop,
           pieDensity: ButlerlyVisualizationDensity.regular,
           // Desktop matches Analysis with a 50/50 donut and legend row.
           // Narrow and device layouts keep the legend below the chart.
@@ -416,34 +421,6 @@ class _InsightsContent extends StatelessWidget {
             final currency = evaluation.summary.currency?.value ?? '';
             return '${localizedDecimal(context, amount.toString())}${currency.isEmpty ? '' : ' $currency'}';
           },
-        ),
-      if (evaluation.limitations.isNotEmpty)
-        ButlerlyCard(
-          semanticLabel: context.l10n.text('dataQualityLimitations'),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ButlerlyCardHeader(
-                title: context.l10n.text('dataQualityLimitations'),
-              ),
-              const SizedBox(height: ButlerlySpacing.standard),
-              ...evaluation.limitations
-                  .fold<Map<String, DataQualityIssue>>(
-                    {},
-                    (issues, issue) =>
-                        issues..putIfAbsent(issue.code, () => issue),
-                  )
-                  .values
-                  .map(
-                    (issue) => Padding(
-                      padding: const EdgeInsets.only(
-                        bottom: ButlerlySpacing.micro,
-                      ),
-                      child: Text(_qualityIssueText(context, issue.code)),
-                    ),
-                  ),
-            ],
-          ),
         ),
     ];
 
@@ -485,12 +462,43 @@ class _InsightsContent extends StatelessWidget {
             title: context.l10n.text('insightsNothingNoteworthy'),
             message: context.l10n.text('insightsNothingNoteworthyBody'),
           ),
+        // Data quality is the final, full-width card on every layout.
+        if (evaluation.limitations.isNotEmpty)
+          ButlerlyCard(
+            key: const ValueKey('insights-data-quality-card'),
+            semanticLabel: context.l10n.text('dataQualityLimitations'),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ButlerlyCardHeader(
+                  title: context.l10n.text('dataQualityLimitations'),
+                ),
+                const SizedBox(height: ButlerlySpacing.standard),
+                ...evaluation.limitations
+                    .fold<Map<String, DataQualityIssue>>(
+                      {},
+                      (issues, issue) =>
+                          issues..putIfAbsent(issue.code, () => issue),
+                    )
+                    .values
+                    .map(
+                      (issue) => Padding(
+                        padding: const EdgeInsets.only(
+                          bottom: ButlerlySpacing.micro,
+                        ),
+                        child: Text(_qualityIssueText(context, issue.code)),
+                      ),
+                    ),
+              ],
+            ),
+          ),
       ]),
     );
   }
 }
 
-/// Two cards per desktop row when each card can remain comfortably readable.
+/// Desktop overview cards always share a row's natural height, including
+/// when comparison details, legend rows or localized text change their sizes.
 class _InsightsDesktopCardGrid extends StatelessWidget {
   const _InsightsDesktopCardGrid({required this.cards});
 
@@ -500,14 +508,33 @@ class _InsightsDesktopCardGrid extends StatelessWidget {
   Widget build(BuildContext context) => LayoutBuilder(
     key: const ValueKey('desktop-insights-overview-grid'),
     builder: (context, constraints) {
-      const gap = ButlerlySpacing.cardGap;
-      final columns = constraints.maxWidth >= 900 ? 2 : 1;
-      final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
-      return Wrap(
-        spacing: gap,
-        runSpacing: gap,
+      if (cards.length != 2 || constraints.maxWidth < 900) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: _withInsightCardSpacing(cards),
+        );
+      }
+      return Table(
+        key: const ValueKey('desktop-insights-overview-equal-height'),
+        columnWidths: const {
+          0: FlexColumnWidth(),
+          1: FixedColumnWidth(ButlerlySpacing.cardGap),
+          2: FlexColumnWidth(),
+        },
         children: [
-          for (final card in cards) SizedBox(width: width, child: card),
+          TableRow(
+            children: [
+              TableCell(
+                verticalAlignment: TableCellVerticalAlignment.fill,
+                child: cards[0],
+              ),
+              const SizedBox.shrink(),
+              TableCell(
+                verticalAlignment: TableCellVerticalAlignment.fill,
+                child: cards[1],
+              ),
+            ],
+          ),
         ],
       );
     },
@@ -522,7 +549,7 @@ List<Widget> _withInsightCardSpacing(List<Widget> children) => [
 ];
 
 class _PeriodSummaryCard extends StatelessWidget {
-  const _PeriodSummaryCard({required this.summary});
+  const _PeriodSummaryCard({super.key, required this.summary});
 
   final PeriodSummary summary;
 
