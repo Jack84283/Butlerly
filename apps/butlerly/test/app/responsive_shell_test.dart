@@ -323,6 +323,10 @@ void main() {
         reason: 'Add entry points are on the right-side Add page.',
       );
     }
+    expect(
+      find.descendant(of: navigation, matching: find.text('Tools')),
+      findsOneWidget,
+    );
     for (final label in const [
       'Review',
       'Analysis',
@@ -333,7 +337,8 @@ void main() {
     ]) {
       expect(
         find.descendant(of: navigation, matching: find.text(label)),
-        findsOneWidget,
+        findsNothing,
+        reason: 'The desktop Tools destinations belong on the Tools page.',
       );
     }
     expect(find.byKey(const ValueKey('desktop-home-page')), findsOneWidget);
@@ -825,8 +830,12 @@ void main() {
     await tester.pumpAndSettle();
     expect(appRouter.routeInformationProvider.value.uri.path, '/tools');
 
+    expect(find.byKey(const ValueKey('desktop-tools-actions')), findsOneWidget);
     await tester.tap(
-      find.descendant(of: navigation, matching: find.text('Analysis')),
+      find.descendant(
+        of: find.byKey(const ValueKey('desktop-tools-actions')),
+        matching: find.text('Analysis'),
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -860,7 +869,10 @@ void main() {
     );
     await tester.pumpAndSettle();
     await tester.tap(
-      find.descendant(of: navigation, matching: find.text('Analysis')),
+      find.descendant(
+        of: find.byKey(const ValueKey('desktop-tools-actions')),
+        matching: find.text('Analysis'),
+      ),
     );
     await tester.pumpAndSettle();
     expect(find.byType(AnalysisPage), findsOneWidget);
@@ -989,7 +1001,7 @@ void main() {
     );
   });
 
-  testWidgets('collapsed Wide Add opens hub and groups keep anchored popups', (
+  testWidgets('collapsed Wide Add and Tools open their hubs, More anchors a popup', (
     tester,
   ) async {
     await _pumpAt(tester, const Size(1200, 800));
@@ -997,42 +1009,28 @@ void main() {
     await tester.tap(find.byIcon(Icons.keyboard_double_arrow_left_rounded));
     await tester.pumpAndSettle();
 
-    Future<({double itemRight, double popupLeft, double popupTop})>
-    popupPositionFor(Key itemKey, String parentLabel) async {
-      final itemRect = tester.getRect(find.byKey(itemKey));
-      await tester.tap(find.byKey(itemKey));
-      await tester.pumpAndSettle();
-      final popupLabel = find.text(parentLabel).last;
-      final popupRect = tester.getRect(
-        find.ancestor(of: popupLabel, matching: find.byType(Material)).last,
-      );
-      await tester.tap(popupLabel);
-      await tester.pumpAndSettle();
-      return (
-        itemRight: itemRect.right,
-        popupLeft: popupRect.left,
-        popupTop: popupRect.top,
-      );
-    }
-
     await tester.tap(find.byKey(const ValueKey('wide-collapsed-add')));
     await tester.pumpAndSettle();
     expect(appRouter.routeInformationProvider.value.uri.path, '/add');
     expect(find.byKey(const ValueKey('desktop-add-actions')), findsOneWidget);
 
-    final tools = await popupPositionFor(
-      const ValueKey('wide-collapsed-tools'),
-      'Tools',
-    );
-    final more = await popupPositionFor(
-      const ValueKey('wide-collapsed-more'),
-      'More',
-    );
+    await tester.tap(find.byKey(const ValueKey('wide-collapsed-tools')));
+    await tester.pumpAndSettle();
+    expect(appRouter.routeInformationProvider.value.uri.path, '/tools');
+    expect(find.byKey(const ValueKey('desktop-tools-actions')), findsOneWidget);
 
-    const tolerance = 8.0;
-    expect(tools.popupLeft, closeTo(tools.itemRight, tolerance));
-    expect(more.popupLeft, closeTo(more.itemRight, tolerance));
-    expect({tools.popupTop, more.popupTop}, hasLength(2));
+    final moreItem = find.byKey(const ValueKey('wide-collapsed-more'));
+    final itemRect = tester.getRect(moreItem);
+    await tester.tap(moreItem);
+    await tester.pumpAndSettle();
+
+    final popupLabel = find.text('More').last;
+    final popupRect = tester.getRect(
+      find.ancestor(of: popupLabel, matching: find.byType(Material)).last,
+    );
+    expect(popupRect.left, closeTo(itemRect.right, 8));
+    await tester.tap(popupLabel);
+    await tester.pumpAndSettle();
   });
 
   testWidgets(
