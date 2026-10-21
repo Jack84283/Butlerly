@@ -1001,37 +1001,41 @@ void main() {
     );
   });
 
-  testWidgets('collapsed Wide Add and Tools open their hubs, More anchors a popup', (
-    tester,
-  ) async {
-    await _pumpAt(tester, const Size(1200, 800));
+  testWidgets(
+    'collapsed Wide Add and Tools open their hubs, More anchors a popup',
+    (tester) async {
+      await _pumpAt(tester, const Size(1200, 800));
 
-    await tester.tap(find.byIcon(Icons.keyboard_double_arrow_left_rounded));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.keyboard_double_arrow_left_rounded));
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const ValueKey('wide-collapsed-add')));
-    await tester.pumpAndSettle();
-    expect(appRouter.routeInformationProvider.value.uri.path, '/add');
-    expect(find.byKey(const ValueKey('desktop-add-actions')), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('wide-collapsed-add')));
+      await tester.pumpAndSettle();
+      expect(appRouter.routeInformationProvider.value.uri.path, '/add');
+      expect(find.byKey(const ValueKey('desktop-add-actions')), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('wide-collapsed-tools')));
-    await tester.pumpAndSettle();
-    expect(appRouter.routeInformationProvider.value.uri.path, '/tools');
-    expect(find.byKey(const ValueKey('desktop-tools-actions')), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey('wide-collapsed-tools')));
+      await tester.pumpAndSettle();
+      expect(appRouter.routeInformationProvider.value.uri.path, '/tools');
+      expect(
+        find.byKey(const ValueKey('desktop-tools-actions')),
+        findsOneWidget,
+      );
 
-    final moreItem = find.byKey(const ValueKey('wide-collapsed-more'));
-    final itemRect = tester.getRect(moreItem);
-    await tester.tap(moreItem);
-    await tester.pumpAndSettle();
+      final moreItem = find.byKey(const ValueKey('wide-collapsed-more'));
+      final itemRect = tester.getRect(moreItem);
+      await tester.tap(moreItem);
+      await tester.pumpAndSettle();
 
-    final popupLabel = find.text('More').last;
-    final popupRect = tester.getRect(
-      find.ancestor(of: popupLabel, matching: find.byType(Material)).last,
-    );
-    expect(popupRect.left, closeTo(itemRect.right, 8));
-    await tester.tap(popupLabel);
-    await tester.pumpAndSettle();
-  });
+      final popupLabel = find.text('More').last;
+      final popupRect = tester.getRect(
+        find.ancestor(of: popupLabel, matching: find.byType(Material)).last,
+      );
+      expect(popupRect.left, closeTo(itemRect.right, 8));
+      await tester.tap(popupLabel);
+      await tester.pumpAndSettle();
+    },
+  );
 
   testWidgets(
     'resizing across modes preserves the active primary destination',
