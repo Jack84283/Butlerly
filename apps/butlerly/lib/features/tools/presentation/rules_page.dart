@@ -556,7 +556,6 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
     );
   }
 
-
   String _merchantName(String id) =>
       widget.merchants.where((m) => m.id.value == id).firstOrNull?.name ?? id;
 
