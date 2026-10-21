@@ -158,7 +158,16 @@ void main() {
         role: 'largePurchase',
         semanticType: InsightSemanticType.attention,
       ),
-      _insight(RuleGrouping.category, dimension: 'food', withComparison: true),
+      _insight(
+        RuleGrouping.category,
+        dimension: 'food',
+        withComparison: true,
+        evidence: [
+          EvidenceReference(transactionId: TransactionId('support-1')),
+          EvidenceReference(transactionId: TransactionId('support-2')),
+          EvidenceReference(transactionId: TransactionId('support-3')),
+        ],
+      ),
       _insight(RuleGrouping.subcategory, dimension: 'restaurants'),
       _insight(RuleGrouping.merchant, dimension: 'merchant-1'),
       _insight(RuleGrouping.none),
@@ -298,13 +307,28 @@ void main() {
     expect(find.text('Corner Shop'), findsOneWidget);
     expect(find.text('5.00 USD'), findsWidgets);
     expect(find.text('10.00 USD'), findsWidgets);
-    final action = find.descendant(
-      of: find.byKey(const ValueKey('desktop-insight-row-category-0')),
-      matching: find.byType(TextButton),
+    final row = find.byKey(
+      const ValueKey('desktop-insight-row-category-0'),
     );
-    expect(action, findsOneWidget);
-    await tester.ensureVisible(action);
-    await tester.tap(action);
+    final countCell = find.byKey(
+      const ValueKey('desktop-insights-cell-category-0-viewTransactions'),
+    );
+    expect(row, findsOneWidget);
+    expect(
+      find.descendant(of: row, matching: find.byType(TextButton)),
+      findsNothing,
+    );
+    expect(
+      find.descendant(of: countCell, matching: find.text('3')),
+      findsOneWidget,
+    );
+    // A single-line category row uses compact padding and a smaller icon.
+    // It is no taller than the Home/Transactions desktop table rows.
+    expect(tester.getSize(row).height, lessThanOrEqualTo(40));
+    final rowInkWell = tester.widget<InkWell>(row);
+    expect(rowInkWell.onTap, isNotNull);
+    await tester.ensureVisible(row);
+    await tester.tap(row);
     expect(requested?.dimension, 'food');
     expect(tester.takeException(), isNull);
   });
@@ -344,6 +368,19 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Food'), findsOneWidget);
+    final row = find.byKey(
+      const ValueKey('desktop-insight-row-category-0'),
+    );
+    expect(tester.widget<InkWell>(row).onTap, isNull);
+    expect(
+      find.descendant(
+        of: find.byKey(
+          const ValueKey('desktop-insights-cell-category-0-viewTransactions'),
+        ),
+        matching: find.text('—'),
+      ),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -411,6 +448,7 @@ InsightResult _insight(
   String? role,
   String? dimension,
   bool withComparison = false,
+  List<EvidenceReference> evidence = const [],
 }) {
   final context = AnalysisContext(
     period: AnalysisPeriod(
@@ -459,6 +497,7 @@ InsightResult _insight(
     absoluteChange: withComparison ? DecimalValue.parse('5') : null,
     percentageChange: withComparison ? DecimalValue.parse('100') : null,
     dimension: dimension,
+    evidence: evidence,
     currency: CurrencyCode('USD'),
   );
 }
