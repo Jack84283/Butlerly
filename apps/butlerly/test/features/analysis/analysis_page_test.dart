@@ -1344,11 +1344,24 @@ void main() {
     final summaryCard = find.byType(AnalysisSummary);
     final viewAll = find.byKey(const ValueKey('analysis-spending-view-all'));
     expect(viewAll, findsOneWidget);
-    expect(tester.getSize(spendingCard).height, 280);
-    expect(tester.getSize(summaryCard).height, 280);
+    expect(tester.getSize(spendingCard).height, 288);
+    expect(tester.getSize(summaryCard).height, 288);
     expect(
       tester.getCenter(viewAll).dx,
       greaterThan(tester.getCenter(spendingCard).dx),
+    );
+    final header = find.descendant(
+      of: spendingCard,
+      matching: find.byType(ButlerlyCardHeader),
+    );
+    expect(header, findsOneWidget);
+    final contentTop =
+        tester.getBottomLeft(header).dy + ButlerlySpacing.small;
+    final contentBottom = tester.getTopLeft(viewAll).dy;
+    final contentMidpoint = (contentTop + contentBottom) / 2;
+    expect(
+      tester.getCenter(chart).dy,
+      closeTo(contentMidpoint, ButlerlySpacing.micro),
     );
     await tester.ensureVisible(viewAll);
     expect(find.text('Other'), findsOneWidget);
