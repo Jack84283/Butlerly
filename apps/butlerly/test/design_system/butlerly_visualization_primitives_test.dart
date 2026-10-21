@@ -243,6 +243,19 @@ void main() {
     expect(compactHeight, lessThan(standardHeight));
     expect(compactHeight, greaterThanOrEqualTo(144));
     expect(find.text('Other'), findsOneWidget);
+    final firstRowGap =
+        tester.getTopLeft(find.text('Two')).dy -
+        tester.getBottomLeft(find.text('One')).dy;
+    expect(firstRowGap, greaterThanOrEqualTo(ButlerlySpacing.compact - 1));
+    expect(
+      tester.getCenter(find.byKey(const ValueKey('butlerly-donut-chart'))).dy,
+      closeTo(
+        tester.getCenter(
+          find.byKey(const ValueKey('butlerly-donut-legend-column')),
+        ).dy,
+        1,
+      ),
+    );
     expect(tester.takeException(), isNull);
   });
 
