@@ -273,8 +273,8 @@ class ButlerlyDonutVisualization extends StatelessWidget {
   /// side by side. Narrow layouts and large text still stack vertically.
   final bool equalWidthColumns;
 
-  /// Reduces only the inter-row padding in the legend. The colored markers,
-  /// amounts, tap targets, and semantics remain unchanged.
+  /// Reduces only the inter-row padding in the legend. Colors, labels,
+  /// actions, and semantics remain unchanged.
   final bool compactLegendRows;
   final ValueChanged<ButlerlyChartDatum>? onDatumTap;
 
