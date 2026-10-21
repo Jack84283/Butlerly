@@ -211,6 +211,41 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('compact desktop legend reduces required donut height', (
+    tester,
+  ) async {
+    Widget donut({required bool compactRows}) => ButlerlyDonutVisualization(
+      density: ButlerlyVisualizationDensity.regular,
+      equalWidthColumns: true,
+      compactLegendRows: compactRows,
+      data: const [
+        ButlerlyChartDatum(label: 'One', value: 6),
+        ButlerlyChartDatum(label: 'Two', value: 5),
+        ButlerlyChartDatum(label: 'Three', value: 4),
+        ButlerlyChartDatum(label: 'Four', value: 3),
+        ButlerlyChartDatum(label: 'Five', value: 2),
+        ButlerlyChartDatum(label: 'Other', value: 1),
+      ],
+      valueLabel: (value, total) => '${value.toInt()} USD',
+    );
+    await tester.pumpWidget(app(donut(compactRows: false), width: 640));
+    await tester.pumpAndSettle();
+    final standardHeight = tester.getSize(
+      find.byType(ButlerlyDonutVisualization),
+    ).height;
+
+    await tester.pumpWidget(app(donut(compactRows: true), width: 640));
+    await tester.pumpAndSettle();
+    final compactHeight = tester.getSize(
+      find.byType(ButlerlyDonutVisualization),
+    ).height;
+
+    expect(compactHeight, lessThan(standardHeight));
+    expect(compactHeight, greaterThanOrEqualTo(144));
+    expect(find.text('Other'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('donut keeps a single positive datum visible', (tester) async {
     await tester.pumpWidget(
       app(
