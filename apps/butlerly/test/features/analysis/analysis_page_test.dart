@@ -101,6 +101,7 @@ void main() {
       tester.getSize(find.byType(AnalysisSummary)).height,
       tester.getSize(find.byType(AnalysisSpendingBreakdown)).height,
     );
+    expect(tester.getSize(find.byType(AnalysisSummary)).height, 264);
     expect(tester.takeException(), isNull);
   });
 
