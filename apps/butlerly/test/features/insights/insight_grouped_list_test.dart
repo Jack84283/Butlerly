@@ -139,6 +139,11 @@ void main() {
   testWidgets('desktop insight groups render tables with drilldown', (
     tester,
   ) async {
+    tester.view.physicalSize = const Size(1400, 1100);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     InsightResult? requested;
     final items = [
       _insight(
@@ -184,19 +189,36 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    for (final group in [
+    final groups = [
       'unusual',
       'largePurchase',
       'category',
       'subcategory',
       'merchant',
       'other',
-    ]) {
+    ];
+    double? precedingTop;
+    double? firstLeft;
+    double? firstWidth;
+    for (final group in groups) {
+      final table = find.byKey(ValueKey('desktop-insights-table-$group'));
+      expect(table, findsOneWidget);
+      final top = tester.getTopLeft(table).dy;
+      final left = tester.getTopLeft(table).dx;
+      final width = tester.getSize(table).width;
+      if (precedingTop != null) expect(top, greaterThan(precedingTop));
+      if (firstLeft != null) expect(left, closeTo(firstLeft, 0.1));
+      if (firstWidth != null) expect(width, closeTo(firstWidth, 0.1));
+      precedingTop = top;
+      firstLeft ??= left;
+      firstWidth ??= width;
       expect(
-        find.byKey(ValueKey('desktop-insights-table-$group')),
-        findsOneWidget,
+        find.byKey(ValueKey('desktop-insights-table-scroll-$group')),
+        findsNothing,
       );
     }
+    // The former two-column grid constrained a card to half this width.
+    expect(firstWidth!, greaterThan(1000));
     expect(find.text('Previous period'), findsWidgets);
     expect(find.text('Current period'), findsWidgets);
     expect(find.text('Difference'), findsWidgets);
