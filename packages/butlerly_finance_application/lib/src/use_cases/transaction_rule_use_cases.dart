@@ -103,7 +103,6 @@ final class ApplyTransactionRules {
   }
 }
 
-
 /// Read-only match results for one proposed rule.
 final class TransactionRulePreview {
   const TransactionRulePreview({
