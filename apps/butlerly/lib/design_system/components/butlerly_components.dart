@@ -549,6 +549,7 @@ class ButlerlyVisualizationCard extends StatelessWidget {
     required this.title,
     required this.child,
     this.semanticLabel,
+    this.fillAvailableHeight = false,
     super.key,
   });
 
@@ -556,16 +557,25 @@ class ButlerlyVisualizationCard extends StatelessWidget {
   final Widget child;
   final String? semanticLabel;
 
+  /// Stretch the body beneath the header in a height-constrained card.
+  /// Unbounded/mobile layouts continue to size naturally.
+  final bool fillAvailableHeight;
+
   @override
   Widget build(BuildContext context) => ButlerlyCard(
     semanticLabel: semanticLabel ?? title,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ButlerlyCardHeader(title: title),
-        const SizedBox(height: ButlerlySpacing.small),
-        child,
-      ],
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        final fill = fillAvailableHeight && constraints.hasBoundedHeight;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ButlerlyCardHeader(title: title),
+            const SizedBox(height: ButlerlySpacing.small),
+            if (fill) Expanded(child: child) else child,
+          ],
+        );
+      },
     ),
   );
 }
