@@ -8,6 +8,7 @@ import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart
 import 'package:butlerly/features/analysis/presentation/analysis_model.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_search_selection.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_activity.dart';
+import 'package:butlerly/features/analysis/presentation/widgets/analysis_category_breakdown.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_custom_period_sheet.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_data_quality.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_insight_preview.dart';
@@ -651,6 +652,19 @@ class _AnalysisContent extends StatelessWidget {
           : null,
     );
 
+    final categoryCard = AnalysisCategoryBreakdown(
+      fillToFiveRows: desktop,
+      model: model,
+      masterData: masterData,
+      onMetricTap: (metric) {
+        _openAnalysisSearch(
+          context,
+          metric: metric,
+          transactionIds: _metricTransactionIds(metric),
+        );
+      },
+    );
+
     final merchantCard = model.merchants.isEmpty
         ? null
         : AnalysisMerchantBreakdown(
@@ -666,9 +680,8 @@ class _AnalysisContent extends StatelessWidget {
             },
           );
 
-    final subcategoryCard = model.subcategories.isEmpty
-        ? null
-        : AnalysisSubcategoryBreakdown(
+    final subcategoryCard = desktop || model.subcategories.isNotEmpty
+        ? AnalysisSubcategoryBreakdown(
             fillToFiveRows: desktop,
             model: model,
             masterData: masterData,
@@ -679,7 +692,8 @@ class _AnalysisContent extends StatelessWidget {
                 transactionIds: _metricTransactionIds(metric),
               );
             },
-          );
+          )
+        : null;
 
     return ButlerlyPage(
       title: context.l10n.text('analysis'),
@@ -699,15 +713,11 @@ class _AnalysisContent extends StatelessWidget {
             first: AnalysisSummary(model: model),
             second: spendingCard,
           ),
-          if (merchantCard != null && subcategoryCard != null)
-            _AnalysisDesktopCardPair(
-              first: merchantCard,
-              second: subcategoryCard,
-            )
-          else ...[
-            ?merchantCard,
-            ?subcategoryCard,
-          ],
+          _AnalysisDesktopCardPair(
+            first: categoryCard,
+            second: subcategoryCard!,
+          ),
+          ?merchantCard,
         ] else ...[
           AnalysisSummary(model: model),
           spendingCard,
