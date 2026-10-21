@@ -267,7 +267,7 @@ class _RulesPageState extends State<RulesPage> {
       final data = snapshot.requireData;
       return ButlerlyPage(
         title: context.l10n.text('ruleManagement'),
-        subtitle: context.l10n.text('ruleManagementSubtitle'),
+        subtitle: context.l10n.text('ruleManagementHowItWorks'),
         actions: [
           IconButton(
             tooltip: context.l10n.text('addRule'),
