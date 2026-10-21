@@ -702,10 +702,13 @@ class _AnalysisContent extends StatelessWidget {
               metric.availability != AnalysisDataAvailability.sufficient,
         )
         .length;
-    // Compact Summary and Spending share the smallest safe fixed row height.
-    // View All and unavailable details reserve only the room they need.
+    // The six-entry legend needs a little more breathing room; keep the
+    // original 232px minimum for shorter legends and empty data.
+    final availableCategoryCount =
+        model.categories.length - unavailableCategoryCount;
     final desktopSpendingHeight =
         232.0 +
+        (availableCategoryCount > 5 ? ButlerlySpacing.compact : 0.0) +
         (unavailableCategoryCount > 0
             ? 28.0 + unavailableCategoryCount * 28.0
             : 0.0) +
