@@ -213,34 +213,29 @@ class InsightGroupedList extends StatelessWidget {
                     bottomInset: context.designTokens.geometry.innerCardGutter,
                     child: ButlerlyTransactionList(
                       children: [
-                            for (var index = 0; index < items.length; index++)
-                              Builder(
-                                builder: (context) {
-                                  final item = items[index];
-                                  final escalation = item.escalation;
-                                  final drillDownInsight =
-                                      escalation != null &&
-                                          canViewTransactions(escalation)
-                                      ? escalation
-                                      : item.primary;
-                                  return _InsightItem(
-                                    insight: item.primary,
-                                    escalation: escalation,
-                                    drillDownInsight: drillDownInsight,
-                                    masterData: masterData,
-                                    showRuleCopy: !_groupOwnsRuleCopy(
-                                      group,
-                                      items,
-                                    ),
-                                    onViewTransactions:
-                                        canViewTransactions(drillDownInsight)
-                                        ? () => onViewTransactions(
-                                            drillDownInsight,
-                                          )
-                                        : null,
-                                  );
-                                },
-                              ),
+                        for (var index = 0; index < items.length; index++)
+                          Builder(
+                            builder: (context) {
+                              final item = items[index];
+                              final escalation = item.escalation;
+                              final drillDownInsight =
+                                  escalation != null &&
+                                      canViewTransactions(escalation)
+                                  ? escalation
+                                  : item.primary;
+                              return _InsightItem(
+                                insight: item.primary,
+                                escalation: escalation,
+                                drillDownInsight: drillDownInsight,
+                                masterData: masterData,
+                                showRuleCopy: !_groupOwnsRuleCopy(group, items),
+                                onViewTransactions:
+                                    canViewTransactions(drillDownInsight)
+                                    ? () => onViewTransactions(drillDownInsight)
+                                    : null,
+                              );
+                            },
+                          ),
                       ],
                     ),
                   ),
