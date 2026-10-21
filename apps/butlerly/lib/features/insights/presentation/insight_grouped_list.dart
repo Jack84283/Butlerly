@@ -538,6 +538,9 @@ class _InsightDesktopTable extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Expanded(
+              key: ValueKey(
+                'desktop-insights-cell-${group.name}-$index-insights',
+              ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -570,9 +573,22 @@ class _InsightDesktopTable extends StatelessWidget {
                 ],
               ),
             ),
-            Expanded(child: _value(context, baseline ?? '—')),
-            Expanded(child: _value(context, current ?? '—')),
             Expanded(
+              key: ValueKey(
+                'desktop-insights-cell-${group.name}-$index-previousPeriod',
+              ),
+              child: _value(context, baseline ?? '—'),
+            ),
+            Expanded(
+              key: ValueKey(
+                'desktop-insights-cell-${group.name}-$index-currentPeriod',
+              ),
+              child: _value(context, current ?? '—'),
+            ),
+            Expanded(
+              key: ValueKey(
+                'desktop-insights-cell-${group.name}-$index-difference',
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
@@ -589,6 +605,9 @@ class _InsightDesktopTable extends StatelessWidget {
               ),
             ),
             Expanded(
+              key: ValueKey(
+                'desktop-insights-cell-${group.name}-$index-viewTransactions',
+              ),
               child: canOpen
                   ? Align(
                       alignment: AlignmentDirectional.centerEnd,
