@@ -413,9 +413,11 @@ class _InsightDesktopTable extends StatelessWidget {
     required this.onViewTransactions,
   });
 
-  // Five equal columns, including the action column. Keep a readable
-  // minimum width for localized labels and long accessibility text.
-  static const double minimumWidth = 900;
+  // Keep period and transaction-count headings fully legible on desktop.
+  // Insights and Difference share the remaining width after fixed columns.
+  static const double minimumWidth = 1000;
+  static const double periodColumnWidth = 160;
+  static const double transactionsColumnWidth = 152;
 
   final InsightPresentationGroup group;
   final List<_PresentedInsight> items;
@@ -433,17 +435,35 @@ class _InsightDesktopTable extends StatelessWidget {
         children: [
           Row(
             children: [
-              for (final key in [
-                'insights',
-                'previousPeriod',
-                'currentPeriod',
-                'difference',
-                'viewTransactions',
-              ])
-                Expanded(
-                  key: ValueKey('desktop-insights-column-${group.name}-$key'),
-                  child: _header(context, key, right: key != 'insights'),
+              Expanded(
+                key: ValueKey('desktop-insights-column-${group.name}-insights'),
+                child: _header(context, 'insights'),
+              ),
+              Expanded(
+                key: ValueKey('desktop-insights-column-${group.name}-difference'),
+                child: _header(context, 'difference', right: true),
+              ),
+              SizedBox(
+                key: ValueKey(
+                  'desktop-insights-column-${group.name}-previousPeriod',
                 ),
+                width: periodColumnWidth,
+                child: _header(context, 'previousPeriod', right: true),
+              ),
+              SizedBox(
+                key: ValueKey(
+                  'desktop-insights-column-${group.name}-currentPeriod',
+                ),
+                width: periodColumnWidth,
+                child: _header(context, 'currentPeriod', right: true),
+              ),
+              SizedBox(
+                key: ValueKey(
+                  'desktop-insights-column-${group.name}-transactions',
+                ),
+                width: transactionsColumnWidth,
+                child: _header(context, 'transactions', right: true),
+              ),
             ],
           ),
           const SizedBox(height: ButlerlyTableTokens.headerToRowsGap),
@@ -601,18 +621,6 @@ class _InsightDesktopTable extends StatelessWidget {
                 ),
                 Expanded(
                   key: ValueKey(
-                    'desktop-insights-cell-${group.name}-$index-previousPeriod',
-                  ),
-                  child: _value(context, baseline ?? '—'),
-                ),
-                Expanded(
-                  key: ValueKey(
-                    'desktop-insights-cell-${group.name}-$index-currentPeriod',
-                  ),
-                  child: _value(context, current ?? '—'),
-                ),
-                Expanded(
-                  key: ValueKey(
                     'desktop-insights-cell-${group.name}-$index-difference',
                   ),
                   child: Row(
@@ -630,10 +638,25 @@ class _InsightDesktopTable extends StatelessWidget {
                     ],
                   ),
                 ),
-                Expanded(
+                SizedBox(
                   key: ValueKey(
-                    'desktop-insights-cell-${group.name}-$index-viewTransactions',
+                    'desktop-insights-cell-${group.name}-$index-previousPeriod',
                   ),
+                  width: periodColumnWidth,
+                  child: _value(context, baseline ?? '—'),
+                ),
+                SizedBox(
+                  key: ValueKey(
+                    'desktop-insights-cell-${group.name}-$index-currentPeriod',
+                  ),
+                  width: periodColumnWidth,
+                  child: _value(context, current ?? '—'),
+                ),
+                SizedBox(
+                  key: ValueKey(
+                    'desktop-insights-cell-${group.name}-$index-transactions',
+                  ),
+                  width: transactionsColumnWidth,
                   child: _value(
                     context,
                     supportingCount == 0 ? '—' : '$supportingCount',
