@@ -440,7 +440,9 @@ class _InsightDesktopTable extends StatelessWidget {
                 child: _header(context, 'insights'),
               ),
               Expanded(
-                key: ValueKey('desktop-insights-column-${group.name}-difference'),
+                key: ValueKey(
+                  'desktop-insights-column-${group.name}-difference',
+                ),
                 child: _header(context, 'difference', right: true),
               ),
               SizedBox(
