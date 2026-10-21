@@ -101,7 +101,7 @@ void main() {
       tester.getSize(find.byType(AnalysisSummary)).height,
       tester.getSize(find.byType(AnalysisSpendingBreakdown)).height,
     );
-    expect(tester.getSize(find.byType(AnalysisSummary)).height, 264);
+    expect(tester.getSize(find.byType(AnalysisSummary)).height, 224);
     expect(tester.takeException(), isNull);
   });
 
@@ -1340,7 +1340,19 @@ void main() {
       tester.getTopLeft(legend).dx,
       greaterThan(tester.getTopLeft(chart).dx),
     );
-    await tester.ensureVisible(find.text('View all categories'));
+    final spendingCard = find.byType(AnalysisSpendingBreakdown);
+    final summaryCard = find.byType(AnalysisSummary);
+    final viewAll = find.byKey(
+      const ValueKey('analysis-spending-view-all'),
+    );
+    expect(viewAll, findsOneWidget);
+    expect(tester.getSize(spendingCard).height, 272);
+    expect(tester.getSize(summaryCard).height, 272);
+    expect(
+      tester.getCenter(viewAll).dx,
+      greaterThan(tester.getCenter(spendingCard).dx),
+    );
+    await tester.ensureVisible(viewAll);
     expect(find.text('Other'), findsOneWidget);
     await tester.tap(find.text('View all categories'));
     expect(
