@@ -401,7 +401,10 @@ class _InsightsContent extends StatelessWidget {
           masterData: masterData,
           externalTitle: true,
           pieDensity: ButlerlyVisualizationDensity.regular,
-          pieLegendBelow: true,
+          // Desktop matches Analysis with a 50/50 donut and legend row.
+          // Narrow and device layouts keep the legend below the chart.
+          pieLegendBelow: !desktop,
+          pieEqualWidthColumns: desktop,
           pieValueLabel: (result) {
             final shareText = result.currentValue?.toString();
             final amount = result.impactValue;
