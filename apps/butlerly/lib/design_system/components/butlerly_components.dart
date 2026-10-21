@@ -306,6 +306,7 @@ class ButlerlyCardHeader extends StatelessWidget {
     this.action,
     this.titleStyle,
     this.subtitleStyle,
+    this.subtitleGap = ButlerlySpacing.micro,
     this.keepActionInlineAtCompactWidth = false,
     this.centerAction = false,
     super.key,
@@ -316,6 +317,9 @@ class ButlerlyCardHeader extends StatelessWidget {
   final Widget? action;
   final TextStyle? titleStyle;
   final TextStyle? subtitleStyle;
+
+  /// Space between title and optional subtitle; defaults to existing styling.
+  final double subtitleGap;
   final bool keepActionInlineAtCompactWidth;
   final bool centerAction;
 
@@ -337,7 +341,7 @@ class ButlerlyCardHeader extends StatelessWidget {
                 ),
           ),
           if (subtitle != null) ...[
-            const SizedBox(height: ButlerlySpacing.micro),
+            SizedBox(height: subtitleGap),
             Text(
               subtitle!,
               style:
