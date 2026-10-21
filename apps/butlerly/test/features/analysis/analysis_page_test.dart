@@ -1342,9 +1342,7 @@ void main() {
     );
     final spendingCard = find.byType(AnalysisSpendingBreakdown);
     final summaryCard = find.byType(AnalysisSummary);
-    final viewAll = find.byKey(
-      const ValueKey('analysis-spending-view-all'),
-    );
+    final viewAll = find.byKey(const ValueKey('analysis-spending-view-all'));
     expect(viewAll, findsOneWidget);
     expect(tester.getSize(spendingCard).height, 272);
     expect(tester.getSize(summaryCard).height, 272);
