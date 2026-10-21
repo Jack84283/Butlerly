@@ -16,12 +16,14 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
     required this.masterData,
     this.onCategoryTap,
     this.onViewAll,
+    this.desktopLayout = false,
   });
 
   final AnalysisModel model;
   final TransactionMasterData? masterData;
   final ValueChanged<AnalysisMetric>? onCategoryTap;
   final VoidCallback? onViewAll;
+  final bool desktopLayout;
 
   @override
   Widget build(BuildContext context) {
@@ -105,7 +107,9 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
             data: chartData,
             valueLabel: (value, _) =>
                 localizedDecimal(context, value.toString()),
-            legendBelow: true,
+            // On desktop the shared donut draws the chart on the left and
+            // its localized legend on the right; device mode keeps it below.
+            legendBelow: !desktopLayout,
             onDatumTap: onCategoryTap == null
                 ? null
                 : (datum) {
