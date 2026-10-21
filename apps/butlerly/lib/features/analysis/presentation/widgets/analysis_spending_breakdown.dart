@@ -111,6 +111,7 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
             // its localized legend on the right; device mode keeps it below.
             legendBelow: !desktopLayout,
             equalWidthColumns: desktopLayout,
+            compactLegendRows: desktopLayout,
             onDatumTap: onCategoryTap == null
                 ? null
                 : (datum) {
@@ -129,8 +130,9 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
             ),
           if (onViewAll != null)
             Align(
-              alignment: Alignment.centerLeft,
+              alignment: Alignment.centerRight,
               child: TextButton(
+                key: const ValueKey('analysis-spending-view-all'),
                 onPressed: onViewAll,
                 child: Text(context.l10n.text('viewAllCategories')),
               ),
