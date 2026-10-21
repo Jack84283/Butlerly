@@ -159,6 +159,7 @@ class InsightGroupedList extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
+                  key: ValueKey('desktop-insights-card-header-${group.name}'),
                   padding: const EdgeInsets.fromLTRB(
                     ButlerlySpacing.cardPadding,
                     ButlerlySpacing.cardPadding,
@@ -168,6 +169,9 @@ class InsightGroupedList extends StatelessWidget {
                   child: ButlerlyCardHeader(
                     title: _groupTitle(context, group, items),
                     subtitle: _groupSubtitle(context, group, items),
+                    subtitleGap: desktopGrid
+                        ? ButlerlySpacing.small
+                        : ButlerlySpacing.micro,
                   ),
                 ),
                 if (groupedVisualizations[group] case final chartResults?
@@ -185,19 +189,30 @@ class InsightGroupedList extends StatelessWidget {
                   ),
                 ],
                 const SizedBox(height: ButlerlySpacing.compact),
-                ButlerlyInsetTransactionCard(
-                  bottomInset: context.designTokens.geometry.innerCardGutter,
-                  child: desktopGrid
-                      ? _InsightDesktopTable(
-                          group: group,
-                          items: items,
-                          masterData: masterData,
-                          showRuleCopy: !_groupOwnsRuleCopy(group, items),
-                          canViewTransactions: canViewTransactions,
-                          onViewTransactions: onViewTransactions,
-                        )
-                      : ButlerlyTransactionList(
-                          children: [
+                if (desktopGrid)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      ButlerlyDesktopInnerCard.outerGutter,
+                      0,
+                      ButlerlyDesktopInnerCard.outerGutter,
+                      ButlerlyDesktopInnerCard.outerGutter,
+                    ),
+                    child: ButlerlyDesktopInnerCard(
+                      child: _InsightDesktopTable(
+                        group: group,
+                        items: items,
+                        masterData: masterData,
+                        showRuleCopy: !_groupOwnsRuleCopy(group, items),
+                        canViewTransactions: canViewTransactions,
+                        onViewTransactions: onViewTransactions,
+                      ),
+                    ),
+                  )
+                else
+                  ButlerlyInsetTransactionCard(
+                    bottomInset: context.designTokens.geometry.innerCardGutter,
+                    child: ButlerlyTransactionList(
+                      children: [
                             for (var index = 0; index < items.length; index++)
                               Builder(
                                 builder: (context) {
@@ -226,9 +241,9 @@ class InsightGroupedList extends StatelessWidget {
                                   );
                                 },
                               ),
-                          ],
-                        ),
-                ),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ),
