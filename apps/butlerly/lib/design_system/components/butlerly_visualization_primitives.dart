@@ -259,6 +259,7 @@ class ButlerlyDonutVisualization extends StatelessWidget {
     required this.valueLabel,
     this.density = ButlerlyVisualizationDensity.compact,
     this.legendBelow = false,
+    this.equalWidthColumns = false,
     this.onDatumTap,
   });
 
@@ -266,6 +267,10 @@ class ButlerlyDonutVisualization extends StatelessWidget {
   final String Function(double value, double total) valueLabel;
   final ButlerlyVisualizationDensity density;
   final bool legendBelow;
+
+  /// Give the donut and legend one half of the available width each when
+  /// side by side. Narrow layouts and large text still stack vertically.
+  final bool equalWidthColumns;
   final ValueChanged<ButlerlyChartDatum>? onDatumTap;
 
   @override
@@ -361,6 +366,26 @@ class ButlerlyDonutVisualization extends StatelessWidget {
                   chart,
                   const SizedBox(height: ButlerlySpacing.standard),
                   legend,
+                ],
+              );
+            }
+            if (equalWidthColumns) {
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    key: const ValueKey('butlerly-donut-chart-column'),
+                    child: Center(child: chart),
+                  ),
+                  Expanded(
+                    key: const ValueKey('butlerly-donut-legend-column'),
+                    child: Padding(
+                      padding: const EdgeInsetsDirectional.only(
+                        start: ButlerlySpacing.compact,
+                      ),
+                      child: legend,
+                    ),
+                  ),
                 ],
               );
             }
