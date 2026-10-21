@@ -176,8 +176,7 @@ void main() {
               desktopGrid: true,
               results: items,
               masterData: const TransactionMasterData(
-                categoryNames: {'food': 'Food'},
-                subcategoryNames: {'restaurants': 'Restaurants'},
+                categoryNames: {'food': 'Food', 'restaurants': 'Restaurants'},
                 merchantNames: {'merchant-1': 'Corner Shop'},
               ),
               canViewTransactions: (_) => true,
@@ -285,7 +284,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const ValueKey('desktop-insights-table-category')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('desktop-insights-table-category')),
+      findsNothing,
+    );
     expect(find.text('Food'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
