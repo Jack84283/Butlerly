@@ -127,10 +127,7 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (fill)
-                Expanded(child: Center(child: donut))
-              else
-                donut,
+              if (fill) Expanded(child: Center(child: donut)) else donut,
               if (unavailableCategories.isNotEmpty)
                 _UnavailableCategoryList(
                   categories: unavailableCategories,
