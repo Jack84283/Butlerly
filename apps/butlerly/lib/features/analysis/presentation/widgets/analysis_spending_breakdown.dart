@@ -110,6 +110,7 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
             // On desktop the shared donut draws the chart on the left and
             // its localized legend on the right; device mode keeps it below.
             legendBelow: !desktopLayout,
+            equalWidthColumns: desktopLayout,
             onDatumTap: onCategoryTap == null
                 ? null
                 : (datum) {
