@@ -636,9 +636,7 @@ class _InsightDesktopTable extends StatelessWidget {
                   ),
                   child: _value(
                     context,
-                    supportingCount == 0
-                        ? '—'
-                        : localizedDecimal(context, '$supportingCount'),
+                    supportingCount == 0 ? '—' : '$supportingCount',
                   ),
                 ),
               ],
