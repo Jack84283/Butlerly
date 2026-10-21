@@ -267,7 +267,7 @@ class _RulesPageState extends State<RulesPage> {
       final data = snapshot.requireData;
       return ButlerlyPage(
         title: context.l10n.text('ruleManagement'),
-        subtitle: context.l10n.text('ruleManagementSubtitle'),
+        subtitle: context.l10n.text('ruleManagementHowItWorks'),
         actions: [
           IconButton(
             tooltip: context.l10n.text('addRule'),
@@ -465,6 +465,17 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
   String? _assignSubcategoryId;
   String? _assignPaymentSourceId;
   String? _assignTagId;
+  TransactionRulePreview? _testResult;
+  bool _testing = false;
+  bool _testFailed = false;
+
+  void _invalidatePreview() {
+    if (!mounted) return;
+    setState(() {
+      _testResult = null;
+      _testFailed = false;
+    });
+  }
 
   @override
   void initState() {
@@ -488,6 +499,8 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
     _assignSubcategoryId = value?.assignSubcategoryId?.value;
     _assignPaymentSourceId = value?.assignPaymentSourceId?.value;
     _assignTagId = value?.assignTagId?.value;
+    _descriptionContains.addListener(_invalidatePreview);
+    _rawCounterpartyContains.addListener(_invalidatePreview);
   }
 
   @override
@@ -542,6 +555,186 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
       ),
     );
   }
+
+  String _merchantName(String id) =>
+      widget.merchants.where((m) => m.id.value == id).firstOrNull?.name ?? id;
+
+  String _categoryName(String id) =>
+      widget.categories.where((c) => c.id.value == id).firstOrNull?.name ?? id;
+
+  String _sourceName(String id) =>
+      widget.paymentSources.where((p) => p.id.value == id).firstOrNull?.name ??
+      id;
+
+  String _tagName(String id) =>
+      widget.tags.where((t) => t.id.value == id).firstOrNull?.name ?? id;
+
+  String _conditionSummary(BuildContext context) {
+    final terms = <String>[];
+    final l10n = context.l10n;
+    if (_conditionMerchantId case final String value) {
+      terms.add("${l10n.text('merchant')} = ${_merchantName(value)}");
+    }
+    if (_conditionCategoryId case final String value) {
+      terms.add("${l10n.text('category')} = ${_categoryName(value)}");
+    }
+    if (_conditionPaymentSourceId case final String value) {
+      terms.add("${l10n.text('paymentSource')} = ${_sourceName(value)}");
+    }
+    if (_conditionTagId case final String value) {
+      terms.add("${l10n.text('tag')} = ${_tagName(value)}");
+    }
+    if (_optional(_descriptionContains.text) case final String value) {
+      terms.add("${l10n.text('rulePreviewDescription')} \"$value\"");
+    }
+    if (_optional(_rawCounterpartyContains.text) case final String value) {
+      terms.add("${l10n.text('rulePreviewMerchantText')} \"$value\"");
+    }
+    return terms.isEmpty
+        ? l10n.text('rulePreviewNoCondition')
+        : terms.join(' ${l10n.text('rulePreviewAnd')} ');
+  }
+
+  String _actionSummary(BuildContext context) {
+    final terms = <String>[];
+    final l10n = context.l10n;
+    if (_assignMerchantId case final String value) {
+      terms.add("${l10n.text('merchant')} = ${_merchantName(value)}");
+    }
+    if (_assignCategoryId case final String value) {
+      terms.add("${l10n.text('category')} = ${_categoryName(value)}");
+    }
+    if (_assignSubcategoryId case final String value) {
+      terms.add("${l10n.text('subcategory')} = ${_categoryName(value)}");
+    }
+    if (_assignPaymentSourceId case final String value) {
+      terms.add("${l10n.text('paymentSource')} = ${_sourceName(value)}");
+    }
+    if (_assignTagId case final String value) {
+      terms.add("${l10n.text('tag')} = ${_tagName(value)}");
+    }
+    return terms.isEmpty
+        ? l10n.text('rulePreviewNoAction')
+        : terms.join(' ${l10n.text('rulePreviewAnd')} ');
+  }
+
+  Future<void> _testRule() async {
+    final hasCondition =
+        _conditionMerchantId != null ||
+        _conditionCategoryId != null ||
+        _conditionPaymentSourceId != null ||
+        _conditionTagId != null ||
+        _optional(_descriptionContains.text) != null ||
+        _optional(_rawCounterpartyContains.text) != null;
+    final hasAction =
+        _assignMerchantId != null ||
+        _assignCategoryId != null ||
+        _assignSubcategoryId != null ||
+        _assignPaymentSourceId != null ||
+        _assignTagId != null;
+    if (!hasCondition || !hasAction) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.text('ruleNeedsConditionAction'))),
+      );
+      return;
+    }
+    final preview = services.isRegistered<FinanceServices>()
+        ? services<FinanceServices>().previewTransactionRule
+        : null;
+    if (preview == null) {
+      setState(() => _testFailed = true);
+      return;
+    }
+    final now = DateTime.now().toUtc();
+    final rule = TransactionRule(
+      id: widget.current?.id ?? TransactionRuleId('preview.rule'),
+      name: _name.text.trim().isEmpty ? 'Preview' : _name.text.trim(),
+      enabled: true, // Preview also works while editing disabled rules.
+      merchantId: _id<MerchantId>(_conditionMerchantId, MerchantId.new),
+      categoryId: _id<CategoryId>(_conditionCategoryId, CategoryId.new),
+      paymentSourceId: _id<PaymentSourceId>(
+        _conditionPaymentSourceId,
+        PaymentSourceId.new,
+      ),
+      tagId: _id<TagId>(_conditionTagId, TagId.new),
+      descriptionContains: _optional(_descriptionContains.text),
+      rawCounterpartyContains: _optional(_rawCounterpartyContains.text),
+      assignMerchantId: _id<MerchantId>(_assignMerchantId, MerchantId.new),
+      assignCategoryId: _id<CategoryId>(_assignCategoryId, CategoryId.new),
+      assignSubcategoryId: _id<CategoryId>(
+        _assignSubcategoryId,
+        CategoryId.new,
+      ),
+      assignPaymentSourceId: _id<PaymentSourceId>(
+        _assignPaymentSourceId,
+        PaymentSourceId.new,
+      ),
+      assignTagId: _id<TagId>(_assignTagId, TagId.new),
+      createdAt: widget.current?.createdAt ?? now,
+      updatedAt: now,
+    );
+    setState(() {
+      _testing = true;
+      _testResult = null;
+      _testFailed = false;
+    });
+    final result = await preview(rule);
+    if (!mounted) return;
+    setState(() {
+      _testing = false;
+      if (result is ApplicationSuccess<TransactionRulePreview>) {
+        _testResult = result.value;
+      } else {
+        _testFailed = true;
+      }
+    });
+  }
+
+  Widget _previewCard(BuildContext context) => ButlerlyCard(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "${context.l10n.text('rulePreviewIf')}: ${_conditionSummary(context)}",
+          key: const ValueKey('rule-preview-conditions'),
+        ),
+        const SizedBox(height: ButlerlySpacing.small),
+        Text(
+          "${context.l10n.text('rulePreviewThen')}: ${_actionSummary(context)}",
+          key: const ValueKey('rule-preview-actions'),
+        ),
+        const SizedBox(height: ButlerlySpacing.small),
+        Text(
+          context.l10n.text('rulePreviewReadOnly'),
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        if (_testing) ...[
+          const SizedBox(height: ButlerlySpacing.small),
+          const LinearProgressIndicator(),
+        ],
+        if (_testFailed) ...[
+          const SizedBox(height: ButlerlySpacing.small),
+          Text(context.l10n.text('rulePreviewFailed')),
+        ],
+        if (_testResult case final TransactionRulePreview result) ...[
+          const SizedBox(height: ButlerlySpacing.small),
+          Text(
+            "${context.l10n.text('rulePreviewMatchCount')}: "
+            "${result.matchCount} / ${result.scannedCount}",
+            key: const ValueKey('rule-test-result'),
+          ),
+          if (result.examples.isEmpty)
+            Text(context.l10n.text('rulePreviewNoMatches'))
+          else ...[
+            const SizedBox(height: ButlerlySpacing.small),
+            Text(context.l10n.text('rulePreviewExamples')),
+            for (final example in result.examples)
+              Text('• $example', maxLines: 1, overflow: TextOverflow.ellipsis),
+          ],
+        ],
+      ],
+    ),
+  );
 
   String? _optional(String value) => value.trim().isEmpty ? null : value.trim();
 
@@ -657,28 +850,44 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
               key: const ValueKey('rule-condition-merchant'),
               label: context.l10n.text('merchant'),
               value: _conditionMerchantId,
-              onChanged: (v) => setState(() => _conditionMerchantId = v),
+              onChanged: (v) => setState(() {
+                _conditionMerchantId = v;
+                _testResult = null;
+                _testFailed = false;
+              }),
               entries: _entries(empty, merchants),
             ),
             _dropdown(
               key: const ValueKey('rule-condition-category'),
               label: context.l10n.text('category'),
               value: _conditionCategoryId,
-              onChanged: (v) => setState(() => _conditionCategoryId = v),
+              onChanged: (v) => setState(() {
+                _conditionCategoryId = v;
+                _testResult = null;
+                _testFailed = false;
+              }),
               entries: _entries(empty, _rootCategories(_conditionCategoryId)),
             ),
             _dropdown(
               key: const ValueKey('rule-condition-payment-source'),
               label: context.l10n.text('paymentSource'),
               value: _conditionPaymentSourceId,
-              onChanged: (v) => setState(() => _conditionPaymentSourceId = v),
+              onChanged: (v) => setState(() {
+                _conditionPaymentSourceId = v;
+                _testResult = null;
+                _testFailed = false;
+              }),
               entries: _entries(empty, sources),
             ),
             _dropdown(
               key: const ValueKey('rule-condition-tag'),
               label: context.l10n.text('tag'),
               value: _conditionTagId,
-              onChanged: (v) => setState(() => _conditionTagId = v),
+              onChanged: (v) => setState(() {
+                _conditionTagId = v;
+                _testResult = null;
+                _testFailed = false;
+              }),
               entries: _entries(empty, tags),
             ),
             TextField(
@@ -700,7 +909,11 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
               key: const ValueKey('rule-action-merchant'),
               label: context.l10n.text('merchant'),
               value: _assignMerchantId,
-              onChanged: (v) => setState(() => _assignMerchantId = v),
+              onChanged: (v) => setState(() {
+                _assignMerchantId = v;
+                _testResult = null;
+                _testFailed = false;
+              }),
               entries: _entries(empty, merchants),
             ),
             _dropdown(
@@ -710,6 +923,8 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
               onChanged: (v) => setState(() {
                 _assignCategoryId = v;
                 _assignSubcategoryId = null;
+                _testResult = null;
+                _testFailed = false;
               }),
               entries: _entries(empty, _rootCategories(_assignCategoryId)),
             ),
@@ -717,7 +932,11 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
               key: const ValueKey('rule-action-subcategory'),
               label: context.l10n.text('subcategory'),
               value: _assignSubcategoryId,
-              onChanged: (v) => setState(() => _assignSubcategoryId = v),
+              onChanged: (v) => setState(() {
+                _assignSubcategoryId = v;
+                _testResult = null;
+                _testFailed = false;
+              }),
               entries: _entries(
                 empty,
                 _subcategories(_assignCategoryId, _assignSubcategoryId),
@@ -727,20 +946,35 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
               key: const ValueKey('rule-action-payment-source'),
               label: context.l10n.text('paymentSource'),
               value: _assignPaymentSourceId,
-              onChanged: (v) => setState(() => _assignPaymentSourceId = v),
+              onChanged: (v) => setState(() {
+                _assignPaymentSourceId = v;
+                _testResult = null;
+                _testFailed = false;
+              }),
               entries: _entries(empty, sources),
             ),
             _dropdown(
               key: const ValueKey('rule-action-tag'),
               label: context.l10n.text('tag'),
               value: _assignTagId,
-              onChanged: (v) => setState(() => _assignTagId = v),
+              onChanged: (v) => setState(() {
+                _assignTagId = v;
+                _testResult = null;
+                _testFailed = false;
+              }),
               entries: _entries(empty, tags),
             ),
           ]),
+          _sectionHeading(context.l10n.text('rulePreviewTitle')),
+          _previewCard(context),
         ],
       ),
       actions: [
+        OutlinedButton(
+          key: const ValueKey('rule-test-button'),
+          onPressed: _testing ? null : _testRule,
+          child: Text(context.l10n.text('rulePreviewTest')),
+        ),
         ButlerlyCancelButton(
           onPressed: () => Navigator.pop(context),
           child: Text(context.l10n.text('cancel')),

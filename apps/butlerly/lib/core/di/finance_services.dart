@@ -486,6 +486,9 @@ final class FinanceServices {
        listTransactionRules = transactionRules == null
            ? null
            : ListTransactionRules(transactionRules),
+       previewTransactionRule = transactionRules == null
+           ? null
+           : PreviewTransactionRule(transactions),
        saveTransactionRule = transactionRules == null
            ? null
            : SaveTransactionRule(transactionRules, categories),
@@ -613,6 +616,7 @@ final class FinanceServices {
   final UpdateMerchantMatchingConfiguration?
   updateMerchantMatchingConfiguration;
   final ListTransactionRules? listTransactionRules;
+  final PreviewTransactionRule? previewTransactionRule;
   final SaveTransactionRule? saveTransactionRule;
   final SetTransactionRuleEnabled? setTransactionRuleEnabled;
   final DeleteTransactionRule? deleteTransactionRule;
