@@ -273,8 +273,8 @@ class ButlerlyDonutVisualization extends StatelessWidget {
   /// side by side. Narrow layouts and large text still stack vertically.
   final bool equalWidthColumns;
 
-  /// Reduces only the inter-row padding in the legend. Colors, labels,
-  /// actions, and semantics remain unchanged.
+  /// Use an 8px gap between legend rows, with no trailing gap. Colors,
+  /// labels, actions, and semantics remain unchanged.
   final bool compactLegendRows;
   final ValueChanged<ButlerlyChartDatum>? onDatumTap;
 
@@ -328,7 +328,9 @@ class ButlerlyDonutVisualization extends StatelessWidget {
                   Padding(
                     padding: EdgeInsets.only(
                       bottom: compactLegendRows
-                          ? ButlerlySpacing.none
+                          ? (index < usable.length - 1
+                                ? ButlerlySpacing.compact
+                                : ButlerlySpacing.none)
                           : ButlerlySpacing.micro,
                     ),
                     child: InkWell(
