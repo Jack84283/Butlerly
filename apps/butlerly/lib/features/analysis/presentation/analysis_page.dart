@@ -678,7 +678,8 @@ class _AnalysisContent extends StatelessWidget {
                 transactionIds: _metricTransactionIds(metric),
               );
             },
-          );
+          )
+        : null;
 
     final subcategoryCard = desktop || model.subcategories.isNotEmpty
         ? AnalysisSubcategoryBreakdown(
@@ -694,6 +695,17 @@ class _AnalysisContent extends StatelessWidget {
             },
           )
         : null;
+
+    final unavailableCategoryCount = model.categories
+        .where(
+          (metric) =>
+              metric.availability != AnalysisDataAvailability.sufficient,
+        )
+        .length;
+    final desktopSpendingHeight =
+        320.0 +
+        unavailableCategoryCount * 28.0 +
+        (analysisContext != null && model.categories.length > 5 ? 48.0 : 0.0);
 
     return ButlerlyPage(
       title: context.l10n.text('analysis'),
@@ -712,20 +724,8 @@ class _AnalysisContent extends StatelessWidget {
           _AnalysisDesktopCardPair(
             first: AnalysisSummary(model: model),
             second: spendingCard,
-            // Extra space keeps unavailable-category notes and View All
-            // accessible without clipping the donut legend.
-            matchedHeight:
-                320.0 +
-                model.categories
-                    .where(
-                      (metric) =>
-                          metric.availability != AnalysisDataAvailability.sufficient,
-                    )
-                    .length *
-                    28.0 +
-                (analysisContext != null && model.categories.length > 5
-                    ? 48.0
-                    : 0.0),
+            // Keep unavailable notes and View All clear of the donut legend.
+            matchedHeight: desktopSpendingHeight,
           ),
           _AnalysisDesktopBreakdownRow(
             category: categoryCard,
