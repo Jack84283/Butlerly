@@ -260,6 +260,7 @@ class ButlerlyDonutVisualization extends StatelessWidget {
     this.density = ButlerlyVisualizationDensity.compact,
     this.legendBelow = false,
     this.equalWidthColumns = false,
+    this.compactLegendRows = false,
     this.onDatumTap,
   });
 
@@ -271,6 +272,10 @@ class ButlerlyDonutVisualization extends StatelessWidget {
   /// Give the donut and legend one half of the available width each when
   /// side by side. Narrow layouts and large text still stack vertically.
   final bool equalWidthColumns;
+
+  /// Reduces only the inter-row padding in the legend. The colored markers,
+  /// amounts, tap targets, and semantics remain unchanged.
+  final bool compactLegendRows;
   final ValueChanged<ButlerlyChartDatum>? onDatumTap;
 
   @override
@@ -321,16 +326,20 @@ class ButlerlyDonutVisualization extends StatelessWidget {
               children: [
                 for (var index = 0; index < usable.length; index++)
                   Padding(
-                    padding: const EdgeInsets.only(
-                      bottom: ButlerlySpacing.micro,
+                    padding: EdgeInsets.only(
+                      bottom: compactLegendRows
+                          ? ButlerlySpacing.none
+                          : ButlerlySpacing.micro,
                     ),
                     child: InkWell(
                       onTap: onDatumTap == null
                           ? null
                           : () => onDatumTap!(usable[index]),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: ButlerlySpacing.xxs,
+                        padding: EdgeInsets.symmetric(
+                          vertical: compactLegendRows
+                              ? ButlerlySpacing.none
+                              : ButlerlySpacing.xxs,
                         ),
                         child: Row(
                           children: [
