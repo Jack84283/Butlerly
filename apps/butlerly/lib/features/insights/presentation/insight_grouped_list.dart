@@ -511,130 +511,141 @@ class _InsightDesktopTable extends StatelessWidget {
       escalation?.presentation.semanticType ??
           insight.presentation.semanticType,
     );
-    final actionLabel = drillDownInsight.evidence.isEmpty
+    final supportingCount = drillDownInsight.evidence.length;
+    final actionLabel = supportingCount == 0
         ? context.l10n.text('viewTransactions')
         : context.l10n.text(
-            drillDownInsight.evidence.length == 1
+            supportingCount == 1
                 ? 'viewOneSupportingTransaction'
                 : 'viewManySupportingTransactions',
-            {'count': '${drillDownInsight.evidence.length}'},
+            {'count': '$supportingCount'},
           );
 
     return Semantics(
       container: true,
-      explicitChildNodes: true,
-      label: [ruleName, ?identity, ?escalationName].join(': '),
-      child: Padding(
-        key: ValueKey('desktop-insight-row-${group.name}-$index'),
-        padding: const EdgeInsets.symmetric(
-          vertical: ButlerlyTableTokens.rowVerticalPadding,
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              key: ValueKey(
-                'desktop-insights-cell-${group.name}-$index-insights',
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  _IdentityIcon(insight: insight, masterData: masterData),
-                  const SizedBox(width: ButlerlySpacing.compact),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          identity ?? ruleName,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(fontWeight: FontWeight.w600),
-                        ),
-                        if (showRuleCopy && identity != null) Text(ruleName),
-                        if (showRuleCopy)
-                          Text(
-                            context.l10n.text(insight.rule.descriptionKey),
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        if (escalationName != null)
-                          Text(
-                            escalationName,
-                            style: Theme.of(context).textTheme.labelMedium
-                                ?.copyWith(color: semantic.color),
-                          ),
-                      ],
-                    ),
+      button: canOpen,
+      enabled: canOpen,
+      label: [
+        ruleName,
+        ?identity,
+        ?escalationName,
+        if (canOpen) actionLabel,
+      ].join(': '),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          key: ValueKey('desktop-insight-row-${group.name}-$index'),
+          onTap: canOpen ? () => onViewTransactions(drillDownInsight) : null,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              vertical: ButlerlySpacing.micro,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  key: ValueKey(
+                    'desktop-insights-cell-${group.name}-$index-insights',
                   ),
-                ],
-              ),
-            ),
-            Expanded(
-              key: ValueKey(
-                'desktop-insights-cell-${group.name}-$index-previousPeriod',
-              ),
-              child: _value(context, baseline ?? '—'),
-            ),
-            Expanded(
-              key: ValueKey(
-                'desktop-insights-cell-${group.name}-$index-currentPeriod',
-              ),
-              child: _value(context, current ?? '—'),
-            ),
-            Expanded(
-              key: ValueKey(
-                'desktop-insights-cell-${group.name}-$index-difference',
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Icon(semantic.icon, size: 16, color: semantic.color),
-                  const SizedBox(width: ButlerlySpacing.micro),
-                  Flexible(
-                    child: _value(
-                      context,
-                      changeText.isEmpty ? '—' : changeText,
-                      color: semantic.color,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              key: ValueKey(
-                'desktop-insights-cell-${group.name}-$index-viewTransactions',
-              ),
-              child: canOpen
-                  ? Align(
-                      alignment: AlignmentDirectional.centerEnd,
-                      child: Tooltip(
-                        message: actionLabel,
-                        child: TextButton.icon(
-                          onPressed: () => onViewTransactions(drillDownInsight),
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 4),
-                            minimumSize: const Size(0, 32),
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          ),
-                          iconAlignment: IconAlignment.end,
-                          icon: const Icon(Icons.chevron_right),
-                          label: Text(
-                            actionLabel,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      SizedBox.square(
+                        dimension: 28,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: _IdentityIcon(
+                            insight: insight,
+                            masterData: masterData,
                           ),
                         ),
                       ),
-                    )
-                  : _value(
-                      context,
-                      drillDownInsight.evidence.isEmpty
-                          ? '—'
-                          : context.l10n.text('supportingTransactions', {
-                              'count': '${drillDownInsight.evidence.length}',
-                            }),
-                    ),
+                      const SizedBox(width: ButlerlySpacing.compact),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              identity ?? ruleName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(fontWeight: FontWeight.w600),
+                            ),
+                            if (showRuleCopy && identity != null)
+                              Text(
+                                ruleName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            if (showRuleCopy)
+                              Text(
+                                context.l10n.text(
+                                  insight.rule.descriptionKey,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            if (escalationName != null)
+                              Text(
+                                escalationName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.labelMedium
+                                    ?.copyWith(color: semantic.color),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  key: ValueKey(
+                    'desktop-insights-cell-${group.name}-$index-previousPeriod',
+                  ),
+                  child: _value(context, baseline ?? '—'),
+                ),
+                Expanded(
+                  key: ValueKey(
+                    'desktop-insights-cell-${group.name}-$index-currentPeriod',
+                  ),
+                  child: _value(context, current ?? '—'),
+                ),
+                Expanded(
+                  key: ValueKey(
+                    'desktop-insights-cell-${group.name}-$index-difference',
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Icon(semantic.icon, size: 16, color: semantic.color),
+                      const SizedBox(width: ButlerlySpacing.micro),
+                      Flexible(
+                        child: _value(
+                          context,
+                          changeText.isEmpty ? '—' : changeText,
+                          color: semantic.color,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  key: ValueKey(
+                    'desktop-insights-cell-${group.name}-$index-viewTransactions',
+                  ),
+                  child: _value(
+                    context,
+                    supportingCount == 0
+                        ? '—'
+                        : localizedDecimal(context, '$supportingCount'),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
