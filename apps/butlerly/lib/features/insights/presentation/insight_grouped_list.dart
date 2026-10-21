@@ -580,9 +580,7 @@ class _InsightDesktopTable extends StatelessWidget {
                               ),
                             if (showRuleCopy)
                               Text(
-                                context.l10n.text(
-                                  insight.rule.descriptionKey,
-                                ),
+                                context.l10n.text(insight.rule.descriptionKey),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: Theme.of(context).textTheme.bodySmall,
