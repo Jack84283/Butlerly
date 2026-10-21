@@ -7,15 +7,17 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 
 class AnalysisSummary extends StatelessWidget {
-  const AnalysisSummary({super.key, required this.model, this.compactDesktop = false});
+  const AnalysisSummary({
+    super.key,
+    required this.model,
+    this.compactDesktop = false,
+  });
+
   final AnalysisModel model;
   final bool compactDesktop;
 
   @override
-  Widget build(BuildContext context) {
-    final compact = compactDesktop &&
-        MediaQuery.textScalerOf(context).scale(1) <= 1.3;
-    return Semantics(
+  Widget build(BuildContext context) => Semantics(
     container: true,
     label: context.l10n.text('analysisSummary'),
     child: ButlerlyCard(
@@ -26,7 +28,7 @@ class AnalysisSummary extends StatelessWidget {
             model.spending == null
                 ? context.l10n.text('noSpendingInPeriod')
                 : analysisMetricMoney(context, model.spending!),
-            style: compact
+            style: _isCompact(context)
                 ? Theme.of(context).textTheme.headlineMedium
                 : Theme.of(context).textTheme.displaySmall,
           ),
@@ -40,7 +42,9 @@ class AnalysisSummary extends StatelessWidget {
               ),
             ),
           SizedBox(
-            height: compact ? ButlerlySpacing.micro : ButlerlySpacing.standard,
+            height: _isCompact(context)
+                ? ButlerlySpacing.micro
+                : ButlerlySpacing.standard,
           ),
           Row(
             children: [
@@ -48,22 +52,25 @@ class AnalysisSummary extends StatelessWidget {
                 child: _SupportingMetric(
                   metric: model.income,
                   label: context.l10n.text('income'),
-                  compact: compact,
+                  compact: _isCompact(context),
                 ),
               ),
               Expanded(
                 child: _SupportingMetric(
                   metric: model.net,
                   label: context.l10n.text('netCashFlow'),
-                  compact: compact,
+                  compact: _isCompact(context),
                 ),
               ),
             ],
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+
+  bool _isCompact(BuildContext context) =>
+      compactDesktop && MediaQuery.textScalerOf(context).scale(1) <= 1.3;
 }
 
 class _SupportingMetric extends StatelessWidget {
