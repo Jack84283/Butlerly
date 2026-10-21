@@ -153,3 +153,4 @@ final class PreviewTransactionRule {
       examples: List<String>.unmodifiable(examples),
     );
   });
+}
