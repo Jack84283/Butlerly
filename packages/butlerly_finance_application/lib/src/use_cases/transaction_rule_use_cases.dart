@@ -102,3 +102,54 @@ final class ApplyTransactionRules {
     return result;
   }
 }
+
+
+/// Read-only match results for one proposed rule.
+final class TransactionRulePreview {
+  const TransactionRulePreview({
+    required this.scannedCount,
+    required this.matchCount,
+    required this.examples,
+  });
+
+  final int scannedCount;
+  final int matchCount;
+  final List<String> examples;
+}
+
+final class PreviewTransactionRule {
+  const PreviewTransactionRule(this.transactions);
+
+  final TransactionRepository transactions;
+
+  Future<ApplicationResult<TransactionRulePreview>> call(
+    TransactionRule rule,
+  ) => runApplication('preview transaction rule', () async {
+    // Apply the same predicate used during import, but never mutate data.
+    final values = await transactions.listAll();
+    var scannedCount = 0;
+    var matchCount = 0;
+    final examples = <String>[];
+    for (final transaction in values) {
+      if (transaction.status != TransactionStatus.active) continue;
+      scannedCount++;
+      if (!rule.matches(transaction)) continue;
+      matchCount++;
+      if (examples.length < 5) {
+        final description = transaction.description?.trim();
+        final counterparty = transaction.rawCounterparty?.trim();
+        examples.add(
+          description?.isNotEmpty == true
+              ? description!
+              : counterparty?.isNotEmpty == true
+              ? counterparty!
+              : transaction.id.value,
+        );
+      }
+    }
+    return TransactionRulePreview(
+      scannedCount: scannedCount,
+      matchCount: matchCount,
+      examples: List<String>.unmodifiable(examples),
+    );
+  });
