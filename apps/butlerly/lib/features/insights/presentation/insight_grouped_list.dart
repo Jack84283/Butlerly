@@ -241,20 +241,12 @@ class InsightGroupedList extends StatelessWidget {
       );
     }
 
-    return LayoutBuilder(
+    // Desktop finding tables need the full content width: each group owns
+    // one complete row, unlike the smaller overview cards above them.
+    return Column(
       key: const ValueKey('desktop-insights-findings-grid'),
-      builder: (context, constraints) {
-        const gap = ButlerlySpacing.cardGap;
-        final columns = constraints.maxWidth >= 900 ? 2 : 1;
-        final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
-        return Wrap(
-          spacing: gap,
-          runSpacing: gap,
-          children: [
-            for (final card in cards) SizedBox(width: width, child: card),
-          ],
-        );
-      },
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: _withGroupedInsightCardSpacing(cards),
     );
   }
 }
