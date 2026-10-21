@@ -1,7 +1,9 @@
+import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_compact_section_selector.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_desktop_transaction_table.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_button.dart';
@@ -479,6 +481,12 @@ class _ReviewPageState extends State<ReviewPage> {
 
   @override
   Widget build(BuildContext context) {
+    final desktop =
+        effectiveButlerlyLayoutMode(
+          context,
+          MediaQuery.sizeOf(context).width,
+        ) ==
+        ButlerlyLayoutMode.wide;
     if (_finance == null) {
       return ButlerlyEmptyState(
         icon: Icons.fact_check_outlined,
@@ -490,6 +498,7 @@ class _ReviewPageState extends State<ReviewPage> {
       return ButlerlyPage(
         title: context.l10n.text('review'),
         pinnedSpacing: ButlerlyPinnedPageSpacing.primary,
+        fullWidth: desktop,
         children: [
           ButlerlyEmptyState(
             icon: Icons.error_outline_rounded,
@@ -504,6 +513,7 @@ class _ReviewPageState extends State<ReviewPage> {
       onRefresh: _pullToRefresh,
       refreshKey: ValueKey('review-pull-to-refresh-${_view.name}'),
       pinnedSpacing: ButlerlyPinnedPageSpacing.primary,
+      fullWidth: desktop,
       pinnedHeader: _hasReviewScope && !widget.showReviewOverview
           ? null
           : FutureBuilder<List<DuplicateCandidateGroup>>(
@@ -605,35 +615,57 @@ class _ReviewPageState extends State<ReviewPage> {
               }
               return FutureBuilder<TransactionMasterDataSnapshot>(
                 future: _masterData,
-                builder: (context, masterSnapshot) => TransactionRecordList(
-                  transactions: values,
-                  masterData:
-                      masterSnapshot.data?.presentation ??
-                      const TransactionMasterData(),
-                  paymentSourceNames: {
-                    for (final source
-                        in masterSnapshot.data?.paymentSources ??
-                            <PaymentSource>[])
-                      source.id.value: source.name,
-                  },
-                  groupByFinancialDate: true,
-                  collapsibleMonthSections: true,
-                  monthSectionsAsCards: true,
-                  dashboardRowStyle: true,
-                  missingCategoryLabel: context.l10n.text('uncategorized'),
-                  supportingContentBuilder: (context, transaction) => Text(
-                    context.l10n.text(
-                      transaction.subcategoryId == null
-                          ? 'classificationMissing'
-                          : 'categoryMissing',
-                    ),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: context.colors.secondaryText,
-                    ),
-                  ),
-                  onTap: _openUncategorized,
-                  navigates: true,
-                ),
+                builder: (context, masterSnapshot) => desktop
+                    ? ButlerlyDesktopTransactionSection(
+                        title: context.l10n.text('uncategorized'),
+                        transactions: values,
+                        masterData:
+                            masterSnapshot.data?.presentation ??
+                            const TransactionMasterData(),
+                        paymentSourceNames: {
+                          for (final source
+                              in masterSnapshot.data?.paymentSources ??
+                                  <PaymentSource>[])
+                            source.id.value: source.name,
+                        },
+                        missingCategoryLabel: context.l10n.text(
+                          'uncategorized',
+                        ),
+                        onTap: _openUncategorized,
+                      )
+                    : TransactionRecordList(
+                        transactions: values,
+                        masterData:
+                            masterSnapshot.data?.presentation ??
+                            const TransactionMasterData(),
+                        paymentSourceNames: {
+                          for (final source
+                              in masterSnapshot.data?.paymentSources ??
+                                  <PaymentSource>[])
+                            source.id.value: source.name,
+                        },
+                        groupByFinancialDate: true,
+                        collapsibleMonthSections: true,
+                        monthSectionsAsCards: true,
+                        dashboardRowStyle: true,
+                        missingCategoryLabel: context.l10n.text(
+                          'uncategorized',
+                        ),
+                        supportingContentBuilder: (context, transaction) =>
+                            Text(
+                              context.l10n.text(
+                                transaction.subcategoryId == null
+                                    ? 'classificationMissing'
+                                    : 'categoryMissing',
+                              ),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: context.colors.secondaryText,
+                                  ),
+                            ),
+                        onTap: _openUncategorized,
+                        navigates: true,
+                      ),
               );
             },
           )
@@ -729,64 +761,88 @@ class _ReviewPageState extends State<ReviewPage> {
                       if (items.isNotEmpty)
                         FutureBuilder<TransactionMasterDataSnapshot>(
                           future: _masterData,
-                          builder: (context, masterSnapshot) =>
-                              TransactionRecordList(
-                                transactions: items
-                                    .map((entry) => entry.transaction)
-                                    .toList(),
-                                masterData:
-                                    masterSnapshot.data?.presentation ??
-                                    const TransactionMasterData(),
-                                paymentSourceNames: {
-                                  for (final source
-                                      in masterSnapshot.data?.paymentSources ??
-                                          <PaymentSource>[])
-                                    source.id.value: source.name,
-                                },
-                                groupByFinancialDate: true,
-                                collapsibleMonthSections: true,
-                                monthSectionsAsCards: true,
-                                dashboardRowStyle: true,
-                                missingCategoryLabel: context.l10n.text(
-                                  'uncategorized',
-                                ),
-                                supportingContentBuilder:
-                                    (context, transaction) {
-                                      final item =
-                                          byId[transaction.id]!.items.first;
-                                      return Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          ExcludeSemantics(
-                                            child: Icon(
-                                              Icons.warning_amber_rounded,
-                                              size:
-                                                  ButlerlyTransactionItemTokens
-                                                      .warningIconSize,
-                                              color: context
-                                                  .transactionItemWarningIcon,
-                                            ),
-                                          ),
-                                          const SizedBox(
-                                            width: ButlerlySpacing.micro,
-                                          ),
-                                          Expanded(
-                                            child: Text(
-                                              _localizedReviewDetail(
-                                                item,
-                                                context,
+                          builder: (context, masterSnapshot) => desktop
+                              ? ButlerlyDesktopTransactionSection(
+                                  title: context.l10n.text('needsReview'),
+                                  transactions: items
+                                      .map((entry) => entry.transaction)
+                                      .toList(),
+                                  masterData:
+                                      masterSnapshot.data?.presentation ??
+                                      const TransactionMasterData(),
+                                  paymentSourceNames: {
+                                    for (final source
+                                        in masterSnapshot
+                                                .data
+                                                ?.paymentSources ??
+                                            <PaymentSource>[])
+                                      source.id.value: source.name,
+                                  },
+                                  missingCategoryLabel: context.l10n.text(
+                                    'uncategorized',
+                                  ),
+                                  onTap: (transaction) =>
+                                      _openReview(byId[transaction.id]!),
+                                )
+                              : TransactionRecordList(
+                                  transactions: items
+                                      .map((entry) => entry.transaction)
+                                      .toList(),
+                                  masterData:
+                                      masterSnapshot.data?.presentation ??
+                                      const TransactionMasterData(),
+                                  paymentSourceNames: {
+                                    for (final source
+                                        in masterSnapshot
+                                                .data
+                                                ?.paymentSources ??
+                                            <PaymentSource>[])
+                                      source.id.value: source.name,
+                                  },
+                                  groupByFinancialDate: true,
+                                  collapsibleMonthSections: true,
+                                  monthSectionsAsCards: true,
+                                  dashboardRowStyle: true,
+                                  missingCategoryLabel: context.l10n.text(
+                                    'uncategorized',
+                                  ),
+                                  supportingContentBuilder:
+                                      (context, transaction) {
+                                        final item =
+                                            byId[transaction.id]!.items.first;
+                                        return Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            ExcludeSemantics(
+                                              child: Icon(
+                                                Icons.warning_amber_rounded,
+                                                size:
+                                                    ButlerlyTransactionItemTokens
+                                                        .warningIconSize,
+                                                color: context
+                                                    .transactionItemWarningIcon,
                                               ),
-                                              style: context
-                                                  .transactionItemMetadata,
                                             ),
-                                          ),
-                                        ],
-                                      );
-                                    },
-                                onTap: (transaction) =>
-                                    _openReview(byId[transaction.id]!),
-                              ),
+                                            const SizedBox(
+                                              width: ButlerlySpacing.micro,
+                                            ),
+                                            Expanded(
+                                              child: Text(
+                                                _localizedReviewDetail(
+                                                  item,
+                                                  context,
+                                                ),
+                                                style: context
+                                                    .transactionItemMetadata,
+                                              ),
+                                            ),
+                                          ],
+                                        );
+                                      },
+                                  onTap: (transaction) =>
+                                      _openReview(byId[transaction.id]!),
+                                ),
                         ),
                     ],
                   );
@@ -1148,45 +1204,69 @@ class _StatementDuplicateGroupCardState
                           context.l10n.text('existingTransactionFound'),
                           style: Theme.of(context).textTheme.titleSmall,
                         ),
-                        RadioGroup<TransactionId>(
-                          groupValue: _selectedTransactionId,
-                          onChanged: (id) =>
-                              setState(() => _selectedTransactionId = id),
-                          child: ButlerlyTransactionList(
-                            children: [
-                              for (final transaction in transactions)
-                                TransactionRow(
-                                  transaction: transaction,
-                                  masterData: masterData.presentation,
-                                  paymentSourceNames: {
-                                    for (final source
-                                        in masterData.paymentSources)
-                                      source.id.value: source.name,
-                                  },
-                                  showDate: true,
-                                  supportingContent:
-                                      transaction.provenance.isEmpty
-                                      ? null
-                                      : Text(
-                                          _transactionEvidenceLabel(
-                                            context,
-                                            transaction,
+                        if (effectiveButlerlyLayoutMode(
+                              context,
+                              MediaQuery.sizeOf(context).width,
+                            ) ==
+                            ButlerlyLayoutMode.wide)
+                          ButlerlyDesktopTransactionTableCard(
+                            transactions: transactions,
+                            masterData: masterData.presentation,
+                            paymentSourceNames: {
+                              for (final source in masterData.paymentSources)
+                                source.id.value: source.name,
+                            },
+                            onTap: (transaction) => setState(
+                              () => _selectedTransactionId = TransactionId(
+                                transaction.id,
+                              ),
+                            ),
+                            selectedTransactionId:
+                                _selectedTransactionId?.value,
+                            onSelectionChanged: (id) => setState(
+                              () => _selectedTransactionId = TransactionId(id),
+                            ),
+                          )
+                        else
+                          RadioGroup<TransactionId>(
+                            groupValue: _selectedTransactionId,
+                            onChanged: (id) =>
+                                setState(() => _selectedTransactionId = id),
+                            child: ButlerlyTransactionList(
+                              children: [
+                                for (final transaction in transactions)
+                                  TransactionRow(
+                                    transaction: transaction,
+                                    masterData: masterData.presentation,
+                                    paymentSourceNames: {
+                                      for (final source
+                                          in masterData.paymentSources)
+                                        source.id.value: source.name,
+                                    },
+                                    showDate: true,
+                                    supportingContent:
+                                        transaction.provenance.isEmpty
+                                        ? null
+                                        : Text(
+                                            _transactionEvidenceLabel(
+                                              context,
+                                              transaction,
+                                            ),
+                                            style:
+                                                context.transactionItemMetadata,
                                           ),
-                                          style:
-                                              context.transactionItemMetadata,
-                                        ),
-                                  selectionControl:
-                                      ButlerlyTransactionSelectionControl<
-                                        TransactionId
-                                      >(value: TransactionId(transaction.id)),
-                                  onTap: () => setState(
-                                    () => _selectedTransactionId =
-                                        TransactionId(transaction.id),
+                                    selectionControl:
+                                        ButlerlyTransactionSelectionControl<
+                                          TransactionId
+                                        >(value: TransactionId(transaction.id)),
+                                    onTap: () => setState(
+                                      () => _selectedTransactionId =
+                                          TransactionId(transaction.id),
+                                    ),
                                   ),
-                                ),
-                            ],
+                              ],
+                            ),
                           ),
-                        ),
                       ],
                     ],
                   );
@@ -1353,6 +1433,32 @@ class _DuplicateGroupCardState extends State<_DuplicateGroupCard> {
                 builder: (context, snapshot) {
                   final transactions = snapshot.data?.$1 ?? const [];
                   final masterData = snapshot.data?.$2;
+                  if (effectiveButlerlyLayoutMode(
+                        context,
+                        MediaQuery.sizeOf(context).width,
+                      ) ==
+                      ButlerlyLayoutMode.wide) {
+                    return ButlerlyDesktopTransactionTableCard(
+                      transactions: transactions,
+                      masterData:
+                          masterData?.presentation ??
+                          const TransactionMasterData(),
+                      paymentSourceNames: {
+                        for (final source
+                            in masterData?.paymentSources ?? <PaymentSource>[])
+                          source.id.value: source.name,
+                      },
+                      onTap: (transaction) => setState(
+                        () => _selectedTransactionId = TransactionId(
+                          transaction.id,
+                        ),
+                      ),
+                      selectedTransactionId: _selectedTransactionId?.value,
+                      onSelectionChanged: (id) => setState(
+                        () => _selectedTransactionId = TransactionId(id),
+                      ),
+                    );
+                  }
                   return RadioGroup<TransactionId>(
                     groupValue: _selectedTransactionId,
                     onChanged: (id) =>

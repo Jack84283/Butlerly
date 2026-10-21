@@ -83,6 +83,8 @@ class AppLocalizations {
       'more': 'More',
       'moreCompact': 'More',
       'masterData': 'Master data',
+      'masterDataTableDetails': 'Details',
+      'masterDataTableActions': 'Actions',
       'masterDataSubtitle':
           'Manage categories, subcategories, tags, and merchants.',
       'categories': 'Categories',
@@ -958,6 +960,8 @@ class AppLocalizations {
       'more': '更多',
       'moreCompact': '更多',
       'masterData': '主数据',
+      'masterDataTableDetails': '详情',
+      'masterDataTableActions': '操作',
       'masterDataSubtitle': '管理类别、子类别、标签和商户。',
       'categories': '类别',
       'subcategories': '子类别',
@@ -1723,6 +1727,8 @@ class AppLocalizations {
       'more': 'Más',
       'moreCompact': 'Más',
       'masterData': 'Datos maestros',
+      'masterDataTableDetails': 'Detalles',
+      'masterDataTableActions': 'Acciones',
       'masterDataSubtitle':
           'Administra categorías, subcategorías, etiquetas y comercios.',
       'categories': 'Categorías',

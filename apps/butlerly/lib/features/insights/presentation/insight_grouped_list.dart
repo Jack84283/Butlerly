@@ -111,6 +111,7 @@ class InsightGroupedList extends StatelessWidget {
     required this.masterData,
     required this.canViewTransactions,
     required this.onViewTransactions,
+    this.desktopGrid = false,
   });
 
   final List<InsightResult> results;
@@ -118,6 +119,7 @@ class InsightGroupedList extends StatelessWidget {
   final TransactionMasterData masterData;
   final bool Function(InsightResult) canViewTransactions;
   final ValueChanged<InsightResult> onViewTransactions;
+  final bool desktopGrid;
 
   @override
   Widget build(BuildContext context) {
@@ -147,79 +149,99 @@ class InsightGroupedList extends StatelessWidget {
           .add(result);
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: _withGroupedInsightCardSpacing([
-        for (final group in insightPresentationGroupOrder)
-          if (grouped[group] case final items? when items.isNotEmpty)
-            ButlerlyCard(
-              semanticLabel: _groupTitle(context, group, items),
-              padding: EdgeInsets.zero,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      ButlerlySpacing.cardPadding,
-                      ButlerlySpacing.cardPadding,
-                      ButlerlySpacing.cardPadding,
-                      0,
-                    ),
-                    child: ButlerlyCardHeader(
-                      title: _groupTitle(context, group, items),
-                      subtitle: _groupSubtitle(context, group, items),
-                    ),
+    final cards = <Widget>[
+      for (final group in insightPresentationGroupOrder)
+        if (grouped[group] case final items? when items.isNotEmpty)
+          ButlerlyCard(
+            semanticLabel: _groupTitle(context, group, items),
+            padding: EdgeInsets.zero,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    ButlerlySpacing.cardPadding,
+                    ButlerlySpacing.cardPadding,
+                    ButlerlySpacing.cardPadding,
+                    0,
                   ),
-                  if (groupedVisualizations[group] case final chartResults?
-                      when chartResults.isNotEmpty) ...[
-                    const SizedBox(height: ButlerlySpacing.standard),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: ButlerlySpacing.cardPadding,
-                      ),
-                      child: InsightGroupVisualizations(
-                        results: chartResults,
-                        masterData: masterData,
-                        embedded: true,
-                      ),
+                  child: ButlerlyCardHeader(
+                    title: _groupTitle(context, group, items),
+                    subtitle: _groupSubtitle(context, group, items),
+                  ),
+                ),
+                if (groupedVisualizations[group] case final chartResults?
+                    when chartResults.isNotEmpty) ...[
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: ButlerlySpacing.cardPadding,
                     ),
-                  ],
-                  const SizedBox(height: ButlerlySpacing.compact),
-                  ButlerlyInsetTransactionCard(
-                    bottomInset: context.designTokens.geometry.innerCardGutter,
-                    child: ButlerlyTransactionList(
-                      children: [
-                        for (var index = 0; index < items.length; index++) ...[
-                          Builder(
-                            builder: (context) {
-                              final item = items[index];
-                              final escalation = item.escalation;
-                              final drillDownInsight =
-                                  escalation != null &&
-                                      canViewTransactions(escalation)
-                                  ? escalation
-                                  : item.primary;
-                              return _InsightItem(
-                                insight: item.primary,
-                                escalation: escalation,
-                                drillDownInsight: drillDownInsight,
-                                masterData: masterData,
-                                showRuleCopy: !_groupOwnsRuleCopy(group, items),
-                                onViewTransactions:
-                                    canViewTransactions(drillDownInsight)
-                                    ? () => onViewTransactions(drillDownInsight)
-                                    : null,
-                              );
-                            },
-                          ),
-                        ],
-                      ],
+                    child: InsightGroupVisualizations(
+                      results: chartResults,
+                      masterData: masterData,
+                      embedded: true,
                     ),
                   ),
                 ],
-              ),
+                const SizedBox(height: ButlerlySpacing.compact),
+                ButlerlyInsetTransactionCard(
+                  bottomInset: context.designTokens.geometry.innerCardGutter,
+                  child: ButlerlyTransactionList(
+                    children: [
+                      for (var index = 0; index < items.length; index++) ...[
+                        Builder(
+                          builder: (context) {
+                            final item = items[index];
+                            final escalation = item.escalation;
+                            final drillDownInsight =
+                                escalation != null &&
+                                    canViewTransactions(escalation)
+                                ? escalation
+                                : item.primary;
+                            return _InsightItem(
+                              insight: item.primary,
+                              escalation: escalation,
+                              drillDownInsight: drillDownInsight,
+                              masterData: masterData,
+                              showRuleCopy: !_groupOwnsRuleCopy(group, items),
+                              onViewTransactions:
+                                  canViewTransactions(drillDownInsight)
+                                  ? () => onViewTransactions(drillDownInsight)
+                                  : null,
+                            );
+                          },
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
             ),
-      ]),
+          ),
+    ];
+
+    if (!desktopGrid) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: _withGroupedInsightCardSpacing(cards),
+      );
+    }
+
+    return LayoutBuilder(
+      key: const ValueKey('desktop-insights-findings-grid'),
+      builder: (context, constraints) {
+        const gap = ButlerlySpacing.cardGap;
+        final columns = constraints.maxWidth >= 900 ? 2 : 1;
+        final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            for (final card in cards) SizedBox(width: width, child: card),
+          ],
+        );
+      },
     );
   }
 }

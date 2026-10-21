@@ -161,6 +161,8 @@ class ButlerlyDesktopTransactionTableCard extends StatelessWidget {
     this.paymentSourceNames = const {},
     this.missingCategoryLabel,
     this.emptyMessage,
+    this.selectedTransactionId,
+    this.onSelectionChanged,
     super.key,
   });
 
@@ -170,6 +172,8 @@ class ButlerlyDesktopTransactionTableCard extends StatelessWidget {
   final String? missingCategoryLabel;
   final String? emptyMessage;
   final ValueChanged<TransactionDto> onTap;
+  final String? selectedTransactionId;
+  final ValueChanged<String>? onSelectionChanged;
 
   @override
   Widget build(BuildContext context) => SizedBox(
@@ -182,6 +186,8 @@ class ButlerlyDesktopTransactionTableCard extends StatelessWidget {
         missingCategoryLabel: missingCategoryLabel,
         emptyMessage: emptyMessage,
         onTap: onTap,
+        selectedTransactionId: selectedTransactionId,
+        onSelectionChanged: onSelectionChanged,
       ),
     ),
   );
@@ -203,6 +209,8 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
     this.paymentSourceNames = const {},
     this.missingCategoryLabel,
     this.emptyMessage,
+    this.selectedTransactionId,
+    this.onSelectionChanged,
     super.key,
   });
 
@@ -212,9 +220,12 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
   final String? missingCategoryLabel;
   final String? emptyMessage;
   final ValueChanged<TransactionDto> onTap;
+  final String? selectedTransactionId;
+  final ValueChanged<String>? onSelectionChanged;
 
   /// Minimum width needed to keep all six desktop columns readable.
   static const double minimumTableWidth = 760;
+  static const double selectionColumnWidth = 52;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -225,13 +236,24 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
         // The table's text must not depend on the host page's inherited style.
         style: (Theme.of(context).textTheme.bodyMedium ?? const TextStyle())
             .copyWith(color: context.colors.primaryText),
-        child: _buildTable(context),
+        child: onSelectionChanged == null
+            ? _buildTable(context)
+            : RadioGroup<String>(
+                groupValue: selectedTransactionId,
+                onChanged: (value) {
+                  if (value != null) onSelectionChanged!(value);
+                },
+                child: _buildTable(context),
+              ),
       );
-      if (constraints.maxWidth >= minimumTableWidth) return table;
+      final minimumWidth =
+          minimumTableWidth +
+          (onSelectionChanged == null ? 0 : selectionColumnWidth);
+      if (constraints.maxWidth >= minimumWidth) return table;
       return SingleChildScrollView(
         key: const ValueKey('desktop-transaction-table-horizontal-scroll'),
         scrollDirection: Axis.horizontal,
-        child: SizedBox(width: minimumTableWidth, child: table),
+        child: SizedBox(width: minimumWidth, child: table),
       );
     },
   );
@@ -242,6 +264,8 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
     children: [
       Row(
         children: [
+          if (onSelectionChanged != null)
+            const SizedBox(width: selectionColumnWidth),
           SizedBox(width: 100, child: _header(context, 'date')),
           Expanded(flex: 3, child: _header(context, 'merchant')),
           Expanded(flex: 2, child: _header(context, 'category')),
@@ -322,6 +346,14 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
           ),
           child: Row(
             children: [
+              if (onSelectionChanged != null)
+                SizedBox(
+                  width: selectionColumnWidth,
+                  child: Radio<String>(
+                    key: ValueKey('duplicate-select-${transaction.id}'),
+                    value: transaction.id,
+                  ),
+                ),
               SizedBox(
                 width: 100,
                 child: _rowText(context, _date(context, transaction)),

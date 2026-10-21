@@ -1,3 +1,4 @@
+import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
@@ -474,75 +475,85 @@ class _AnalysisPageState extends State<AnalysisPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: FutureBuilder<ApplicationResult<List<RuleExecutionResult>>>(
-      future: _result,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return ButlerlyPage(
-            title: context.l10n.text('analysis'),
+  Widget build(BuildContext context) {
+    final desktop =
+        effectiveButlerlyLayoutMode(
+          context,
+          MediaQuery.sizeOf(context).width,
+        ) ==
+        ButlerlyLayoutMode.wide;
+    return Scaffold(
+      body: FutureBuilder<ApplicationResult<List<RuleExecutionResult>>>(
+        future: _result,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return ButlerlyPage(
+              title: context.l10n.text('analysis'),
+              fullWidth: desktop,
+              onRefresh: _refresh,
+              refreshKey: const ValueKey('analysis-pull-to-refresh'),
+              children: const [AnalysisSkeleton()],
+            );
+          }
+          final result = snapshot.data;
+          if (result is! ApplicationSuccess<List<RuleExecutionResult>>) {
+            return ButlerlyPage(
+              title: context.l10n.text('analysis'),
+              fullWidth: desktop,
+              onRefresh: _refresh,
+              refreshKey: const ValueKey('analysis-pull-to-refresh'),
+              children: [
+                ButlerlyErrorState(
+                  title: context.l10n.text('analysisUnavailable'),
+                  message: context.l10n.text('analysisUnavailableBody'),
+                  preserved: context.l10n.text('dataPreserved'),
+                  actionLabel: context.l10n.text('tryAgain'),
+                  onAction: _refresh,
+                ),
+              ],
+            );
+          }
+          final analysisContext =
+              _context ??
+              result.value
+                  .map((r) => r.metric?.context ?? r.finding?.context)
+                  .whereType<AnalysisContext>()
+                  .firstOrNull;
+          _calendar ??= analysisContext == null
+              ? _loadCalendarForTestOnly()
+              : _loadCalendar(analysisContext);
+          return _AnalysisContent(
+            results: result.value,
+            analysisContext: analysisContext,
+            period: _period,
+            masterData: _masterData,
+            onNavigationRequested: widget.onNavigationRequested,
+            calendar: _calendar,
+            selectedDate: _selectedDate,
+            transactions: _transactions,
+            recurringPatterns: _recurringPatternsEnabled
+                ? _recurringPatterns
+                : null,
+            onConfirmRecurringPattern: _confirmRecurringPattern,
+            onRejectRecurringPattern: _rejectRecurringPattern,
+            onCorrectRecurringPattern: _correctRecurringPattern,
+            canPreviousMonth: analysisContext == null
+                ? false
+                : _canChangeCalendarMonth(analysisContext, previous: true),
+            canNextMonth: analysisContext == null
+                ? false
+                : _canChangeCalendarMonth(analysisContext, previous: false),
+            onMonthChanged: _selectCalendarMonth,
+            onTransactionRequested:
+                widget.onTransactionRequested ?? _openTransactionDetail,
+            onPeriodChanged: _selectPeriod,
             onRefresh: _refresh,
-            refreshKey: const ValueKey('analysis-pull-to-refresh'),
-            children: const [AnalysisSkeleton()],
+            onSelectDate: _selectDate,
           );
-        }
-        final result = snapshot.data;
-        if (result is! ApplicationSuccess<List<RuleExecutionResult>>) {
-          return ButlerlyPage(
-            title: context.l10n.text('analysis'),
-            onRefresh: _refresh,
-            refreshKey: const ValueKey('analysis-pull-to-refresh'),
-            children: [
-              ButlerlyErrorState(
-                title: context.l10n.text('analysisUnavailable'),
-                message: context.l10n.text('analysisUnavailableBody'),
-                preserved: context.l10n.text('dataPreserved'),
-                actionLabel: context.l10n.text('tryAgain'),
-                onAction: _refresh,
-              ),
-            ],
-          );
-        }
-        final analysisContext =
-            _context ??
-            result.value
-                .map((r) => r.metric?.context ?? r.finding?.context)
-                .whereType<AnalysisContext>()
-                .firstOrNull;
-        _calendar ??= analysisContext == null
-            ? _loadCalendarForTestOnly()
-            : _loadCalendar(analysisContext);
-        return _AnalysisContent(
-          results: result.value,
-          analysisContext: analysisContext,
-          period: _period,
-          masterData: _masterData,
-          onNavigationRequested: widget.onNavigationRequested,
-          calendar: _calendar,
-          selectedDate: _selectedDate,
-          transactions: _transactions,
-          recurringPatterns: _recurringPatternsEnabled
-              ? _recurringPatterns
-              : null,
-          onConfirmRecurringPattern: _confirmRecurringPattern,
-          onRejectRecurringPattern: _rejectRecurringPattern,
-          onCorrectRecurringPattern: _correctRecurringPattern,
-          canPreviousMonth: analysisContext == null
-              ? false
-              : _canChangeCalendarMonth(analysisContext, previous: true),
-          canNextMonth: analysisContext == null
-              ? false
-              : _canChangeCalendarMonth(analysisContext, previous: false),
-          onMonthChanged: _selectCalendarMonth,
-          onTransactionRequested:
-              widget.onTransactionRequested ?? _openTransactionDetail,
-          onPeriodChanged: _selectPeriod,
-          onRefresh: _refresh,
-          onSelectDate: _selectDate,
-        );
-      },
-    ),
-  );
+        },
+      ),
+    );
+  }
 
   Future<ApplicationResult<AnalysisCalendarResult>>?
   _loadCalendarForTestOnly() {
@@ -612,6 +623,64 @@ class _AnalysisContent extends StatelessWidget {
       period,
       analysisContext?.period,
     );
+    final desktop =
+        effectiveButlerlyLayoutMode(
+          context,
+          MediaQuery.sizeOf(context).width,
+        ) ==
+        ButlerlyLayoutMode.wide;
+    final spendingCard = AnalysisSpendingBreakdown(
+      model: model,
+      masterData: masterData,
+      onCategoryTap: analysisContext == null
+          ? null
+          : (metric) => _openAnalysisSearch(
+              context,
+              metric: metric,
+              transactionIds: _metricTransactionIds(metric),
+            ),
+      onViewAll: analysisContext != null && model.categories.length > 5
+          ? () => _openAnalysisSearch(
+              context,
+              selectionContext: analysisContext!,
+              ruleId: model.categories.first.rule.identity.value,
+              transactionIds: _evidenceTransactionIds(
+                model.categories.expand((metric) => metric.evidence),
+              ),
+            )
+          : null,
+    );
+
+    final merchantCard = model.merchants.isEmpty
+        ? null
+        : AnalysisMerchantBreakdown(
+            fillToFiveRows: desktop,
+            model: model,
+            masterData: masterData,
+            onMetricTap: (metric) {
+              _openAnalysisSearch(
+                context,
+                metric: metric,
+                transactionIds: _metricTransactionIds(metric),
+              );
+            },
+          );
+
+    final subcategoryCard = model.subcategories.isEmpty
+        ? null
+        : AnalysisSubcategoryBreakdown(
+            fillToFiveRows: desktop,
+            model: model,
+            masterData: masterData,
+            onMetricTap: (metric) {
+              _openAnalysisSearch(
+                context,
+                metric: metric,
+                transactionIds: _metricTransactionIds(metric),
+              );
+            },
+          );
+
     return ButlerlyPage(
       title: context.l10n.text('analysis'),
       onRefresh: onRefresh,
@@ -623,51 +692,28 @@ class _AnalysisContent extends StatelessWidget {
         value: period,
         onChanged: onPeriodChanged,
       ),
+      fullWidth: desktop,
       children: _withAnalysisCardSpacing([
-        AnalysisSummary(model: model),
-        AnalysisSpendingBreakdown(
-          model: model,
-          masterData: masterData,
-          onCategoryTap: analysisContext == null
-              ? null
-              : (metric) => _openAnalysisSearch(
-                  context,
-                  metric: metric,
-                  transactionIds: _metricTransactionIds(metric),
-                ),
-          onViewAll: analysisContext != null && model.categories.length > 5
-              ? () => _openAnalysisSearch(
-                  context,
-                  selectionContext: analysisContext!,
-                  ruleId: model.categories.first.rule.identity.value,
-                  transactionIds: _evidenceTransactionIds(
-                    model.categories.expand((metric) => metric.evidence),
-                  ),
-                )
-              : null,
-        ),
-        AnalysisMerchantBreakdown(
-          model: model,
-          masterData: masterData,
-          onMetricTap: (metric) {
-            _openAnalysisSearch(
-              context,
-              metric: metric,
-              transactionIds: _metricTransactionIds(metric),
-            );
-          },
-        ),
-        AnalysisSubcategoryBreakdown(
-          model: model,
-          masterData: masterData,
-          onMetricTap: (metric) {
-            _openAnalysisSearch(
-              context,
-              metric: metric,
-              transactionIds: _metricTransactionIds(metric),
-            );
-          },
-        ),
+        if (desktop) ...[
+          _AnalysisDesktopCardPair(
+            first: AnalysisSummary(model: model),
+            second: spendingCard,
+          ),
+          if (merchantCard != null && subcategoryCard != null)
+            _AnalysisDesktopCardPair(
+              first: merchantCard,
+              second: subcategoryCard,
+            )
+          else ...[
+            ?merchantCard,
+            ?subcategoryCard,
+          ],
+        ] else ...[
+          AnalysisSummary(model: model),
+          spendingCard,
+          ?merchantCard,
+          ?subcategoryCard,
+        ],
         if (recurringPatterns != null)
           AnalysisRecurringPatterns(
             patterns: recurringPatterns!,
@@ -792,6 +838,41 @@ class _AnalysisContent extends StatelessWidget {
 
   List<String> _evidenceTransactionIds(Iterable<EvidenceReference> evidence) =>
       evidence.map((value) => value.transactionId.value).toSet().toList();
+}
+
+/// Keep paired desktop Analysis cards equal-height without changing the
+/// single-column device layout. Stack them if the content width is too narrow.
+class _AnalysisDesktopCardPair extends StatelessWidget {
+  const _AnalysisDesktopCardPair({required this.first, required this.second});
+
+  final Widget first;
+  final Widget second;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      if (constraints.maxWidth < 820) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            first,
+            const SizedBox(height: ButlerlySpacing.cardGap),
+            second,
+          ],
+        );
+      }
+      // Avoid intrinsic measurement of charts and layout-builder children:
+      // those widgets cannot always report intrinsic heights.
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(child: first),
+          const SizedBox(width: ButlerlySpacing.cardGap),
+          Expanded(child: second),
+        ],
+      );
+    },
+  );
 }
 
 /// Match the consistent card-to-card separation used on the Home page.

@@ -1,3 +1,4 @@
+import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
@@ -281,59 +282,69 @@ class _InsightsPageState extends State<InsightsPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: FutureBuilder<ApplicationResult<InsightsEvaluation>>(
-      future: _result,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
-          return ButlerlyPage(
-            title: context.l10n.text('insights'),
+  Widget build(BuildContext context) {
+    final desktop =
+        effectiveButlerlyLayoutMode(
+          context,
+          MediaQuery.sizeOf(context).width,
+        ) ==
+        ButlerlyLayoutMode.wide;
+    return Scaffold(
+      body: FutureBuilder<ApplicationResult<InsightsEvaluation>>(
+        future: _result,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return ButlerlyPage(
+              title: context.l10n.text('insights'),
+              fullWidth: desktop,
+              onRefresh: _reload,
+              refreshKey: const ValueKey('insights-pull-to-refresh'),
+              children: const [Center(child: CircularProgressIndicator())],
+            );
+          }
+          final result = snapshot.data;
+          if (result is! ApplicationSuccess<InsightsEvaluation>) {
+            return ButlerlyPage(
+              title: context.l10n.text('insights'),
+              fullWidth: desktop,
+              onRefresh: _reload,
+              refreshKey: const ValueKey('insights-pull-to-refresh'),
+              children: [
+                ButlerlyErrorState(
+                  title: context.l10n.text('insightsUnavailable'),
+                  message: context.l10n.text('insightsUnavailableBody'),
+                  preserved: context.l10n.text('dataPreserved'),
+                  actionLabel: context.l10n.text('tryAgain'),
+                  onAction: _reload,
+                ),
+              ],
+            );
+          }
+          return _InsightsContent(
+            evaluation: result.value,
+            masterData: _presentation,
+            period: _period,
+            onPeriodChanged: (value) => value == 'selected_period'
+                ? _chooseCustomPeriod()
+                : _selectPeriod(value),
             onRefresh: _reload,
-            refreshKey: const ValueKey('insights-pull-to-refresh'),
-            children: const [Center(child: CircularProgressIndicator())],
+            onViewTransactions: (insight) {
+              if (!_hasPreciseDrillDown(insight)) return;
+              final path = Uri(
+                path: '/search',
+                queryParameters: _drillDownQueryParameters(insight),
+              ).toString();
+              if (widget.onNavigationRequested case final callback?) {
+                callback(path);
+              } else {
+                context.push(path);
+              }
+            },
           );
-        }
-        final result = snapshot.data;
-        if (result is! ApplicationSuccess<InsightsEvaluation>) {
-          return ButlerlyPage(
-            title: context.l10n.text('insights'),
-            onRefresh: _reload,
-            refreshKey: const ValueKey('insights-pull-to-refresh'),
-            children: [
-              ButlerlyErrorState(
-                title: context.l10n.text('insightsUnavailable'),
-                message: context.l10n.text('insightsUnavailableBody'),
-                preserved: context.l10n.text('dataPreserved'),
-                actionLabel: context.l10n.text('tryAgain'),
-                onAction: _reload,
-              ),
-            ],
-          );
-        }
-        return _InsightsContent(
-          evaluation: result.value,
-          masterData: _presentation,
-          period: _period,
-          onPeriodChanged: (value) => value == 'selected_period'
-              ? _chooseCustomPeriod()
-              : _selectPeriod(value),
-          onRefresh: _reload,
-          onViewTransactions: (insight) {
-            if (!_hasPreciseDrillDown(insight)) return;
-            final path = Uri(
-              path: '/search',
-              queryParameters: _drillDownQueryParameters(insight),
-            ).toString();
-            if (widget.onNavigationRequested case final callback?) {
-              callback(path);
-            } else {
-              context.push(path);
-            }
-          },
-        );
-      },
-    ),
-  );
+        },
+      ),
+    );
+  }
 }
 
 class _InsightsContent extends StatelessWidget {
@@ -376,11 +387,69 @@ class _InsightsContent extends StatelessWidget {
       period,
       evaluation.summary.context.period,
     );
+    final desktop =
+        effectiveButlerlyLayoutMode(
+          context,
+          MediaQuery.sizeOf(context).width,
+        ) ==
+        ButlerlyLayoutMode.wide;
+    final overviewCards = <Widget>[
+      _PeriodSummaryCard(summary: evaluation.summary),
+      if (summaryPieResults.isNotEmpty)
+        InsightGroupVisualizations(
+          results: summaryPieResults,
+          masterData: masterData,
+          externalTitle: true,
+          pieDensity: ButlerlyVisualizationDensity.regular,
+          pieLegendBelow: true,
+          pieValueLabel: (result) {
+            final shareText = result.currentValue?.toString();
+            final amount = result.impactValue;
+            if (amount == null) {
+              return shareText == null
+                  ? '—'
+                  : '${localizedDecimal(context, shareText)}%';
+            }
+            final currency = evaluation.summary.currency?.value ?? '';
+            return '${localizedDecimal(context, amount.toString())}${currency.isEmpty ? '' : ' $currency'}';
+          },
+        ),
+      if (evaluation.limitations.isNotEmpty)
+        ButlerlyCard(
+          semanticLabel: context.l10n.text('dataQualityLimitations'),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ButlerlyCardHeader(
+                title: context.l10n.text('dataQualityLimitations'),
+              ),
+              const SizedBox(height: ButlerlySpacing.standard),
+              ...evaluation.limitations
+                  .fold<Map<String, DataQualityIssue>>(
+                    {},
+                    (issues, issue) =>
+                        issues..putIfAbsent(issue.code, () => issue),
+                  )
+                  .values
+                  .map(
+                    (issue) => Padding(
+                      padding: const EdgeInsets.only(
+                        bottom: ButlerlySpacing.micro,
+                      ),
+                      child: Text(_qualityIssueText(context, issue.code)),
+                    ),
+                  ),
+            ],
+          ),
+        ),
+    ];
+
     return ButlerlyPage(
       title: context.l10n.text('insights'),
       onRefresh: onRefresh,
       refreshKey: const ValueKey('insights-pull-to-refresh'),
       pinnedSpacing: ButlerlyPinnedPageSpacing.tightHeader,
+      fullWidth: desktop,
       pinnedHeaderExtent: AnalysisPeriodPinnedHeader.extent(context, subtitle),
       pinnedHeader: AnalysisPeriodPinnedHeader(
         subtitle: subtitle,
@@ -388,56 +457,13 @@ class _InsightsContent extends StatelessWidget {
         onChanged: onPeriodChanged,
       ),
       children: _withInsightCardSpacing([
-        _PeriodSummaryCard(summary: evaluation.summary),
-        if (summaryPieResults.isNotEmpty)
-          InsightGroupVisualizations(
-            results: summaryPieResults,
-            masterData: masterData,
-            externalTitle: true,
-            pieDensity: ButlerlyVisualizationDensity.regular,
-            pieLegendBelow: true,
-            pieValueLabel: (result) {
-              final shareText = result.currentValue?.toString();
-              final amount = result.impactValue;
-              if (amount == null) {
-                return shareText == null
-                    ? '—'
-                    : '${localizedDecimal(context, shareText)}%';
-              }
-              final currency = evaluation.summary.currency?.value ?? '';
-              return '${localizedDecimal(context, amount.toString())}${currency.isEmpty ? '' : ' $currency'}';
-            },
-          ),
-        if (evaluation.limitations.isNotEmpty)
-          ButlerlyCard(
-            semanticLabel: context.l10n.text('dataQualityLimitations'),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ButlerlyCardHeader(
-                  title: context.l10n.text('dataQualityLimitations'),
-                ),
-                const SizedBox(height: ButlerlySpacing.standard),
-                ...evaluation.limitations
-                    .fold<Map<String, DataQualityIssue>>(
-                      {},
-                      (issues, issue) =>
-                          issues..putIfAbsent(issue.code, () => issue),
-                    )
-                    .values
-                    .map(
-                      (issue) => Padding(
-                        padding: const EdgeInsets.only(
-                          bottom: ButlerlySpacing.micro,
-                        ),
-                        child: Text(_qualityIssueText(context, issue.code)),
-                      ),
-                    ),
-              ],
-            ),
-          ),
+        if (desktop)
+          _InsightsDesktopCardGrid(cards: overviewCards)
+        else
+          ...overviewCards,
         if (activeFindings.isNotEmpty)
           InsightGroupedList(
+            desktopGrid: desktop,
             results: activeFindings,
             visualizationResults: evaluation.results,
             masterData: masterData,
@@ -459,6 +485,30 @@ class _InsightsContent extends StatelessWidget {
       ]),
     );
   }
+}
+
+/// Two cards per desktop row when each card can remain comfortably readable.
+class _InsightsDesktopCardGrid extends StatelessWidget {
+  const _InsightsDesktopCardGrid({required this.cards});
+
+  final List<Widget> cards;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    key: const ValueKey('desktop-insights-overview-grid'),
+    builder: (context, constraints) {
+      const gap = ButlerlySpacing.cardGap;
+      final columns = constraints.maxWidth >= 900 ? 2 : 1;
+      final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
+      return Wrap(
+        spacing: gap,
+        runSpacing: gap,
+        children: [
+          for (final card in cards) SizedBox(width: width, child: card),
+        ],
+      );
+    },
+  );
 }
 
 List<Widget> _withInsightCardSpacing(List<Widget> children) => [
