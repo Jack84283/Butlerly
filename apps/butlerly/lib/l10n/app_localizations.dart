@@ -129,12 +129,14 @@ class AppLocalizations {
       'rulePreviewMerchantText': 'Merchant text contains',
       'rulePreviewNoCondition': 'Choose a condition',
       'rulePreviewNoAction': 'Choose an action',
-      'rulePreviewReadOnly': 'Testing checks existing active transactions without changing them.',
+      'rulePreviewReadOnly':
+          'Testing checks existing active transactions without changing them.',
       'rulePreviewTest': 'Test rule',
       'rulePreviewMatchCount': 'Matching / checked transactions',
       'rulePreviewNoMatches': 'No matching transactions',
       'rulePreviewExamples': 'Examples (up to 5)',
-      'rulePreviewFailed': 'Unable to test this rule. No transactions were changed.',
+      'rulePreviewFailed':
+          'Unable to test this rule. No transactions were changed.',
       'ruleDescriptionContains': 'Description contains (optional)',
       'ruleCounterpartyContains': 'Merchant text contains (optional)',
       'ruleEnabled': 'Enabled',
@@ -1805,12 +1807,14 @@ class AppLocalizations {
       'rulePreviewMerchantText': 'El texto del comercio contiene',
       'rulePreviewNoCondition': 'Elige una condición',
       'rulePreviewNoAction': 'Elige una acción',
-      'rulePreviewReadOnly': 'La prueba revisa las transacciones activas existentes sin modificarlas.',
+      'rulePreviewReadOnly':
+          'La prueba revisa las transacciones activas existentes sin modificarlas.',
       'rulePreviewTest': 'Probar regla',
       'rulePreviewMatchCount': 'Transacciones coincidentes / revisadas',
       'rulePreviewNoMatches': 'No hay transacciones coincidentes',
       'rulePreviewExamples': 'Ejemplos (hasta 5)',
-      'rulePreviewFailed': 'No se pudo probar la regla. No se modificaron transacciones.',
+      'rulePreviewFailed':
+          'No se pudo probar la regla. No se modificaron transacciones.',
       'ruleDescriptionContains': 'La descripción contiene (opcional)',
       'ruleCounterpartyContains': 'El texto del comercio contiene (opcional)',
       'ruleEnabled': 'Activada',
