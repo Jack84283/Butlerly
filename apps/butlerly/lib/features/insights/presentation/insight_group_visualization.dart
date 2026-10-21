@@ -18,6 +18,7 @@ class InsightGroupVisualizations extends StatelessWidget {
     required this.masterData,
     this.embedded = false,
     this.externalTitle = false,
+    this.fillAvailableHeight = false,
     this.pieDensity = ButlerlyVisualizationDensity.compact,
     this.pieLegendBelow = false,
     this.pieEqualWidthColumns = false,
@@ -28,6 +29,10 @@ class InsightGroupVisualizations extends StatelessWidget {
   final TransactionMasterData masterData;
   final bool embedded;
   final bool externalTitle;
+
+  /// Stretch the single overview visualization card to a shared desktop row
+  /// height after its natural height has been measured.
+  final bool fillAvailableHeight;
   final ButlerlyVisualizationDensity pieDensity;
   final bool pieLegendBelow;
   final bool pieEqualWidthColumns;
@@ -134,6 +139,13 @@ class InsightGroupVisualizations extends StatelessWidget {
       );
     }
 
+    if (fillAvailableHeight && widgets.length == 1) {
+      return LayoutBuilder(
+        builder: (context, constraints) => constraints.hasBoundedHeight
+            ? SizedBox(height: constraints.maxHeight, child: widgets.single)
+            : widgets.single,
+      );
+    }
     return Column(children: widgets);
   }
 
