@@ -743,7 +743,7 @@ void main() {
   testWidgets(
     'merchant and subcategory rows retain subtitles and drill into exact evidence',
     (tester) async {
-      tester.view.physicalSize = const Size(1000, 1800);
+      tester.view.physicalSize = const Size(1400, 1800);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
@@ -1323,8 +1323,9 @@ void main() {
       find.byKey(const ValueKey('analysis-category-metric-category-4')),
       findsOneWidget,
     );
+    // Breakdown rows are sorted by spend: 6, 5, 4, 3 are the visible top four.
     expect(
-      find.byKey(const ValueKey('analysis-category-metric-category-5')),
+      find.byKey(const ValueKey('analysis-category-metric-category-2')),
       findsNothing,
     );
     final chart = find.byKey(const ValueKey('butlerly-donut-chart'));
