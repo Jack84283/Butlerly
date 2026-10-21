@@ -61,6 +61,36 @@ void main() {
     ),
   );
 
+  testWidgets('desktop always shows paired Category and Subcategory cards', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 1800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      app(() async => const ApplicationSuccess(<RuleExecutionResult>[])),
+    );
+    await tester.pumpAndSettle();
+
+    final category = find.byKey(
+      const ValueKey('analysis-category-breakdown-card'),
+    );
+    final subcategory = find.byKey(
+      const ValueKey('analysis-subcategory-breakdown-card'),
+    );
+    expect(category, findsOneWidget);
+    expect(subcategory, findsOneWidget);
+    expect(find.text('Top categories for the selected period'), findsOneWidget);
+    expect(
+      find.text('Top subcategories for the selected period'),
+      findsOneWidget,
+    );
+    expect(tester.getTopLeft(category).dy, tester.getTopLeft(subcategory).dy);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('does not show or load paused recurring patterns', (
     tester,
   ) async {
