@@ -200,6 +200,84 @@ void main() {
     expect(find.text('99.99 USD'), findsNothing);
   });
 
+  testWidgets('desktop Spending Concentration aligns donut and legend', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 1100);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final rule = _groupedRule(
+      presentation: const InsightPresentation(
+        semanticType: InsightSemanticType.neutral,
+        visualizationType: InsightVisualizationType.pie,
+        primaryMetric: InsightPrimaryMetric.share,
+      ),
+    );
+    final context = _context();
+    await tester.pumpWidget(
+      app(
+        (_) async => ApplicationSuccess(
+          InsightsEvaluation(
+            summary: PeriodSummary(
+              context: context,
+              expenseSpending: DecimalValue.parse('300'),
+              currency: CurrencyCode('USD'),
+              comparisonAvailable: false,
+            ),
+            results: [
+              for (final (dimension, value) in [
+                ('category.food', '100'),
+                ('category.housing', '200'),
+              ])
+                InsightResult(
+                  outputType: InsightOutputType.pattern,
+                  rule: rule,
+                  context: context,
+                  currentValue: DecimalValue.parse(value),
+                  impactValue: DecimalValue.parse(value),
+                  currency: CurrencyCode('USD'),
+                  dimension: dimension,
+                ),
+            ],
+            hasSufficientHistory: true,
+          ),
+        ),
+        masterData: const TransactionMasterData(
+          categoryNames: {
+            'category.food': 'Food',
+            'category.housing': 'Housing',
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final chartColumn = find.byKey(
+      const ValueKey('butlerly-donut-chart-column'),
+    );
+    final legendColumn = find.byKey(
+      const ValueKey('butlerly-donut-legend-column'),
+    );
+    final chart = find.byKey(const ValueKey('butlerly-donut-chart'));
+    expect(chartColumn, findsOneWidget);
+    expect(legendColumn, findsOneWidget);
+    expect(
+      tester.getSize(chartColumn).width,
+      closeTo(tester.getSize(legendColumn).width, 0.1),
+    );
+    expect(
+      tester.getTopLeft(legendColumn).dx,
+      greaterThan(tester.getTopRight(chart).dx),
+    );
+    expect(find.text('Food'), findsOneWidget);
+    expect(find.text('Housing'), findsOneWidget);
+    expect(find.text('100.00 USD'), findsOneWidget);
+    expect(find.text('200.00 USD'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('shows an R020 finding with its comparison values', (
     tester,
   ) async {
