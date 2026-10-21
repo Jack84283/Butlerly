@@ -514,6 +514,8 @@ class _InsightsDesktopCardGrid extends StatelessWidget {
           children: _withInsightCardSpacing(cards),
         );
       }
+      // intrinsicHeight measures the taller cell before stretching both;
+      // fill on both cells would leave the row with zero natural height.
       return Table(
         key: const ValueKey('desktop-insights-overview-equal-height'),
         columnWidths: const {
@@ -525,12 +527,12 @@ class _InsightsDesktopCardGrid extends StatelessWidget {
           TableRow(
             children: [
               TableCell(
-                verticalAlignment: TableCellVerticalAlignment.fill,
+                verticalAlignment: TableCellVerticalAlignment.intrinsicHeight,
                 child: cards[0],
               ),
               const SizedBox.shrink(),
               TableCell(
-                verticalAlignment: TableCellVerticalAlignment.fill,
+                verticalAlignment: TableCellVerticalAlignment.intrinsicHeight,
                 child: cards[1],
               ),
             ],
