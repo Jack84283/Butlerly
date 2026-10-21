@@ -51,6 +51,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Rules'), findsOneWidget);
+    expect(find.textContaining('Rules help you automatically organize'), findsOneWidget);
+    expect(find.textContaining('You can test a rule against existing transactions'), findsOneWidget);
     expect(find.text('Classify fuel'), findsOneWidget);
     expect(find.text('fuel\nCategory: Transport'), findsOneWidget);
 
@@ -69,6 +71,24 @@ void main() {
     await tester.tap(find.byType(Switch));
     await tester.pumpAndSettle();
     expect((await rules.listAll()).single.enabled, isTrue);
+  });
+
+  testWidgets('Rules introduction is localized in Chinese and Spanish', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      const _TestApp(locale: Locale('zh'), child: RulesPage()),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('规则可根据您设定的条件'), findsOneWidget);
+    expect(find.textContaining('保存规则前使用已有交易进行测试'), findsOneWidget);
+
+    await tester.pumpWidget(
+      const _TestApp(locale: Locale('es'), child: RulesPage()),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Las reglas te ayudan'), findsOneWidget);
+    expect(find.textContaining('Puedes probar una regla'), findsOneWidget);
   });
 
   testWidgets('rule list remains usable on a narrow phone', (tester) async {
@@ -360,8 +380,9 @@ void _expectNoFlutterError(WidgetTester tester) {
 }
 
 class _TestApp extends StatelessWidget {
-  const _TestApp({required this.child});
+  const _TestApp({required this.child, this.locale});
   final Widget child;
+  final Locale? locale;
 
   @override
   Widget build(BuildContext context) => MaterialApp(
@@ -372,6 +393,7 @@ class _TestApp extends StatelessWidget {
       GlobalCupertinoLocalizations.delegate,
     ],
     supportedLocales: AppLocalizations.supportedLocales,
+    locale: locale,
     home: Scaffold(body: child),
   );
 }
