@@ -444,9 +444,17 @@ void main() {
       );
       expect(englishHaidilao['name'], 'Haidilao');
       expect(englishHaidilao['normalized_name'], 'haidilao');
+      final chineseMcDonalds = merchants.singleWhere(
+        (row) => row['id'] == 'merchant.zh_mcdonalds',
+      );
+      final englishMcDonalds = merchants.singleWhere(
+        (row) => row['id'] == 'merchant.mcdonalds',
+      );
+      expect(chineseMcDonalds['name'], '麦当劳');
+      expect(englishMcDonalds['name'], "McDonald's");
       expect(
-        merchants.singleWhere((row) => row['id'] == 'merchant.zh_mcdonalds')['name'],
-        '麦当劳',
+        merchants.where((row) => (row['id'] as String).startsWith('merchant.zh_')),
+        hasLength(52),
       );
       final sfExpress = merchants.singleWhere(
         (row) => row['id'] == 'merchant.zh_sf_express',
