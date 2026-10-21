@@ -24,8 +24,11 @@ class AnalysisSubcategoryBreakdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (model.subcategories.isEmpty) return const SizedBox.shrink();
+    if (model.subcategories.isEmpty && !fillToFiveRows) {
+      return const SizedBox.shrink();
+    }
     return ButlerlyCard(
+      key: const ValueKey('analysis-subcategory-breakdown-card'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -34,6 +37,14 @@ class AnalysisSubcategoryBreakdown extends StatelessWidget {
             subtitle: context.l10n.text('analysisSubcategoryBreakdownSubtitle'),
           ),
           const SizedBox(height: ButlerlySpacing.small),
+          if (model.subcategories.isEmpty)
+            SizedBox(
+              height: 44,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(context.l10n.text('noSpendingInPeriod')),
+              ),
+            ),
           for (final metric in model.subcategories.take(5)) ...[
             if (metric != model.subcategories.first)
               const SizedBox(height: ButlerlySpacing.compact),
@@ -69,7 +80,9 @@ class AnalysisSubcategoryBreakdown extends StatelessWidget {
           ],
           if (fillToFiveRows)
             for (
-              var index = model.subcategories.length;
+              var index = model.subcategories.isEmpty
+                  ? 1
+                  : model.subcategories.length;
               index < 5;
               index++
             ) ...[
