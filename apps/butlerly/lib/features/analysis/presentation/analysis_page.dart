@@ -702,10 +702,10 @@ class _AnalysisContent extends StatelessWidget {
               metric.availability != AnalysisDataAvailability.sufficient,
         )
         .length;
-    // Only reserve the chart, header and padding at the minimum height.
-    // The optional View All action and unavailable details add their own room.
+    // Compact Summary and Spending share the smallest safe fixed row height.
+    // View All and unavailable details reserve only the room they need.
     final desktopSpendingHeight =
-        224.0 +
+        232.0 +
         (unavailableCategoryCount > 0
             ? 28.0 + unavailableCategoryCount * 28.0
             : 0.0) +
@@ -726,7 +726,7 @@ class _AnalysisContent extends StatelessWidget {
       children: _withAnalysisCardSpacing([
         if (desktop) ...[
           _AnalysisDesktopCardPair(
-            first: AnalysisSummary(model: model),
+            first: AnalysisSummary(model: model, compactDesktop: true),
             second: spendingCard,
             // Keep unavailable notes and View All clear of the donut legend.
             matchedHeight: desktopSpendingHeight,
