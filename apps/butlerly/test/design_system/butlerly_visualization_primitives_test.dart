@@ -230,15 +230,15 @@ void main() {
     );
     await tester.pumpWidget(app(donut(compactRows: false), width: 640));
     await tester.pumpAndSettle();
-    final standardHeight = tester.getSize(
-      find.byType(ButlerlyDonutVisualization),
-    ).height;
+    final standardHeight = tester
+        .getSize(find.byType(ButlerlyDonutVisualization))
+        .height;
 
     await tester.pumpWidget(app(donut(compactRows: true), width: 640));
     await tester.pumpAndSettle();
-    final compactHeight = tester.getSize(
-      find.byType(ButlerlyDonutVisualization),
-    ).height;
+    final compactHeight = tester
+        .getSize(find.byType(ButlerlyDonutVisualization))
+        .height;
 
     expect(compactHeight, lessThan(standardHeight));
     expect(compactHeight, greaterThanOrEqualTo(144));
