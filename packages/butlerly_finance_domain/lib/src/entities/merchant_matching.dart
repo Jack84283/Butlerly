@@ -98,7 +98,11 @@ UnmodifiableListView<MerchantNormalizationPattern> immutablePatterns(
 
 String normalizeMerchantName(String value) {
   var normalized = value.toLowerCase().trim();
-  normalized = normalized.replaceAll(RegExp(r"[^a-z0-9]+"), ' ');
+  // Keep non-Latin merchant text intact; never transliterate into English.
+  normalized = normalized.replaceAll(
+    RegExp(r'[^\p{L}\p{N}]+', unicode: true),
+    ' ',
+  );
   normalized = normalized.replaceAll(
     RegExp(r'\b(store|location|#)?\s*\d{2,}\b'),
     ' ',

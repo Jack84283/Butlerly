@@ -424,197 +424,203 @@ void main() {
     );
   });
 
-  test('upgrades beauty catalog without changing existing identities', () async {
-    await database.close();
-    final baseline = await File('database/schema/v1.sql').readAsString();
-    final catalog = await File('database/seed/catalog.sql').readAsString();
-    database = ButlerlyDatabase(
-      factory: databaseFactoryFfi,
-      path: inMemoryDatabasePath,
-      schemaSql: baseline,
-      seedSql: [catalog],
-    );
-    await database.open();
-    final connection = database.connection;
-    final originalChildren = await connection.query(
-      'categories',
-      where: 'parent_id = ?',
-      whereArgs: ['category.personal'],
-      orderBy: 'id',
-    );
-    expect(originalChildren, hasLength(7));
-    final labels = {
-      'en': ['Personal Care', 'Beauty & Personal Care'],
-      'zh-Hans': ['个人护理', '美容与个人护理'],
-      'es': ['Cuidado personal', 'Belleza y cuidado personal'],
-    };
-    await connection.update(
-      'categories',
-      {'name': 'Personal Care', 'status': 'archived'},
-      where: 'id = ?',
-      whereArgs: ['category.personal'],
-    );
-    for (final entry in labels.entries) {
-      await connection.update(
-        'category_translations',
-        {'label': entry.value.first},
-        where: 'category_id = ? AND locale = ?',
-        whereArgs: ['category.personal', entry.key],
+  test(
+    'upgrades beauty catalog without changing existing identities',
+    () async {
+      await database.close();
+      final baseline = await File('database/schema/v1.sql').readAsString();
+      final catalog = await File('database/seed/catalog.sql').readAsString();
+      database = ButlerlyDatabase(
+        factory: databaseFactoryFfi,
+        path: inMemoryDatabasePath,
+        schemaSql: baseline,
+        seedSql: [catalog],
       );
-    }
-    await database.seedSystemData();
-    await database.seedSystemData();
-    final category = (await connection.query(
-      'categories',
-      where: 'id = ?',
-      whereArgs: ['category.personal'],
-    )).single;
-    expect(category['name'], 'Beauty & Personal Care');
-    expect(category['status'], 'archived');
-    expect(
-      await connection.query(
+      await database.open();
+      final connection = database.connection;
+      final originalChildren = await connection.query(
         'categories',
         where: 'parent_id = ?',
         whereArgs: ['category.personal'],
         orderBy: 'id',
-      ),
-      originalChildren,
-    );
-    for (final entry in labels.entries) {
-      final translation = (await connection.query(
-        'category_translations',
-        where: 'category_id = ? AND locale = ?',
-        whereArgs: ['category.personal', entry.key],
-      )).single;
-      expect(translation['label'], entry.value.last);
-    }
-    await connection.update(
-      'categories',
-      {'name': 'My Personal Care'},
-      where: 'id = ?',
-      whereArgs: ['category.personal'],
-    );
-    await connection.update(
-      'category_translations',
-      {'label': 'My Care'},
-      where: 'category_id = ? AND locale = ?',
-      whereArgs: ['category.personal', 'en'],
-    );
-    await database.seedSystemData();
-    expect(
-      (await connection.query(
+      );
+      expect(originalChildren, hasLength(7));
+      final labels = {
+        'en': ['Personal Care', 'Beauty & Personal Care'],
+        'zh-Hans': ['个人护理', '美容与个人护理'],
+        'es': ['Cuidado personal', 'Belleza y cuidado personal'],
+      };
+      await connection.update(
+        'categories',
+        {'name': 'Personal Care', 'status': 'archived'},
+        where: 'id = ?',
+        whereArgs: ['category.personal'],
+      );
+      for (final entry in labels.entries) {
+        await connection.update(
+          'category_translations',
+          {'label': entry.value.first},
+          where: 'category_id = ? AND locale = ?',
+          whereArgs: ['category.personal', entry.key],
+        );
+      }
+      await database.seedSystemData();
+      await database.seedSystemData();
+      final category = (await connection.query(
         'categories',
         where: 'id = ?',
         whereArgs: ['category.personal'],
-      )).single['name'],
-      'My Personal Care',
-    );
-    expect(
-      (await connection.query(
+      )).single;
+      expect(category['name'], 'Beauty & Personal Care');
+      expect(category['status'], 'archived');
+      expect(
+        await connection.query(
+          'categories',
+          where: 'parent_id = ?',
+          whereArgs: ['category.personal'],
+          orderBy: 'id',
+        ),
+        originalChildren,
+      );
+      for (final entry in labels.entries) {
+        final translation = (await connection.query(
+          'category_translations',
+          where: 'category_id = ? AND locale = ?',
+          whereArgs: ['category.personal', entry.key],
+        )).single;
+        expect(translation['label'], entry.value.last);
+      }
+      await connection.update(
+        'categories',
+        {'name': 'My Personal Care'},
+        where: 'id = ?',
+        whereArgs: ['category.personal'],
+      );
+      await connection.update(
         'category_translations',
+        {'label': 'My Care'},
         where: 'category_id = ? AND locale = ?',
         whereArgs: ['category.personal', 'en'],
-      )).single['label'],
-      'My Care',
-    );
-    expect(await connection.rawQuery('PRAGMA foreign_key_check'), isEmpty);
-  });
-
-  test('upgrades leisure catalog without changing existing identities', () async {
-    await database.close();
-    final baseline = await File('database/schema/v1.sql').readAsString();
-    final catalog = await File('database/seed/catalog.sql').readAsString();
-    database = ButlerlyDatabase(
-      factory: databaseFactoryFfi,
-      path: inMemoryDatabasePath,
-      schemaSql: baseline,
-      seedSql: [catalog],
-    );
-    await database.open();
-    final connection = database.connection;
-    final originalChildren = await connection.query(
-      'categories',
-      where: 'parent_id = ?',
-      whereArgs: ['category.entertainment'],
-      orderBy: 'id',
-    );
-    expect(originalChildren, hasLength(6));
-    final labels = {
-      'en': ['Entertainment', 'Leisure & Entertainment'],
-      'zh-Hans': ['娱乐', '休闲与娱乐'],
-      'es': ['Entretenimiento', 'Ocio y entretenimiento'],
-    };
-    await connection.update(
-      'categories',
-      {'name': 'Entertainment', 'status': 'archived'},
-      where: 'id = ?',
-      whereArgs: ['category.entertainment'],
-    );
-    for (final entry in labels.entries) {
-      await connection.update(
-        'category_translations',
-        {'label': entry.value.first},
-        where: 'category_id = ? AND locale = ?',
-        whereArgs: ['category.entertainment', entry.key],
       );
-    }
-    await database.seedSystemData();
-    await database.seedSystemData();
-    final category = (await connection.query(
-      'categories',
-      where: 'id = ?',
-      whereArgs: ['category.entertainment'],
-    )).single;
-    expect(category['name'], 'Leisure & Entertainment');
-    expect(category['status'], 'archived');
-    expect(
-      await connection.query(
+      await database.seedSystemData();
+      expect(
+        (await connection.query(
+          'categories',
+          where: 'id = ?',
+          whereArgs: ['category.personal'],
+        )).single['name'],
+        'My Personal Care',
+      );
+      expect(
+        (await connection.query(
+          'category_translations',
+          where: 'category_id = ? AND locale = ?',
+          whereArgs: ['category.personal', 'en'],
+        )).single['label'],
+        'My Care',
+      );
+      expect(await connection.rawQuery('PRAGMA foreign_key_check'), isEmpty);
+    },
+  );
+
+  test(
+    'upgrades leisure catalog without changing existing identities',
+    () async {
+      await database.close();
+      final baseline = await File('database/schema/v1.sql').readAsString();
+      final catalog = await File('database/seed/catalog.sql').readAsString();
+      database = ButlerlyDatabase(
+        factory: databaseFactoryFfi,
+        path: inMemoryDatabasePath,
+        schemaSql: baseline,
+        seedSql: [catalog],
+      );
+      await database.open();
+      final connection = database.connection;
+      final originalChildren = await connection.query(
         'categories',
         where: 'parent_id = ?',
         whereArgs: ['category.entertainment'],
         orderBy: 'id',
-      ),
-      originalChildren,
-    );
-    for (final entry in labels.entries) {
-      final translation = (await connection.query(
-        'category_translations',
-        where: 'category_id = ? AND locale = ?',
-        whereArgs: ['category.entertainment', entry.key],
-      )).single;
-      expect(translation['label'], entry.value.last);
-    }
-    await connection.update(
-      'categories',
-      {'name': 'My Entertainment'},
-      where: 'id = ?',
-      whereArgs: ['category.entertainment'],
-    );
-    await connection.update(
-      'category_translations',
-      {'label': 'My Care'},
-      where: 'category_id = ? AND locale = ?',
-      whereArgs: ['category.entertainment', 'en'],
-    );
-    await database.seedSystemData();
-    expect(
-      (await connection.query(
+      );
+      expect(originalChildren, hasLength(6));
+      final labels = {
+        'en': ['Entertainment', 'Leisure & Entertainment'],
+        'zh-Hans': ['娱乐', '休闲与娱乐'],
+        'es': ['Entretenimiento', 'Ocio y entretenimiento'],
+      };
+      await connection.update(
+        'categories',
+        {'name': 'Entertainment', 'status': 'archived'},
+        where: 'id = ?',
+        whereArgs: ['category.entertainment'],
+      );
+      for (final entry in labels.entries) {
+        await connection.update(
+          'category_translations',
+          {'label': entry.value.first},
+          where: 'category_id = ? AND locale = ?',
+          whereArgs: ['category.entertainment', entry.key],
+        );
+      }
+      await database.seedSystemData();
+      await database.seedSystemData();
+      final category = (await connection.query(
         'categories',
         where: 'id = ?',
         whereArgs: ['category.entertainment'],
-      )).single['name'],
-      'My Entertainment',
-    );
-    expect(
-      (await connection.query(
+      )).single;
+      expect(category['name'], 'Leisure & Entertainment');
+      expect(category['status'], 'archived');
+      expect(
+        await connection.query(
+          'categories',
+          where: 'parent_id = ?',
+          whereArgs: ['category.entertainment'],
+          orderBy: 'id',
+        ),
+        originalChildren,
+      );
+      for (final entry in labels.entries) {
+        final translation = (await connection.query(
+          'category_translations',
+          where: 'category_id = ? AND locale = ?',
+          whereArgs: ['category.entertainment', entry.key],
+        )).single;
+        expect(translation['label'], entry.value.last);
+      }
+      await connection.update(
+        'categories',
+        {'name': 'My Entertainment'},
+        where: 'id = ?',
+        whereArgs: ['category.entertainment'],
+      );
+      await connection.update(
         'category_translations',
+        {'label': 'My Care'},
         where: 'category_id = ? AND locale = ?',
         whereArgs: ['category.entertainment', 'en'],
-      )).single['label'],
-      'My Care',
-    );
-    expect(await connection.rawQuery('PRAGMA foreign_key_check'), isEmpty);
-  });
+      );
+      await database.seedSystemData();
+      expect(
+        (await connection.query(
+          'categories',
+          where: 'id = ?',
+          whereArgs: ['category.entertainment'],
+        )).single['name'],
+        'My Entertainment',
+      );
+      expect(
+        (await connection.query(
+          'category_translations',
+          where: 'category_id = ? AND locale = ?',
+          whereArgs: ['category.entertainment', 'en'],
+        )).single['label'],
+        'My Care',
+      );
+      expect(await connection.rawQuery('PRAGMA foreign_key_check'), isEmpty);
+    },
+  );
 
   test('round-trips possible duplicate group state and memberships', () async {
     for (final id in ['tx-a', 'tx-b']) {
