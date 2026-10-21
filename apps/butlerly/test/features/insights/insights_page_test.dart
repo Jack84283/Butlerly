@@ -276,13 +276,17 @@ void main() {
     expect(find.text('100.00 USD'), findsOneWidget);
     expect(find.text('200.00 USD'), findsOneWidget);
     expect(
-      tester.getSize(
-        find.byKey(const ValueKey('insights-period-summary-card')),
-      ).height,
+      tester
+          .getSize(find.byKey(const ValueKey('insights-period-summary-card')))
+          .height,
       closeTo(
-        tester.getSize(
-          find.byKey(const ValueKey('insights-spending-concentration-card')),
-        ).height,
+        tester
+            .getSize(
+              find.byKey(
+                const ValueKey('insights-spending-concentration-card'),
+              ),
+            )
+            .height,
         0.1,
       ),
     );
@@ -367,9 +371,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final summary = find.byKey(
-      const ValueKey('insights-period-summary-card'),
-    );
+    final summary = find.byKey(const ValueKey('insights-period-summary-card'));
     final concentration = find.byKey(
       const ValueKey('insights-spending-concentration-card'),
     );
@@ -385,7 +387,10 @@ void main() {
       tester.getSize(summary).height,
       closeTo(tester.getSize(concentration).height, 0.1),
     );
-    expect(tester.getTopLeft(quality).dy, greaterThan(tester.getBottomLeft(findings).dy));
+    expect(
+      tester.getTopLeft(quality).dy,
+      greaterThan(tester.getBottomLeft(findings).dy),
+    );
     expect(
       tester.getSize(quality).width,
       greaterThan(tester.getSize(summary).width * 1.9),
