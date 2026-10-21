@@ -12,6 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   final now = DateTime.utc(2026, 9, 1, 12);
   late _RulesRepository rules;
+  late _Transactions transactions;
 
   setUp(() async {
     await services.reset();
@@ -26,9 +27,10 @@ void main() {
         updatedAt: now,
       ),
     ]);
+    transactions = _Transactions();
     services.registerSingleton<FinanceServices>(
       FinanceServices(
-        _Transactions(),
+        transactions,
         _PaymentSources(),
         _Merchants(),
         _Categories(),
@@ -263,6 +265,69 @@ void main() {
     );
     expect(values('rule-action-subcategory'), ['', 'subcategory.groceries']);
     _expectNoFlutterError(tester);
+  });
+
+  testWidgets('rule preview is live and dry run never updates transactions', (
+    tester,
+  ) async {
+    Transaction transaction(String id, String description) => Transaction(
+      id: TransactionId(id),
+      timing: KnownTransactionTime(now),
+      money: Money(
+        amount: DecimalValue.parse('10.00'),
+        currency: CurrencyCode('USD'),
+      ),
+      direction: TransactionDirection.expense,
+      sourceType: TransactionSourceType.import,
+      description: description,
+      rawCounterparty: description,
+      provenance: [
+        Provenance(
+          id: ProvenanceId('provenance.$id'),
+          sourceType: ProvenanceSourceType.import,
+          capturedAt: now,
+          originalRepresentation: description,
+        ),
+      ],
+      createdAt: now,
+      updatedAt: now,
+    );
+    transactions.values.addAll([
+      transaction('tx.fuel', 'Fuel for the car'),
+      transaction('tx.coffee', 'Coffee purchase'),
+    ]);
+    final original = List<Transaction>.of(transactions.values);
+
+    await tester.pumpWidget(const _TestApp(child: RulesPage()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Edit'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('IF: Description contains "fuel"'), findsOneWidget);
+    expect(find.textContaining('THEN: Category = Transport'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('rule-test-button')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('1 / 2'), findsOneWidget);
+    expect(find.textContaining('Fuel for the car'), findsOneWidget);
+    expect(transactions.values, orderedEquals(original));
+    expect(await rules.listAll(), hasLength(1));
+
+    // Editing matching text invalidates the previous dry-run result.
+    final descriptionField = find.widgetWithText(
+      TextField,
+      'Description contains (optional)',
+    );
+    await tester.enterText(descriptionField, 'coffee');
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('rule-test-result')), findsNothing);
+    expect(find.textContaining('IF: Description contains "coffee"'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('rule-test-button')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('1 / 2'), findsOneWidget);
+    expect(find.textContaining('Coffee purchase'), findsOneWidget);
+    expect(transactions.values, orderedEquals(original));
+    expect((await rules.listAll()).single.descriptionContains, 'fuel');
   });
 
   testWidgets('delete requires confirmation and removes the persisted rule', (
