@@ -1,3 +1,6 @@
+import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/insights/presentation/insight_grouped_list.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -219,6 +222,75 @@ void main() {
     }
     // The former two-column grid constrained a card to half this width.
     expect(firstWidth!, greaterThan(1000));
+
+    // Match the shared desktop transaction table: 12px padding on all sides,
+    // not the 4px responsive padding used by the device inner cards.
+    final categoryTable = find.byKey(
+      const ValueKey('desktop-insights-table-category'),
+    );
+    final innerCard = find.ancestor(
+      of: categoryTable,
+      matching: find.byType(ButlerlyDesktopInnerCard),
+    );
+    expect(innerCard, findsOneWidget);
+    final tableRect = tester.getRect(categoryTable);
+    final innerRect = tester.getRect(innerCard);
+    expect(
+      tableRect.left - innerRect.left,
+      closeTo(ButlerlyDesktopInnerCard.contentPadding, 0.1),
+    );
+    expect(
+      innerRect.right - tableRect.right,
+      closeTo(ButlerlyDesktopInnerCard.contentPadding, 0.1),
+    );
+    expect(
+      tableRect.top - innerRect.top,
+      closeTo(ButlerlyDesktopInnerCard.contentPadding, 0.1),
+    );
+    expect(
+      innerRect.bottom - tableRect.bottom,
+      closeTo(ButlerlyDesktopInnerCard.contentPadding, 0.1),
+    );
+
+    // Five equal-width columns apply to both headers and data rows.
+    double? columnWidth;
+    for (final name in [
+      'insights',
+      'previousPeriod',
+      'currentPeriod',
+      'difference',
+      'viewTransactions',
+    ]) {
+      final headerColumn = find.byKey(
+        ValueKey('desktop-insights-column-category-$name'),
+      );
+      final dataColumn = find.byKey(
+        ValueKey('desktop-insights-cell-category-0-$name'),
+      );
+      expect(headerColumn, findsOneWidget);
+      expect(dataColumn, findsOneWidget);
+      final headerWidth = tester.getSize(headerColumn).width;
+      final dataWidth = tester.getSize(dataColumn).width;
+      columnWidth ??= headerWidth;
+      expect(headerWidth, closeTo(columnWidth, 0.1));
+      expect(dataWidth, closeTo(columnWidth, 0.1));
+    }
+
+    // Desktop title/subtitle spacing is 12px; only cards with a subtitle
+    // receive the gap. The device card header retains its default 4px.
+    final cardHeader = find.byKey(
+      const ValueKey('desktop-insights-card-header-category'),
+    );
+    final headerTexts = find.descendant(
+      of: cardHeader,
+      matching: find.byType(Text),
+    );
+    expect(headerTexts, findsNWidgets(2));
+    final subtitleGap =
+        tester.getTopLeft(headerTexts.at(1)).dy -
+        tester.getBottomLeft(headerTexts.at(0)).dy;
+    expect(subtitleGap, closeTo(ButlerlySpacing.small, 0.1));
+
     expect(find.text('Previous period'), findsWidgets);
     expect(find.text('Current period'), findsWidgets);
     expect(find.text('Difference'), findsWidgets);
