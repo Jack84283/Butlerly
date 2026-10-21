@@ -702,8 +702,10 @@ class _AnalysisContent extends StatelessWidget {
               metric.availability != AnalysisDataAvailability.sufficient,
         )
         .length;
+    // A 264 px baseline fits the chart, header and the standard legend;
+    // partial data and the View All action expand the paired cards together.
     final desktopSpendingHeight =
-        320.0 +
+        264.0 +
         unavailableCategoryCount * 28.0 +
         (analysisContext != null && model.categories.length > 5 ? 48.0 : 0.0);
 
