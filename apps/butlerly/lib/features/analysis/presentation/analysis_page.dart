@@ -702,11 +702,13 @@ class _AnalysisContent extends StatelessWidget {
               metric.availability != AnalysisDataAvailability.sufficient,
         )
         .length;
-    // A 264 px baseline fits the chart, header and the standard legend;
-    // partial data and the View All action expand the paired cards together.
+    // Only reserve the chart, header and padding at the minimum height.
+    // The optional View All action and unavailable details add their own room.
     final desktopSpendingHeight =
-        264.0 +
-        unavailableCategoryCount * 28.0 +
+        224.0 +
+        (unavailableCategoryCount > 0
+            ? 28.0 + unavailableCategoryCount * 28.0
+            : 0.0) +
         (analysisContext != null && model.categories.length > 5 ? 48.0 : 0.0);
 
     return ButlerlyPage(
