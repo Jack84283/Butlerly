@@ -49,6 +49,13 @@ void main() {
       whereArgs: ['category.food', 'zh-Hans'],
     );
 
+    await database.database.update(
+      'merchants',
+      {'status': 'archived'},
+      where: 'id = ?',
+      whereArgs: ['merchant.zh_haidilao'],
+    );
+
     await database.reseedSystemData();
 
     final recurring = await database.database.query(
@@ -77,6 +84,14 @@ void main() {
       whereArgs: ['category.food', 'zh-Hans'],
     );
 
+    expect(
+      (await database.database.query(
+        'merchants',
+        where: 'id = ?',
+        whereArgs: ['merchant.zh_haidilao'],
+      )).single['status'],
+      'archived',
+    );
     expect(recurring.single['status'], 'archived');
     expect(subscription.single['status'], 'active');
     expect(userTag.single['name'], 'Keep me');

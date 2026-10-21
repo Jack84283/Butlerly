@@ -31,6 +31,22 @@ void main() {
     },
   );
 
+  test('Chinese and English merchants stay distinct', () {
+    final chinese = Merchant(
+      id: MerchantId('merchant.zh_haidilao'),
+      name: '海底捞',
+    );
+    final english = Merchant(
+      id: MerchantId('merchant.haidilao'),
+      name: 'Haidilao',
+    );
+    expect(chinese.normalizedName, '海底捞');
+    expect(english.normalizedName, 'haidilao');
+    expect(chinese.normalizedName, isNot(english.normalizedName));
+    expect(normalizeMerchantName(' 海底捞（上海） '), '海底捞 上海');
+    expect(normalizeMerchantName('HAIDILAO #1234'), 'haidilao');
+  });
+
   test(
     'transaction rules match supported conditions and apply assignments',
     () {

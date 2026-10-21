@@ -429,6 +429,35 @@ void main() {
             .single['label'],
         'Credit Card Payment',
       );
+      final chineseHaidilao = merchants.singleWhere(
+        (row) => row['id'] == 'merchant.zh_haidilao',
+      );
+      final englishHaidilao = merchants.singleWhere(
+        (row) => row['id'] == 'merchant.haidilao',
+      );
+      expect(chineseHaidilao['name'], '海底捞');
+      expect(chineseHaidilao['normalized_name'], '海底捞');
+      expect(chineseHaidilao['default_category_id'], 'category.food');
+      expect(
+        chineseHaidilao['default_subcategory_id'],
+        'category.food.restaurants',
+      );
+      expect(englishHaidilao['name'], 'Haidilao');
+      expect(englishHaidilao['normalized_name'], 'haidilao');
+      expect(
+        merchants.singleWhere((row) => row['id'] == 'merchant.zh_mcdonalds')['name'],
+        '麦当劳',
+      );
+      final sfExpress = merchants.singleWhere(
+        (row) => row['id'] == 'merchant.zh_sf_express',
+      );
+      expect(sfExpress['default_category_id'], 'category.postage_shipping');
+      expect(sfExpress['default_subcategory_id'], isNull);
+      final proya = merchants.singleWhere(
+        (row) => row['id'] == 'merchant.zh_proya',
+      );
+      expect(proya['default_category_id'], 'category.personal');
+      expect(proya['default_subcategory_id'], 'category.personal.skincare');
       final netflix = merchants.singleWhere(
         (row) => row['id'] == 'merchant.netflix',
       );
