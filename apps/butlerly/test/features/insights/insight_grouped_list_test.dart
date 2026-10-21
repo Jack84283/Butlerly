@@ -151,11 +151,7 @@ void main() {
         role: 'largePurchase',
         semanticType: InsightSemanticType.attention,
       ),
-      _insight(
-        RuleGrouping.category,
-        dimension: 'food',
-        withComparison: true,
-      ),
+      _insight(RuleGrouping.category, dimension: 'food', withComparison: true),
       _insight(RuleGrouping.subcategory, dimension: 'restaurants'),
       _insight(RuleGrouping.merchant, dimension: 'merchant-1'),
       _insight(RuleGrouping.none),
