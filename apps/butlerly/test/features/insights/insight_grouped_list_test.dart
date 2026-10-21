@@ -307,9 +307,7 @@ void main() {
     expect(find.text('Corner Shop'), findsOneWidget);
     expect(find.text('5.00 USD'), findsWidgets);
     expect(find.text('10.00 USD'), findsWidgets);
-    final row = find.byKey(
-      const ValueKey('desktop-insight-row-category-0'),
-    );
+    final row = find.byKey(const ValueKey('desktop-insight-row-category-0'));
     final countCell = find.byKey(
       const ValueKey('desktop-insights-cell-category-0-viewTransactions'),
     );
@@ -368,9 +366,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Food'), findsOneWidget);
-    final row = find.byKey(
-      const ValueKey('desktop-insight-row-category-0'),
-    );
+    final row = find.byKey(const ValueKey('desktop-insight-row-category-0'));
     expect(tester.widget<InkWell>(row).onTap, isNull);
     expect(
       find.descendant(
