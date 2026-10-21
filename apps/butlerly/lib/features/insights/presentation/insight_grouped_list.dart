@@ -418,10 +418,9 @@ class _InsightDesktopTable extends StatelessWidget {
     required this.onViewTransactions,
   });
 
-  static const double minimumWidth = 790;
-  static const double valueColumnWidth = 108;
-  static const double changeColumnWidth = 150;
-  static const double actionColumnWidth = 190;
+  // Five equal columns, including the action column. Keep a readable
+  // minimum width for localized labels and long accessibility text.
+  static const double minimumWidth = 900;
 
   final InsightPresentationGroup group;
   final List<_PresentedInsight> items;
@@ -439,23 +438,17 @@ class _InsightDesktopTable extends StatelessWidget {
         children: [
           Row(
             children: [
-              Expanded(child: _header(context, 'insights')),
-              SizedBox(
-                width: valueColumnWidth,
-                child: _header(context, 'previousPeriod', right: true),
-              ),
-              SizedBox(
-                width: valueColumnWidth,
-                child: _header(context, 'currentPeriod', right: true),
-              ),
-              SizedBox(
-                width: changeColumnWidth,
-                child: _header(context, 'difference', right: true),
-              ),
-              SizedBox(
-                width: actionColumnWidth,
-                child: _header(context, 'viewTransactions', right: true),
-              ),
+              for (final key in [
+                'insights',
+                'previousPeriod',
+                'currentPeriod',
+                'difference',
+                'viewTransactions',
+              ])
+                Expanded(
+                  key: ValueKey('desktop-insights-column-${group.name}-$key'),
+                  child: _header(context, key, right: key != 'insights'),
+                ),
             ],
           ),
           const SizedBox(height: ButlerlyTableTokens.headerToRowsGap),
@@ -577,16 +570,9 @@ class _InsightDesktopTable extends StatelessWidget {
                 ],
               ),
             ),
-            SizedBox(
-              width: valueColumnWidth,
-              child: _value(context, baseline ?? '—'),
-            ),
-            SizedBox(
-              width: valueColumnWidth,
-              child: _value(context, current ?? '—'),
-            ),
-            SizedBox(
-              width: changeColumnWidth,
+            Expanded(child: _value(context, baseline ?? '—')),
+            Expanded(child: _value(context, current ?? '—')),
+            Expanded(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
@@ -602,8 +588,7 @@ class _InsightDesktopTable extends StatelessWidget {
                 ],
               ),
             ),
-            SizedBox(
-              width: actionColumnWidth,
+            Expanded(
               child: canOpen
                   ? Align(
                       alignment: AlignmentDirectional.centerEnd,
