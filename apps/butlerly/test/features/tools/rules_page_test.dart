@@ -303,7 +303,10 @@ void main() {
     await tester.tap(find.byTooltip('Edit'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('IF: Description contains "fuel"'), findsOneWidget);
+    expect(
+      find.textContaining('IF: Description contains "fuel"'),
+      findsOneWidget,
+    );
     expect(find.textContaining('THEN: Category = Transport'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('rule-test-button')));
@@ -321,7 +324,10 @@ void main() {
     await tester.enterText(descriptionField, 'coffee');
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('rule-test-result')), findsNothing);
-    expect(find.textContaining('IF: Description contains "coffee"'), findsOneWidget);
+    expect(
+      find.textContaining('IF: Description contains "coffee"'),
+      findsOneWidget,
+    );
     await tester.tap(find.byKey(const ValueKey('rule-test-button')));
     await tester.pumpAndSettle();
     expect(find.textContaining('1 / 2'), findsOneWidget);
