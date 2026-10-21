@@ -1355,8 +1355,7 @@ void main() {
       matching: find.byType(ButlerlyCardHeader),
     );
     expect(header, findsOneWidget);
-    final contentTop =
-        tester.getBottomLeft(header).dy + ButlerlySpacing.small;
+    final contentTop = tester.getBottomLeft(header).dy + ButlerlySpacing.small;
     final contentBottom = tester.getTopLeft(viewAll).dy;
     final contentMidpoint = (contentTop + contentBottom) / 2;
     expect(
