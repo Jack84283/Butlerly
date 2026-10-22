@@ -28,7 +28,7 @@ class _RulesPageState extends State<RulesPage> {
   bool _desktopEditing = false;
   bool _desktopCreating = false;
 
-  bool _isDesktop => effectiveButlerlyLayoutMode(
+  bool get _isDesktop => effectiveButlerlyLayoutMode(
     context, MediaQuery.sizeOf(context).width,
   ) == ButlerlyLayoutMode.wide;
 
