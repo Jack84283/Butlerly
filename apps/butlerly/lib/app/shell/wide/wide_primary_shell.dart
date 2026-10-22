@@ -160,7 +160,8 @@ class _WidePrimaryNavigation extends StatelessWidget {
 
   bool _selected(int branchIndex) => currentIndex == branchIndex;
 
-  String _activePath(BuildContext context) => GoRouterState.of(context).uri.path;
+  String _activePath(BuildContext context) =>
+      GoRouterState.of(context).uri.path;
 
   bool _activeRoute(BuildContext context, String route) {
     final path = _activePath(context);
@@ -265,9 +266,11 @@ class _WidePrimaryNavigation extends StatelessWidget {
         semanticKey: const ValueKey('wide-analytics-navigation'),
         label: 'Analytics',
         icon: Icons.analytics_outlined,
-        selected: _activeRoute(context, '/analysis') ||
+        selected:
+            _activeRoute(context, '/analysis') ||
             _activeRoute(context, '/insights'),
-        expanded: analyticsExpanded ||
+        expanded:
+            analyticsExpanded ||
             _activeRoute(context, '/analysis') ||
             _activeRoute(context, '/insights'),
         onTap: () => onNavigate('/analysis'),
@@ -291,27 +294,33 @@ class _WidePrimaryNavigation extends StatelessWidget {
         semanticKey: const ValueKey('wide-tools-navigation'),
         label: context.l10n.text('tools'),
         icon: Icons.bar_chart_rounded,
-        selected: _selected(3) ||
-            toolNavigationItems(context).any((tool) =>
-                tool.route != '/analysis' &&
-                tool.route != '/insights' &&
-                _activeRoute(context, tool.route)),
-        expanded: toolsExpanded ||
-            toolNavigationItems(context).any((tool) =>
-                tool.route != '/analysis' &&
-                tool.route != '/insights' &&
-                _activeRoute(context, tool.route)),
+        selected:
+            _selected(3) ||
+            toolNavigationItems(context).any(
+              (tool) =>
+                  tool.route != '/analysis' &&
+                  tool.route != '/insights' &&
+                  _activeRoute(context, tool.route),
+            ),
+        expanded:
+            toolsExpanded ||
+            toolNavigationItems(context).any(
+              (tool) =>
+                  tool.route != '/analysis' &&
+                  tool.route != '/insights' &&
+                  _activeRoute(context, tool.route),
+            ),
         onTap: () => onParentSelected(3),
         onToggle: onToggleTools,
         children: [
           for (final tool in toolNavigationItems(context))
             if (tool.route != '/analysis' && tool.route != '/insights')
-            _WideChildItem(
-              icon: tool.icon,
-              label: tool.title,
-              selected: _activeRoute(context, tool.route),
-              onTap: () => onNavigate(tool.route),
-            ),
+              _WideChildItem(
+                icon: tool.icon,
+                label: tool.title,
+                selected: _activeRoute(context, tool.route),
+                onTap: () => onNavigate(tool.route),
+              ),
         ],
       ),
       _WideGroup(
@@ -395,7 +404,8 @@ class _WidePrimaryNavigation extends StatelessWidget {
         key: const ValueKey('wide-collapsed-analytics'),
         icon: Icons.analytics_outlined,
         label: 'Analytics',
-        selected: _activeRoute(context, '/analysis') ||
+        selected:
+            _activeRoute(context, '/analysis') ||
             _activeRoute(context, '/insights'),
         onTap: (itemContext) => _openMenu(itemContext, [
           _WidePopupAction.route(context.l10n.text('analysis'), '/analysis'),
@@ -672,19 +682,21 @@ class _WideChildItem extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: ColoredBox(
-          color: selected ? Theme.of(context).colorScheme.primaryContainer : Colors.transparent,
+          color: selected
+              ? Theme.of(context).colorScheme.primaryContainer
+              : Colors.transparent,
           child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: ButlerlySpacing.compact,
+            padding: const EdgeInsets.symmetric(
+              horizontal: ButlerlySpacing.compact,
+            ),
+            child: Row(
+              children: [
+                Icon(icon, size: ButlerlySize.standardIcon),
+                const SizedBox(width: ButlerlySpacing.compact),
+                Expanded(child: Text(label, overflow: TextOverflow.ellipsis)),
+              ],
+            ),
           ),
-          child: Row(
-            children: [
-              Icon(icon, size: ButlerlySize.standardIcon),
-              const SizedBox(width: ButlerlySpacing.compact),
-              Expanded(child: Text(label, overflow: TextOverflow.ellipsis)),
-            ],
-          ),
-        ),
         ),
       ),
     ),
