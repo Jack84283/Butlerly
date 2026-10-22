@@ -147,7 +147,6 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('desktop-rule-row-rule.fuel')));
     await tester.pumpAndSettle();
     final panel = find.byKey(const ValueKey('desktop-rule-details-panel'));
-    final workspace = find.byKey(const ValueKey('desktop-rules-workspace'));
     expect(panel, findsOneWidget);
     expect(find.byType(ButlerlySheet), findsNothing);
     expect(
@@ -162,7 +161,6 @@ void main() {
       tester.getTopLeft(panel).dx,
       greaterThan(tester.getTopRight(find.byType(ButlerlyDesktopInnerCard)).dx),
     );
-    expect(workspace, findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('desktop-rule-details-close')));
     await tester.pumpAndSettle();
     expect(panel, findsNothing);

@@ -6,6 +6,7 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/desktop/presentation/desktop_transaction_detail_split_view.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -25,6 +26,15 @@ class _RulesPageState extends State<RulesPage> {
 
   late Future<_RuleData> _data = _load();
   String? _selectedDesktopRuleId;
+  bool _desktopEditing = false;
+
+  bool get _isDesktop =>
+      effectiveButlerlyLayoutMode(context, MediaQuery.sizeOf(context).width) ==
+      ButlerlyLayoutMode.wide;
+
+  void _closeEditor() => setState(() {
+    _desktopEditing = false;
+  });
 
   Future<_RuleData> _load() async {
     final finance = _finance;
@@ -63,6 +73,13 @@ class _RulesPageState extends State<RulesPage> {
   }
 
   Future<void> _edit(_RuleData data, [TransactionRule? current]) async {
+    if (_isDesktop) {
+      setState(() {
+        _selectedDesktopRuleId = current?.id.value;
+        _desktopEditing = true;
+      });
+      return;
+    }
     final draft = await showButlerlyBottomSheet<_RuleDraft>(
       context: context,
       builder: (_) => _RuleEditorSheet(
@@ -74,6 +91,10 @@ class _RulesPageState extends State<RulesPage> {
       ),
     );
     if (!mounted || draft == null) return;
+    await _saveDraft(draft, current);
+  }
+
+  Future<void> _saveDraft(_RuleDraft draft, TransactionRule? current) async {
     final finance = _finance;
     final save = finance?.saveTransactionRule;
     if (save == null) return;
@@ -116,6 +137,12 @@ class _RulesPageState extends State<RulesPage> {
       return;
     }
     _showMessage(context.l10n.text('ruleSaved'));
+    if (_desktopEditing) {
+      setState(() {
+        _selectedDesktopRuleId = rule.id.value;
+        _desktopEditing = false;
+      });
+    }
     _refresh();
   }
 
@@ -175,11 +202,17 @@ class _RulesPageState extends State<RulesPage> {
   }
 
   void _selectDesktopRule(TransactionRule rule) {
-    setState(() => _selectedDesktopRuleId = rule.id.value);
+    setState(() {
+      _selectedDesktopRuleId = rule.id.value;
+      _desktopEditing = false;
+    });
   }
 
   void _closeDesktopDetails() {
-    setState(() => _selectedDesktopRuleId = null);
+    setState(() {
+      _selectedDesktopRuleId = null;
+      _desktopEditing = false;
+    });
   }
 
   String _conditions(
@@ -277,7 +310,7 @@ class _RulesPageState extends State<RulesPage> {
                 .where((rule) => rule.id.value == _selectedDesktopRuleId)
                 .firstOrNull
           : null;
-      return ButlerlyPage(
+      final rulesPage = ButlerlyPage(
         title: context.l10n.text('ruleManagement'),
         subtitle: context.l10n.text('ruleManagementHowItWorks'),
         fullWidth: desktop,
@@ -298,40 +331,14 @@ class _RulesPageState extends State<RulesPage> {
               onAction: () => _edit(data),
             )
           else if (desktop)
-            LayoutBuilder(
-              key: const ValueKey('desktop-rules-workspace'),
-              builder: (context, constraints) => Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: _RulesDesktopTable(
-                      rules: data.rules,
-                      conditions: (rule) => _conditions(context, data, rule),
-                      actions: (rule) => _actions(context, data, rule),
-                      onDetails: _selectDesktopRule,
-                      onToggle: _toggle,
-                      onEdit: (rule) => _edit(data, rule),
-                      onDelete: _delete,
-                    ),
-                  ),
-                  if (selectedDesktopRule != null) ...[
-                    const SizedBox(width: ButlerlySpacing.cardGap),
-                    SizedBox(
-                      width: constraints.maxWidth < 1100 ? 320 : 400,
-                      child: _RuleDesktopDetailsPanel(
-                        rule: selectedDesktopRule,
-                        conditions: _conditions(
-                          context,
-                          data,
-                          selectedDesktopRule,
-                        ),
-                        actions: _actions(context, data, selectedDesktopRule),
-                        onClose: _closeDesktopDetails,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
+            _RulesDesktopTable(
+              rules: data.rules,
+              conditions: (rule) => _conditions(context, data, rule),
+              actions: (rule) => _actions(context, data, rule),
+              onDetails: _selectDesktopRule,
+              onToggle: _toggle,
+              onEdit: (rule) => _edit(data, rule),
+              onDelete: _delete,
             )
           else
             Column(
@@ -351,6 +358,33 @@ class _RulesPageState extends State<RulesPage> {
           const SizedBox(height: ButlerlySpacing.structural),
         ],
       );
+      if (!desktop || (!_desktopEditing && selectedDesktopRule == null)) {
+        return rulesPage;
+      }
+      return DesktopTransactionDetailSplitView(
+        results: rulesPage,
+        detail: _desktopEditing
+            ? _RuleEditorSheet(
+                key: ValueKey(
+                  'rule-editor-${selectedDesktopRule?.id.value ?? 'new'}',
+                ),
+                current: selectedDesktopRule,
+                merchants: data.merchants,
+                categories: data.categories,
+                paymentSources: data.paymentSources,
+                tags: data.tags,
+                onSubmit: (draft) => _saveDraft(draft, selectedDesktopRule),
+                onCancel: _closeEditor,
+              )
+            : _RuleDesktopDetailsPanel(
+                rule: selectedDesktopRule!,
+                conditions: _conditions(context, data, selectedDesktopRule),
+                actions: _actions(context, data, selectedDesktopRule),
+                onClose: _closeDesktopDetails,
+                onEdit: () => _edit(data, selectedDesktopRule),
+                onDelete: () => _delete(selectedDesktopRule),
+              ),
+      );
     },
   );
 }
@@ -363,43 +397,82 @@ class _RuleDesktopDetailsPanel extends StatelessWidget {
     required this.conditions,
     required this.actions,
     required this.onClose,
+    required this.onEdit,
+    required this.onDelete,
   });
 
   final TransactionRule rule;
   final String conditions;
   final String actions;
   final VoidCallback onClose;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   @override
-  Widget build(BuildContext context) => ButlerlyCard(
-    key: const ValueKey('desktop-rule-details-panel'),
-    semanticLabel: rule.name,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ButlerlyCardHeader(
-          title: rule.name,
-          action: IconButton(
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Row(
+        children: [
+          IconButton(
             key: const ValueKey('desktop-rule-details-close'),
             tooltip: context.l10n.text('close'),
             onPressed: onClose,
-            icon: const Icon(Icons.close),
-            iconSize: 20,
-            constraints: const BoxConstraints.tightFor(width: 32, height: 32),
-            padding: EdgeInsets.zero,
-            style: IconButton.styleFrom(
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            icon: const Icon(Icons.close_rounded),
+          ),
+          Expanded(
+            child: Text(
+              context.l10n.text('ruleManagement'),
+              style: Theme.of(context).textTheme.titleLarge,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          IconButton(
+            key: const ValueKey('desktop-rule-details-edit-icon'),
+            tooltip: context.l10n.text('edit'),
+            onPressed: onEdit,
+            icon: const Icon(Icons.edit_outlined),
+          ),
+        ],
+      ),
+      Expanded(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(ButlerlySpacing.standard),
+          child: ButlerlyCard(
+            key: const ValueKey('desktop-rule-details-panel'),
+            semanticLabel: rule.name,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _RuleDetailsContent(
+                  rule: rule,
+                  conditions: conditions,
+                  actions: actions,
+                ),
+                const SizedBox(height: ButlerlySpacing.standard),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    OutlinedButton.icon(
+                      key: const ValueKey('desktop-rule-details-edit'),
+                      onPressed: onEdit,
+                      icon: const Icon(Icons.edit_outlined),
+                      label: Text(context.l10n.text('edit')),
+                    ),
+                    const SizedBox(width: ButlerlySpacing.small),
+                    ButlerlyDestructiveButton(
+                      key: const ValueKey('desktop-rule-details-delete'),
+                      onPressed: onDelete,
+                      child: Text(context.l10n.text('delete')),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ),
-        const SizedBox(height: ButlerlySpacing.standard),
-        _RuleDetailsContent(
-          rule: rule,
-          conditions: conditions,
-          actions: actions,
-        ),
-      ],
-    ),
+      ),
+    ],
   );
 }
 
@@ -767,8 +840,13 @@ class _RuleEditorSheet extends StatefulWidget {
     required this.categories,
     required this.paymentSources,
     required this.tags,
+    this.onSubmit,
+    this.onCancel,
+    super.key,
   });
 
+  final ValueChanged<_RuleDraft>? onSubmit;
+  final VoidCallback? onCancel;
   final TransactionRule? current;
   final List<Merchant> merchants;
   final List<Category> categories;
@@ -862,27 +940,29 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
       );
       return;
     }
-    Navigator.pop(
-      context,
-      _RuleDraft(
-        name: _name.text.trim(),
-        description: _description.text.trim().isEmpty
-            ? null
-            : _description.text.trim(),
-        priority: int.tryParse(_priority.text.trim()) ?? 0,
-        conditionMerchantId: _conditionMerchantId,
-        conditionCategoryId: _conditionCategoryId,
-        conditionPaymentSourceId: _conditionPaymentSourceId,
-        conditionTagId: _conditionTagId,
-        descriptionContains: _optional(_descriptionContains.text),
-        rawCounterpartyContains: _optional(_rawCounterpartyContains.text),
-        assignMerchantId: _assignMerchantId,
-        assignCategoryId: _assignCategoryId,
-        assignSubcategoryId: _assignSubcategoryId,
-        assignPaymentSourceId: _assignPaymentSourceId,
-        assignTagId: _assignTagId,
-      ),
+    final draft = _RuleDraft(
+      name: _name.text.trim(),
+      description: _description.text.trim().isEmpty
+          ? null
+          : _description.text.trim(),
+      priority: int.tryParse(_priority.text.trim()) ?? 0,
+      conditionMerchantId: _conditionMerchantId,
+      conditionCategoryId: _conditionCategoryId,
+      conditionPaymentSourceId: _conditionPaymentSourceId,
+      conditionTagId: _conditionTagId,
+      descriptionContains: _optional(_descriptionContains.text),
+      rawCounterpartyContains: _optional(_rawCounterpartyContains.text),
+      assignMerchantId: _assignMerchantId,
+      assignCategoryId: _assignCategoryId,
+      assignSubcategoryId: _assignSubcategoryId,
+      assignPaymentSourceId: _assignPaymentSourceId,
+      assignTagId: _assignTagId,
     );
+    if (widget.onSubmit != null) {
+      widget.onSubmit!(draft);
+    } else {
+      Navigator.pop(context, draft);
+    }
   }
 
   String _merchantName(String id) =>
@@ -1146,169 +1226,211 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
       (value) => (value.id.value, value.name),
     );
     final tags = widget.tags.map((value) => (value.id.value, value.name));
-    return ButlerlySheet(
-      title: Text(
-        context.l10n.text(widget.current == null ? 'addRule' : 'editRule'),
+    final title = Text(
+      context.l10n.text(widget.current == null ? 'addRule' : 'editRule'),
+    );
+    final content = Column(
+      children: [
+        _fieldGroup([
+          TextField(
+            controller: _name,
+            decoration: InputDecoration(
+              labelText: context.l10n.text('ruleName'),
+            ),
+          ),
+          TextField(
+            controller: _description,
+            decoration: InputDecoration(
+              labelText: context.l10n.text('ruleDescription'),
+            ),
+          ),
+          TextField(
+            controller: _priority,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: context.l10n.text('rulePriority'),
+            ),
+          ),
+        ]),
+        _sectionHeading(context.l10n.text('ruleConditions')),
+        _fieldGroup([
+          _dropdown(
+            key: const ValueKey('rule-condition-merchant'),
+            label: context.l10n.text('merchant'),
+            value: _conditionMerchantId,
+            onChanged: (v) => setState(() {
+              _conditionMerchantId = v;
+              _testResult = null;
+              _testFailed = false;
+            }),
+            entries: _entries(empty, merchants),
+          ),
+          _dropdown(
+            key: const ValueKey('rule-condition-category'),
+            label: context.l10n.text('category'),
+            value: _conditionCategoryId,
+            onChanged: (v) => setState(() {
+              _conditionCategoryId = v;
+              _testResult = null;
+              _testFailed = false;
+            }),
+            entries: _entries(empty, _rootCategories(_conditionCategoryId)),
+          ),
+          _dropdown(
+            key: const ValueKey('rule-condition-payment-source'),
+            label: context.l10n.text('paymentSource'),
+            value: _conditionPaymentSourceId,
+            onChanged: (v) => setState(() {
+              _conditionPaymentSourceId = v;
+              _testResult = null;
+              _testFailed = false;
+            }),
+            entries: _entries(empty, sources),
+          ),
+          _dropdown(
+            key: const ValueKey('rule-condition-tag'),
+            label: context.l10n.text('tag'),
+            value: _conditionTagId,
+            onChanged: (v) => setState(() {
+              _conditionTagId = v;
+              _testResult = null;
+              _testFailed = false;
+            }),
+            entries: _entries(empty, tags),
+          ),
+          TextField(
+            controller: _descriptionContains,
+            decoration: InputDecoration(
+              labelText: context.l10n.text('ruleDescriptionContains'),
+            ),
+          ),
+          TextField(
+            controller: _rawCounterpartyContains,
+            decoration: InputDecoration(
+              labelText: context.l10n.text('ruleCounterpartyContains'),
+            ),
+          ),
+        ]),
+        _sectionHeading(context.l10n.text('ruleActions')),
+        _fieldGroup([
+          _dropdown(
+            key: const ValueKey('rule-action-merchant'),
+            label: context.l10n.text('merchant'),
+            value: _assignMerchantId,
+            onChanged: (v) => setState(() {
+              _assignMerchantId = v;
+              _testResult = null;
+              _testFailed = false;
+            }),
+            entries: _entries(empty, merchants),
+          ),
+          _dropdown(
+            key: const ValueKey('rule-action-category'),
+            label: context.l10n.text('category'),
+            value: _assignCategoryId,
+            onChanged: (v) => setState(() {
+              _assignCategoryId = v;
+              _assignSubcategoryId = null;
+              _testResult = null;
+              _testFailed = false;
+            }),
+            entries: _entries(empty, _rootCategories(_assignCategoryId)),
+          ),
+          _dropdown(
+            key: const ValueKey('rule-action-subcategory'),
+            label: context.l10n.text('subcategory'),
+            value: _assignSubcategoryId,
+            onChanged: (v) => setState(() {
+              _assignSubcategoryId = v;
+              _testResult = null;
+              _testFailed = false;
+            }),
+            entries: _entries(
+              empty,
+              _subcategories(_assignCategoryId, _assignSubcategoryId),
+            ),
+          ),
+          _dropdown(
+            key: const ValueKey('rule-action-payment-source'),
+            label: context.l10n.text('paymentSource'),
+            value: _assignPaymentSourceId,
+            onChanged: (v) => setState(() {
+              _assignPaymentSourceId = v;
+              _testResult = null;
+              _testFailed = false;
+            }),
+            entries: _entries(empty, sources),
+          ),
+          _dropdown(
+            key: const ValueKey('rule-action-tag'),
+            label: context.l10n.text('tag'),
+            value: _assignTagId,
+            onChanged: (v) => setState(() {
+              _assignTagId = v;
+              _testResult = null;
+              _testFailed = false;
+            }),
+            entries: _entries(empty, tags),
+          ),
+        ]),
+        _sectionHeading(context.l10n.text('rulePreviewTitle')),
+        _previewCard(context),
+      ],
+    );
+    final actions = <Widget>[
+      OutlinedButton(
+        key: const ValueKey('rule-test-button'),
+        onPressed: _testing ? null : _testRule,
+        child: Text(context.l10n.text('rulePreviewTest')),
       ),
-      content: Column(
-        children: [
-          _fieldGroup([
-            TextField(
-              controller: _name,
-              decoration: InputDecoration(
-                labelText: context.l10n.text('ruleName'),
-              ),
-            ),
-            TextField(
-              controller: _description,
-              decoration: InputDecoration(
-                labelText: context.l10n.text('ruleDescription'),
-              ),
-            ),
-            TextField(
-              controller: _priority,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: context.l10n.text('rulePriority'),
-              ),
-            ),
-          ]),
-          _sectionHeading(context.l10n.text('ruleConditions')),
-          _fieldGroup([
-            _dropdown(
-              key: const ValueKey('rule-condition-merchant'),
-              label: context.l10n.text('merchant'),
-              value: _conditionMerchantId,
-              onChanged: (v) => setState(() {
-                _conditionMerchantId = v;
-                _testResult = null;
-                _testFailed = false;
-              }),
-              entries: _entries(empty, merchants),
-            ),
-            _dropdown(
-              key: const ValueKey('rule-condition-category'),
-              label: context.l10n.text('category'),
-              value: _conditionCategoryId,
-              onChanged: (v) => setState(() {
-                _conditionCategoryId = v;
-                _testResult = null;
-                _testFailed = false;
-              }),
-              entries: _entries(empty, _rootCategories(_conditionCategoryId)),
-            ),
-            _dropdown(
-              key: const ValueKey('rule-condition-payment-source'),
-              label: context.l10n.text('paymentSource'),
-              value: _conditionPaymentSourceId,
-              onChanged: (v) => setState(() {
-                _conditionPaymentSourceId = v;
-                _testResult = null;
-                _testFailed = false;
-              }),
-              entries: _entries(empty, sources),
-            ),
-            _dropdown(
-              key: const ValueKey('rule-condition-tag'),
-              label: context.l10n.text('tag'),
-              value: _conditionTagId,
-              onChanged: (v) => setState(() {
-                _conditionTagId = v;
-                _testResult = null;
-                _testFailed = false;
-              }),
-              entries: _entries(empty, tags),
-            ),
-            TextField(
-              controller: _descriptionContains,
-              decoration: InputDecoration(
-                labelText: context.l10n.text('ruleDescriptionContains'),
-              ),
-            ),
-            TextField(
-              controller: _rawCounterpartyContains,
-              decoration: InputDecoration(
-                labelText: context.l10n.text('ruleCounterpartyContains'),
-              ),
-            ),
-          ]),
-          _sectionHeading(context.l10n.text('ruleActions')),
-          _fieldGroup([
-            _dropdown(
-              key: const ValueKey('rule-action-merchant'),
-              label: context.l10n.text('merchant'),
-              value: _assignMerchantId,
-              onChanged: (v) => setState(() {
-                _assignMerchantId = v;
-                _testResult = null;
-                _testFailed = false;
-              }),
-              entries: _entries(empty, merchants),
-            ),
-            _dropdown(
-              key: const ValueKey('rule-action-category'),
-              label: context.l10n.text('category'),
-              value: _assignCategoryId,
-              onChanged: (v) => setState(() {
-                _assignCategoryId = v;
-                _assignSubcategoryId = null;
-                _testResult = null;
-                _testFailed = false;
-              }),
-              entries: _entries(empty, _rootCategories(_assignCategoryId)),
-            ),
-            _dropdown(
-              key: const ValueKey('rule-action-subcategory'),
-              label: context.l10n.text('subcategory'),
-              value: _assignSubcategoryId,
-              onChanged: (v) => setState(() {
-                _assignSubcategoryId = v;
-                _testResult = null;
-                _testFailed = false;
-              }),
-              entries: _entries(
-                empty,
-                _subcategories(_assignCategoryId, _assignSubcategoryId),
-              ),
-            ),
-            _dropdown(
-              key: const ValueKey('rule-action-payment-source'),
-              label: context.l10n.text('paymentSource'),
-              value: _assignPaymentSourceId,
-              onChanged: (v) => setState(() {
-                _assignPaymentSourceId = v;
-                _testResult = null;
-                _testFailed = false;
-              }),
-              entries: _entries(empty, sources),
-            ),
-            _dropdown(
-              key: const ValueKey('rule-action-tag'),
-              label: context.l10n.text('tag'),
-              value: _assignTagId,
-              onChanged: (v) => setState(() {
-                _assignTagId = v;
-                _testResult = null;
-                _testFailed = false;
-              }),
-              entries: _entries(empty, tags),
-            ),
-          ]),
-          _sectionHeading(context.l10n.text('rulePreviewTitle')),
-          _previewCard(context),
-        ],
+      ButlerlyCancelButton(
+        onPressed: widget.onCancel ?? () => Navigator.pop(context),
+        child: Text(context.l10n.text('cancel')),
       ),
-      actions: [
-        OutlinedButton(
-          key: const ValueKey('rule-test-button'),
-          onPressed: _testing ? null : _testRule,
-          child: Text(context.l10n.text('rulePreviewTest')),
+      FilledButton(onPressed: _save, child: Text(context.l10n.text('save'))),
+    ];
+    if (widget.onSubmit == null) {
+      return ButlerlySheet(title: title, content: content, actions: actions);
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            IconButton(
+              key: const ValueKey('desktop-rule-editor-back'),
+              tooltip: context.l10n.text('cancel'),
+              onPressed: widget.onCancel,
+              icon: const Icon(Icons.arrow_back_rounded),
+            ),
+            Expanded(
+              child: DefaultTextStyle(
+                style: Theme.of(context).textTheme.titleLarge!,
+                child: title,
+              ),
+            ),
+          ],
         ),
-        ButlerlyCancelButton(
-          onPressed: () => Navigator.pop(context),
-          child: Text(context.l10n.text('cancel')),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(ButlerlySpacing.standard),
+            child: ButlerlyCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  content,
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  Wrap(
+                    alignment: WrapAlignment.end,
+                    spacing: ButlerlySpacing.small,
+                    runSpacing: ButlerlySpacing.small,
+                    children: actions,
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
-        FilledButton(onPressed: _save, child: Text(context.l10n.text('save'))),
       ],
     );
   }
