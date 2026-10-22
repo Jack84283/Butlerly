@@ -33,7 +33,6 @@ class _WidePrimaryShellState extends State<WidePrimaryShell> {
   bool _expandedAtNarrowWidths = false;
   bool _addExpanded = true;
   bool _toolsExpanded = true;
-  bool _analyticsExpanded = true;
   bool _moreExpanded = true;
   bool _moreVisibilityScheduled = false;
 
@@ -82,7 +81,6 @@ class _WidePrimaryShellState extends State<WidePrimaryShell> {
             expanded: expanded,
             addExpanded: _addExpanded,
             toolsExpanded: _toolsExpanded,
-            analyticsExpanded: _analyticsExpanded,
             moreExpanded: _moreExpanded,
             currentIndex: widget.currentIndex,
             onToggleExpanded: () => setState(() {
@@ -93,8 +91,6 @@ class _WidePrimaryShellState extends State<WidePrimaryShell> {
               }
             }),
             onToggleAdd: () => setState(() => _addExpanded = !_addExpanded),
-            onToggleAnalytics: () =>
-                setState(() => _analyticsExpanded = !_analyticsExpanded),
             onToggleTools: () =>
                 setState(() => _toolsExpanded = !_toolsExpanded),
             onToggleMore: () => setState(() => _moreExpanded = !_moreExpanded),
@@ -126,13 +122,11 @@ class _WidePrimaryNavigation extends StatelessWidget {
     required this.expanded,
     required this.addExpanded,
     required this.toolsExpanded,
-    required this.analyticsExpanded,
     required this.moreExpanded,
     required this.currentIndex,
     required this.onToggleExpanded,
     required this.onToggleAdd,
     required this.onToggleTools,
-    required this.onToggleAnalytics,
     required this.onToggleMore,
     required this.moreNavigationKey,
     required this.onParentSelected,
@@ -144,13 +138,11 @@ class _WidePrimaryNavigation extends StatelessWidget {
   final bool expanded;
   final bool addExpanded;
   final bool toolsExpanded;
-  final bool analyticsExpanded;
   final bool moreExpanded;
   final int currentIndex;
   final VoidCallback onToggleExpanded;
   final VoidCallback onToggleAdd;
   final VoidCallback onToggleTools;
-  final VoidCallback onToggleAnalytics;
   final VoidCallback onToggleMore;
   final GlobalKey moreNavigationKey;
   final ValueChanged<int> onParentSelected;
@@ -159,14 +151,6 @@ class _WidePrimaryNavigation extends StatelessWidget {
   final Future<void> Function() onImport;
 
   bool _selected(int branchIndex) => currentIndex == branchIndex;
-
-  String _activePath(BuildContext context) =>
-      GoRouterState.of(context).uri.path;
-
-  bool _activeRoute(BuildContext context, String route) {
-    final path = _activePath(context);
-    return path == route || path.startsWith('$route/');
-  }
 
   @override
   Widget build(BuildContext context) => Container(
@@ -231,19 +215,16 @@ class _WidePrimaryNavigation extends StatelessWidget {
           _WideChildItem(
             icon: Icons.add_card_outlined,
             label: context.l10n.text('addTransactionManually'),
-            selected: _activeRoute(context, '/transactions/add'),
             onTap: () => onNavigate('/transactions/add'),
           ),
           _WideChildItem(
             icon: Icons.receipt_long_outlined,
             label: context.l10n.text('addTransactionFromReceipt'),
-            selected: _activeRoute(context, '/receipts/capture'),
             onTap: () => onNavigate('/receipts/capture'),
           ),
           _WideChildItem(
             icon: Icons.document_scanner_outlined,
             label: context.l10n.text('addTransactionFromStatement'),
-            selected: _activeRoute(context, '/statements'),
             onTap: () => onNavigate('/statements'),
           ),
           _WideChildItem(
@@ -257,36 +238,7 @@ class _WidePrimaryNavigation extends StatelessWidget {
           _WideChildItem(
             icon: Icons.account_balance_wallet_outlined,
             label: context.l10n.text('paymentSources'),
-            selected: _activeRoute(context, '/payment-sources'),
             onTap: () => onNavigate('/payment-sources'),
-          ),
-        ],
-      ),
-      _WideGroup(
-        semanticKey: const ValueKey('wide-analytics-navigation'),
-        label: 'Analytics',
-        icon: Icons.analytics_outlined,
-        selected:
-            _activeRoute(context, '/analysis') ||
-            _activeRoute(context, '/insights'),
-        expanded:
-            analyticsExpanded ||
-            _activeRoute(context, '/analysis') ||
-            _activeRoute(context, '/insights'),
-        onTap: () => onNavigate('/analysis'),
-        onToggle: onToggleAnalytics,
-        children: [
-          _WideChildItem(
-            icon: Icons.analytics_outlined,
-            label: context.l10n.text('analysis'),
-            selected: _activeRoute(context, '/analysis'),
-            onTap: () => onNavigate('/analysis'),
-          ),
-          _WideChildItem(
-            icon: Icons.lightbulb_outline_rounded,
-            label: context.l10n.text('insights'),
-            selected: _activeRoute(context, '/insights'),
-            onTap: () => onNavigate('/insights'),
           ),
         ],
       ),
@@ -294,33 +246,17 @@ class _WidePrimaryNavigation extends StatelessWidget {
         semanticKey: const ValueKey('wide-tools-navigation'),
         label: context.l10n.text('tools'),
         icon: Icons.bar_chart_rounded,
-        selected:
-            _selected(3) ||
-            toolNavigationItems(context).any(
-              (tool) =>
-                  tool.route != '/analysis' &&
-                  tool.route != '/insights' &&
-                  _activeRoute(context, tool.route),
-            ),
-        expanded:
-            toolsExpanded ||
-            toolNavigationItems(context).any(
-              (tool) =>
-                  tool.route != '/analysis' &&
-                  tool.route != '/insights' &&
-                  _activeRoute(context, tool.route),
-            ),
+        selected: _selected(3),
+        expanded: toolsExpanded,
         onTap: () => onParentSelected(3),
         onToggle: onToggleTools,
         children: [
           for (final tool in toolNavigationItems(context))
-            if (tool.route != '/analysis' && tool.route != '/insights')
-              _WideChildItem(
-                icon: tool.icon,
-                label: tool.title,
-                selected: _activeRoute(context, tool.route),
-                onTap: () => onNavigate(tool.route),
-              ),
+            _WideChildItem(
+              icon: tool.icon,
+              label: tool.title,
+              onTap: () => onNavigate(tool.route),
+            ),
         ],
       ),
       _WideGroup(
@@ -336,13 +272,11 @@ class _WidePrimaryNavigation extends StatelessWidget {
           _WideChildItem(
             icon: Icons.privacy_tip_outlined,
             label: context.l10n.text('privacyAndData'),
-            selected: _activeRoute(context, '/privacy-data'),
             onTap: () => onNavigate('/privacy-data'),
           ),
           _WideChildItem(
             icon: Icons.auto_awesome_outlined,
             label: context.l10n.text('assistant'),
-            selected: _activeRoute(context, '/assistant'),
             onTap: () => onNavigate('/assistant'),
           ),
           _WideChildItem(
@@ -401,18 +335,6 @@ class _WidePrimaryNavigation extends StatelessWidget {
         ]),
       ),
       _WideCollapsedItem(
-        key: const ValueKey('wide-collapsed-analytics'),
-        icon: Icons.analytics_outlined,
-        label: 'Analytics',
-        selected:
-            _activeRoute(context, '/analysis') ||
-            _activeRoute(context, '/insights'),
-        onTap: (itemContext) => _openMenu(itemContext, [
-          _WidePopupAction.route(context.l10n.text('analysis'), '/analysis'),
-          _WidePopupAction.route(context.l10n.text('insights'), '/insights'),
-        ]),
-      ),
-      _WideCollapsedItem(
         key: const ValueKey('wide-collapsed-tools'),
         icon: Icons.bar_chart_rounded,
         label: context.l10n.text('tools'),
@@ -420,8 +342,7 @@ class _WidePrimaryNavigation extends StatelessWidget {
         onTap: (itemContext) => _openMenu(itemContext, [
           _WidePopupAction.parent(context.l10n.text('tools'), 3),
           for (final tool in toolNavigationItems(context))
-            if (tool.route != '/analysis' && tool.route != '/insights')
-              _WidePopupAction.route(tool.title, tool.route),
+            _WidePopupAction.route(tool.title, tool.route),
         ]),
       ),
       _WideCollapsedItem(
@@ -662,40 +583,32 @@ class _WideChildItem extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
-    this.selected = false,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
-  final bool selected;
 
   @override
   Widget build(BuildContext context) => Semantics(
     button: true,
     container: true,
     label: label,
-    selected: selected,
     onTap: onTap,
     child: SizedBox(
       height: ButlerlySize.wideNavigationItemHeight,
       child: InkWell(
         onTap: onTap,
-        child: ColoredBox(
-          color: selected
-              ? Theme.of(context).colorScheme.primaryContainer
-              : Colors.transparent,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: ButlerlySpacing.compact,
-            ),
-            child: Row(
-              children: [
-                Icon(icon, size: ButlerlySize.standardIcon),
-                const SizedBox(width: ButlerlySpacing.compact),
-                Expanded(child: Text(label, overflow: TextOverflow.ellipsis)),
-              ],
-            ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: ButlerlySpacing.compact,
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: ButlerlySize.standardIcon),
+              const SizedBox(width: ButlerlySpacing.compact),
+              Expanded(child: Text(label, overflow: TextOverflow.ellipsis)),
+            ],
           ),
         ),
       ),
