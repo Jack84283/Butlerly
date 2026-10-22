@@ -1,8 +1,10 @@
+import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_action_group.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -265,9 +267,16 @@ class _RulesPageState extends State<RulesPage> {
         );
       }
       final data = snapshot.requireData;
+      final desktop =
+          effectiveButlerlyLayoutMode(
+            context,
+            MediaQuery.sizeOf(context).width,
+          ) ==
+          ButlerlyLayoutMode.wide;
       return ButlerlyPage(
         title: context.l10n.text('ruleManagement'),
         subtitle: context.l10n.text('ruleManagementHowItWorks'),
+        fullWidth: desktop,
         actions: [
           IconButton(
             tooltip: context.l10n.text('addRule'),
@@ -283,6 +292,16 @@ class _RulesPageState extends State<RulesPage> {
               message: context.l10n.text('noRulesBody'),
               actionLabel: context.l10n.text('addRule'),
               onAction: () => _edit(data),
+            )
+          else if (desktop)
+            _RulesDesktopTable(
+              rules: data.rules,
+              conditions: (rule) => _conditions(context, data, rule),
+              actions: (rule) => _actions(context, data, rule),
+              onDetails: (rule) => _showDetails(data, rule),
+              onToggle: _toggle,
+              onEdit: (rule) => _edit(data, rule),
+              onDelete: _delete,
             )
           else
             Column(
