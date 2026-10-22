@@ -24,6 +24,7 @@ class _RulesPageState extends State<RulesPage> {
       : null;
 
   late Future<_RuleData> _data = _load();
+  String? _selectedDesktopRuleId;
 
   Future<_RuleData> _load() async {
     final finance = _finance;
@@ -146,6 +147,9 @@ class _RulesPageState extends State<RulesPage> {
       _showMessage(context.l10n.text('ruleDeleteFailed'));
       return;
     }
+    if (_selectedDesktopRuleId == rule.id.value) {
+      _selectedDesktopRuleId = null;
+    }
     _showMessage(context.l10n.text('ruleDeleted'));
     _refresh();
   }
@@ -155,23 +159,10 @@ class _RulesPageState extends State<RulesPage> {
       context: context,
       builder: (context) => ButlerlySheet(
         title: Text(rule.name),
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              rule.description?.isNotEmpty == true
-                  ? rule.description!
-                  : context.l10n.text('ruleNoDescription'),
-            ),
-            const SizedBox(height: ButlerlySpacing.standard),
-            Text(context.l10n.text('ruleConditions')),
-            Text(_conditions(context, data, rule)),
-            const SizedBox(height: ButlerlySpacing.standard),
-            Text(context.l10n.text('ruleActions')),
-            Text(_actions(context, data, rule)),
-            const SizedBox(height: ButlerlySpacing.standard),
-            Text('${context.l10n.text('rulePriority')}: ${rule.priority}'),
-          ],
+        content: _RuleDetailsContent(
+          rule: rule,
+          conditions: _conditions(context, data, rule),
+          actions: _actions(context, data, rule),
         ),
         actions: [
           FilledButton(
@@ -181,6 +172,14 @@ class _RulesPageState extends State<RulesPage> {
         ],
       ),
     );
+  }
+
+  void _selectDesktopRule(TransactionRule rule) {
+    setState(() => _selectedDesktopRuleId = rule.id.value);
+  }
+
+  void _closeDesktopDetails() {
+    setState(() => _selectedDesktopRuleId = null);
   }
 
   String _conditions(
@@ -273,6 +272,11 @@ class _RulesPageState extends State<RulesPage> {
             MediaQuery.sizeOf(context).width,
           ) ==
           ButlerlyLayoutMode.wide;
+      final selectedDesktopRule = desktop && _selectedDesktopRuleId != null
+          ? data.rules
+                .where((rule) => rule.id.value == _selectedDesktopRuleId)
+                .firstOrNull
+          : null;
       return ButlerlyPage(
         title: context.l10n.text('ruleManagement'),
         subtitle: context.l10n.text('ruleManagementHowItWorks'),
@@ -294,14 +298,44 @@ class _RulesPageState extends State<RulesPage> {
               onAction: () => _edit(data),
             )
           else if (desktop)
-            _RulesDesktopTable(
-              rules: data.rules,
-              conditions: (rule) => _conditions(context, data, rule),
-              actions: (rule) => _actions(context, data, rule),
-              onDetails: (rule) => _showDetails(data, rule),
-              onToggle: _toggle,
-              onEdit: (rule) => _edit(data, rule),
-              onDelete: _delete,
+            LayoutBuilder(
+              key: const ValueKey('desktop-rules-workspace'),
+              builder: (context, constraints) => Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _RulesDesktopTable(
+                      rules: data.rules,
+                      conditions: (rule) => _conditions(context, data, rule),
+                      actions: (rule) => _actions(context, data, rule),
+                      onDetails: _selectDesktopRule,
+                      onToggle: _toggle,
+                      onEdit: (rule) => _edit(data, rule),
+                      onDelete: _delete,
+                    ),
+                  ),
+                  if (selectedDesktopRule != null) ...[
+                    const SizedBox(width: ButlerlySpacing.cardGap),
+                    SizedBox(
+                      width: constraints.maxWidth < 1100 ? 320 : 400,
+                      child: _RuleDesktopDetailsPanel(
+                        rule: selectedDesktopRule,
+                        conditions: _conditions(
+                          context,
+                          data,
+                          selectedDesktopRule,
+                        ),
+                        actions: _actions(
+                          context,
+                          data,
+                          selectedDesktopRule,
+                        ),
+                        onClose: _closeDesktopDetails,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             )
           else
             Column(
@@ -322,6 +356,90 @@ class _RulesPageState extends State<RulesPage> {
         ],
       );
     },
+  );
+}
+
+/// Contextual rule details on desktop. This panel does not push a route or
+/// open a modal, so users can select another row without dismissing it first.
+class _RuleDesktopDetailsPanel extends StatelessWidget {
+  const _RuleDesktopDetailsPanel({
+    required this.rule,
+    required this.conditions,
+    required this.actions,
+    required this.onClose,
+  });
+
+  final TransactionRule rule;
+  final String conditions;
+  final String actions;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) => ButlerlyCard(
+    key: const ValueKey('desktop-rule-details-panel'),
+    semanticLabel: rule.name,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ButlerlyCardHeader(
+          title: rule.name,
+          action: IconButton(
+            key: const ValueKey('desktop-rule-details-close'),
+            tooltip: context.l10n.text('close'),
+            onPressed: onClose,
+            icon: const Icon(Icons.close),
+            iconSize: 20,
+            constraints: const BoxConstraints.tightFor(
+              width: 32,
+              height: 32,
+            ),
+            padding: EdgeInsets.zero,
+            style: IconButton.styleFrom(
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+        ),
+        const SizedBox(height: ButlerlySpacing.standard),
+        _RuleDetailsContent(
+          rule: rule,
+          conditions: conditions,
+          actions: actions,
+        ),
+      ],
+    ),
+  );
+}
+
+/// Keep the desktop side panel and device bottom sheet content in sync.
+class _RuleDetailsContent extends StatelessWidget {
+  const _RuleDetailsContent({
+    required this.rule,
+    required this.conditions,
+    required this.actions,
+  });
+
+  final TransactionRule rule;
+  final String conditions;
+  final String actions;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        rule.description?.isNotEmpty == true
+            ? rule.description!
+            : context.l10n.text('ruleNoDescription'),
+      ),
+      const SizedBox(height: ButlerlySpacing.standard),
+      Text(context.l10n.text('ruleConditions')),
+      Text(conditions),
+      const SizedBox(height: ButlerlySpacing.standard),
+      Text(context.l10n.text('ruleActions')),
+      Text(actions),
+      const SizedBox(height: ButlerlySpacing.standard),
+      Text('${context.l10n.text('rulePriority')}: ${rule.priority}'),
+    ],
   );
 }
 
