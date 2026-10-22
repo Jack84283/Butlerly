@@ -361,6 +361,192 @@ final class _RuleData {
       tags.where((value) => value.id == id).firstOrNull?.name ?? id.value;
 }
 
+/// Full-width desktop rules table, using the same inset surface, dividers
+/// and horizontal overflow behavior as the Home and Transactions tables.
+class _RulesDesktopTable extends StatelessWidget {
+  const _RulesDesktopTable({
+    required this.rules,
+    required this.conditions,
+    required this.actions,
+    required this.onDetails,
+    required this.onToggle,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  static const double minimumWidth = 1000;
+  static const double priorityWidth = 76;
+  static const double statusWidth = 88;
+  static const double controlsWidth = 116;
+
+  final List<TransactionRule> rules;
+  final String Function(TransactionRule) conditions;
+  final String Function(TransactionRule) actions;
+  final ValueChanged<TransactionRule> onDetails;
+  final void Function(TransactionRule, bool) onToggle;
+  final ValueChanged<TransactionRule> onEdit;
+  final ValueChanged<TransactionRule> onDelete;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: double.infinity,
+    child: ButlerlyCard(
+      padding: const EdgeInsets.all(ButlerlyDesktopInnerCard.outerGutter),
+      child: ButlerlyDesktopInnerCard(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final table = Column(
+              key: const ValueKey('desktop-rules-table'),
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(flex: 3, child: _header(context, 'name')),
+                    Expanded(flex: 3, child: _header(context, 'ruleConditions')),
+                    Expanded(flex: 3, child: _header(context, 'ruleActions')),
+                    SizedBox(
+                      width: priorityWidth,
+                      child: _header(
+                        context,
+                        'rulePriority',
+                        align: TextAlign.end,
+                      ),
+                    ),
+                    SizedBox(
+                      width: statusWidth,
+                      child: _header(context, 'status', align: TextAlign.center),
+                    ),
+                    SizedBox(
+                      width: controlsWidth,
+                      child: Text(
+                        '${context.l10n.text('edit')} / ${context.l10n.text('delete')}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: ButlerlyTableTokens.headerTextStyle(context),
+                        textAlign: TextAlign.end,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: ButlerlyTableTokens.headerToRowsGap),
+                _divider(context),
+                for (final rule in rules) ...[
+                  _row(context, rule),
+                  _divider(context),
+                ],
+              ],
+            );
+            if (constraints.maxWidth >= minimumWidth) return table;
+            return SingleChildScrollView(
+              key: const ValueKey('desktop-rules-table-horizontal-scroll'),
+              scrollDirection: Axis.horizontal,
+              child: SizedBox(width: minimumWidth, child: table),
+            );
+          },
+        ),
+      ),
+    ),
+  );
+
+  Widget _header(
+    BuildContext context,
+    String key, {
+    TextAlign align = TextAlign.start,
+  }) => Text(
+    context.l10n.text(key),
+    style: ButlerlyTableTokens.headerTextStyle(context),
+    maxLines: 1,
+    overflow: TextOverflow.ellipsis,
+    textAlign: align,
+  );
+
+  Widget _divider(BuildContext context) => Divider(
+    height: ButlerlyTableTokens.dividerThickness,
+    thickness: ButlerlyTableTokens.dividerThickness,
+    color: ButlerlyTableTokens.dividerColor(context),
+  );
+
+  Widget _cell(
+    BuildContext context,
+    String value, {
+    FontWeight? weight,
+    TextAlign align = TextAlign.start,
+  }) => Tooltip(
+    message: value,
+    child: Text(
+      value.isEmpty ? '—' : value,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      textAlign: align,
+      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+        fontWeight: weight,
+      ),
+    ),
+  );
+
+  Widget _row(BuildContext context, TransactionRule rule) => Material(
+    type: MaterialType.transparency,
+    child: InkWell(
+      key: ValueKey('desktop-rule-row-${rule.id.value}'),
+      onTap: () => onDetails(rule),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          vertical: ButlerlySpacing.micro,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              flex: 3,
+              child: _cell(context, rule.name, weight: FontWeight.w600),
+            ),
+            Expanded(flex: 3, child: _cell(context, conditions(rule))),
+            Expanded(flex: 3, child: _cell(context, actions(rule))),
+            SizedBox(
+              width: priorityWidth,
+              child: _cell(
+                context,
+                '${rule.priority}',
+                align: TextAlign.end,
+              ),
+            ),
+            SizedBox(
+              width: statusWidth,
+              child: Center(
+                child: Switch.adaptive(
+                  key: ValueKey('desktop-rule-switch-${rule.id.value}'),
+                  value: rule.enabled,
+                  onChanged: (enabled) => onToggle(rule, enabled),
+                ),
+              ),
+            ),
+            SizedBox(
+              width: controlsWidth,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  IconButton(
+                    key: ValueKey('desktop-rule-edit-${rule.id.value}'),
+                    tooltip: context.l10n.text('edit'),
+                    onPressed: () => onEdit(rule),
+                    icon: const Icon(Icons.edit_outlined),
+                  ),
+                  IconButton(
+                    key: ValueKey('desktop-rule-delete-${rule.id.value}'),
+                    tooltip: context.l10n.text('delete'),
+                    onPressed: () => onDelete(rule),
+                    icon: const Icon(Icons.delete_outline),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
 class _RuleCard extends StatelessWidget {
   const _RuleCard({
     required this.rule,
