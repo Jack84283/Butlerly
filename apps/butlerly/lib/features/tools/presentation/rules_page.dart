@@ -26,7 +26,6 @@ class _RulesPageState extends State<RulesPage> {
   late Future<_RuleData> _data = _load();
   String? _selectedDesktopRuleId;
   bool _desktopEditing = false;
-  bool _desktopCreating = false;
 
   bool get _isDesktop =>
       effectiveButlerlyLayoutMode(context, MediaQuery.sizeOf(context).width) ==
@@ -34,7 +33,6 @@ class _RulesPageState extends State<RulesPage> {
 
   void _closeEditor() => setState(() {
     _desktopEditing = false;
-    _desktopCreating = false;
   });
 
   Future<_RuleData> _load() async {
@@ -77,7 +75,6 @@ class _RulesPageState extends State<RulesPage> {
     if (_isDesktop) {
       setState(() {
         _selectedDesktopRuleId = current?.id.value;
-        _desktopCreating = current == null;
         _desktopEditing = true;
       });
       return;
@@ -143,8 +140,7 @@ class _RulesPageState extends State<RulesPage> {
       setState(() {
         _selectedDesktopRuleId = rule.id.value;
         _desktopEditing = false;
-        _desktopCreating = false;
-      });
+          });
     }
     _refresh();
   }
@@ -208,8 +204,7 @@ class _RulesPageState extends State<RulesPage> {
     setState(() {
       _selectedDesktopRuleId = rule.id.value;
       _desktopEditing = false;
-      _desktopCreating = false;
-    });
+      });
   }
 
   void _closeDesktopDetails() {
@@ -385,7 +380,7 @@ class _RulesPageState extends State<RulesPage> {
                                 selectedDesktopRule!,
                               ),
                               onClose: _closeDesktopDetails,
-                              onEdit: () => _edit(data, selectedDesktopRule!),
+                              onEdit: () => _edit(data, selectedDesktopRule),
                             ),
                     ),
                   ],
