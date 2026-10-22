@@ -130,7 +130,7 @@ void main() {
             find.byKey(const ValueKey('desktop-rule-switch-box-rule.fuel')),
           )
           .height,
-      28,
+      24,
     );
     expect(
       tester.widget<Switch>(statusSwitch).materialTapTargetSize,
@@ -161,6 +161,48 @@ void main() {
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect((await rules.listAll()), hasLength(1));
+    _expectNoFlutterError(tester);
+  });
+
+  testWidgets('desktop Rules rows match Master Data icon and row geometry', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 950);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const _TestApp(child: RulesPage()));
+    await tester.pumpAndSettle();
+
+    final rulesRow = find.byKey(const ValueKey('desktop-rule-row-rule.fuel'));
+    final rulesHeight = tester.getSize(rulesRow).height;
+    expect(
+      rulesHeight,
+      closeTo(24 + 2 * ButlerlyTableTokens.rowVerticalPadding, 0.1),
+    );
+    expect(
+      find.byType(ButlerlyDesktopTableIconAction),
+      findsNWidgets(2),
+    );
+
+    await tester.pumpWidget(const _TestApp(child: MasterDataPage()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('compact-section-3')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('desktop-master-data-table')), findsOneWidget);
+    final masterRow = find
+        .ancestor(
+          of: find.text('Costco'),
+          matching: find.byType(Padding),
+        )
+        .first;
+    expect(tester.getSize(masterRow).height, closeTo(rulesHeight, 0.1));
+    expect(
+      find.byType(ButlerlyDesktopTableIconAction),
+      findsNWidgets(2),
+    );
     _expectNoFlutterError(tester);
   });
 
