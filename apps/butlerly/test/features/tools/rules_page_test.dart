@@ -118,8 +118,12 @@ void main() {
       const ValueKey('desktop-rule-switch-rule.fuel'),
     );
     expect(tester.getSize(ruleRow).height, lessThanOrEqualTo(42));
-    expect(tester.getSize(editAction), const Size(24, 24));
-    expect(tester.getSize(deleteAction), const Size(24, 24));
+    expect(tester.widget<IconButton>(editAction).constraints?.maxWidth, 24);
+    expect(tester.widget<IconButton>(editAction).constraints?.maxHeight, 24);
+    expect(tester.widget<IconButton>(editAction).iconSize, 16);
+    expect(tester.widget<IconButton>(deleteAction).constraints?.maxWidth, 24);
+    expect(tester.widget<IconButton>(deleteAction).constraints?.maxHeight, 24);
+    expect(tester.widget<IconButton>(deleteAction).iconSize, 16);
     expect(
       tester
           .getSize(
