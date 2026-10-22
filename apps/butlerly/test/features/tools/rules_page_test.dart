@@ -181,10 +181,7 @@ void main() {
       rulesHeight,
       closeTo(24 + 2 * ButlerlyTableTokens.rowVerticalPadding, 0.1),
     );
-    expect(
-      find.byType(ButlerlyDesktopTableIconAction),
-      findsNWidgets(2),
-    );
+    expect(find.byType(ButlerlyDesktopTableIconAction), findsNWidgets(2));
 
     await tester.pumpWidget(const _TestApp(child: MasterDataPage()));
     await tester.pumpAndSettle();
@@ -196,16 +193,10 @@ void main() {
       findsOneWidget,
     );
     final masterRow = find
-        .ancestor(
-          of: find.text('Costco'),
-          matching: find.byType(Padding),
-        )
+        .ancestor(of: find.text('Costco'), matching: find.byType(Padding))
         .first;
     expect(tester.getSize(masterRow).height, closeTo(rulesHeight, 0.1));
-    expect(
-      find.byType(ButlerlyDesktopTableIconAction),
-      findsNWidgets(2),
-    );
+    expect(find.byType(ButlerlyDesktopTableIconAction), findsNWidgets(2));
     _expectNoFlutterError(tester);
   });
 
