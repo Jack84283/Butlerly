@@ -259,6 +259,8 @@ class ButlerlyDonutVisualization extends StatelessWidget {
     required this.valueLabel,
     this.density = ButlerlyVisualizationDensity.compact,
     this.legendBelow = false,
+    this.equalWidthColumns = false,
+    this.compactLegendRows = false,
     this.onDatumTap,
   });
 
@@ -266,6 +268,14 @@ class ButlerlyDonutVisualization extends StatelessWidget {
   final String Function(double value, double total) valueLabel;
   final ButlerlyVisualizationDensity density;
   final bool legendBelow;
+
+  /// Give the donut and legend one half of the available width each when
+  /// side by side. Narrow layouts and large text still stack vertically.
+  final bool equalWidthColumns;
+
+  /// Use an 8px gap between legend rows, with no trailing gap. Colors,
+  /// labels, actions, and semantics remain unchanged.
+  final bool compactLegendRows;
   final ValueChanged<ButlerlyChartDatum>? onDatumTap;
 
   @override
@@ -316,16 +326,22 @@ class ButlerlyDonutVisualization extends StatelessWidget {
               children: [
                 for (var index = 0; index < usable.length; index++)
                   Padding(
-                    padding: const EdgeInsets.only(
-                      bottom: ButlerlySpacing.micro,
+                    padding: EdgeInsets.only(
+                      bottom: compactLegendRows
+                          ? (index < usable.length - 1
+                                ? ButlerlySpacing.compact
+                                : ButlerlySpacing.none)
+                          : ButlerlySpacing.micro,
                     ),
                     child: InkWell(
                       onTap: onDatumTap == null
                           ? null
                           : () => onDatumTap!(usable[index]),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: ButlerlySpacing.xxs,
+                        padding: EdgeInsets.symmetric(
+                          vertical: compactLegendRows
+                              ? ButlerlySpacing.none
+                              : ButlerlySpacing.xxs,
                         ),
                         child: Row(
                           children: [
@@ -361,6 +377,26 @@ class ButlerlyDonutVisualization extends StatelessWidget {
                   chart,
                   const SizedBox(height: ButlerlySpacing.standard),
                   legend,
+                ],
+              );
+            }
+            if (equalWidthColumns) {
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Expanded(
+                    key: const ValueKey('butlerly-donut-chart-column'),
+                    child: Center(child: chart),
+                  ),
+                  Expanded(
+                    key: const ValueKey('butlerly-donut-legend-column'),
+                    child: Padding(
+                      padding: const EdgeInsetsDirectional.only(
+                        start: ButlerlySpacing.compact,
+                      ),
+                      child: legend,
+                    ),
+                  ),
                 ],
               );
             }

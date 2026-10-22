@@ -14,18 +14,22 @@ class AnalysisMerchantBreakdown extends StatelessWidget {
     required this.model,
     required this.masterData,
     this.onMetricTap,
-    this.fillToFiveRows = false,
+    this.desktopFourRows = false,
   });
 
   final AnalysisModel model;
   final TransactionMasterData? masterData;
   final ValueChanged<AnalysisMetric>? onMetricTap;
-  final bool fillToFiveRows;
+  final bool desktopFourRows;
 
   @override
   Widget build(BuildContext context) {
-    if (model.merchants.isEmpty) return const SizedBox.shrink();
+    if (model.merchants.isEmpty && !desktopFourRows) {
+      return const SizedBox.shrink();
+    }
+    final visibleRows = desktopFourRows ? 4 : 5;
     return ButlerlyCard(
+      key: const ValueKey('analysis-merchant-breakdown-card'),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -34,7 +38,15 @@ class AnalysisMerchantBreakdown extends StatelessWidget {
             subtitle: context.l10n.text('analysisMerchantBreakdownSubtitle'),
           ),
           const SizedBox(height: ButlerlySpacing.small),
-          for (final metric in model.merchants.take(5)) ...[
+          if (model.merchants.isEmpty)
+            SizedBox(
+              height: 44,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(context.l10n.text('noSpendingInPeriod')),
+              ),
+            ),
+          for (final metric in model.merchants.take(visibleRows)) ...[
             if (metric != model.merchants.first)
               const SizedBox(height: ButlerlySpacing.compact),
             InkWell(
@@ -67,8 +79,14 @@ class AnalysisMerchantBreakdown extends StatelessWidget {
               ),
             ),
           ],
-          if (fillToFiveRows)
-            for (var index = model.merchants.length; index < 5; index++) ...[
+          if (desktopFourRows)
+            for (
+              var index = model.merchants.isEmpty
+                  ? 1
+                  : model.merchants.take(4).length;
+              index < 4;
+              index++
+            ) ...[
               const SizedBox(height: ButlerlySpacing.compact),
               const SizedBox(height: 44),
             ],

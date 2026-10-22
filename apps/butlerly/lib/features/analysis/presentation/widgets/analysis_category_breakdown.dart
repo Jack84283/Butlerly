@@ -8,26 +8,27 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 
-/// Top five category totals shown beside the subcategory breakdown on desktop.
+/// Category totals displayed beside subcategory and merchant breakdowns on desktop.
 class AnalysisCategoryBreakdown extends StatelessWidget {
   const AnalysisCategoryBreakdown({
     super.key,
     required this.model,
     required this.masterData,
     this.onMetricTap,
-    this.fillToFiveRows = false,
+    this.desktopFourRows = false,
   });
 
   final AnalysisModel model;
   final TransactionMasterData? masterData;
   final ValueChanged<AnalysisMetric>? onMetricTap;
-  final bool fillToFiveRows;
+  final bool desktopFourRows;
 
   @override
   Widget build(BuildContext context) {
-    if (model.categories.isEmpty && !fillToFiveRows) {
+    if (model.categories.isEmpty && !desktopFourRows) {
       return const SizedBox.shrink();
     }
+    final visibleRows = desktopFourRows ? 4 : 5;
     return ButlerlyCard(
       key: const ValueKey('analysis-category-breakdown-card'),
       child: Column(
@@ -46,7 +47,7 @@ class AnalysisCategoryBreakdown extends StatelessWidget {
                 child: Text(context.l10n.text('noSpendingInPeriod')),
               ),
             ),
-          for (final metric in model.categories.take(5)) ...[
+          for (final metric in model.categories.take(visibleRows)) ...[
             if (metric != model.categories.first)
               const SizedBox(height: ButlerlySpacing.compact),
             InkWell(
@@ -79,12 +80,12 @@ class AnalysisCategoryBreakdown extends StatelessWidget {
               ),
             ),
           ],
-          if (fillToFiveRows)
+          if (desktopFourRows)
             for (
               var index = model.categories.isEmpty
                   ? 1
-                  : model.categories.length;
-              index < 5;
+                  : model.categories.take(4).length;
+              index < 4;
               index++
             ) ...[
               const SizedBox(height: ButlerlySpacing.compact),

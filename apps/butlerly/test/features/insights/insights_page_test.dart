@@ -200,6 +200,204 @@ void main() {
     expect(find.text('99.99 USD'), findsNothing);
   });
 
+  testWidgets('desktop Spending Concentration aligns donut and legend', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 1100);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final rule = _groupedRule(
+      presentation: const InsightPresentation(
+        semanticType: InsightSemanticType.neutral,
+        visualizationType: InsightVisualizationType.pie,
+        primaryMetric: InsightPrimaryMetric.share,
+      ),
+    );
+    final context = _context();
+    await tester.pumpWidget(
+      app(
+        (_) async => ApplicationSuccess(
+          InsightsEvaluation(
+            summary: PeriodSummary(
+              context: context,
+              expenseSpending: DecimalValue.parse('300'),
+              currency: CurrencyCode('USD'),
+              comparisonAvailable: false,
+            ),
+            results: [
+              for (final (dimension, value) in [
+                ('category.food', '100'),
+                ('category.housing', '200'),
+              ])
+                InsightResult(
+                  outputType: InsightOutputType.pattern,
+                  rule: rule,
+                  context: context,
+                  currentValue: DecimalValue.parse(value),
+                  impactValue: DecimalValue.parse(value),
+                  currency: CurrencyCode('USD'),
+                  dimension: dimension,
+                ),
+            ],
+            hasSufficientHistory: true,
+          ),
+        ),
+        masterData: const TransactionMasterData(
+          categoryNames: {
+            'category.food': 'Food',
+            'category.housing': 'Housing',
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final chartColumn = find.byKey(
+      const ValueKey('butlerly-donut-chart-column'),
+    );
+    final legendColumn = find.byKey(
+      const ValueKey('butlerly-donut-legend-column'),
+    );
+    final chart = find.byKey(const ValueKey('butlerly-donut-chart'));
+    expect(chartColumn, findsOneWidget);
+    expect(legendColumn, findsOneWidget);
+    expect(
+      tester.getSize(chartColumn).width,
+      closeTo(tester.getSize(legendColumn).width, 0.1),
+    );
+    expect(
+      tester.getTopLeft(legendColumn).dx,
+      greaterThan(tester.getTopRight(chart).dx),
+    );
+    expect(find.text('Food'), findsOneWidget);
+    expect(find.text('Housing'), findsOneWidget);
+    expect(find.text('100.00 USD'), findsOneWidget);
+    expect(find.text('200.00 USD'), findsOneWidget);
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('insights-period-summary-card')))
+          .height,
+      closeTo(
+        tester
+            .getSize(
+              find.byKey(
+                const ValueKey('insights-spending-concentration-card'),
+              ),
+            )
+            .height,
+        0.1,
+      ),
+    );
+    expect(
+      find.byKey(const ValueKey('desktop-insights-overview-equal-height')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('desktop overview cards match height with longer summary', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final context = _context();
+    final pieRule = _groupedRule(
+      presentation: const InsightPresentation(
+        semanticType: InsightSemanticType.neutral,
+        visualizationType: InsightVisualizationType.pie,
+        primaryMetric: InsightPrimaryMetric.share,
+      ),
+    );
+    final findingRule = _groupedRule(id: 'ANL-R099');
+    final evaluation = InsightsEvaluation(
+      summary: PeriodSummary(
+        context: context,
+        baselineContext: context,
+        expenseSpending: DecimalValue.parse('300'),
+        income: DecimalValue.parse('800'),
+        netCashFlow: DecimalValue.parse('500'),
+        currency: CurrencyCode('USD'),
+        comparisonAvailable: true,
+      ),
+      results: [
+        for (final (dimension, value) in [
+          ('category.food', '120'),
+          ('category.housing', '180'),
+        ])
+          InsightResult(
+            outputType: InsightOutputType.pattern,
+            rule: pieRule,
+            context: context,
+            currentValue: DecimalValue.parse(value),
+            impactValue: DecimalValue.parse(value),
+            currency: CurrencyCode('USD'),
+            dimension: dimension,
+          ),
+        InsightResult(
+          outputType: InsightOutputType.pattern,
+          rule: findingRule,
+          context: context,
+          finding: _finding(
+            id: 'movement-finding',
+            rule: findingRule,
+            dimension: 'category.food',
+          ),
+          currentValue: DecimalValue.parse('120'),
+          currency: CurrencyCode('USD'),
+          dimension: 'category.food',
+        ),
+      ],
+      limitations: const [
+        DataQualityIssue(code: 'missingFx', detail: 'FX not available'),
+        DataQualityIssue(code: 'missingBaseline', detail: 'Missing baseline'),
+      ],
+      hasSufficientHistory: true,
+    );
+    await tester.pumpWidget(
+      app(
+        (_) async => ApplicationSuccess(evaluation),
+        masterData: const TransactionMasterData(
+          categoryNames: {
+            'category.food': 'Food',
+            'category.housing': 'Housing',
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final summary = find.byKey(const ValueKey('insights-period-summary-card'));
+    final concentration = find.byKey(
+      const ValueKey('insights-spending-concentration-card'),
+    );
+    final quality = find.byKey(const ValueKey('insights-data-quality-card'));
+    final findings = find.byKey(
+      const ValueKey('desktop-insights-findings-grid'),
+    );
+    expect(summary, findsOneWidget);
+    expect(concentration, findsOneWidget);
+    expect(quality, findsOneWidget);
+    expect(findings, findsOneWidget);
+    expect(
+      tester.getSize(summary).height,
+      closeTo(tester.getSize(concentration).height, 0.1),
+    );
+    expect(
+      tester.getTopLeft(quality).dy,
+      greaterThan(tester.getBottomLeft(findings).dy),
+    );
+    expect(
+      tester.getSize(quality).width,
+      greaterThan(tester.getSize(summary).width * 1.9),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('shows an R020 finding with its comparison values', (
     tester,
   ) async {

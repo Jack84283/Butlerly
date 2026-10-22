@@ -25,6 +25,7 @@ class AnalysisBreakdownLeadingIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     final rawDimension = analysisRawDimension(metric);
     final categoryId = switch (metric.rule.grouping) {
+      RuleGrouping.category => _parentCategoryId(rawDimension),
       RuleGrouping.subcategory => _parentCategoryId(rawDimension),
       RuleGrouping.merchant => _parentCategoryId(
         masterData?.merchantCategoryId(rawDimension),

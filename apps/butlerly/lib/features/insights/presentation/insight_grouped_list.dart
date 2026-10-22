@@ -159,6 +159,7 @@ class InsightGroupedList extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
+                  key: ValueKey('desktop-insights-card-header-${group.name}'),
                   padding: const EdgeInsets.fromLTRB(
                     ButlerlySpacing.cardPadding,
                     ButlerlySpacing.cardPadding,
@@ -168,6 +169,9 @@ class InsightGroupedList extends StatelessWidget {
                   child: ButlerlyCardHeader(
                     title: _groupTitle(context, group, items),
                     subtitle: _groupSubtitle(context, group, items),
+                    subtitleGap: desktopGrid
+                        ? ButlerlySpacing.small
+                        : ButlerlySpacing.micro,
                   ),
                 ),
                 if (groupedVisualizations[group] case final chartResults?
@@ -185,37 +189,56 @@ class InsightGroupedList extends StatelessWidget {
                   ),
                 ],
                 const SizedBox(height: ButlerlySpacing.compact),
-                ButlerlyInsetTransactionCard(
-                  bottomInset: context.designTokens.geometry.innerCardGutter,
-                  child: ButlerlyTransactionList(
-                    children: [
-                      for (var index = 0; index < items.length; index++) ...[
-                        Builder(
-                          builder: (context) {
-                            final item = items[index];
-                            final escalation = item.escalation;
-                            final drillDownInsight =
-                                escalation != null &&
-                                    canViewTransactions(escalation)
-                                ? escalation
-                                : item.primary;
-                            return _InsightItem(
-                              insight: item.primary,
-                              escalation: escalation,
-                              drillDownInsight: drillDownInsight,
-                              masterData: masterData,
-                              showRuleCopy: !_groupOwnsRuleCopy(group, items),
-                              onViewTransactions:
-                                  canViewTransactions(drillDownInsight)
-                                  ? () => onViewTransactions(drillDownInsight)
-                                  : null,
-                            );
-                          },
-                        ),
+                if (desktopGrid)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      ButlerlyDesktopInnerCard.outerGutter,
+                      0,
+                      ButlerlyDesktopInnerCard.outerGutter,
+                      ButlerlyDesktopInnerCard.outerGutter,
+                    ),
+                    child: ButlerlyDesktopInnerCard(
+                      child: _InsightDesktopTable(
+                        group: group,
+                        items: items,
+                        masterData: masterData,
+                        showRuleCopy: !_groupOwnsRuleCopy(group, items),
+                        canViewTransactions: canViewTransactions,
+                        onViewTransactions: onViewTransactions,
+                      ),
+                    ),
+                  )
+                else
+                  ButlerlyInsetTransactionCard(
+                    bottomInset: context.designTokens.geometry.innerCardGutter,
+                    child: ButlerlyTransactionList(
+                      children: [
+                        for (var index = 0; index < items.length; index++)
+                          Builder(
+                            builder: (context) {
+                              final item = items[index];
+                              final escalation = item.escalation;
+                              final drillDownInsight =
+                                  escalation != null &&
+                                      canViewTransactions(escalation)
+                                  ? escalation
+                                  : item.primary;
+                              return _InsightItem(
+                                insight: item.primary,
+                                escalation: escalation,
+                                drillDownInsight: drillDownInsight,
+                                masterData: masterData,
+                                showRuleCopy: !_groupOwnsRuleCopy(group, items),
+                                onViewTransactions:
+                                    canViewTransactions(drillDownInsight)
+                                    ? () => onViewTransactions(drillDownInsight)
+                                    : null,
+                              );
+                            },
+                          ),
                       ],
-                    ],
+                    ),
                   ),
-                ),
               ],
             ),
           ),
@@ -228,20 +251,12 @@ class InsightGroupedList extends StatelessWidget {
       );
     }
 
-    return LayoutBuilder(
+    // Desktop finding tables need the full content width: each group owns
+    // one complete row, unlike the smaller overview cards above them.
+    return Column(
       key: const ValueKey('desktop-insights-findings-grid'),
-      builder: (context, constraints) {
-        const gap = ButlerlySpacing.cardGap;
-        final columns = constraints.maxWidth >= 900 ? 2 : 1;
-        final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
-        return Wrap(
-          spacing: gap,
-          runSpacing: gap,
-          children: [
-            for (final card in cards) SizedBox(width: width, child: card),
-          ],
-        );
-      },
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: _withGroupedInsightCardSpacing(cards),
     );
   }
 }
@@ -385,6 +400,286 @@ bool _sameContext(AnalysisContext left, AnalysisContext right) =>
     left.datasetMode == right.datasetMode &&
     left.currencyBasis == right.currencyBasis &&
     left.baseCurrency?.value == right.baseCurrency?.value;
+
+/// Desktop version of the grouped findings list. Keep the same five columns
+/// across every Insight group and scroll horizontally within a narrow card.
+class _InsightDesktopTable extends StatelessWidget {
+  const _InsightDesktopTable({
+    required this.group,
+    required this.items,
+    required this.masterData,
+    required this.showRuleCopy,
+    required this.canViewTransactions,
+    required this.onViewTransactions,
+  });
+
+  // Keep period and transaction-count headings fully legible on desktop.
+  // Insights and Difference share the remaining width after fixed columns.
+  static const double minimumWidth = 1000;
+  static const double periodColumnWidth = 160;
+  static const double transactionsColumnWidth = 152;
+
+  final InsightPresentationGroup group;
+  final List<_PresentedInsight> items;
+  final TransactionMasterData masterData;
+  final bool showRuleCopy;
+  final bool Function(InsightResult) canViewTransactions;
+  final ValueChanged<InsightResult> onViewTransactions;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final table = Column(
+        key: ValueKey('desktop-insights-table-${group.name}'),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                key: ValueKey('desktop-insights-column-${group.name}-insights'),
+                child: _header(context, 'insights'),
+              ),
+              Expanded(
+                key: ValueKey(
+                  'desktop-insights-column-${group.name}-difference',
+                ),
+                child: _header(context, 'difference', right: true),
+              ),
+              SizedBox(
+                key: ValueKey(
+                  'desktop-insights-column-${group.name}-previousPeriod',
+                ),
+                width: periodColumnWidth,
+                child: _header(context, 'previousPeriod', right: true),
+              ),
+              SizedBox(
+                key: ValueKey(
+                  'desktop-insights-column-${group.name}-currentPeriod',
+                ),
+                width: periodColumnWidth,
+                child: _header(context, 'currentPeriod', right: true),
+              ),
+              SizedBox(
+                key: ValueKey(
+                  'desktop-insights-column-${group.name}-transactions',
+                ),
+                width: transactionsColumnWidth,
+                child: _header(context, 'transactions', right: true),
+              ),
+            ],
+          ),
+          const SizedBox(height: ButlerlyTableTokens.headerToRowsGap),
+          _divider(context),
+          for (var index = 0; index < items.length; index++) ...[
+            _row(context, items[index], index),
+            _divider(context),
+          ],
+        ],
+      );
+      if (constraints.maxWidth >= minimumWidth) return table;
+      return SingleChildScrollView(
+        key: ValueKey('desktop-insights-table-scroll-${group.name}'),
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(width: minimumWidth, child: table),
+      );
+    },
+  );
+
+  Widget _header(BuildContext context, String key, {bool right = false}) =>
+      Text(
+        context.l10n.text(key),
+        style: ButlerlyTableTokens.headerTextStyle(context),
+        textAlign: right ? TextAlign.end : TextAlign.start,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      );
+
+  Widget _divider(BuildContext context) => Divider(
+    height: ButlerlyTableTokens.dividerThickness,
+    thickness: ButlerlyTableTokens.dividerThickness,
+    color: ButlerlyTableTokens.dividerColor(context),
+  );
+
+  Widget _row(BuildContext context, _PresentedInsight item, int index) {
+    final insight = item.primary;
+    final escalation = item.escalation;
+    final drillDownInsight =
+        escalation != null && canViewTransactions(escalation)
+        ? escalation
+        : insight;
+    final canOpen = canViewTransactions(drillDownInsight);
+    final identity = _identityLabel(context, insight, masterData);
+    final ruleName = context.l10n.text(insight.rule.nameKey);
+    final escalationName = escalation == null
+        ? null
+        : context.l10n.text(escalation.rule.nameKey);
+    final current = _formattedValue(context, insight, insight.currentValue);
+    final baseline = _formattedValue(context, insight, insight.baselineValue);
+    final difference = _formattedValue(
+      context,
+      insight,
+      insight.absoluteChange,
+    );
+    final percent = insight.percentageChange == null
+        ? null
+        : '${localizedDecimal(context, insight.percentageChange.toString())}%';
+    final changeText = [
+      _changeDirection(insight),
+      difference,
+      percent,
+    ].whereType<String>().join(' · ');
+    final semantic = _semanticPresentation(
+      context,
+      escalation?.presentation.semanticType ??
+          insight.presentation.semanticType,
+    );
+    final supportingCount = drillDownInsight.evidence.length;
+    final actionLabel = supportingCount == 0
+        ? context.l10n.text('viewTransactions')
+        : context.l10n.text(
+            supportingCount == 1
+                ? 'viewOneSupportingTransaction'
+                : 'viewManySupportingTransactions',
+            {'count': '$supportingCount'},
+          );
+
+    return Semantics(
+      container: true,
+      button: canOpen,
+      enabled: canOpen,
+      label: [
+        ruleName,
+        ?identity,
+        ?escalationName,
+        if (canOpen) actionLabel,
+      ].join(': '),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          key: ValueKey('desktop-insight-row-${group.name}-$index'),
+          onTap: canOpen ? () => onViewTransactions(drillDownInsight) : null,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              vertical: ButlerlySpacing.micro,
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  key: ValueKey(
+                    'desktop-insights-cell-${group.name}-$index-insights',
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      SizedBox.square(
+                        dimension: 28,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: _IdentityIcon(
+                            insight: insight,
+                            masterData: masterData,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: ButlerlySpacing.compact),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              identity ?? ruleName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(fontWeight: FontWeight.w600),
+                            ),
+                            if (showRuleCopy && identity != null)
+                              Text(
+                                ruleName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            if (showRuleCopy)
+                              Text(
+                                context.l10n.text(insight.rule.descriptionKey),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            if (escalationName != null)
+                              Text(
+                                escalationName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.labelMedium
+                                    ?.copyWith(color: semantic.color),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  key: ValueKey(
+                    'desktop-insights-cell-${group.name}-$index-difference',
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Icon(semantic.icon, size: 16, color: semantic.color),
+                      const SizedBox(width: ButlerlySpacing.micro),
+                      Flexible(
+                        child: _value(
+                          context,
+                          changeText.isEmpty ? '—' : changeText,
+                          color: semantic.color,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(
+                  key: ValueKey(
+                    'desktop-insights-cell-${group.name}-$index-previousPeriod',
+                  ),
+                  width: periodColumnWidth,
+                  child: _value(context, baseline ?? '—'),
+                ),
+                SizedBox(
+                  key: ValueKey(
+                    'desktop-insights-cell-${group.name}-$index-currentPeriod',
+                  ),
+                  width: periodColumnWidth,
+                  child: _value(context, current ?? '—'),
+                ),
+                SizedBox(
+                  key: ValueKey(
+                    'desktop-insights-cell-${group.name}-$index-transactions',
+                  ),
+                  width: transactionsColumnWidth,
+                  child: _value(
+                    context,
+                    supportingCount == 0 ? '—' : '$supportingCount',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _value(BuildContext context, String value, {Color? color}) => Text(
+    value,
+    textAlign: TextAlign.end,
+    maxLines: 1,
+    overflow: TextOverflow.ellipsis,
+    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: color),
+  );
+}
 
 class _InsightItem extends StatelessWidget {
   const _InsightItem({

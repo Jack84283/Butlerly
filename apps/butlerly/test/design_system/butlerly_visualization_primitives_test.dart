@@ -143,6 +143,124 @@ void main() {
     expect(tapped?.label, 'Food');
   });
 
+  testWidgets('donut gives chart and legend equal columns at desktop width', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      app(
+        ButlerlyDonutVisualization(
+          density: ButlerlyVisualizationDensity.regular,
+          equalWidthColumns: true,
+          data: const [
+            ButlerlyChartDatum(label: 'Food', value: 60, valueLabel: '60 USD'),
+            ButlerlyChartDatum(label: 'Rent', value: 40, valueLabel: '40 USD'),
+          ],
+          valueLabel: (value, total) => '${value / total * 100}%',
+        ),
+        width: 640,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final chartColumn = find.byKey(
+      const ValueKey('butlerly-donut-chart-column'),
+    );
+    final legendColumn = find.byKey(
+      const ValueKey('butlerly-donut-legend-column'),
+    );
+    expect(chartColumn, findsOneWidget);
+    expect(legendColumn, findsOneWidget);
+    expect(
+      tester.getSize(chartColumn).width,
+      closeTo(tester.getSize(legendColumn).width, 0.1),
+    );
+    expect(
+      tester.getCenter(find.byKey(const ValueKey('butlerly-donut-chart'))).dx,
+      closeTo(tester.getCenter(chartColumn).dx, 0.1),
+    );
+    expect(find.text('Food'), findsOneWidget);
+    expect(find.text('Rent'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('equal donut columns stack for large text and narrow space', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      app(
+        ButlerlyDonutVisualization(
+          equalWidthColumns: true,
+          data: const [
+            ButlerlyChartDatum(label: 'Food', value: 60),
+            ButlerlyChartDatum(label: 'Rent', value: 40),
+          ],
+          valueLabel: (value, total) => '${value / total * 100}%',
+        ),
+        width: 320,
+        textScale: 2,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('butlerly-donut-chart-column')),
+      findsNothing,
+    );
+    expect(find.text('Food'), findsOneWidget);
+    expect(find.text('Rent'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('compact desktop legend reduces required donut height', (
+    tester,
+  ) async {
+    Widget donut({required bool compactRows}) => ButlerlyDonutVisualization(
+      density: ButlerlyVisualizationDensity.regular,
+      equalWidthColumns: true,
+      compactLegendRows: compactRows,
+      data: const [
+        ButlerlyChartDatum(label: 'One', value: 6),
+        ButlerlyChartDatum(label: 'Two', value: 5),
+        ButlerlyChartDatum(label: 'Three', value: 4),
+        ButlerlyChartDatum(label: 'Four', value: 3),
+        ButlerlyChartDatum(label: 'Five', value: 2),
+        ButlerlyChartDatum(label: 'Other', value: 1),
+      ],
+      valueLabel: (value, total) => '${value.toInt()} USD',
+    );
+    await tester.pumpWidget(app(donut(compactRows: false), width: 640));
+    await tester.pumpAndSettle();
+    final standardHeight = tester
+        .getSize(find.byType(ButlerlyDonutVisualization))
+        .height;
+
+    await tester.pumpWidget(app(donut(compactRows: true), width: 640));
+    await tester.pumpAndSettle();
+    final compactHeight = tester
+        .getSize(find.byType(ButlerlyDonutVisualization))
+        .height;
+
+    expect(compactHeight, lessThan(standardHeight));
+    expect(compactHeight, greaterThanOrEqualTo(144));
+    expect(find.text('Other'), findsOneWidget);
+    final firstRowGap =
+        tester.getTopLeft(find.text('Two')).dy -
+        tester.getBottomLeft(find.text('One')).dy;
+    expect(firstRowGap, greaterThanOrEqualTo(ButlerlySpacing.compact - 1));
+    expect(
+      tester.getCenter(find.byKey(const ValueKey('butlerly-donut-chart'))).dy,
+      closeTo(
+        tester
+            .getCenter(
+              find.byKey(const ValueKey('butlerly-donut-legend-column')),
+            )
+            .dy,
+        1,
+      ),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('donut keeps a single positive datum visible', (tester) async {
     await tester.pumpWidget(
       app(

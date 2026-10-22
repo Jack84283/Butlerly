@@ -10,6 +10,7 @@ import 'package:butlerly/features/analysis/presentation/analysis_search_selectio
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_custom_period_sheet.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_period_selector.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_skeleton.dart';
+import 'package:butlerly/features/analysis/presentation/widgets/analysis_spending_breakdown.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_summary.dart';
 import 'package:butlerly/features/foundation/presentation/search_page.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
@@ -61,7 +62,7 @@ void main() {
     ),
   );
 
-  testWidgets('desktop always shows paired Category and Subcategory cards', (
+  testWidgets('desktop shows three aligned four-row breakdown cards', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1400, 1800);
@@ -80,14 +81,27 @@ void main() {
     final subcategory = find.byKey(
       const ValueKey('analysis-subcategory-breakdown-card'),
     );
+    final merchant = find.byKey(
+      const ValueKey('analysis-merchant-breakdown-card'),
+    );
     expect(category, findsOneWidget);
     expect(subcategory, findsOneWidget);
+    expect(merchant, findsOneWidget);
     expect(find.text('Top categories for the selected period'), findsOneWidget);
     expect(
       find.text('Top subcategories for the selected period'),
       findsOneWidget,
     );
     expect(tester.getTopLeft(category).dy, tester.getTopLeft(subcategory).dy);
+    expect(tester.getTopLeft(category).dy, tester.getTopLeft(merchant).dy);
+    expect(tester.getSize(category).height, tester.getSize(subcategory).height);
+    expect(tester.getSize(category).height, tester.getSize(merchant).height);
+    expect(tester.getSize(category).height, 320);
+    expect(
+      tester.getSize(find.byType(AnalysisSummary)).height,
+      tester.getSize(find.byType(AnalysisSpendingBreakdown)).height,
+    );
+    expect(tester.getSize(find.byType(AnalysisSummary)).height, 232);
     expect(tester.takeException(), isNull);
   });
 
@@ -730,7 +744,7 @@ void main() {
   testWidgets(
     'merchant and subcategory rows retain subtitles and drill into exact evidence',
     (tester) async {
-      tester.view.physicalSize = const Size(1000, 1800);
+      tester.view.physicalSize = const Size(1400, 1800);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
@@ -768,6 +782,7 @@ void main() {
             definitionHash: RuleDefinitionHash('f' * 64),
           );
 
+      final categoryRule = rule('ANL-R010', RuleGrouping.category);
       final merchantRule = rule('ANL-R011', RuleGrouping.merchant);
       final subcategoryRule = rule('ANL-R012', RuleGrouping.subcategory);
       AnalysisMetric metric(
@@ -792,6 +807,15 @@ void main() {
       await tester.pumpWidget(
         app(
           () async => ApplicationSuccess([
+            RuleExecutionResult(
+              rule: categoryRule,
+              metric: metric(
+                categoryRule,
+                'category-row',
+                'category.food',
+                't-category',
+              ),
+            ),
             RuleExecutionResult(
               rule: merchantRule,
               metric: metric(
@@ -831,6 +855,15 @@ void main() {
         findsOneWidget,
       );
 
+      final categoryIcon = find.descendant(
+        of: find.byKey(const ValueKey('analysis-category-metric-category-row')),
+        matching: find.byType(ButlerlyCategoryIcon),
+      );
+      expect(categoryIcon, findsOneWidget);
+      expect(
+        tester.widget<ButlerlyCategoryIcon>(categoryIcon).categoryId,
+        'category.food',
+      );
       final merchant = find.byKey(
         const ValueKey('analysis-merchant-metric-merchant-row'),
       );
@@ -1223,7 +1256,7 @@ void main() {
   testWidgets('View all categories appears only when more than five exist', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(1000, 1800);
+    tester.view.physicalSize = const Size(1400, 1800);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -1287,7 +1320,49 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('View all categories'));
+    expect(
+      find.byKey(const ValueKey('analysis-category-metric-category-4')),
+      findsOneWidget,
+    );
+    // Breakdown rows are sorted by spend: 6, 5, 4, 3 are the visible top four.
+    expect(
+      find.byKey(const ValueKey('analysis-category-metric-category-2')),
+      findsNothing,
+    );
+    final chart = find.byKey(const ValueKey('butlerly-donut-chart'));
+    final legend = find.descendant(
+      of: find.byType(AnalysisSpendingBreakdown),
+      matching: find.text('Six'),
+    );
+    expect(chart, findsOneWidget);
+    expect(legend, findsOneWidget);
+    expect(
+      tester.getTopLeft(legend).dx,
+      greaterThan(tester.getTopLeft(chart).dx),
+    );
+    final spendingCard = find.byType(AnalysisSpendingBreakdown);
+    final summaryCard = find.byType(AnalysisSummary);
+    final viewAll = find.byKey(const ValueKey('analysis-spending-view-all'));
+    expect(viewAll, findsOneWidget);
+    expect(tester.getSize(spendingCard).height, 288);
+    expect(tester.getSize(summaryCard).height, 288);
+    expect(
+      tester.getCenter(viewAll).dx,
+      greaterThan(tester.getCenter(spendingCard).dx),
+    );
+    final header = find.descendant(
+      of: spendingCard,
+      matching: find.byType(ButlerlyCardHeader),
+    );
+    expect(header, findsOneWidget);
+    final contentTop = tester.getBottomLeft(header).dy + ButlerlySpacing.small;
+    final contentBottom = tester.getTopLeft(viewAll).dy;
+    final contentMidpoint = (contentTop + contentBottom) / 2;
+    expect(
+      tester.getCenter(chart).dy,
+      closeTo(contentMidpoint, ButlerlySpacing.micro),
+    );
+    await tester.ensureVisible(viewAll);
     expect(find.text('Other'), findsOneWidget);
     await tester.tap(find.text('View all categories'));
     expect(

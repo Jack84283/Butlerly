@@ -16,12 +16,14 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
     required this.masterData,
     this.onCategoryTap,
     this.onViewAll,
+    this.desktopLayout = false,
   });
 
   final AnalysisModel model;
   final TransactionMasterData? masterData;
   final ValueChanged<AnalysisMetric>? onCategoryTap;
   final VoidCallback? onViewAll;
+  final bool desktopLayout;
 
   @override
   Widget build(BuildContext context) {
@@ -96,41 +98,53 @@ class AnalysisSpendingBreakdown extends StatelessWidget {
                   .trim(),
         ),
     ];
+    final donut = ButlerlyDonutVisualization(
+      density: ButlerlyVisualizationDensity.regular,
+      data: chartData,
+      valueLabel: (value, _) => localizedDecimal(context, value.toString()),
+      // Desktop keeps a 50/50 split and vertically centers the chart/legend
+      // group above the right-aligned action; mobile keeps the legend below.
+      legendBelow: !desktopLayout,
+      equalWidthColumns: desktopLayout,
+      compactLegendRows: desktopLayout,
+      onDatumTap: onCategoryTap == null
+          ? null
+          : (datum) {
+              final index = chartData.indexOf(datum);
+              if (index >= 0 &&
+                  index < chartValues.length &&
+                  _canDrillThrough(chartValues[index])) {
+                onCategoryTap!(chartValues[index]);
+              }
+            },
+    );
     return ButlerlyVisualizationCard(
       title: context.l10n.text('spendingDistribution'),
-      child: Column(
-        children: [
-          ButlerlyDonutVisualization(
-            density: ButlerlyVisualizationDensity.regular,
-            data: chartData,
-            valueLabel: (value, _) =>
-                localizedDecimal(context, value.toString()),
-            legendBelow: true,
-            onDatumTap: onCategoryTap == null
-                ? null
-                : (datum) {
-                    final index = chartData.indexOf(datum);
-                    if (index >= 0 &&
-                        index < chartValues.length &&
-                        _canDrillThrough(chartValues[index])) {
-                      onCategoryTap!(chartValues[index]);
-                    }
-                  },
-          ),
-          if (unavailableCategories.isNotEmpty)
-            _UnavailableCategoryList(
-              categories: unavailableCategories,
-              masterData: masterData,
-            ),
-          if (onViewAll != null)
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton(
-                onPressed: onViewAll,
-                child: Text(context.l10n.text('viewAllCategories')),
-              ),
-            ),
-        ],
+      fillAvailableHeight: desktopLayout,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final fill = desktopLayout && constraints.hasBoundedHeight;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (fill) Expanded(child: Center(child: donut)) else donut,
+              if (unavailableCategories.isNotEmpty)
+                _UnavailableCategoryList(
+                  categories: unavailableCategories,
+                  masterData: masterData,
+                ),
+              if (onViewAll != null)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    key: const ValueKey('analysis-spending-view-all'),
+                    onPressed: onViewAll,
+                    child: Text(context.l10n.text('viewAllCategories')),
+                  ),
+                ),
+            ],
+          );
+        },
       ),
     );
   }

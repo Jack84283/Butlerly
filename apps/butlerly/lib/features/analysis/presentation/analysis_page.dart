@@ -631,6 +631,7 @@ class _AnalysisContent extends StatelessWidget {
         ) ==
         ButlerlyLayoutMode.wide;
     final spendingCard = AnalysisSpendingBreakdown(
+      desktopLayout: desktop,
       model: model,
       masterData: masterData,
       onCategoryTap: analysisContext == null
@@ -653,7 +654,7 @@ class _AnalysisContent extends StatelessWidget {
     );
 
     final categoryCard = AnalysisCategoryBreakdown(
-      fillToFiveRows: desktop,
+      desktopFourRows: desktop,
       model: model,
       masterData: masterData,
       onMetricTap: (metric) {
@@ -665,24 +666,9 @@ class _AnalysisContent extends StatelessWidget {
       },
     );
 
-    final merchantCard = model.merchants.isEmpty
-        ? null
-        : AnalysisMerchantBreakdown(
-            fillToFiveRows: desktop,
-            model: model,
-            masterData: masterData,
-            onMetricTap: (metric) {
-              _openAnalysisSearch(
-                context,
-                metric: metric,
-                transactionIds: _metricTransactionIds(metric),
-              );
-            },
-          );
-
-    final subcategoryCard = desktop || model.subcategories.isNotEmpty
-        ? AnalysisSubcategoryBreakdown(
-            fillToFiveRows: desktop,
+    final merchantCard = desktop || model.merchants.isNotEmpty
+        ? AnalysisMerchantBreakdown(
+            desktopFourRows: desktop,
             model: model,
             masterData: masterData,
             onMetricTap: (metric) {
@@ -694,6 +680,39 @@ class _AnalysisContent extends StatelessWidget {
             },
           )
         : null;
+
+    final subcategoryCard = desktop || model.subcategories.isNotEmpty
+        ? AnalysisSubcategoryBreakdown(
+            desktopFourRows: desktop,
+            model: model,
+            masterData: masterData,
+            onMetricTap: (metric) {
+              _openAnalysisSearch(
+                context,
+                metric: metric,
+                transactionIds: _metricTransactionIds(metric),
+              );
+            },
+          )
+        : null;
+
+    final unavailableCategoryCount = model.categories
+        .where(
+          (metric) =>
+              metric.availability != AnalysisDataAvailability.sufficient,
+        )
+        .length;
+    // The six-entry legend needs a little more breathing room; keep the
+    // original 232px minimum for shorter legends and empty data.
+    final availableCategoryCount =
+        model.categories.length - unavailableCategoryCount;
+    final desktopSpendingHeight =
+        232.0 +
+        (availableCategoryCount > 5 ? ButlerlySpacing.compact : 0.0) +
+        (unavailableCategoryCount > 0
+            ? 28.0 + unavailableCategoryCount * 28.0
+            : 0.0) +
+        (analysisContext != null && model.categories.length > 5 ? 48.0 : 0.0);
 
     return ButlerlyPage(
       title: context.l10n.text('analysis'),
@@ -710,14 +729,16 @@ class _AnalysisContent extends StatelessWidget {
       children: _withAnalysisCardSpacing([
         if (desktop) ...[
           _AnalysisDesktopCardPair(
-            first: AnalysisSummary(model: model),
+            first: AnalysisSummary(model: model, compactDesktop: true),
             second: spendingCard,
+            // Keep unavailable notes and View All clear of the donut legend.
+            matchedHeight: desktopSpendingHeight,
           ),
-          _AnalysisDesktopCardPair(
-            first: categoryCard,
-            second: subcategoryCard!,
+          _AnalysisDesktopBreakdownRow(
+            category: categoryCard,
+            subcategory: subcategoryCard!,
+            merchant: merchantCard!,
           ),
-          ?merchantCard,
         ] else ...[
           AnalysisSummary(model: model),
           spendingCard,
@@ -850,18 +871,25 @@ class _AnalysisContent extends StatelessWidget {
       evidence.map((value) => value.transactionId.value).toSet().toList();
 }
 
-/// Keep paired desktop Analysis cards equal-height without changing the
-/// single-column device layout. Stack them if the content width is too narrow.
+/// Give Summary and Spending matching heights at ordinary desktop sizes.
+/// IntrinsicHeight cannot be used with the donut's LayoutBuilder, so use a
+/// bounded row and fall back to natural heights for compact/large-text layouts.
 class _AnalysisDesktopCardPair extends StatelessWidget {
-  const _AnalysisDesktopCardPair({required this.first, required this.second});
+  const _AnalysisDesktopCardPair({
+    required this.first,
+    required this.second,
+    required this.matchedHeight,
+  });
 
   final Widget first;
   final Widget second;
+  final double matchedHeight;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
-      if (constraints.maxWidth < 820) {
+      if (constraints.maxWidth < 1050 ||
+          MediaQuery.textScalerOf(context).scale(1) > 1.3) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -871,15 +899,63 @@ class _AnalysisDesktopCardPair extends StatelessWidget {
           ],
         );
       }
-      // Avoid intrinsic measurement of charts and layout-builder children:
-      // those widgets cannot always report intrinsic heights.
-      return Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(child: first),
-          const SizedBox(width: ButlerlySpacing.cardGap),
-          Expanded(child: second),
-        ],
+      return SizedBox(
+        height: matchedHeight,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: first),
+            const SizedBox(width: ButlerlySpacing.cardGap),
+            Expanded(child: second),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+/// Three desktop breakdowns share a single row and display four 44px items.
+/// When space or accessible text size makes three columns cramped, stack the
+/// same cards rather than squeeze or clip their values and category icons.
+class _AnalysisDesktopBreakdownRow extends StatelessWidget {
+  const _AnalysisDesktopBreakdownRow({
+    required this.category,
+    required this.subcategory,
+    required this.merchant,
+  });
+
+  final Widget category;
+  final Widget subcategory;
+  final Widget merchant;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      if (constraints.maxWidth < 1050 ||
+          MediaQuery.textScalerOf(context).scale(1) > 1.3) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            category,
+            const SizedBox(height: ButlerlySpacing.cardGap),
+            subcategory,
+            const SizedBox(height: ButlerlySpacing.cardGap),
+            merchant,
+          ],
+        );
+      }
+      return SizedBox(
+        height: 320,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: category),
+            const SizedBox(width: ButlerlySpacing.cardGap),
+            Expanded(child: subcategory),
+            const SizedBox(width: ButlerlySpacing.cardGap),
+            Expanded(child: merchant),
+          ],
+        ),
       );
     },
   );

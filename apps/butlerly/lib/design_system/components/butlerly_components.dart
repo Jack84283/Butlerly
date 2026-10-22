@@ -306,6 +306,7 @@ class ButlerlyCardHeader extends StatelessWidget {
     this.action,
     this.titleStyle,
     this.subtitleStyle,
+    this.subtitleGap = ButlerlySpacing.micro,
     this.keepActionInlineAtCompactWidth = false,
     this.centerAction = false,
     super.key,
@@ -316,6 +317,9 @@ class ButlerlyCardHeader extends StatelessWidget {
   final Widget? action;
   final TextStyle? titleStyle;
   final TextStyle? subtitleStyle;
+
+  /// Space between title and optional subtitle; defaults to existing styling.
+  final double subtitleGap;
   final bool keepActionInlineAtCompactWidth;
   final bool centerAction;
 
@@ -337,7 +341,7 @@ class ButlerlyCardHeader extends StatelessWidget {
                 ),
           ),
           if (subtitle != null) ...[
-            const SizedBox(height: ButlerlySpacing.micro),
+            SizedBox(height: subtitleGap),
             Text(
               subtitle!,
               style:
@@ -549,6 +553,7 @@ class ButlerlyVisualizationCard extends StatelessWidget {
     required this.title,
     required this.child,
     this.semanticLabel,
+    this.fillAvailableHeight = false,
     super.key,
   });
 
@@ -556,16 +561,25 @@ class ButlerlyVisualizationCard extends StatelessWidget {
   final Widget child;
   final String? semanticLabel;
 
+  /// Stretch the body beneath the header in a height-constrained card.
+  /// Unbounded/mobile layouts continue to size naturally.
+  final bool fillAvailableHeight;
+
   @override
   Widget build(BuildContext context) => ButlerlyCard(
     semanticLabel: semanticLabel ?? title,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ButlerlyCardHeader(title: title),
-        const SizedBox(height: ButlerlySpacing.small),
-        child,
-      ],
+    child: LayoutBuilder(
+      builder: (context, constraints) {
+        final fill = fillAvailableHeight && constraints.hasBoundedHeight;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ButlerlyCardHeader(title: title),
+            const SizedBox(height: ButlerlySpacing.small),
+            if (fill) Expanded(child: child) else child,
+          ],
+        );
+      },
     ),
   );
 }
