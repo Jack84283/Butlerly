@@ -370,6 +370,15 @@ class _RulesPageState extends State<RulesPage> {
               actionLabel: context.l10n.text('addRule'),
               onAction: () => _edit(data),
             )
+          else if (_desktop(context))
+            _RulesDesktopTable(
+              rules: data.rules,
+              selectedRuleId: _panelOpen ? _selectedRule?.id.value : null,
+              conditions: (rule) => _conditions(context, data, rule),
+              actions: (rule) => _actions(context, data, rule),
+              onSelect: (rule) => _showDetails(data, rule),
+              onToggle: _toggle,
+            )
           else
             Column(
               children: [
@@ -453,6 +462,69 @@ final class _RuleData {
       id.value;
   String tagName(TagId id) =>
       tags.where((value) => value.id == id).firstOrNull?.name ?? id.value;
+}
+
+class _RulesDesktopTable extends StatelessWidget {
+  const _RulesDesktopTable({
+    required this.rules,
+    required this.selectedRuleId,
+    required this.conditions,
+    required this.actions,
+    required this.onSelect,
+    required this.onToggle,
+  });
+
+  final List<TransactionRule> rules;
+  final String? selectedRuleId;
+  final String Function(TransactionRule) conditions;
+  final String Function(TransactionRule) actions;
+  final ValueChanged<TransactionRule> onSelect;
+  final void Function(TransactionRule, bool) onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ButlerlyCard(
+      padding: EdgeInsets.zero,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: DataTable(
+          showCheckboxColumn: false,
+          columns: [
+            DataColumn(label: Text(context.l10n.text('ruleName'))),
+            DataColumn(label: Text(context.l10n.text('ruleConditions'))),
+            DataColumn(label: Text(context.l10n.text('ruleActions'))),
+            DataColumn(numeric: true, label: Text(context.l10n.text('rulePriority'))),
+            DataColumn(label: Text(context.l10n.text('enabled'))),
+          ],
+          rows: [
+            for (final rule in rules)
+              DataRow(
+                key: ValueKey('desktop-rule-row-${rule.id.value}'),
+                selected: selectedRuleId == rule.id.value,
+                onSelectChanged: (_) => onSelect(rule),
+                cells: [
+                  DataCell(Text(rule.name, maxLines: 2, overflow: TextOverflow.ellipsis)),
+                  DataCell(SizedBox(
+                    width: 240,
+                    child: Text(conditions(rule), maxLines: 2, overflow: TextOverflow.ellipsis),
+                  )),
+                  DataCell(SizedBox(
+                    width: 240,
+                    child: Text(actions(rule), maxLines: 2, overflow: TextOverflow.ellipsis),
+                  )),
+                  DataCell(Text(rule.priority.toString(), style: theme.textTheme.bodyMedium)),
+                  DataCell(Switch.adaptive(
+                    value: rule.enabled,
+                    onChanged: (value) => onToggle(rule, value),
+                  )),
+                ],
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _RuleCard extends StatelessWidget {
