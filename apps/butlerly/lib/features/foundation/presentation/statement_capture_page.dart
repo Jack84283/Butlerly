@@ -377,11 +377,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     if (_desktop) {
       setState(() {
         _selectedStatementId = item.id;
-        _panelData = _StatementPanelData(
-          item,
-          rowsResult.value,
-          masterData,
-        );
+        _panelData = _StatementPanelData(item, rowsResult.value, masterData);
       });
       return;
     }
@@ -611,8 +607,10 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                         width: 140,
                         child: Text(
                           _sources
-                                  .where((source) =>
-                                      source.id.value == item.paymentSourceId)
+                                  .where(
+                                    (source) =>
+                                        source.id.value == item.paymentSourceId,
+                                  )
                                   .firstOrNull
                                   ?.name ??
                               '—',
@@ -627,7 +625,9 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                         child: Text(
                           item.extractionMessage == null
                               ? (item.paymentSourceId == null
-                                    ? context.l10n.text('choosePaymentSourceToContinue')
+                                    ? context.l10n.text(
+                                        'choosePaymentSourceToContinue',
+                                      )
                                     : context.l10n.text('reviewInProgress'))
                               : _statementStatusLabel(
                                   context,
@@ -685,7 +685,6 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
       ),
     ],
   );
-
 }
 
 class _StatementPanelData {
