@@ -120,7 +120,12 @@ void main() {
     expect(tester.getSize(ruleRow).height, lessThanOrEqualTo(42));
     expect(tester.getSize(editAction), const Size(24, 24));
     expect(tester.getSize(deleteAction), const Size(24, 24));
-    expect(tester.getSize(statusSwitch).height, lessThanOrEqualTo(34));
+    expect(
+      tester.getSize(
+        find.byKey(const ValueKey('desktop-rule-switch-box-rule.fuel')),
+      ).height,
+      28,
+    );
     expect(
       tester.widget<Switch>(statusSwitch).materialTapTargetSize,
       MaterialTapTargetSize.shrinkWrap,
