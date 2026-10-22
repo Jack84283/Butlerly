@@ -381,6 +381,7 @@ class _RulesPageState extends State<RulesPage> {
                               ),
                               onClose: _closeDesktopDetails,
                               onEdit: () => _edit(data, selectedDesktopRule),
+                              onDelete: () => _delete(selectedDesktopRule),
                             ),
                     ),
                   ],
@@ -418,6 +419,7 @@ class _RuleDesktopDetailsPanel extends StatelessWidget {
     required this.actions,
     required this.onClose,
     required this.onEdit,
+    required this.onDelete,
   });
 
   final TransactionRule rule;
@@ -425,6 +427,7 @@ class _RuleDesktopDetailsPanel extends StatelessWidget {
   final String actions;
   final VoidCallback onClose;
   final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) => ButlerlyCard(
@@ -435,17 +438,22 @@ class _RuleDesktopDetailsPanel extends StatelessWidget {
       children: [
         ButlerlyCardHeader(
           title: rule.name,
-          action: IconButton(
-            key: const ValueKey('desktop-rule-details-close'),
-            tooltip: context.l10n.text('close'),
-            onPressed: onClose,
-            icon: const Icon(Icons.close),
-            iconSize: 20,
-            constraints: const BoxConstraints.tightFor(width: 32, height: 32),
-            padding: EdgeInsets.zero,
-            style: IconButton.styleFrom(
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
+          action: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                key: const ValueKey('desktop-rule-details-edit-icon'),
+                tooltip: context.l10n.text('edit'),
+                onPressed: onEdit,
+                icon: const Icon(Icons.edit_outlined),
+              ),
+              IconButton(
+                key: const ValueKey('desktop-rule-details-close'),
+                tooltip: context.l10n.text('close'),
+                onPressed: onClose,
+                icon: const Icon(Icons.close_rounded),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: ButlerlySpacing.standard),
@@ -455,13 +463,23 @@ class _RuleDesktopDetailsPanel extends StatelessWidget {
           actions: actions,
         ),
         const SizedBox(height: ButlerlySpacing.standard),
-        Align(
-          alignment: Alignment.centerRight,
-          child: FilledButton(
-            key: const ValueKey('desktop-rule-details-edit'),
-            onPressed: onEdit,
-            child: Text(context.l10n.text('edit')),
-          ),
+        Wrap(
+          alignment: WrapAlignment.end,
+          spacing: ButlerlySpacing.small,
+          runSpacing: ButlerlySpacing.small,
+          children: [
+            OutlinedButton.icon(
+              key: const ValueKey('desktop-rule-details-edit'),
+              onPressed: onEdit,
+              icon: const Icon(Icons.edit_outlined),
+              label: Text(context.l10n.text('edit')),
+            ),
+            ButlerlyDestructiveButton(
+              key: const ValueKey('desktop-rule-details-delete'),
+              onPressed: onDelete,
+              child: Text(context.l10n.text('delete')),
+            ),
+          ],
         ),
       ],
     ),
