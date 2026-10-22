@@ -28,9 +28,9 @@ class _RulesPageState extends State<RulesPage> {
   bool _desktopEditing = false;
   bool _desktopCreating = false;
 
-  bool get _isDesktop => effectiveButlerlyLayoutMode(
-    context, MediaQuery.sizeOf(context).width,
-  ) == ButlerlyLayoutMode.wide;
+  bool get _isDesktop =>
+      effectiveButlerlyLayoutMode(context, MediaQuery.sizeOf(context).width) ==
+      ButlerlyLayoutMode.wide;
 
   void _closeEditor() => setState(() {
     _desktopEditing = false;
@@ -359,29 +359,41 @@ class _RulesPageState extends State<RulesPage> {
                           ? SizedBox(
                               height: MediaQuery.sizeOf(context).height * 0.75,
                               child: _RuleEditorSheet(
-                              key: ValueKey('rule-editor-${selectedDesktopRule?.id.value ?? 'new'}'),
-                              current: selectedDesktopRule,
-                              merchants: data.merchants,
-                              categories: data.categories,
-                              paymentSources: data.paymentSources,
-                              tags: data.tags,
-                              onSubmit: (draft) => _saveDraft(draft, selectedDesktopRule),
-                              onCancel: _closeEditor,
-                            ),
+                                key: ValueKey(
+                                  'rule-editor-${selectedDesktopRule?.id.value ?? 'new'}',
+                                ),
+                                current: selectedDesktopRule,
+                                merchants: data.merchants,
+                                categories: data.categories,
+                                paymentSources: data.paymentSources,
+                                tags: data.tags,
+                                onSubmit: (draft) =>
+                                    _saveDraft(draft, selectedDesktopRule),
+                                onCancel: _closeEditor,
+                              ),
                             )
                           : Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 _RuleDesktopDetailsPanel(
                                   rule: selectedDesktopRule!,
-                                  conditions: _conditions(context, data, selectedDesktopRule!),
-                                  actions: _actions(context, data, selectedDesktopRule!),
+                                  conditions: _conditions(
+                                    context,
+                                    data,
+                                    selectedDesktopRule!,
+                                  ),
+                                  actions: _actions(
+                                    context,
+                                    data,
+                                    selectedDesktopRule!,
+                                  ),
                                   onClose: _closeDesktopDetails,
                                 ),
                                 Align(
                                   alignment: Alignment.centerRight,
                                   child: FilledButton(
-                                    onPressed: () => _edit(data, selectedDesktopRule!),
+                                    onPressed: () =>
+                                        _edit(data, selectedDesktopRule!),
                                     child: Text(context.l10n.text('edit')),
                                   ),
                                 ),
