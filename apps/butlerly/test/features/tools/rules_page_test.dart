@@ -100,7 +100,10 @@ void main() {
     expect(find.text('Status'), findsOneWidget);
     expect(find.text('Classify fuel'), findsOneWidget);
     expect(find.text('Category: Transport'), findsOneWidget);
-    expect(find.byKey(const ValueKey('desktop-rules-table-horizontal-scroll')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('desktop-rules-table-horizontal-scroll')),
+      findsNothing,
+    );
 
     await tester.tap(find.byKey(const ValueKey('desktop-rule-row-rule.fuel')));
     await tester.pumpAndSettle();
@@ -136,7 +139,10 @@ void main() {
     await tester.pumpWidget(const _TestApp(child: RulesPage()));
     await tester.pumpAndSettle();
 
-    expect(tester.widget<ButlerlyPage>(find.byType(ButlerlyPage)).fullWidth, isTrue);
+    expect(
+      tester.widget<ButlerlyPage>(find.byType(ButlerlyPage)).fullWidth,
+      isTrue,
+    );
     expect(find.byKey(const ValueKey('desktop-rules-table')), findsOneWidget);
     expect(
       find.byKey(const ValueKey('desktop-rules-table-horizontal-scroll')),
@@ -165,9 +171,15 @@ void main() {
         expect(commonButton, findsOneWidget);
         final button = find.byKey(ValueKey(buttonKey));
         expect(button, findsOneWidget);
-        expect(find.descendant(of: button, matching: find.byIcon(Icons.add)), findsOneWidget);
+        expect(
+          find.descendant(of: button, matching: find.byIcon(Icons.add)),
+          findsOneWidget,
+        );
         expect(tester.widget<IconButton>(button).tooltip, tooltip);
-        expect(tester.widget<IconButton>(button).style?.shape?.resolve({}), isA<CircleBorder>());
+        expect(
+          tester.widget<IconButton>(button).style?.shape?.resolve({}),
+          isA<CircleBorder>(),
+        );
         expect(
           tester.widget<IconButton>(button).style?.minimumSize?.resolve({}),
           const Size.square(32),
