@@ -2826,7 +2826,7 @@ void main() {
         find.descendant(
           of: find.byType(ButlerlyHeaderAddButton),
           matching: find.byType(Padding),
-        ),
+        ).first,
       );
       expect(
         headerPadding.padding,
