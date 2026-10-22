@@ -310,26 +310,10 @@ class _MasterDataPageState extends State<MasterDataPage> {
       fullWidth: desktop,
       pinnedSpacing: ButlerlyPinnedPageSpacing.tightHeader,
       actions: [
-        Padding(
-          padding: const EdgeInsetsDirectional.only(
-            end: ButlerlySpacing.headerActionTrailing,
-          ),
-          child: IconButton.filled(
-            key: const ValueKey('master-data-add'),
-            tooltip: context.l10n.text('add'),
-            onPressed: _add,
-            icon: const Icon(Icons.add),
-            style: IconButton.styleFrom(
-              backgroundColor: context.colors.interactive,
-              foregroundColor:
-                  context.colors.interactive.computeLuminance() > 0.5
-                  ? context.colors.background
-                  : Colors.white,
-              shape: const CircleBorder(),
-              minimumSize: const Size.square(32),
-              maximumSize: const Size.square(32),
-            ),
-          ),
+        ButlerlyHeaderAddButton(
+          buttonKey: const ValueKey('master-data-add'),
+          label: context.l10n.text('add'),
+          onPressed: _add,
         ),
       ],
       pinnedHeader: ButlerlyCompactSectionSelector(
