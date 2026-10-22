@@ -1,7 +1,10 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/foundation/presentation/master_data_page.dart';
 import 'package:butlerly/features/tools/presentation/rules_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -67,6 +70,11 @@ void main() {
     expect(find.text('Matching conditions'), findsOneWidget);
     expect(find.text('Resulting actions'), findsOneWidget);
     expect(find.text('Category: Transport'), findsOneWidget);
+    expect(find.byType(ButlerlySheet), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('desktop-rule-details-panel')),
+      findsNothing,
+    );
     await tester.tap(find.text('Close'));
     await tester.pumpAndSettle();
 
@@ -77,6 +85,267 @@ void main() {
     await tester.tap(find.byType(Switch));
     await tester.pumpAndSettle();
     expect((await rules.listAll()).single.enabled, isTrue);
+  });
+
+  testWidgets('desktop Rules uses full width and an actionable table', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 950);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const _TestApp(child: RulesPage()));
+    await tester.pumpAndSettle();
+
+    final page = tester.widget<ButlerlyPage>(find.byType(ButlerlyPage));
+    expect(page.fullWidth, isTrue);
+    expect(find.byKey(const ValueKey('desktop-rules-table')), findsOneWidget);
+    expect(find.text('Matching conditions'), findsOneWidget);
+    expect(find.text('Resulting actions'), findsOneWidget);
+    expect(find.text('Priority'), findsOneWidget);
+    expect(find.text('Status'), findsOneWidget);
+    expect(find.text('Classify fuel'), findsOneWidget);
+    expect(find.text('Category: Transport'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('desktop-rules-table-horizontal-scroll')),
+      findsNothing,
+    );
+
+    // The Home/Transactions desktop table uses compact, single-line rows.
+    // Default 48px actions must not dictate the Rules row height.
+    final ruleRow = find.byKey(const ValueKey('desktop-rule-row-rule.fuel'));
+    final editAction = find.byKey(
+      const ValueKey('desktop-rule-edit-rule.fuel'),
+    );
+    final deleteAction = find.byKey(
+      const ValueKey('desktop-rule-delete-rule.fuel'),
+    );
+    final statusSwitch = find.byKey(
+      const ValueKey('desktop-rule-switch-rule.fuel'),
+    );
+    expect(tester.getSize(ruleRow).height, lessThanOrEqualTo(42));
+    expect(tester.widget<IconButton>(editAction).constraints?.maxWidth, 24);
+    expect(tester.widget<IconButton>(editAction).constraints?.maxHeight, 24);
+    expect(tester.widget<IconButton>(editAction).iconSize, 16);
+    expect(tester.widget<IconButton>(deleteAction).constraints?.maxWidth, 24);
+    expect(tester.widget<IconButton>(deleteAction).constraints?.maxHeight, 24);
+    expect(tester.widget<IconButton>(deleteAction).iconSize, 16);
+    expect(
+      tester
+          .getSize(
+            find.byKey(const ValueKey('desktop-rule-switch-box-rule.fuel')),
+          )
+          .height,
+      20,
+    );
+    expect(
+      tester.widget<Switch>(statusSwitch).materialTapTargetSize,
+      MaterialTapTargetSize.shrinkWrap,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('desktop-rule-row-rule.fuel')));
+    await tester.pumpAndSettle();
+    final panel = find.byKey(const ValueKey('desktop-rule-details-panel'));
+    final workspace = find.byKey(const ValueKey('desktop-rules-workspace'));
+    expect(panel, findsOneWidget);
+    expect(find.byType(ButlerlySheet), findsNothing);
+    expect(
+      find.descendant(of: panel, matching: find.text('Classify fuel')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: panel, matching: find.text('Matching conditions')),
+      findsOneWidget,
+    );
+    expect(
+      tester.getTopLeft(panel).dx,
+      greaterThan(tester.getTopRight(find.byType(ButlerlyDesktopInnerCard)).dx),
+    );
+    expect(workspace, findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('desktop-rule-details-close')));
+    await tester.pumpAndSettle();
+    expect(panel, findsNothing);
+    expect(find.byKey(const ValueKey('desktop-rules-table')), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey('desktop-rule-switch-rule.fuel')),
+    );
+    await tester.pumpAndSettle();
+    expect((await rules.listAll()).single.enabled, isFalse);
+    await tester.tap(find.byKey(const ValueKey('desktop-rule-edit-rule.fuel')));
+    await tester.pumpAndSettle();
+    expect(find.text('Edit rule'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('desktop-rule-delete-rule.fuel')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Delete rule?'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect((await rules.listAll()), hasLength(1));
+    _expectNoFlutterError(tester);
+  });
+
+  testWidgets('desktop rule selection replaces details without modal', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 950);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await rules.save(
+      TransactionRule(
+        id: TransactionRuleId('rule.coffee'),
+        name: 'Classify coffee',
+        description: 'Coffee and cafes',
+        priority: 2,
+        descriptionContains: 'coffee',
+        assignCategoryId: CategoryId('category.transport'),
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    await tester.pumpWidget(const _TestApp(child: RulesPage()));
+    await tester.pumpAndSettle();
+    final panel = find.byKey(const ValueKey('desktop-rule-details-panel'));
+    final table = find.byKey(const ValueKey('desktop-rules-table'));
+    final fullTableWidth = tester.getSize(table).width;
+    expect(panel, findsNothing);
+    await tester.tap(find.byKey(const ValueKey('desktop-rule-row-rule.fuel')));
+    await tester.pumpAndSettle();
+    expect(panel, findsOneWidget);
+    expect(find.byType(ButlerlySheet), findsNothing);
+    expect(tester.getSize(table).width, lessThan(fullTableWidth));
+    expect(
+      find.descendant(of: panel, matching: find.text('Classify fuel')),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('desktop-rule-row-rule.coffee')),
+    );
+    await tester.pumpAndSettle();
+    expect(panel, findsOneWidget);
+    expect(
+      find.descendant(of: panel, matching: find.text('Classify coffee')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: panel, matching: find.text('Coffee and cafes')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: panel, matching: find.text('Classify fuel')),
+      findsNothing,
+    );
+    await tester.tap(find.byKey(const ValueKey('desktop-rule-details-close')));
+    await tester.pumpAndSettle();
+    expect(panel, findsNothing);
+    expect(tester.getSize(table).width, closeTo(fullTableWidth, 0.1));
+    _expectNoFlutterError(tester);
+  });
+
+  testWidgets('desktop Rules rows match Master Data icon and row geometry', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 950);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const _TestApp(child: RulesPage()));
+    await tester.pumpAndSettle();
+
+    final rulesRow = find.byKey(const ValueKey('desktop-rule-row-rule.fuel'));
+    final rulesHeight = tester.getSize(rulesRow).height;
+    expect(
+      rulesHeight,
+      closeTo(20 + 2 * ButlerlyTableTokens.rowVerticalPadding, 0.1),
+    );
+    expect(find.byType(ButlerlyDesktopTableIconAction), findsNWidgets(2));
+
+    await tester.pumpWidget(const _TestApp(child: MasterDataPage()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('compact-section-3')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('desktop-master-data-table')),
+      findsOneWidget,
+    );
+    final masterRow = find
+        .ancestor(of: find.text('Costco'), matching: find.byType(Padding))
+        .first;
+    expect(tester.getSize(masterRow).height, closeTo(rulesHeight, 0.1));
+    expect(find.byType(ButlerlyDesktopTableIconAction), findsNWidgets(2));
+    _expectNoFlutterError(tester);
+  });
+
+  testWidgets('desktop Rules table scrolls horizontally when constrained', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1024, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const _TestApp(child: RulesPage()));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<ButlerlyPage>(find.byType(ButlerlyPage)).fullWidth,
+      isTrue,
+    );
+    expect(find.byKey(const ValueKey('desktop-rules-table')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('desktop-rules-table-horizontal-scroll')),
+      findsOneWidget,
+    );
+    _expectNoFlutterError(tester);
+  });
+
+  testWidgets('Rules and Master Data share Add header icon at all widths', (
+    tester,
+  ) async {
+    for (final width in [390.0, 1400.0]) {
+      tester.view.physicalSize = Size(width, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      for (final (page, buttonKey, tooltip) in [
+        (const RulesPage(), 'rules-add', 'Add rule'),
+        (const MasterDataPage(), 'master-data-add', 'Add'),
+      ]) {
+        await tester.pumpWidget(_TestApp(child: page));
+        await tester.pumpAndSettle();
+
+        final commonButton = find.byType(ButlerlyHeaderAddButton);
+        expect(commonButton, findsOneWidget);
+        final button = find.byKey(ValueKey(buttonKey));
+        expect(button, findsOneWidget);
+        expect(
+          find.descendant(of: button, matching: find.byIcon(Icons.add)),
+          findsOneWidget,
+        );
+        expect(tester.widget<IconButton>(button).tooltip, tooltip);
+        expect(
+          tester.widget<IconButton>(button).style?.shape?.resolve({}),
+          isA<CircleBorder>(),
+        );
+        expect(
+          tester.widget<IconButton>(button).style?.minimumSize?.resolve({}),
+          const Size.square(32),
+        );
+        expect(
+          tester.widget<IconButton>(button).style?.maximumSize?.resolve({}),
+          const Size.square(32),
+        );
+        _expectNoFlutterError(tester);
+      }
+    }
   });
 
   testWidgets('Rules introduction is localized in Chinese and Spanish', (

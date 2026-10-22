@@ -383,6 +383,80 @@ class ButlerlyCardHeader extends StatelessWidget {
   );
 }
 
+/// Shared Add action for page headers on desktop and device layouts.
+///
+/// The filled 32px circular icon and trailing inset match Master Data's
+/// established design. Hosts supply only the tooltip and action.
+class ButlerlyHeaderAddButton extends StatelessWidget {
+  const ButlerlyHeaderAddButton({
+    required this.label,
+    required this.onPressed,
+    this.buttonKey,
+    super.key,
+  });
+
+  final String label;
+  final VoidCallback? onPressed;
+  final Key? buttonKey;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsetsDirectional.only(
+      end: ButlerlySpacing.headerActionTrailing,
+    ),
+    child: IconButton.filled(
+      key: buttonKey,
+      tooltip: label,
+      onPressed: onPressed,
+      icon: const Icon(Icons.add),
+      style: IconButton.styleFrom(
+        backgroundColor: context.colors.interactive,
+        foregroundColor: context.colors.interactive.computeLuminance() > 0.5
+            ? context.colors.background
+            : Colors.white,
+        shape: const CircleBorder(),
+        minimumSize: const Size.square(32),
+        maximumSize: const Size.square(32),
+      ),
+    ),
+  );
+}
+
+/// Compact icon action shared by desktop Master Data and Rules tables.
+///
+/// A 24px button with a 16px glyph uses the same density and spacing in
+/// both tables. These controls are intentionally desktop-only; device rows
+/// keep their normal touch targets.
+class ButlerlyDesktopTableIconAction extends StatelessWidget {
+  const ButlerlyDesktopTableIconAction({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+    this.buttonKey,
+    super.key,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback? onPressed;
+  final Key? buttonKey;
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    key: buttonKey,
+    constraints: const BoxConstraints.tightFor(width: 24, height: 24),
+    padding: EdgeInsets.zero,
+    visualDensity: VisualDensity.compact,
+    style: IconButton.styleFrom(
+      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    ),
+    iconSize: 16,
+    tooltip: tooltip,
+    icon: Icon(icon),
+    onPressed: onPressed,
+  );
+}
+
 /// Icon-only action without a filled surface or border in either theme.
 ///
 /// Explicitly overrides the app-wide bordered text button theme while

@@ -2821,9 +2821,17 @@ void main() {
       expect(page.pinnedSpacing, same(ButlerlyPinnedPageSpacing.tightHeader));
       expect(page.actions, hasLength(1));
       final headerAction = page.actions.single;
-      expect(headerAction, isA<Padding>());
+      expect(headerAction, isA<ButlerlyHeaderAddButton>());
+      final headerPadding = tester.widget<Padding>(
+        find
+            .descendant(
+              of: find.byType(ButlerlyHeaderAddButton),
+              matching: find.byType(Padding),
+            )
+            .first,
+      );
       expect(
-        (headerAction as Padding).padding,
+        headerPadding.padding,
         const EdgeInsetsDirectional.only(
           end: ButlerlySpacing.headerActionTrailing,
         ),

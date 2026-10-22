@@ -5,7 +5,6 @@ import 'package:butlerly/design_system/components/butlerly_compact_section_selec
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
-import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -310,26 +309,10 @@ class _MasterDataPageState extends State<MasterDataPage> {
       fullWidth: desktop,
       pinnedSpacing: ButlerlyPinnedPageSpacing.tightHeader,
       actions: [
-        Padding(
-          padding: const EdgeInsetsDirectional.only(
-            end: ButlerlySpacing.headerActionTrailing,
-          ),
-          child: IconButton.filled(
-            key: const ValueKey('master-data-add'),
-            tooltip: context.l10n.text('add'),
-            onPressed: _add,
-            icon: const Icon(Icons.add),
-            style: IconButton.styleFrom(
-              backgroundColor: context.colors.interactive,
-              foregroundColor:
-                  context.colors.interactive.computeLuminance() > 0.5
-                  ? context.colors.background
-                  : Colors.white,
-              shape: const CircleBorder(),
-              minimumSize: const Size.square(32),
-              maximumSize: const Size.square(32),
-            ),
-          ),
+        ButlerlyHeaderAddButton(
+          buttonKey: const ValueKey('master-data-add'),
+          label: context.l10n.text('add'),
+          onPressed: _add,
         ),
       ],
       pinnedHeader: ButlerlyCompactSectionSelector(
@@ -738,42 +721,20 @@ class _Row extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               if (onEdit != null)
-                IconButton(
-                  constraints: const BoxConstraints.tightFor(
-                    width: 24,
-                    height: 24,
-                  ),
-                  padding: EdgeInsets.zero,
-                  visualDensity: VisualDensity.compact,
-                  style: IconButton.styleFrom(
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  iconSize: 16,
+                ButlerlyDesktopTableIconAction(
+                  icon: Icons.edit_outlined,
                   tooltip: context.l10n.text('edit'),
-                  icon: const Icon(Icons.edit_outlined),
                   onPressed: onEdit,
                 ),
               if (onEdit != null && onToggle != null)
                 const SizedBox(width: ButlerlySpacing.small),
               if (onToggle != null)
-                IconButton(
-                  constraints: const BoxConstraints.tightFor(
-                    width: 24,
-                    height: 24,
-                  ),
-                  padding: EdgeInsets.zero,
-                  visualDensity: VisualDensity.compact,
-                  style: IconButton.styleFrom(
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  iconSize: 16,
+                ButlerlyDesktopTableIconAction(
+                  icon: active
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
                   tooltip: context.l10n.text(
                     active ? 'deactivate' : 'reactivate',
-                  ),
-                  icon: Icon(
-                    active
-                        ? Icons.visibility_outlined
-                        : Icons.visibility_off_outlined,
                   ),
                   onPressed: onToggle,
                 ),
