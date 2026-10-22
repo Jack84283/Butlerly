@@ -108,7 +108,9 @@ void main() {
     // The Home/Transactions desktop table uses compact, single-line rows.
     // Default 48px actions must not dictate the Rules row height.
     final ruleRow = find.byKey(const ValueKey('desktop-rule-row-rule.fuel'));
-    final editAction = find.byKey(const ValueKey('desktop-rule-edit-rule.fuel'));
+    final editAction = find.byKey(
+      const ValueKey('desktop-rule-edit-rule.fuel'),
+    );
     final deleteAction = find.byKey(
       const ValueKey('desktop-rule-delete-rule.fuel'),
     );
