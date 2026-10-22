@@ -402,7 +402,10 @@ class _RulesDesktopTable extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(flex: 3, child: _header(context, 'name')),
-                    Expanded(flex: 3, child: _header(context, 'ruleConditions')),
+                    Expanded(
+                      flex: 3,
+                      child: _header(context, 'ruleConditions'),
+                    ),
                     Expanded(flex: 3, child: _header(context, 'ruleActions')),
                     SizedBox(
                       width: priorityWidth,
@@ -414,7 +417,11 @@ class _RulesDesktopTable extends StatelessWidget {
                     ),
                     SizedBox(
                       width: statusWidth,
-                      child: _header(context, 'status', align: TextAlign.center),
+                      child: _header(
+                        context,
+                        'status',
+                        align: TextAlign.center,
+                      ),
                     ),
                     SizedBox(
                       width: controlsWidth,
@@ -478,9 +485,9 @@ class _RulesDesktopTable extends StatelessWidget {
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       textAlign: align,
-      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-        fontWeight: weight,
-      ),
+      style: Theme.of(
+        context,
+      ).textTheme.bodyMedium?.copyWith(fontWeight: weight),
     ),
   );
 
@@ -490,9 +497,7 @@ class _RulesDesktopTable extends StatelessWidget {
       key: ValueKey('desktop-rule-row-${rule.id.value}'),
       onTap: () => onDetails(rule),
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          vertical: ButlerlySpacing.micro,
-        ),
+        padding: const EdgeInsets.symmetric(vertical: ButlerlySpacing.micro),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -504,11 +509,7 @@ class _RulesDesktopTable extends StatelessWidget {
             Expanded(flex: 3, child: _cell(context, actions(rule))),
             SizedBox(
               width: priorityWidth,
-              child: _cell(
-                context,
-                '${rule.priority}',
-                align: TextAlign.end,
-              ),
+              child: _cell(context, '${rule.priority}', align: TextAlign.end),
             ),
             SizedBox(
               width: statusWidth,
@@ -516,6 +517,8 @@ class _RulesDesktopTable extends StatelessWidget {
                 child: Switch.adaptive(
                   key: ValueKey('desktop-rule-switch-${rule.id.value}'),
                   value: rule.enabled,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity: VisualDensity.compact,
                   onChanged: (enabled) => onToggle(rule, enabled),
                 ),
               ),
@@ -529,12 +532,33 @@ class _RulesDesktopTable extends StatelessWidget {
                     key: ValueKey('desktop-rule-edit-${rule.id.value}'),
                     tooltip: context.l10n.text('edit'),
                     onPressed: () => onEdit(rule),
+                    constraints: const BoxConstraints.tightFor(
+                      width: 24,
+                      height: 24,
+                    ),
+                    padding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
+                    style: IconButton.styleFrom(
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    iconSize: 16,
                     icon: const Icon(Icons.edit_outlined),
                   ),
+                  const SizedBox(width: ButlerlySpacing.small),
                   IconButton(
                     key: ValueKey('desktop-rule-delete-${rule.id.value}'),
                     tooltip: context.l10n.text('delete'),
                     onPressed: () => onDelete(rule),
+                    constraints: const BoxConstraints.tightFor(
+                      width: 24,
+                      height: 24,
+                    ),
+                    padding: EdgeInsets.zero,
+                    visualDensity: VisualDensity.compact,
+                    style: IconButton.styleFrom(
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    iconSize: 16,
                     icon: const Icon(Icons.delete_outline),
                   ),
                 ],
