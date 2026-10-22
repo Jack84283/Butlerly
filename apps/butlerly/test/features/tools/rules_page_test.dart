@@ -1,6 +1,8 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/master_data_page.dart';
 import 'package:butlerly/features/tools/presentation/rules_page.dart';
@@ -68,6 +70,11 @@ void main() {
     expect(find.text('Matching conditions'), findsOneWidget);
     expect(find.text('Resulting actions'), findsOneWidget);
     expect(find.text('Category: Transport'), findsOneWidget);
+    expect(find.byType(ButlerlySheet), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('desktop-rule-details-panel')),
+      findsNothing,
+    );
     await tester.tap(find.text('Close'));
     await tester.pumpAndSettle();
 
@@ -156,9 +163,9 @@ void main() {
     );
     expect(
       tester.getTopLeft(panel).dx,
-      greaterThan(tester.getTopRight(
-        find.byKey(const ValueKey('desktop-rules-table')),
-      ).dx),
+      greaterThan(
+        tester.getTopRight(find.byType(ButlerlyDesktopInnerCard)).dx,
+      ),
     );
     expect(workspace, findsOneWidget);
     await tester.tap(
