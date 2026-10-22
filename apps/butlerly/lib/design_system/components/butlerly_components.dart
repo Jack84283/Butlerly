@@ -383,6 +383,45 @@ class ButlerlyCardHeader extends StatelessWidget {
   );
 }
 
+/// Shared Add action for page headers on desktop and device layouts.
+///
+/// The filled 32px circular icon and trailing inset match Master Data's
+/// established design. Hosts supply only the tooltip and action.
+class ButlerlyHeaderAddButton extends StatelessWidget {
+  const ButlerlyHeaderAddButton({
+    required this.label,
+    required this.onPressed,
+    this.buttonKey,
+    super.key,
+  });
+
+  final String label;
+  final VoidCallback? onPressed;
+  final Key? buttonKey;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsetsDirectional.only(
+      end: ButlerlySpacing.headerActionTrailing,
+    ),
+    child: IconButton.filled(
+      key: buttonKey,
+      tooltip: label,
+      onPressed: onPressed,
+      icon: const Icon(Icons.add),
+      style: IconButton.styleFrom(
+        backgroundColor: context.colors.interactive,
+        foregroundColor: context.colors.interactive.computeLuminance() > 0.5
+            ? context.colors.background
+            : Colors.white,
+        shape: const CircleBorder(),
+        minimumSize: const Size.square(32),
+        maximumSize: const Size.square(32),
+      ),
+    ),
+  );
+}
+
 /// Icon-only action without a filled surface or border in either theme.
 ///
 /// Explicitly overrides the app-wide bordered text button theme while
