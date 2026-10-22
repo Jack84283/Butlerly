@@ -518,7 +518,6 @@ class _RulesDesktopTable extends StatelessWidget {
                   key: ValueKey('desktop-rule-switch-${rule.id.value}'),
                   value: rule.enabled,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  visualDensity: VisualDensity.compact,
                   onChanged: (enabled) => onToggle(rule, enabled),
                 ),
               ),
