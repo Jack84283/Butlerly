@@ -105,13 +105,34 @@ void main() {
       findsNothing,
     );
 
+    // The Home/Transactions desktop table uses compact, single-line rows.
+    // Default 48px actions must not dictate the Rules row height.
+    final ruleRow = find.byKey(const ValueKey('desktop-rule-row-rule.fuel'));
+    final editAction = find.byKey(const ValueKey('desktop-rule-edit-rule.fuel'));
+    final deleteAction = find.byKey(
+      const ValueKey('desktop-rule-delete-rule.fuel'),
+    );
+    final statusSwitch = find.byKey(
+      const ValueKey('desktop-rule-switch-rule.fuel'),
+    );
+    expect(tester.getSize(ruleRow).height, lessThanOrEqualTo(42));
+    expect(tester.getSize(editAction), const Size(24, 24));
+    expect(tester.getSize(deleteAction), const Size(24, 24));
+    expect(tester.getSize(statusSwitch).height, lessThanOrEqualTo(34));
+    expect(
+      tester.widget<Switch>(statusSwitch).materialTapTargetSize,
+      MaterialTapTargetSize.shrinkWrap,
+    );
+
     await tester.tap(find.byKey(const ValueKey('desktop-rule-row-rule.fuel')));
     await tester.pumpAndSettle();
     expect(find.text('Matching conditions'), findsAtLeastNWidgets(2));
     await tester.tap(find.text('Close'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const ValueKey('desktop-rule-switch-rule.fuel')));
+    await tester.tap(
+      find.byKey(const ValueKey('desktop-rule-switch-rule.fuel')),
+    );
     await tester.pumpAndSettle();
     expect((await rules.listAll()).single.enabled, isFalse);
     await tester.tap(find.byKey(const ValueKey('desktop-rule-edit-rule.fuel')));
@@ -119,7 +140,9 @@ void main() {
     expect(find.text('Edit rule'), findsOneWidget);
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('desktop-rule-delete-rule.fuel')));
+    await tester.tap(
+      find.byKey(const ValueKey('desktop-rule-delete-rule.fuel')),
+    );
     await tester.pumpAndSettle();
     expect(find.text('Delete rule?'), findsOneWidget);
     await tester.tap(find.text('Cancel'));
