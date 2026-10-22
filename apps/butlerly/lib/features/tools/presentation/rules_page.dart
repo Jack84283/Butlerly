@@ -497,7 +497,9 @@ class _RulesDesktopTable extends StatelessWidget {
       key: ValueKey('desktop-rule-row-${rule.id.value}'),
       onTap: () => onDetails(rule),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: ButlerlySpacing.micro),
+        padding: const EdgeInsets.symmetric(
+          vertical: ButlerlyTableTokens.rowVerticalPadding,
+        ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -517,7 +519,7 @@ class _RulesDesktopTable extends StatelessWidget {
                 child: SizedBox(
                   key: ValueKey('desktop-rule-switch-box-${rule.id.value}'),
                   width: 48,
-                  height: 28,
+                  height: 24,
                   child: FittedBox(
                     fit: BoxFit.contain,
                     child: Switch.adaptive(
@@ -535,38 +537,18 @@ class _RulesDesktopTable extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  IconButton(
-                    key: ValueKey('desktop-rule-edit-${rule.id.value}'),
+                  ButlerlyDesktopTableIconAction(
+                    buttonKey: ValueKey('desktop-rule-edit-${rule.id.value}'),
+                    icon: Icons.edit_outlined,
                     tooltip: context.l10n.text('edit'),
                     onPressed: () => onEdit(rule),
-                    constraints: const BoxConstraints.tightFor(
-                      width: 24,
-                      height: 24,
-                    ),
-                    padding: EdgeInsets.zero,
-                    visualDensity: VisualDensity.compact,
-                    style: IconButton.styleFrom(
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    iconSize: 16,
-                    icon: const Icon(Icons.edit_outlined),
                   ),
                   const SizedBox(width: ButlerlySpacing.small),
-                  IconButton(
-                    key: ValueKey('desktop-rule-delete-${rule.id.value}'),
+                  ButlerlyDesktopTableIconAction(
+                    buttonKey: ValueKey('desktop-rule-delete-${rule.id.value}'),
+                    icon: Icons.delete_outline,
                     tooltip: context.l10n.text('delete'),
                     onPressed: () => onDelete(rule),
-                    constraints: const BoxConstraints.tightFor(
-                      width: 24,
-                      height: 24,
-                    ),
-                    padding: EdgeInsets.zero,
-                    visualDensity: VisualDensity.compact,
-                    style: IconButton.styleFrom(
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
-                    iconSize: 16,
-                    icon: const Icon(Icons.delete_outline),
                   ),
                 ],
               ),
