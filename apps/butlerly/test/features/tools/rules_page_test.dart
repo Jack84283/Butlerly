@@ -130,7 +130,7 @@ void main() {
             find.byKey(const ValueKey('desktop-rule-switch-box-rule.fuel')),
           )
           .height,
-      24,
+      20,
     );
     expect(
       tester.widget<Switch>(statusSwitch).materialTapTargetSize,
@@ -179,7 +179,7 @@ void main() {
     final rulesHeight = tester.getSize(rulesRow).height;
     expect(
       rulesHeight,
-      closeTo(24 + 2 * ButlerlyTableTokens.rowVerticalPadding, 0.1),
+      closeTo(20 + 2 * ButlerlyTableTokens.rowVerticalPadding, 0.1),
     );
     expect(find.byType(ButlerlyDesktopTableIconAction), findsNWidgets(2));
 
