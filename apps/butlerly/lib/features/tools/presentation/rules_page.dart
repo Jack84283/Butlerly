@@ -409,61 +409,70 @@ class _RuleDesktopDetailsPanel extends StatelessWidget {
   final VoidCallback onDelete;
 
   @override
-  Widget build(BuildContext context) => ButlerlyCard(
-    key: const ValueKey('desktop-rule-details-panel'),
-    semanticLabel: rule.name,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            IconButton(
-              key: const ValueKey('desktop-rule-details-close'),
-              tooltip: context.l10n.text('close'),
-              onPressed: onClose,
-              icon: const Icon(Icons.close_rounded),
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Row(
+        children: [
+          IconButton(
+            key: const ValueKey('desktop-rule-details-close'),
+            tooltip: context.l10n.text('close'),
+            onPressed: onClose,
+            icon: const Icon(Icons.close_rounded),
+          ),
+          Expanded(
+            child: Text(
+              context.l10n.text('ruleManagement'),
+              style: Theme.of(context).textTheme.titleLarge,
+              overflow: TextOverflow.ellipsis,
             ),
-            Expanded(
-              child: Text(
-                rule.name,
-                style: Theme.of(context).textTheme.titleLarge,
-                overflow: TextOverflow.ellipsis,
-              ),
+          ),
+          IconButton(
+            key: const ValueKey('desktop-rule-details-edit-icon'),
+            tooltip: context.l10n.text('edit'),
+            onPressed: onEdit,
+            icon: const Icon(Icons.edit_outlined),
+          ),
+        ],
+      ),
+      Expanded(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(ButlerlySpacing.standard),
+          child: ButlerlyCard(
+            key: const ValueKey('desktop-rule-details-panel'),
+            semanticLabel: rule.name,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _RuleDetailsContent(
+                  rule: rule,
+                  conditions: conditions,
+                  actions: actions,
+                ),
+                const SizedBox(height: ButlerlySpacing.standard),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    OutlinedButton.icon(
+                      key: const ValueKey('desktop-rule-details-edit'),
+                      onPressed: onEdit,
+                      icon: const Icon(Icons.edit_outlined),
+                      label: Text(context.l10n.text('edit')),
+                    ),
+                    const SizedBox(width: ButlerlySpacing.small),
+                    ButlerlyDestructiveButton(
+                      key: const ValueKey('desktop-rule-details-delete'),
+                      onPressed: onDelete,
+                      child: Text(context.l10n.text('delete')),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            IconButton(
-              key: const ValueKey('desktop-rule-details-edit-icon'),
-              tooltip: context.l10n.text('edit'),
-              onPressed: onEdit,
-              icon: const Icon(Icons.edit_outlined),
-            ),
-          ],
+          ),
         ),
-        const SizedBox(height: ButlerlySpacing.standard),
-        _RuleDetailsContent(
-          rule: rule,
-          conditions: conditions,
-          actions: actions,
-        ),
-        const SizedBox(height: ButlerlySpacing.standard),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            OutlinedButton.icon(
-              key: const ValueKey('desktop-rule-details-edit'),
-              onPressed: onEdit,
-              icon: const Icon(Icons.edit_outlined),
-              label: Text(context.l10n.text('edit')),
-            ),
-            const SizedBox(width: ButlerlySpacing.small),
-            ButlerlyDestructiveButton(
-              key: const ValueKey('desktop-rule-details-delete'),
-              onPressed: onDelete,
-              child: Text(context.l10n.text('delete')),
-            ),
-          ],
-        ),
-      ],
-    ),
+      ),
+    ],
   );
 }
 
@@ -1383,39 +1392,46 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
     if (widget.onSubmit == null) {
       return ButlerlySheet(title: title, content: content, actions: actions);
     }
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(ButlerlySpacing.standard),
-      child: ButlerlyCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
           children: [
-            Row(
-              children: [
-                IconButton(
-                  tooltip: context.l10n.text('close'),
-                  onPressed: widget.onCancel,
-                  icon: const Icon(Icons.close_rounded),
-                ),
-                Expanded(
-                  child: DefaultTextStyle(
-                    style: Theme.of(context).textTheme.headlineSmall!,
-                    child: title,
-                  ),
-                ),
-              ],
+            IconButton(
+              key: const ValueKey('desktop-rule-editor-back'),
+              tooltip: context.l10n.text('cancel'),
+              onPressed: widget.onCancel,
+              icon: const Icon(Icons.arrow_back_rounded),
             ),
-            const SizedBox(height: ButlerlySpacing.standard),
-            content,
-            const SizedBox(height: ButlerlySpacing.standard),
-            Wrap(
-              alignment: WrapAlignment.end,
-              spacing: ButlerlySpacing.small,
-              runSpacing: ButlerlySpacing.small,
-              children: actions,
+            Expanded(
+              child: DefaultTextStyle(
+                style: Theme.of(context).textTheme.titleLarge!,
+                child: title,
+              ),
             ),
           ],
         ),
-      ),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(ButlerlySpacing.standard),
+            child: ButlerlyCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  content,
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  Wrap(
+                    alignment: WrapAlignment.end,
+                    spacing: ButlerlySpacing.small,
+                    runSpacing: ButlerlySpacing.small,
+                    children: actions,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
