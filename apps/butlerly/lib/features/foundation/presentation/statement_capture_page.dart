@@ -9,6 +9,7 @@ import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/desktop/presentation/desktop_transaction_detail_split_view.dart';
 import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
 import 'package:butlerly/features/foundation/presentation/payment_source_display.dart';
 import 'package:butlerly/features/foundation/presentation/reconciliation_labels.dart';
@@ -131,6 +132,8 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
   List<FinancialStatement> _statements = const [];
   List<PaymentSource> _sources = const [];
   bool _busy = false;
+  String? _selectedStatementId;
+  _StatementPanelData? _panelData;
   final _imagePicker = ImagePicker();
   final _debugDiagnostics = <String, String>{};
   StatementServices get statement =>
@@ -371,6 +374,17 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     }
     final rowsResult = results[0] as ApplicationSuccess<List<StatementRow>>;
     final masterData = results[1] as TransactionMasterDataSnapshot;
+    if (_desktop) {
+      setState(() {
+        _selectedStatementId = item.id;
+        _panelData = _StatementPanelData(
+          item,
+          rowsResult.value,
+          masterData,
+        );
+      });
+      return;
+    }
     await Navigator.push(
       context,
       MaterialPageRoute(
@@ -384,6 +398,18 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
       ),
     );
     await _reload();
+  }
+
+  bool get _desktop =>
+      MediaQuery.sizeOf(context).width >= ButlerlySize.wideBreakpoint;
+
+  void _closeStatementPanel() {
+    if (!mounted) return;
+    setState(() {
+      _selectedStatementId = null;
+      _panelData = null;
+    });
+    _reload();
   }
 
   Future<void> _deleteUnprocessed(FinancialStatement item) async {
@@ -416,6 +442,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
         .removeUnprocessedStatement(item.id);
     if (!mounted) return;
     if (success) {
+      if (_selectedStatementId == item.id) _closeStatementPanel();
       await _reload();
       _message(l10n.text('statementDeleted'));
     } else {
@@ -456,28 +483,9 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(context.l10n.text('statements')),
-      actions: [
-        IconButton(
-          onPressed: _busy ? null : () => _captureImage(ImageSource.camera),
-          icon: const Icon(Icons.camera_alt_outlined),
-          tooltip: context.l10n.text('scanReceipt'),
-        ),
-        IconButton(
-          onPressed: _busy ? null : _selectExistingFile,
-          icon: const Icon(Icons.file_open_outlined),
-          tooltip: context.l10n.text('importData'),
-        ),
-        IconButton(
-          onPressed: _busy ? null : () => _captureImage(ImageSource.gallery),
-          icon: const Icon(Icons.photo_library_outlined),
-          tooltip: context.l10n.text('importData'),
-        ),
-      ],
-    ),
-    body: ButlerlyResponsiveBody(
+  Widget build(BuildContext context) {
+    final desktop = _desktop;
+    final list = ButlerlyResponsiveBody(
       contentKey: const ValueKey('statement-capture-content'),
       child: _busy
           ? const ButlerlyLoadingState()
@@ -488,62 +496,203 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                 child: Text(context.l10n.text('statementsEmptyBody')),
               ),
             )
-          : ListView.builder(
-              padding: const EdgeInsets.all(ButlerlySpacing.pagePadding),
-              itemCount: _statements.length,
-              itemBuilder: (_, index) {
-                final item = _statements[index];
-                return Padding(
-                  padding: const EdgeInsets.only(
-                    bottom: ButlerlySpacing.cardGap,
-                  ),
-                  child: ButlerlyCard(
-                    padding: EdgeInsets.zero,
-                    child: ListTile(
-                      leading: const Icon(Icons.description_outlined),
-                      title: Text(
-                        statementDisplayTitle(context, item, _sources),
-                      ),
-                      subtitle: Text(
-                        item.extractionMessage == null
-                            ? (item.paymentSourceId == null
-                                  ? context.l10n.text(
-                                      'choosePaymentSourceToContinue',
-                                    )
-                                  : context.l10n.text('reviewInProgress'))
-                            : _statementStatusLabel(
-                                context,
-                                item.extractionMessage,
-                              ),
-                        style: context.transactionItemMetadata,
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (kDebugMode &&
-                              _debugDiagnostics.containsKey(item.id))
-                            IconButton(
-                              tooltip: context.l10n.text(
-                                'extractionDiagnostics',
-                              ),
-                              onPressed: () => _showDiagnostics(item.id),
-                              icon: const Icon(Icons.bug_report_outlined),
-                            ),
-                          IconButton(
-                            tooltip: context.l10n.text('deleteStatement'),
-                            onPressed: () => _deleteUnprocessed(item),
-                            icon: const Icon(Icons.delete_outline_rounded),
-                          ),
-                        ],
-                      ),
-                      onTap: () => _open(item),
-                    ),
-                  ),
-                );
-              },
+          : desktop
+          ? _desktopStatementsTable(context)
+          : _mobileStatementsList(context),
+    );
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(context.l10n.text('statements')),
+        actions: [
+          IconButton(
+            onPressed: _busy ? null : () => _captureImage(ImageSource.camera),
+            icon: const Icon(Icons.camera_alt_outlined),
+            tooltip: context.l10n.text('scanReceipt'),
+          ),
+          IconButton(
+            onPressed: _busy ? null : _selectExistingFile,
+            icon: const Icon(Icons.file_open_outlined),
+            tooltip: context.l10n.text('importData'),
+          ),
+          IconButton(
+            onPressed: _busy ? null : () => _captureImage(ImageSource.gallery),
+            icon: const Icon(Icons.photo_library_outlined),
+            tooltip: context.l10n.text('importData'),
+          ),
+        ],
+      ),
+      body: desktop
+          ? DesktopTransactionDetailSplitView(
+              results: list,
+              detail: _panelData == null
+                  ? null
+                  : _statementRightPanel(_panelData!),
+            )
+          : list,
+    );
+  }
+
+  Widget _mobileStatementsList(BuildContext context) => ListView.builder(
+    padding: const EdgeInsets.all(ButlerlySpacing.pagePadding),
+    itemCount: _statements.length,
+    itemBuilder: (_, index) {
+      final item = _statements[index];
+      return Padding(
+        padding: const EdgeInsets.only(bottom: ButlerlySpacing.cardGap),
+        child: ButlerlyCard(
+          padding: EdgeInsets.zero,
+          child: ListTile(
+            leading: const Icon(Icons.description_outlined),
+            title: Text(statementDisplayTitle(context, item, _sources)),
+            subtitle: Text(
+              item.extractionMessage == null
+                  ? (item.paymentSourceId == null
+                        ? context.l10n.text('choosePaymentSourceToContinue')
+                        : context.l10n.text('reviewInProgress'))
+                  : _statementStatusLabel(context, item.extractionMessage),
+              style: context.transactionItemMetadata,
             ),
-    ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (kDebugMode && _debugDiagnostics.containsKey(item.id))
+                  IconButton(
+                    tooltip: context.l10n.text('extractionDiagnostics'),
+                    onPressed: () => _showDiagnostics(item.id),
+                    icon: const Icon(Icons.bug_report_outlined),
+                  ),
+                IconButton(
+                  tooltip: context.l10n.text('deleteStatement'),
+                  onPressed: () => _deleteUnprocessed(item),
+                  icon: const Icon(Icons.delete_outline_rounded),
+                ),
+              ],
+            ),
+            onTap: () => _open(item),
+          ),
+        ),
+      );
+    },
   );
+
+  Widget _desktopStatementsTable(BuildContext context) => ListView(
+    padding: const EdgeInsets.all(ButlerlySpacing.pagePadding),
+    children: [
+      ButlerlyCard(
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: DataTable(
+            showCheckboxColumn: false,
+            columns: [
+              DataColumn(label: Text(context.l10n.text('statements'))),
+              DataColumn(label: Text(context.l10n.text('paymentSource'))),
+              DataColumn(label: Text(context.l10n.text('status'))),
+              DataColumn(label: Text(context.l10n.text('delete'))),
+            ],
+            rows: [
+              for (final item in _statements)
+                DataRow(
+                  key: ValueKey('desktop-statement-row-${item.id}'),
+                  selected: _selectedStatementId == item.id,
+                  onSelectChanged: (_) => _open(item),
+                  cells: [
+                    DataCell(
+                      SizedBox(
+                        width: 220,
+                        child: Text(
+                          statementDisplayTitle(context, item, _sources),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    DataCell(
+                      SizedBox(
+                        width: 140,
+                        child: Text(
+                          _sources
+                                  .where((source) =>
+                                      source.id.value == item.paymentSourceId)
+                                  .firstOrNull
+                                  ?.name ??
+                              '—',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    DataCell(
+                      SizedBox(
+                        width: 160,
+                        child: Text(
+                          item.extractionMessage == null
+                              ? (item.paymentSourceId == null
+                                    ? context.l10n.text('choosePaymentSourceToContinue')
+                                    : context.l10n.text('reviewInProgress'))
+                              : _statementStatusLabel(
+                                  context,
+                                  item.extractionMessage,
+                                ),
+                        ),
+                      ),
+                    ),
+                    DataCell(
+                      IconButton(
+                        tooltip: context.l10n.text('deleteStatement'),
+                        onPressed: () => _deleteUnprocessed(item),
+                        icon: const Icon(Icons.delete_outline_rounded),
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      ),
+    ],
+  );
+
+  Widget _statementRightPanel(_StatementPanelData selection) => Stack(
+    children: [
+      Navigator(
+        key: ValueKey('statement-review-navigator-${selection.statement.id}'),
+        onGenerateRoute: (_) => MaterialPageRoute<void>(
+          builder: (_) => _StatementReviewPage(
+            statement: selection.statement,
+            rows: selection.rows,
+            sources: _sources,
+            masterData: selection.masterData,
+            service: statement,
+          ),
+        ),
+        onPopPage: (route, result) {
+          if (!route.didPop(result)) return false;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _closeStatementPanel();
+          });
+          return true;
+        },
+      ),
+      Positioned(
+        right: ButlerlySpacing.compact,
+        top: ButlerlySpacing.compact,
+        child: IconButton(
+          key: const ValueKey('desktop-statement-close'),
+          tooltip: context.l10n.text('close'),
+          onPressed: _closeStatementPanel,
+          icon: const Icon(Icons.close_rounded),
+        ),
+      ),
+    ],
+  );
+
+}
+
+class _StatementPanelData {
+  const _StatementPanelData(this.statement, this.rows, this.masterData);
+  final FinancialStatement statement;
+  final List<StatementRow> rows;
+  final TransactionMasterDataSnapshot masterData;
 }
 
 class _StatementReviewPage extends StatefulWidget {
