@@ -721,42 +721,20 @@ class _Row extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               if (onEdit != null)
-                IconButton(
-                  constraints: const BoxConstraints.tightFor(
-                    width: 24,
-                    height: 24,
-                  ),
-                  padding: EdgeInsets.zero,
-                  visualDensity: VisualDensity.compact,
-                  style: IconButton.styleFrom(
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  iconSize: 16,
+                ButlerlyDesktopTableIconAction(
+                  icon: Icons.edit_outlined,
                   tooltip: context.l10n.text('edit'),
-                  icon: const Icon(Icons.edit_outlined),
                   onPressed: onEdit,
                 ),
               if (onEdit != null && onToggle != null)
                 const SizedBox(width: ButlerlySpacing.small),
               if (onToggle != null)
-                IconButton(
-                  constraints: const BoxConstraints.tightFor(
-                    width: 24,
-                    height: 24,
-                  ),
-                  padding: EdgeInsets.zero,
-                  visualDensity: VisualDensity.compact,
-                  style: IconButton.styleFrom(
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  iconSize: 16,
+                ButlerlyDesktopTableIconAction(
+                  icon: active
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
                   tooltip: context.l10n.text(
                     active ? 'deactivate' : 'reactivate',
-                  ),
-                  icon: Icon(
-                    active
-                        ? Icons.visibility_outlined
-                        : Icons.visibility_off_outlined,
                   ),
                   onPressed: onToggle,
                 ),
