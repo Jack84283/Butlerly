@@ -325,11 +325,7 @@ class _RulesPageState extends State<RulesPage> {
                           data,
                           selectedDesktopRule,
                         ),
-                        actions: _actions(
-                          context,
-                          data,
-                          selectedDesktopRule,
-                        ),
+                        actions: _actions(context, data, selectedDesktopRule),
                         onClose: _closeDesktopDetails,
                       ),
                     ),
@@ -389,10 +385,7 @@ class _RuleDesktopDetailsPanel extends StatelessWidget {
             onPressed: onClose,
             icon: const Icon(Icons.close),
             iconSize: 20,
-            constraints: const BoxConstraints.tightFor(
-              width: 32,
-              height: 32,
-            ),
+            constraints: const BoxConstraints.tightFor(width: 32, height: 32),
             padding: EdgeInsets.zero,
             style: IconButton.styleFrom(
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
