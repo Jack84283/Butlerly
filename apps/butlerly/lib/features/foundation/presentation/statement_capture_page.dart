@@ -9,8 +9,8 @@ import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
-import 'package:butlerly/features/desktop/presentation/desktop_transaction_detail_split_view.dart';
 import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
+import 'package:butlerly/features/desktop/presentation/desktop_transaction_detail_split_view.dart';
 import 'package:butlerly/features/foundation/presentation/payment_source_display.dart';
 import 'package:butlerly/features/foundation/presentation/reconciliation_labels.dart';
 import 'package:butlerly/features/foundation/presentation/statement_labels.dart';
@@ -665,12 +665,12 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
             service: statement,
           ),
         ),
-        onPopPage: (route, result) {
-          if (!route.didPop(result)) return false;
+        onDidRemovePage: (page) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            _closeStatementPanel();
+            if (mounted && _selectedStatementId == selection.statement.id) {
+              _closeStatementPanel();
+            }
           });
-          return true;
         },
       ),
       Positioned(
