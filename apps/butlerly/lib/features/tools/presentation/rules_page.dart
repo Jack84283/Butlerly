@@ -3,6 +3,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_action_group.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/features/desktop/presentation/desktop_transaction_detail_split_view.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -22,6 +23,26 @@ class _RulesPageState extends State<RulesPage> {
       : null;
 
   late Future<_RuleData> _data = _load();
+  TransactionRule? _selectedRule;
+  bool _panelOpen = false;
+  bool _panelEditing = false;
+
+  bool _desktop(BuildContext context) =>
+      MediaQuery.sizeOf(context).width >= ButlerlySize.wideBreakpoint;
+
+  void _openPanel([TransactionRule? rule, bool editing = false]) {
+    setState(() {
+      _selectedRule = rule;
+      _panelEditing = editing;
+      _panelOpen = true;
+    });
+  }
+
+  void _closePanel() => setState(() {
+    _panelOpen = false;
+    _panelEditing = false;
+    _selectedRule = null;
+  });
 
   Future<_RuleData> _load() async {
     final finance = _finance;
@@ -60,6 +81,10 @@ class _RulesPageState extends State<RulesPage> {
   }
 
   Future<void> _edit(_RuleData data, [TransactionRule? current]) async {
+    if (_desktop(context)) {
+      _openPanel(current, true);
+      return;
+    }
     final draft = await showButlerlyBottomSheet<_RuleDraft>(
       context: context,
       builder: (_) => _RuleEditorSheet(
@@ -71,6 +96,10 @@ class _RulesPageState extends State<RulesPage> {
       ),
     );
     if (!mounted || draft == null) return;
+    await _saveDraft(draft, current);
+  }
+
+  Future<void> _saveDraft(_RuleDraft draft, TransactionRule? current) async {
     final finance = _finance;
     final save = finance?.saveTransactionRule;
     if (save == null) return;
@@ -113,6 +142,7 @@ class _RulesPageState extends State<RulesPage> {
       return;
     }
     _showMessage(context.l10n.text('ruleSaved'));
+    if (_panelOpen) _closePanel();
     _refresh();
   }
 
@@ -145,10 +175,15 @@ class _RulesPageState extends State<RulesPage> {
       return;
     }
     _showMessage(context.l10n.text('ruleDeleted'));
+    if (_selectedRule?.id == rule.id && _panelOpen) _closePanel();
     _refresh();
   }
 
   void _showDetails(_RuleData data, TransactionRule rule) {
+    if (_desktop(context)) {
+      _openPanel(rule);
+      return;
+    }
     showButlerlyBottomSheet<void>(
       context: context,
       builder: (context) => ButlerlySheet(
@@ -180,6 +215,46 @@ class _RulesPageState extends State<RulesPage> {
       ),
     );
   }
+
+  Widget _rulePanelDetails(_RuleData data, TransactionRule rule) =>
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(children: [
+            Expanded(child: Text(rule.name,
+                style: Theme.of(context).textTheme.headlineSmall)),
+            IconButton(
+              tooltip: context.l10n.text('close'),
+              onPressed: _closePanel,
+              icon: const Icon(Icons.close_rounded),
+            ),
+          ]),
+          const SizedBox(height: ButlerlySpacing.standard),
+          Expanded(child: SingleChildScrollView(child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(rule.description?.isNotEmpty == true
+                  ? rule.description!
+                  : context.l10n.text('ruleNoDescription')),
+              const SizedBox(height: ButlerlySpacing.standard),
+              Text(context.l10n.text('ruleConditions')),
+              Text(_conditions(context, data, rule)),
+              const SizedBox(height: ButlerlySpacing.standard),
+              Text(context.l10n.text('ruleActions')),
+              Text(_actions(context, data, rule)),
+              const SizedBox(height: ButlerlySpacing.standard),
+              Text('${context.l10n.text('rulePriority')}: ${rule.priority}'),
+            ],
+          ))),
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton(
+              onPressed: () => setState(() => _panelEditing = true),
+              child: Text(context.l10n.text('edit')),
+            ),
+          ),
+        ],
+      );
 
   String _conditions(
     BuildContext context,
@@ -265,7 +340,7 @@ class _RulesPageState extends State<RulesPage> {
         );
       }
       final data = snapshot.requireData;
-      return ButlerlyPage(
+      final rulesPage = ButlerlyPage(
         title: context.l10n.text('ruleManagement'),
         subtitle: context.l10n.text('ruleManagementHowItWorks'),
         actions: [
@@ -301,6 +376,31 @@ class _RulesPageState extends State<RulesPage> {
             ),
           const SizedBox(height: ButlerlySpacing.structural),
         ],
+      );
+      if (!_desktop(context) || !_panelOpen) return rulesPage;
+      final selected = _selectedRule == null
+          ? null
+          : data.rules.where((rule) => rule.id == _selectedRule!.id).firstOrNull;
+      return DesktopTransactionDetailSplitView(
+        results: rulesPage,
+        detail: Padding(
+          key: const ValueKey('desktop-rule-detail-panel'),
+          padding: const EdgeInsets.all(ButlerlySpacing.standard),
+          child: _panelEditing
+              ? _RuleEditorSheet(
+                  key: ValueKey('rule-editor-${selected?.id.value ?? 'new'}'),
+                  current: selected,
+                  merchants: data.merchants,
+                  categories: data.categories,
+                  paymentSources: data.paymentSources,
+                  tags: data.tags,
+                  onSubmit: (draft) => _saveDraft(draft, selected),
+                  onCancel: () => selected == null
+                      ? _closePanel()
+                      : setState(() => _panelEditing = false),
+                )
+              : _rulePanelDetails(data, selected!),
+        ),
       );
     },
   );
@@ -438,8 +538,12 @@ class _RuleEditorSheet extends StatefulWidget {
     required this.categories,
     required this.paymentSources,
     required this.tags,
+    this.onSubmit,
+    this.onCancel,
   });
 
+  final ValueChanged<_RuleDraft>? onSubmit;
+  final VoidCallback? onCancel;
   final TransactionRule? current;
   final List<Merchant> merchants;
   final List<Category> categories;
@@ -533,9 +637,7 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
       );
       return;
     }
-    Navigator.pop(
-      context,
-      _RuleDraft(
+    final draft = _RuleDraft(
         name: _name.text.trim(),
         description: _description.text.trim().isEmpty
             ? null
@@ -552,8 +654,12 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
         assignSubcategoryId: _assignSubcategoryId,
         assignPaymentSourceId: _assignPaymentSourceId,
         assignTagId: _assignTagId,
-      ),
-    );
+      );
+    if (widget.onSubmit != null) {
+      widget.onSubmit!(draft);
+    } else {
+      Navigator.pop(context, draft);
+    }
   }
 
   String _merchantName(String id) =>
@@ -817,11 +923,9 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
       (value) => (value.id.value, value.name),
     );
     final tags = widget.tags.map((value) => (value.id.value, value.name));
-    return ButlerlySheet(
-      title: Text(
-        context.l10n.text(widget.current == null ? 'addRule' : 'editRule'),
-      ),
-      content: Column(
+    final title = Text(context.l10n.text(widget.current == null ? 'addRule' : 'editRule'));
+    final content =
+      Column(
         children: [
           _fieldGroup([
             TextField(
@@ -968,18 +1072,41 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
           _sectionHeading(context.l10n.text('rulePreviewTitle')),
           _previewCard(context),
         ],
-      ),
-      actions: [
+      );
+    final actions = <Widget>[
         OutlinedButton(
           key: const ValueKey('rule-test-button'),
           onPressed: _testing ? null : _testRule,
           child: Text(context.l10n.text('rulePreviewTest')),
         ),
         ButlerlyCancelButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: widget.onCancel ?? () => Navigator.pop(context),
           child: Text(context.l10n.text('cancel')),
         ),
         FilledButton(onPressed: _save, child: Text(context.l10n.text('save'))),
+      ];
+    if (widget.onSubmit == null) {
+      return ButlerlySheet(title: title, content: content, actions: actions);
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(children: [
+          Expanded(child: DefaultTextStyle(
+            style: Theme.of(context).textTheme.headlineSmall!,
+            child: title,
+          )),
+          IconButton(
+            tooltip: context.l10n.text('close'),
+            onPressed: widget.onCancel,
+            icon: const Icon(Icons.close_rounded),
+          ),
+        ]),
+        const SizedBox(height: ButlerlySpacing.standard),
+        Expanded(child: SingleChildScrollView(child: content)),
+        const SizedBox(height: ButlerlySpacing.standard),
+        Wrap(alignment: WrapAlignment.end, spacing: ButlerlySpacing.small,
+          runSpacing: ButlerlySpacing.small, children: actions),
       ],
     );
   }
