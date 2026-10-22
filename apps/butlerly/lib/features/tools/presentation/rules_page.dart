@@ -514,11 +514,19 @@ class _RulesDesktopTable extends StatelessWidget {
             SizedBox(
               width: statusWidth,
               child: Center(
-                child: Switch.adaptive(
-                  key: ValueKey('desktop-rule-switch-${rule.id.value}'),
-                  value: rule.enabled,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  onChanged: (enabled) => onToggle(rule, enabled),
+                child: SizedBox(
+                  key: ValueKey('desktop-rule-switch-box-${rule.id.value}'),
+                  width: 48,
+                  height: 28,
+                  child: FittedBox(
+                    fit: BoxFit.contain,
+                    child: Switch.adaptive(
+                      key: ValueKey('desktop-rule-switch-${rule.id.value}'),
+                      value: rule.enabled,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      onChanged: (enabled) => onToggle(rule, enabled),
+                    ),
+                  ),
                 ),
               ),
             ),
