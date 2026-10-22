@@ -191,7 +191,10 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('compact-section-3')));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const ValueKey('desktop-master-data-table')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('desktop-master-data-table')),
+      findsOneWidget,
+    );
     final masterRow = find
         .ancestor(
           of: find.text('Costco'),
