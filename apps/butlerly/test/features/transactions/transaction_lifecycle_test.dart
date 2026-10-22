@@ -2823,10 +2823,12 @@ void main() {
       final headerAction = page.actions.single;
       expect(headerAction, isA<ButlerlyHeaderAddButton>());
       final headerPadding = tester.widget<Padding>(
-        find.descendant(
-          of: find.byType(ButlerlyHeaderAddButton),
-          matching: find.byType(Padding),
-        ).first,
+        find
+            .descendant(
+              of: find.byType(ButlerlyHeaderAddButton),
+              matching: find.byType(Padding),
+            )
+            .first,
       );
       expect(
         headerPadding.padding,
