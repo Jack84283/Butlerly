@@ -356,7 +356,9 @@ class _RulesPageState extends State<RulesPage> {
                     SizedBox(
                       width: constraints.maxWidth < 1100 ? 320 : 400,
                       child: _desktopEditing
-                          ? _RuleEditorSheet(
+                          ? SizedBox(
+                              height: MediaQuery.sizeOf(context).height * 0.75,
+                              child: _RuleEditorSheet(
                               key: ValueKey('rule-editor-${selectedDesktopRule?.id.value ?? 'new'}'),
                               current: selectedDesktopRule,
                               merchants: data.merchants,
@@ -365,20 +367,21 @@ class _RulesPageState extends State<RulesPage> {
                               tags: data.tags,
                               onSubmit: (draft) => _saveDraft(draft, selectedDesktopRule),
                               onCancel: _closeEditor,
+                            ),
                             )
                           : Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 _RuleDesktopDetailsPanel(
                                   rule: selectedDesktopRule!,
-                                  conditions: _conditions(context, data, selectedDesktopRule),
-                                  actions: _actions(context, data, selectedDesktopRule),
+                                  conditions: _conditions(context, data, selectedDesktopRule!),
+                                  actions: _actions(context, data, selectedDesktopRule!),
                                   onClose: _closeDesktopDetails,
                                 ),
                                 Align(
                                   alignment: Alignment.centerRight,
                                   child: FilledButton(
-                                    onPressed: () => _edit(data, selectedDesktopRule),
+                                    onPressed: () => _edit(data, selectedDesktopRule!),
                                     child: Text(context.l10n.text('edit')),
                                   ),
                                 ),
