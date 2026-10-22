@@ -121,9 +121,11 @@ void main() {
     expect(tester.getSize(editAction), const Size(24, 24));
     expect(tester.getSize(deleteAction), const Size(24, 24));
     expect(
-      tester.getSize(
-        find.byKey(const ValueKey('desktop-rule-switch-box-rule.fuel')),
-      ).height,
+      tester
+          .getSize(
+            find.byKey(const ValueKey('desktop-rule-switch-box-rule.fuel')),
+          )
+          .height,
       28,
     );
     expect(
