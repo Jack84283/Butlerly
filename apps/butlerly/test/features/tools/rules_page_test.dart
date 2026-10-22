@@ -155,22 +155,15 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.descendant(
-        of: panel,
-        matching: find.text('Matching conditions'),
-      ),
+      find.descendant(of: panel, matching: find.text('Matching conditions')),
       findsOneWidget,
     );
     expect(
       tester.getTopLeft(panel).dx,
-      greaterThan(
-        tester.getTopRight(find.byType(ButlerlyDesktopInnerCard)).dx,
-      ),
+      greaterThan(tester.getTopRight(find.byType(ButlerlyDesktopInnerCard)).dx),
     );
     expect(workspace, findsOneWidget);
-    await tester.tap(
-      find.byKey(const ValueKey('desktop-rule-details-close')),
-    );
+    await tester.tap(find.byKey(const ValueKey('desktop-rule-details-close')));
     await tester.pumpAndSettle();
     expect(panel, findsNothing);
     expect(find.byKey(const ValueKey('desktop-rules-table')), findsOneWidget);
@@ -230,7 +223,9 @@ void main() {
       find.descendant(of: panel, matching: find.text('Classify fuel')),
       findsOneWidget,
     );
-    await tester.tap(find.byKey(const ValueKey('desktop-rule-row-rule.coffee')));
+    await tester.tap(
+      find.byKey(const ValueKey('desktop-rule-row-rule.coffee')),
+    );
     await tester.pumpAndSettle();
     expect(panel, findsOneWidget);
     expect(
@@ -245,9 +240,7 @@ void main() {
       find.descendant(of: panel, matching: find.text('Classify fuel')),
       findsNothing,
     );
-    await tester.tap(
-      find.byKey(const ValueKey('desktop-rule-details-close')),
-    );
+    await tester.tap(find.byKey(const ValueKey('desktop-rule-details-close')));
     await tester.pumpAndSettle();
     expect(panel, findsNothing);
     expect(tester.getSize(table).width, closeTo(fullTableWidth, 0.1));
