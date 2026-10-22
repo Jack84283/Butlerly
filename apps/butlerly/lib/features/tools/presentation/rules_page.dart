@@ -372,32 +372,20 @@ class _RulesPageState extends State<RulesPage> {
                                 onCancel: _closeEditor,
                               ),
                             )
-                          : Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                _RuleDesktopDetailsPanel(
-                                  rule: selectedDesktopRule!,
-                                  conditions: _conditions(
-                                    context,
-                                    data,
-                                    selectedDesktopRule!,
-                                  ),
-                                  actions: _actions(
-                                    context,
-                                    data,
-                                    selectedDesktopRule!,
-                                  ),
-                                  onClose: _closeDesktopDetails,
-                                ),
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: FilledButton(
-                                    onPressed: () =>
-                                        _edit(data, selectedDesktopRule!),
-                                    child: Text(context.l10n.text('edit')),
-                                  ),
-                                ),
-                              ],
+                          : _RuleDesktopDetailsPanel(
+                              rule: selectedDesktopRule!,
+                              conditions: _conditions(
+                                context,
+                                data,
+                                selectedDesktopRule!,
+                              ),
+                              actions: _actions(
+                                context,
+                                data,
+                                selectedDesktopRule!,
+                              ),
+                              onClose: _closeDesktopDetails,
+                              onEdit: () => _edit(data, selectedDesktopRule!),
                             ),
                     ),
                   ],
@@ -434,12 +422,14 @@ class _RuleDesktopDetailsPanel extends StatelessWidget {
     required this.conditions,
     required this.actions,
     required this.onClose,
+    required this.onEdit,
   });
 
   final TransactionRule rule;
   final String conditions;
   final String actions;
   final VoidCallback onClose;
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) => ButlerlyCard(
@@ -468,6 +458,15 @@ class _RuleDesktopDetailsPanel extends StatelessWidget {
           rule: rule,
           conditions: conditions,
           actions: actions,
+        ),
+        const SizedBox(height: ButlerlySpacing.standard),
+        Align(
+          alignment: Alignment.centerRight,
+          child: FilledButton(
+            key: const ValueKey('desktop-rule-details-edit'),
+            onPressed: onEdit,
+            child: Text(context.l10n.text('edit')),
+          ),
         ),
       ],
     ),
@@ -1390,7 +1389,8 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
     if (widget.onSubmit == null) {
       return ButlerlySheet(title: title, content: content, actions: actions);
     }
-    return Column(
+    return ButlerlyCard(
+      child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
@@ -1418,6 +1418,7 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
           children: actions,
         ),
       ],
+      ),
     );
   }
 }
