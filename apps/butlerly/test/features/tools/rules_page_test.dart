@@ -139,9 +139,34 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('desktop-rule-row-rule.fuel')));
     await tester.pumpAndSettle();
-    expect(find.text('Matching conditions'), findsAtLeastNWidgets(2));
-    await tester.tap(find.text('Close'));
+    final panel = find.byKey(const ValueKey('desktop-rule-details-panel'));
+    final workspace = find.byKey(const ValueKey('desktop-rules-workspace'));
+    expect(panel, findsOneWidget);
+    expect(find.byType(ButlerlySheet), findsNothing);
+    expect(
+      find.descendant(of: panel, matching: find.text('Classify fuel')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: panel,
+        matching: find.text('Matching conditions'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      tester.getTopLeft(panel).dx,
+      greaterThan(tester.getTopRight(
+        find.byKey(const ValueKey('desktop-rules-table')),
+      ).dx),
+    );
+    expect(workspace, findsOneWidget);
+    await tester.tap(
+      find.byKey(const ValueKey('desktop-rule-details-close')),
+    );
     await tester.pumpAndSettle();
+    expect(panel, findsNothing);
+    expect(find.byKey(const ValueKey('desktop-rules-table')), findsOneWidget);
 
     await tester.tap(
       find.byKey(const ValueKey('desktop-rule-switch-rule.fuel')),
@@ -161,6 +186,64 @@ void main() {
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect((await rules.listAll()), hasLength(1));
+    _expectNoFlutterError(tester);
+  });
+
+  testWidgets('desktop rule selection replaces details without modal', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 950);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await rules.save(
+      TransactionRule(
+        id: TransactionRuleId('rule.coffee'),
+        name: 'Classify coffee',
+        description: 'Coffee and cafes',
+        priority: 2,
+        descriptionContains: 'coffee',
+        assignCategoryId: CategoryId('category.transport'),
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    await tester.pumpWidget(const _TestApp(child: RulesPage()));
+    await tester.pumpAndSettle();
+    final panel = find.byKey(const ValueKey('desktop-rule-details-panel'));
+    final table = find.byKey(const ValueKey('desktop-rules-table'));
+    final fullTableWidth = tester.getSize(table).width;
+    expect(panel, findsNothing);
+    await tester.tap(find.byKey(const ValueKey('desktop-rule-row-rule.fuel')));
+    await tester.pumpAndSettle();
+    expect(panel, findsOneWidget);
+    expect(find.byType(ButlerlySheet), findsNothing);
+    expect(tester.getSize(table).width, lessThan(fullTableWidth));
+    expect(
+      find.descendant(of: panel, matching: find.text('Classify fuel')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const ValueKey('desktop-rule-row-rule.coffee')));
+    await tester.pumpAndSettle();
+    expect(panel, findsOneWidget);
+    expect(
+      find.descendant(of: panel, matching: find.text('Classify coffee')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: panel, matching: find.text('Coffee and cafes')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: panel, matching: find.text('Classify fuel')),
+      findsNothing,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('desktop-rule-details-close')),
+    );
+    await tester.pumpAndSettle();
+    expect(panel, findsNothing);
+    expect(tester.getSize(table).width, closeTo(fullTableWidth, 0.1));
     _expectNoFlutterError(tester);
   });
 
