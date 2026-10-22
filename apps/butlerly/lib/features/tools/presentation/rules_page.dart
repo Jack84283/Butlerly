@@ -5,6 +5,7 @@ import 'package:butlerly/design_system/components/butlerly_action_group.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
+import 'package:butlerly/features/desktop/presentation/desktop_transaction_detail_split_view.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -309,7 +310,7 @@ class _RulesPageState extends State<RulesPage> {
                 .where((rule) => rule.id.value == _selectedDesktopRuleId)
                 .firstOrNull
           : null;
-      return ButlerlyPage(
+      final rulesPage = ButlerlyPage(
         title: context.l10n.text('ruleManagement'),
         subtitle: context.l10n.text('ruleManagementHowItWorks'),
         fullWidth: desktop,
@@ -330,63 +331,14 @@ class _RulesPageState extends State<RulesPage> {
               onAction: () => _edit(data),
             )
           else if (desktop)
-            LayoutBuilder(
-              key: const ValueKey('desktop-rules-workspace'),
-              builder: (context, constraints) => Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: _RulesDesktopTable(
-                      rules: data.rules,
-                      conditions: (rule) => _conditions(context, data, rule),
-                      actions: (rule) => _actions(context, data, rule),
-                      onDetails: _selectDesktopRule,
-                      onToggle: _toggle,
-                      onEdit: (rule) => _edit(data, rule),
-                      onDelete: _delete,
-                    ),
-                  ),
-                  if (_desktopEditing || selectedDesktopRule != null) ...[
-                    const SizedBox(width: ButlerlySpacing.cardGap),
-                    SizedBox(
-                      width: constraints.maxWidth < 1100 ? 320 : 400,
-                      child: _desktopEditing
-                          ? SizedBox(
-                              height: MediaQuery.sizeOf(context).height * 0.75,
-                              child: _RuleEditorSheet(
-                                key: ValueKey(
-                                  'rule-editor-${selectedDesktopRule?.id.value ?? 'new'}',
-                                ),
-                                current: selectedDesktopRule,
-                                merchants: data.merchants,
-                                categories: data.categories,
-                                paymentSources: data.paymentSources,
-                                tags: data.tags,
-                                onSubmit: (draft) =>
-                                    _saveDraft(draft, selectedDesktopRule),
-                                onCancel: _closeEditor,
-                              ),
-                            )
-                          : _RuleDesktopDetailsPanel(
-                              rule: selectedDesktopRule!,
-                              conditions: _conditions(
-                                context,
-                                data,
-                                selectedDesktopRule!,
-                              ),
-                              actions: _actions(
-                                context,
-                                data,
-                                selectedDesktopRule!,
-                              ),
-                              onClose: _closeDesktopDetails,
-                              onEdit: () => _edit(data, selectedDesktopRule),
-                              onDelete: () => _delete(selectedDesktopRule),
-                            ),
-                    ),
-                  ],
-                ],
-              ),
+            _RulesDesktopTable(
+              rules: data.rules,
+              conditions: (rule) => _conditions(context, data, rule),
+              actions: (rule) => _actions(context, data, rule),
+              onDetails: _selectDesktopRule,
+              onToggle: _toggle,
+              onEdit: (rule) => _edit(data, rule),
+              onDelete: _delete,
             )
           else
             Column(
@@ -405,6 +357,33 @@ class _RulesPageState extends State<RulesPage> {
             ),
           const SizedBox(height: ButlerlySpacing.structural),
         ],
+      );
+      if (!desktop || (!_desktopEditing && selectedDesktopRule == null)) {
+        return rulesPage;
+      }
+      return DesktopTransactionDetailSplitView(
+        results: rulesPage,
+        detail: _desktopEditing
+            ? _RuleEditorSheet(
+                key: ValueKey(
+                  'rule-editor-${selectedDesktopRule?.id.value ?? 'new'}',
+                ),
+                current: selectedDesktopRule,
+                merchants: data.merchants,
+                categories: data.categories,
+                paymentSources: data.paymentSources,
+                tags: data.tags,
+                onSubmit: (draft) => _saveDraft(draft, selectedDesktopRule),
+                onCancel: _closeEditor,
+              )
+            : _RuleDesktopDetailsPanel(
+                rule: selectedDesktopRule!,
+                conditions: _conditions(context, data, selectedDesktopRule),
+                actions: _actions(context, data, selectedDesktopRule),
+                onClose: _closeDesktopDetails,
+                onEdit: () => _edit(data, selectedDesktopRule),
+                onDelete: () => _delete(selectedDesktopRule),
+              ),
       );
     },
   );
@@ -1402,8 +1381,10 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
     if (widget.onSubmit == null) {
       return ButlerlySheet(title: title, content: content, actions: actions);
     }
-    return ButlerlyCard(
-      child: Column(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(ButlerlySpacing.standard),
+      child: ButlerlyCard(
+        child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Row(
@@ -1422,7 +1403,7 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
           ],
         ),
         const SizedBox(height: ButlerlySpacing.standard),
-        Expanded(child: SingleChildScrollView(child: content)),
+        content,
         const SizedBox(height: ButlerlySpacing.standard),
         Wrap(
           alignment: WrapAlignment.end,
@@ -1431,6 +1412,7 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
           children: actions,
         ),
       ],
+        ),
       ),
     );
   }
