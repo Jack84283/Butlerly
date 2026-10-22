@@ -259,7 +259,7 @@ class _WidePrimaryNavigation extends StatelessWidget {
       ),
       _WideGroup(
         semanticKey: const ValueKey('wide-analytics-navigation'),
-        label: context.l10n.text('analysis'),
+        label: 'Analytics',
         icon: Icons.analytics_outlined,
         selected: _activeRoute(context, '/analysis') ||
             _activeRoute(context, '/insights'),
@@ -388,7 +388,7 @@ class _WidePrimaryNavigation extends StatelessWidget {
       _WideCollapsedItem(
         key: const ValueKey('wide-collapsed-analytics'),
         icon: Icons.analytics_outlined,
-        label: context.l10n.text('analysis'),
+        label: 'Analytics',
         selected: _activeRoute(context, '/analysis') ||
             _activeRoute(context, '/insights'),
         onTap: (itemContext) => _openMenu(itemContext, [
