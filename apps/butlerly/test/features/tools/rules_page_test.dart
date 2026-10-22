@@ -79,6 +79,71 @@ void main() {
     expect((await rules.listAll()).single.enabled, isTrue);
   });
 
+  testWidgets('desktop Rules uses full width and an actionable table', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 950);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const _TestApp(child: RulesPage()));
+    await tester.pumpAndSettle();
+
+    final page = tester.widget<ButlerlyPage>(find.byType(ButlerlyPage));
+    expect(page.fullWidth, isTrue);
+    expect(find.byKey(const ValueKey('desktop-rules-table')), findsOneWidget);
+    expect(find.text('Matching conditions'), findsOneWidget);
+    expect(find.text('Resulting actions'), findsOneWidget);
+    expect(find.text('Priority'), findsOneWidget);
+    expect(find.text('Status'), findsOneWidget);
+    expect(find.text('Classify fuel'), findsOneWidget);
+    expect(find.text('Category: Transport'), findsOneWidget);
+    expect(find.byKey(const ValueKey('desktop-rules-table-horizontal-scroll')), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('desktop-rule-row-rule.fuel')));
+    await tester.pumpAndSettle();
+    expect(find.text('Matching conditions'), findsAtLeastNWidgets(2));
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('desktop-rule-switch-rule.fuel')));
+    await tester.pumpAndSettle();
+    expect((await rules.listAll()).single.enabled, isFalse);
+    await tester.tap(find.byKey(const ValueKey('desktop-rule-edit-rule.fuel')));
+    await tester.pumpAndSettle();
+    expect(find.text('Edit rule'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('desktop-rule-delete-rule.fuel')));
+    await tester.pumpAndSettle();
+    expect(find.text('Delete rule?'), findsOneWidget);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect((await rules.listAll()), hasLength(1));
+    _expectNoFlutterError(tester);
+  });
+
+  testWidgets('desktop Rules table scrolls horizontally when constrained', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1024, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const _TestApp(child: RulesPage()));
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<ButlerlyPage>(find.byType(ButlerlyPage)).fullWidth, isTrue);
+    expect(find.byKey(const ValueKey('desktop-rules-table')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('desktop-rules-table-horizontal-scroll')),
+      findsOneWidget,
+    );
+    _expectNoFlutterError(tester);
+  });
+
   testWidgets('Rules introduction is localized in Chinese and Spanish', (
     tester,
   ) async {
