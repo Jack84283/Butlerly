@@ -3,6 +3,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/tools/presentation/rules_page.dart';
+import 'package:butlerly/features/foundation/presentation/master_data_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
@@ -142,6 +143,42 @@ void main() {
       findsOneWidget,
     );
     _expectNoFlutterError(tester);
+  });
+
+  testWidgets('Rules and Master Data share Add header icon at all widths', (
+    tester,
+  ) async {
+    for (final width in [390.0, 1400.0]) {
+      tester.view.physicalSize = Size(width, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      for (final (page, buttonKey, tooltip) in [
+        (const RulesPage(), 'rules-add', 'Add rule'),
+        (const MasterDataPage(), 'master-data-add', 'Add'),
+      ]) {
+        await tester.pumpWidget(_TestApp(child: page));
+        await tester.pumpAndSettle();
+
+        final commonButton = find.byType(ButlerlyHeaderAddButton);
+        expect(commonButton, findsOneWidget);
+        final button = find.byKey(ValueKey(buttonKey));
+        expect(button, findsOneWidget);
+        expect(find.descendant(of: button, matching: find.byIcon(Icons.add)), findsOneWidget);
+        expect(tester.widget<IconButton>(button).tooltip, tooltip);
+        expect(tester.widget<IconButton>(button).style?.shape?.resolve({}), isA<CircleBorder>());
+        expect(
+          tester.widget<IconButton>(button).style?.minimumSize?.resolve({}),
+          const Size.square(32),
+        );
+        expect(
+          tester.widget<IconButton>(button).style?.maximumSize?.resolve({}),
+          const Size.square(32),
+        );
+        _expectNoFlutterError(tester);
+      }
+    }
   });
 
   testWidgets('Rules introduction is localized in Chinese and Spanish', (
