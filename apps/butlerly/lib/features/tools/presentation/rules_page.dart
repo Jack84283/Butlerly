@@ -553,6 +553,7 @@ class _RuleEditorSheet extends StatefulWidget {
     required this.tags,
     this.onSubmit,
     this.onCancel,
+    super.key,
   });
 
   final ValueChanged<_RuleDraft>? onSubmit;
