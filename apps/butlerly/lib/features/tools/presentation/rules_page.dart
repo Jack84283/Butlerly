@@ -141,7 +141,7 @@ class _RulesPageState extends State<RulesPage> {
       setState(() {
         _selectedDesktopRuleId = rule.id.value;
         _desktopEditing = false;
-          });
+      });
     }
     _refresh();
   }
@@ -205,7 +205,7 @@ class _RulesPageState extends State<RulesPage> {
     setState(() {
       _selectedDesktopRuleId = rule.id.value;
       _desktopEditing = false;
-      });
+    });
   }
 
   void _closeDesktopDetails() {
@@ -1385,33 +1385,33 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
       padding: const EdgeInsets.all(ButlerlySpacing.standard),
       child: ButlerlyCard(
         child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(
-              child: DefaultTextStyle(
-                style: Theme.of(context).textTheme.headlineSmall!,
-                child: title,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: DefaultTextStyle(
+                    style: Theme.of(context).textTheme.headlineSmall!,
+                    child: title,
+                  ),
+                ),
+                IconButton(
+                  tooltip: context.l10n.text('close'),
+                  onPressed: widget.onCancel,
+                  icon: const Icon(Icons.close_rounded),
+                ),
+              ],
             ),
-            IconButton(
-              tooltip: context.l10n.text('close'),
-              onPressed: widget.onCancel,
-              icon: const Icon(Icons.close_rounded),
+            const SizedBox(height: ButlerlySpacing.standard),
+            content,
+            const SizedBox(height: ButlerlySpacing.standard),
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: ButlerlySpacing.small,
+              runSpacing: ButlerlySpacing.small,
+              children: actions,
             ),
           ],
-        ),
-        const SizedBox(height: ButlerlySpacing.standard),
-        content,
-        const SizedBox(height: ButlerlySpacing.standard),
-        Wrap(
-          alignment: WrapAlignment.end,
-          spacing: ButlerlySpacing.small,
-          runSpacing: ButlerlySpacing.small,
-          children: actions,
-        ),
-      ],
         ),
       ),
     );
