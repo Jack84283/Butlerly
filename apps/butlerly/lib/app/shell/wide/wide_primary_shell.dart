@@ -230,16 +230,19 @@ class _WidePrimaryNavigation extends StatelessWidget {
           _WideChildItem(
             icon: Icons.add_card_outlined,
             label: context.l10n.text('addTransactionManually'),
+            selected: _activeRoute(context, '/transactions/add'),
             onTap: () => onNavigate('/transactions/add'),
           ),
           _WideChildItem(
             icon: Icons.receipt_long_outlined,
             label: context.l10n.text('addTransactionFromReceipt'),
+            selected: _activeRoute(context, '/receipts/capture'),
             onTap: () => onNavigate('/receipts/capture'),
           ),
           _WideChildItem(
             icon: Icons.document_scanner_outlined,
             label: context.l10n.text('addTransactionFromStatement'),
+            selected: _activeRoute(context, '/statements'),
             onTap: () => onNavigate('/statements'),
           ),
           _WideChildItem(
@@ -253,6 +256,7 @@ class _WidePrimaryNavigation extends StatelessWidget {
           _WideChildItem(
             icon: Icons.account_balance_wallet_outlined,
             label: context.l10n.text('paymentSources'),
+            selected: _activeRoute(context, '/payment-sources'),
             onTap: () => onNavigate('/payment-sources'),
           ),
         ],
@@ -323,11 +327,13 @@ class _WidePrimaryNavigation extends StatelessWidget {
           _WideChildItem(
             icon: Icons.privacy_tip_outlined,
             label: context.l10n.text('privacyAndData'),
+            selected: _activeRoute(context, '/privacy-data'),
             onTap: () => onNavigate('/privacy-data'),
           ),
           _WideChildItem(
             icon: Icons.auto_awesome_outlined,
             label: context.l10n.text('assistant'),
+            selected: _activeRoute(context, '/assistant'),
             onTap: () => onNavigate('/assistant'),
           ),
           _WideChildItem(
