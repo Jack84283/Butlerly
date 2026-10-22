@@ -278,10 +278,10 @@ class _RulesPageState extends State<RulesPage> {
         subtitle: context.l10n.text('ruleManagementHowItWorks'),
         fullWidth: desktop,
         actions: [
-          IconButton(
-            tooltip: context.l10n.text('addRule'),
+          ButlerlyHeaderAddButton(
+            buttonKey: const ValueKey('rules-add'),
+            label: context.l10n.text('addRule'),
             onPressed: () => _edit(data),
-            icon: const Icon(Icons.add_rounded),
           ),
         ],
         children: [
