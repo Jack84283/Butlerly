@@ -585,41 +585,34 @@ class _RulesDesktopTable extends StatelessWidget {
             final table = ButlerlyDesktopTableBody(
               key: const ValueKey('desktop-rules-table'),
               header: Row(
-                  children: [
-                    Expanded(flex: 3, child: _header(context, 'name')),
-                    Expanded(
-                      flex: 3,
-                      child: _header(context, 'ruleConditions'),
+                children: [
+                  Expanded(flex: 3, child: _header(context, 'name')),
+                  Expanded(flex: 3, child: _header(context, 'ruleConditions')),
+                  Expanded(flex: 3, child: _header(context, 'ruleActions')),
+                  SizedBox(
+                    width: priorityWidth,
+                    child: _header(
+                      context,
+                      'rulePriority',
+                      align: TextAlign.end,
                     ),
-                    Expanded(flex: 3, child: _header(context, 'ruleActions')),
-                    SizedBox(
-                      width: priorityWidth,
-                      child: _header(
-                        context,
-                        'rulePriority',
-                        align: TextAlign.end,
-                      ),
+                  ),
+                  SizedBox(
+                    width: statusWidth,
+                    child: _header(context, 'status', align: TextAlign.center),
+                  ),
+                  SizedBox(
+                    width: controlsWidth,
+                    child: Text(
+                      '${context.l10n.text('edit')} / ${context.l10n.text('delete')}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: ButlerlyTableTokens.headerTextStyle(context),
+                      textAlign: TextAlign.end,
                     ),
-                    SizedBox(
-                      width: statusWidth,
-                      child: _header(
-                        context,
-                        'status',
-                        align: TextAlign.center,
-                      ),
-                    ),
-                    SizedBox(
-                      width: controlsWidth,
-                      child: Text(
-                        '${context.l10n.text('edit')} / ${context.l10n.text('delete')}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: ButlerlyTableTokens.headerTextStyle(context),
-                        textAlign: TextAlign.end,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
+              ),
               rows: [for (final rule in rules) _row(context, rule)],
             );
             if (constraints.maxWidth >= minimumWidth) return table;
