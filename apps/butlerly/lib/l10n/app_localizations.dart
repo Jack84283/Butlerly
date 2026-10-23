@@ -293,7 +293,8 @@ class AppLocalizations {
       'localOnlyProtectionBody':
           'Your financial data remains stored locally on this device.',
       'managePrivacyData': 'Manage privacy & data',
-      'desktopPrivacyDescription': 'Privacy controls, local data management and recovery.',
+      'desktopPrivacyDescription':
+          'Privacy controls, local data management and recovery.',
       'appVersionLabel': 'App version',
       'buildLabel': 'Build',
       'localOnlyBody': 'Core use requires no account, cloud service, or AI.',
@@ -2006,7 +2007,8 @@ class AppLocalizations {
       'localOnlyProtectionBody':
           'Sus datos financieros permanecen almacenados localmente en este dispositivo.',
       'managePrivacyData': 'Gestionar privacidad y datos',
-      'desktopPrivacyDescription': 'Controles de privacidad, gestión de datos locales y recuperación.',
+      'desktopPrivacyDescription':
+          'Controles de privacidad, gestión de datos locales y recuperación.',
       'appVersionLabel': 'Versión de la aplicación',
       'buildLabel': 'Compilación',
       'localOnlyBody': 'El uso principal no requiere cuenta, nube ni IA.',
