@@ -19,6 +19,7 @@ import 'package:butlerly/features/analysis/presentation/widgets/analysis_skeleto
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_spending_breakdown.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_subcategory_breakdown.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_summary.dart';
+import 'package:butlerly/features/desktop/presentation/desktop_transaction_detail_split_view.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
@@ -82,6 +83,8 @@ class _AnalysisPageState extends State<AnalysisPage> {
   TransactionMasterData? _masterData;
   String? _masterDataLocale;
   int _loadGeneration = 0;
+  TransactionDto? _panelTransaction;
+  bool _panelEditing = false;
 
   @override
   void initState() {
@@ -410,6 +413,17 @@ class _AnalysisPageState extends State<AnalysisPage> {
   }
 
   Future<void> _openTransactionDetail(TransactionDto transaction) async {
+    if (effectiveButlerlyLayoutMode(
+          context,
+          MediaQuery.sizeOf(context).width,
+        ) ==
+        ButlerlyLayoutMode.wide) {
+      setState(() {
+        _panelTransaction = transaction;
+        _panelEditing = false;
+      });
+      return;
+    }
     if (widget.onTransactionRequested case final callback?) {
       callback(transaction);
       return;
@@ -424,6 +438,50 @@ class _AnalysisPageState extends State<AnalysisPage> {
       ),
     );
     if (changed == true) _reload();
+  }
+
+  Widget _analysisTransactionPanel(TransactionDto transaction) {
+    final finance = services<FinanceServices>();
+    if (_panelEditing) {
+      return TransactionEditorPage(
+        key: ValueKey('analysis-calendar-editor-${transaction.id}'),
+        finance: finance,
+        existing: transaction,
+        onComplete: (result) async {
+          if (!mounted) return;
+          if (result is TransactionEditorSaved ||
+              result is TransactionEditorUseExisting) {
+            final refreshed = await finance.getTransaction(transaction.id);
+            if (!mounted) return;
+            setState(() {
+              _panelEditing = false;
+              if (refreshed case ApplicationSuccess<TransactionDto>(
+                :final value,
+              )) {
+                _panelTransaction = value;
+              }
+            });
+            _reload();
+          } else {
+            setState(() => _panelEditing = false);
+          }
+        },
+      );
+    }
+    return TransactionDetailPage(
+      key: ValueKey('analysis-calendar-detail-${transaction.id}'),
+      finance: finance,
+      transaction: transaction,
+      onClose: (changed) {
+        setState(() {
+          _panelTransaction = null;
+          _panelEditing = false;
+        });
+        if (changed) _reload();
+      },
+      onChanged: _reload,
+      onEditRequested: () => setState(() => _panelEditing = true),
+    );
   }
 
   Future<void> _refresh() async {
@@ -523,7 +581,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
           _calendar ??= analysisContext == null
               ? _loadCalendarForTestOnly()
               : _loadCalendar(analysisContext);
-          return _AnalysisContent(
+          final content = _AnalysisContent(
             results: result.value,
             analysisContext: analysisContext,
             period: _period,
@@ -545,11 +603,19 @@ class _AnalysisPageState extends State<AnalysisPage> {
                 ? false
                 : _canChangeCalendarMonth(analysisContext, previous: false),
             onMonthChanged: _selectCalendarMonth,
-            onTransactionRequested:
-                widget.onTransactionRequested ?? _openTransactionDetail,
+            onTransactionRequested: _openTransactionDetail,
             onPeriodChanged: _selectPeriod,
             onRefresh: _refresh,
             onSelectDate: _selectDate,
+          );
+          if (!desktop || !services.isRegistered<FinanceServices>()) {
+            return content;
+          }
+          return DesktopTransactionDetailSplitView(
+            results: content,
+            detail: _panelTransaction == null
+                ? null
+                : _analysisTransactionPanel(_panelTransaction!),
           );
         },
       ),

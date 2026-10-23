@@ -5,6 +5,7 @@ import 'package:butlerly/core/evidence/platform_ocr_recognizer.dart';
 import 'package:butlerly/core/evidence/statement_extractor.dart';
 import 'package:butlerly/core/evidence/statement_source_matcher.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_desktop_table_body.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
@@ -608,27 +609,18 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                 ),
               );
 
-              Widget divider() => Divider(
-                height: ButlerlyTableTokens.dividerThickness,
-                thickness: ButlerlyTableTokens.dividerThickness,
-                color: ButlerlyTableTokens.dividerColor(context),
-              );
-
-              final table = Column(
+              final table = ButlerlyDesktopTableBody(
                 key: const ValueKey('desktop-statements-table'),
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      header('statements', statementWidth),
-                      header('paymentSource', 180),
-                      header('status', 180),
-                      header('delete', 180),
-                    ],
-                  ),
-                  const SizedBox(height: ButlerlyTableTokens.headerToRowsGap),
-                  divider(),
-                  for (final item in _statements) ...[
+                header: Row(
+                  children: [
+                    header('statements', statementWidth),
+                    header('paymentSource', 180),
+                    header('status', 180),
+                    header('delete', 180),
+                  ],
+                ),
+                rows: [
+                  for (final item in _statements)
                     Material(
                       type: MaterialType.transparency,
                       child: InkWell(
@@ -695,8 +687,6 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                         ),
                       ),
                     ),
-                    divider(),
-                  ],
                 ],
               );
               if (constraints.maxWidth >= tableWidth) return table;
