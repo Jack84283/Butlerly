@@ -54,6 +54,7 @@ class _ReviewPageState extends State<ReviewPage> {
   late Future<TransactionMasterDataSnapshot> _masterData;
   _ReviewView _view = _ReviewView.needsReview;
   _ReviewEntry? _selectedReview;
+  ReviewItemDto? _editingReviewItem;
   String? _loadedLanguageCode;
 
   FinanceServices? get _finance => services.isRegistered<FinanceServices>()
@@ -409,13 +410,45 @@ class _ReviewPageState extends State<ReviewPage> {
           MediaQuery.sizeOf(context).width,
         ) ==
         ButlerlyLayoutMode.wide) {
-      setState(() => _selectedReview = entry);
+      setState(() {
+        _selectedReview = entry;
+        _editingReviewItem = null;
+      });
     } else {
       _openReview(entry);
     }
   }
 
-  Widget _desktopReviewPanel(_ReviewEntry entry) => Scaffold(
+  Widget _desktopReviewPanel(_ReviewEntry entry) {
+    if (_editingReviewItem case final editing?) {
+      return FutureBuilder<ApplicationResult<TransactionDto>>(
+        future: _finance!.getTransaction(editing.transactionId),
+        builder: (context, snapshot) {
+          if (snapshot.data case ApplicationSuccess<TransactionDto>(
+            :final value,
+          )) {
+            return TransactionEditorPage(
+              key: ValueKey('desktop-review-editor-${editing.transactionId}'),
+              finance: _finance!,
+              existing: value,
+              onComplete: (result) {
+                if (!mounted) return;
+                setState(() => _editingReviewItem = null);
+                if (result is TransactionEditorSaved ||
+                    result is TransactionEditorUseExisting) {
+                  _refresh();
+                }
+              },
+            );
+          }
+          if (snapshot.hasError || snapshot.hasData) {
+            return Center(child: Text(context.l10n.text('dataPreserved')));
+          }
+          return const Center(child: CircularProgressIndicator());
+        },
+      );
+    }
+    return Scaffold(
     appBar: AppBar(
       title: Text(context.l10n.text('needsReview')),
       automaticallyImplyLeading: false,
@@ -465,10 +498,7 @@ class _ReviewPageState extends State<ReviewPage> {
                 }
               },
               editLabel: context.l10n.text('edit'),
-              onEdit: () {
-                setState(() => _selectedReview = null);
-                _openTransaction(item);
-              },
+              onEdit: () => setState(() => _editingReviewItem = item),
               dismissLabel:
                   item.reason == ReviewIssueReason.merchantNeedsReview.name
                   ? null
@@ -482,7 +512,8 @@ class _ReviewPageState extends State<ReviewPage> {
             ),
       ],
     ),
-  );
+    );
+  }
 
   Future<void> _openReview(_ReviewEntry entry) async {
     await Navigator.of(context).push<void>(
