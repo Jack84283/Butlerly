@@ -483,6 +483,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     final desktop = _desktop;
     final list = ButlerlyResponsiveBody(
       contentKey: const ValueKey('statement-capture-content'),
+      fullWidth: desktop,
       child: _busy
           ? const ButlerlyLoadingState()
           : _statements.isEmpty
@@ -496,8 +497,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
           ? _desktopStatementsTable(context)
           : _mobileStatementsList(context),
     );
-    return Scaffold(
-      appBar: AppBar(
+    final appBar = AppBar(
         title: Text(context.l10n.text('statements')),
         actions: [
           IconButton(
@@ -516,16 +516,19 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
             tooltip: context.l10n.text('importData'),
           ),
         ],
-      ),
-      body: desktop
-          ? DesktopTransactionDetailSplitView(
-              results: list,
+      );
+    // Keep the page header in the results pane so the right detail pane
+    // occupies the entire available height, like Search Transactions.
+    return desktop
+        ? Scaffold(
+            body: DesktopTransactionDetailSplitView(
+              results: Scaffold(appBar: appBar, body: list),
               detail: _panelData == null
                   ? null
                   : _statementRightPanel(_panelData!),
-            )
-          : list,
-    );
+            ),
+          )
+        : Scaffold(appBar: appBar, body: list);
   }
 
   Widget _mobileStatementsList(BuildContext context) => ListView.builder(
@@ -575,9 +578,12 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     padding: const EdgeInsets.all(ButlerlySpacing.pagePadding),
     children: [
       ButlerlyCard(
-        child: SingleChildScrollView(
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
           scrollDirection: Axis.horizontal,
-          child: DataTable(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minWidth: constraints.maxWidth),
+            child: DataTable(
             showCheckboxColumn: false,
             columns: [
               DataColumn(label: Text(context.l10n.text('statements'))),
@@ -646,6 +652,8 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                   ],
                 ),
             ],
+          ),
+          ),
           ),
         ),
       ),
