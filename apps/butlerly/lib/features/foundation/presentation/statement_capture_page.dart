@@ -593,7 +593,8 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                   constraints: BoxConstraints(minWidth: constraints.maxWidth),
                   child: DataTable(
                     showCheckboxColumn: false,
-                    headingRowHeight: 40,
+                    headingRowHeight: 24,
+                    showBottomBorder: true,
                     horizontalMargin: 0,
                     columnSpacing: 0,
                     columns: [
