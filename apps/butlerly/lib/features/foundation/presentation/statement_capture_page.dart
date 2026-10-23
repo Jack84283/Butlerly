@@ -612,13 +612,13 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
               final table = ButlerlyDesktopTableBody(
                 key: const ValueKey('desktop-statements-table'),
                 header: Row(
-                    children: [
-                      header('statements', statementWidth),
-                      header('paymentSource', 180),
-                      header('status', 180),
-                      header('delete', 180),
-                    ],
-                  ),
+                  children: [
+                    header('statements', statementWidth),
+                    header('paymentSource', 180),
+                    header('status', 180),
+                    header('delete', 180),
+                  ],
+                ),
                 rows: [
                   for (final item in _statements)
                     Material(
