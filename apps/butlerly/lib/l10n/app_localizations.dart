@@ -295,19 +295,23 @@ class AppLocalizations {
       'managePrivacyData': 'Manage privacy & data',
       'desktopPrivacyDescription':
           'Privacy controls, local data management and recovery.',
-      'desktopPrivacySubtitle': 'Manage your locally stored financial information',
+      'desktopPrivacySubtitle':
+          'Manage your locally stored financial information',
       'desktopLegalSubtitle': 'View legal information and open source licenses',
       'desktopLegalDocuments': 'Documents',
       'backupRecoveryTitle': 'Backup & Recovery',
-      'backupRecoveryBody': 'Create and restore encrypted backups of your financial data.',
+      'backupRecoveryBody':
+          'Create and restore encrypted backups of your financial data.',
       'dataExportTitle': 'Data Export',
       'dataExportBody': 'Export your financial records to local files.',
       'dataManagementTitle': 'Data Management',
-      'dataManagementBody': 'Your records stay on this device unless you choose to export or back them up.',
+      'dataManagementBody':
+          'Your records stay on this device unless you choose to export or back them up.',
       'dangerZoneTitle': 'Danger Zone',
       'dangerZoneBody': 'Permanently erase local data from this device.',
       'desktopLocalWorkspace': 'Local workspace',
-      'desktopPrivacyBannerBody': 'Core use requires no account, cloud service, or AI. Your financial data remains stored locally on this device.',
+      'desktopPrivacyBannerBody':
+          'Core use requires no account, cloud service, or AI. Your financial data remains stored locally on this device.',
       'appVersionLabel': 'App version',
       'buildLabel': 'Build',
       'localOnlyBody': 'Core use requires no account, cloud service, or AI.',
@@ -2035,19 +2039,25 @@ class AppLocalizations {
       'managePrivacyData': 'Gestionar privacidad y datos',
       'desktopPrivacyDescription':
           'Controles de privacidad, gestión de datos locales y recuperación.',
-      'desktopPrivacySubtitle': 'Administre su información financiera almacenada localmente',
-      'desktopLegalSubtitle': 'Consulte información legal y licencias de código abierto',
+      'desktopPrivacySubtitle':
+          'Administre su información financiera almacenada localmente',
+      'desktopLegalSubtitle':
+          'Consulte información legal y licencias de código abierto',
       'desktopLegalDocuments': 'Documentos',
       'backupRecoveryTitle': 'Copia de seguridad y recuperación',
-      'backupRecoveryBody': 'Cree y restaure copias cifradas de sus datos financieros.',
+      'backupRecoveryBody':
+          'Cree y restaure copias cifradas de sus datos financieros.',
       'dataExportTitle': 'Exportación de datos',
       'dataExportBody': 'Exporte sus registros financieros a archivos locales.',
       'dataManagementTitle': 'Gestión de datos',
-      'dataManagementBody': 'Sus registros permanecen en este dispositivo salvo que los exporte o respalde.',
+      'dataManagementBody':
+          'Sus registros permanecen en este dispositivo salvo que los exporte o respalde.',
       'dangerZoneTitle': 'Zona de peligro',
-      'dangerZoneBody': 'Borre permanentemente los datos locales de este dispositivo.',
+      'dangerZoneBody':
+          'Borre permanentemente los datos locales de este dispositivo.',
       'desktopLocalWorkspace': 'Espacio local',
-      'desktopPrivacyBannerBody': 'El uso principal no requiere cuenta, servicio en la nube ni IA. Sus datos financieros se almacenan localmente.',
+      'desktopPrivacyBannerBody':
+          'El uso principal no requiere cuenta, servicio en la nube ni IA. Sus datos financieros se almacenan localmente.',
       'appVersionLabel': 'Versión de la aplicación',
       'buildLabel': 'Compilación',
       'localOnlyBody': 'El uso principal no requiere cuenta, nube ni IA.',
