@@ -10,6 +10,7 @@ class DesktopPrimaryShell extends StatefulWidget {
     required this.body,
     required this.currentIndex,
     required this.onSelected,
+    required this.onMoreSectionSelected,
     super.key,
   });
 
@@ -73,7 +74,6 @@ class _WidePrimaryNavigation extends StatelessWidget {
     required this.currentIndex,
     required this.onToggleExpanded,
     required this.onParentSelected,
-    required this.onMoreSectionSelected,
   });
 
   final bool expanded;
