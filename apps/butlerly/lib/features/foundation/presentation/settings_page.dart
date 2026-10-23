@@ -324,18 +324,29 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   icon: Icons.auto_awesome_outlined,
                   children: [
                     _DesktopMoreRow(
-                      title: l10n.text('externalAiConsent'),
+                      title: l10n.text('externalAiConsentTitle'),
                       value: preference?.externalAiEnabled == true
-                          ? l10n.text('on')
-                          : l10n.text('off'),
+                          ? l10n.text('enabled')
+                          : l10n.text('optional'),
                       onTap: preference == null
                           ? null
-                          : () => ref
-                                .read(userPreferenceProvider.notifier)
-                                .saveChanges(
-                                  externalAiEnabled:
-                                      !preference.externalAiEnabled,
-                                ),
+                          : () => _chooseDesktopValue<bool>(
+                                label: l10n.text('externalAiConsentTitle'),
+                                value: preference.externalAiEnabled,
+                                options: [
+                                  DropdownMenuItem(
+                                    value: false,
+                                    child: Text(l10n.text('disabled')),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: true,
+                                    child: Text(l10n.text('enabled')),
+                                  ),
+                                ],
+                                onChanged: (value) => ref
+                                    .read(userPreferenceProvider.notifier)
+                                    .saveChanges(externalAiEnabled: value),
+                              ),
                     ),
                     _DesktopMoreRow(
                       title: l10n.text('assistant'),
