@@ -634,6 +634,208 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 }
 
+class _DesktopMoreProtectionBanner extends StatelessWidget {
+  const _DesktopMoreProtectionBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final green = context.colors.success;
+    return Container(
+      key: const ValueKey('desktop-more-protection'),
+      decoration: BoxDecoration(
+        color: dark ? const Color(0xFF1E342B) : const Color(0xFFE5F7ED),
+        borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+        border: Border.all(
+          color: dark ? const Color(0xFF2A4438) : const Color(0xFFCBE6D7),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(
+        horizontal: ButlerlySpacing.standard,
+        vertical: ButlerlySpacing.small,
+      ),
+      child: Row(
+        children: [
+          Container(
+            height: 38,
+            width: 38,
+            decoration: BoxDecoration(
+              color: dark ? const Color(0xFF2E875C) : const Color(0xFFB6E9CD),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.shield_outlined, color: green, size: 23),
+          ),
+          const SizedBox(width: ButlerlySpacing.standard),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.l10n.text('localOnlyProtection'),
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  context.l10n.text('localOnlyProtectionBody'),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: context.colors.secondaryText,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: ButlerlySpacing.standard),
+          Icon(Icons.check_circle_rounded, color: green, size: 25),
+        ],
+      ),
+    );
+  }
+}
+
+class _DesktopMoreCard extends StatelessWidget {
+  const _DesktopMoreCard({
+    required this.title,
+    required this.icon,
+    required this.children,
+    this.description,
+    this.footer,
+    super.key,
+  });
+
+  final String title;
+  final IconData icon;
+  final String? description;
+  final List<Widget> children;
+  final Widget? footer;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    decoration: BoxDecoration(
+      color: context.colors.cardSurface,
+      border: Border.all(color: context.colors.cardDivider),
+      borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+    ),
+    padding: const EdgeInsets.symmetric(
+      horizontal: ButlerlySpacing.standard,
+      vertical: ButlerlySpacing.small,
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 22, color: context.colors.primaryText),
+            const SizedBox(width: ButlerlySpacing.standard),
+            Expanded(
+              child: Text(
+                title,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (description != null) ...[
+          const SizedBox(height: ButlerlySpacing.xxs),
+          Padding(
+            padding: const EdgeInsets.only(left: 38),
+            child: Text(
+              description!,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: context.colors.secondaryText,
+              ),
+            ),
+          ),
+        ],
+        const SizedBox(height: ButlerlySpacing.compact),
+        for (var i = 0; i < children.length; i++) ...[
+          if (i > 0)
+            Divider(height: 1, thickness: 1, color: context.colors.cardDivider),
+          children[i],
+        ],
+        if (footer != null) ...[
+          Divider(height: 1, thickness: 1, color: context.colors.cardDivider),
+          Padding(
+            padding: const EdgeInsets.only(
+              left: 38,
+              top: ButlerlySpacing.compact,
+              bottom: ButlerlySpacing.xxs,
+            ),
+            child: footer!,
+          ),
+        ],
+      ],
+    ),
+  );
+}
+
+class _DesktopMoreRow extends StatelessWidget {
+  const _DesktopMoreRow({
+    required this.title,
+    this.icon,
+    this.value,
+    this.onTap,
+  });
+
+  final String title;
+  final IconData? icon;
+  final String? value;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    type: MaterialType.transparency,
+    child: InkWell(
+      onTap: onTap,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 43),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: ButlerlySpacing.compact),
+          child: Row(
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 19, color: context.colors.secondaryText),
+                const SizedBox(width: ButlerlySpacing.standard),
+              ] else
+                const SizedBox(width: 38),
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+              if (value != null) ...[
+                const SizedBox(width: ButlerlySpacing.compact),
+                Flexible(
+                  child: Text(
+                    value!,
+                    textAlign: TextAlign.end,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: context.colors.secondaryText,
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(width: ButlerlySpacing.compact),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: context.colors.tertiaryText,
+                size: 18,
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 class _LocalOnlyBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) => DecoratedBox(
