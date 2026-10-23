@@ -174,8 +174,11 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('desktop-rule-edit-rule.fuel')));
     await tester.pumpAndSettle();
     expect(find.text('Edit rule'), findsOneWidget);
-    await tester.tap(find.text('Cancel'));
+    // The editor's footer actions scroll with its content; use the fixed
+    // back button to cancel without tapping an off-screen control.
+    await tester.tap(find.byKey(const ValueKey('desktop-rule-editor-back')));
     await tester.pumpAndSettle();
+    expect(find.text('Edit rule'), findsNothing);
     await tester.tap(
       find.byKey(const ValueKey('desktop-rule-delete-rule.fuel')),
     );
