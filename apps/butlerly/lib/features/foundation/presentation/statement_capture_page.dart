@@ -582,17 +582,23 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
         padding: const EdgeInsets.all(ButlerlyDesktopInnerCard.outerGutter),
         child: ButlerlyDesktopInnerCard(
           child: LayoutBuilder(
-            builder: (context, constraints) => SingleChildScrollView(
+            builder: (context, constraints) {
+              final statementWidth =
+                  (constraints.maxWidth - 540).clamp(220.0, double.infinity);
+              return SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: ConstrainedBox(
                 constraints: BoxConstraints(minWidth: constraints.maxWidth),
                 child: DataTable(
                   showCheckboxColumn: false,
+                  headingRowHeight: 40,
+                  horizontalMargin: 0,
+                  columnSpacing: 0,
                   columns: [
-                    DataColumn(label: Text(context.l10n.text('statements'))),
-                    DataColumn(label: Text(context.l10n.text('paymentSource'))),
-                    DataColumn(label: Text(context.l10n.text('status'))),
-                    DataColumn(label: Text(context.l10n.text('delete'))),
+                    DataColumn(label: SizedBox(width: statementWidth, child: Text(context.l10n.text('statements')))),
+                    DataColumn(label: SizedBox(width: 180, child: Text(context.l10n.text('paymentSource')))),
+                    DataColumn(label: SizedBox(width: 180, child: Text(context.l10n.text('status')))),
+                    DataColumn(label: SizedBox(width: 180, child: Text(context.l10n.text('delete')))),
                   ],
                   rows: [
                     for (final item in _statements)
@@ -603,7 +609,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                         cells: [
                           DataCell(
                             SizedBox(
-                              width: 220,
+                              width: statementWidth,
                               child: Text(
                                 statementDisplayTitle(context, item, _sources),
                                 maxLines: 2,
@@ -613,7 +619,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                           ),
                           DataCell(
                             SizedBox(
-                              width: 140,
+                              width: 180,
                               child: Text(
                                 _sources
                                         .where(
@@ -631,7 +637,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                           ),
                           DataCell(
                             SizedBox(
-                              width: 160,
+                              width: 180,
                               child: Text(
                                 item.extractionMessage == null
                                     ? (item.paymentSourceId == null
@@ -649,10 +655,16 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                             ),
                           ),
                           DataCell(
-                            IconButton(
+                            SizedBox(
+                              width: 180,
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: IconButton(
                               tooltip: context.l10n.text('deleteStatement'),
                               onPressed: () => _deleteUnprocessed(item),
                               icon: const Icon(Icons.delete_outline_rounded),
+                                ),
+                              ),
                             ),
                           ),
                         ],
@@ -660,7 +672,8 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                   ],
                 ),
               ),
-            ),
+            );
+            },
           ),
         ),
       ),
