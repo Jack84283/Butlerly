@@ -444,10 +444,7 @@ class _RuleDesktopDetailsPanel extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(
-                  rule.name,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
+                Text(rule.name, style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: ButlerlySpacing.standard),
                 _RuleDetailsContent(
                   rule: rule,
