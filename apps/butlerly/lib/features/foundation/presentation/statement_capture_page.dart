@@ -498,25 +498,25 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
           : _mobileStatementsList(context),
     );
     final appBar = AppBar(
-        title: Text(context.l10n.text('statements')),
-        actions: [
-          IconButton(
-            onPressed: _busy ? null : () => _captureImage(ImageSource.camera),
-            icon: const Icon(Icons.camera_alt_outlined),
-            tooltip: context.l10n.text('scanReceipt'),
-          ),
-          IconButton(
-            onPressed: _busy ? null : _selectExistingFile,
-            icon: const Icon(Icons.file_open_outlined),
-            tooltip: context.l10n.text('importData'),
-          ),
-          IconButton(
-            onPressed: _busy ? null : () => _captureImage(ImageSource.gallery),
-            icon: const Icon(Icons.photo_library_outlined),
-            tooltip: context.l10n.text('importData'),
-          ),
-        ],
-      );
+      title: Text(context.l10n.text('statements')),
+      actions: [
+        IconButton(
+          onPressed: _busy ? null : () => _captureImage(ImageSource.camera),
+          icon: const Icon(Icons.camera_alt_outlined),
+          tooltip: context.l10n.text('scanReceipt'),
+        ),
+        IconButton(
+          onPressed: _busy ? null : _selectExistingFile,
+          icon: const Icon(Icons.file_open_outlined),
+          tooltip: context.l10n.text('importData'),
+        ),
+        IconButton(
+          onPressed: _busy ? null : () => _captureImage(ImageSource.gallery),
+          icon: const Icon(Icons.photo_library_outlined),
+          tooltip: context.l10n.text('importData'),
+        ),
+      ],
+    );
     // Keep the page header in the results pane so the right detail pane
     // occupies the entire available height, like Search Transactions.
     return desktop
@@ -581,82 +581,85 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
         padding: const EdgeInsets.all(ButlerlyDesktopInnerCard.outerGutter),
         child: ButlerlyDesktopInnerCard(
           child: LayoutBuilder(
-          builder: (context, constraints) => SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minWidth: constraints.maxWidth),
-            child: DataTable(
-            showCheckboxColumn: false,
-            columns: [
-              DataColumn(label: Text(context.l10n.text('statements'))),
-              DataColumn(label: Text(context.l10n.text('paymentSource'))),
-              DataColumn(label: Text(context.l10n.text('status'))),
-              DataColumn(label: Text(context.l10n.text('delete'))),
-            ],
-            rows: [
-              for (final item in _statements)
-                DataRow(
-                  key: ValueKey('desktop-statement-row-${item.id}'),
-                  selected: _selectedStatementId == item.id,
-                  onSelectChanged: (_) => _open(item),
-                  cells: [
-                    DataCell(
-                      SizedBox(
-                        width: 220,
-                        child: Text(
-                          statementDisplayTitle(context, item, _sources),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+            builder: (context, constraints) => SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                child: DataTable(
+                  showCheckboxColumn: false,
+                  columns: [
+                    DataColumn(label: Text(context.l10n.text('statements'))),
+                    DataColumn(label: Text(context.l10n.text('paymentSource'))),
+                    DataColumn(label: Text(context.l10n.text('status'))),
+                    DataColumn(label: Text(context.l10n.text('delete'))),
+                  ],
+                  rows: [
+                    for (final item in _statements)
+                      DataRow(
+                        key: ValueKey('desktop-statement-row-${item.id}'),
+                        selected: _selectedStatementId == item.id,
+                        onSelectChanged: (_) => _open(item),
+                        cells: [
+                          DataCell(
+                            SizedBox(
+                              width: 220,
+                              child: Text(
+                                statementDisplayTitle(context, item, _sources),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                          DataCell(
+                            SizedBox(
+                              width: 140,
+                              child: Text(
+                                _sources
+                                        .where(
+                                          (source) =>
+                                              source.id.value ==
+                                              item.paymentSourceId,
+                                        )
+                                        .firstOrNull
+                                        ?.name ??
+                                    '—',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ),
+                          DataCell(
+                            SizedBox(
+                              width: 160,
+                              child: Text(
+                                item.extractionMessage == null
+                                    ? (item.paymentSourceId == null
+                                          ? context.l10n.text(
+                                              'choosePaymentSourceToContinue',
+                                            )
+                                          : context.l10n.text(
+                                              'reviewInProgress',
+                                            ))
+                                    : _statementStatusLabel(
+                                        context,
+                                        item.extractionMessage,
+                                      ),
+                              ),
+                            ),
+                          ),
+                          DataCell(
+                            IconButton(
+                              tooltip: context.l10n.text('deleteStatement'),
+                              onPressed: () => _deleteUnprocessed(item),
+                              icon: const Icon(Icons.delete_outline_rounded),
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    DataCell(
-                      SizedBox(
-                        width: 140,
-                        child: Text(
-                          _sources
-                                  .where(
-                                    (source) =>
-                                        source.id.value == item.paymentSourceId,
-                                  )
-                                  .firstOrNull
-                                  ?.name ??
-                              '—',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ),
-                    DataCell(
-                      SizedBox(
-                        width: 160,
-                        child: Text(
-                          item.extractionMessage == null
-                              ? (item.paymentSourceId == null
-                                    ? context.l10n.text(
-                                        'choosePaymentSourceToContinue',
-                                      )
-                                    : context.l10n.text('reviewInProgress'))
-                              : _statementStatusLabel(
-                                  context,
-                                  item.extractionMessage,
-                                ),
-                        ),
-                      ),
-                    ),
-                    DataCell(
-                      IconButton(
-                        tooltip: context.l10n.text('deleteStatement'),
-                        onPressed: () => _deleteUnprocessed(item),
-                        icon: const Icon(Icons.delete_outline_rounded),
-                      ),
-                    ),
                   ],
                 ),
-            ],
-          ),
-          ),
-          ),
+              ),
+            ),
           ),
         ),
       ),
