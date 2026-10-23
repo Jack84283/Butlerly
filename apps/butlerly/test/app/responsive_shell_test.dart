@@ -455,7 +455,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const ValueKey('desktop-more-protection')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('desktop-more-protection')),
+      findsOneWidget,
+    );
     expect(find.text('Preferences'), findsOneWidget);
     expect(find.text('Privacy & data'), findsOneWidget);
     expect(find.text('Optional features'), findsOneWidget);
@@ -705,9 +708,10 @@ void main() {
       findsNothing,
     );
     expect(
-      tester.widget<Semantics>(
-        find.byKey(const ValueKey('wide-more-navigation')),
-      ).properties.selected,
+      tester
+          .widget<Semantics>(find.byKey(const ValueKey('wide-more-navigation')))
+          .properties
+          .selected,
       isTrue,
     );
   });
@@ -727,11 +731,15 @@ void main() {
 
     expect(find.byType(SearchPage), findsOneWidget);
     expect(appRouter.canPop(), isTrue);
-    expect(find.byKey(const ValueKey('primary-wide-navigation')), findsOneWidget);
     expect(
-      tester.widget<Semantics>(
-        find.byKey(const ValueKey('wide-more-navigation')),
-      ).properties.selected,
+      find.byKey(const ValueKey('primary-wide-navigation')),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<Semantics>(find.byKey(const ValueKey('wide-more-navigation')))
+          .properties
+          .selected,
       isTrue,
     );
 
@@ -969,7 +977,10 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('wide-collapsed-more')));
     await tester.pumpAndSettle();
     expect(appRouter.routeInformationProvider.value.uri.path, '/settings');
-    expect(find.byKey(const ValueKey('desktop-more-protection')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('desktop-more-protection')),
+      findsOneWidget,
+    );
   });
 
   testWidgets(
