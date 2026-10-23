@@ -310,7 +310,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 _DesktopMoreCard(
                   title: l10n.text('privacyAndData'),
                   icon: Icons.shield_outlined,
-                  description: l10n.text('privacyAndDataBody'),
+                  description: l10n.text('desktopPrivacyDescription'),
                   children: [
                     _DesktopMoreRow(
                       title: l10n.text('managePrivacyData'),
