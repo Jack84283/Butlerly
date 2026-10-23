@@ -85,4 +85,61 @@ void main() {
     expect(find.byIcon(Icons.palette_outlined), findsNothing);
     expect(find.byIcon(CupertinoIcons.chevron_down), findsNWidgets(5));
   }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+  testWidgets('desktop More follows the two-column card mockup', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('desktop-more-protection')), findsOneWidget);
+    expect(find.text('Preferences'), findsOneWidget);
+    expect(find.text('Privacy & data'), findsOneWidget);
+    expect(find.text('Optional features'), findsOneWidget);
+    expect(find.text('About Butlerly'), findsOneWidget);
+    expect(find.text('Display name'), findsOneWidget);
+    expect(find.text('Base currency'), findsOneWidget);
+    expect(find.text('External AI consent'), findsOneWidget);
+
+    final preferences = tester.getRect(find.text('Preferences'));
+    final privacy = tester.getRect(find.text('Privacy & data'));
+    expect(preferences.left, lessThan(privacy.left));
+    expect(preferences.top, closeTo(privacy.top, 1));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('desktop More shows the dark protection banner palette', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          theme: ThemeData.dark(),
+          locale: const Locale('en'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          home: const SettingsPage(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final banner = tester.widget<Container>(
+      find.byKey(const ValueKey('desktop-more-protection')),
+    );
+    expect((banner.decoration! as BoxDecoration).color, const Color(0xFF1E342B));
+    expect(tester.takeException(), isNull);
+  });
 }
