@@ -20,10 +20,7 @@ class ButlerlyDesktopTableBody extends StatelessWidget {
       header,
       const SizedBox(height: ButlerlyTableTokens.headerToRowsGap),
       ButlerlyDesktopTableDivider(),
-      for (final row in rows) ...[
-        row,
-        ButlerlyDesktopTableDivider(),
-      ],
+      for (final row in rows) ...[row, ButlerlyDesktopTableDivider()],
     ],
   );
 }
