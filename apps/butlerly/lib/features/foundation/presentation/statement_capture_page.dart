@@ -1,3 +1,4 @@
+import 'package:butlerly/design_system/components/butlerly_desktop_table_body.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
@@ -608,17 +609,9 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                 ),
               );
 
-              Widget divider() => Divider(
-                height: ButlerlyTableTokens.dividerThickness,
-                thickness: ButlerlyTableTokens.dividerThickness,
-                color: ButlerlyTableTokens.dividerColor(context),
-              );
-
-              final table = Column(
+              final table = ButlerlyDesktopTableBody(
                 key: const ValueKey('desktop-statements-table'),
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
+                header: Row(
                     children: [
                       header('statements', statementWidth),
                       header('paymentSource', 180),
@@ -626,9 +619,8 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                       header('delete', 180),
                     ],
                   ),
-                  const SizedBox(height: ButlerlyTableTokens.headerToRowsGap),
-                  divider(),
-                  for (final item in _statements) ...[
+                rows: [
+                  for (final item in _statements)
                     Material(
                       type: MaterialType.transparency,
                       child: InkWell(
@@ -695,8 +687,6 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                         ),
                       ),
                     ),
-                    divider(),
-                  ],
                 ],
               );
               if (constraints.maxWidth >= tableWidth) return table;
