@@ -377,11 +377,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   children: [
                     _DesktopMoreRow(
                       title: l10n.text('legalLicenses'),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const LegalLicensesPage(),
-                        ),
-                      ),
+                      onTap: () => context.push('/legal-licenses'),
                     ),
                   ],
                 ),
