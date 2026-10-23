@@ -445,42 +445,28 @@ void main() {
     }
   });
 
-  testWidgets('Wide More exposes Privacy, Assistant, and About actions', (
+  testWidgets('Wide More shows the dashboard cards and preferences', (
     tester,
   ) async {
     await _pumpAt(tester, const Size(1200, 800));
-
     final navigation = find.byKey(const ValueKey('primary-wide-navigation'));
-    expect(
-      find.descendant(of: navigation, matching: find.text('Appearance')),
-      findsNothing,
+    await tester.tap(
+      find.descendant(of: navigation, matching: find.text('More')),
     );
+    await tester.pumpAndSettle();
+
     expect(
-      find.descendant(of: navigation, matching: find.text('About Butlerly')),
+      find.byKey(const ValueKey('desktop-more-protection')),
       findsOneWidget,
     );
-
-    await tester.tap(find.byIcon(Icons.keyboard_double_arrow_left_rounded));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('wide-collapsed-more')));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Appearance'), findsNothing);
+    expect(find.text('Preferences'), findsOneWidget);
+    expect(find.text('Privacy & data'), findsOneWidget);
+    expect(find.text('Optional features'), findsOneWidget);
     expect(find.text('About Butlerly'), findsOneWidget);
-
-    await tester.tap(find.text('About Butlerly'));
-    await tester.pumpAndSettle();
+    expect(find.text('Manage privacy & data'), findsOneWidget);
     expect(
-      appRouter.routeInformationProvider.value.uri.toString(),
-      '/legal-licenses',
-    );
-    expect(find.byType(LegalLicensesPage), findsOneWidget);
-
-    await tester.tap(find.byIcon(Icons.arrow_back_rounded));
-    await tester.pumpAndSettle();
-    expect(
-      appRouter.routeInformationProvider.value.uri.toString(),
-      '/settings',
+      find.descendant(of: navigation, matching: find.text('About Butlerly')),
+      findsNothing,
     );
   });
 
@@ -689,73 +675,54 @@ void main() {
     );
   });
 
-  testWidgets('expanded Wide About Butlerly opens Legal & licenses', (
+  testWidgets('desktop More Legal & licenses opens the existing page', (
     tester,
   ) async {
     await _pumpAt(tester, const Size(1200, 800));
-
-    final navigation = find.byKey(const ValueKey('primary-wide-navigation'));
-    await tester.ensureVisible(
-      find.descendant(of: navigation, matching: find.text('About Butlerly')),
-    );
-    await tester.tap(
-      find.descendant(of: navigation, matching: find.text('About Butlerly')),
-    );
+    await tester.tap(find.byKey(const ValueKey('wide-more-navigation')));
     await tester.pumpAndSettle();
-    expect(
-      appRouter.routeInformationProvider.value.uri.toString(),
-      '/legal-licenses',
-    );
+    await tester.ensureVisible(find.text('Legal & licenses'));
+    await tester.tap(find.text('Legal & licenses'));
+    await tester.pumpAndSettle();
     expect(find.byType(LegalLicensesPage), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.arrow_back_rounded));
     await tester.pumpAndSettle();
-    expect(
-      appRouter.routeInformationProvider.value.uri.toString(),
-      '/settings',
-    );
     expect(find.byType(SettingsPage), findsOneWidget);
   });
 
-  testWidgets('selecting Wide More reveals its child actions', (tester) async {
-    await _pumpAt(tester, const Size(1200, 800));
-
-    final navigation = find.byKey(const ValueKey('primary-wide-navigation'));
-    await tester.ensureVisible(
-      find.descendant(of: navigation, matching: find.text('More')),
-    );
-    await tester.tap(
-      find.descendant(of: navigation, matching: find.text('More')),
-    );
-    await tester.pumpAndSettle();
-
-    final about = find.descendant(
-      of: navigation,
-      matching: find.text('About Butlerly'),
-    );
-    expect(tester.getRect(about).bottom, lessThanOrEqualTo(800));
-    expect(
-      find.descendant(of: navigation, matching: find.text('Appearance')),
-      findsNothing,
-    );
-  });
-
-  testWidgets('Assistant Search navigation preserves the focused route stack', (
+  testWidgets('Wide More remains a single selected navigation item', (
     tester,
   ) async {
     await _pumpAt(tester, const Size(1200, 800));
-
     final navigation = find.byKey(const ValueKey('primary-wide-navigation'));
-    await tester.ensureVisible(
-      find.descendant(of: navigation, matching: find.text('More')),
-    );
-    await tester.tap(
-      find.descendant(of: navigation, matching: find.text('More')),
-    );
+    await tester.tap(find.byKey(const ValueKey('wide-more-navigation')));
     await tester.pumpAndSettle();
-    await tester.tap(
-      find.descendant(of: navigation, matching: find.text('Assistant')),
+    expect(find.byType(SettingsPage), findsOneWidget);
+    expect(
+      find.descendant(of: navigation, matching: find.text('More')),
+      findsOneWidget,
     );
+    expect(
+      find.descendant(of: navigation, matching: find.text('Assistant')),
+      findsNothing,
+    );
+    expect(
+      tester
+          .widget<Semantics>(find.byKey(const ValueKey('wide-more-navigation')))
+          .properties
+          .selected,
+      isTrue,
+    );
+  });
+
+  testWidgets('desktop More Assistant preserves focused route stack', (
+    tester,
+  ) async {
+    await _pumpAt(tester, const Size(1200, 800));
+    await tester.tap(find.byKey(const ValueKey('wide-more-navigation')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Assistant'));
     await tester.pumpAndSettle();
 
     expect(find.byType(AssistantUnavailablePage), findsOneWidget);
@@ -1001,41 +968,20 @@ void main() {
     );
   });
 
-  testWidgets(
-    'collapsed Wide Add and Tools open their hubs, More anchors a popup',
-    (tester) async {
-      await _pumpAt(tester, const Size(1200, 800));
-
-      await tester.tap(find.byIcon(Icons.keyboard_double_arrow_left_rounded));
-      await tester.pumpAndSettle();
-
-      await tester.tap(find.byKey(const ValueKey('wide-collapsed-add')));
-      await tester.pumpAndSettle();
-      expect(appRouter.routeInformationProvider.value.uri.path, '/add');
-      expect(find.byKey(const ValueKey('desktop-add-actions')), findsOneWidget);
-
-      await tester.tap(find.byKey(const ValueKey('wide-collapsed-tools')));
-      await tester.pumpAndSettle();
-      expect(appRouter.routeInformationProvider.value.uri.path, '/tools');
-      expect(
-        find.byKey(const ValueKey('desktop-tools-actions')),
-        findsOneWidget,
-      );
-
-      final moreItem = find.byKey(const ValueKey('wide-collapsed-more'));
-      final itemRect = tester.getRect(moreItem);
-      await tester.tap(moreItem);
-      await tester.pumpAndSettle();
-
-      final popupLabel = find.text('More').last;
-      final popupRect = tester.getRect(
-        find.ancestor(of: popupLabel, matching: find.byType(Material)).last,
-      );
-      expect(popupRect.left, closeTo(itemRect.right, 8));
-      await tester.tap(popupLabel);
-      await tester.pumpAndSettle();
-    },
-  );
+  testWidgets('collapsed Wide More opens its dashboard directly', (
+    tester,
+  ) async {
+    await _pumpAt(tester, const Size(1200, 800));
+    await tester.tap(find.byIcon(Icons.keyboard_double_arrow_left_rounded));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('wide-collapsed-more')));
+    await tester.pumpAndSettle();
+    expect(appRouter.routeInformationProvider.value.uri.path, '/settings');
+    expect(
+      find.byKey(const ValueKey('desktop-more-protection')),
+      findsOneWidget,
+    );
+  });
 
   testWidgets(
     'resizing across modes preserves the active primary destination',

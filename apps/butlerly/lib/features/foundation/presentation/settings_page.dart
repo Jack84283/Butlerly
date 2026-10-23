@@ -1,4 +1,5 @@
 import 'package:butlerly/app/locale/locale_provider.dart';
+import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/app/theme/theme_mode_provider.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
@@ -10,6 +11,7 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:go_router/go_router.dart';
@@ -27,6 +29,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   final _appearanceKey = GlobalKey();
   final _aboutKey = GlobalKey();
   String? _scheduledSection;
+  late final Future<String> _desktopVersion = rootBundle
+      .loadString('pubspec.yaml')
+      .then((contents) {
+        return RegExp(
+              r'^version:\s*([^\s#]+)',
+              multiLine: true,
+            ).firstMatch(contents)?.group(1) ??
+            '—';
+      })
+      .catchError((Object _) => '—');
 
   @override
   void didChangeDependencies() {
@@ -102,6 +114,304 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     }
   }
 
+  Future<void> _chooseDesktopValue<T>({
+    required String label,
+    required T value,
+    required List<DropdownMenuItem<T>> options,
+    required ValueChanged<T> onChanged,
+  }) async {
+    final selected = await showButlerlySelectionSheet<T>(
+      context: context,
+      title: label,
+      selectedValue: value,
+      options: [
+        for (final option in options)
+          ButlerlySelectionOption(
+            value: option.value as T,
+            child: option.child,
+          ),
+      ],
+    );
+    if (selected != null && mounted) onChanged(selected);
+  }
+
+  Widget _buildDesktopMore(BuildContext context) {
+    final themeMode = ref.watch(themeModeProvider);
+    final preference = ref.watch(userPreferenceProvider).value;
+    final locale = preference == null
+        ? Localizations.localeOf(context)
+        : Locale(preference.locale);
+    final l10n = context.l10n;
+
+    Widget tile(
+      IconData icon,
+      String label,
+      String value,
+      VoidCallback onTap,
+    ) => _DesktopMoreRow(icon: icon, title: label, value: value, onTap: onTap);
+
+    final preferences = <Widget>[
+      tile(
+        Icons.person_outline_rounded,
+        l10n.text('displayName'),
+        preference?.displayName.isNotEmpty == true
+            ? preference!.displayName
+            : l10n.text('displayNameNotSet'),
+        () => _editDisplayName(preference?.displayName ?? ''),
+      ),
+      tile(
+        Icons.palette_outlined,
+        l10n.text('appearance'),
+        l10n.text(themeMode.name),
+        () => _chooseDesktopValue<ThemeMode>(
+          label: l10n.text('appearance'),
+          value: themeMode,
+          options: [
+            DropdownMenuItem(
+              value: ThemeMode.system,
+              child: Text(l10n.text('system')),
+            ),
+            DropdownMenuItem(
+              value: ThemeMode.light,
+              child: Text(l10n.text('light')),
+            ),
+            DropdownMenuItem(
+              value: ThemeMode.dark,
+              child: Text(l10n.text('dark')),
+            ),
+          ],
+          onChanged: (value) => ref
+              .read(userPreferenceProvider.notifier)
+              .saveChanges(appearance: value.name),
+        ),
+      ),
+      tile(
+        Icons.color_lens_outlined,
+        l10n.text('colorTheme'),
+        l10n.text(preference?.colorTheme ?? 'butlerRed'),
+        () => _chooseDesktopValue<String>(
+          label: l10n.text('colorTheme'),
+          value: preference?.colorTheme ?? 'butlerRed',
+          options: [
+            DropdownMenuItem(
+              value: 'butlerRed',
+              child: Text(l10n.text('butlerRed')),
+            ),
+            DropdownMenuItem(
+              value: 'skyBlue',
+              child: Text(l10n.text('skyBlue')),
+            ),
+            DropdownMenuItem(value: 'green', child: Text(l10n.text('green'))),
+          ],
+          onChanged: (value) => ref
+              .read(userPreferenceProvider.notifier)
+              .saveChanges(colorTheme: value),
+        ),
+      ),
+      tile(
+        Icons.language_rounded,
+        l10n.text('language'),
+        l10n.text(switch (locale.languageCode) {
+          'es' => 'spanish',
+          'zh' => 'chinese',
+          _ => 'english',
+        }),
+        () => _chooseDesktopValue<String>(
+          label: l10n.text('language'),
+          value: locale.languageCode,
+          options: [
+            DropdownMenuItem(value: 'en', child: Text(l10n.text('english'))),
+            DropdownMenuItem(value: 'es', child: Text(l10n.text('spanish'))),
+            DropdownMenuItem(value: 'zh', child: Text(l10n.text('chinese'))),
+          ],
+          onChanged: (value) => ref
+              .read(userPreferenceProvider.notifier)
+              .saveChanges(locale: value),
+        ),
+      ),
+      tile(
+        Icons.currency_exchange_rounded,
+        l10n.text('baseCurrency'),
+        preference?.baseCurrency.value ?? 'USD',
+        () => _chooseDesktopValue<String>(
+          label: l10n.text('baseCurrency'),
+          value: preference?.baseCurrency.value ?? 'USD',
+          options: const ['USD', 'EUR', 'GBP', 'CNY', 'JPY']
+              .map((code) => DropdownMenuItem(value: code, child: Text(code)))
+              .toList(),
+          onChanged: (value) => ref
+              .read(userPreferenceProvider.notifier)
+              .saveChanges(baseCurrency: value),
+        ),
+      ),
+      FutureBuilder<List<TimezoneInfo>>(
+        future: FlutterTimezone.getAvailableTimezones(
+          Localizations.localeOf(context).toLanguageTag(),
+        ),
+        builder: (context, snapshot) {
+          final zones =
+              {
+                  for (final zone
+                      in snapshot.data ??
+                          timeZoneCatalog.map(
+                            (entry) => TimezoneInfo(identifier: entry.id),
+                          ))
+                    zone.identifier: zone,
+                }.values.toList(growable: false)
+                ..sort((a, b) => a.identifier.compareTo(b.identifier));
+          final requestedZone = preference?.timeZoneId ?? 'UTC';
+          final zone = zones.any((entry) => entry.identifier == requestedZone)
+              ? requestedZone
+              : 'UTC';
+          final zoneLabel = zones
+              .where((entry) => entry.identifier == zone)
+              .firstOrNull;
+          return tile(
+            Icons.schedule_rounded,
+            l10n.text('timeZone'),
+            zoneLabel?.localizedName?.name ?? zone,
+            () => _chooseDesktopValue<String>(
+              label: l10n.text('timeZone'),
+              value: zone,
+              options: [
+                for (final item in zones)
+                  DropdownMenuItem(
+                    value: item.identifier,
+                    child: Text(item.localizedName?.name ?? item.identifier),
+                  ),
+              ],
+              onChanged: (value) => ref
+                  .read(userPreferenceProvider.notifier)
+                  .saveChanges(timeZoneId: value),
+            ),
+          );
+        },
+      ),
+    ];
+
+    return ButlerlyPage(
+      title: l10n.text('more'),
+      subtitle: l10n.text('moreDescription'),
+      fullWidth: true,
+      children: [
+        const _DesktopMoreProtectionBanner(),
+        const SizedBox(height: ButlerlySpacing.standard),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final left = _DesktopMoreCard(
+              key: _appearanceKey,
+              title: l10n.text('preferences'),
+              icon: Icons.tune_rounded,
+              children: preferences,
+            );
+            final right = Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _DesktopMoreCard(
+                  title: l10n.text('privacyAndData'),
+                  icon: Icons.shield_outlined,
+                  description: l10n.text('desktopPrivacyDescription'),
+                  children: [
+                    _DesktopMoreRow(
+                      title: l10n.text('managePrivacyData'),
+                      onTap: () => context.push('/privacy-data'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: ButlerlySpacing.small),
+                _DesktopMoreCard(
+                  title: l10n.text('optionalFeatures'),
+                  icon: Icons.auto_awesome_outlined,
+                  children: [
+                    _DesktopMoreRow(
+                      title: l10n.text('externalAiConsentTitle'),
+                      value: preference?.externalAiEnabled == true
+                          ? l10n.text('enabled')
+                          : l10n.text('optional'),
+                      onTap: preference == null
+                          ? null
+                          : () => _chooseDesktopValue<bool>(
+                              label: l10n.text('externalAiConsentTitle'),
+                              value: preference.externalAiEnabled,
+                              options: [
+                                DropdownMenuItem(
+                                  value: false,
+                                  child: Text(l10n.text('disabled')),
+                                ),
+                                DropdownMenuItem(
+                                  value: true,
+                                  child: Text(l10n.text('enabled')),
+                                ),
+                              ],
+                              onChanged: (value) => ref
+                                  .read(userPreferenceProvider.notifier)
+                                  .saveChanges(externalAiEnabled: value),
+                            ),
+                    ),
+                    _DesktopMoreRow(
+                      title: l10n.text('assistant'),
+                      onTap: () => context.push('/assistant'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: ButlerlySpacing.small),
+                _DesktopMoreCard(
+                  key: _aboutKey,
+                  title: l10n.text('about'),
+                  icon: Icons.info_outline_rounded,
+                  footer: FutureBuilder<String>(
+                    future: _desktopVersion,
+                    builder: (context, snapshot) {
+                      final parts = (snapshot.data ?? '—').split('+');
+                      final build = parts.length > 1
+                          ? ' (${l10n.text('buildLabel')} ${parts.last})'
+                          : '';
+                      return Text(
+                        '${l10n.text('appVersionLabel')} ${parts.first}$build',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: context.colors.secondaryText,
+                        ),
+                      );
+                    },
+                  ),
+                  children: [
+                    _DesktopMoreRow(
+                      title: l10n.text('legalLicenses'),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const LegalLicensesPage(),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            );
+            if (constraints.maxWidth < 720) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  left,
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  right,
+                ],
+              );
+            }
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(flex: 6, child: left),
+                const SizedBox(width: ButlerlySpacing.standard),
+                Expanded(flex: 5, child: right),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: ButlerlySpacing.section),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeProvider);
@@ -109,6 +419,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final locale = preference == null
         ? Localizations.localeOf(context)
         : Locale(preference.locale);
+    if (effectiveButlerlyLayoutMode(
+          context,
+          MediaQuery.sizeOf(context).width,
+        ) ==
+        ButlerlyLayoutMode.wide) {
+      return _buildDesktopMore(context);
+    }
     return ButlerlyPage(
       title: context.l10n.text('more'),
       children: [
@@ -331,6 +648,212 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       ],
     );
   }
+}
+
+class _DesktopMoreProtectionBanner extends StatelessWidget {
+  const _DesktopMoreProtectionBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final green = context.colors.success;
+    return Container(
+      key: const ValueKey('desktop-more-protection'),
+      decoration: BoxDecoration(
+        color: dark ? const Color(0xFF1E342B) : const Color(0xFFE5F7ED),
+        borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+        border: Border.all(
+          color: dark ? const Color(0xFF2A4438) : const Color(0xFFCBE6D7),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(
+        horizontal: ButlerlySpacing.standard,
+        vertical: ButlerlySpacing.small,
+      ),
+      child: Row(
+        children: [
+          Container(
+            height: 38,
+            width: 38,
+            decoration: BoxDecoration(
+              color: dark ? const Color(0xFF2E875C) : const Color(0xFFB6E9CD),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.shield_outlined, color: green, size: 23),
+          ),
+          const SizedBox(width: ButlerlySpacing.standard),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  context.l10n.text('localOnlyProtection'),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  context.l10n.text('localOnlyProtectionBody'),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: context.colors.secondaryText,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: ButlerlySpacing.standard),
+          Icon(Icons.check_circle_rounded, color: green, size: 25),
+        ],
+      ),
+    );
+  }
+}
+
+class _DesktopMoreCard extends StatelessWidget {
+  const _DesktopMoreCard({
+    required this.title,
+    required this.icon,
+    required this.children,
+    this.description,
+    this.footer,
+    super.key,
+  });
+
+  final String title;
+  final IconData icon;
+  final String? description;
+  final List<Widget> children;
+  final Widget? footer;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    decoration: BoxDecoration(
+      color: context.colors.cardSurface,
+      border: Border.all(color: context.colors.cardDivider),
+      borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
+    ),
+    padding: const EdgeInsets.symmetric(
+      horizontal: ButlerlySpacing.standard,
+      vertical: ButlerlySpacing.small,
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 22, color: context.colors.primaryText),
+            const SizedBox(width: ButlerlySpacing.standard),
+            Expanded(
+              child: Text(
+                title,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+        if (description != null) ...[
+          const SizedBox(height: ButlerlySpacing.xxs),
+          Padding(
+            padding: const EdgeInsets.only(left: 38),
+            child: Text(
+              description!,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: context.colors.secondaryText,
+              ),
+            ),
+          ),
+        ],
+        const SizedBox(height: ButlerlySpacing.compact),
+        for (var i = 0; i < children.length; i++) ...[
+          if (i > 0)
+            Divider(height: 1, thickness: 1, color: context.colors.cardDivider),
+          children[i],
+        ],
+        if (footer != null) ...[
+          Divider(height: 1, thickness: 1, color: context.colors.cardDivider),
+          Padding(
+            padding: const EdgeInsets.only(
+              left: 38,
+              top: ButlerlySpacing.compact,
+              bottom: ButlerlySpacing.xxs,
+            ),
+            child: footer!,
+          ),
+        ],
+      ],
+    ),
+  );
+}
+
+class _DesktopMoreRow extends StatelessWidget {
+  const _DesktopMoreRow({
+    required this.title,
+    this.icon,
+    this.value,
+    this.onTap,
+  });
+
+  final String title;
+  final IconData? icon;
+  final String? value;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    type: MaterialType.transparency,
+    child: InkWell(
+      onTap: onTap,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 43),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            vertical: ButlerlySpacing.compact,
+          ),
+          child: Row(
+            children: [
+              if (icon != null) ...[
+                Icon(icon, size: 19, color: context.colors.secondaryText),
+                const SizedBox(width: ButlerlySpacing.standard),
+              ] else
+                const SizedBox(width: 38),
+              Expanded(
+                child: Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+              if (value != null) ...[
+                const SizedBox(width: ButlerlySpacing.compact),
+                SizedBox(
+                  key: const ValueKey('desktop-more-value-column'),
+                  width: 140,
+                  child: Text(
+                    value!,
+                    textAlign: TextAlign.end,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: context.colors.secondaryText,
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(width: ButlerlySpacing.compact),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: context.colors.tertiaryText,
+                size: 18,
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 class _LocalOnlyBanner extends StatelessWidget {
