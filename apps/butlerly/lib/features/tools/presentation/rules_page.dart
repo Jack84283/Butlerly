@@ -1,3 +1,4 @@
+import 'package:butlerly/design_system/components/butlerly_desktop_table_body.dart';
 import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
@@ -581,11 +582,9 @@ class _RulesDesktopTable extends StatelessWidget {
       child: ButlerlyDesktopInnerCard(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final table = Column(
+            final table = ButlerlyDesktopTableBody(
               key: const ValueKey('desktop-rules-table'),
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
+              header: Row(
                   children: [
                     Expanded(flex: 3, child: _header(context, 'name')),
                     Expanded(
@@ -621,13 +620,7 @@ class _RulesDesktopTable extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: ButlerlyTableTokens.headerToRowsGap),
-                _divider(context),
-                for (final rule in rules) ...[
-                  _row(context, rule),
-                  _divider(context),
-                ],
-              ],
+              rows: [for (final rule in rules) _row(context, rule)],
             );
             if (constraints.maxWidth >= minimumWidth) return table;
             return SingleChildScrollView(
@@ -651,12 +644,6 @@ class _RulesDesktopTable extends StatelessWidget {
     maxLines: 1,
     overflow: TextOverflow.ellipsis,
     textAlign: align,
-  );
-
-  Widget _divider(BuildContext context) => Divider(
-    height: ButlerlyTableTokens.dividerThickness,
-    thickness: ButlerlyTableTokens.dividerThickness,
-    color: ButlerlyTableTokens.dividerColor(context),
   );
 
   Widget _cell(
