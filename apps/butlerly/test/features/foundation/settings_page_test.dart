@@ -96,7 +96,10 @@ void main() {
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const ValueKey('desktop-more-protection')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('desktop-more-protection')),
+      findsOneWidget,
+    );
     expect(find.text('Preferences'), findsOneWidget);
     expect(find.text('Privacy & data'), findsOneWidget);
     expect(find.text('Optional features'), findsOneWidget);
@@ -139,7 +142,10 @@ void main() {
     final banner = tester.widget<Container>(
       find.byKey(const ValueKey('desktop-more-protection')),
     );
-    expect((banner.decoration! as BoxDecoration).color, const Color(0xFF1E342B));
+    expect(
+      (banner.decoration! as BoxDecoration).color,
+      const Color(0xFF1E342B),
+    );
     expect(tester.takeException(), isNull);
   });
 }
