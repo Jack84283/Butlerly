@@ -143,8 +143,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         : Locale(preference.locale);
     final l10n = context.l10n;
 
-    Widget tile(IconData icon, String label, String value, VoidCallback onTap) =>
-        _DesktopMoreRow(icon: icon, title: label, value: value, onTap: onTap);
+    Widget tile(
+      IconData icon,
+      String label,
+      String value,
+      VoidCallback onTap,
+    ) => _DesktopMoreRow(icon: icon, title: label, value: value, onTap: onTap);
 
     final preferences = <Widget>[
       tile(
@@ -197,10 +201,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               value: 'skyBlue',
               child: Text(l10n.text('skyBlue')),
             ),
-            DropdownMenuItem(
-              value: 'green',
-              child: Text(l10n.text('green')),
-            ),
+            DropdownMenuItem(value: 'green', child: Text(l10n.text('green'))),
           ],
           onChanged: (value) => ref
               .read(userPreferenceProvider.notifier)
@@ -248,20 +249,23 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           Localizations.localeOf(context).toLanguageTag(),
         ),
         builder: (context, snapshot) {
-          final zones = {
-            for (final zone in snapshot.data ??
-                timeZoneCatalog
-                    .map((entry) => TimezoneInfo(identifier: entry.id)))
-              zone.identifier: zone,
-          }.values.toList(growable: false)
-            ..sort((a, b) => a.identifier.compareTo(b.identifier));
+          final zones =
+              {
+                  for (final zone
+                      in snapshot.data ??
+                          timeZoneCatalog.map(
+                            (entry) => TimezoneInfo(identifier: entry.id),
+                          ))
+                    zone.identifier: zone,
+                }.values.toList(growable: false)
+                ..sort((a, b) => a.identifier.compareTo(b.identifier));
           final requestedZone = preference?.timeZoneId ?? 'UTC';
           final zone = zones.any((entry) => entry.identifier == requestedZone)
               ? requestedZone
               : 'UTC';
-          final zoneLabel = zones.where(
-            (entry) => entry.identifier == zone,
-          ).firstOrNull;
+          final zoneLabel = zones
+              .where((entry) => entry.identifier == zone)
+              .firstOrNull;
           return tile(
             Icons.schedule_rounded,
             l10n.text('timeZone'),
@@ -327,11 +331,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       onTap: preference == null
                           ? null
                           : () => ref
-                              .read(userPreferenceProvider.notifier)
-                              .saveChanges(
-                                externalAiEnabled:
-                                    !preference.externalAiEnabled,
-                              ),
+                                .read(userPreferenceProvider.notifier)
+                                .saveChanges(
+                                  externalAiEnabled:
+                                      !preference.externalAiEnabled,
+                                ),
                     ),
                     _DesktopMoreRow(
                       title: l10n.text('assistant'),
@@ -407,7 +411,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     if (effectiveButlerlyLayoutMode(
           context,
           MediaQuery.sizeOf(context).width,
-        ) == ButlerlyLayoutMode.wide) {
+        ) ==
+        ButlerlyLayoutMode.wide) {
       return _buildDesktopMore(context);
     }
     return ButlerlyPage(
@@ -672,9 +677,9 @@ class _DesktopMoreProtectionBanner extends StatelessWidget {
               children: [
                 Text(
                   context.l10n.text('localOnlyProtection'),
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
                 Text(
                   context.l10n.text('localOnlyProtectionBody'),
@@ -730,9 +735,9 @@ class _DesktopMoreCard extends StatelessWidget {
             Expanded(
               child: Text(
                 title,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -792,7 +797,9 @@ class _DesktopMoreRow extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(minHeight: 43),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: ButlerlySpacing.compact),
+          padding: const EdgeInsets.symmetric(
+            vertical: ButlerlySpacing.compact,
+          ),
           child: Row(
             children: [
               if (icon != null) ...[
