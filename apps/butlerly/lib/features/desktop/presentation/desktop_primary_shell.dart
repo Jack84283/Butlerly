@@ -1,9 +1,7 @@
-import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 /// Shared desktop presentation shell for every wide viewport, including iPad.
 /// Kept separate from the legacy WidePrimaryShell implementation.
@@ -12,7 +10,6 @@ class DesktopPrimaryShell extends StatefulWidget {
     required this.body,
     required this.currentIndex,
     required this.onSelected,
-    required this.onMoreSectionSelected,
     super.key,
   });
 
@@ -26,41 +23,9 @@ class DesktopPrimaryShell extends StatefulWidget {
 }
 
 class _DesktopPrimaryShellState extends State<DesktopPrimaryShell> {
-  final _moreNavigationKey = GlobalKey();
-  // Preserve each rail mode's expansion preference across viewport changes.
+  // Preserve expansion preference across viewport changes.
   bool _expandedAtWideWidths = true;
   bool _expandedAtNarrowWidths = false;
-  bool _moreExpanded = true;
-  bool _moreVisibilityScheduled = false;
-
-  void _selectParent(int branchIndex) {
-    if (branchIndex == 4) {
-      setState(() => _moreExpanded = true);
-    }
-    widget.onSelected(branchIndex);
-  }
-
-  void _ensureMoreVisible(bool expanded) {
-    if (!expanded || widget.currentIndex != 4 || _moreVisibilityScheduled) {
-      return;
-    }
-    _moreVisibilityScheduled = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _moreVisibilityScheduled = false;
-      final targetContext = _moreNavigationKey.currentContext;
-      if (!mounted || targetContext == null) return;
-      Scrollable.ensureVisible(
-        targetContext,
-        alignment: 0.0,
-        duration: ButlerlyMotion.responsive(context, ButlerlyMotion.fast),
-      );
-    });
-  }
-
-  Future<void> _navigate(String route) async {
-    if (!mounted) return;
-    await context.push(route);
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,7 +34,6 @@ class _DesktopPrimaryShellState extends State<DesktopPrimaryShell> {
     final narrow =
         MediaQuery.sizeOf(context).width < ButlerlySize.wideBreakpoint;
     final expanded = narrow ? _expandedAtNarrowWidths : _expandedAtWideWidths;
-    _ensureMoreVisible(expanded);
     return Scaffold(
       body: SafeArea(
         bottom: false,
@@ -78,7 +42,6 @@ class _DesktopPrimaryShellState extends State<DesktopPrimaryShell> {
             _WidePrimaryNavigation(
               key: const ValueKey('primary-wide-navigation'),
               expanded: expanded,
-              moreExpanded: _moreExpanded,
               currentIndex: widget.currentIndex,
               onToggleExpanded: () => setState(() {
                 if (narrow) {
@@ -87,12 +50,7 @@ class _DesktopPrimaryShellState extends State<DesktopPrimaryShell> {
                   _expandedAtWideWidths = !expanded;
                 }
               }),
-              onToggleMore: () =>
-                  setState(() => _moreExpanded = !_moreExpanded),
-              moreNavigationKey: _moreNavigationKey,
-              onParentSelected: _selectParent,
-              onMoreSectionSelected: widget.onMoreSectionSelected,
-              onNavigate: _navigate,
+              onParentSelected: widget.onSelected,
             ),
             Expanded(
               child: ColoredBox(
@@ -112,25 +70,16 @@ class _WidePrimaryNavigation extends StatelessWidget {
   const _WidePrimaryNavigation({
     super.key,
     required this.expanded,
-    required this.moreExpanded,
     required this.currentIndex,
     required this.onToggleExpanded,
-    required this.onToggleMore,
-    required this.moreNavigationKey,
     required this.onParentSelected,
     required this.onMoreSectionSelected,
-    required this.onNavigate,
   });
 
   final bool expanded;
-  final bool moreExpanded;
   final int currentIndex;
   final VoidCallback onToggleExpanded;
-  final VoidCallback onToggleMore;
-  final GlobalKey moreNavigationKey;
   final ValueChanged<int> onParentSelected;
-  final ValueChanged<String> onMoreSectionSelected;
-  final ValueChanged<String> onNavigate;
 
   bool _selected(int branchIndex) => currentIndex == branchIndex;
 
@@ -199,32 +148,12 @@ class _WidePrimaryNavigation extends StatelessWidget {
         selected: _selected(3),
         onTap: () => onParentSelected(3),
       ),
-      _WideGroup(
-        key: moreNavigationKey,
+      _WideTopLevelItem(
         semanticKey: const ValueKey('wide-more-navigation'),
+        icon: Icons.settings_outlined,
         label: context.l10n.text('more'),
-        icon: Icons.more_horiz_rounded,
         selected: _selected(4),
-        expanded: moreExpanded,
         onTap: () => onParentSelected(4),
-        onToggle: onToggleMore,
-        children: [
-          _WideChildItem(
-            icon: Icons.privacy_tip_outlined,
-            label: context.l10n.text('privacyAndData'),
-            onTap: () => onNavigate('/privacy-data'),
-          ),
-          _WideChildItem(
-            icon: Icons.auto_awesome_outlined,
-            label: context.l10n.text('assistant'),
-            onTap: () => onNavigate('/assistant'),
-          ),
-          _WideChildItem(
-            icon: Icons.info_outline_rounded,
-            label: context.l10n.text('about'),
-            onTap: () => onMoreSectionSelected('about'),
-          ),
-        ],
       ),
     ],
   );
@@ -261,65 +190,15 @@ class _WidePrimaryNavigation extends StatelessWidget {
       ),
       _WideCollapsedItem(
         key: const ValueKey('wide-collapsed-more'),
-        icon: Icons.more_horiz_rounded,
+        icon: Icons.settings_outlined,
         label: context.l10n.text('more'),
         selected: _selected(4),
-        onTap: (itemContext) => _openMenu(itemContext, [
-          _WidePopupAction.parent(context.l10n.text('more'), 4),
-          _WidePopupAction.route(
-            context.l10n.text('privacyAndData'),
-            '/privacy-data',
-          ),
-          _WidePopupAction.route(context.l10n.text('assistant'), '/assistant'),
-          _WidePopupAction.moreSection(context.l10n.text('about'), 'about'),
-        ]),
+        onTap: (_) => onParentSelected(4),
       ),
     ],
   );
 
-  Future<void> _openMenu(
-    BuildContext itemContext,
-    List<_WidePopupAction> actions,
-  ) async {
-    final itemBox = itemContext.findRenderObject()! as RenderBox;
-    final overlay = Navigator.of(itemContext).overlay!;
-    final overlayBox = overlay.context.findRenderObject()! as RenderBox;
-    final itemTopLeft = itemBox.localToGlobal(
-      Offset.zero,
-      ancestor: overlayBox,
-    );
-    final itemBottomRight = itemBox.localToGlobal(
-      itemBox.size.bottomRight(Offset.zero),
-      ancestor: overlayBox,
-    );
-    final itemRect = Rect.fromPoints(itemTopLeft, itemBottomRight);
-    final selected = await openButlerlyAnchoredMenu<_WidePopupAction>(
-      context: itemContext,
-      position: RelativeRect.fromLTRB(
-        itemRect.right,
-        itemRect.top,
-        overlayBox.size.width - itemRect.right,
-        overlayBox.size.height - itemRect.bottom,
-      ),
-      entries: [
-        for (final action in actions)
-          action.isDivider
-              ? const ButlerlyMenuEntry<_WidePopupAction>.divider()
-              : ButlerlyMenuEntry(value: action, label: action.label),
-      ],
-    );
-    if (!itemContext.mounted || selected == null) return;
-    switch (selected.kind) {
-      case _WidePopupActionKind.parent:
-        onParentSelected(selected.branchIndex!);
-      case _WidePopupActionKind.route:
-        onNavigate(selected.route!);
-      case _WidePopupActionKind.moreSection:
-        onMoreSectionSelected(selected.section!);
-      case _WidePopupActionKind.divider:
-        break;
-    }
-  }
+
 }
 
 class _WideBrand extends StatelessWidget {
@@ -402,125 +281,6 @@ class _WideTopLevelItem extends StatelessWidget {
                 Expanded(child: Text(label)),
               ],
             ),
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
-class _WideGroup extends StatelessWidget {
-  const _WideGroup({
-    super.key,
-    this.semanticKey,
-    required this.label,
-    required this.icon,
-    required this.selected,
-    required this.expanded,
-    required this.onTap,
-    required this.onToggle,
-    required this.children,
-  });
-
-  final String label;
-  final IconData icon;
-  final bool selected;
-  final bool expanded;
-  final VoidCallback onTap;
-  final VoidCallback onToggle;
-  final List<Widget> children;
-  final Key? semanticKey;
-
-  @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      _WideNavigationSurface(
-        selected: selected,
-        child: Row(
-          children: [
-            Expanded(
-              child: Semantics(
-                key: semanticKey,
-                button: true,
-                container: true,
-                selected: selected,
-                label: label,
-                onTap: onTap,
-                child: InkWell(
-                  onTap: onTap,
-                  child: SizedBox(
-                    height: ButlerlySize.wideNavigationItemHeight,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: ButlerlySpacing.compact,
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(icon),
-                          const SizedBox(width: ButlerlySpacing.compact),
-                          Expanded(child: Text(label)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            IconButton(
-              tooltip: expanded
-                  ? '${context.l10n.text('collapse')} $label'
-                  : '${context.l10n.text('expand')} $label',
-              onPressed: onToggle,
-              icon: Icon(
-                expanded
-                    ? Icons.keyboard_arrow_down_rounded
-                    : Icons.keyboard_arrow_right_rounded,
-              ),
-            ),
-          ],
-        ),
-      ),
-      if (expanded)
-        Padding(
-          padding: const EdgeInsets.only(left: ButlerlySpacing.standard),
-          child: Column(children: children),
-        ),
-    ],
-  );
-}
-
-class _WideChildItem extends StatelessWidget {
-  const _WideChildItem({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => Semantics(
-    button: true,
-    container: true,
-    label: label,
-    onTap: onTap,
-    child: SizedBox(
-      height: ButlerlySize.wideNavigationItemHeight,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: ButlerlySpacing.compact,
-          ),
-          child: Row(
-            children: [
-              Icon(icon, size: ButlerlySize.standardIcon),
-              const SizedBox(width: ButlerlySpacing.compact),
-              Expanded(child: Text(label, overflow: TextOverflow.ellipsis)),
-            ],
           ),
         ),
       ),
@@ -625,39 +385,3 @@ class _WideNavigationSurface extends StatelessWidget {
   );
 }
 
-enum _WidePopupActionKind { parent, route, moreSection, divider }
-
-class _WidePopupAction {
-  const _WidePopupAction._({
-    required this.kind,
-    required this.label,
-    this.branchIndex,
-    this.route,
-    this.section,
-  });
-
-  const _WidePopupAction.parent(String label, int branchIndex)
-    : this._(
-        kind: _WidePopupActionKind.parent,
-        label: label,
-        branchIndex: branchIndex,
-      );
-
-  const _WidePopupAction.route(String label, String route)
-    : this._(kind: _WidePopupActionKind.route, label: label, route: route);
-
-  const _WidePopupAction.moreSection(String label, String section)
-    : this._(
-        kind: _WidePopupActionKind.moreSection,
-        label: label,
-        section: section,
-      );
-
-  final _WidePopupActionKind kind;
-  final String label;
-  final int? branchIndex;
-  final String? route;
-  final String? section;
-
-  bool get isDivider => kind == _WidePopupActionKind.divider;
-}
