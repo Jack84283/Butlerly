@@ -672,7 +672,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                   ],
                 ),
               ),
-            );
+              );
             },
           ),
         ),
