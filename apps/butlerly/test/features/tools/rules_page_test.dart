@@ -179,6 +179,10 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('desktop-rule-editor-back')));
     await tester.pumpAndSettle();
     expect(find.text('Edit rule'), findsNothing);
+    // Cancel returns to the selected rule's details panel. Close it before
+    // interacting with the table action beneath the split-view panel.
+    await tester.tap(find.byKey(const ValueKey('desktop-rule-details-close')));
+    await tester.pumpAndSettle();
     await tester.tap(
       find.byKey(const ValueKey('desktop-rule-delete-rule.fuel')),
     );
