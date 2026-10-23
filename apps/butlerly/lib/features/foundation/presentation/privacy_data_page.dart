@@ -546,7 +546,8 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       leading: IconButton(
         tooltip: MaterialLocalizations.of(context).backButtonTooltip,
         icon: const Icon(Icons.arrow_back_rounded),
-        onPressed: () => context.canPop() ? context.pop() : context.go('/settings'),
+        onPressed: () =>
+            context.canPop() ? context.pop() : context.go('/settings'),
       ),
       children: [
         Container(
@@ -645,70 +646,75 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     if (effectiveButlerlyLayoutMode(
           context,
           MediaQuery.sizeOf(context).width,
-        ) == ButlerlyLayoutMode.wide) {
+        ) ==
+        ButlerlyLayoutMode.wide) {
       return _desktopPrivacyPage(context);
     }
     return Scaffold(
       appBar: AppBar(title: Text(context.l10n.text('privacyAndData'))),
-    body: ButlerlyResponsiveBody(
-      contentKey: const ValueKey('privacy-data-content'),
-      child: ListView(
-        padding: const EdgeInsets.all(ButlerlySpacing.standard),
-        children: [
-          ButlerlyCard(child: Text(context.l10n.text('privacyScopeBody'))),
-          ButlerlySectionHeader(title: context.l10n.text('localDataControls')),
-          ListTile(
-            enabled: !_busy,
-            leading: Icon(_privacyIcon(context, Icons.backup_outlined)),
-            title: Text(context.l10n.backupText('backup')),
-            subtitle: Text(
-              context.l10n.backupText('backupSubtitle'),
-              style: _subtitleStyle(context),
+      body: ButlerlyResponsiveBody(
+        contentKey: const ValueKey('privacy-data-content'),
+        child: ListView(
+          padding: const EdgeInsets.all(ButlerlySpacing.standard),
+          children: [
+            ButlerlyCard(child: Text(context.l10n.text('privacyScopeBody'))),
+            ButlerlySectionHeader(
+              title: context.l10n.text('localDataControls'),
             ),
-            trailing: Icon(_privacyIcon(context, Icons.chevron_right)),
-            onTap: _backup,
-          ),
-          const Divider(),
-          ListTile(
-            enabled: !_busy,
-            leading: Icon(_privacyIcon(context, Icons.restore_outlined)),
-            title: Text(context.l10n.backupText('restoreBackup')),
-            subtitle: Text(
-              context.l10n.backupText('restoreSubtitle'),
-              style: _subtitleStyle(context),
+            ListTile(
+              enabled: !_busy,
+              leading: Icon(_privacyIcon(context, Icons.backup_outlined)),
+              title: Text(context.l10n.backupText('backup')),
+              subtitle: Text(
+                context.l10n.backupText('backupSubtitle'),
+                style: _subtitleStyle(context),
+              ),
+              trailing: Icon(_privacyIcon(context, Icons.chevron_right)),
+              onTap: _backup,
             ),
-            trailing: Icon(_privacyIcon(context, Icons.chevron_right)),
-            onTap: _restore,
-          ),
-          const Divider(),
-          ListTile(
-            enabled: !_busy,
-            leading: Icon(_privacyIcon(context, Icons.download_outlined)),
-            title: Text(context.l10n.text('exportToFile')),
-            subtitle: Text(
-              context.l10n.text('exportScopeBody'),
-              style: _subtitleStyle(context),
+            const Divider(),
+            ListTile(
+              enabled: !_busy,
+              leading: Icon(_privacyIcon(context, Icons.restore_outlined)),
+              title: Text(context.l10n.backupText('restoreBackup')),
+              subtitle: Text(
+                context.l10n.backupText('restoreSubtitle'),
+                style: _subtitleStyle(context),
+              ),
+              trailing: Icon(_privacyIcon(context, Icons.chevron_right)),
+              onTap: _restore,
             ),
-            trailing: Icon(_privacyIcon(context, Icons.chevron_right)),
-            onTap: _export,
-          ),
-          const Divider(),
-          ListTile(
-            enabled: !_busy,
-            leading: Icon(_privacyIcon(context, Icons.delete_forever_outlined)),
-            title: Text(context.l10n.text('resetAllData')),
-            subtitle: Text(
-              context.l10n.text('eraseScopeBody'),
-              style: _subtitleStyle(context),
+            const Divider(),
+            ListTile(
+              enabled: !_busy,
+              leading: Icon(_privacyIcon(context, Icons.download_outlined)),
+              title: Text(context.l10n.text('exportToFile')),
+              subtitle: Text(
+                context.l10n.text('exportScopeBody'),
+                style: _subtitleStyle(context),
+              ),
+              trailing: Icon(_privacyIcon(context, Icons.chevron_right)),
+              onTap: _export,
             ),
-            textColor: Theme.of(context).colorScheme.error,
-            iconColor: Theme.of(context).colorScheme.error,
-            onTap: _confirmErase,
-          ),
-          if (_busy) const ButlerlyLoadingState(),
-        ],
+            const Divider(),
+            ListTile(
+              enabled: !_busy,
+              leading: Icon(
+                _privacyIcon(context, Icons.delete_forever_outlined),
+              ),
+              title: Text(context.l10n.text('resetAllData')),
+              subtitle: Text(
+                context.l10n.text('eraseScopeBody'),
+                style: _subtitleStyle(context),
+              ),
+              textColor: Theme.of(context).colorScheme.error,
+              iconColor: Theme.of(context).colorScheme.error,
+              onTap: _confirmErase,
+            ),
+            if (_busy) const ButlerlyLoadingState(),
+          ],
+        ),
       ),
-    ),
     );
   }
 }
@@ -753,7 +759,9 @@ class _DesktopPrivacyCard extends StatelessWidget {
                     title,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: danger ? Theme.of(context).colorScheme.error : null,
+                      color: danger
+                          ? Theme.of(context).colorScheme.error
+                          : null,
                     ),
                   ),
                   const SizedBox(height: ButlerlySpacing.xxs),
