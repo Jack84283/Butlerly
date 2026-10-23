@@ -286,7 +286,8 @@ class AppLocalizations {
       'localOnlyStatus': 'Local workspace',
       'moreDescription': 'Preferences, privacy and application information',
       'localOnlyProtection': 'Local-only protection',
-      'localOnlyProtectionBody': 'Your financial data remains stored locally on this device.',
+      'localOnlyProtectionBody':
+          'Your financial data remains stored locally on this device.',
       'managePrivacyData': 'Manage privacy & data',
       'appVersionLabel': 'App version',
       'buildLabel': 'Build',
@@ -1985,9 +1986,11 @@ class AppLocalizations {
       'viewAllRecentTransactions': 'Ver todas las transacciones',
       'searchRecords': 'Buscar registros',
       'localOnlyStatus': 'Espacio local',
-      'moreDescription': 'Preferencias, privacidad e información de la aplicación',
+      'moreDescription':
+          'Preferencias, privacidad e información de la aplicación',
       'localOnlyProtection': 'Protección solo local',
-      'localOnlyProtectionBody': 'Sus datos financieros permanecen almacenados localmente en este dispositivo.',
+      'localOnlyProtectionBody':
+          'Sus datos financieros permanecen almacenados localmente en este dispositivo.',
       'managePrivacyData': 'Gestionar privacidad y datos',
       'appVersionLabel': 'Versión de la aplicación',
       'buildLabel': 'Compilación',
