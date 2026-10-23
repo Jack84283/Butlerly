@@ -1089,7 +1089,10 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    // This test only verifies geometry. Do not wait for a bundled document
+    // loading animation to settle in the widget-test asset environment.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
 
     expect(tester.getSize(find.byType(AppBar)).width, size.width);
     expect(
