@@ -449,69 +449,70 @@ class _ReviewPageState extends State<ReviewPage> {
       );
     }
     return Scaffold(
-    appBar: AppBar(
-      title: Text(context.l10n.text('needsReview')),
-      automaticallyImplyLeading: false,
-      actions: [
-        IconButton(
-          key: const ValueKey('desktop-needs-review-close'),
-          tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
-          icon: const Icon(Icons.close),
-          onPressed: () => setState(() => _selectedReview = null),
-        ),
-      ],
-    ),
-    body: ButlerlyPage(
-      children: [
-        for (final item in entry.items)
-          if (item.reason == ReviewIssueReason.normalizationMissing.name)
-            _NormalizationReviewCard(
-              item: item,
-              finance: _finance!,
-              onDone: () {
-                if (mounted) {
-                  setState(() => _selectedReview = null);
-                  _refresh();
-                }
-              },
-            )
-          else
-            _ReviewTransactionCard(
-              item: item,
-              finance: _finance!,
-              masterData: _masterData,
-              reason: _localizedReviewDetail(item, context),
-              recommendation: context.l10n.text('reviewRecommendation'),
-              primaryLabel: context.l10n.text(
-                item.reason == ReviewIssueReason.merchantNeedsReview.name
-                    ? 'dismiss'
-                    : 'resolve',
-              ),
-              onPrimary: () async {
-                final closed = await _close(
-                  item,
-                  dismiss:
-                      item.reason == ReviewIssueReason.merchantNeedsReview.name,
-                );
-                if (closed && mounted) {
-                  setState(() => _selectedReview = null);
-                }
-              },
-              editLabel: context.l10n.text('edit'),
-              onEdit: () => setState(() => _editingReviewItem = item),
-              dismissLabel:
+      appBar: AppBar(
+        title: Text(context.l10n.text('needsReview')),
+        automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+            key: const ValueKey('desktop-needs-review-close'),
+            tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+            icon: const Icon(Icons.close),
+            onPressed: () => setState(() => _selectedReview = null),
+          ),
+        ],
+      ),
+      body: ButlerlyPage(
+        children: [
+          for (final item in entry.items)
+            if (item.reason == ReviewIssueReason.normalizationMissing.name)
+              _NormalizationReviewCard(
+                item: item,
+                finance: _finance!,
+                onDone: () {
+                  if (mounted) {
+                    setState(() => _selectedReview = null);
+                    _refresh();
+                  }
+                },
+              )
+            else
+              _ReviewTransactionCard(
+                item: item,
+                finance: _finance!,
+                masterData: _masterData,
+                reason: _localizedReviewDetail(item, context),
+                recommendation: context.l10n.text('reviewRecommendation'),
+                primaryLabel: context.l10n.text(
                   item.reason == ReviewIssueReason.merchantNeedsReview.name
-                  ? null
-                  : context.l10n.text('dismiss'),
-              onDismiss: () async {
-                final closed = await _close(item, dismiss: true);
-                if (closed && mounted) {
-                  setState(() => _selectedReview = null);
-                }
-              },
-            ),
-      ],
-    ),
+                      ? 'dismiss'
+                      : 'resolve',
+                ),
+                onPrimary: () async {
+                  final closed = await _close(
+                    item,
+                    dismiss:
+                        item.reason ==
+                        ReviewIssueReason.merchantNeedsReview.name,
+                  );
+                  if (closed && mounted) {
+                    setState(() => _selectedReview = null);
+                  }
+                },
+                editLabel: context.l10n.text('edit'),
+                onEdit: () => setState(() => _editingReviewItem = item),
+                dismissLabel:
+                    item.reason == ReviewIssueReason.merchantNeedsReview.name
+                    ? null
+                    : context.l10n.text('dismiss'),
+                onDismiss: () async {
+                  final closed = await _close(item, dismiss: true);
+                  if (closed && mounted) {
+                    setState(() => _selectedReview = null);
+                  }
+                },
+              ),
+        ],
+      ),
     );
   }
 
