@@ -108,6 +108,28 @@ void main() {
     expect(find.text('Base currency'), findsOneWidget);
     expect(find.text('External AI consent'), findsOneWidget);
 
+    final valueColumns = find.byKey(
+      const ValueKey('desktop-more-value-column'),
+    );
+    expect(valueColumns, findsNWidgets(7));
+    final firstRight = tester.getRect(valueColumns.at(0)).right;
+    for (var index = 0; index < 7; index++) {
+      expect(tester.getSize(valueColumns.at(index)).width, 140);
+      final valueText = tester.widget<Text>(
+        find.descendant(
+          of: valueColumns.at(index),
+          matching: find.byType(Text),
+        ),
+      );
+      expect(valueText.textAlign, TextAlign.end);
+      if (index < 6) {
+        expect(
+          tester.getRect(valueColumns.at(index)).right,
+          closeTo(firstRight, 0.1),
+        );
+      }
+    }
+
     final preferences = tester.getRect(find.text('Preferences'));
     final privacy = tester.getRect(find.text('Privacy & data'));
     expect(preferences.left, lessThan(privacy.left));
