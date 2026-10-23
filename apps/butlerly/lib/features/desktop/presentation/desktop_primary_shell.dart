@@ -238,6 +238,7 @@ class _WideBrand extends StatelessWidget {
     ),
   );
 }
+
 class _WideTopLevelItem extends StatelessWidget {
   const _WideTopLevelItem({
     this.semanticKey,
@@ -381,4 +382,3 @@ class _WideNavigationSurface extends StatelessWidget {
     ),
   );
 }
-
