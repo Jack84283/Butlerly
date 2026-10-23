@@ -9,6 +9,7 @@ import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_transaction_item.dart';
+import 'package:butlerly/features/desktop/presentation/desktop_transaction_detail_split_view.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_record_list.dart';
@@ -52,6 +53,7 @@ class _ReviewPageState extends State<ReviewPage> {
   late Future<List<DuplicateCandidateGroup>> _duplicateGroups;
   late Future<TransactionMasterDataSnapshot> _masterData;
   _ReviewView _view = _ReviewView.needsReview;
+  _ReviewEntry? _selectedReview;
   String? _loadedLanguageCode;
 
   FinanceServices? get _finance => services.isRegistered<FinanceServices>()
@@ -401,6 +403,84 @@ class _ReviewPageState extends State<ReviewPage> {
     }
   }
 
+  void _selectReview(_ReviewEntry entry) {
+    if (ButlerlyLayoutMode.forWidth(MediaQuery.sizeOf(context).width) ==
+        ButlerlyLayoutMode.wide) {
+      setState(() => _selectedReview = entry);
+    } else {
+      _openReview(entry);
+    }
+  }
+
+  Widget _desktopReviewPanel(_ReviewEntry entry) => Scaffold(
+    appBar: AppBar(
+      title: Text(context.l10n.text('needsReview')),
+      automaticallyImplyLeading: false,
+      actions: [
+        IconButton(
+          key: const ValueKey('desktop-needs-review-close'),
+          tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+          icon: const Icon(Icons.close),
+          onPressed: () => setState(() => _selectedReview = null),
+        ),
+      ],
+    ),
+    body: ButlerlyPage(
+      children: [
+        for (final item in entry.items)
+          if (item.reason == ReviewIssueReason.normalizationMissing.name)
+            _NormalizationReviewCard(
+              item: item,
+              finance: _finance!,
+              onDone: () {
+                if (mounted) {
+                  setState(() => _selectedReview = null);
+                  _refresh();
+                }
+              },
+            )
+          else
+            _ReviewTransactionCard(
+              item: item,
+              finance: _finance!,
+              masterData: _masterData,
+              reason: _localizedReviewDetail(item, context),
+              recommendation: context.l10n.text('reviewRecommendation'),
+              primaryLabel: context.l10n.text(
+                item.reason == ReviewIssueReason.merchantNeedsReview.name
+                    ? 'dismiss'
+                    : 'resolve',
+              ),
+              onPrimary: () async {
+                final closed = await _close(
+                  item,
+                  dismiss: item.reason ==
+                      ReviewIssueReason.merchantNeedsReview.name,
+                );
+                if (closed && mounted) {
+                  setState(() => _selectedReview = null);
+                }
+              },
+              editLabel: context.l10n.text('edit'),
+              onEdit: () {
+                setState(() => _selectedReview = null);
+                _openTransaction(item);
+              },
+              dismissLabel:
+                  item.reason == ReviewIssueReason.merchantNeedsReview.name
+                  ? null
+                  : context.l10n.text('dismiss'),
+              onDismiss: () async {
+                final closed = await _close(item, dismiss: true);
+                if (closed && mounted) {
+                  setState(() => _selectedReview = null);
+                }
+              },
+            ),
+      ],
+    ),
+  );
+
   Future<void> _openReview(_ReviewEntry entry) async {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
@@ -508,7 +588,7 @@ class _ReviewPageState extends State<ReviewPage> {
         ],
       );
     }
-    return ButlerlyPage(
+    final page = ButlerlyPage(
       title: context.l10n.text('review'),
       onRefresh: _pullToRefresh,
       refreshKey: ValueKey('review-pull-to-refresh-${_view.name}'),
@@ -782,7 +862,7 @@ class _ReviewPageState extends State<ReviewPage> {
                                     'uncategorized',
                                   ),
                                   onTap: (transaction) =>
-                                      _openReview(byId[transaction.id]!),
+                                      _selectReview(byId[transaction.id]!),
                                 )
                               : TransactionRecordList(
                                   transactions: items
@@ -841,7 +921,7 @@ class _ReviewPageState extends State<ReviewPage> {
                                         );
                                       },
                                   onTap: (transaction) =>
-                                      _openReview(byId[transaction.id]!),
+                                      _selectReview(byId[transaction.id]!),
                                 ),
                         ),
                     ],
@@ -852,6 +932,13 @@ class _ReviewPageState extends State<ReviewPage> {
           ),
         const SizedBox(height: ButlerlySpacing.structural),
       ],
+    );
+    if (!desktop || _view != _ReviewView.needsReview) return page;
+    return DesktopTransactionDetailSplitView(
+      results: page,
+      detail: _selectedReview == null
+          ? null
+          : _desktopReviewPanel(_selectedReview!),
     );
   }
 }
