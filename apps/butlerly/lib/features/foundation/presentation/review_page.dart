@@ -404,7 +404,7 @@ class _ReviewPageState extends State<ReviewPage> {
   }
 
   void _selectReview(_ReviewEntry entry) {
-    if (ButlerlyLayoutMode.forWidth(MediaQuery.sizeOf(context).width) ==
+    if (effectiveButlerlyLayoutMode(context, MediaQuery.sizeOf(context).width) ==
         ButlerlyLayoutMode.wide) {
       setState(() => _selectedReview = entry);
     } else {
