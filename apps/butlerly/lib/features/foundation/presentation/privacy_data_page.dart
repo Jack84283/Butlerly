@@ -1,4 +1,5 @@
 import 'package:butlerly/app/locale/locale_provider.dart';
+import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
@@ -14,6 +15,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:path/path.dart' as path;
 import 'package:share_plus/share_plus.dart' as share;
 
@@ -467,9 +469,187 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     context,
   ).showSnackBar(SnackBar(content: Text(value)));
 
+  Widget _desktopPrivacyPage(BuildContext context) {
+    final l10n = context.l10n;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final backup = _DesktopPrivacyCard(
+      key: const ValueKey('desktop-privacy-backup'),
+      title: l10n.text('backupRecoveryTitle'),
+      description: l10n.text('backupRecoveryBody'),
+      icon: Icons.storage_outlined,
+      children: [
+        _DesktopPrivacyAction(
+          icon: Icons.backup_outlined,
+          label: l10n.backupText('backup'),
+          description: l10n.backupText('backupSubtitle'),
+          onTap: _busy ? null : _backup,
+        ),
+        _DesktopPrivacyAction(
+          icon: Icons.restore_outlined,
+          label: l10n.backupText('restoreBackup'),
+          description: l10n.backupText('restoreSubtitle'),
+          onTap: _busy ? null : _restore,
+        ),
+      ],
+    );
+    final export = _DesktopPrivacyCard(
+      key: const ValueKey('desktop-privacy-export'),
+      title: l10n.text('dataExportTitle'),
+      description: l10n.text('dataExportBody'),
+      icon: Icons.file_download_outlined,
+      children: [
+        _DesktopPrivacyAction(
+          icon: Icons.download_outlined,
+          label: l10n.text('exportToFile'),
+          description: l10n.text('exportScopeBody'),
+          onTap: _busy ? null : _export,
+        ),
+      ],
+    );
+    final management = _DesktopPrivacyCard(
+      key: const ValueKey('desktop-privacy-management'),
+      title: l10n.text('dataManagementTitle'),
+      description: l10n.text('dataManagementBody'),
+      icon: Icons.settings_outlined,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(
+            vertical: ButlerlySpacing.standard,
+          ),
+          child: Text(
+            l10n.text('privacyScopeBody'),
+            style: _subtitleStyle(context),
+          ),
+        ),
+      ],
+    );
+    final danger = _DesktopPrivacyCard(
+      key: const ValueKey('desktop-privacy-danger'),
+      title: l10n.text('dangerZoneTitle'),
+      description: l10n.text('dangerZoneBody'),
+      icon: Icons.warning_amber_rounded,
+      danger: true,
+      children: [
+        _DesktopPrivacyAction(
+          icon: Icons.delete_forever_outlined,
+          label: l10n.text('resetAllData'),
+          description: l10n.text('eraseScopeBody'),
+          danger: true,
+          onTap: _busy ? null : _confirmErase,
+        ),
+      ],
+    );
+    return ButlerlyPage(
+      title: l10n.text('privacyAndData'),
+      subtitle: l10n.text('desktopPrivacySubtitle'),
+      fullWidth: true,
+      leading: IconButton(
+        tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+        icon: const Icon(Icons.arrow_back_rounded),
+        onPressed: () => context.canPop() ? context.pop() : context.go('/settings'),
+      ),
+      children: [
+        Container(
+          key: const ValueKey('desktop-privacy-local-banner'),
+          padding: const EdgeInsets.all(ButlerlySpacing.standard),
+          decoration: BoxDecoration(
+            color: dark ? const Color(0xFF1E342B) : const Color(0xFFE5F7ED),
+            border: Border.all(
+              color: dark ? const Color(0xFF2A4438) : const Color(0xFFCBE6D7),
+            ),
+            borderRadius: BorderRadius.circular(ButlerlyRadius.card),
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 19,
+                backgroundColor: dark
+                    ? const Color(0xFF2E875C)
+                    : const Color(0xFFB6E9CD),
+                child: Icon(
+                  Icons.shield_outlined,
+                  color: context.colors.success,
+                ),
+              ),
+              const SizedBox(width: ButlerlySpacing.standard),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l10n.text('desktopLocalWorkspace'),
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      l10n.text('desktopPrivacyBannerBody'),
+                      style: _subtitleStyle(context),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: ButlerlySpacing.standard),
+              Icon(Icons.check_circle_rounded, color: context.colors.success),
+            ],
+          ),
+        ),
+        const SizedBox(height: ButlerlySpacing.standard),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth < 650) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  backup,
+                  const SizedBox(height: ButlerlySpacing.small),
+                  export,
+                  const SizedBox(height: ButlerlySpacing.small),
+                  management,
+                  const SizedBox(height: ButlerlySpacing.small),
+                  danger,
+                ],
+              );
+            }
+            return Column(
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: backup),
+                    const SizedBox(width: ButlerlySpacing.small),
+                    Expanded(child: export),
+                  ],
+                ),
+                const SizedBox(height: ButlerlySpacing.small),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: management),
+                    const SizedBox(width: ButlerlySpacing.small),
+                    Expanded(child: danger),
+                  ],
+                ),
+              ],
+            );
+          },
+        ),
+        if (_busy) const ButlerlyLoadingState(),
+        const SizedBox(height: ButlerlySpacing.section),
+      ],
+    );
+  }
+
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(context.l10n.text('privacyAndData'))),
+  Widget build(BuildContext context) {
+    if (effectiveButlerlyLayoutMode(
+          context,
+          MediaQuery.sizeOf(context).width,
+        ) == ButlerlyLayoutMode.wide) {
+      return _desktopPrivacyPage(context);
+    }
+    return Scaffold(
+      appBar: AppBar(title: Text(context.l10n.text('privacyAndData'))),
     body: ButlerlyResponsiveBody(
       contentKey: const ValueKey('privacy-data-content'),
       child: ListView(
@@ -527,6 +707,135 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           ),
           if (_busy) const ButlerlyLoadingState(),
         ],
+      ),
+    ),
+    );
+  }
+}
+
+class _DesktopPrivacyCard extends StatelessWidget {
+  const _DesktopPrivacyCard({
+    required this.title,
+    required this.description,
+    required this.icon,
+    required this.children,
+    this.danger = false,
+    super.key,
+  });
+
+  final String title;
+  final String description;
+  final IconData icon;
+  final List<Widget> children;
+  final bool danger;
+
+  @override
+  Widget build(BuildContext context) => ButlerlyCard(
+    padding: const EdgeInsets.all(ButlerlySpacing.standard),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Icon(
+              icon,
+              size: 24,
+              color: danger
+                  ? Theme.of(context).colorScheme.error
+                  : context.colors.primaryText,
+            ),
+            const SizedBox(width: ButlerlySpacing.standard),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: danger ? Theme.of(context).colorScheme.error : null,
+                    ),
+                  ),
+                  const SizedBox(height: ButlerlySpacing.xxs),
+                  Text(description, style: _subtitleStyle(context)),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: ButlerlySpacing.small),
+        Divider(height: 1, thickness: 1, color: context.colors.cardDivider),
+        for (var i = 0; i < children.length; i++) ...[
+          if (i > 0)
+            Divider(height: 1, thickness: 1, color: context.colors.cardDivider),
+          children[i],
+        ],
+      ],
+    ),
+  );
+}
+
+class _DesktopPrivacyAction extends StatelessWidget {
+  const _DesktopPrivacyAction({
+    required this.icon,
+    required this.label,
+    required this.description,
+    required this.onTap,
+    this.danger = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final String description;
+  final VoidCallback? onTap;
+  final bool danger;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    type: MaterialType.transparency,
+    child: InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: ButlerlySpacing.micro,
+          vertical: ButlerlySpacing.small,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              size: 19,
+              color: danger
+                  ? Theme.of(context).colorScheme.error
+                  : context.colors.secondaryText,
+            ),
+            const SizedBox(width: ButlerlySpacing.standard),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: danger
+                          ? Theme.of(context).colorScheme.error
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(height: ButlerlySpacing.xxs),
+                  Text(description, style: _subtitleStyle(context)),
+                ],
+              ),
+            ),
+            const SizedBox(width: ButlerlySpacing.compact),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: context.colors.tertiaryText,
+              size: 18,
+            ),
+          ],
+        ),
       ),
     ),
   );
