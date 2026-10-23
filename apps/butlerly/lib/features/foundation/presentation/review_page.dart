@@ -404,7 +404,10 @@ class _ReviewPageState extends State<ReviewPage> {
   }
 
   void _selectReview(_ReviewEntry entry) {
-    if (effectiveButlerlyLayoutMode(context, MediaQuery.sizeOf(context).width) ==
+    if (effectiveButlerlyLayoutMode(
+          context,
+          MediaQuery.sizeOf(context).width,
+        ) ==
         ButlerlyLayoutMode.wide) {
       setState(() => _selectedReview = entry);
     } else {
@@ -454,8 +457,8 @@ class _ReviewPageState extends State<ReviewPage> {
               onPrimary: () async {
                 final closed = await _close(
                   item,
-                  dismiss: item.reason ==
-                      ReviewIssueReason.merchantNeedsReview.name,
+                  dismiss:
+                      item.reason == ReviewIssueReason.merchantNeedsReview.name,
                 );
                 if (closed && mounted) {
                   setState(() => _selectedReview = null);
