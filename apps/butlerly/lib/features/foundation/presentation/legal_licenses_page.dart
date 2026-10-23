@@ -30,68 +30,68 @@ class LegalLicensesPage extends StatelessWidget {
     if (effectiveButlerlyLayoutMode(
           context,
           MediaQuery.sizeOf(context).width,
-        ) == ButlerlyLayoutMode.wide) {
+        ) ==
+        ButlerlyLayoutMode.wide) {
       return const _DesktopLegalLicensesPage();
     }
     return ButlerlyPage(
-    title: context.l10n.text('legalLicenses'),
-    leading: IconButton(
-      tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-      icon: const Icon(Icons.arrow_back_rounded),
-      onPressed: () {
-        if (Navigator.of(context).canPop()) {
-          Navigator.of(context).pop();
-        } else {
-          context.go('/settings');
-        }
-      },
-    ),
-    children: [
-      ButlerlyCard(
-        child: ListTile(
-          leading: Icon(
-            Icons.info_outline_rounded,
-            color: context.colors.interactive,
-          ),
-          title: Text(context.l10n.text('appName')),
-          subtitle: FutureBuilder<String>(
-            future: _bundledVersion,
-            builder: (context, snapshot) {
-              return Text('Version ${snapshot.data ?? '—'}');
-            },
+      title: context.l10n.text('legalLicenses'),
+      leading: IconButton(
+        tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+        icon: const Icon(Icons.arrow_back_rounded),
+        onPressed: () {
+          if (Navigator.of(context).canPop()) {
+            Navigator.of(context).pop();
+          } else {
+            context.go('/settings');
+          }
+        },
+      ),
+      children: [
+        ButlerlyCard(
+          child: ListTile(
+            leading: Icon(
+              Icons.info_outline_rounded,
+              color: context.colors.interactive,
+            ),
+            title: Text(context.l10n.text('appName')),
+            subtitle: FutureBuilder<String>(
+              future: _bundledVersion,
+              builder: (context, snapshot) {
+                return Text('Version ${snapshot.data ?? '—'}');
+              },
+            ),
           ),
         ),
-      ),
-      const SizedBox(height: ButlerlySpacing.section),
-      ButlerlyCard(
-        padding: EdgeInsets.zero,
-        child: ButlerlySeparatedList(
-          children: [
-            for (final document in _documents)
-              ListTile(
-                leading: Icon(
-                  Icons.description_outlined,
-                  color: context.colors.interactive,
-                ),
-                title: Text(context.l10n.text(document.titleKey)),
-                trailing: Icon(
-                  Icons.chevron_right_rounded,
-                  color: context.colors.interactive,
-                ),
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => LegalDocumentPage(document: document),
+        const SizedBox(height: ButlerlySpacing.section),
+        ButlerlyCard(
+          padding: EdgeInsets.zero,
+          child: ButlerlySeparatedList(
+            children: [
+              for (final document in _documents)
+                ListTile(
+                  leading: Icon(
+                    Icons.description_outlined,
+                    color: context.colors.interactive,
+                  ),
+                  title: Text(context.l10n.text(document.titleKey)),
+                  trailing: Icon(
+                    Icons.chevron_right_rounded,
+                    color: context.colors.interactive,
+                  ),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => LegalDocumentPage(document: document),
+                    ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
-      ),
-    ],
+      ],
     );
   }
 }
-
 
 class _DesktopLegalLicensesPage extends StatefulWidget {
   const _DesktopLegalLicensesPage();
@@ -108,8 +108,10 @@ class _DesktopLegalLicensesPageState extends State<_DesktopLegalLicensesPage> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final selected = _documents[_selectedDocument];
-    final readerHeight = (MediaQuery.sizeOf(context).height - 190)
-        .clamp(440.0, 950.0);
+    final readerHeight = (MediaQuery.sizeOf(context).height - 190).clamp(
+      440.0,
+      950.0,
+    );
 
     final documentList = ButlerlyCard(
       padding: const EdgeInsets.all(ButlerlySpacing.standard),
@@ -118,19 +120,17 @@ class _DesktopLegalLicensesPageState extends State<_DesktopLegalLicensesPage> {
         children: [
           Text(
             l10n.text('desktopLegalDocuments'),
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: ButlerlySpacing.standard),
           Expanded(
             child: ListView.separated(
               key: const ValueKey('desktop-legal-document-list'),
               itemCount: _documents.length,
-              separatorBuilder: (_, _) => Divider(
-                height: 1,
-                color: context.colors.cardDivider,
-              ),
+              separatorBuilder: (_, _) =>
+                  Divider(height: 1, color: context.colors.cardDivider),
               itemBuilder: (context, index) {
                 final document = _documents[index];
                 final active = index == _selectedDocument;
@@ -156,9 +156,7 @@ class _DesktopLegalLicensesPageState extends State<_DesktopLegalLicensesPage> {
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: active ? context.colors.interactive : null,
-                        fontWeight: active
-                            ? FontWeight.w600
-                            : FontWeight.w400,
+                        fontWeight: active ? FontWeight.w600 : FontWeight.w400,
                       ),
                     ),
                     selected: active,
@@ -217,9 +215,9 @@ class _DesktopLegalLicensesPageState extends State<_DesktopLegalLicensesPage> {
                     constraints: const BoxConstraints(maxWidth: 840),
                     child: SelectableText(
                       snapshot.requireData,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        height: 1.6,
-                      ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(height: 1.6),
                     ),
                   ),
                 );
@@ -253,7 +251,8 @@ class _DesktopLegalLicensesPageState extends State<_DesktopLegalLicensesPage> {
       leading: IconButton(
         tooltip: MaterialLocalizations.of(context).backButtonTooltip,
         icon: const Icon(Icons.arrow_back_rounded),
-        onPressed: () => context.canPop() ? context.pop() : context.go('/settings'),
+        onPressed: () =>
+            context.canPop() ? context.pop() : context.go('/settings'),
       ),
       children: [
         LayoutBuilder(
