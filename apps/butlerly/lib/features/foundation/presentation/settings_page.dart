@@ -828,7 +828,9 @@ class _DesktopMoreRow extends StatelessWidget {
               ),
               if (value != null) ...[
                 const SizedBox(width: ButlerlySpacing.compact),
-                Flexible(
+                SizedBox(
+                  key: const ValueKey('desktop-more-value-column'),
+                  width: 140,
                   child: Text(
                     value!,
                     textAlign: TextAlign.end,
