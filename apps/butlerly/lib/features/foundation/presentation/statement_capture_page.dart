@@ -593,7 +593,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                   constraints: BoxConstraints(minWidth: constraints.maxWidth),
                   child: DataTable(
                     showCheckboxColumn: false,
-                    headingRowHeight: 24,
+                    headingRowHeight: ButlerlyTableTokens.headingHeight,
                     showBottomBorder: true,
                     horizontalMargin: 0,
                     columnSpacing: 0,
@@ -601,25 +601,57 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                       DataColumn(
                         label: SizedBox(
                           width: statementWidth,
-                          child: Text(context.l10n.text('statements')),
+                          child: Padding(
+                            padding: const EdgeInsets.only(
+                              bottom: ButlerlyTableTokens.headerToRowsGap,
+                            ),
+                            child: Text(
+                              context.l10n.text('statements'),
+                              style: ButlerlyTableTokens.headerTextStyle(context),
+                            ),
+                          ),
                         ),
                       ),
                       DataColumn(
                         label: SizedBox(
                           width: 180,
-                          child: Text(context.l10n.text('paymentSource')),
+                          child: Padding(
+                            padding: const EdgeInsets.only(
+                              bottom: ButlerlyTableTokens.headerToRowsGap,
+                            ),
+                            child: Text(
+                              context.l10n.text('paymentSource'),
+                              style: ButlerlyTableTokens.headerTextStyle(context),
+                            ),
+                          ),
                         ),
                       ),
                       DataColumn(
                         label: SizedBox(
                           width: 180,
-                          child: Text(context.l10n.text('status')),
+                          child: Padding(
+                            padding: const EdgeInsets.only(
+                              bottom: ButlerlyTableTokens.headerToRowsGap,
+                            ),
+                            child: Text(
+                              context.l10n.text('status'),
+                              style: ButlerlyTableTokens.headerTextStyle(context),
+                            ),
+                          ),
                         ),
                       ),
                       DataColumn(
                         label: SizedBox(
                           width: 180,
-                          child: Text(context.l10n.text('delete')),
+                          child: Padding(
+                            padding: const EdgeInsets.only(
+                              bottom: ButlerlyTableTokens.headerToRowsGap,
+                            ),
+                            child: Text(
+                              context.l10n.text('delete'),
+                              style: ButlerlyTableTokens.headerTextStyle(context),
+                            ),
+                          ),
                         ),
                       ),
                     ],
