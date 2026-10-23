@@ -583,95 +583,125 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
         child: ButlerlyDesktopInnerCard(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final statementWidth =
-                  (constraints.maxWidth - 540).clamp(220.0, double.infinity);
+              final statementWidth = (constraints.maxWidth - 540).clamp(
+                220.0,
+                double.infinity,
+              );
               return SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                child: DataTable(
-                  showCheckboxColumn: false,
-                  headingRowHeight: 40,
-                  horizontalMargin: 0,
-                  columnSpacing: 0,
-                  columns: [
-                    DataColumn(label: SizedBox(width: statementWidth, child: Text(context.l10n.text('statements')))),
-                    DataColumn(label: SizedBox(width: 180, child: Text(context.l10n.text('paymentSource')))),
-                    DataColumn(label: SizedBox(width: 180, child: Text(context.l10n.text('status')))),
-                    DataColumn(label: SizedBox(width: 180, child: Text(context.l10n.text('delete')))),
-                  ],
-                  rows: [
-                    for (final item in _statements)
-                      DataRow(
-                        key: ValueKey('desktop-statement-row-${item.id}'),
-                        selected: _selectedStatementId == item.id,
-                        onSelectChanged: (_) => _open(item),
-                        cells: [
-                          DataCell(
-                            SizedBox(
-                              width: statementWidth,
-                              child: Text(
-                                statementDisplayTitle(context, item, _sources),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ),
-                          DataCell(
-                            SizedBox(
-                              width: 180,
-                              child: Text(
-                                _sources
-                                        .where(
-                                          (source) =>
-                                              source.id.value ==
-                                              item.paymentSourceId,
-                                        )
-                                        .firstOrNull
-                                        ?.name ??
-                                    '—',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ),
-                          DataCell(
-                            SizedBox(
-                              width: 180,
-                              child: Text(
-                                item.extractionMessage == null
-                                    ? (item.paymentSourceId == null
-                                          ? context.l10n.text(
-                                              'choosePaymentSourceToContinue',
-                                            )
-                                          : context.l10n.text(
-                                              'reviewInProgress',
-                                            ))
-                                    : _statementStatusLabel(
-                                        context,
-                                        item.extractionMessage,
-                                      ),
-                              ),
-                            ),
-                          ),
-                          DataCell(
-                            SizedBox(
-                              width: 180,
-                              child: Align(
-                                alignment: Alignment.centerLeft,
-                                child: IconButton(
-                              tooltip: context.l10n.text('deleteStatement'),
-                              onPressed: () => _deleteUnprocessed(item),
-                              icon: const Icon(Icons.delete_outline_rounded),
+                scrollDirection: Axis.horizontal,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                  child: DataTable(
+                    showCheckboxColumn: false,
+                    headingRowHeight: 40,
+                    horizontalMargin: 0,
+                    columnSpacing: 0,
+                    columns: [
+                      DataColumn(
+                        label: SizedBox(
+                          width: statementWidth,
+                          child: Text(context.l10n.text('statements')),
+                        ),
+                      ),
+                      DataColumn(
+                        label: SizedBox(
+                          width: 180,
+                          child: Text(context.l10n.text('paymentSource')),
+                        ),
+                      ),
+                      DataColumn(
+                        label: SizedBox(
+                          width: 180,
+                          child: Text(context.l10n.text('status')),
+                        ),
+                      ),
+                      DataColumn(
+                        label: SizedBox(
+                          width: 180,
+                          child: Text(context.l10n.text('delete')),
+                        ),
+                      ),
+                    ],
+                    rows: [
+                      for (final item in _statements)
+                        DataRow(
+                          key: ValueKey('desktop-statement-row-${item.id}'),
+                          selected: _selectedStatementId == item.id,
+                          onSelectChanged: (_) => _open(item),
+                          cells: [
+                            DataCell(
+                              SizedBox(
+                                width: statementWidth,
+                                child: Text(
+                                  statementDisplayTitle(
+                                    context,
+                                    item,
+                                    _sources,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                  ],
+                            DataCell(
+                              SizedBox(
+                                width: 180,
+                                child: Text(
+                                  _sources
+                                          .where(
+                                            (source) =>
+                                                source.id.value ==
+                                                item.paymentSourceId,
+                                          )
+                                          .firstOrNull
+                                          ?.name ??
+                                      '—',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                            DataCell(
+                              SizedBox(
+                                width: 180,
+                                child: Text(
+                                  item.extractionMessage == null
+                                      ? (item.paymentSourceId == null
+                                            ? context.l10n.text(
+                                                'choosePaymentSourceToContinue',
+                                              )
+                                            : context.l10n.text(
+                                                'reviewInProgress',
+                                              ))
+                                      : _statementStatusLabel(
+                                          context,
+                                          item.extractionMessage,
+                                        ),
+                                ),
+                              ),
+                            ),
+                            DataCell(
+                              SizedBox(
+                                width: 180,
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: IconButton(
+                                    tooltip: context.l10n.text(
+                                      'deleteStatement',
+                                    ),
+                                    onPressed: () => _deleteUnprocessed(item),
+                                    icon: const Icon(
+                                      Icons.delete_outline_rounded,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
                 ),
-              ),
               );
             },
           ),
