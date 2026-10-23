@@ -583,137 +583,97 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
         child: ButlerlyDesktopInnerCard(
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final statementWidth = (constraints.maxWidth - 540).clamp(
-                220.0,
-                double.infinity,
+              const fixedColumnsWidth = 540.0;
+              const minimumStatementWidth = 220.0;
+              final statementWidth = (constraints.maxWidth - fixedColumnsWidth)
+                  .clamp(minimumStatementWidth, double.infinity);
+              final tableWidth = statementWidth + fixedColumnsWidth;
+
+              Widget header(String key, double width) => SizedBox(
+                width: width,
+                child: Text(
+                  context.l10n.text(key),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: ButlerlyTableTokens.headerTextStyle(context),
+                ),
               );
-              return SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minWidth: constraints.maxWidth),
-                  child: DataTable(
-                    showCheckboxColumn: false,
-                    headingRowHeight: ButlerlyTableTokens.headingHeight,
-                    showBottomBorder: true,
-                    horizontalMargin: 0,
-                    columnSpacing: 0,
-                    columns: [
-                      DataColumn(
-                        label: SizedBox(
-                          width: statementWidth,
-                          child: Padding(
-                            padding: const EdgeInsets.only(
-                              bottom: ButlerlyTableTokens.headerToRowsGap,
-                            ),
-                            child: Text(
-                              context.l10n.text('statements'),
-                              style: ButlerlyTableTokens.headerTextStyle(context),
-                            ),
-                          ),
-                        ),
-                      ),
-                      DataColumn(
-                        label: SizedBox(
-                          width: 180,
-                          child: Padding(
-                            padding: const EdgeInsets.only(
-                              bottom: ButlerlyTableTokens.headerToRowsGap,
-                            ),
-                            child: Text(
-                              context.l10n.text('paymentSource'),
-                              style: ButlerlyTableTokens.headerTextStyle(context),
-                            ),
-                          ),
-                        ),
-                      ),
-                      DataColumn(
-                        label: SizedBox(
-                          width: 180,
-                          child: Padding(
-                            padding: const EdgeInsets.only(
-                              bottom: ButlerlyTableTokens.headerToRowsGap,
-                            ),
-                            child: Text(
-                              context.l10n.text('status'),
-                              style: ButlerlyTableTokens.headerTextStyle(context),
-                            ),
-                          ),
-                        ),
-                      ),
-                      DataColumn(
-                        label: SizedBox(
-                          width: 180,
-                          child: Padding(
-                            padding: const EdgeInsets.only(
-                              bottom: ButlerlyTableTokens.headerToRowsGap,
-                            ),
-                            child: Text(
-                              context.l10n.text('delete'),
-                              style: ButlerlyTableTokens.headerTextStyle(context),
-                            ),
-                          ),
-                        ),
-                      ),
+
+              Widget cell(String value, double width) => SizedBox(
+                width: width,
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              );
+
+              Widget divider() => Divider(
+                height: ButlerlyTableTokens.dividerThickness,
+                thickness: ButlerlyTableTokens.dividerThickness,
+                color: ButlerlyTableTokens.dividerColor(context),
+              );
+
+              final table = Column(
+                key: const ValueKey('desktop-statements-table'),
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      header('statements', statementWidth),
+                      header('paymentSource', 180),
+                      header('status', 180),
+                      header('delete', 180),
                     ],
-                    rows: [
-                      for (final item in _statements)
-                        DataRow(
-                          key: ValueKey('desktop-statement-row-${item.id}'),
-                          selected: _selectedStatementId == item.id,
-                          onSelectChanged: (_) => _open(item),
-                          cells: [
-                            DataCell(
-                              SizedBox(
-                                width: statementWidth,
-                                child: Text(
-                                  statementDisplayTitle(
-                                    context,
-                                    item,
-                                    _sources,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                  ),
+                  const SizedBox(height: ButlerlyTableTokens.headerToRowsGap),
+                  divider(),
+                  for (final item in _statements) ...[
+                    Material(
+                      type: MaterialType.transparency,
+                      child: InkWell(
+                        key: ValueKey('desktop-statement-row-${item.id}'),
+                        onTap: () => _open(item),
+                        child: Container(
+                          color: _selectedStatementId == item.id
+                              ? Theme.of(context).colorScheme.primaryContainer
+                              : null,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: ButlerlyTableTokens.rowVerticalPadding,
+                          ),
+                          child: Row(
+                            children: [
+                              cell(
+                                statementDisplayTitle(context, item, _sources),
+                                statementWidth,
                               ),
-                            ),
-                            DataCell(
-                              SizedBox(
-                                width: 180,
-                                child: Text(
-                                  _sources
-                                          .where(
-                                            (source) =>
-                                                source.id.value ==
-                                                item.paymentSourceId,
-                                          )
-                                          .firstOrNull
-                                          ?.name ??
-                                      '—',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                              cell(
+                                _sources
+                                        .where(
+                                          (source) =>
+                                              source.id.value ==
+                                              item.paymentSourceId,
+                                        )
+                                        .firstOrNull
+                                        ?.name ??
+                                    '—',
+                                180,
                               ),
-                            ),
-                            DataCell(
-                              SizedBox(
-                                width: 180,
-                                child: Text(
-                                  item.extractionMessage == null
-                                      ? (item.paymentSourceId == null
-                                            ? context.l10n.text(
-                                                'choosePaymentSourceToContinue',
-                                              )
-                                            : context.l10n.text(
-                                                'reviewInProgress',
-                                              ))
-                                      : _statementStatusLabel(
-                                          context,
-                                          item.extractionMessage,
-                                        ),
-                                ),
+                              cell(
+                                item.extractionMessage == null
+                                    ? (item.paymentSourceId == null
+                                          ? context.l10n.text(
+                                              'choosePaymentSourceToContinue',
+                                            )
+                                          : context.l10n.text(
+                                              'reviewInProgress',
+                                            ))
+                                    : _statementStatusLabel(
+                                        context,
+                                        item.extractionMessage,
+                                      ),
+                                180,
                               ),
-                            ),
-                            DataCell(
                               SizedBox(
                                 width: 180,
                                 child: Align(
@@ -729,12 +689,20 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                                   ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                    ],
-                  ),
-                ),
+                      ),
+                    ),
+                    divider(),
+                  ],
+                ],
+              );
+              if (constraints.maxWidth >= tableWidth) return table;
+              return SingleChildScrollView(
+                key: const ValueKey('desktop-statements-horizontal-scroll'),
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(width: tableWidth, child: table),
               );
             },
           ),
