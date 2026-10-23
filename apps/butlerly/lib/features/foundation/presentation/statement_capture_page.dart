@@ -578,7 +578,9 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     padding: const EdgeInsets.all(ButlerlySpacing.pagePadding),
     children: [
       ButlerlyCard(
-        child: LayoutBuilder(
+        padding: const EdgeInsets.all(ButlerlyDesktopInnerCard.outerGutter),
+        child: ButlerlyDesktopInnerCard(
+          child: LayoutBuilder(
           builder: (context, constraints) => SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: ConstrainedBox(
@@ -652,6 +654,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                   ],
                 ),
             ],
+          ),
           ),
           ),
           ),
