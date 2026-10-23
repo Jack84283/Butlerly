@@ -331,22 +331,22 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       onTap: preference == null
                           ? null
                           : () => _chooseDesktopValue<bool>(
-                                label: l10n.text('externalAiConsentTitle'),
-                                value: preference.externalAiEnabled,
-                                options: [
-                                  DropdownMenuItem(
-                                    value: false,
-                                    child: Text(l10n.text('disabled')),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: true,
-                                    child: Text(l10n.text('enabled')),
-                                  ),
-                                ],
-                                onChanged: (value) => ref
-                                    .read(userPreferenceProvider.notifier)
-                                    .saveChanges(externalAiEnabled: value),
-                              ),
+                              label: l10n.text('externalAiConsentTitle'),
+                              value: preference.externalAiEnabled,
+                              options: [
+                                DropdownMenuItem(
+                                  value: false,
+                                  child: Text(l10n.text('disabled')),
+                                ),
+                                DropdownMenuItem(
+                                  value: true,
+                                  child: Text(l10n.text('enabled')),
+                                ),
+                              ],
+                              onChanged: (value) => ref
+                                  .read(userPreferenceProvider.notifier)
+                                  .saveChanges(externalAiEnabled: value),
+                            ),
                     ),
                     _DesktopMoreRow(
                       title: l10n.text('assistant'),
