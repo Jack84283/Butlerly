@@ -286,6 +286,10 @@ class AppLocalizations {
       'localOnlyStatus': 'Local workspace',
       'moreDescription': 'Preferences, privacy and application information',
       'localOnlyProtection': 'Local-only protection',
+      'externalAiConsentTitle': 'External AI consent',
+      'optional': 'Optional',
+      'enabled': 'Enabled',
+      'disabled': 'Disabled',
       'localOnlyProtectionBody':
           'Your financial data remains stored locally on this device.',
       'managePrivacyData': 'Manage privacy & data',
@@ -1162,6 +1166,10 @@ class AppLocalizations {
       'localOnlyStatus': '本地工作区',
       'moreDescription': '偏好设置、隐私及应用信息',
       'localOnlyProtection': '仅本地存储保护',
+      'externalAiConsentTitle': '外部 AI 授权',
+      'optional': '可选',
+      'enabled': '已启用',
+      'disabled': '已禁用',
       'localOnlyProtectionBody': '您的财务数据保存在此设备的本地存储中。',
       'managePrivacyData': '管理隐私和数据',
       'appVersionLabel': '应用版本',
@@ -1989,6 +1997,10 @@ class AppLocalizations {
       'moreDescription':
           'Preferencias, privacidad e información de la aplicación',
       'localOnlyProtection': 'Protección solo local',
+      'externalAiConsentTitle': 'Consentimiento para IA externa',
+      'optional': 'Opcional',
+      'enabled': 'Activado',
+      'disabled': 'Desactivado',
       'localOnlyProtectionBody':
           'Sus datos financieros permanecen almacenados localmente en este dispositivo.',
       'managePrivacyData': 'Gestionar privacidad y datos',
