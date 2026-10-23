@@ -678,14 +678,15 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                                 width: 180,
                                 child: Align(
                                   alignment: Alignment.centerLeft,
-                                  child: IconButton(
+                                  child: ButlerlyDesktopTableIconAction(
+                                    buttonKey: ValueKey(
+                                      'desktop-statement-delete-${item.id}',
+                                    ),
+                                    icon: Icons.delete_outline_rounded,
                                     tooltip: context.l10n.text(
                                       'deleteStatement',
                                     ),
                                     onPressed: () => _deleteUnprocessed(item),
-                                    icon: const Icon(
-                                      Icons.delete_outline_rounded,
-                                    ),
                                   ),
                                 ),
                               ),
