@@ -348,16 +348,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   key: _aboutKey,
                   title: l10n.text('about'),
                   icon: Icons.info_outline_rounded,
-                  children: [
-                    _DesktopMoreRow(
-                      title: l10n.text('legalLicenses'),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const LegalLicensesPage(),
-                        ),
-                      ),
-                    ),
-                  ],
                   footer: FutureBuilder<String>(
                     future: _desktopVersion,
                     builder: (context, snapshot) {
@@ -373,6 +363,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       );
                     },
                   ),
+                  children: [
+                    _DesktopMoreRow(
+                      title: l10n.text('legalLicenses'),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const LegalLicensesPage(),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             );
