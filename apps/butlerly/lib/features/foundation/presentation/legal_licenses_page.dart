@@ -103,6 +103,10 @@ class _DesktopLegalLicensesPage extends StatefulWidget {
 
 class _DesktopLegalLicensesPageState extends State<_DesktopLegalLicensesPage> {
   int _selectedDocument = 0;
+  late final List<Future<String>> _contents = [
+    for (final document in _documents)
+      rootBundle.loadString(document.assetPath),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -198,7 +202,7 @@ class _DesktopLegalLicensesPageState extends State<_DesktopLegalLicensesPage> {
           Expanded(
             child: FutureBuilder<String>(
               key: ValueKey('desktop-legal-reader-$_selectedDocument'),
-              future: rootBundle.loadString(selected.assetPath),
+              future: _contents[_selectedDocument],
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return Center(
@@ -285,19 +289,40 @@ class _DesktopLegalLicensesPageState extends State<_DesktopLegalLicensesPage> {
   }
 }
 
-class LegalDocumentPage extends StatelessWidget {
+class LegalDocumentPage extends StatefulWidget {
   const LegalDocumentPage({required this.document, super.key});
 
   final LegalDocument document;
 
   @override
+  State<LegalDocumentPage> createState() => _LegalDocumentPageState();
+}
+
+class _LegalDocumentPageState extends State<LegalDocumentPage> {
+  late Future<String> _contents;
+
+  @override
+  void initState() {
+    super.initState();
+    _contents = rootBundle.loadString(widget.document.assetPath);
+  }
+
+  @override
+  void didUpdateWidget(covariant LegalDocumentPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.document.assetPath != widget.document.assetPath) {
+      _contents = rootBundle.loadString(widget.document.assetPath);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(context.l10n.text(document.titleKey))),
+    appBar: AppBar(title: Text(context.l10n.text(widget.document.titleKey))),
     body: SafeArea(
       child: ButlerlyResponsiveBody(
         contentKey: const ValueKey('legal-document-content'),
         child: FutureBuilder<String>(
-          future: rootBundle.loadString(document.assetPath),
+          future: _contents,
           builder: (context, snapshot) {
             if (snapshot.hasError) {
               return Center(
