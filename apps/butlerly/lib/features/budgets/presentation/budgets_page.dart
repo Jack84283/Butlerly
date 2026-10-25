@@ -33,7 +33,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
         services<FinanceServices>(),
       );
     }
-    final result = await _management!.list();
+    final result = await _management.list();
     if (result is ApplicationSuccess<List<Budget>>) return result.value;
     throw StateError('Monthly budgets could not be loaded.');
   }
@@ -232,7 +232,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
         ),
       );
       if (submitted == null || _management == null) return;
-      final result = await _management!.save(submitted);
+      final result = await _management.save(submitted);
       if (result is! ApplicationSuccess<bool>) {
         throw StateError('Monthly budget could not be saved.');
       }
