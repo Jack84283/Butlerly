@@ -154,9 +154,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       tile(
         Icons.volume_up_outlined,
         l10n.text('transactionSaveSound'),
-        l10n.text(preference?.transactionSaveSoundEnabled ?? true
-            ? 'enabled'
-            : 'disabled'),
+        l10n.text(
+          preference?.transactionSaveSoundEnabled ?? true
+              ? 'enabled'
+              : 'disabled',
+        ),
         () => _chooseDesktopValue<bool>(
           label: l10n.text('transactionSaveSound'),
           value: preference?.transactionSaveSoundEnabled ?? true,
