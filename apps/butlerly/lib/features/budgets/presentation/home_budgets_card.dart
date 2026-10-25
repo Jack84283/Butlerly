@@ -280,7 +280,9 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
                           ),
                           child: LinearProgressIndicator(
                             minHeight: ButlerlySpacing.compact,
-                            color: spent > (double.tryParse(row.budget.amount) ?? 0)
+                            color:
+                                spent >
+                                    (double.tryParse(row.budget.amount) ?? 0)
                                 ? Theme.of(context).colorScheme.error
                                 : Theme.of(context).colorScheme.primary,
                             value:
