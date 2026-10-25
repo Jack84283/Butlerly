@@ -999,12 +999,9 @@ class AppLocalizations {
       'budgetTarget': '选择类别或商家',
       'budgetCurrency': '货币',
       'budgetAmount': '每月限额',
-      'budgetSaveFailure':
-          '无法保存预算。现有数据未更改。',
-      'budgetsEmpty':
-          '尚无预算。添加每月支出限额以开始使用。',
-      'budgetsMonthlyDescription':
-          '每月预算仅保存在本机，不会自动创建。',
+      'budgetSaveFailure': '无法保存预算。现有数据未更改。',
+      'budgetsEmpty': '尚无预算。添加每月支出限额以开始使用。',
+      'budgetsMonthlyDescription': '每月预算仅保存在本机，不会自动创建。',
       'transactionSaveSound': '交易保存提示音',
       'transactionSaveSoundBody': '成功保存交易后播放提示音。',
       'alipayBrand': '支付宝',
