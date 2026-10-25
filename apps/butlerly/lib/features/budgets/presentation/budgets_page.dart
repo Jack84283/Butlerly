@@ -1,10 +1,11 @@
-import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/features/budgets/application/budget_suggestions.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
-import 'package:butlerly_database/butlerly_database.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 
 /// User-managed monthly spending limits. Suggestions and utilization must
@@ -17,23 +18,24 @@ class BudgetsPage extends StatefulWidget {
 }
 
 class _BudgetsPageState extends State<BudgetsPage> {
-  late final SqliteBudgetRepository? _repository =
-      services.isRegistered<LocalDatabase>() &&
-          services<LocalDatabase>().status == DatabaseStatus.ready
-      ? SqliteBudgetRepository(services<LocalDatabase>().persistenceDatabase)
+  late final ManageBudgets? _management =
+      services.isRegistered<FinanceServices>()
+      ? services<FinanceServices>().manageBudgets
       : null;
-  late Future<List<StoredBudget>> _budgets = _load();
+  late Future<List<Budget>> _budgets = _load();
   TransactionMasterData? _masterData;
   String? _error;
 
-  Future<List<StoredBudget>> _load() async {
-    if (_repository == null) return [];
+  Future<List<Budget>> _load() async {
+    if (_management == null) return [];
     if (_masterData == null && services.isRegistered<FinanceServices>()) {
       _masterData = await TransactionMasterData.load(
         services<FinanceServices>(),
       );
     }
-    return _repository.list();
+    final result = await _management!.list();
+    if (result is ApplicationSuccess<List<Budget>>) return result.value;
+    throw StateError('Monthly budgets could not be loaded.');
   }
 
   void _refresh() {
@@ -51,7 +53,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
     _ => scope,
   };
 
-  String _displayName(StoredBudget budget) {
+  String _displayName(Budget budget) {
     if (budget.scopeId == null) return _scopeLabel(budget.scope);
     if (budget.scope == 'merchant') {
       return _masterData?.merchantName(budget.scopeId) ?? budget.scopeId ?? '';
@@ -59,7 +61,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
     return _masterData?.categoryName(budget.scopeId) ?? budget.scopeId!;
   }
 
-  Future<void> _edit({StoredBudget? existing}) async {
+  Future<void> _edit({Budget? existing}) async {
     final masterData = _masterData;
     final scopes = <String, Map<String, String>>{
       'category': {
@@ -82,7 +84,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
     String? suggestionMessage;
     var amountText = existing?.amount ?? '';
     try {
-      final submitted = await showDialog<StoredBudget>(
+      final submitted = await showButlerlyBottomSheet<Budget>(
         context: context,
         builder: (dialogContext) => StatefulBuilder(
           builder: (dialogContext, setDialogState) {
@@ -90,7 +92,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
             if (scope != 'overall' && !options.containsKey(scopeId)) {
               scopeId = options.keys.firstOrNull;
             }
-            return AlertDialog(
+            return ButlerlySheet(
               title: Text(context.l10n.text('budgetEdit')),
               content: SingleChildScrollView(
                 child: Column(
@@ -211,7 +213,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
                     }
                     Navigator.pop(
                       dialogContext,
-                      StoredBudget(
+                      Budget(
                         id:
                             existing?.id ??
                             DateTime.now().microsecondsSinceEpoch.toString(),
@@ -229,8 +231,11 @@ class _BudgetsPageState extends State<BudgetsPage> {
           },
         ),
       );
-      if (submitted == null || _repository == null) return;
-      await _repository.save(submitted);
+      if (submitted == null || _management == null) return;
+      final result = await _management!.save(submitted);
+      if (result is! ApplicationSuccess<bool>) {
+        throw StateError('Monthly budget could not be saved.');
+      }
       if (mounted) _refresh();
     } catch (_) {
       if (mounted) {
@@ -239,9 +244,12 @@ class _BudgetsPageState extends State<BudgetsPage> {
     }
   }
 
-  Future<void> _remove(StoredBudget budget) async {
+  Future<void> _remove(Budget budget) async {
     try {
-      await _repository?.remove(budget.id);
+      final result = await _management?.remove(budget.id);
+      if (result is! ApplicationSuccess<bool>) {
+        throw StateError('Monthly budget could not be deleted.');
+      }
       if (mounted) _refresh();
     } catch (_) {
       if (mounted) {
@@ -253,9 +261,9 @@ class _BudgetsPageState extends State<BudgetsPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(context.l10n.text('budgets'))),
-    body: _repository == null
+    body: _management == null
         ? Center(child: Text(context.l10n.text('localStorageUnavailable')))
-        : FutureBuilder<List<StoredBudget>>(
+        : FutureBuilder<List<Budget>>(
             future: _budgets,
             builder: (context, snapshot) {
               if (snapshot.hasError) {
@@ -293,7 +301,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
               );
             },
           ),
-    floatingActionButton: _repository == null
+    floatingActionButton: _management == null
         ? null
         : FloatingActionButton(
             onPressed: () => _edit(),
