@@ -571,14 +571,16 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                       height:
                                           _desktopHomeBreakdownContentHeight -
                                           2 * ButlerlySpacing.small,
-                                      child: SingleChildScrollView(
-                                        child: HomeBudgetsCard(
-                                          key: ValueKey(
-                                            'home-budgets-${current.year}-${current.month}',
+                                      child: ListView(
+                                        children: [
+                                          HomeBudgetsCard(
+                                            key: ValueKey(
+                                              'home-budgets-${current.year}-${current.month}',
+                                            ),
+                                            month: current,
+                                            embedded: true,
                                           ),
-                                          month: current,
-                                          embedded: true,
-                                        ),
+                                        ],
                                       ),
                                     ),
                                   ),
