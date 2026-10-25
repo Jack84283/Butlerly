@@ -43,7 +43,8 @@ class AppLocalizations {
           'Not enough comparable, complete historical spending data to suggest a budget.',
       'budgets': 'Budgets',
       'backupRestoreSettings': 'Backup & Restore',
-      'backupRestoreSettingsBody': 'Create an encrypted backup or restore your data',
+      'backupRestoreSettingsBody':
+          'Create an encrypted backup or restore your data',
       'budgetSettings': 'Budget Settings',
       'budgetSettingsBody': 'Manage your monthly budgets',
       'myBudgets': 'My Budgets',
@@ -1837,7 +1838,8 @@ class AppLocalizations {
           'No hay suficientes datos históricos completos y comparables para sugerir un presupuesto.',
       'budgets': 'Presupuestos',
       'backupRestoreSettings': 'Copia de seguridad y restauración',
-      'backupRestoreSettingsBody': 'Crear una copia cifrada o restaurar tus datos',
+      'backupRestoreSettingsBody':
+          'Crear una copia cifrada o restaurar tus datos',
       'budgetSettings': 'Configuración de presupuestos',
       'budgetSettingsBody': 'Administrar presupuestos mensuales',
       'myBudgets': 'Mis presupuestos',
