@@ -4,6 +4,7 @@ import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
+import 'package:butlerly/design_system/components/butlerly_budget_scope_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
@@ -100,27 +101,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
         return ButlerlyCategoryIcon(categoryId: categoryId);
       }
     }
-    final icon = switch (budget.scope) {
-      'merchant' => Icons.storefront_outlined,
-      'category' || 'subcategory' => Icons.category_outlined,
-      _ => Icons.savings_outlined,
-    };
-    return SizedBox.square(
-      dimension: ButlerlySize.categoryIconContainer,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.primaryContainer,
-          shape: BoxShape.circle,
-        ),
-        child: Center(
-          child: Icon(
-            icon,
-            size: ButlerlySize.categoryIconGlyph,
-            color: Theme.of(context).colorScheme.onPrimaryContainer,
-          ),
-        ),
-      ),
-    );
+    return ButlerlyBudgetScopeIcon(scope: budget.scope);
   }
 
   String _displayName(Budget budget) {
