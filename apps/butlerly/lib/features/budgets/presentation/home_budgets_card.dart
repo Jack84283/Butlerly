@@ -70,6 +70,8 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
   }
 
   Future<List<_BudgetProgress>> _load() async {
+    // Snapshot the selected month before awaiting storage or metadata.
+    final month = widget.month;
     if (!services.isRegistered<FinanceServices>()) return const [];
     final finance = services<FinanceServices>();
     final management = finance.manageBudgets;
@@ -87,8 +89,8 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
     }
     String date(DateTime value) =>
         '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
-    final first = DateTime(widget.month.year, widget.month.month, 1);
-    final last = DateTime(widget.month.year, widget.month.month + 1, 0);
+    final first = DateTime(month.year, month.month, 1);
+    final last = DateTime(month.year, month.month + 1, 0);
     final contextResult = await calculate.contextForDates(
       startDate: date(first),
       endDate: date(last),
