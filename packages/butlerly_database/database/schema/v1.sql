@@ -510,6 +510,8 @@ CREATE TABLE budgets (
           OR (scope != 'overall' AND scope_id IS NOT NULL)),
       UNIQUE (scope, scope_id, currency)
     );
+CREATE UNIQUE INDEX idx_budget_scope_currency
+  ON budgets(scope, COALESCE(scope_id, ''), currency);
 
 CREATE TABLE user_preferences (
       id INTEGER PRIMARY KEY NOT NULL CHECK(id = 1),
