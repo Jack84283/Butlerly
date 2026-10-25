@@ -42,6 +42,10 @@ class AppLocalizations {
       'budgetSuggestionUnavailable':
           'Not enough comparable, complete historical spending data to suggest a budget.',
       'budgets': 'Budgets',
+      'backupRestoreSettings': 'Backup & Restore',
+      'backupRestoreSettingsBody': 'Create an encrypted backup or restore your data',
+      'budgetSettings': 'Budget Settings',
+      'budgetSettingsBody': 'Manage your monthly budgets',
       'myBudgets': 'My Budgets',
       'budgetActualUnavailable': 'Actual spending unavailable for this month',
       'budgetLoadUnavailable': 'Unable to load saved budgets',
@@ -1000,6 +1004,10 @@ class AppLocalizations {
       'budgetSuggestionPreview': '根据前三个完整月份生成建议；保存前请确认。',
       'budgetSuggestionUnavailable': '历史支出数据不足或不可比较，无法提供预算建议。',
       'budgets': '预算',
+      'backupRestoreSettings': 'Copia de seguridad y restauración',
+      'backupRestoreSettingsBody': 'Crear una copia cifrada o restaurar tus datos',
+      'budgetSettings': 'Configuración de presupuestos',
+      'budgetSettingsBody': 'Administrar presupuestos mensuales',
       'myBudgets': '我的预算',
       'budgetActualUnavailable': '本月实际支出暂不可用',
       'budgetLoadUnavailable': '无法加载已保存的预算',
@@ -1828,6 +1836,10 @@ class AppLocalizations {
       'budgetSuggestionUnavailable':
           'No hay suficientes datos históricos completos y comparables para sugerir un presupuesto.',
       'budgets': 'Presupuestos',
+      'backupRestoreSettings': '备份与恢复',
+      'backupRestoreSettingsBody': '创建加密备份或恢复数据',
+      'budgetSettings': '预算设置',
+      'budgetSettingsBody': '管理月度预算',
       'myBudgets': 'Mis presupuestos',
       'budgetActualUnavailable':
           'No se puede consultar el gasto real de este mes',
