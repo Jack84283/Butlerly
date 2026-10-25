@@ -1829,7 +1829,8 @@ class AppLocalizations {
           'No hay suficientes datos históricos completos y comparables para sugerir un presupuesto.',
       'budgets': 'Presupuestos',
       'myBudgets': 'Mis presupuestos',
-      'budgetActualUnavailable': 'No se puede consultar el gasto real de este mes',
+      'budgetActualUnavailable':
+          'No se puede consultar el gasto real de este mes',
       'budgetLoadUnavailable': 'No se pueden cargar los presupuestos guardados',
       'budgetAdd': 'Añadir presupuesto',
       'budgetEdit': 'Presupuesto mensual',
