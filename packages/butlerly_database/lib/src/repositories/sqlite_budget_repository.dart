@@ -62,11 +62,11 @@ final class SqliteBudgetRepository implements BudgetRepository {
         'updated_at': now,
       };
       if (existing.isEmpty) {
-        await transaction.insert(
-          'budgets',
-          {'id': budget.id, ...fields, 'created_at': now},
-          conflictAlgorithm: ConflictAlgorithm.abort,
-        );
+        await transaction.insert('budgets', {
+          'id': budget.id,
+          ...fields,
+          'created_at': now,
+        }, conflictAlgorithm: ConflictAlgorithm.abort);
       } else {
         await transaction.update(
           'budgets',
