@@ -304,8 +304,8 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
                                     _name(row.budget),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context).textTheme.bodyLarge
-                                        ?.copyWith(fontWeight: FontWeight.bold),
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(fontWeight: FontWeight.w500),
                                   ),
                                 ),
                                 const SizedBox(width: ButlerlySpacing.compact),
