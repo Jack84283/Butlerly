@@ -1007,10 +1007,18 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
     }
     notifyTransactionChanged();
     if (result case ApplicationSuccess<TransactionDto>(value: final saved)) {
-      final soundEnabled = ProviderScope.containerOf(context, listen: false)
-          .read(userPreferenceProvider)
-          .value
-          ?.transactionSaveSoundEnabled ?? true;
+      // Standalone editor tests and embedded hosts may not install a
+      // ProviderScope. Treat feedback as optional, never a save dependency.
+      var soundEnabled = true;
+      try {
+        soundEnabled = ProviderScope.containerOf(context, listen: false)
+                .read(userPreferenceProvider)
+                .value
+                ?.transactionSaveSoundEnabled ??
+            true;
+      } on Exception {
+        // The transaction has already been saved successfully.
+      }
       if (soundEnabled) {
         // Audio is noncritical feedback: never roll back a persisted save if
         // the host does not support system sounds.
