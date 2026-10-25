@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
@@ -12,7 +14,6 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
-import 'dart:async';
 
 /// User-managed monthly spending limits. Suggestions and utilization must
 /// come from canonical normalized analysis, never raw transaction row totals.
@@ -93,7 +94,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
         MediaQuery.sizeOf(context).width,
       ) == ButlerlyLayoutMode.wide;
       final completion = Completer<Budget?>();
-      final editor = (BuildContext dialogContext) => StatefulBuilder(
+      Widget editor(BuildContext dialogContext) => StatefulBuilder(
           builder: (dialogContext, setDialogState) {
             return ButlerlySheet(
               title: Text(context.l10n.text('budgetEdit')),
@@ -303,8 +304,8 @@ class _BudgetsPageState extends State<BudgetsPage> {
         setState(() => _desktopEditor = null);
       }
       if (submitted == null || _management == null) return;
-      final result = await _management.save(submitted);
-      if (result is! ApplicationSuccess<bool>) {
+      final saved = await _management.save(submitted);
+      if (saved is! ApplicationSuccess<bool>) {
         throw StateError('Monthly budget could not be saved.');
       }
       if (mounted) _refresh();
