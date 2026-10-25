@@ -1,4 +1,5 @@
 import 'package:butlerly/app/locale/locale_provider.dart';
+import 'package:butlerly/features/budgets/application/budget_change_notifier.dart';
 import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
@@ -150,6 +151,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         refreshPresentation: () async {
           ref.invalidate(userPreferenceProvider);
           notifyTransactionChanged();
+          notifyBudgetsChanged();
         },
       );
       if (!mounted) return;
