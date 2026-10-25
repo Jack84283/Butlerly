@@ -28,7 +28,9 @@ class _BudgetsPageState extends State<BudgetsPage> {
   Future<List<StoredBudget>> _load() async {
     if (_repository == null) return [];
     if (_masterData == null && services.isRegistered<FinanceServices>()) {
-      _masterData = await TransactionMasterData.load(services<FinanceServices>());
+      _masterData = await TransactionMasterData.load(
+        services<FinanceServices>(),
+      );
     }
     return _repository!.list();
   }
@@ -59,14 +61,16 @@ class _BudgetsPageState extends State<BudgetsPage> {
   Future<void> _edit({StoredBudget? existing}) async {
     final masterData = _masterData;
     final scopes = <String, Map<String, String>>{
-      'category': masterData?.categoryNames.entries
+      'category':
+          masterData?.categoryNames.entries
               .where((entry) => masterData!.categoryParentId(entry.key) == null)
               .fold(<String, String>{}, (map, entry) {
                 map[entry.key] = entry.value;
                 return map;
               }) ??
           {},
-      'subcategory': masterData?.categoryNames.entries
+      'subcategory':
+          masterData?.categoryNames.entries
               .where((entry) => masterData!.categoryParentId(entry.key) != null)
               .fold(<String, String>{}, (map, entry) {
                 map[entry.key] = entry.value;
@@ -171,14 +175,17 @@ class _BudgetsPageState extends State<BudgetsPage> {
                 FilledButton(
                   onPressed: () {
                     final number = num.tryParse(amount.text.trim());
-                    if (number == null || !number.isFinite || number <= 0 ||
+                    if (number == null ||
+                        !number.isFinite ||
+                        number <= 0 ||
                         (scope != 'overall' && scopeId == null)) {
                       return;
                     }
                     Navigator.pop(
                       dialogContext,
                       StoredBudget(
-                        id: existing?.id ??
+                        id:
+                            existing?.id ??
                             DateTime.now().microsecondsSinceEpoch.toString(),
                         scope: scope,
                         scopeId: scope == 'overall' ? null : scopeId,
