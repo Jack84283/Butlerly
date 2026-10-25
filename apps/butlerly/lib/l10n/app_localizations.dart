@@ -37,8 +37,10 @@ class AppLocalizations {
   static const _strings = <String, Map<String, String>>{
     'en': {
       'budgetSuggest': 'Suggest from history',
-      'budgetSuggestionPreview': 'Suggestion uses three complete prior months. Review before saving.',
-      'budgetSuggestionUnavailable': 'Not enough comparable, complete historical spending data to suggest a budget.',
+      'budgetSuggestionPreview':
+          'Suggestion uses three complete prior months. Review before saving.',
+      'budgetSuggestionUnavailable':
+          'Not enough comparable, complete historical spending data to suggest a budget.',
       'budgets': 'Budgets',
       'budgetAdd': 'Add budget',
       'budgetEdit': 'Monthly budget',
@@ -1815,8 +1817,10 @@ class AppLocalizations {
     },
     'es': {
       'budgetSuggest': 'Sugerir según el historial',
-      'budgetSuggestionPreview': 'Sugerencia basada en los tres meses completos anteriores. Revísala antes de guardar.',
-      'budgetSuggestionUnavailable': 'No hay suficientes datos históricos completos y comparables para sugerir un presupuesto.',
+      'budgetSuggestionPreview':
+          'Sugerencia basada en los tres meses completos anteriores. Revísala antes de guardar.',
+      'budgetSuggestionUnavailable':
+          'No hay suficientes datos históricos completos y comparables para sugerir un presupuesto.',
       'budgets': 'Presupuestos',
       'budgetAdd': 'Añadir presupuesto',
       'budgetEdit': 'Presupuesto mensual',
