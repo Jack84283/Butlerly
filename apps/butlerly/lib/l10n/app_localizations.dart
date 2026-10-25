@@ -42,6 +42,7 @@ class AppLocalizations {
       'budgetSuggestionUnavailable':
           'Not enough comparable, complete historical spending data to suggest a budget.',
       'budgets': 'Budgets',
+      'myBudgets': 'My Budgets',
       'budgetAdd': 'Add budget',
       'budgetEdit': 'Monthly budget',
       'budgetScope': 'Budget type',
@@ -997,6 +998,7 @@ class AppLocalizations {
       'budgetSuggestionPreview': '根据前三个完整月份生成建议；保存前请确认。',
       'budgetSuggestionUnavailable': '历史支出数据不足或不可比较，无法提供预算建议。',
       'budgets': '预算',
+      'myBudgets': '我的预算',
       'budgetAdd': '添加预算',
       'budgetEdit': '月度预算',
       'budgetScope': '预算类型',
@@ -1822,6 +1824,7 @@ class AppLocalizations {
       'budgetSuggestionUnavailable':
           'No hay suficientes datos históricos completos y comparables para sugerir un presupuesto.',
       'budgets': 'Presupuestos',
+      'myBudgets': 'Mis presupuestos',
       'budgetAdd': 'Añadir presupuesto',
       'budgetEdit': 'Presupuesto mensual',
       'budgetScope': 'Tipo de presupuesto',
