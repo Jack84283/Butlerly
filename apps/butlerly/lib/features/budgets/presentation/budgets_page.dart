@@ -153,8 +153,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
                       onChanged: (value) =>
                           setDialogState(() => currency = value ?? currency),
                     ),
-                    if (suggestionMessage != null)
-                      Text(suggestionMessage!),
+                    if (suggestionMessage != null) Text(suggestionMessage!),
                     TextFormField(
                       key: ValueKey('budget-amount-$amountText'),
                       initialValue: amountText,
@@ -184,12 +183,14 @@ class _BudgetsPageState extends State<BudgetsPage> {
                           if (!dialogContext.mounted) return;
                           setDialogState(() {
                             if (suggestion == null) {
-                              suggestionMessage =
-                                  context.l10n.text('budgetSuggestionUnavailable');
+                              suggestionMessage = context.l10n.text(
+                                'budgetSuggestionUnavailable',
+                              );
                             } else {
                               amountText = suggestion.amount;
-                              suggestionMessage =
-                                  context.l10n.text('budgetSuggestionPreview');
+                              suggestionMessage = context.l10n.text(
+                                'budgetSuggestionPreview',
+                              );
                             }
                           });
                         },
