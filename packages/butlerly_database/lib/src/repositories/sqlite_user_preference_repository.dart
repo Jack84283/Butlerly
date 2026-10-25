@@ -25,6 +25,7 @@ final class SqliteUserPreferenceRepository implements UserPreferenceRepository {
         baseCurrency: CurrencyCode(row['base_currency']! as String),
         timeZoneId: row['time_zone_id']! as String,
         externalAiEnabled: row['external_ai_enabled'] == 1,
+        transactionSaveSoundEnabled: row['transaction_save_sound_enabled'] != 0,
         firstUseCompleted: row['first_use_completed'] == 1,
         appearance: row['appearance'] as String? ?? 'system',
         colorTheme: row['color_theme'] as String? ?? 'butlerRed',
@@ -50,6 +51,8 @@ final class SqliteUserPreferenceRepository implements UserPreferenceRepository {
         'base_currency': preference.baseCurrency.value,
         'time_zone_id': preference.timeZoneId,
         'external_ai_enabled': preference.externalAiEnabled ? 1 : 0,
+        'transaction_save_sound_enabled':
+            preference.transactionSaveSoundEnabled ? 1 : 0,
         'first_use_completed': preference.firstUseCompleted ? 1 : 0,
         'appearance': preference.appearance,
         'color_theme': preference.colorTheme,
