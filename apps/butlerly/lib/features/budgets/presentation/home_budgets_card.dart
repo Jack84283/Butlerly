@@ -238,9 +238,10 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
                 final percentage =
                     spent == null || limit <= 0 ? null : spent / limit * 100;
                 final overBudget = percentage != null && percentage > 100;
-                final progressColor = overBudget
-                    ? context.colors.error
-                    : context.colors.info;
+                final progressColor = (overBudget
+                        ? context.colors.error
+                        : context.colors.info)
+                    .withValues(alpha: 1.0);
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
