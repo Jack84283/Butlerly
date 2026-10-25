@@ -82,12 +82,28 @@ class _BudgetsPageState extends State<BudgetsPage> {
       if (ButlerlyCategoryIdentity.forBuiltInId(categoryId) != null) {
         return ButlerlyCategoryIcon(categoryId: categoryId);
       }
-      return const Icon(Icons.category_outlined);
     }
-    if (budget.scope == 'merchant') {
-      return const Icon(Icons.storefront_outlined);
-    }
-    return const Icon(Icons.savings_outlined);
+    final icon = switch (budget.scope) {
+      'merchant' => Icons.storefront_outlined,
+      'category' || 'subcategory' => Icons.category_outlined,
+      _ => Icons.savings_outlined,
+    };
+    return SizedBox.square(
+      dimension: ButlerlySize.categoryIconContainer,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primaryContainer,
+          shape: BoxShape.circle,
+        ),
+        child: Center(
+          child: Icon(
+            icon,
+            size: ButlerlySize.categoryIconGlyph,
+            color: Theme.of(context).colorScheme.onPrimaryContainer,
+          ),
+        ),
+      ),
+    );
   }
 
   String _displayName(Budget budget) {
