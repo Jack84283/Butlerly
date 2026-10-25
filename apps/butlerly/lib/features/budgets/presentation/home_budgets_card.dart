@@ -200,7 +200,7 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(context.l10n.text('budgetSaveFailure')),
+            Text(context.l10n.text('budgetLoadUnavailable')),
             const SizedBox(height: ButlerlySpacing.small),
             TextButton(
               onPressed: _refresh,
@@ -261,7 +261,7 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
                       const SizedBox(height: ButlerlySpacing.micro),
                       Text(
                         row.spent == null
-                            ? context.l10n.text('homeUnavailable')
+                            ? context.l10n.text('budgetActualUnavailable')
                             : '${row.spent!.toStringAsFixed(2)} / ${row.budget.amount} ${row.budget.currency}',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
