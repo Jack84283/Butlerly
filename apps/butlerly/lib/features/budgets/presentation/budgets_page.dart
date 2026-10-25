@@ -33,7 +33,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
         services<FinanceServices>(),
       );
     }
-    return _repository!.list();
+    return _repository.list();
   }
 
   void _refresh() {
@@ -54,7 +54,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
   String _displayName(StoredBudget budget) {
     if (budget.scopeId == null) return _scopeLabel(budget.scope);
     if (budget.scope == 'merchant') {
-      return _masterData?.merchantName(budget.scopeId) ?? budget.scopeId!;
+      return _masterData?.merchantName(budget.scopeId) ?? budget.scopeId;
     }
     return _masterData?.categoryName(budget.scopeId) ?? budget.scopeId!;
   }
@@ -62,22 +62,18 @@ class _BudgetsPageState extends State<BudgetsPage> {
   Future<void> _edit({StoredBudget? existing}) async {
     final masterData = _masterData;
     final scopes = <String, Map<String, String>>{
-      'category':
-          masterData?.categoryNames.entries
-              .where((entry) => masterData!.categoryParentId(entry.key) == null)
-              .fold(<String, String>{}, (map, entry) {
-                map[entry.key] = entry.value;
-                return map;
-              }) ??
-          {},
-      'subcategory':
-          masterData?.categoryNames.entries
-              .where((entry) => masterData!.categoryParentId(entry.key) != null)
-              .fold(<String, String>{}, (map, entry) {
-                map[entry.key] = entry.value;
-                return map;
-              }) ??
-          {},
+      'category': {
+        if (masterData != null)
+          for (final entry in masterData.categoryNames.entries)
+            if (masterData.categoryParentId(entry.key) == null)
+              entry.key: entry.value,
+      },
+      'subcategory': {
+        if (masterData != null)
+          for (final entry in masterData.categoryNames.entries)
+            if (masterData.categoryParentId(entry.key) != null)
+              entry.key: entry.value,
+      },
       'merchant': masterData?.merchantNames ?? {},
     };
     var scope = existing?.scope ?? 'overall';
