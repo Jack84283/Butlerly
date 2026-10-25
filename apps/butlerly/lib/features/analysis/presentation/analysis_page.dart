@@ -702,7 +702,8 @@ class _AnalysisContent extends StatelessWidget {
     final selectedMonth = DateTime.tryParse(
       analysisContext?.period.startDate ?? '',
     );
-    final budgetCard = selectedMonth == null
+    final budgetCard = selectedMonth == null ||
+            !services.isRegistered<FinanceServices>()
         ? null
         : HomeBudgetsCard(
             key: ValueKey(
