@@ -309,7 +309,12 @@ class _BudgetsPageState extends State<BudgetsPage> {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(context.l10n.text('budgetsMonthlyDescription')),
+                  Text(
+                    context.l10n.text('budgetsMonthlyDescription'),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                   const SizedBox(height: ButlerlySpacing.standard),
                   if (_error != null) Text(_error!),
                   if (snapshot.data!.isEmpty)
