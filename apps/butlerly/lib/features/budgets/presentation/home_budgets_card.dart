@@ -199,7 +199,9 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
       child: DecoratedBox(
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Theme.of(context).colorScheme.primaryContainer,
+          color: budget.scope == 'overall'
+              ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5)
+              : Theme.of(context).colorScheme.primaryContainer,
         ),
         child: Icon(
           glyph,
