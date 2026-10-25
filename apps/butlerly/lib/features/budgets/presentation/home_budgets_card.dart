@@ -1,8 +1,10 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
+import 'package:butlerly/design_system/components/butlerly_budget_scope_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_model.dart';
 import 'package:butlerly/features/budgets/application/budget_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
@@ -189,27 +191,7 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
         return ButlerlyCategoryIcon(categoryId: parent);
       }
     }
-    final glyph = budget.scope == 'merchant'
-        ? Icons.storefront_outlined
-        : budget.scope == 'overall'
-        ? Icons.savings_outlined
-        : Icons.category_outlined;
-    return SizedBox.square(
-      dimension: ButlerlySize.categoryIconContainer,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: budget.scope == 'overall'
-              ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.5)
-              : Theme.of(context).colorScheme.primaryContainer,
-        ),
-        child: Icon(
-          glyph,
-          size: ButlerlySize.categoryIconGlyph,
-          color: Theme.of(context).colorScheme.onPrimaryContainer,
-        ),
-      ),
-    );
+    return ButlerlyBudgetScopeIcon(scope: budget.scope);
   }
 
   Widget _contents() => FutureBuilder<List<_BudgetProgress>>(
@@ -257,8 +239,8 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
                     spent == null || limit <= 0 ? null : spent / limit * 100;
                 final overBudget = percentage != null && percentage > 100;
                 final progressColor = overBudget
-                    ? Theme.of(context).colorScheme.error
-                    : Theme.of(context).colorScheme.primary;
+                    ? context.colors.error
+                    : context.colors.info;
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
