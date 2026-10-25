@@ -8,40 +8,46 @@ import 'package:test/test.dart';
 void main() {
   setUpAll(sqfliteFfiInit);
 
-  test('transaction save sound preference persists through SQLite reload',
-      () async {
-    final directory = await Directory.systemTemp.createTemp('butlerly-sound-');
-    final path = '${directory.path}/preferences.db';
-    final schema = await File('database/schema/v1.sql').readAsString();
-
-    Future<ButlerlyDatabase> open() async {
-      final database = ButlerlyDatabase(
-        factory: databaseFactoryFfi,
-        path: path,
-        schemaSql: schema,
+  test(
+    'transaction save sound preference persists through SQLite reload',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'butlerly-sound-',
       );
-      await database.open();
-      return database;
-    }
+      final path = '${directory.path}/preferences.db';
+      final schema = await File('database/schema/v1.sql').readAsString();
 
-    try {
-      var database = await open();
-      var repository = SqliteUserPreferenceRepository(database);
-      await repository.save(UserPreference(
-        locale: 'en',
-        baseCurrency: CurrencyCode('USD'),
-        timeZoneId: 'UTC',
-        transactionSaveSoundEnabled: false,
-      ));
-      expect((await repository.load())?.transactionSaveSoundEnabled, isFalse);
-      await database.close();
+      Future<ButlerlyDatabase> open() async {
+        final database = ButlerlyDatabase(
+          factory: databaseFactoryFfi,
+          path: path,
+          schemaSql: schema,
+        );
+        await database.open();
+        return database;
+      }
 
-      database = await open();
-      repository = SqliteUserPreferenceRepository(database);
-      expect((await repository.load())?.transactionSaveSoundEnabled, isFalse);
-      await database.close();
-    } finally {
-      await directory.delete(recursive: true);
-    }
-  });
+      try {
+        var database = await open();
+        var repository = SqliteUserPreferenceRepository(database);
+        await repository.save(
+          UserPreference(
+            locale: 'en',
+            baseCurrency: CurrencyCode('USD'),
+            timeZoneId: 'UTC',
+            transactionSaveSoundEnabled: false,
+          ),
+        );
+        expect((await repository.load())?.transactionSaveSoundEnabled, isFalse);
+        await database.close();
+
+        database = await open();
+        repository = SqliteUserPreferenceRepository(database);
+        expect((await repository.load())?.transactionSaveSoundEnabled, isFalse);
+        await database.close();
+      } finally {
+        await directory.delete(recursive: true);
+      }
+    },
+  );
 }
