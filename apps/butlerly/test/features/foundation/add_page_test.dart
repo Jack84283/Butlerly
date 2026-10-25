@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 void main() {
-  testWidgets('shows five localized grouped actions and preserves navigation', (
+  testWidgets('shows six localized grouped actions and preserves navigation', (
     tester,
   ) async {
     final router = GoRouter(
@@ -34,6 +34,10 @@ void main() {
           builder: (_, _) => const Text('import from file destination'),
         ),
         GoRoute(
+          path: '/budgets',
+          builder: (_, _) => const Text('budgets destination'),
+        ),
+        GoRoute(
           path: '/payment-sources',
           builder: (_, _) => const Text('payment source destination'),
         ),
@@ -45,6 +49,7 @@ void main() {
     expect(find.byType(ButlerlyCard), findsNWidgets(2));
     expect(find.byType(Divider), findsNWidgets(3));
     expect(find.text('Add transaction manually'), findsOneWidget);
+    expect(find.text('Budgets'), findsWidgets);
     expect(find.text('Enter transaction details yourself'), findsOneWidget);
     expect(find.text('Scan receipt'), findsOneWidget);
     expect(
@@ -94,7 +99,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('payment source destination'), findsOneWidget);
   });
-  testWidgets('wide Add offers five cards across the right workspace', (
+  testWidgets('wide Add offers six cards across the right workspace', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1200, 900);
@@ -140,7 +145,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey('desktop-add-actions')), findsOneWidget);
-    expect(find.byType(ButlerlyCard), findsNWidgets(5));
+    expect(find.byType(ButlerlyCard), findsNWidgets(6));
     expect(find.text('Add transaction manually'), findsOneWidget);
     expect(find.text('Add transaction from receipts'), findsOneWidget);
     expect(find.text('Import statement'), findsOneWidget);

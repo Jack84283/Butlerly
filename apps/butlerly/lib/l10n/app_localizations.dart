@@ -36,6 +36,31 @@ class AppLocalizations {
 
   static const _strings = <String, Map<String, String>>{
     'en': {
+      'budgetSuggest': 'Suggest from history',
+      'budgetSuggestionPreview':
+          'Suggestion uses three complete prior months. Review before saving.',
+      'budgetSuggestionUnavailable':
+          'Not enough comparable, complete historical spending data to suggest a budget.',
+      'budgets': 'Budgets',
+      'myBudgets': 'My Budgets',
+      'budgetActualUnavailable': 'Actual spending unavailable for this month',
+      'budgetLoadUnavailable': 'Unable to load saved budgets',
+      'budgetAdd': 'Add budget',
+      'budgetEdit': 'Monthly budget',
+      'budgetScope': 'Budget type',
+      'budgetOverall': 'Overall spending',
+      'budgetCategory': 'Category',
+      'budgetSubcategory': 'Subcategory',
+      'budgetMerchant': 'Merchant',
+      'budgetTarget': 'Select category or merchant',
+      'budgetCurrency': 'Currency',
+      'budgetAmount': 'Monthly limit',
+      'budgetSaveFailure':
+          'The budget could not be saved. Your existing data is unchanged.',
+      'budgetsEmpty':
+          'No budgets yet. Add a monthly spending limit to get started.',
+      'budgetsMonthlyDescription':
+          'Your monthly spending limits are stored locally. Budgets are never created automatically.',
       'transactionSaveSound': 'Transaction save sound',
       'transactionSaveSoundBody': 'Play a sound when a transaction is saved.',
       'alipayBrand': 'Alipay',
@@ -971,6 +996,26 @@ class AppLocalizations {
       'subcategory': 'Subcategory',
     },
     'zh': {
+      'budgetSuggest': '根据历史支出建议',
+      'budgetSuggestionPreview': '根据前三个完整月份生成建议；保存前请确认。',
+      'budgetSuggestionUnavailable': '历史支出数据不足或不可比较，无法提供预算建议。',
+      'budgets': '预算',
+      'myBudgets': '我的预算',
+      'budgetActualUnavailable': '本月实际支出暂不可用',
+      'budgetLoadUnavailable': '无法加载已保存的预算',
+      'budgetAdd': '添加预算',
+      'budgetEdit': '月度预算',
+      'budgetScope': '预算类型',
+      'budgetOverall': '总支出',
+      'budgetCategory': '类别',
+      'budgetSubcategory': '子类别',
+      'budgetMerchant': '商家',
+      'budgetTarget': '选择类别或商家',
+      'budgetCurrency': '货币',
+      'budgetAmount': '每月限额',
+      'budgetSaveFailure': '无法保存预算。现有数据未更改。',
+      'budgetsEmpty': '尚无预算。添加每月支出限额以开始使用。',
+      'budgetsMonthlyDescription': '每月预算仅保存在本机，不会自动创建。',
       'transactionSaveSound': '交易保存提示音',
       'transactionSaveSoundBody': '成功保存交易后播放提示音。',
       'alipayBrand': '支付宝',
@@ -1777,6 +1822,32 @@ class AppLocalizations {
       'subcategory': '子类别',
     },
     'es': {
+      'budgetSuggest': 'Sugerir según el historial',
+      'budgetSuggestionPreview':
+          'Sugerencia basada en los tres meses completos anteriores. Revísala antes de guardar.',
+      'budgetSuggestionUnavailable':
+          'No hay suficientes datos históricos completos y comparables para sugerir un presupuesto.',
+      'budgets': 'Presupuestos',
+      'myBudgets': 'Mis presupuestos',
+      'budgetActualUnavailable':
+          'No se puede consultar el gasto real de este mes',
+      'budgetLoadUnavailable': 'No se pueden cargar los presupuestos guardados',
+      'budgetAdd': 'Añadir presupuesto',
+      'budgetEdit': 'Presupuesto mensual',
+      'budgetScope': 'Tipo de presupuesto',
+      'budgetOverall': 'Gasto total',
+      'budgetCategory': 'Categoría',
+      'budgetSubcategory': 'Subcategoría',
+      'budgetMerchant': 'Comercio',
+      'budgetTarget': 'Seleccionar categoría o comercio',
+      'budgetCurrency': 'Moneda',
+      'budgetAmount': 'Límite mensual',
+      'budgetSaveFailure':
+          'No se pudo guardar el presupuesto. Los datos existentes no cambiaron.',
+      'budgetsEmpty':
+          'Aún no hay presupuestos. Añade un límite de gasto mensual.',
+      'budgetsMonthlyDescription':
+          'Los límites de gasto mensuales se guardan localmente y nunca se crean automáticamente.',
       'transactionSaveSound': 'Sonido al guardar transacciones',
       'transactionSaveSoundBody':
           'Reproducir un sonido al guardar una transacción.',

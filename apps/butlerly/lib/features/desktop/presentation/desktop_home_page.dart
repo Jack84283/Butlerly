@@ -13,6 +13,7 @@ import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_model.dart';
+import 'package:butlerly/features/budgets/presentation/home_budgets_card.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/insights/presentation/insight_grouped_list.dart';
@@ -559,18 +560,63 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                     ),
                                   ),
                                 );
-                                return b.maxWidth >= 680
+                                final budgets = SizedBox(
+                                  height: _desktopHomeBreakdownCardHeight,
+                                  child: _DesktopPanel(
+                                    title: context.l10n.text('myBudgets'),
+                                    showInnerCard: true,
+                                    headerHeight:
+                                        _desktopHomeBreakdownHeaderHeight,
+                                    child: SizedBox(
+                                      height:
+                                          _desktopHomeBreakdownContentHeight -
+                                          2 * ButlerlySpacing.small,
+                                      child: ListView(
+                                        children: [
+                                          HomeBudgetsCard(
+                                            key: ValueKey(
+                                              'home-budgets-${current.year}-${current.month}',
+                                            ),
+                                            month: current,
+                                            embedded: true,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                                return b.maxWidth >= 960
                                     ? Row(
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
+                                          Expanded(child: budgets),
+                                          const SizedBox(width: 8),
                                           Expanded(child: left),
                                           const SizedBox(width: 8),
                                           Expanded(child: middle),
                                         ],
                                       )
+                                    : b.maxWidth >= 680
+                                    ? Column(
+                                        children: [
+                                          budgets,
+                                          const SizedBox(height: 8),
+                                          Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Expanded(child: left),
+                                              const SizedBox(width: 8),
+                                              Expanded(child: middle),
+                                            ],
+                                          ),
+                                        ],
+                                      )
                                     : Column(
                                         children: [
+                                          budgets,
+                                          const SizedBox(height: 8),
                                           left,
                                           const SizedBox(height: 8),
                                           middle,

@@ -1072,3 +1072,20 @@ ALTER TABLE payment_sources ADD COLUMN network TEXT;
 -- BUTLERLY_MIGRATION_TARGET: 17
 -- Source: v16_to_v17.sql
 ALTER TABLE user_preferences ADD COLUMN transaction_save_sound_enabled INTEGER NOT NULL DEFAULT 1 CHECK(transaction_save_sound_enabled IN (0, 1));
+
+-- BUTLERLY_MIGRATION_TARGET: 18
+-- Source: v17_to_v18.sql
+CREATE TABLE IF NOT EXISTS budgets (
+      id TEXT PRIMARY KEY NOT NULL,
+      scope TEXT NOT NULL CHECK(scope IN ('overall', 'category', 'subcategory', 'merchant')),
+      scope_id TEXT,
+      currency TEXT NOT NULL,
+      amount TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      CHECK ((scope = 'overall' AND scope_id IS NULL)
+          OR (scope != 'overall' AND scope_id IS NOT NULL)),
+      UNIQUE (scope, scope_id, currency)
+    );
+CREATE UNIQUE INDEX IF NOT EXISTS idx_budget_scope_currency
+  ON budgets(scope, COALESCE(scope_id, ''), currency);

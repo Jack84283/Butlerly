@@ -56,6 +56,13 @@ class AddPage extends StatelessWidget {
       onTap: () => context.push('/payment-sources?create=true'),
     );
 
+    final manageBudgets = ButlerlyActionItem(
+      icon: Icons.savings_outlined,
+      title: context.l10n.text('budgets'),
+      subtitle: context.l10n.text('budgetsMonthlyDescription'),
+      onTap: () => context.push('/budgets'),
+    );
+
     return ButlerlyPage(
       title: context.l10n.text('add'),
       subtitle: context.l10n.text('addSubtitle'),
@@ -73,7 +80,11 @@ class AddPage extends StatelessWidget {
                 spacing: gap,
                 runSpacing: gap,
                 children: [
-                  for (final action in [...actions, createPaymentSource])
+                  for (final action in [
+                    ...actions,
+                    createPaymentSource,
+                    manageBudgets,
+                  ])
                     SizedBox(
                       width: tileWidth,
                       child: _DesktopAddActionCard(action: action),
@@ -95,6 +106,8 @@ class AddPage extends StatelessWidget {
               ),
             ],
           ),
+          ButlerlySectionHeader(title: context.l10n.text('budgets')),
+          ButlerlyActionGroup(actions: [manageBudgets]),
         ],
         const SizedBox(height: ButlerlySpacing.structural),
       ],
