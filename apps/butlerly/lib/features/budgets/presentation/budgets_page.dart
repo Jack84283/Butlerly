@@ -74,8 +74,8 @@ class _BudgetsPageState extends State<BudgetsPage> {
 
   Widget _budgetIcon(Budget budget) {
     final id = budget.scopeId;
-    if (id != null && (budget.scope == 'category' ||
-        budget.scope == 'subcategory')) {
+    if (id != null &&
+        (budget.scope == 'category' || budget.scope == 'subcategory')) {
       final categoryId = budget.scope == 'subcategory'
           ? _masterData?.categoryParentId(id) ?? id
           : id;
@@ -125,11 +125,13 @@ class _BudgetsPageState extends State<BudgetsPage> {
                       Expanded(child: Text(context.l10n.text('budgetEdit'))),
                       IconButton(
                         key: const ValueKey('budget-editor-close'),
-                        tooltip: MaterialLocalizations.of(dialogContext)
-                            .closeButtonTooltip,
+                        tooltip: MaterialLocalizations.of(
+                          dialogContext,
+                        ).closeButtonTooltip,
                         icon: const Icon(Icons.close),
                         onPressed: () {
-                          if (!completion.isCompleted) completion.complete(null);
+                          if (!completion.isCompleted)
+                            completion.complete(null);
                         },
                       ),
                     ],
