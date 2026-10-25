@@ -5,6 +5,7 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
+import 'package:butlerly/features/budgets/presentation/budgets_page.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_search_selection.dart';
 import 'package:butlerly/features/desktop/presentation/desktop_home_page.dart';
 import 'package:butlerly/features/foundation/presentation/add_page.dart';
@@ -216,6 +217,7 @@ final appRouter = GoRouter(
             );
           },
         ),
+        GoRoute(path: '/budgets', builder: (_, _) => const BudgetsPage()),
         GoRoute(
           path: '/analysis',
           builder: (_, state) => AnalysisPage(
