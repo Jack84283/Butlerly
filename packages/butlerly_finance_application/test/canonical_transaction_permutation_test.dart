@@ -69,6 +69,38 @@ void main() {
     );
   });
 
+  test('missing group member invalidates consolidation of survivors', () {
+    final first = _transaction('a');
+    final second = _transaction('b');
+    final deletedMember = TransactionId('deleted');
+    final group = _group(
+      'old-three-member-decision',
+      [first.id, second.id, deletedMember],
+      status: DuplicateCandidateGroupStatus.consolidated,
+      selected: first.id,
+    );
+
+    for (final source in <List<Transaction>>[
+      [first, second],
+      [second, first],
+    ]) {
+      final result = selectCanonicalTransactions(
+        source: source,
+        duplicateGroups: [group],
+      );
+      expect(
+        result.transactions.map((value) => value.id.value).toList(),
+        ['a', 'b'],
+      );
+      expect(
+        result.qualityIssues.any(
+          (value) => value.code == 'staleDuplicateGroup',
+        ),
+        isTrue,
+      );
+    }
+  });
+
   test('current decisions take precedence over overlapping stale evidence', () {
     final first = _transaction('a');
     final second = _transaction('b');
