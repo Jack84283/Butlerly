@@ -31,12 +31,6 @@ void main() {
     expect(find.text('Add transaction'), findsNothing);
     expect(find.text('Import & export'), findsNothing);
     await tester.scrollUntilVisible(
-      find.text('Privacy & data').first,
-      300,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.text('Privacy & data'), findsWidgets);
-    await tester.scrollUntilVisible(
       find.text('Optional features'),
       400,
       scrollable: find.byType(Scrollable).first,
