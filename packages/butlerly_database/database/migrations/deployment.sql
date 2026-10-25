@@ -1068,3 +1068,7 @@ ALTER TABLE user_preferences ADD COLUMN display_name TEXT NOT NULL DEFAULT '';
 -- BUTLERLY_MIGRATION_TARGET: 16
 -- Source: v15_to_v16.sql
 ALTER TABLE payment_sources ADD COLUMN network TEXT;
+
+-- BUTLERLY_MIGRATION_TARGET: 17
+-- Source: v16_to_v17.sql
+ALTER TABLE user_preferences ADD COLUMN transaction_save_sound_enabled INTEGER NOT NULL DEFAULT 1 CHECK(transaction_save_sound_enabled IN (0, 1));

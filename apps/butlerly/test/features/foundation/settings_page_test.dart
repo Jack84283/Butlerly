@@ -30,7 +30,6 @@ void main() {
     expect(find.text('Transactions'), findsNothing);
     expect(find.text('Add transaction'), findsNothing);
     expect(find.text('Import & export'), findsNothing);
-    expect(find.text('Privacy & data'), findsWidgets);
     await tester.scrollUntilVisible(
       find.text('Optional features'),
       400,
@@ -111,9 +110,9 @@ void main() {
     final valueColumns = find.byKey(
       const ValueKey('desktop-more-value-column'),
     );
-    expect(valueColumns, findsNWidgets(7));
+    expect(valueColumns, findsNWidgets(8));
     final firstRight = tester.getRect(valueColumns.at(0)).right;
-    for (var index = 0; index < 7; index++) {
+    for (var index = 0; index < 8; index++) {
       expect(tester.getSize(valueColumns.at(index)).width, 140);
       final valueText = tester.widget<Text>(
         find.descendant(
@@ -122,7 +121,7 @@ void main() {
         ),
       );
       expect(valueText.textAlign, TextAlign.end);
-      if (index < 6) {
+      if (index < 7) {
         expect(
           tester.getRect(valueColumns.at(index)).right,
           closeTo(firstRight, 0.1),

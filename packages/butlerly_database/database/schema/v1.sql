@@ -503,6 +503,7 @@ CREATE TABLE user_preferences (
       base_currency TEXT NOT NULL,
       time_zone_id TEXT NOT NULL,
       external_ai_enabled INTEGER NOT NULL CHECK(external_ai_enabled IN (0, 1)),
+      transaction_save_sound_enabled INTEGER NOT NULL DEFAULT 1 CHECK(transaction_save_sound_enabled IN (0, 1)),
       first_use_completed INTEGER NOT NULL DEFAULT 0 CHECK(first_use_completed IN (0, 1)),
       formatting_locale TEXT,
       region_code TEXT,

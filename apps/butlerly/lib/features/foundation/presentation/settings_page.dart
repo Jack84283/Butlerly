@@ -152,6 +152,26 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
     final preferences = <Widget>[
       tile(
+        Icons.volume_up_outlined,
+        l10n.text('transactionSaveSound'),
+        l10n.text(
+          preference?.transactionSaveSoundEnabled ?? true
+              ? 'enabled'
+              : 'disabled',
+        ),
+        () => _chooseDesktopValue<bool>(
+          label: l10n.text('transactionSaveSound'),
+          value: preference?.transactionSaveSoundEnabled ?? true,
+          options: [
+            DropdownMenuItem(value: true, child: Text(l10n.text('enabled'))),
+            DropdownMenuItem(value: false, child: Text(l10n.text('disabled'))),
+          ],
+          onChanged: (value) => ref
+              .read(userPreferenceProvider.notifier)
+              .saveChanges(transactionSaveSoundEnabled: value),
+        ),
+      ),
+      tile(
         Icons.person_outline_rounded,
         l10n.text('displayName'),
         preference?.displayName.isNotEmpty == true
@@ -426,6 +446,29 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       title: context.l10n.text('more'),
       children: [
         _LocalOnlyBanner(),
+        ButlerlySectionHeader(title: context.l10n.text('preferences')),
+        _SettingsSectionCard(
+          children: [
+            SwitchListTile(
+              key: const ValueKey('transaction-save-sound-setting'),
+              secondary: _SettingsIcon(icon: Icons.volume_up_outlined),
+              title: Text(context.l10n.text('transactionSaveSound')),
+              subtitle: Text(
+                context.l10n.text('transactionSaveSoundBody'),
+                style: _settingsSubtitleStyle(context),
+              ),
+              value: preference?.transactionSaveSoundEnabled ?? true,
+              onChanged: preference == null
+                  ? null
+                  : (value) => ref
+                        .read(userPreferenceProvider.notifier)
+                        .saveChanges(transactionSaveSoundEnabled: value),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: ButlerlySpacing.standard,
+              ),
+            ),
+          ],
+        ),
         ButlerlySectionHeader(
           key: _appearanceKey,
           title: context.l10n.text('appearance'),
