@@ -230,9 +230,10 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
       }
       return Column(
         children: [
-          for (final row in rows) ...[
+          for (var index = 0; index < rows.length; index++) ...[
             Builder(
               builder: (context) {
+                final row = rows[index];
                 final limit = double.tryParse(row.budget.amount) ?? 0;
                 final spent = row.spent;
                 final percentage =
@@ -311,7 +312,21 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
                 );
               },
             ),
-            const SizedBox(height: ButlerlySpacing.small),
+            if (index < rows.length - 1) ...[
+              SizedBox(
+                height: widget.embedded
+                    ? ButlerlySpacing.compact
+                    : ButlerlySpacing.small,
+              ),
+              if (widget.embedded) ...[
+                Divider(
+                  height: 1,
+                  thickness: 1,
+                  color: context.colors.cardDivider,
+                ),
+                const SizedBox(height: ButlerlySpacing.compact),
+              ],
+            ],
           ],
         ],
       );
