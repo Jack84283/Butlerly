@@ -19,9 +19,7 @@ class ButlerlyBudgetScopeIcon extends StatelessWidget {
       dimension: ButlerlySize.categoryIconContainer,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: scope == 'overall'
-              ? colors.primaryContainer.withValues(alpha: 0.5)
-              : colors.primaryContainer,
+          color: colors.primaryContainer,
           shape: BoxShape.circle,
         ),
         child: Center(
