@@ -1011,10 +1011,11 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
       // ProviderScope. Treat feedback as optional, never a save dependency.
       var soundEnabled = true;
       try {
-        soundEnabled = ProviderScope.containerOf(context, listen: false)
-                .read(userPreferenceProvider)
-                .value
-                ?.transactionSaveSoundEnabled ??
+        soundEnabled =
+            ProviderScope.containerOf(
+              context,
+              listen: false,
+            ).read(userPreferenceProvider).value?.transactionSaveSoundEnabled ??
             true;
       } on Exception {
         // The transaction has already been saved successfully.
