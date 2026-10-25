@@ -14,6 +14,72 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(sqfliteFfiInit);
 
+  test('backup and replace restore preserve saved budgets', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final timestamp = DateTime.utc(2026, 10, 1).toIso8601String();
+    await fixture.database.database.insert('budgets', {
+      'id': 'budget-groceries',
+      'scope': 'category',
+      'scope_id': 'groceries',
+      'currency': 'USD',
+      'amount': '500.00',
+      'created_at': timestamp,
+      'updated_at': timestamp,
+    });
+    final backup = File(path.join(fixture.root.path, 'budgets.butlerlybackup'));
+    await fixture.backups.createBackup(backup);
+    await fixture.database.database.delete('budgets');
+
+    await fixture.backups.restore(backup, mode: LocalRestoreMode.replace);
+
+    final rows = await fixture.database.database.query('budgets');
+    expect(rows, hasLength(1));
+    expect(rows.single['id'], 'budget-groceries');
+    expect(rows.single['scope'], 'category');
+    expect(rows.single['scope_id'], 'groceries');
+    expect(rows.single['currency'], 'USD');
+    expect(rows.single['amount'], '500.00');
+  });
+
+  test('merge retains newer local budget values', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final old = DateTime.utc(2026, 1, 1).toIso8601String();
+    await fixture.database.database.insert('budgets', {
+      'id': 'budget-overall',
+      'scope': 'overall',
+      'scope_id': null,
+      'currency': 'USD',
+      'amount': '1000',
+      'created_at': old,
+      'updated_at': old,
+    });
+    final backup = File(
+      path.join(fixture.root.path, 'budget-merge.butlerlybackup'),
+    );
+    await fixture.backups.createBackup(backup);
+    final newer = DateTime.now()
+        .toUtc()
+        .add(const Duration(minutes: 5))
+        .toIso8601String();
+    await fixture.database.database.update(
+      'budgets',
+      {'amount': '1200', 'updated_at': newer},
+      where: 'id = ?',
+      whereArgs: ['budget-overall'],
+    );
+
+    await fixture.backups.restore(backup, mode: LocalRestoreMode.merge);
+
+    final rows = await fixture.database.database.query(
+      'budgets',
+      where: 'id = ?',
+      whereArgs: ['budget-overall'],
+    );
+    expect(rows.single['amount'], '1200');
+  });
+
   test('merge keeps newer local rows and restores older backup rows', () async {
     final fixture = await _Fixture.create();
     addTearDown(fixture.dispose);
