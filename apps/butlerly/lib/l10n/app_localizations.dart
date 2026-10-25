@@ -47,7 +47,7 @@ class AppLocalizations {
           'Create an encrypted backup or restore your data',
       'budgetSettings': 'Budget Settings',
       'budgetSettingsBody': 'Manage your monthly budgets',
-      'myBudgets': 'My Budgets',
+      'myBudgets': 'My budgets',
       'budgetActualUnavailable': 'Actual spending unavailable for this month',
       'budgetLoadUnavailable': 'Unable to load saved budgets',
       'budgetAdd': 'Add budget',
