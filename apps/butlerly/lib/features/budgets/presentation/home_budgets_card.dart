@@ -370,16 +370,16 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
     return SizedBox(
       width: double.infinity,
       child: ButlerlyCard(
-      key: const ValueKey('home-budgets-card'),
-      variant: ButlerlyCardVariant.dashboard,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ButlerlyCardHeader(title: context.l10n.text('myBudgets')),
-          const SizedBox(height: ButlerlySpacing.standard),
-          content,
-        ],
-      ),
+        key: const ValueKey('home-budgets-card'),
+        variant: ButlerlyCardVariant.dashboard,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ButlerlyCardHeader(title: context.l10n.text('myBudgets')),
+            const SizedBox(height: ButlerlySpacing.standard),
+            content,
+          ],
+        ),
       ),
     );
   }
