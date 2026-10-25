@@ -3,8 +3,8 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/components/butlerly_budget_scope_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
-import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_model.dart';
 import 'package:butlerly/features/budgets/application/budget_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
@@ -194,7 +194,7 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
       'from': date(from),
       'to': date(to),
       'analysisRule': metric.rule.identity.value,
-      if (dimension != null) row.budget.scope: dimension,
+      row.budget.scope: ?dimension,
     };
     context.push(Uri(path: '/search', queryParameters: params).toString());
   }
