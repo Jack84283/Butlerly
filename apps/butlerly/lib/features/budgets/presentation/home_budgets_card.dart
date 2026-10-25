@@ -31,9 +31,10 @@ class HomeBudgetsCard extends StatefulWidget {
 }
 
 class _BudgetProgress {
-  const _BudgetProgress(this.budget, this.spent);
+  const _BudgetProgress(this.budget, this.spent, [this.metric]);
   final Budget budget;
   final double? spent;
+  final AnalysisMetric? metric;
 }
 
 class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
@@ -168,8 +169,34 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
         );
         return _BudgetProgress(budget, null);
       }
-      return _BudgetProgress(budget, double.tryParse(metric.value.toString()));
+      return _BudgetProgress(
+        budget,
+        double.tryParse(metric.value.toString()),
+        metric,
+      );
     }).toList();
+  }
+
+  void _openBudgetSearch(_BudgetProgress row) {
+    final metric = row.metric;
+    if (metric == null) return;
+    final from = DateTime(widget.month.year, widget.month.month, 1);
+    final to = DateTime(widget.month.year, widget.month.month + 1, 0);
+    String date(DateTime value) =>
+        '${value.year.toString().padLeft(4, '0')}-'
+        '${value.month.toString().padLeft(2, '0')}-'
+        '${value.day.toString().padLeft(2, '0')}';
+    final dimension = row.budget.scope == 'overall'
+        ? null
+        : analysisRawDimension(metric);
+    final params = <String, String>{
+      'locked': 'true',
+      'from': date(from),
+      'to': date(to),
+      'analysisRule': metric.rule.identity.value,
+      if (dimension != null) row.budget.scope: dimension,
+    };
+    context.push(Uri(path: '/search', queryParameters: params).toString());
   }
 
   String _name(Budget budget) {
@@ -243,7 +270,9 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
                 final progressColor =
                     (overBudget ? context.colors.error : context.colors.info)
                         .withValues(alpha: 1.0);
-                return Row(
+                return InkWell(
+                  onTap: row.metric == null ? null : () => _openBudgetSearch(row),
+                  child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _icon(row.budget),
@@ -307,6 +336,7 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
                       ),
                     ),
                   ],
+                  ),
                 );
               },
             ),
