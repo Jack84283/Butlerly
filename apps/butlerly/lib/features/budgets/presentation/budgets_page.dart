@@ -80,7 +80,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
     String? scopeId = existing?.scopeId;
     var currency = existing?.currency ?? 'USD';
     String? suggestionMessage;
-    final amount = TextEditingController(text: existing?.amount ?? '');
+    var amountText = existing?.amount ?? '';
     try {
       final submitted = await showDialog<StoredBudget>(
         context: context,
@@ -155,8 +155,10 @@ class _BudgetsPageState extends State<BudgetsPage> {
                     ),
                     if (suggestionMessage != null)
                       Text(suggestionMessage!),
-                    TextField(
-                      controller: amount,
+                    TextFormField(
+                      key: ValueKey('budget-amount-$amountText'),
+                      initialValue: amountText,
+                      onChanged: (value) => amountText = value,
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
@@ -185,7 +187,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
                               suggestionMessage =
                                   context.l10n.text('budgetSuggestionUnavailable');
                             } else {
-                              amount.text = suggestion.amount;
+                              amountText = suggestion.amount;
                               suggestionMessage =
                                   context.l10n.text('budgetSuggestionPreview');
                             }
@@ -199,7 +201,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
                 ),
                 FilledButton(
                   onPressed: () {
-                    final number = num.tryParse(amount.text.trim());
+                    final number = num.tryParse(amountText.trim());
                     if (number == null ||
                         !number.isFinite ||
                         number <= 0 ||
@@ -215,7 +217,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
                         scope: scope,
                         scopeId: scope == 'overall' ? null : scopeId,
                         currency: currency,
-                        amount: amount.text.trim(),
+                        amount: amountText.trim(),
                       ),
                     );
                   },
@@ -233,8 +235,6 @@ class _BudgetsPageState extends State<BudgetsPage> {
       if (mounted) {
         setState(() => _error = context.l10n.text('budgetSaveFailure'));
       }
-    } finally {
-      amount.dispose();
     }
   }
 
