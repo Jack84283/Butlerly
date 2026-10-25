@@ -367,7 +367,9 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
   Widget build(BuildContext context) {
     final content = _contents();
     if (widget.embedded) return content;
-    return ButlerlyCard(
+    return SizedBox(
+      width: double.infinity,
+      child: ButlerlyCard(
       key: const ValueKey('home-budgets-card'),
       variant: ButlerlyCardVariant.dashboard,
       child: Column(
@@ -377,6 +379,7 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
           const SizedBox(height: ButlerlySpacing.standard),
           content,
         ],
+      ),
       ),
     );
   }
