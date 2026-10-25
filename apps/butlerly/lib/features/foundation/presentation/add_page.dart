@@ -80,7 +80,11 @@ class AddPage extends StatelessWidget {
                 spacing: gap,
                 runSpacing: gap,
                 children: [
-                  for (final action in [...actions, createPaymentSource, manageBudgets])
+                  for (final action in [
+                    ...actions,
+                    createPaymentSource,
+                    manageBudgets,
+                  ])
                     SizedBox(
                       width: tileWidth,
                       child: _DesktopAddActionCard(action: action),
