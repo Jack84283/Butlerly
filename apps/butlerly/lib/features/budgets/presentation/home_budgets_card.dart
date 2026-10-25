@@ -1,4 +1,5 @@
 import 'package:butlerly/core/di/finance_services.dart';
+import 'package:butlerly/features/budgets/application/budget_change_notifier.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
@@ -41,6 +42,7 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
     super.initState();
     _future = _load();
     transactionChanges.addListener(_refresh);
+    budgetChanges.addListener(_refresh);
   }
 
   @override
@@ -59,6 +61,7 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
   @override
   void dispose() {
     transactionChanges.removeListener(_refresh);
+    budgetChanges.removeListener(_refresh);
     super.dispose();
   }
 
