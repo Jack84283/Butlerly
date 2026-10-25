@@ -1319,8 +1319,8 @@ class _DesktopTrend extends StatelessWidget {
                                                       selectedMonth.year &&
                                                   points[i].month.month ==
                                                       selectedMonth.month
-                                              ? _desktopHomeSelectedMonthTrendTintOpacity
-                                              : _desktopHomeOtherMonthTrendTintOpacity,
+                                              ? 1.0
+                                              : 0.72,
                                         ),
                                         borderRadius:
                                             const BorderRadius.vertical(
