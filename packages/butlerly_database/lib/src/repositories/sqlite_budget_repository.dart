@@ -9,6 +9,7 @@ final class SqliteBudgetRepository implements BudgetRepository {
 
   final ButlerlyDatabase database;
 
+  @override
   Future<List<Budget>> list() async {
     final rows = await database.connection.query(
       'budgets',
@@ -26,6 +27,7 @@ final class SqliteBudgetRepository implements BudgetRepository {
     ];
   }
 
+  @override
   Future<void> save(Budget budget) async {
     if (!const {
       'overall',
@@ -79,6 +81,7 @@ final class SqliteBudgetRepository implements BudgetRepository {
     });
   }
 
+  @override
   Future<void> remove(String id) async {
     await database.connection.delete(
       'budgets',
