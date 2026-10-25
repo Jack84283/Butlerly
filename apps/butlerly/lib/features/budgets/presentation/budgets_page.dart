@@ -6,11 +6,13 @@ import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/budgets/application/budget_suggestions.dart';
+import 'package:butlerly/features/desktop/presentation/desktop_transaction_detail_split_view.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
+import 'dart:async';
 
 /// User-managed monthly spending limits. Suggestions and utilization must
 /// come from canonical normalized analysis, never raw transaction row totals.
@@ -31,6 +33,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
   List<Category> _categories = const [];
   List<Merchant> _merchants = const [];
   String? _error;
+  Widget? _desktopEditor;
 
   Future<List<Budget>> _load() async {
     if (_management == null) return [];
@@ -85,9 +88,12 @@ class _BudgetsPageState extends State<BudgetsPage> {
     String? suggestionMessage;
     var amountText = existing?.amount ?? '';
     try {
-      final submitted = await showButlerlyBottomSheet<Budget>(
-        context: context,
-        builder: (dialogContext) => StatefulBuilder(
+      final desktop = effectiveButlerlyLayoutMode(
+        context,
+        MediaQuery.sizeOf(context).width,
+      ) == ButlerlyLayoutMode.wide;
+      final completion = Completer<Budget?>();
+      final editor = (BuildContext dialogContext) => StatefulBuilder(
           builder: (dialogContext, setDialogState) {
             return ButlerlySheet(
               title: Text(context.l10n.text('budgetEdit')),
@@ -236,7 +242,13 @@ class _BudgetsPageState extends State<BudgetsPage> {
                   child: Text(context.l10n.text('budgetSuggest')),
                 ),
                 ButlerlyCancelButton(
-                  onPressed: () => Navigator.pop(dialogContext),
+                  onPressed: () {
+                    if (desktop) {
+                      completion.complete(null);
+                    } else {
+                      Navigator.pop(dialogContext);
+                    }
+                  },
                   child: Text(context.l10n.text('cancel')),
                 ),
                 FilledButton(
@@ -248,9 +260,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
                         (scope != 'overall' && scopeId == null)) {
                       return;
                     }
-                    Navigator.pop(
-                      dialogContext,
-                      Budget(
+                    final budget = Budget(
                         id:
                             existing?.id ??
                             DateTime.now().microsecondsSinceEpoch.toString(),
@@ -258,16 +268,40 @@ class _BudgetsPageState extends State<BudgetsPage> {
                         scopeId: scope == 'overall' ? null : scopeId,
                         currency: currency,
                         amount: amountText.trim(),
-                      ),
-                    );
+                      );
+                    if (desktop) {
+                      completion.complete(budget);
+                    } else {
+                      Navigator.pop(dialogContext, budget);
+                    }
                   },
                   child: Text(context.l10n.text('save')),
                 ),
               ],
             );
           },
-        ),
-      );
+        );
+      final Future<Budget?> result;
+      if (desktop) {
+        setState(() {
+          _desktopEditor = Material(
+            child: Padding(
+              padding: const EdgeInsets.all(ButlerlySpacing.standard),
+              child: editor(context),
+            ),
+          );
+        });
+        result = completion.future;
+      } else {
+        result = showButlerlyBottomSheet<Budget>(
+          context: context,
+          builder: editor,
+        );
+      }
+      final submitted = await result;
+      if (desktop && mounted) {
+        setState(() => _desktopEditor = null);
+      }
       if (submitted == null || _management == null) return;
       final result = await _management.save(submitted);
       if (result is! ApplicationSuccess<bool>) {
@@ -303,7 +337,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
           MediaQuery.sizeOf(context).width,
         ) ==
         ButlerlyLayoutMode.wide;
-    return ButlerlyPage(
+    final page = ButlerlyPage(
       title: context.l10n.text('budgets'),
       fullWidth: desktop,
       pinnedSpacing: ButlerlyPinnedPageSpacing.tightHeader,
@@ -376,5 +410,11 @@ class _BudgetsPageState extends State<BudgetsPage> {
         const SizedBox(height: ButlerlySpacing.structural),
       ],
     );
+    return desktop
+        ? DesktopTransactionDetailSplitView(
+            results: page,
+            detail: _desktopEditor,
+          )
+        : page;
   }
 }
