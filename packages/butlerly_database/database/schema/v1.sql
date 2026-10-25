@@ -497,6 +497,20 @@ CREATE TABLE transactions (
       CHECK ((occurred_at IS NOT NULL) != (unknown_time_reason IS NOT NULL))
     );
 
+-- User-approved monthly budget limits. Scope IDs refer to master data.
+CREATE TABLE budgets (
+      id TEXT PRIMARY KEY NOT NULL,
+      scope TEXT NOT NULL CHECK(scope IN ('overall', 'category', 'subcategory', 'merchant')),
+      scope_id TEXT,
+      currency TEXT NOT NULL,
+      amount TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      CHECK ((scope = 'overall' AND scope_id IS NULL)
+          OR (scope != 'overall' AND scope_id IS NOT NULL)),
+      UNIQUE (scope, scope_id, currency)
+    );
+
 CREATE TABLE user_preferences (
       id INTEGER PRIMARY KEY NOT NULL CHECK(id = 1),
       locale TEXT NOT NULL,
