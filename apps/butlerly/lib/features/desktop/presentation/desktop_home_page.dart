@@ -563,7 +563,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                 final budgets = SizedBox(
                                   height: _desktopHomeBreakdownCardHeight,
                                   child: _DesktopPanel(
-                                    title: 'My Budgets',
+                                    title: context.l10n.text('myBudgets'),
                                     showInnerCard: true,
                                     headerHeight:
                                         _desktopHomeBreakdownHeaderHeight,
