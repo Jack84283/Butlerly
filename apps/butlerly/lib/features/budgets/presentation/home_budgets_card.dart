@@ -78,8 +78,10 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
     if (management == null) return const [];
     final saved = await management.list();
     if (saved is ApplicationFailure<List<Budget>>) {
-      debugPrint('My Budgets: list failed: ${saved.failure.code} '
-          '${saved.failure.operation} ${saved.failure.detail ?? ''}');
+      debugPrint(
+        'My Budgets: list failed: ${saved.failure.code} '
+        '${saved.failure.operation} ${saved.failure.detail ?? ''}',
+      );
       throw StateError('Budget list unavailable: ${saved.failure.code}');
     }
     if (saved is! ApplicationSuccess<List<Budget>>) {
@@ -153,12 +155,14 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
       if (metric == null ||
           metric.availability != AnalysisDataAvailability.sufficient ||
           metricCurrency != budget.currency) {
-        debugPrint('My Budgets: monthly metric unavailable for '
-            '${budget.scope}/${budget.scopeId} '
-            '${month.year}-${month.month}: '
-            'metric=${metric == null ? 'missing' : metric.availability}, '
-            'currency=${metric?.currency?.value}, expected=${budget.currency}, '
-            'quality=${metric?.qualityIssues.length}');
+        debugPrint(
+          'My Budgets: monthly metric unavailable for '
+          '${budget.scope}/${budget.scopeId} '
+          '${month.year}-${month.month}: '
+          'metric=${metric == null ? 'missing' : metric.availability}, '
+          'currency=${metric?.currency?.value}, expected=${budget.currency}, '
+          'quality=${metric?.qualityIssues.length}',
+        );
         return _BudgetProgress(budget, null);
       }
       return _BudgetProgress(budget, double.tryParse(metric.value.toString()));
