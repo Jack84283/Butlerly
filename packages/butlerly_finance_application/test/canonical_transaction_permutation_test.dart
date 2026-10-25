@@ -59,14 +59,46 @@ void main() {
       source: [changed, first],
       duplicateGroups: [group],
     );
-    expect(
-      result.transactions.map((value) => value.id.value).toList(),
-      ['a', 'b'],
-    );
+    expect(result.transactions.map((value) => value.id.value).toList(), [
+      'a',
+      'b',
+    ]);
     expect(
       result.qualityIssues.any((value) => value.code == 'staleDuplicateGroup'),
       isTrue,
     );
+  });
+
+  test('missing group member invalidates consolidation of survivors', () {
+    final first = _transaction('a');
+    final second = _transaction('b');
+    final deletedMember = TransactionId('deleted');
+    final group = _group(
+      'old-three-member-decision',
+      [first.id, second.id, deletedMember],
+      status: DuplicateCandidateGroupStatus.consolidated,
+      selected: first.id,
+    );
+
+    for (final source in <List<Transaction>>[
+      [first, second],
+      [second, first],
+    ]) {
+      final result = selectCanonicalTransactions(
+        source: source,
+        duplicateGroups: [group],
+      );
+      expect(result.transactions.map((value) => value.id.value).toList(), [
+        'a',
+        'b',
+      ]);
+      expect(
+        result.qualityIssues.any(
+          (value) => value.code == 'staleDuplicateGroup',
+        ),
+        isTrue,
+      );
+    }
   });
 
   test('current decisions take precedence over overlapping stale evidence', () {
@@ -79,11 +111,10 @@ void main() {
       status: DuplicateCandidateGroupStatus.consolidated,
       selected: second.id,
     );
-    final stale = _group(
-      'old',
-      [first.id, changed.id],
-      status: DuplicateCandidateGroupStatus.keepBoth,
-    );
+    final stale = _group('old', [
+      first.id,
+      changed.id,
+    ], status: DuplicateCandidateGroupStatus.keepBoth);
     for (final groups in <List<DuplicateCandidateGroup>>[
       [stale, current],
       [current, stale],
@@ -92,12 +123,14 @@ void main() {
         source: [changed, second, first],
         duplicateGroups: groups,
       );
+      expect(result.transactions.map((value) => value.id.value).toList(), [
+        'b',
+        'c',
+      ]);
       expect(
-        result.transactions.map((value) => value.id.value).toList(),
-        ['b', 'c'],
-      );
-      expect(
-        result.qualityIssues.any((value) => value.code == 'staleDuplicateGroup'),
+        result.qualityIssues.any(
+          (value) => value.code == 'staleDuplicateGroup',
+        ),
         isTrue,
       );
     }
@@ -111,7 +144,10 @@ Transaction _transaction(
 }) => Transaction(
   id: TransactionId(id),
   timing: const UnknownTransactionTime(UnknownTransactionTimeReason.unknown),
-  money: Money(amount: DecimalValue.parse(amount), currency: CurrencyCode('USD')),
+  money: Money(
+    amount: DecimalValue.parse(amount),
+    currency: CurrencyCode('USD'),
+  ),
   direction: TransactionDirection.expense,
   sourceType: TransactionSourceType.manual,
   transactionDate: '2026-09-01',

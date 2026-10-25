@@ -71,6 +71,10 @@ CanonicalTransactionSelection selectCanonicalTransactions({
         .toList(growable: false);
     final hasStaleFacts =
         group.integrityIssue?.code == 'staleDuplicateGroup' ||
+        // Missing historical members invalidate the saved relationship just
+        // like changed duplicate-key facts. Remaining members must not be
+        // silently consolidated under an obsolete decision.
+        historicalMembers.length != group.transactionIds.length ||
         historicalMembers.any(
           (value) => !_matchesDuplicateKey(value, group.duplicateKey),
         );
