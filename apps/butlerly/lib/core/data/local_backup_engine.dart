@@ -215,6 +215,12 @@ final class LocalBackupManager {
       'rule_id',
     ], updatedAt: 'updated_at'),
     _TableSpec('user_preferences', ['id'], updatedAt: 'updated_at'),
+    _TableSpec(
+      'budgets',
+      ['id'],
+      updatedAt: 'updated_at',
+      createdAt: 'created_at',
+    ),
   ];
 
   static final _specByName = <String, _TableSpec>{
