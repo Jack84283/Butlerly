@@ -95,8 +95,6 @@ class AddPage extends StatelessWidget {
           )
         else ...[
           ButlerlyActionGroup(actions: actions),
-          ButlerlySectionHeader(title: context.l10n.text('budgets')),
-          ButlerlyActionGroup(actions: [manageBudgets]),
           ButlerlySectionHeader(title: context.l10n.text('paymentSources')),
           ButlerlyActionGroup(
             actions: [
@@ -108,6 +106,8 @@ class AddPage extends StatelessWidget {
               ),
             ],
           ),
+          ButlerlySectionHeader(title: context.l10n.text('budgets')),
+          ButlerlyActionGroup(actions: [manageBudgets]),
         ],
         const SizedBox(height: ButlerlySpacing.structural),
       ],
