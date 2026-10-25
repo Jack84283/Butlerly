@@ -26,7 +26,9 @@ class ButlerlyBudgetScopeIcon extends StatelessWidget {
           child: Icon(
             glyph,
             size: ButlerlySize.categoryIconGlyph,
-            color: scope == 'overall' ? colors.onPrimary : colors.onPrimaryContainer,
+            color: scope == 'overall'
+                ? colors.onPrimary
+                : colors.onPrimaryContainer,
           ),
         ),
       ),
