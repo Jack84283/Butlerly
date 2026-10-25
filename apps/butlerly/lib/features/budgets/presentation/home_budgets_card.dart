@@ -271,71 +271,73 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
                     (overBudget ? context.colors.error : context.colors.info)
                         .withValues(alpha: 1.0);
                 return InkWell(
-                  onTap: row.metric == null ? null : () => _openBudgetSearch(row),
+                  onTap: row.metric == null
+                      ? null
+                      : () => _openBudgetSearch(row),
                   child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _icon(row.budget),
-                    const SizedBox(width: ButlerlySpacing.small),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  _name(row.budget),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.bodyLarge
-                                      ?.copyWith(fontWeight: FontWeight.bold),
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _icon(row.budget),
+                      const SizedBox(width: ButlerlySpacing.small),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    _name(row.budget),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context).textTheme.bodyLarge
+                                        ?.copyWith(fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                                const SizedBox(width: ButlerlySpacing.compact),
+                                Text(
+                                  percentage == null
+                                      ? '—'
+                                      : '${percentage.round()}%',
+                                  textAlign: TextAlign.end,
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: progressColor,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: ButlerlySpacing.micro),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(
+                                ButlerlyRadius.full,
+                              ),
+                              child: SizedBox(
+                                height: 7,
+                                child: LinearProgressIndicator(
+                                  value: percentage == null
+                                      ? 0
+                                      : (percentage / 100).clamp(0.0, 1.0),
+                                  color: progressColor,
+                                  backgroundColor: progressColor.withValues(
+                                    alpha: 0.14,
+                                  ),
                                 ),
                               ),
-                              const SizedBox(width: ButlerlySpacing.compact),
-                              Text(
-                                percentage == null
-                                    ? '—'
-                                    : '${percentage.round()}%',
-                                textAlign: TextAlign.end,
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(
-                                      color: progressColor,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: ButlerlySpacing.micro),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(
-                              ButlerlyRadius.full,
                             ),
-                            child: SizedBox(
-                              height: 7,
-                              child: LinearProgressIndicator(
-                                value: percentage == null
-                                    ? 0
-                                    : (percentage / 100).clamp(0.0, 1.0),
-                                color: progressColor,
-                                backgroundColor: progressColor.withValues(
-                                  alpha: 0.14,
-                                ),
-                              ),
+                            const SizedBox(height: ButlerlySpacing.micro),
+                            Text(
+                              spent == null
+                                  ? context.l10n.text('budgetActualUnavailable')
+                                  : '${spent.toStringAsFixed(2)} / ${row.budget.amount} ${row.budget.currency}',
+                              textAlign: TextAlign.end,
+                              style: Theme.of(context).textTheme.bodySmall,
                             ),
-                          ),
-                          const SizedBox(height: ButlerlySpacing.micro),
-                          Text(
-                            spent == null
-                                ? context.l10n.text('budgetActualUnavailable')
-                                : '${spent.toStringAsFixed(2)} / ${row.budget.amount} ${row.budget.currency}',
-                            textAlign: TextAlign.end,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
                   ),
                 );
               },
