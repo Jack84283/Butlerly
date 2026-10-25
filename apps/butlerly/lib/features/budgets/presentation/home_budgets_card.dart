@@ -77,8 +77,13 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
     final management = finance.manageBudgets;
     if (management == null) return const [];
     final saved = await management.list();
+    if (saved is ApplicationFailure<List<Budget>>) {
+      debugPrint('My Budgets: list failed: ${saved.failure.code} '
+          '${saved.failure.operation} ${saved.failure.detail ?? ''}');
+      throw StateError('Budget list unavailable: ${saved.failure.code}');
+    }
     if (saved is! ApplicationSuccess<List<Budget>>) {
-      throw StateError('Budgets unavailable');
+      throw StateError('Budget list unavailable');
     }
     final budgets = saved.value;
     if (budgets.isEmpty) return const [];
@@ -144,6 +149,12 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
           metric.availability != AnalysisDataAvailability.sufficient ||
           metric.currency?.value != budget.currency ||
           metric.qualityIssues.isNotEmpty) {
+        debugPrint('My Budgets: monthly metric unavailable for '
+            '${budget.scope}/${budget.scopeId} '
+            '${month.year}-${month.month}: '
+            'metric=${metric == null ? 'missing' : metric.availability}, '
+            'currency=${metric?.currency?.value}, expected=${budget.currency}, '
+            'quality=${metric?.qualityIssues.length}');
         return _BudgetProgress(budget, null);
       }
       return _BudgetProgress(budget, double.tryParse(metric.value.toString()));
