@@ -593,17 +593,25 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                         ],
                                       )
                                     : b.maxWidth >= 680
-                                    ? Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
+                                    ? Column(
                                         children: [
-                                          Expanded(child: left),
-                                          const SizedBox(width: 8),
-                                          Expanded(child: middle),
+                                          budgets,
+                                          const SizedBox(height: 8),
+                                          Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Expanded(child: left),
+                                              const SizedBox(width: 8),
+                                              Expanded(child: middle),
+                                            ],
+                                          ),
                                         ],
                                       )
                                     : Column(
                                         children: [
+                                          budgets,
+                                          const SizedBox(height: 8),
                                           left,
                                           const SizedBox(height: 8),
                                           middle,
