@@ -44,8 +44,12 @@ final class SqliteBudgetRepository {
   }
 
   Future<void> save(StoredBudget budget) async {
-    if (!const {'overall', 'category', 'subcategory', 'merchant'}
-        .contains(budget.scope)) {
+    if (!const {
+      'overall',
+      'category',
+      'subcategory',
+      'merchant',
+    }.contains(budget.scope)) {
       throw ArgumentError.value(budget.scope, 'scope');
     }
     if ((budget.scope == 'overall') != (budget.scopeId == null)) {
@@ -59,22 +63,22 @@ final class SqliteBudgetRepository {
       throw ArgumentError.value(budget.amount, 'amount');
     }
     final now = DateTime.now().toUtc().toIso8601String();
-    await database.connection.insert(
-      'budgets',
-      {
-        'id': budget.id,
-        'scope': budget.scope,
-        'scope_id': budget.scopeId,
-        'currency': budget.currency,
-        'amount': budget.amount,
-        'created_at': now,
-        'updated_at': now,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    await database.connection.insert('budgets', {
+      'id': budget.id,
+      'scope': budget.scope,
+      'scope_id': budget.scopeId,
+      'currency': budget.currency,
+      'amount': budget.amount,
+      'created_at': now,
+      'updated_at': now,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<void> remove(String id) async {
-    await database.connection.delete('budgets', where: 'id = ?', whereArgs: [id]);
+    await database.connection.delete(
+      'budgets',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 }
