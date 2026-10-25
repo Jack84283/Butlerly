@@ -15,6 +15,7 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 /// User-managed monthly spending limits. Suggestions and utilization must
 /// come from canonical normalized analysis, never raw transaction row totals.
@@ -36,6 +37,22 @@ class _BudgetsPageState extends State<BudgetsPage> {
   List<Merchant> _merchants = const [];
   String? _error;
   Widget? _desktopEditor;
+  bool _creationRouteHandled = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_creationRouteHandled ||
+        GoRouterState.of(context).uri.queryParameters['create'] != 'true') {
+      return;
+    }
+    _creationRouteHandled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await _budgets.catchError((Object _) => <Budget>[]);
+      if (mounted) _edit();
+    });
+  }
 
   Future<List<Budget>> _load() async {
     if (_management == null) return [];
