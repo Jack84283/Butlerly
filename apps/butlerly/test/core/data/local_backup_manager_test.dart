@@ -27,9 +27,7 @@ void main() {
       'created_at': timestamp,
       'updated_at': timestamp,
     });
-    final backup = File(
-      path.join(fixture.root.path, 'budgets.butlerlybackup'),
-    );
+    final backup = File(path.join(fixture.root.path, 'budgets.butlerlybackup'));
     await fixture.backups.createBackup(backup);
     await fixture.database.database.delete('budgets');
 
@@ -61,8 +59,10 @@ void main() {
       path.join(fixture.root.path, 'budget-merge.butlerlybackup'),
     );
     await fixture.backups.createBackup(backup);
-    final newer = DateTime.now().toUtc()
-        .add(const Duration(minutes: 5)).toIso8601String();
+    final newer = DateTime.now()
+        .toUtc()
+        .add(const Duration(minutes: 5))
+        .toIso8601String();
     await fixture.database.database.update(
       'budgets',
       {'amount': '1200', 'updated_at': newer},
