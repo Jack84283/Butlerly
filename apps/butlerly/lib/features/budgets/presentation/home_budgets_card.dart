@@ -40,6 +40,7 @@ class _BudgetProgress {
 class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
   late Future<List<_BudgetProgress>> _future;
   TransactionMasterData? _labels;
+  String _languageCode = 'en';
 
   @override
   void initState() {
@@ -47,6 +48,16 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
     _future = _load();
     transactionChanges.addListener(_refresh);
     budgetChanges.addListener(_refresh);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final languageCode = Localizations.localeOf(context).languageCode;
+    if (_languageCode != languageCode) {
+      _languageCode = languageCode;
+      _refresh();
+    }
   }
 
   @override
@@ -94,7 +105,10 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
     final budgets = saved.value;
     if (budgets.isEmpty) return const [];
     try {
-      _labels = await TransactionMasterData.load(finance);
+      _labels = await TransactionMasterData.load(
+        finance,
+        languageCode: _languageCode,
+      );
     } catch (_) {
       // Missing presentation metadata must not hide saved budgets.
       _labels = null;
