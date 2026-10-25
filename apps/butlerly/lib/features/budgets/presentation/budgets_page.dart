@@ -3,6 +3,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/budgets/application/budget_suggestions.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -27,14 +28,23 @@ class _BudgetsPageState extends State<BudgetsPage> {
       : null;
   late Future<List<Budget>> _budgets = _load();
   TransactionMasterData? _masterData;
+  List<Category> _categories = const [];
+  List<Merchant> _merchants = const [];
   String? _error;
 
   Future<List<Budget>> _load() async {
     if (_management == null) return [];
     if (_masterData == null && services.isRegistered<FinanceServices>()) {
-      _masterData = await TransactionMasterData.load(
-        services<FinanceServices>(),
-      );
+      final finance = services<FinanceServices>();
+      _masterData = await TransactionMasterData.load(finance);
+      final categoriesResult = await finance.listCategories();
+      final merchantsResult = await finance.listMerchants();
+      if (categoriesResult is ApplicationSuccess<List<Category>>) {
+        _categories = categoriesResult.value;
+      }
+      if (merchantsResult is ApplicationSuccess<List<Merchant>>) {
+        _merchants = merchantsResult.value;
+      }
     }
     final result = await _management.list();
     if (result is ApplicationSuccess<List<Budget>>) return result.value;
@@ -66,23 +76,11 @@ class _BudgetsPageState extends State<BudgetsPage> {
 
   Future<void> _edit({Budget? existing}) async {
     final masterData = _masterData;
-    final scopes = <String, Map<String, String>>{
-      'category': {
-        if (masterData != null)
-          for (final entry in masterData.categoryNames.entries)
-            if (masterData.categoryParentId(entry.key) == null)
-              entry.key: entry.value,
-      },
-      'subcategory': {
-        if (masterData != null)
-          for (final entry in masterData.categoryNames.entries)
-            if (masterData.categoryParentId(entry.key) != null)
-              entry.key: entry.value,
-      },
-      'merchant': masterData?.merchantNames ?? {},
-    };
     var scope = existing?.scope ?? 'overall';
     String? scopeId = existing?.scopeId;
+    String? selectedParentId = scope == 'subcategory'
+        ? masterData?.categoryParentId(scopeId)
+        : null;
     var currency = existing?.currency ?? 'USD';
     String? suggestionMessage;
     var amountText = existing?.amount ?? '';
@@ -91,10 +89,6 @@ class _BudgetsPageState extends State<BudgetsPage> {
         context: context,
         builder: (dialogContext) => StatefulBuilder(
           builder: (dialogContext, setDialogState) {
-            final options = scopes[scope] ?? {};
-            if (scope != 'overall' && !options.containsKey(scopeId)) {
-              scopeId = options.keys.firstOrNull;
-            }
             return ButlerlySheet(
               title: Text(context.l10n.text('budgetEdit')),
               content: SingleChildScrollView(
@@ -123,23 +117,57 @@ class _BudgetsPageState extends State<BudgetsPage> {
                       onChanged: (value) => setDialogState(() {
                         scope = value ?? scope;
                         scopeId = null;
+                        selectedParentId = null;
                       }),
                     ),
-                    if (scope != 'overall') ...[
+                    if (scope == 'category') ...[
                       const SizedBox(height: ButlerlySpacing.standard),
-                      DropdownButtonFormField<String>(
-                        key: ValueKey(scope),
-                        initialValue: scopeId,
-                        decoration: InputDecoration(
-                          labelText: context.l10n.text('budgetTarget'),
-                        ),
-                        items: [
-                          for (final entry in options.entries)
-                            DropdownMenuItem(
-                              value: entry.key,
-                              child: Text(entry.value),
-                            ),
-                        ],
+                      ButlerlyCategorySelector(
+                        key: const ValueKey('budget-category-selector'),
+                        categories: _categories,
+                        masterData: masterData ?? const TransactionMasterData(),
+                        value: scopeId,
+                        label: context.l10n.text('budgetCategory'),
+                        clearLabel: context.l10n.text('clear'),
+                        onChanged: (value) =>
+                            setDialogState(() => scopeId = value),
+                      ),
+                    ],
+                    if (scope == 'subcategory') ...[
+                      const SizedBox(height: ButlerlySpacing.standard),
+                      ButlerlyCategorySelector(
+                        key: const ValueKey('budget-parent-category-selector'),
+                        categories: _categories,
+                        masterData: masterData ?? const TransactionMasterData(),
+                        value: selectedParentId,
+                        label: context.l10n.text('budgetCategory'),
+                        clearLabel: context.l10n.text('clear'),
+                        onChanged: (value) => setDialogState(() {
+                          selectedParentId = value;
+                          scopeId = null;
+                        }),
+                      ),
+                      const SizedBox(height: ButlerlySpacing.standard),
+                      ButlerlySubcategorySelector(
+                        key: const ValueKey('budget-subcategory-selector'),
+                        categories: _categories,
+                        masterData: masterData ?? const TransactionMasterData(),
+                        parentId: selectedParentId,
+                        value: scopeId,
+                        label: context.l10n.text('budgetSubcategory'),
+                        clearLabel: context.l10n.text('clear'),
+                        onChanged: (value) =>
+                            setDialogState(() => scopeId = value),
+                      ),
+                    ],
+                    if (scope == 'merchant') ...[
+                      const SizedBox(height: ButlerlySpacing.standard),
+                      ButlerlyMerchantSelector(
+                        key: const ValueKey('budget-merchant-selector'),
+                        merchants: _merchants,
+                        value: scopeId,
+                        label: context.l10n.text('budgetMerchant'),
+                        clearLabel: context.l10n.text('clear'),
                         onChanged: (value) =>
                             setDialogState(() => scopeId = value),
                       ),
