@@ -307,7 +307,10 @@ class _HomePageState extends State<HomePage> {
           baseCurrency: data.baseCurrency,
         ),
         SizedBox(height: context.designTokens.geometry.cardGap),
-        HomeBudgetsCard(month: data.displayMonth),
+        HomeBudgetsCard(
+          key: ValueKey('home-budgets-${data.displayMonth.year}-${data.displayMonth.month}'),
+          month: data.displayMonth,
+        ),
         SizedBox(height: context.designTokens.geometry.cardGap),
         _HomeTrend(
           data: data,
