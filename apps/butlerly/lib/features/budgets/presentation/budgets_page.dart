@@ -288,9 +288,12 @@ class _BudgetsPageState extends State<BudgetsPage> {
       if (desktop) {
         setState(() {
           _desktopEditor = Material(
-            child: Padding(
-              padding: const EdgeInsets.all(ButlerlySpacing.standard),
-              child: editor(context),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: Padding(
+                padding: const EdgeInsets.all(ButlerlySpacing.standard),
+                child: editor(context),
+              ),
             ),
           );
         });
