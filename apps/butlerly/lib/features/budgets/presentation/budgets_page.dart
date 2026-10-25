@@ -1,7 +1,7 @@
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/di/finance_services.dart';
-import 'package:butlerly/features/budgets/application/budget_suggestions.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/features/budgets/application/budget_suggestions.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_database/butlerly_database.dart';
