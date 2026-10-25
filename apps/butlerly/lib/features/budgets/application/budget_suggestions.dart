@@ -47,15 +47,18 @@ Future<BudgetSuggestion?> suggestMonthlyBudget({
     final overview = AnalysisOverview.fromResults(result.value);
     final AnalysisMetric? metric = switch (scope) {
       'overall' => overview.spending,
-      'category' => overview.categories
-          .where((value) => value.dimension == scopeId)
-          .firstOrNull,
-      'subcategory' => overview.subcategories
-          .where((value) => value.dimension == scopeId)
-          .firstOrNull,
-      'merchant' => overview.merchants
-          .where((value) => value.dimension == scopeId)
-          .firstOrNull,
+      'category' =>
+        overview.categories
+            .where((value) => value.dimension == scopeId)
+            .firstOrNull,
+      'subcategory' =>
+        overview.subcategories
+            .where((value) => value.dimension == scopeId)
+            .firstOrNull,
+      'merchant' =>
+        overview.merchants
+            .where((value) => value.dimension == scopeId)
+            .firstOrNull,
       _ => null,
     };
     if (metric == null ||
