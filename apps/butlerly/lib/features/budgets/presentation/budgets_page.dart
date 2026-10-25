@@ -1,4 +1,6 @@
 import 'package:butlerly/core/di/finance_services.dart';
+import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/features/budgets/application/budget_suggestions.dart';
@@ -97,7 +99,9 @@ class _BudgetsPageState extends State<BudgetsPage> {
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    const SizedBox(height: ButlerlySpacing.standard),
                     DropdownButtonFormField<String>(
                       initialValue: scope,
                       decoration: InputDecoration(
@@ -121,7 +125,8 @@ class _BudgetsPageState extends State<BudgetsPage> {
                       }),
                     ),
                     if (scope != 'overall')
-                      DropdownButtonFormField<String>(
+                      const SizedBox(height: ButlerlySpacing.standard),
+                    DropdownButtonFormField<String>(
                         key: ValueKey(scope),
                         initialValue: scopeId,
                         decoration: InputDecoration(
@@ -137,6 +142,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
                         onChanged: (value) =>
                             setDialogState(() => scopeId = value),
                       ),
+                    const SizedBox(height: ButlerlySpacing.standard),
                     DropdownButtonFormField<String>(
                       initialValue: currency,
                       decoration: InputDecoration(
@@ -156,6 +162,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
                           setDialogState(() => currency = value ?? currency),
                     ),
                     if (suggestionMessage != null) Text(suggestionMessage!),
+                    const SizedBox(height: ButlerlySpacing.standard),
                     TextFormField(
                       key: ValueKey('budget-amount-$amountText'),
                       initialValue: amountText,
@@ -198,7 +205,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
                         },
                   child: Text(context.l10n.text('budgetSuggest')),
                 ),
-                TextButton(
+                ButlerlyCancelButton(
                   onPressed: () => Navigator.pop(dialogContext),
                   child: Text(context.l10n.text('cancel')),
                 ),
@@ -259,29 +266,56 @@ class _BudgetsPageState extends State<BudgetsPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(context.l10n.text('budgets'))),
-    body: _management == null
-        ? Center(child: Text(context.l10n.text('localStorageUnavailable')))
-        : FutureBuilder<List<Budget>>(
+  Widget build(BuildContext context) {
+    final desktop =
+        effectiveButlerlyLayoutMode(
+          context,
+          MediaQuery.sizeOf(context).width,
+        ) ==
+        ButlerlyLayoutMode.wide;
+    return ButlerlyPage(
+      title: context.l10n.text('budgets'),
+      fullWidth: desktop,
+      pinnedSpacing: ButlerlyPinnedPageSpacing.tightHeader,
+      actions: [
+        if (_management != null)
+          ButlerlyHeaderAddButton(
+            buttonKey: const ValueKey('budget-add'),
+            label: context.l10n.text('add'),
+            onPressed: () => _edit(),
+          ),
+      ],
+      children: [
+        if (_management == null)
+          Center(child: Text(context.l10n.text('localStorageUnavailable')))
+        else
+          FutureBuilder<List<Budget>>(
             future: _budgets,
             builder: (context, snapshot) {
               if (snapshot.hasError) {
-                return Center(
-                  child: Text(context.l10n.text('budgetSaveFailure')),
+                return ButlerlyErrorState(
+                  title: context.l10n.text('budgetSaveFailure'),
+                  message: context.l10n.text('tryAgain'),
+                  preserved: context.l10n.text('dataPreserved'),
+                  actionLabel: context.l10n.text('tryAgain'),
+                  onAction: _refresh,
                 );
               }
               if (!snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
+                return const ButlerlyLoadingState();
               }
-              return ListView(
-                padding: const EdgeInsets.all(16),
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(context.l10n.text('budgetsMonthlyDescription')),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: ButlerlySpacing.standard),
                   if (_error != null) Text(_error!),
                   if (snapshot.data!.isEmpty)
-                    Text(context.l10n.text('budgetsEmpty')),
+                    ButlerlyEmptyState(
+                      icon: Icons.account_balance_wallet_outlined,
+                      title: context.l10n.text('budgetsEmpty'),
+                      message: context.l10n.text('budgetsMonthlyDescription'),
+                    ),
                   for (final budget in snapshot.data!)
                     Card(
                       child: ListTile(
@@ -301,12 +335,8 @@ class _BudgetsPageState extends State<BudgetsPage> {
               );
             },
           ),
-    floatingActionButton: _management == null
-        ? null
-        : FloatingActionButton(
-            onPressed: () => _edit(),
-            tooltip: context.l10n.text('budgetAdd'),
-            child: const Icon(Icons.add),
-          ),
-  );
+        const SizedBox(height: ButlerlySpacing.structural),
+      ],
+    );
+  }
 }
