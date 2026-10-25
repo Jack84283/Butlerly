@@ -44,6 +44,7 @@ final class LocalBackupSnapshotWriter {
     'analysis_rule_configurations',
     'recurring_pattern_decisions',
     'user_preferences',
+    'budgets',
   ];
 
   static const _generatedTombstoneTypes = <String>{
