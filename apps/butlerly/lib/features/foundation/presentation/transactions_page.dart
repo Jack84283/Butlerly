@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
@@ -21,6 +22,8 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -1004,6 +1007,17 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
     }
     notifyTransactionChanged();
     if (result case ApplicationSuccess<TransactionDto>(value: final saved)) {
+      final soundEnabled = ProviderScope.containerOf(context, listen: false)
+          .read(userPreferenceProvider)
+          .value
+          ?.transactionSaveSoundEnabled ?? true;
+      if (soundEnabled) {
+        // Audio is noncritical feedback: never roll back a persisted save if
+        // the host does not support system sounds.
+        unawaited(SystemSound.play(SystemSoundType.click).catchError(
+          (Object _) {},
+        ));
+      }
       _complete(TransactionEditorResult.saved(saved));
     }
   }
