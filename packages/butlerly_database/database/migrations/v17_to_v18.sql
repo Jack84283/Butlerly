@@ -1,4 +1,4 @@
-CREATE TABLE budgets (
+CREATE TABLE IF NOT EXISTS budgets (
       id TEXT PRIMARY KEY NOT NULL,
       scope TEXT NOT NULL CHECK(scope IN ('overall', 'category', 'subcategory', 'merchant')),
       scope_id TEXT,
@@ -10,5 +10,5 @@ CREATE TABLE budgets (
           OR (scope != 'overall' AND scope_id IS NOT NULL)),
       UNIQUE (scope, scope_id, currency)
     );
-CREATE UNIQUE INDEX idx_budget_scope_currency
+CREATE UNIQUE INDEX IF NOT EXISTS idx_budget_scope_currency
   ON budgets(scope, COALESCE(scope_id, ''), currency);
