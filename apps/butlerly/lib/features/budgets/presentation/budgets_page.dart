@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/finance_services.dart';
+import 'package:butlerly/features/budgets/application/budget_change_notifier.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
@@ -383,6 +384,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
       if (saved is! ApplicationSuccess<bool>) {
         throw StateError('Monthly budget could not be saved.');
       }
+      notifyBudgetsChanged();
       if (mounted) _refresh();
     } catch (_) {
       if (mounted) {
