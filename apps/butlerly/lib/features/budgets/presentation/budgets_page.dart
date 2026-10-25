@@ -33,7 +33,8 @@ class _BudgetsPageState extends State<BudgetsPage> {
       services.isRegistered<FinanceServices>()
       ? services<FinanceServices>().manageBudgets
       : null;
-  late Future<List<Budget>> _budgets = _load();
+  Future<List<Budget>> _budgets = Future.value(const <Budget>[]);
+  String? _loadedLanguageCode;
   TransactionMasterData? _masterData;
   List<Category> _categories = const [];
   List<Merchant> _merchants = const [];
@@ -44,6 +45,12 @@ class _BudgetsPageState extends State<BudgetsPage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    final languageCode = Localizations.localeOf(context).languageCode;
+    if (_loadedLanguageCode != languageCode) {
+      _loadedLanguageCode = languageCode;
+      _masterData = null;
+      _budgets = _load();
+    }
     if (_creationRouteHandled ||
         GoRouterState.of(context).uri.queryParameters['create'] != 'true') {
       return;
@@ -60,7 +67,10 @@ class _BudgetsPageState extends State<BudgetsPage> {
     if (_management == null) return [];
     if (_masterData == null && services.isRegistered<FinanceServices>()) {
       final finance = services<FinanceServices>();
-      _masterData = await TransactionMasterData.load(finance);
+      _masterData = await TransactionMasterData.load(
+        finance,
+        languageCode: _loadedLanguageCode ?? 'en',
+      );
       final categoriesResult = await finance.listCategories();
       final merchantsResult = await finance.listMerchants();
       if (categoriesResult is ApplicationSuccess<List<Category>>) {
