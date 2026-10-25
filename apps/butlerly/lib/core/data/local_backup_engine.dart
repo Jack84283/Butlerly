@@ -1249,6 +1249,7 @@ final class LocalBackupManager {
 
   Future<void> _clearPortableState(Transaction tx) async {
     const childFirst = <String>[
+      'budgets',
       'transaction_rules',
       'merchant_normalization_patterns',
       'merchant_aliases',
