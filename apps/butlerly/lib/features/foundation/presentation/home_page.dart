@@ -308,7 +308,9 @@ class _HomePageState extends State<HomePage> {
         ),
         SizedBox(height: context.designTokens.geometry.cardGap),
         HomeBudgetsCard(
-          key: ValueKey('home-budgets-${data.displayMonth.year}-${data.displayMonth.month}'),
+          key: ValueKey(
+            'home-budgets-${data.displayMonth.year}-${data.displayMonth.month}',
+          ),
           month: data.displayMonth,
         ),
         SizedBox(height: context.designTokens.geometry.cardGap),
