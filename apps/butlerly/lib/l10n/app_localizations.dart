@@ -1778,7 +1778,8 @@ class AppLocalizations {
     },
     'es': {
       'transactionSaveSound': 'Sonido al guardar transacciones',
-      'transactionSaveSoundBody': 'Reproducir un sonido al guardar una transacción.',
+      'transactionSaveSoundBody':
+          'Reproducir un sonido al guardar una transacción.',
       'alipayBrand': 'Alipay',
       'wechatPayBrand': 'WeChat Pay',
       'cardNetwork': 'Red de tarjeta',
