@@ -124,9 +124,9 @@ class _BudgetsPageState extends State<BudgetsPage> {
                         scopeId = null;
                       }),
                     ),
-                    if (scope != 'overall')
+                    if (scope != 'overall') ...[
                       const SizedBox(height: ButlerlySpacing.standard),
-                    DropdownButtonFormField<String>(
+                      DropdownButtonFormField<String>(
                         key: ValueKey(scope),
                         initialValue: scopeId,
                         decoration: InputDecoration(
@@ -142,6 +142,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
                         onChanged: (value) =>
                             setDialogState(() => scopeId = value),
                       ),
+                    ],
                     const SizedBox(height: ButlerlySpacing.standard),
                     DropdownButtonFormField<String>(
                       initialValue: currency,
