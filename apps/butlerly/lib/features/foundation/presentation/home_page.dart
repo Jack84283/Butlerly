@@ -14,6 +14,7 @@ import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_model.dart';
+import 'package:butlerly/features/budgets/application/budget_change_notifier.dart';
 import 'package:butlerly/features/budgets/presentation/home_budgets_card.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -64,6 +65,7 @@ class _HomePageState extends State<HomePage> {
     super.initState();
     _data = Future.value(_HomeData.empty(_now));
     transactionChanges.addListener(_handleTransactionChange);
+    budgetChanges.addListener(_handleTransactionChange);
   }
 
   @override
@@ -80,6 +82,7 @@ class _HomePageState extends State<HomePage> {
   @override
   void dispose() {
     transactionChanges.removeListener(_handleTransactionChange);
+    budgetChanges.removeListener(_handleTransactionChange);
     super.dispose();
   }
 

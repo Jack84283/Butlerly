@@ -367,16 +367,19 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
   Widget build(BuildContext context) {
     final content = _contents();
     if (widget.embedded) return content;
-    return ButlerlyCard(
-      key: const ValueKey('home-budgets-card'),
-      variant: ButlerlyCardVariant.dashboard,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          ButlerlyCardHeader(title: context.l10n.text('myBudgets')),
-          const SizedBox(height: ButlerlySpacing.standard),
-          content,
-        ],
+    return SizedBox(
+      width: double.infinity,
+      child: ButlerlyCard(
+        key: const ValueKey('home-budgets-card'),
+        variant: ButlerlyCardVariant.dashboard,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ButlerlyCardHeader(title: context.l10n.text('myBudgets')),
+            const SizedBox(height: ButlerlySpacing.standard),
+            content,
+          ],
+        ),
       ),
     );
   }

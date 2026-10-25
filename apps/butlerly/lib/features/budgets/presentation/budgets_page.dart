@@ -380,6 +380,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
       if (result is! ApplicationSuccess<bool>) {
         throw StateError('Monthly budget could not be deleted.');
       }
+      notifyBudgetsChanged();
       if (mounted) _refresh();
     } catch (_) {
       if (mounted) {

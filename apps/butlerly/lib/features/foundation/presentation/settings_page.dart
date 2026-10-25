@@ -333,6 +333,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   description: l10n.text('desktopPrivacyDescription'),
                   children: [
                     _DesktopMoreRow(
+                      title: l10n.text('backupRestoreSettings'),
+                      onTap: () => context.push('/privacy-data'),
+                    ),
+                    _DesktopMoreRow(
+                      title: l10n.text('budgetSettings'),
+                      onTap: () => context.push('/budgets'),
+                    ),
+                    _DesktopMoreRow(
                       title: l10n.text('managePrivacyData'),
                       onTap: () => context.push('/privacy-data'),
                     ),
@@ -631,6 +639,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ButlerlySectionHeader(title: context.l10n.text('privacyAndData')),
         _SettingsSectionCard(
           children: [
+            _SettingsRow(
+              icon: Icons.backup_outlined,
+              title: context.l10n.text('backupRestoreSettings'),
+              subtitle: context.l10n.text('backupRestoreSettingsBody'),
+              onTap: () => context.push('/privacy-data'),
+            ),
+            _SettingsRow(
+              icon: Icons.account_balance_wallet_outlined,
+              title: context.l10n.text('budgetSettings'),
+              subtitle: context.l10n.text('budgetSettingsBody'),
+              onTap: () => context.push('/budgets'),
+            ),
             _SettingsRow(
               icon: Icons.privacy_tip_outlined,
               title: context.l10n.text('privacyAndData'),
