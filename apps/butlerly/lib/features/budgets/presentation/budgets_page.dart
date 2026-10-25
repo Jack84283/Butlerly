@@ -318,14 +318,15 @@ class _BudgetsPageState extends State<BudgetsPage> {
                       title: context.l10n.text('budgetsEmpty'),
                       message: context.l10n.text('budgetsMonthlyDescription'),
                     ),
-                  for (final budget in snapshot.data!)
-                    Card(
+                  for (final budget in snapshot.data!) ...[
+                    ButlerlyCard(
+                      onTap: () => _edit(existing: budget),
                       child: ListTile(
+                        contentPadding: EdgeInsets.zero,
                         title: Text(_displayName(budget)),
                         subtitle: Text(
                           '${_scopeLabel(budget.scope)} · ${budget.currency} ${budget.amount}',
                         ),
-                        onTap: () => _edit(existing: budget),
                         trailing: IconButton(
                           tooltip: context.l10n.text('delete'),
                           icon: const Icon(Icons.delete_outline),
@@ -333,6 +334,8 @@ class _BudgetsPageState extends State<BudgetsPage> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: ButlerlySpacing.cardGap),
+                  ],
                 ],
               );
             },
