@@ -1,39 +1,22 @@
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:sqflite_common/sqlite_api.dart';
 
 import '../database/butlerly_database.dart';
 
-/// Monthly, user-approved limit. Amount is stored as a decimal string to
-/// avoid floating-point changes to financial thresholds.
-final class StoredBudget {
-  const StoredBudget({
-    required this.id,
-    required this.scope,
-    required this.scopeId,
-    required this.currency,
-    required this.amount,
-  });
-
-  final String id;
-  final String scope;
-  final String? scopeId;
-  final String currency;
-  final String amount;
-}
-
 /// Persistence for explicit budget choices, not machine-generated suggestions.
-final class SqliteBudgetRepository {
+final class SqliteBudgetRepository implements BudgetRepository {
   const SqliteBudgetRepository(this.database);
 
   final ButlerlyDatabase database;
 
-  Future<List<StoredBudget>> list() async {
+  Future<List<Budget>> list() async {
     final rows = await database.connection.query(
       'budgets',
       orderBy: 'scope ASC, scope_id ASC, currency ASC',
     );
     return [
       for (final row in rows)
-        StoredBudget(
+        Budget(
           id: row['id']! as String,
           scope: row['scope']! as String,
           scopeId: row['scope_id'] as String?,
@@ -43,7 +26,7 @@ final class SqliteBudgetRepository {
     ];
   }
 
-  Future<void> save(StoredBudget budget) async {
+  Future<void> save(Budget budget) async {
     if (!const {
       'overall',
       'category',
