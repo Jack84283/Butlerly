@@ -1022,9 +1022,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
       if (soundEnabled) {
         // Audio is noncritical feedback: never roll back a persisted save if
         // the host does not support system sounds.
-        unawaited(SystemSound.play(SystemSoundType.click).catchError(
-          (Object _) {},
-        ));
+        unawaited(
+          SystemSound.play(SystemSoundType.click).catchError((Object _) {}),
+        );
       }
       _complete(TransactionEditorResult.saved(saved));
     }
