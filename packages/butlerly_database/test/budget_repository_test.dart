@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:butlerly_database/butlerly_database.dart';
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:test/test.dart';
 
@@ -30,7 +31,7 @@ void main() {
       var database = await open();
       var budgets = SqliteBudgetRepository(database);
       await budgets.save(
-        const StoredBudget(
+        const Budget(
           id: 'groceries-usd',
           scope: 'category',
           scopeId: 'groceries',
@@ -41,7 +42,7 @@ void main() {
       expect((await budgets.list()).single.amount, '750.00');
       await expectLater(
         budgets.save(
-          const StoredBudget(
+          const Budget(
             id: 'duplicate-scope',
             scope: 'category',
             scopeId: 'groceries',
@@ -80,7 +81,7 @@ void main() {
       for (final amount in ['0', '-1', 'NaN', 'Infinity', 'invalid']) {
         await expectLater(
           budgets.save(
-            StoredBudget(
+            Budget(
               id: 'invalid',
               scope: 'overall',
               scopeId: null,
