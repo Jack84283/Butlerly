@@ -55,7 +55,11 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
   }
 
   void _refresh() {
-    if (mounted) setState(() => _future = _load());
+    if (mounted) {
+      setState(() {
+        _future = _load();
+      });
+    }
   }
 
   @override
