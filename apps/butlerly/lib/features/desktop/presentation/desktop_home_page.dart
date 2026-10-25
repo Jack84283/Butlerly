@@ -1311,15 +1311,16 @@ class _DesktopTrend extends StatelessWidget {
                                           values[i] /
                                           chartMaximum,
                                       decoration: BoxDecoration(
-                                        color: context.colors.interactive.withValues(
-                                          alpha:
-                                              points[i].month.year ==
-                                                      selectedMonth.year &&
-                                                  points[i].month.month ==
-                                                      selectedMonth.month
-                                              ? 1.0
-                                              : 0.72,
-                                        ),
+                                        color: context.colors.interactive
+                                            .withValues(
+                                              alpha:
+                                                  points[i].month.year ==
+                                                          selectedMonth.year &&
+                                                      points[i].month.month ==
+                                                          selectedMonth.month
+                                                  ? 1.0
+                                                  : 0.72,
+                                            ),
                                         borderRadius:
                                             const BorderRadius.vertical(
                                               top: Radius.circular(5),
