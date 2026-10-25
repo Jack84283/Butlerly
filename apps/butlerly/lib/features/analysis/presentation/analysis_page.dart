@@ -19,6 +19,7 @@ import 'package:butlerly/features/analysis/presentation/widgets/analysis_skeleto
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_spending_breakdown.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_subcategory_breakdown.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_summary.dart';
+import 'package:butlerly/features/budgets/presentation/home_budgets_card.dart';
 import 'package:butlerly/features/desktop/presentation/desktop_transaction_detail_split_view.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -696,6 +697,19 @@ class _AnalysisContent extends StatelessWidget {
           MediaQuery.sizeOf(context).width,
         ) ==
         ButlerlyLayoutMode.wide;
+    // Monthly budgets follow the selected Analysis month, independently of
+    // any spending-trend range. A custom period uses its starting month.
+    final selectedMonth = DateTime.tryParse(
+      analysisContext?.period.startDate ?? '',
+    );
+    final budgetCard = selectedMonth == null
+        ? null
+        : HomeBudgetsCard(
+            key: ValueKey(
+              'analysis-budgets-${selectedMonth.year}-${selectedMonth.month}',
+            ),
+            month: selectedMonth,
+          );
     final spendingCard = AnalysisSpendingBreakdown(
       desktopLayout: desktop,
       model: model,
@@ -800,6 +814,7 @@ class _AnalysisContent extends StatelessWidget {
             // Keep unavailable notes and View All clear of the donut legend.
             matchedHeight: desktopSpendingHeight,
           ),
+          ?budgetCard,
           _AnalysisDesktopBreakdownRow(
             category: categoryCard,
             subcategory: subcategoryCard!,
@@ -807,6 +822,7 @@ class _AnalysisContent extends StatelessWidget {
           ),
         ] else ...[
           AnalysisSummary(model: model),
+          ?budgetCard,
           spendingCard,
           ?merchantCard,
           ?subcategoryCard,
