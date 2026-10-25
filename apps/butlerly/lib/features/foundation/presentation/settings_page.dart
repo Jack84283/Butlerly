@@ -475,16 +475,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ),
           ],
         ),
-        _SettingsSectionCard(
-          children: [
-            _SettingsRow(
-              icon: Icons.account_balance_wallet_outlined,
-              title: context.l10n.text('budgets'),
-              subtitle: context.l10n.text('budgetsMonthlyDescription'),
-              onTap: () => context.push('/budgets'),
-            ),
-          ],
-        ),
         ButlerlySectionHeader(
           key: _appearanceKey,
           title: context.l10n.text('appearance'),
@@ -652,6 +642,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               title: context.l10n.text('privacyAndData'),
               subtitle: context.l10n.text('privacyAndDataBody'),
               onTap: () => context.push('/privacy-data'),
+            ),
+          ],
+        ),
+        _SettingsSectionCard(
+          children: [
+            _SettingsRow(
+              icon: Icons.account_balance_wallet_outlined,
+              title: context.l10n.text('budgets'),
+              subtitle: context.l10n.text('budgetsMonthlyDescription'),
+              onTap: () => context.push('/budgets'),
             ),
           ],
         ),
