@@ -4,7 +4,6 @@ import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
-import 'package:butlerly/design_system/components/butlerly_category_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
@@ -146,8 +145,9 @@ class _BudgetsPageState extends State<BudgetsPage> {
                         ).closeButtonTooltip,
                         icon: const Icon(Icons.close),
                         onPressed: () {
-                          if (!completion.isCompleted)
+                          if (!completion.isCompleted) {
                             completion.complete(null);
+                          }
                         },
                       ),
                     ],
