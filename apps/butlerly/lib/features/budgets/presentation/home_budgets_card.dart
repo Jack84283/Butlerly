@@ -236,13 +236,13 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
                 final row = rows[index];
                 final limit = double.tryParse(row.budget.amount) ?? 0;
                 final spent = row.spent;
-                final percentage =
-                    spent == null || limit <= 0 ? null : spent / limit * 100;
+                final percentage = spent == null || limit <= 0
+                    ? null
+                    : spent / limit * 100;
                 final overBudget = percentage != null && percentage > 100;
-                final progressColor = (overBudget
-                        ? context.colors.error
-                        : context.colors.info)
-                    .withValues(alpha: 1.0);
+                final progressColor =
+                    (overBudget ? context.colors.error : context.colors.info)
+                        .withValues(alpha: 1.0);
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -259,9 +259,7 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
                                   _name(row.budget),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodyLarge
+                                  style: Theme.of(context).textTheme.bodyLarge
                                       ?.copyWith(fontWeight: FontWeight.bold),
                                 ),
                               ),
@@ -271,9 +269,7 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
                                     ? '—'
                                     : '${percentage.round()}%',
                                 textAlign: TextAlign.end,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
+                                style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(
                                       color: progressColor,
                                       fontWeight: FontWeight.w600,
@@ -283,8 +279,9 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
                           ),
                           const SizedBox(height: ButlerlySpacing.micro),
                           ClipRRect(
-                            borderRadius:
-                                BorderRadius.circular(ButlerlyRadius.full),
+                            borderRadius: BorderRadius.circular(
+                              ButlerlyRadius.full,
+                            ),
                             child: SizedBox(
                               height: 7,
                               child: LinearProgressIndicator(
@@ -292,8 +289,9 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
                                     ? 0
                                     : (percentage / 100).clamp(0.0, 1.0),
                                 color: progressColor,
-                                backgroundColor:
-                                    progressColor.withValues(alpha: 0.14),
+                                backgroundColor: progressColor.withValues(
+                                  alpha: 0.14,
+                                ),
                               ),
                             ),
                           ),
