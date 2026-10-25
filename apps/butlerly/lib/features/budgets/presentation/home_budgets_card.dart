@@ -3,6 +3,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/analysis/presentation/analysis_model.dart';
 import 'package:butlerly/features/budgets/application/budget_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -135,7 +136,7 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
         'overall' => overview.spending,
         'category' =>
           overview.categories
-              .where((m) => m.dimension == budget.scopeId)
+              .where((m) => analysisRawDimension(m) == budget.scopeId)
               .firstOrNull,
         'subcategory' =>
           overview.subcategories
@@ -255,10 +256,21 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        _name(row.budget),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _name(row.budget),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (row.spent case final spent?)
+                            Text(
+                              '${(spent / (double.tryParse(row.budget.amount) ?? 1) * 100).round()}%',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                        ],
                       ),
                       const SizedBox(height: ButlerlySpacing.compact),
                       if (row.spent case final spent?)
@@ -268,6 +280,9 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
                           ),
                           child: LinearProgressIndicator(
                             minHeight: ButlerlySpacing.compact,
+                            color: spent > (double.tryParse(row.budget.amount) ?? 0)
+                                ? Theme.of(context).colorScheme.error
+                                : Theme.of(context).colorScheme.primary,
                             value:
                                 (spent /
                                         (double.tryParse(row.budget.amount) ??
