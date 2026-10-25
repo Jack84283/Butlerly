@@ -36,6 +36,8 @@ class AppLocalizations {
 
   static const _strings = <String, Map<String, String>>{
     'en': {
+      'transactionSaveSound': 'Transaction save sound',
+      'transactionSaveSoundBody': 'Play a sound when a transaction is saved.',
       'alipayBrand': 'Alipay',
       'wechatPayBrand': 'WeChat Pay',
       'cardNetwork': 'Card network',
@@ -969,6 +971,8 @@ class AppLocalizations {
       'subcategory': 'Subcategory',
     },
     'zh': {
+      'transactionSaveSound': '交易保存提示音',
+      'transactionSaveSoundBody': '成功保存交易后播放提示音。',
       'alipayBrand': '支付宝',
       'wechatPayBrand': '微信支付',
       'cardNetwork': '银行卡网络',
@@ -1773,6 +1777,8 @@ class AppLocalizations {
       'subcategory': '子类别',
     },
     'es': {
+      'transactionSaveSound': 'Sonido al guardar transacciones',
+      'transactionSaveSoundBody': 'Reproducir un sonido al guardar una transacción.',
       'alipayBrand': 'Alipay',
       'wechatPayBrand': 'WeChat Pay',
       'cardNetwork': 'Red de tarjeta',
