@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
+import 'package:butlerly/design_system/components/butlerly_category_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
@@ -70,6 +72,24 @@ class _BudgetsPageState extends State<BudgetsPage> {
     _ => scope,
   };
 
+  Widget _budgetIcon(Budget budget) {
+    final id = budget.scopeId;
+    if (id != null && (budget.scope == 'category' ||
+        budget.scope == 'subcategory')) {
+      final categoryId = budget.scope == 'subcategory'
+          ? _masterData?.categoryParentId(id) ?? id
+          : id;
+      if (ButlerlyCategoryIdentity.forBuiltInId(categoryId) != null) {
+        return ButlerlyCategoryIcon(categoryId: categoryId);
+      }
+      return const Icon(Icons.category_outlined);
+    }
+    if (budget.scope == 'merchant') {
+      return const Icon(Icons.storefront_outlined);
+    }
+    return const Icon(Icons.savings_outlined);
+  }
+
   String _displayName(Budget budget) {
     if (budget.scopeId == null) return _scopeLabel(budget.scope);
     if (budget.scope == 'merchant') {
@@ -99,7 +119,22 @@ class _BudgetsPageState extends State<BudgetsPage> {
       Widget editor(BuildContext dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
           return ButlerlySheet(
-            title: Text(context.l10n.text('budgetEdit')),
+            title: desktop
+                ? Row(
+                    children: [
+                      Expanded(child: Text(context.l10n.text('budgetEdit'))),
+                      IconButton(
+                        key: const ValueKey('budget-editor-close'),
+                        tooltip: MaterialLocalizations.of(dialogContext)
+                            .closeButtonTooltip,
+                        icon: const Icon(Icons.close),
+                        onPressed: () {
+                          if (!completion.isCompleted) completion.complete(null);
+                        },
+                      ),
+                    ],
+                  )
+                : Text(context.l10n.text('budgetEdit')),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -387,7 +422,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
                   if (_error != null) Text(_error!),
                   if (snapshot.data!.isEmpty)
                     ButlerlyEmptyState(
-                      icon: Icons.account_balance_wallet_outlined,
+                      icon: Icons.savings_outlined,
                       title: context.l10n.text('budgetsEmpty'),
                       message: context.l10n.text('budgetsMonthlyDescription'),
                     ),
@@ -396,6 +431,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
                       onTap: () => _edit(existing: budget),
                       child: ListTile(
                         contentPadding: EdgeInsets.zero,
+                        leading: _budgetIcon(budget),
                         title: Text(_displayName(budget)),
                         subtitle: Text(
                           '${_scopeLabel(budget.scope)} · ${budget.currency} ${budget.amount}',
