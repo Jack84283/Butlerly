@@ -1,6 +1,6 @@
 import 'package:butlerly/core/database/local_database.dart';
-import 'package:butlerly/features/budgets/application/budget_suggestions.dart';
 import 'package:butlerly/core/di/finance_services.dart';
+import 'package:butlerly/features/budgets/application/budget_suggestions.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -54,7 +54,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
   String _displayName(StoredBudget budget) {
     if (budget.scopeId == null) return _scopeLabel(budget.scope);
     if (budget.scope == 'merchant') {
-      return _masterData?.merchantName(budget.scopeId) ?? budget.scopeId;
+      return _masterData?.merchantName(budget.scopeId) ?? budget.scopeId ?? '';
     }
     return _masterData?.categoryName(budget.scopeId) ?? budget.scopeId!;
   }
@@ -230,7 +230,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
         ),
       );
       if (submitted == null || _repository == null) return;
-      await _repository!.save(submitted);
+      await _repository.save(submitted);
       if (mounted) _refresh();
     } catch (_) {
       if (mounted) {
