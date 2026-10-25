@@ -82,7 +82,12 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
     }
     final budgets = saved.value;
     if (budgets.isEmpty) return const [];
-    _labels = await TransactionMasterData.load(finance);
+    try {
+      _labels = await TransactionMasterData.load(finance);
+    } catch (_) {
+      // Missing presentation metadata must not hide saved budgets.
+      _labels = null;
+    }
     final calculate = finance.calculateAnalysisOverview;
     if (calculate == null) {
       return budgets.map((b) => _BudgetProgress(b, null)).toList();
@@ -91,18 +96,33 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
         '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
     final first = DateTime(month.year, month.month, 1);
     final last = DateTime(month.year, month.month + 1, 0);
-    final contextResult = await calculate.contextForDates(
-      startDate: date(first),
-      endDate: date(last),
-    );
+    late final ApplicationResult<AnalysisContext> contextResult;
+    try {
+      contextResult = await calculate.contextForDates(
+        startDate: date(first),
+        endDate: date(last),
+      );
+    } catch (_) {
+      return budgets.map((b) => _BudgetProgress(b, null)).toList();
+    }
     if (contextResult is! ApplicationSuccess<AnalysisContext>) {
       return budgets.map((b) => _BudgetProgress(b, null)).toList();
     }
-    final result = await calculate(contextResult.value);
+    late final ApplicationResult<List<RuleExecutionResult>> result;
+    try {
+      result = await calculate(contextResult.value);
+    } catch (_) {
+      return budgets.map((b) => _BudgetProgress(b, null)).toList();
+    }
     if (result is! ApplicationSuccess<List<RuleExecutionResult>>) {
       return budgets.map((b) => _BudgetProgress(b, null)).toList();
     }
-    final overview = AnalysisOverview.fromResults(result.value);
+    late final AnalysisOverview overview;
+    try {
+      overview = AnalysisOverview.fromResults(result.value);
+    } catch (_) {
+      return budgets.map((b) => _BudgetProgress(b, null)).toList();
+    }
     return budgets.map((budget) {
       final AnalysisMetric? metric = switch (budget.scope) {
         'overall' => overview.spending,
@@ -177,7 +197,17 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
         return const ButlerlyLoadingState();
       }
       if (snapshot.hasError) {
-        return Text(context.l10n.text('homeUnavailable'));
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(context.l10n.text('budgetSaveFailure')),
+            const SizedBox(height: ButlerlySpacing.small),
+            TextButton(
+              onPressed: _refresh,
+              child: Text(context.l10n.text('tryAgain')),
+            ),
+          ],
+        );
       }
       final rows = snapshot.data ?? const <_BudgetProgress>[];
       if (rows.isEmpty) {
