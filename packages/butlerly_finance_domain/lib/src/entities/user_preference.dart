@@ -8,6 +8,7 @@ final class UserPreference {
     required this.baseCurrency,
     required this.timeZoneId,
     this.externalAiEnabled = false,
+    this.transactionSaveSoundEnabled = true,
     this.firstUseCompleted = false,
     this.appearance = 'system',
     this.colorTheme = 'butlerRed',
@@ -20,6 +21,7 @@ final class UserPreference {
   final CurrencyCode baseCurrency;
   final String timeZoneId;
   final bool externalAiEnabled;
+  final bool transactionSaveSoundEnabled;
   final bool firstUseCompleted;
   final String appearance;
   final String colorTheme;
