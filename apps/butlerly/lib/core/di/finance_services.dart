@@ -36,8 +36,12 @@ final class FinanceServices {
     MerchantNormalizationPatternRepository? merchantNormalizationPatterns,
     MerchantMatchingConfigurationRepository? merchantMatchingConfiguration,
     TransactionRuleRepository? transactionRules,
+    BudgetRepository? budgetRepository,
     InvalidateAnalysis? analysisInvalidation,
-  }) : listTransactions = ListTransactions(
+  }) : manageBudgets = budgetRepository == null
+           ? null
+           : ManageBudgets(budgetRepository),
+       listTransactions = ListTransactions(
          transactions,
          preferences: preferences,
        ),
@@ -525,6 +529,7 @@ final class FinanceServices {
     );
   }
 
+  final ManageBudgets? manageBudgets;
   final ListTransactions listTransactions;
   final SeedInitialMasterData seedInitialMasterData;
   final LoadMasterTranslations loadMasterTranslations;
