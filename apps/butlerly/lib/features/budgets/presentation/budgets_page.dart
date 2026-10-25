@@ -1,4 +1,5 @@
 import 'package:butlerly/core/database/local_database.dart';
+import 'package:butlerly/features/budgets/application/budget_suggestions.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -82,6 +83,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
     var scope = existing?.scope ?? 'overall';
     String? scopeId = existing?.scopeId;
     var currency = existing?.currency ?? 'USD';
+    String? suggestionMessage;
     final amount = TextEditingController(text: existing?.amount ?? '');
     try {
       final submitted = await showDialog<StoredBudget>(
@@ -155,6 +157,8 @@ class _BudgetsPageState extends State<BudgetsPage> {
                       onChanged: (value) =>
                           setDialogState(() => currency = value ?? currency),
                     ),
+                    if (suggestionMessage != null)
+                      Text(suggestionMessage!),
                     TextField(
                       controller: amount,
                       keyboardType: const TextInputType.numberWithOptions(
@@ -168,6 +172,31 @@ class _BudgetsPageState extends State<BudgetsPage> {
                 ),
               ),
               actions: [
+                TextButton(
+                  onPressed: !services.isRegistered<FinanceServices>()
+                      ? null
+                      : () async {
+                          setDialogState(() => suggestionMessage = null);
+                          final suggestion = await suggestMonthlyBudget(
+                            finance: services<FinanceServices>(),
+                            scope: scope,
+                            scopeId: scopeId,
+                            currency: currency,
+                          );
+                          if (!dialogContext.mounted) return;
+                          setDialogState(() {
+                            if (suggestion == null) {
+                              suggestionMessage =
+                                  context.l10n.text('budgetSuggestionUnavailable');
+                            } else {
+                              amount.text = suggestion.amount;
+                              suggestionMessage =
+                                  context.l10n.text('budgetSuggestionPreview');
+                            }
+                          });
+                        },
+                  child: Text(context.l10n.text('budgetSuggest')),
+                ),
                 TextButton(
                   onPressed: () => Navigator.pop(dialogContext),
                   child: Text(context.l10n.text('cancel')),
