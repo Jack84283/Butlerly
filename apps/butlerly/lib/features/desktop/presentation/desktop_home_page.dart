@@ -573,6 +573,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                           2 * ButlerlySpacing.small,
                                       child: SingleChildScrollView(
                                         child: HomeBudgetsCard(
+                                          key: ValueKey('home-budgets-${current.year}-${current.month}'),
                                           month: current,
                                           embedded: true,
                                         ),
