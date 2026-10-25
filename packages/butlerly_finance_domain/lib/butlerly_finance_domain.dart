@@ -4,6 +4,7 @@ export 'src/analysis/analysis.dart';
 export 'src/analysis/analysis_roles.dart';
 export 'src/entities/account.dart';
 export 'src/entities/attachment_link.dart';
+export 'src/entities/budget.dart';
 export 'src/entities/category.dart';
 export 'src/entities/duplicate_candidate_group.dart';
 export 'src/entities/evidence_item.dart';
