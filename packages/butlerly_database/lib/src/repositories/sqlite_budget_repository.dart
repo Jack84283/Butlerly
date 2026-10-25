@@ -63,15 +63,37 @@ final class SqliteBudgetRepository {
       throw ArgumentError.value(budget.amount, 'amount');
     }
     final now = DateTime.now().toUtc().toIso8601String();
-    await database.connection.insert('budgets', {
-      'id': budget.id,
-      'scope': budget.scope,
-      'scope_id': budget.scopeId,
-      'currency': budget.currency,
-      'amount': budget.amount,
-      'created_at': now,
-      'updated_at': now,
-    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    await database.connection.transaction((transaction) async {
+      final existing = await transaction.query(
+        'budgets',
+        columns: ['id'],
+        where: 'id = ?',
+        whereArgs: [budget.id],
+        limit: 1,
+      );
+      final fields = <String, Object?>{
+        'scope': budget.scope,
+        'scope_id': budget.scopeId,
+        'currency': budget.currency,
+        'amount': budget.amount,
+        'updated_at': now,
+      };
+      if (existing.isEmpty) {
+        await transaction.insert(
+          'budgets',
+          {'id': budget.id, ...fields, 'created_at': now},
+          conflictAlgorithm: ConflictAlgorithm.abort,
+        );
+      } else {
+        await transaction.update(
+          'budgets',
+          fields,
+          where: 'id = ?',
+          whereArgs: [budget.id],
+          conflictAlgorithm: ConflictAlgorithm.abort,
+        );
+      }
+    });
   }
 
   Future<void> remove(String id) async {
