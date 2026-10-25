@@ -178,7 +178,7 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
             Text(context.l10n.text('budgetsEmpty')),
             const SizedBox(height: ButlerlySpacing.small),
             FilledButton.icon(
-              onPressed: () => context.push('/budgets'),
+              onPressed: () => context.push('/budgets?create=true'),
               icon: const Icon(Icons.add),
               label: Text(context.l10n.text('budgetAdd')),
             ),
