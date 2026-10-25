@@ -145,10 +145,14 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
               .firstOrNull,
         _ => null,
       };
+      // Match the availability rule used by Home's spending summary.
+      // Quality warnings should not suppress an otherwise usable amount.
+      // Currency must still match so we never compare unlike amounts.
+      final metricCurrency =
+          metric?.currency?.value ?? metric?.context.baseCurrency.value;
       if (metric == null ||
           metric.availability != AnalysisDataAvailability.sufficient ||
-          metric.currency?.value != budget.currency ||
-          metric.qualityIssues.isNotEmpty) {
+          metricCurrency != budget.currency) {
         debugPrint('My Budgets: monthly metric unavailable for '
             '${budget.scope}/${budget.scopeId} '
             '${month.year}-${month.month}: '
