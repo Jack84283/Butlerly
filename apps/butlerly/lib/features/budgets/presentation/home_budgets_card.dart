@@ -248,7 +248,7 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ButlerlyCardHeader(title: 'My Budgets'),
+          ButlerlyCardHeader(title: context.l10n.text('myBudgets')),
           const SizedBox(height: ButlerlySpacing.standard),
           content,
         ],
