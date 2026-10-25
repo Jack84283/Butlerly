@@ -47,9 +47,12 @@ class AppLocalizations {
       'budgetTarget': 'Select category or merchant',
       'budgetCurrency': 'Currency',
       'budgetAmount': 'Monthly limit',
-      'budgetSaveFailure': 'The budget could not be saved. Your existing data is unchanged.',
-      'budgetsEmpty': 'No budgets yet. Add a monthly spending limit to get started.',
-      'budgetsMonthlyDescription': 'Your monthly spending limits are stored locally. Budgets are never created automatically.',
+      'budgetSaveFailure':
+          'The budget could not be saved. Your existing data is unchanged.',
+      'budgetsEmpty':
+          'No budgets yet. Add a monthly spending limit to get started.',
+      'budgetsMonthlyDescription':
+          'Your monthly spending limits are stored locally. Budgets are never created automatically.',
       'transactionSaveSound': 'Transaction save sound',
       'transactionSaveSoundBody': 'Play a sound when a transaction is saved.',
       'alipayBrand': 'Alipay',
@@ -996,9 +999,12 @@ class AppLocalizations {
       'budgetTarget': '选择类别或商家',
       'budgetCurrency': '货币',
       'budgetAmount': '每月限额',
-      'budgetSaveFailure': '无法保存预算。现有数据未更改。',
-      'budgetsEmpty': '尚无预算。添加每月支出限额以开始使用。',
-      'budgetsMonthlyDescription': '每月预算仅保存在本机，不会自动创建。',
+      'budgetSaveFailure':
+          '无法保存预算。现有数据未更改。',
+      'budgetsEmpty':
+          '尚无预算。添加每月支出限额以开始使用。',
+      'budgetsMonthlyDescription':
+          '每月预算仅保存在本机，不会自动创建。',
       'transactionSaveSound': '交易保存提示音',
       'transactionSaveSoundBody': '成功保存交易后播放提示音。',
       'alipayBrand': '支付宝',
@@ -1816,9 +1822,12 @@ class AppLocalizations {
       'budgetTarget': 'Seleccionar categoría o comercio',
       'budgetCurrency': 'Moneda',
       'budgetAmount': 'Límite mensual',
-      'budgetSaveFailure': 'No se pudo guardar el presupuesto. Los datos existentes no cambiaron.',
-      'budgetsEmpty': 'Aún no hay presupuestos. Añade un límite de gasto mensual.',
-      'budgetsMonthlyDescription': 'Los límites de gasto mensuales se guardan localmente y nunca se crean automáticamente.',
+      'budgetSaveFailure':
+          'No se pudo guardar el presupuesto. Los datos existentes no cambiaron.',
+      'budgetsEmpty':
+          'Aún no hay presupuestos. Añade un límite de gasto mensual.',
+      'budgetsMonthlyDescription':
+          'Los límites de gasto mensuales se guardan localmente y nunca se crean automáticamente.',
       'transactionSaveSound': 'Sonido al guardar transacciones',
       'transactionSaveSoundBody':
           'Reproducir un sonido al guardar una transacción.',
