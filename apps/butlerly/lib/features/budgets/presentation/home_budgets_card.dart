@@ -149,7 +149,7 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
       // Quality warnings should not suppress an otherwise usable amount.
       // Currency must still match so we never compare unlike amounts.
       final metricCurrency =
-          metric?.currency?.value ?? metric?.context.baseCurrency.value;
+          metric?.currency?.value ?? metric?.context.baseCurrency?.value;
       if (metric == null ||
           metric.availability != AnalysisDataAvailability.sufficient ||
           metricCurrency != budget.currency) {
