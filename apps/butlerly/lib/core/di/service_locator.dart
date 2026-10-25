@@ -151,6 +151,7 @@ void configureDependencies({
       transactionRules: SqliteTransactionRuleRepository(
         database.persistenceDatabase,
       ),
+      budgetRepository: SqliteBudgetRepository(database.persistenceDatabase),
       analysisInvalidation: invalidateAnalysis,
     );
     services
