@@ -565,9 +565,11 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                   child: _DesktopPanel(
                                     title: 'My Budgets',
                                     showInnerCard: true,
-                                    headerHeight: _desktopHomeBreakdownHeaderHeight,
+                                    headerHeight:
+                                        _desktopHomeBreakdownHeaderHeight,
                                     child: SizedBox(
-                                      height: _desktopHomeBreakdownContentHeight -
+                                      height:
+                                          _desktopHomeBreakdownContentHeight -
                                           2 * ButlerlySpacing.small,
                                       child: SingleChildScrollView(
                                         child: HomeBudgetsCard(
@@ -580,7 +582,8 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                 );
                                 return b.maxWidth >= 960
                                     ? Row(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Expanded(child: budgets),
                                           const SizedBox(width: 8),
