@@ -97,12 +97,18 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
     return budgets.map((budget) {
       final AnalysisMetric? metric = switch (budget.scope) {
         'overall' => overview.spending,
-        'category' => overview.categories
-            .where((m) => m.dimension == budget.scopeId).firstOrNull,
-        'subcategory' => overview.subcategories
-            .where((m) => m.dimension == budget.scopeId).firstOrNull,
-        'merchant' => overview.merchants
-            .where((m) => m.dimension == budget.scopeId).firstOrNull,
+        'category' =>
+          overview.categories
+              .where((m) => m.dimension == budget.scopeId)
+              .firstOrNull,
+        'subcategory' =>
+          overview.subcategories
+              .where((m) => m.dimension == budget.scopeId)
+              .firstOrNull,
+        'merchant' =>
+          overview.merchants
+              .where((m) => m.dimension == budget.scopeId)
+              .firstOrNull,
         _ => null,
       };
       if (metric == null ||
@@ -111,10 +117,7 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
           metric.qualityIssues.isNotEmpty) {
         return _BudgetProgress(budget, null);
       }
-      return _BudgetProgress(
-        budget,
-        double.tryParse(metric.value.toString()),
-      );
+      return _BudgetProgress(budget, double.tryParse(metric.value.toString()));
     }).toList();
   }
 
@@ -128,8 +131,8 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
 
   Widget _icon(Budget budget) {
     final id = budget.scopeId;
-    if (id != null && (budget.scope == 'category' ||
-        budget.scope == 'subcategory')) {
+    if (id != null &&
+        (budget.scope == 'category' || budget.scope == 'subcategory')) {
       final parent = budget.scope == 'subcategory'
           ? _labels?.categoryParentId(id) ?? id
           : id;
@@ -140,8 +143,8 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
     final glyph = budget.scope == 'merchant'
         ? Icons.storefront_outlined
         : budget.scope == 'overall'
-            ? Icons.savings_outlined
-            : Icons.category_outlined;
+        ? Icons.savings_outlined
+        : Icons.category_outlined;
     return SizedBox.square(
       dimension: ButlerlySize.categoryIconContainer,
       child: DecoratedBox(
@@ -194,16 +197,24 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(_name(row.budget), maxLines: 1,
-                          overflow: TextOverflow.ellipsis),
+                      Text(
+                        _name(row.budget),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       const SizedBox(height: ButlerlySpacing.compact),
                       if (row.spent case final spent?)
                         ClipRRect(
-                          borderRadius: BorderRadius.circular(ButlerlyRadius.pill),
+                          borderRadius: BorderRadius.circular(
+                            ButlerlyRadius.pill,
+                          ),
                           child: LinearProgressIndicator(
                             minHeight: ButlerlySpacing.compact,
-                            value: (spent / (double.tryParse(row.budget.amount) ?? 1))
-                                .clamp(0.0, 1.0),
+                            value:
+                                (spent /
+                                        (double.tryParse(row.budget.amount) ??
+                                            1))
+                                    .clamp(0.0, 1.0),
                           ),
                         )
                       else
