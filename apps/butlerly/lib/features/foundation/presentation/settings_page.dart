@@ -152,12 +152,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
     final preferences = <Widget>[
       tile(
-        Icons.account_balance_wallet_outlined,
-        l10n.text('budgets'),
-        l10n.text('budgetEdit'),
-        () => context.push('/budgets'),
-      ),
-      tile(
         Icons.volume_up_outlined,
         l10n.text('transactionSaveSound'),
         l10n.text(
@@ -642,16 +636,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               title: context.l10n.text('privacyAndData'),
               subtitle: context.l10n.text('privacyAndDataBody'),
               onTap: () => context.push('/privacy-data'),
-            ),
-          ],
-        ),
-        _SettingsSectionCard(
-          children: [
-            _SettingsRow(
-              icon: Icons.account_balance_wallet_outlined,
-              title: context.l10n.text('budgets'),
-              subtitle: context.l10n.text('budgetsMonthlyDescription'),
-              onTap: () => context.push('/budgets'),
             ),
           ],
         ),
