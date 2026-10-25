@@ -39,6 +39,20 @@ void main() {
         ),
       );
       expect((await budgets.list()).single.amount, '750.00');
+      await expectLater(
+        budgets.save(
+          const StoredBudget(
+            id: 'duplicate-scope',
+            scope: 'category',
+            scopeId: 'groceries',
+            currency: 'USD',
+            amount: '999.00',
+          ),
+        ),
+        throwsA(isA<Exception>()),
+      );
+      expect((await budgets.list()).single.amount, '750.00');
+
       await database.close();
 
       database = await open();
