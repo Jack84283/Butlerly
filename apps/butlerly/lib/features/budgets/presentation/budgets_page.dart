@@ -60,14 +60,14 @@ class _BudgetsPageState extends State<BudgetsPage> {
     final masterData = _masterData;
     final scopes = <String, Map<String, String>>{
       'category': masterData?.categoryNames.entries
-              .where((entry) => masterData.categoryParentId(entry.key) == null)
+              .where((entry) => masterData!.categoryParentId(entry.key) == null)
               .fold(<String, String>{}, (map, entry) {
                 map[entry.key] = entry.value;
                 return map;
               }) ??
           {},
       'subcategory': masterData?.categoryNames.entries
-              .where((entry) => masterData.categoryParentId(entry.key) != null)
+              .where((entry) => masterData!.categoryParentId(entry.key) != null)
               .fold(<String, String>{}, (map, entry) {
                 map[entry.key] = entry.value;
                 return map;
@@ -263,7 +263,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
     floatingActionButton: _repository == null
         ? null
         : FloatingActionButton(
-            onPressed: _edit,
+            onPressed: () => _edit(),
             tooltip: context.l10n.text('budgetAdd'),
             child: const Icon(Icons.add),
           ),
