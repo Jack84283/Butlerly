@@ -1017,7 +1017,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
               listen: false,
             ).read(userPreferenceProvider).value?.transactionSaveSoundEnabled ??
             true;
-      } on Exception {
+      } catch (_) {
         // The transaction has already been saved successfully.
       }
       if (soundEnabled) {
