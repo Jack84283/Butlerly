@@ -52,17 +52,13 @@ Future<void> startLocalFileImport(
             child: Text(sheetContext.l10n.text('cancel')),
           ),
           TextButton(
-            onPressed: () => Navigator.pop(
-              sheetContext,
-              ButlerlyCsvKind.receipts,
-            ),
+            onPressed: () =>
+                Navigator.pop(sheetContext, ButlerlyCsvKind.receipts),
             child: Text(sheetContext.l10n.text('csvReceipts')),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(
-              sheetContext,
-              ButlerlyCsvKind.transactions,
-            ),
+            onPressed: () =>
+                Navigator.pop(sheetContext, ButlerlyCsvKind.transactions),
             child: Text(sheetContext.l10n.text('csvTransactions')),
           ),
         ],
