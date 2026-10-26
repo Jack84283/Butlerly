@@ -57,18 +57,21 @@ void main() {
         primaryTransactionsByPeriod: {'selected_period': selected},
       );
 
-  test('new merchant budget is zero even with no analysis rules or expenses', () {
-    final budgets = [
-      budget('merchant', 'merchant-new'),
-      budget('overall', null),
-      budget('category', 'category-new'),
-      budget('subcategory', 'sub-new'),
-    ];
-    final result = calculateBudgetActualsFromDataset(dataset([]), budgets);
-    for (final item in budgets) {
-      expect(result.byBudgetId[item.id], DecimalValue.parse('0'));
-    }
-  });
+  test(
+    'new merchant budget is zero even with no analysis rules or expenses',
+    () {
+      final budgets = [
+        budget('merchant', 'merchant-new'),
+        budget('overall', null),
+        budget('category', 'category-new'),
+        budget('subcategory', 'sub-new'),
+      ];
+      final result = calculateBudgetActualsFromDataset(dataset([]), budgets);
+      for (final item in budgets) {
+        expect(result.byBudgetId[item.id], DecimalValue.parse('0'));
+      }
+    },
+  );
 
   test('zero-spending new merchant is not confused with other merchants', () {
     final selected = [
@@ -91,10 +94,20 @@ void main() {
 
   test('category, subcategory and merchant budget actuals use exact IDs', () {
     final values = [
-      row('a', '42.10', merchant: 'merchant-a',
-          category: 'category-a', subcategory: 'sub-a'),
-      row('b', '7.23', merchant: 'merchant-b',
-          category: 'category-a', subcategory: 'sub-b'),
+      row(
+        'a',
+        '42.10',
+        merchant: 'merchant-a',
+        category: 'category-a',
+        subcategory: 'sub-a',
+      ),
+      row(
+        'b',
+        '7.23',
+        merchant: 'merchant-b',
+        category: 'category-a',
+        subcategory: 'sub-b',
+      ),
     ];
     final budgets = [
       budget('category', 'category-a'),
@@ -118,33 +131,41 @@ void main() {
       row('refund', '40', direction: TransactionDirection.refund),
     ];
     final item = budget('overall', null);
-    final actual = calculateBudgetActualsFromDataset(
-      dataset(selected), [item],
-    ).byBudgetId[item.id];
+    final actual = calculateBudgetActualsFromDataset(dataset(selected), [
+      item,
+    ]).byBudgetId[item.id];
     expect(actual, DecimalValue.parse('10'));
   });
 
   test('normalized FX is used in a matching base-currency budget', () {
     final selected = [
-      row('foreign', '10', currency: 'EUR', merchant: 'market',
-          normalized: Money(amount: DecimalValue.parse('11.50'), currency: usd)),
+      row(
+        'foreign',
+        '10',
+        currency: 'EUR',
+        merchant: 'market',
+        normalized: Money(amount: DecimalValue.parse('11.50'), currency: usd),
+      ),
     ];
     final item = budget('merchant', 'market');
     expect(
-      calculateBudgetActualsFromDataset(
-        dataset(selected), [item],
-      ).byBudgetId[item.id],
+      calculateBudgetActualsFromDataset(dataset(selected), [
+        item,
+      ]).byBudgetId[item.id],
       DecimalValue.parse('11.5'),
     );
   });
 
   test('matching expense without FX stays unavailable instead of zero', () {
-    final selected = [row('foreign', '10', currency: 'EUR', merchant: 'market')];
+    final selected = [
+      row('foreign', '10', currency: 'EUR', merchant: 'market'),
+    ];
     final affected = budget('merchant', 'market');
     final unrelated = budget('merchant', 'new-merchant');
-    final amounts = calculateBudgetActualsFromDataset(
-      dataset(selected), [affected, unrelated],
-    ).byBudgetId;
+    final amounts = calculateBudgetActualsFromDataset(dataset(selected), [
+      affected,
+      unrelated,
+    ]).byBudgetId;
     expect(amounts[affected.id], isNull);
     expect(amounts[unrelated.id], DecimalValue.parse('0'));
   });
@@ -155,14 +176,15 @@ void main() {
       row('foreign', '7.95', merchant: 'market', currency: eur.value),
     ];
     expect(
-      calculateBudgetActualsFromDataset(
-        dataset(selected), [item],
-      ).byBudgetId[item.id],
+      calculateBudgetActualsFromDataset(dataset(selected), [
+        item,
+      ]).byBudgetId[item.id],
       DecimalValue.parse('7.95'),
     );
     expect(
       calculateBudgetActualsFromDataset(
-        dataset([row('usd', '7.95', merchant: 'market')]), [item],
+        dataset([row('usd', '7.95', merchant: 'market')]),
+        [item],
       ).byBudgetId[item.id],
       isNull,
     );
@@ -170,10 +192,7 @@ void main() {
 
   test('absence of a selected-month dataset never fabricates zero', () {
     final item = budget('merchant', 'new-merchant');
-    final missing = AnalysisDataset(
-      context: context,
-      transactions: const [],
-    );
+    final missing = AnalysisDataset(context: context, transactions: const []);
     expect(
       calculateBudgetActualsFromDataset(missing, [item]).byBudgetId[item.id],
       isNull,
