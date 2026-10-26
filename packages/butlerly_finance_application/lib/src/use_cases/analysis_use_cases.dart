@@ -338,28 +338,57 @@ final class CalculateInsights {
     final incomeResult = _roleResult(results, AnalysisSemanticRole.incomeTotal);
     final baselineContext = _baselineContext(context);
     final summaryLimitations = _issues(results);
+    // The engine retains a partial numeric value for diagnostics when FX data
+    // is missing. Never present that partial amount as a complete financial
+    // total in Insights, even when its value happens to be zero.
+    DecimalValue? usableValue(AnalysisMetric? metric) =>
+        metric == null ||
+            metric.availability == AnalysisDataAvailability.insufficient
+        ? null
+        : metric.value;
+    AnalysisComparison? usableComparison(RuleExecutionResult? result) {
+      final metric = result?.metric;
+      final comparison = result?.comparison;
+      if (metric == null ||
+          metric.availability == AnalysisDataAvailability.insufficient ||
+          comparison == null ||
+          comparison.availability == AnalysisDataAvailability.insufficient ||
+          comparison.baselineValue == null) {
+        return null;
+      }
+      return comparison;
+    }
+
+    final expenseChange = usableComparison(expenseResult);
+    final incomeChange = usableComparison(incomeResult);
+    final comparisonAvailable = expenseChange != null || incomeChange != null;
+    // A net comparison needs both sides of the baseline. Do not interpret
+    // an unavailable expense or income baseline as a genuine zero.
     final netComparison = _comparison(
-      current: net?.value,
-      baseline: _baselineValue(expenseResult, incomeResult),
+      current: usableValue(net),
+      baseline: expenseChange != null && incomeChange != null
+          ? _baselineValue(expenseResult, incomeResult)
+          : null,
+    );
+    final incompleteCurrencyData = [expense, income, net].any(
+      (metric) => metric?.availability == AnalysisDataAvailability.insufficient,
     );
     final summary = PeriodSummary(
       context: context,
       baselineContext: baselineContext,
-      expenseSpending: expense?.value,
-      income: income?.value,
-      netCashFlow: net?.value,
+      expenseSpending: usableValue(expense),
+      income: usableValue(income),
+      netCashFlow: usableValue(net),
       eligibleTransactionCount: count?.transactionCount ?? 0,
       currency: context.baseCurrency,
-      comparisonAvailable:
-          expenseResult?.comparison?.baselineValue != null ||
-          incomeResult?.comparison?.baselineValue != null,
-      comparisonUnavailableReason:
-          expenseResult?.comparison?.baselineValue == null &&
-              incomeResult?.comparison?.baselineValue == null
-          ? 'No comparable baseline was available.'
-          : null,
-      expenseChange: expenseResult?.comparison,
-      incomeChange: incomeResult?.comparison,
+      comparisonAvailable: comparisonAvailable,
+      comparisonUnavailableReason: comparisonAvailable
+          ? null
+          : incompleteCurrencyData
+          ? 'Comparison is unavailable because some amounts cannot be normalized to the selected currency.'
+          : 'No comparable baseline was available.',
+      expenseChange: expenseChange,
+      incomeChange: incomeChange,
       netCashFlowChange: netComparison,
       limitations: summaryLimitations,
     );

@@ -384,8 +384,12 @@ final class AnalysisRuleEngine {
             at,
             contextOverride: baselineContext,
           );
+    // A comparison is invalid if either period has incomplete normalized
+    // monetary data. A valid baseline cannot make a partial current total
+    // comparable, even if the current value happens to look plausible.
     final usableBaseline =
-        baseline?.availability == AnalysisDataAvailability.insufficient
+        current.availability == AnalysisDataAvailability.insufficient ||
+            baseline?.availability == AnalysisDataAvailability.insufficient
         ? null
         : baseline;
     final baselineValue = usableBaseline?.value;
