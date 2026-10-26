@@ -74,7 +74,9 @@ CanonicalBudgetActuals calculateBudgetActualsFromDataset(
     });
   }
   final expenses = transactions
-      .where((transaction) => transaction.direction == TransactionDirection.expense)
+      .where(
+        (transaction) => transaction.direction == TransactionDirection.expense,
+      )
       .toList(growable: false);
   final values = <String, DecimalValue?>{};
 
@@ -89,24 +91,26 @@ CanonicalBudgetActuals calculateBudgetActualsFromDataset(
       continue;
     }
 
-    final relevant = expenses.where((transaction) => switch (budget.scope) {
-      'merchant' => transaction.merchantId?.value == budget.scopeId,
-      'category' => transaction.categoryId?.value == budget.scopeId,
-      'subcategory' => transaction.subcategoryId?.value == budget.scopeId,
-      _ => true,
-    });
+    final relevant = expenses.where(
+      (transaction) => switch (budget.scope) {
+        'merchant' => transaction.merchantId?.value == budget.scopeId,
+        'category' => transaction.categoryId?.value == budget.scopeId,
+        'subcategory' => transaction.subcategoryId?.value == budget.scopeId,
+        _ => true,
+      },
+    );
     var total = DecimalValue.parse('0');
     var unavailable = false;
     for (final transaction in relevant) {
       final amount = budget.currency == base
           ? transaction.money.currency.value == base
-              ? transaction.money.amount
-              : transaction.normalizedMoney?.currency.value == base
-              ? transaction.normalizedMoney!.amount
-              : null
+                ? transaction.money.amount
+                : transaction.normalizedMoney?.currency.value == base
+                ? transaction.normalizedMoney!.amount
+                : null
           : transaction.money.currency.value == budget.currency
-              ? transaction.money.amount
-              : null;
+          ? transaction.money.amount
+          : null;
       if (amount == null) {
         // A matching expense in another currency without conversion cannot
         // silently disappear or be reported as zero.
