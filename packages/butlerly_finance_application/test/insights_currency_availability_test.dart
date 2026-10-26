@@ -109,11 +109,7 @@ final _context = AnalysisContext(
 CalculateInsights _insights() => CalculateInsights(
   CalculateAnalysisOverview(
     _UnusedAnalysisRules(),
-    AnalysisDatasetBuilder(
-      _UnusedTransactions(),
-      _UnusedPreferences(),
-      null,
-    ),
+    AnalysisDatasetBuilder(_UnusedTransactions(), _UnusedPreferences(), null),
     const AnalysisRuleEngine(),
   ),
 );
