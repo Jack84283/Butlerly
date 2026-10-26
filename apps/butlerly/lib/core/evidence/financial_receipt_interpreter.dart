@@ -115,7 +115,7 @@ abstract final class FinancialReceiptInterpreter {
         final raised = _raisedCents(line, lines);
         if (raised != null) {
           amount = raised;
-          evidence['amount'] = line.text + ' + raised cents';
+          evidence['amount'] = '${line.text} + raised cents';
           break;
         }
       }
@@ -190,7 +190,7 @@ abstract final class FinancialReceiptInterpreter {
       r'[^\d]{0,24}(\d{4})(?!\d)',
       caseSensitive: false,
     ).firstMatch(cardContext)?.group(1);
-    if (card != null) evidence['cardLast4'] = 'card ending ' + card;
+    if (card != null) evidence['cardLast4'] = 'card ending $card';
 
     return FinancialReceiptInterpretation(
       isScreenshot: true,
@@ -207,7 +207,7 @@ abstract final class FinancialReceiptInterpreter {
   }
 
   static String _normalizedMoney(RegExpMatch match) =>
-      match.group(1)!.replaceAll(',', '') + '.' + match.group(2)!;
+      '${match.group(1)!.replaceAll(',', '')}.${match.group(2)!}';
 
   /// Join two *separate* OCR observations only when the geometry supports a
   /// smaller, raised two-digit fractional part immediately after the dollars.
@@ -251,7 +251,7 @@ abstract final class FinancialReceiptInterpreter {
   }
 
   static String wholeMoney(String dollars, String cents) =>
-      dollars + '.' + cents;
+      '$dollars.$cents';
 
   /// Relates labels to values on the same line, the same visual row, or the
   /// following visual line. In multi-column layouts the value can wrap.
@@ -325,7 +325,7 @@ abstract final class FinancialReceiptInterpreter {
               continuation.top > first.top &&
               continuation.top - first.top < .10;
           if (aligned && !_label.hasMatch(continuation.text.trim())) {
-            value += ' ' + continuation.text.trim();
+            value += ' ${continuation.text.trim()}';
           }
         }
       }
