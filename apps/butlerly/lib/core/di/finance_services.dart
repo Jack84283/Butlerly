@@ -45,6 +45,16 @@ final class FinanceServices {
          transactions,
          preferences: preferences,
        ),
+       calculateCanonicalBudgetActuals = CalculateCanonicalBudgetActuals(
+         AnalysisDatasetBuilder(
+           transactions,
+           preferences,
+           reconciliationLinks,
+           candidates: reconciliationCandidates,
+           duplicateGroups: duplicateGroups,
+           categories: categories,
+         ),
+       ),
        seedInitialMasterData = SeedInitialMasterData(
          merchants,
          categories,
@@ -530,6 +540,7 @@ final class FinanceServices {
   }
 
   final ManageBudgets? manageBudgets;
+  final CalculateCanonicalBudgetActuals calculateCanonicalBudgetActuals;
   final ListTransactions listTransactions;
   final SeedInitialMasterData seedInitialMasterData;
   final LoadMasterTranslations loadMasterTranslations;
