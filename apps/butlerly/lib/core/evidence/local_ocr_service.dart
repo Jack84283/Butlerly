@@ -94,6 +94,8 @@ final class ReceiptOcrResult {
     this.date,
     this.postingDate,
     this.originalMerchantDescription,
+    this.transactionTimeText,
+    this.issuerCategory,
     this.tax,
     this.tip,
     this.cardLast4,
@@ -130,6 +132,8 @@ final class ReceiptOcrResult {
   final DateTime? date;
   final DateTime? postingDate;
   final String? originalMerchantDescription;
+  final String? transactionTimeText;
+  final String? issuerCategory;
   final String? tax;
   final String? tip;
   final String? cardLast4;
@@ -165,6 +169,10 @@ final class ReceiptOcrResult {
     if (originalMerchantDescription case final value?) {
       values['originalMerchantDescription'] = value;
     }
+    if (transactionTimeText case final value?) {
+      values['transactionTimeText'] = value;
+    }
+    if (issuerCategory case final value?) values['issuerCategory'] = value;
     if (tax case final value?) values['tax'] = value;
     if (tip case final value?) values['tip'] = value;
     if (cardLast4 case final value?) values['cardLast4'] = value;
@@ -227,6 +235,8 @@ final class LocalOcrService {
       date: extracted.date,
       postingDate: extracted.postingDate,
       originalMerchantDescription: extracted.originalMerchantDescription,
+      transactionTimeText: extracted.transactionTimeText,
+      issuerCategory: extracted.issuerCategory,
       tax: extracted.tax,
       tip: extracted.tip,
       cardLast4: extracted.cardLast4,
@@ -390,6 +400,8 @@ abstract final class ReceiptExtractor {
       date: screenshot ? interpreted.transactionDate : values.date,
       postingDate: interpreted.postingDate,
       originalMerchantDescription: interpreted.originalMerchantDescription,
+      transactionTimeText: interpreted.transactionTimeText,
+      issuerCategory: interpreted.issuerCategory,
       tax: values.tax,
       tip: values.tip,
       cardLast4: screenshot ? interpreted.cardLast4 : values.cardLast4,
