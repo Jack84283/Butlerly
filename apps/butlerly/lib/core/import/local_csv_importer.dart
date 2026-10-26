@@ -183,7 +183,7 @@ final class LocalCsvImporter {
         rows: const [],
         errors: [
           'Incorrect CSV template. Expected ${ButlerlyCsvTemplate.filename(kind)} '
-          'with columns: ${expected.join(', ')}.',
+              'with columns: ${expected.join(', ')}.',
         ],
         templateKind: kind,
       );
@@ -239,16 +239,29 @@ final class LocalCsvImporter {
       } else if (!RegExp(r'^[A-Z]{3}$').hasMatch(currency)) {
         error = 'invalid currency (use uppercase ISO code, e.g. USD)';
       } else if (direction == null) {
-        error = 'invalid direction (use expense, income, transfer, refund, or adjustment)';
+        error =
+            'invalid direction (use expense, income, transfer, refund, or adjustment)';
       } else if (kind == ButlerlyCsvKind.receipts &&
-          (!_validTemplateAmount(value('tax'), allowZero: true, optional: true) ||
-              !_validTemplateAmount(value('tip'), allowZero: true, optional: true))) {
+          (!_validTemplateAmount(
+                value('tax'),
+                allowZero: true,
+                optional: true,
+              ) ||
+              !_validTemplateAmount(
+                value('tip'),
+                allowZero: true,
+                optional: true,
+              ))) {
         error = 'invalid tax or tip';
       } else if (kind == ButlerlyCsvKind.receipts &&
           DecimalValue.parse(amount).compareTo(
-            DecimalValue.parse(value('tax').isEmpty ? '0' : value('tax'))
-                .add(DecimalValue.parse(value('tip').isEmpty ? '0' : value('tip'))),
-          ) < 0) {
+                DecimalValue.parse(
+                  value('tax').isEmpty ? '0' : value('tax'),
+                ).add(
+                  DecimalValue.parse(value('tip').isEmpty ? '0' : value('tip')),
+                ),
+              ) <
+              0) {
         error = 'total cannot be less than tax plus tip';
       } else if (reference.isNotEmpty && !references.add(reference)) {
         error = 'duplicate receipt_id or transaction_id in file';
