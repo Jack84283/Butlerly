@@ -1,5 +1,6 @@
 import 'package:butlerly/core/evidence/local_ocr_service.dart';
 import 'package:butlerly/core/evidence/platform_ocr_recognizer.dart';
+import 'package:butlerly/core/evidence/statement_section_table_interpreter.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
 enum StatementExtractionOutcome {
@@ -243,6 +244,80 @@ final class LocalStatementExtractor {
     final source = observations.isEmpty
         ? _lineObservations(text)
         : observations;
+    final sectioned = StatementSectionTableInterpreter.interpret(
+      text,
+      source,
+      periodStart: context.periodStart,
+      periodEnd: context.periodEnd,
+      defaultCurrency: context.defaultCurrency,
+    );
+    if (sectioned != null) {
+      final rows = sectioned.rows.map((value) {
+        final unresolved = value.amount == null
+            ? StatementUnresolvedReason.unresolvedAmount
+            : value.date == null
+            ? StatementUnresolvedReason.unresolvedDate
+            : value.description == null
+            ? StatementUnresolvedReason.incompleteTransactionEvidence
+            : value.currency == null
+            ? StatementUnresolvedReason.unresolvedCurrency
+            : value.direction == null
+            ? StatementUnresolvedReason.unresolvedDirection
+            : null;
+        return StatementExtractedRow(
+          originalText: redactPanLikeText(value.originalText),
+          date: value.date,
+          description: value.description == null
+              ? null
+              : redactPanLikeText(value.description!),
+          amount: value.amount,
+          currency: value.currency,
+          direction: value.direction,
+          confidence: unresolved == null
+              ? value.confidence
+              : value.confidence > .5 ? .5 : value.confidence,
+          unresolvedReason: unresolved,
+          sourceObservationIndexes: value.sourceObservationIndexes,
+        );
+      }).toList(growable: false);
+      final unresolved = rows.where((value) => value.isUnresolved).length;
+      return StatementExtraction(
+        rawText: text,
+        rows: rows,
+        institution: context.institution,
+        maskedAccountIdentifier: context.maskedAccountIdentifier,
+        context: StatementExtractionContext(
+          institution: context.institution,
+          maskedAccountIdentifier: context.maskedAccountIdentifier,
+          periodStart: context.periodStart,
+          periodEnd: context.periodEnd,
+          defaultCurrency: context.defaultCurrency,
+          columns: context.columns,
+          profile: const StatementLayoutProfile(
+            id: 'sectioned-card-transaction-tables',
+            version: 1,
+          ),
+        ),
+        outcome: rows.isEmpty
+            ? StatementExtractionOutcome.textWithoutCandidates
+            : unresolved == rows.length
+            ? StatementExtractionOutcome.unresolvedEvidence
+            : StatementExtractionOutcome.reconstructedCandidates,
+        diagnostics: StatementExtractionDiagnostics(
+          observationsRecognized: observations.length,
+          pagesProcessed: source.map((value) => value.pageIndex).toSet().length,
+          transactionRegionsDetected: sectioned.regionsDetected,
+          visualRowsReconstructed: rows.length,
+          candidatesReconstructed: rows.length - unresolved,
+          unresolvedCandidates: unresolved,
+          lowConfidenceCandidates: rows
+              .where((value) => (value.confidence ?? 0) <= .5).length,
+          nonTransactionObservationsIgnored:
+              sectioned.ignoredObservationCount,
+          nativeDiagnostics: nativeDiagnostics,
+        ),
+      );
+    }
     final ambiguousGeometry = <OcrObservation>{};
     final visualRows = _reconstructRows(_groupRows(source, ambiguousGeometry));
     final rows = <StatementExtractedRow>[];
@@ -854,7 +929,11 @@ final class LocalStatementExtractor {
       maskedAccountIdentifier: _maskedAccountIdentifier(text),
       periodStart: _period(text, true),
       periodEnd: _period(text, false),
-      defaultCurrency: _currency(text),
+      defaultCurrency: _currency(text) ??
+          (RegExp(r'\bDiscover\s+More\s+Card\b', caseSensitive: false)
+                  .hasMatch(text)
+              ? 'USD'
+              : null),
       columns: columns,
       profile: _profile(text),
     );
@@ -974,11 +1053,19 @@ final class LocalStatementExtractor {
     return match == null ? null : '••••${match.group(1)}';
   }
 
-  static String? _institution(String text) => RegExp(
-    r'^(?:institution|bank|issuer)\s*[:\-]\s*(.+)$',
-    caseSensitive: false,
-    multiLine: true,
-  ).firstMatch(text)?.group(1)?.trim();
+  static String? _institution(String text) {
+    final labeled = RegExp(
+      r'^(?:institution|bank|issuer)\s*[:\-]\s*(.+)$',
+      caseSensitive: false,
+      multiLine: true,
+    ).firstMatch(text)?.group(1)?.trim();
+    if (labeled != null) return labeled;
+    if (RegExp(r'\bDiscover\s+More\s+Card\b', caseSensitive: false)
+        .hasMatch(text)) {
+      return 'Discover';
+    }
+    return null;
+  }
 }
 
 extension on num {
