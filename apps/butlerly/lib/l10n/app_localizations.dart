@@ -37,14 +37,17 @@ class AppLocalizations {
   static const _strings = <String, Map<String, String>>{
     'en': {
       'csvChooseType': 'Choose CSV data type',
-      'csvTemplateRequired': 'Select receipts or transactions. Your CSV must use the corresponding Butlerly V1 template and exact column headers.',
+      'csvTemplateRequired':
+          'Select receipts or transactions. Your CSV must use the corresponding Butlerly V1 template and exact column headers.',
       'csvReceipts': 'Receipts',
       'csvTransactions': 'Transactions',
       'csvDownloadTemplate': 'Download CSV template',
       'csvDownloadTransactionsTemplate': 'Download transactions CSV template',
       'csvDownloadReceiptsTemplate': 'Download receipts CSV template',
-      'csvTransactionsTemplateDescription': 'Blank CSV for expenses, income, transfers and refunds.',
-      'csvReceiptsTemplateDescription': 'Blank CSV for receipt totals; no images are attached.',
+      'csvTransactionsTemplateDescription':
+          'Blank CSV for expenses, income, transfers and refunds.',
+      'csvReceiptsTemplateDescription':
+          'Blank CSV for receipt totals; no images are attached.',
       'csvTemplateSaved': 'CSV template saved or shared.',
       'csvTemplateDownloadFailed': 'The CSV template could not be saved.',
       'csvReviewReceipts': 'Review receipt CSV',
@@ -1858,14 +1861,18 @@ class AppLocalizations {
     },
     'es': {
       'csvChooseType': 'Elegir tipo de datos CSV',
-      'csvTemplateRequired': 'Selecciona recibos o transacciones. El CSV debe usar la plantilla Butlerly V1 correspondiente y sus columnas exactas.',
+      'csvTemplateRequired':
+          'Selecciona recibos o transacciones. El CSV debe usar la plantilla Butlerly V1 correspondiente y sus columnas exactas.',
       'csvReceipts': 'Recibos',
       'csvTransactions': 'Transacciones',
       'csvDownloadTemplate': 'Descargar plantilla CSV',
-      'csvDownloadTransactionsTemplate': 'Descargar plantilla CSV de transacciones',
+      'csvDownloadTransactionsTemplate':
+          'Descargar plantilla CSV de transacciones',
       'csvDownloadReceiptsTemplate': 'Descargar plantilla CSV de recibos',
-      'csvTransactionsTemplateDescription': 'CSV vacío para gastos, ingresos, transferencias y reembolsos.',
-      'csvReceiptsTemplateDescription': 'CSV vacío para totales de recibos; no adjunta imágenes.',
+      'csvTransactionsTemplateDescription':
+          'CSV vacío para gastos, ingresos, transferencias y reembolsos.',
+      'csvReceiptsTemplateDescription':
+          'CSV vacío para totales de recibos; no adjunta imágenes.',
       'csvTemplateSaved': 'Plantilla CSV guardada o compartida.',
       'csvTemplateDownloadFailed': 'No se pudo guardar la plantilla CSV.',
       'csvReviewReceipts': 'Revisar CSV de recibos',
