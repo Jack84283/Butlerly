@@ -77,8 +77,10 @@ abstract final class StatementSectionTableInterpreter {
     }
     // Avoid routing generic one-column transactions through a specialized
     // parser unless explicit distinct card-statement sections are present.
-    if (!RegExp(r'payments\s+and\s+credits', caseSensitive: false)
-            .hasMatch(text) ||
+    if (!RegExp(
+          r'payments\s+and\s+credits',
+          caseSensitive: false,
+        ).hasMatch(text) ||
         !RegExp(r'\bpurchases\b', caseSensitive: false).hasMatch(text)) {
       return null;
     }
@@ -88,38 +90,64 @@ abstract final class StatementSectionTableInterpreter {
     var used = 0;
 
     for (final page in observations.map((value) => value.pageIndex).toSet()) {
-      final onPage = observations
-          .where((value) => value.pageIndex == page &&
-              value.text.trim().isNotEmpty)
-          .toList()
-        ..sort((a, b) {
-          final vertical = a.top.compareTo(b.top);
-          return vertical != 0 ? vertical : a.left.compareTo(b.left);
-        });
-      final sectionHeadings = onPage.where((value) =>
-          _section.hasMatch(value.text.trim()) && value.left < .65).toList();
-      final transactionHeader = onPage.where((value) =>
-          value.text.trim().toLowerCase() == 'transactions' &&
-          value.left < .65).firstOrNull;
-      final amountHeader = onPage.where((value) =>
-          value.text.trim().toLowerCase() == 'amount' &&
-          value.left > .4 && value.left < .75).firstOrNull;
+      final onPage =
+          observations
+              .where(
+                (value) =>
+                    value.pageIndex == page && value.text.trim().isNotEmpty,
+              )
+              .toList()
+            ..sort((a, b) {
+              final vertical = a.top.compareTo(b.top);
+              return vertical != 0 ? vertical : a.left.compareTo(b.left);
+            });
+      final sectionHeadings = onPage
+          .where(
+            (value) => _section.hasMatch(value.text.trim()) && value.left < .65,
+          )
+          .toList();
+      final transactionHeader = onPage
+          .where(
+            (value) =>
+                value.text.trim().toLowerCase() == 'transactions' &&
+                value.left < .65,
+          )
+          .firstOrNull;
+      final amountHeader = onPage
+          .where(
+            (value) =>
+                value.text.trim().toLowerCase() == 'amount' &&
+                value.left > .4 &&
+                value.left < .75,
+          )
+          .firstOrNull;
       if (transactionHeader == null ||
           sectionHeadings.isEmpty ||
           amountHeader == null) {
         continue;
       }
 
-      final rewards = onPage.where((value) =>
-          RegExp(r'^rewards?\s+summary$', caseSensitive: false)
-              .hasMatch(value.text.trim()) && value.left > .50).firstOrNull;
+      final rewards = onPage
+          .where(
+            (value) =>
+                RegExp(
+                  r'^rewards?\s+summary$',
+                  caseSensitive: false,
+                ).hasMatch(value.text.trim()) &&
+                value.left > .50,
+          )
+          .firstOrNull;
       // The transaction amount header is a measured right-column anchor.
       // The rewards heading supplies an independent boundary if present.
       final boundary = rewards == null
           ? (amountHeader.left + amountHeader.width + .02).clamp(.55, 1.0)
           : (rewards.left - .015).clamp(.55, 1.0);
-      final left = onPage.where((value) =>
-          value.left < boundary && value.top >= transactionHeader.top).toList();
+      final left = onPage
+          .where(
+            (value) =>
+                value.left < boundary && value.top >= transactionHeader.top,
+          )
+          .toList();
 
       var active = '';
       var began = 0.0;
@@ -131,11 +159,16 @@ abstract final class StatementSectionTableInterpreter {
         if (nextSection != null || endSection) {
           if (active.isNotEmpty) {
             final end = observation?.top ?? 2.0;
-            final part = left.where((item) =>
-                item.top >= began && item.top < end &&
-                !_section.hasMatch(item.text.trim()) &&
-                !_header.hasMatch(item.text.trim()) &&
-                !_stop.hasMatch(item.text.trim())).toList();
+            final part = left
+                .where(
+                  (item) =>
+                      item.top >= began &&
+                      item.top < end &&
+                      !_section.hasMatch(item.text.trim()) &&
+                      !_header.hasMatch(item.text.trim()) &&
+                      !_stop.hasMatch(item.text.trim()),
+                )
+                .toList();
             final extracted = _extractSection(
               part,
               section: active,
@@ -164,7 +197,8 @@ abstract final class StatementSectionTableInterpreter {
       rows: rows,
       regionsDetected: sections,
       ignoredObservationCount: (observations.length - used)
-          .clamp(0, observations.length).toInt(),
+          .clamp(0, observations.length)
+          .toInt(),
     );
   }
 
@@ -181,8 +215,7 @@ abstract final class StatementSectionTableInterpreter {
       return value.left < amountColumn - .18 &&
           _shortDate.hasMatch(text) &&
           !_header.hasMatch(text);
-    }).toList()
-      ..sort((a, b) => a.top.compareTo(b.top));
+    }).toList()..sort((a, b) => a.top.compareTo(b.top));
 
     final output = <StatementSectionTableRow>[];
     var used = 0;
@@ -190,17 +223,22 @@ abstract final class StatementSectionTableInterpreter {
       final anchor = anchors[i];
       final nextTop = i + 1 < anchors.length ? anchors[i + 1].top : 2.0;
       // A row can wrap, but it must not borrow fields from the next date.
-      final cells = observations.where((value) =>
-          value.top >= anchor.top - anchor.height * .5 &&
-          value.top < nextTop - (i + 1 < anchors.length ? .001 : 0) &&
-          !_header.hasMatch(value.text.trim()) &&
-          !_section.hasMatch(value.text.trim())).toList()
-        ..sort((a, b) {
-          final vertical = a.top.compareTo(b.top);
-          return (vertical.abs() > .007)
-              ? vertical
-              : a.left.compareTo(b.left);
-        });
+      final cells =
+          observations
+              .where(
+                (value) =>
+                    value.top >= anchor.top - anchor.height * .5 &&
+                    value.top < nextTop - (i + 1 < anchors.length ? .001 : 0) &&
+                    !_header.hasMatch(value.text.trim()) &&
+                    !_section.hasMatch(value.text.trim()),
+              )
+              .toList()
+            ..sort((a, b) {
+              final vertical = a.top.compareTo(b.top);
+              return (vertical.abs() > .007)
+                  ? vertical
+                  : a.left.compareTo(b.left);
+            });
       if (cells.isEmpty) continue;
       used += cells.length;
 
@@ -223,10 +261,12 @@ abstract final class StatementSectionTableInterpreter {
         final matches = _amount.allMatches(content).toList();
         // Amount candidates must be in the measured amount column OR in a
         // single observation that contains the date and description.
-        final amountCell = cell.left >= amountColumn - .055 ||
+        final amountCell =
+            cell.left >= amountColumn - .055 ||
             (identical(cell, anchor) && matches.length == 1) ||
             (cell.left + cell.width >= amountColumn - .04 &&
-                content.contains(r'$') && matches.length == 1);
+                content.contains(r'$') &&
+                matches.length == 1);
         if (amountCell && matches.isNotEmpty) {
           for (final match in matches) {
             amounts.add(match.group(1)!);
@@ -241,46 +281,61 @@ abstract final class StatementSectionTableInterpreter {
       }
 
       final parsed = amounts.length == 1 ? _parseAmount(amounts.single) : null;
-      final description = descriptions.join(' ')
-          .replaceAll(RegExp(r'\s+'), ' ').trim();
-      final isNegative = amounts.length == 1 &&
-          RegExp(r'^\s*[-−(]').hasMatch(amounts.single);
+      final description = descriptions
+          .join(' ')
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim();
+      final isNegative =
+          amounts.length == 1 && RegExp(r'^\s*[-−(]').hasMatch(amounts.single);
       final direction = switch (section) {
-        'purchases' when isNegative && RegExp(
-            r'\b(?:REFUND|RETURN|REVERSAL|CREDIT)\b',
-            caseSensitive: false,
-          ).hasMatch(description) => 'refund',
+        'purchases'
+            when isNegative &&
+                RegExp(
+                  r'\b(?:REFUND|RETURN|REVERSAL|CREDIT)\b',
+                  caseSensitive: false,
+                ).hasMatch(description) =>
+          'refund',
         'purchases' when isNegative => null,
         'purchases' => 'expense',
-        'credits' when RegExp(
-            r'\b(?:AUTOPAY|AUTO\s*PAY|PAYMENT\s+RECEIVED|'
-            r'ONLINE\s+PAYMENT|PAYMENT\s+THANK\s+YOU|'
-            r'PYMT|PMT)\b',
-            caseSensitive: false,
-          ).hasMatch(description) => 'transfer',
-        'credits' when RegExp(
-            r'\b(?:REFUND|RETURN|REVERSAL|CREDIT)\b',
-            caseSensitive: false,
-          ).hasMatch(description) => 'refund',
+        'credits'
+            when RegExp(
+              r'\b(?:AUTOPAY|AUTO\s*PAY|PAYMENT\s+RECEIVED|'
+              r'ONLINE\s+PAYMENT|PAYMENT\s+THANK\s+YOU|'
+              r'PYMT|PMT)\b',
+              caseSensitive: false,
+            ).hasMatch(description) =>
+          'transfer',
+        'credits'
+            when RegExp(
+              r'\b(?:REFUND|RETURN|REVERSAL|CREDIT)\b',
+              caseSensitive: false,
+            ).hasMatch(description) =>
+          'refund',
         _ => null,
       };
-      final confidence = cells.map((e) => e.confidence)
-          .fold<double>(0, (sum, value) => sum + value) / cells.length;
-      output.add(StatementSectionTableRow(
-        originalText: cells.map((value) => value.text.trim()).join(' '),
-        description: description.isEmpty ? null : description,
-        amount: parsed,
-        date: date,
-        currency: defaultCurrency,
-        direction: direction,
-        confidence: date != null && parsed != null &&
-                description.isNotEmpty && direction != null
-            ? confidence
-            : confidence * .5,
-        sourceObservationIndexes: [
-          for (final cell in cells) cell.order,
-        ],
-      ));
+      final confidence =
+          cells
+              .map((e) => e.confidence)
+              .fold<double>(0, (sum, value) => sum + value) /
+          cells.length;
+      output.add(
+        StatementSectionTableRow(
+          originalText: cells.map((value) => value.text.trim()).join(' '),
+          description: description.isEmpty ? null : description,
+          amount: parsed,
+          date: date,
+          currency: defaultCurrency,
+          direction: direction,
+          confidence:
+              date != null &&
+                  parsed != null &&
+                  description.isNotEmpty &&
+                  direction != null
+              ? confidence
+              : confidence * .5,
+          sourceObservationIndexes: [for (final cell in cells) cell.order],
+        ),
+      );
     }
     return (rows: output, used: used);
   }
@@ -297,15 +352,19 @@ abstract final class StatementSectionTableInterpreter {
     DateTime? start,
     DateTime? end,
   ) {
-    if (start == null || end == null ||
-        end.isBefore(start) || end.difference(start).inDays > 370) {
+    if (start == null ||
+        end == null ||
+        end.isBefore(start) ||
+        end.difference(start).inDays > 370) {
       return null;
     }
     final candidates = <DateTime>[];
     for (final year in {start.year, end.year}) {
       final value = DateTime(year, month, day);
-      if (value.month == month && value.day == day &&
-          !value.isBefore(start) && !value.isAfter(end)) {
+      if (value.month == month &&
+          value.day == day &&
+          !value.isBefore(start) &&
+          !value.isAfter(end)) {
         candidates.add(value);
       }
     }
