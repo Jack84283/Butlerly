@@ -30,10 +30,7 @@ void main() {
       enabled: true,
       status: AnalysisRuleStatus.active,
       period: 'selected_period',
-      measure: const RuleMeasure(
-        operation: RuleOperation.sum,
-        field: 'amount',
-      ),
+      measure: const RuleMeasure(operation: RuleOperation.sum, field: 'amount'),
       grouping: grouping,
       baseline: RuleBaseline.none,
       condition: const RuleCondition(operator: 'none'),
