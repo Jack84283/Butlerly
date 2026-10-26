@@ -613,6 +613,102 @@ void main() {
     expect(metric.availability, AnalysisDataAvailability.insufficient);
   });
 
+  test('partial current FX makes a valid baseline comparison unavailable', () {
+    final usd = CurrencyCode('USD');
+    final eur = CurrencyCode('EUR');
+    final baseContext = AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: '2026-01-01',
+        endDate: '2026-01-31',
+        timeZoneId: 'UTC',
+      ),
+      datasetMode: DatasetMode.allEligible,
+      currencyBasis: CurrencyBasis.baseCurrency,
+      baseCurrency: usd,
+    );
+    final definition = AnalysisRuleDefinition(
+      identity: RuleIdentity('ANL-R001'),
+      version: RuleVersion('1.0.0'),
+      schemaVersion: '1.0.0',
+      type: AnalysisRuleType.metric,
+      nameKey: 'spending',
+      descriptionKey: 'spending.description',
+      enabled: true,
+      status: AnalysisRuleStatus.active,
+      period: 'selected_period',
+      measure: const RuleMeasure(
+        operation: RuleOperation.sum,
+        field: 'amount',
+        currencyBasis: CurrencyBasis.baseCurrency,
+      ),
+      grouping: RuleGrouping.none,
+      baseline: RuleBaseline.previousEquivalentPeriod,
+      condition: const RuleCondition(operator: 'none'),
+      severity: RuleSeverity.info,
+      definitionHash: RuleDefinitionHash('4' * 64),
+    );
+    final usdTransaction = AnalysisEconomicTransaction(
+      id: TransactionId('usd'),
+      money: Money(amount: DecimalValue.parse('10'), currency: usd),
+      direction: TransactionDirection.expense,
+      transactionDate: '2026-01-02',
+    );
+    final eurTransaction = AnalysisEconomicTransaction(
+      id: TransactionId('eur'),
+      money: Money(amount: DecimalValue.parse('20'), currency: eur),
+      direction: TransactionDirection.expense,
+      transactionDate: '2026-01-03',
+    );
+    final baseline = AnalysisEconomicTransaction(
+      id: TransactionId('baseline'),
+      money: Money(amount: DecimalValue.parse('5'), currency: usd),
+      direction: TransactionDirection.expense,
+      transactionDate: '2025-12-03',
+    );
+    RuleExecutionResult evaluate(AnalysisEconomicTransaction foreign) =>
+        const AnalysisRuleEngine().execute(
+          dataset: AnalysisDataset(
+            context: baseContext,
+            transactions: [usdTransaction, foreign],
+            baselineTransactions: [baseline],
+          ),
+          definitions: [definition],
+        ).single;
+
+    final incomplete = evaluate(eurTransaction);
+    expect(incomplete.metric!.value, DecimalValue.parse('10'));
+    expect(
+      incomplete.metric!.availability,
+      AnalysisDataAvailability.insufficient,
+    );
+    expect(incomplete.comparison!.baselineValue, isNull);
+    expect(incomplete.comparison!.absoluteChange, isNull);
+    expect(
+      incomplete.comparison!.availability,
+      AnalysisDataAvailability.insufficient,
+    );
+
+    final complete = evaluate(
+      AnalysisEconomicTransaction(
+        id: eurTransaction.id,
+        money: eurTransaction.money,
+        normalizedMoney: Money(
+          amount: DecimalValue.parse('22'),
+          currency: usd,
+        ),
+        direction: eurTransaction.direction,
+        transactionDate: eurTransaction.transactionDate,
+      ),
+    );
+    expect(complete.metric!.value, DecimalValue.parse('32'));
+    expect(
+      complete.metric!.availability,
+      AnalysisDataAvailability.sufficient,
+    );
+    expect(complete.comparison!.baselineValue, DecimalValue.parse('5'));
+    expect(complete.comparison!.absoluteChange, DecimalValue.parse('27'));
+  });
+
   test('measure filters apply every supported filter kind', () {
     final transaction = AnalysisEconomicTransaction(
       id: TransactionId('filtered'),
