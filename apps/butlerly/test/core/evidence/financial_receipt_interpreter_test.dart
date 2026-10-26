@@ -1,0 +1,160 @@
+import 'package:butlerly/core/evidence/local_ocr_service.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  test('extracts labeled transaction notification without a merchant profile', () {
+    final result = ReceiptTextParser.parse(r'''
+Transaction Alert
+Amount: $14.59
+Card
+Ending In
+1234
+Merchant
+7-ELEVEN 14315
+PALO ALTO US
+Date
+10/20/2026
+Time
+06:19 PM ET
+''');
+    expect(result.amount, '14.59');
+    expect(result.merchant, '7-ELEVEN');
+    expect(result.cardLast4, '1234');
+    expect(result.date, DateTime(2026, 10, 20));
+    expect(result.fieldEvidence['amount'], contains('14.59'));
+  });
+
+  test('separates payment-card product from merchant and posting date', () {
+    final result = ReceiptTextParser.parse(r'''
+Rewards Visa...2468
+$7.13
+Grocery Mart
+Purchased on
+Oct 16, 2026 08:46 PM ET
+Posted on
+Oct 17, 2026
+Spend category
+Grocery Store, Supermarket
+On your statement as
+GROCERY MART #1682 PALO ALTO CA
+Merchant details
+''');
+    expect(result.amount, '7.13');
+    expect(result.merchant, 'Grocery Mart');
+    expect(result.cardLast4, '2468');
+    expect(result.date, DateTime(2026, 10, 16));
+    expect(result.postingDate, DateTime(2026, 10, 17));
+    expect(
+      result.originalMerchantDescription,
+      'GROCERY MART #1682 PALO ALTO CA',
+    );
+    expect(
+      result.toExtractionValues()['postingDate'],
+      '2026-10-17',
+    );
+  });
+
+  test('reconstructs raised cents and excludes unrelated cash-back rewards', () {
+    const lines = [
+      OcrObservation(
+        text: 'Transaction Details', confidence: .96,
+        left: .25, top: .01, width: .5, height: .04,
+      ),
+      OcrObservation(
+        text: r'$105', confidence: .95,
+        left: .03, top: .10, width: .25, height: .09,
+      ),
+      OcrObservation(
+        text: '00', confidence: .95,
+        left: .29, top: .108, width: .07, height: .04,
+      ),
+      OcrObservation(
+        text: '5% cash back', confidence: .95,
+        left: .67, top: .11, width: .3, height: .03,
+      ),
+      OcrObservation(
+        text: r'+$5.25 rewards cash', confidence: .95,
+        left: .67, top: .15, width: .3, height: .03,
+      ),
+      OcrObservation(
+        text: 'Posted on Saturday, October 17, 2026',
+        confidence: .95, left: .03, top: .25, width: .9, height: .04,
+      ),
+      OcrObservation(
+        text: 'Mobile Service', confidence: .95,
+        left: .03, top: .39, width: .5, height: .06,
+      ),
+      OcrObservation(
+        text: 'Appears on your statement as:',
+        confidence: .95, left: .03, top: .55, width: .8, height: .03,
+      ),
+      OcrObservation(
+        text: 'MOBILE*BILL PAYMENT', confidence: .95,
+        left: .03, top: .59, width: .8, height: .03,
+      ),
+      OcrObservation(
+        text: 'Made on Friday, October 16, 2026', confidence: .95,
+        left: .03, top: .65, width: .8, height: .03,
+      ),
+    ];
+    final result = ReceiptExtractor.extract(
+      lines.map((line) => line.text).join('\n'),
+      lines,
+    );
+    expect(result.amount, '105.00');
+    expect(result.merchant, 'Mobile Service');
+    expect(result.date, DateTime(2026, 10, 16));
+    expect(result.postingDate, DateTime(2026, 10, 17));
+    expect(result.amount, isNot('5.25'));
+  });
+
+  test('does not invent cents for an unsegmented integer OCR token', () {
+    final result = ReceiptTextParser.parse(r'''
+Transaction Details
+$10500
+5% cash back
++$5.25 rewards cash
+Made on Friday, October 16, 2026
+''');
+    expect(result.amount, isNull);
+  });
+
+  test('does not promote rewards to a purchase when the total is missing', () {
+    final result = ReceiptTextParser.parse(r'''
+Transaction Details
+5% cash back
++$5.25 rewards cash
+Mobile Service
+Made on Friday, October 16, 2026
+''');
+    expect(result.amount, isNull);
+  });
+
+  test('does not treat a USPS line-item price as a verified total', () {
+    final result = ReceiptTextParser.parse(r'''
+UNITED STATES POSTAL SERVICE
+10/20/2026 11:02 AM
+TRACKING NUMBERS
+9534 6128 6030 6293 5745 99
+PURCHASE DETAILS
+Product Qty Unit Price Price
+USPS Ground Advantage 1 $23.15
+''');
+    expect(result.merchant, 'UNITED STATES POSTAL SERVICE');
+    expect(result.amount, isNull);
+  });
+
+  test('retains conventional explicit total parsing', () {
+    final result = ReceiptTextParser.parse(r'''
+GROCERY MART
+10/20/2026
+SUBTOTAL 40.00
+TAX 3.56
+TOTAL $43.56
+VISA **** 2468
+''');
+    expect(result.amount, '43.56');
+    expect(result.cardLast4, '2468');
+    expect(result.date, DateTime(2026, 10, 20));
+  });
+}
