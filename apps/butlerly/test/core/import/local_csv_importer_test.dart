@@ -488,72 +488,78 @@ void main() {
     );
   });
 
-  test('receipt CSV imports final total without inventing receipt image', () async {
-    final root = await Directory.systemTemp.createTemp('butlerly-template-');
-    addTearDown(() => root.delete(recursive: true));
-    final file = File('${root.path}/butlerly_receipts_v1.csv');
-    await file.writeAsString(
-      ButlerlyCsvTemplate.content(ButlerlyCsvKind.receipts) +
-          'rcpt-100,2026-10-01,"餐馆, 上海",22.40,USD,1.40,3.00,Team lunch\r\n',
-    );
-    ImportTransactionCommand? captured;
-    final importer = LocalCsvImporter.withHandler((command) async {
-      captured = command;
-      return ApplicationSuccess<TransactionDto>(_dto(command));
-    });
-    final preview = await importer.previewTemplate(
-      XFile(file.path),
-      kind: ButlerlyCsvKind.receipts,
-    );
-    expect(preview.errors, isEmpty);
-    expect(preview.validCount, 1);
-    expect(preview.rows.single.direction, TransactionDirection.expense);
-    final summary = await importer.commitPreview(
-      preview,
-      sourceId: file.uri.pathSegments.last,
-      sourceLanguage: 'zh',
-    );
-    expect(summary.imported, 1);
-    expect(captured!.money.amount, DecimalValue.parse('22.4'));
-    expect(captured!.description, '餐馆, 上海');
-    expect(captured!.rawCounterparty, '餐馆, 上海');
-    expect(captured!.notes, 'Team lunch');
-    expect(captured!.externalReference, 'rcpt-100');
-    expect(captured!.sourceId, startsWith('butlerly-csv-receipts:'));
-    expect(captured!.originalRepresentation, contains('3.00'));
-  });
+  test(
+    'receipt CSV imports final total without inventing receipt image',
+    () async {
+      final root = await Directory.systemTemp.createTemp('butlerly-template-');
+      addTearDown(() => root.delete(recursive: true));
+      final file = File('${root.path}/butlerly_receipts_v1.csv');
+      await file.writeAsString(
+        ButlerlyCsvTemplate.content(ButlerlyCsvKind.receipts) +
+            'rcpt-100,2026-10-01,"餐馆, 上海",22.40,USD,1.40,3.00,Team lunch\r\n',
+      );
+      ImportTransactionCommand? captured;
+      final importer = LocalCsvImporter.withHandler((command) async {
+        captured = command;
+        return ApplicationSuccess<TransactionDto>(_dto(command));
+      });
+      final preview = await importer.previewTemplate(
+        XFile(file.path),
+        kind: ButlerlyCsvKind.receipts,
+      );
+      expect(preview.errors, isEmpty);
+      expect(preview.validCount, 1);
+      expect(preview.rows.single.direction, TransactionDirection.expense);
+      final summary = await importer.commitPreview(
+        preview,
+        sourceId: file.uri.pathSegments.last,
+        sourceLanguage: 'zh',
+      );
+      expect(summary.imported, 1);
+      expect(captured!.money.amount, DecimalValue.parse('22.4'));
+      expect(captured!.description, '餐馆, 上海');
+      expect(captured!.rawCounterparty, '餐馆, 上海');
+      expect(captured!.notes, 'Team lunch');
+      expect(captured!.externalReference, 'rcpt-100');
+      expect(captured!.sourceId, startsWith('butlerly-csv-receipts:'));
+      expect(captured!.originalRepresentation, contains('3.00'));
+    },
+  );
 
-  test('transaction template accepts valid directions and preserves references', () async {
-    final root = await Directory.systemTemp.createTemp('butlerly-template-');
-    addTearDown(() => root.delete(recursive: true));
-    final file = File('${root.path}/butlerly_transactions_v1.csv');
-    await file.writeAsString(
-      ButlerlyCsvTemplate.content(ButlerlyCsvKind.transactions) +
-          '2026-10-01,Membership,52.75,USD,expense,Gym,tx-1,Card 4567,October\r\n'
-          '2026-10-02,Refund,5.20,USD,refund,Store,tx-2,,\r\n',
-    );
-    final captured = <ImportTransactionCommand>[];
-    final importer = LocalCsvImporter.withHandler((command) async {
-      captured.add(command);
-      return ApplicationSuccess<TransactionDto>(_dto(command));
-    });
-    final preview = await importer.previewTemplate(
-      XFile(file.path),
-      kind: ButlerlyCsvKind.transactions,
-    );
-    expect(preview.validCount, 2);
-    expect(preview.errors, isEmpty);
-    final summary = await importer.commitPreview(
-      preview,
-      sourceId: file.uri.pathSegments.last,
-      sourceLanguage: 'en',
-    );
-    expect(summary.imported, 2);
-    expect(captured.first.externalReference, 'tx-1');
-    expect(captured.first.rawCounterparty, 'Gym');
-    expect(captured.first.notes, 'October');
-    expect(captured.last.direction, TransactionDirection.refund);
-  });
+  test(
+    'transaction template accepts valid directions and preserves references',
+    () async {
+      final root = await Directory.systemTemp.createTemp('butlerly-template-');
+      addTearDown(() => root.delete(recursive: true));
+      final file = File('${root.path}/butlerly_transactions_v1.csv');
+      await file.writeAsString(
+        ButlerlyCsvTemplate.content(ButlerlyCsvKind.transactions) +
+            '2026-10-01,Membership,52.75,USD,expense,Gym,tx-1,Card 4567,October\r\n'
+                '2026-10-02,Refund,5.20,USD,refund,Store,tx-2,,\r\n',
+      );
+      final captured = <ImportTransactionCommand>[];
+      final importer = LocalCsvImporter.withHandler((command) async {
+        captured.add(command);
+        return ApplicationSuccess<TransactionDto>(_dto(command));
+      });
+      final preview = await importer.previewTemplate(
+        XFile(file.path),
+        kind: ButlerlyCsvKind.transactions,
+      );
+      expect(preview.validCount, 2);
+      expect(preview.errors, isEmpty);
+      final summary = await importer.commitPreview(
+        preview,
+        sourceId: file.uri.pathSegments.last,
+        sourceLanguage: 'en',
+      );
+      expect(summary.imported, 2);
+      expect(captured.first.externalReference, 'tx-1');
+      expect(captured.first.rawCounterparty, 'Gym');
+      expect(captured.first.notes, 'October');
+      expect(captured.last.direction, TransactionDirection.refund);
+    },
+  );
 
   test('rejects wrong template and blank header-only files', () async {
     final root = await Directory.systemTemp.createTemp('butlerly-template-');
@@ -579,56 +585,62 @@ void main() {
     expect(empty.errors.single, contains('no data rows'));
   });
 
-  test('strict template blocks all rows if any amount or ID is invalid', () async {
-    final root = await Directory.systemTemp.createTemp('butlerly-template-');
-    addTearDown(() => root.delete(recursive: true));
-    final file = File('${root.path}/receipts.csv');
-    await file.writeAsString(
-      ButlerlyCsvTemplate.content(ButlerlyCsvKind.receipts) +
-          'r1,2026-10-01,Shop,11.00,USD,1.00,0.00,Valid\r\n'
-          'r1,2026-10-02,Shop,9.00,USD,1.00,0.00,Duplicate ID\r\n'
-          'r3,2026-10-03,Shop,2.00,USD,4.00,0.00,Tax exceeds total\r\n',
-    );
-    var imports = 0;
-    final importer = LocalCsvImporter.withHandler((command) async {
-      imports++;
-      return ApplicationSuccess<TransactionDto>(_dto(command));
-    });
-    final preview = await importer.previewTemplate(
-      XFile(file.path),
-      kind: ButlerlyCsvKind.receipts,
-    );
-    expect(preview.validCount, 1);
-    expect(preview.errors, hasLength(2));
-    final summary = await importer.commitPreview(
-      preview,
-      sourceId: 'receipts.csv',
-      sourceLanguage: 'en',
-    );
-    expect(summary.imported, 0);
-    expect(imports, 0);
-  });
+  test(
+    'strict template blocks all rows if any amount or ID is invalid',
+    () async {
+      final root = await Directory.systemTemp.createTemp('butlerly-template-');
+      addTearDown(() => root.delete(recursive: true));
+      final file = File('${root.path}/receipts.csv');
+      await file.writeAsString(
+        ButlerlyCsvTemplate.content(ButlerlyCsvKind.receipts) +
+            'r1,2026-10-01,Shop,11.00,USD,1.00,0.00,Valid\r\n'
+                'r1,2026-10-02,Shop,9.00,USD,1.00,0.00,Duplicate ID\r\n'
+                'r3,2026-10-03,Shop,2.00,USD,4.00,0.00,Tax exceeds total\r\n',
+      );
+      var imports = 0;
+      final importer = LocalCsvImporter.withHandler((command) async {
+        imports++;
+        return ApplicationSuccess<TransactionDto>(_dto(command));
+      });
+      final preview = await importer.previewTemplate(
+        XFile(file.path),
+        kind: ButlerlyCsvKind.receipts,
+      );
+      expect(preview.validCount, 1);
+      expect(preview.errors, hasLength(2));
+      final summary = await importer.commitPreview(
+        preview,
+        sourceId: 'receipts.csv',
+        sourceLanguage: 'en',
+      );
+      expect(summary.imported, 0);
+      expect(imports, 0);
+    },
+  );
 
-  test('CSV rejects signed and scientific amounts rather than silently changing them', () async {
-    final root = await Directory.systemTemp.createTemp('butlerly-template-');
-    addTearDown(() => root.delete(recursive: true));
-    final file = File('${root.path}/transactions.csv');
-    await file.writeAsString(
-      ButlerlyCsvTemplate.content(ButlerlyCsvKind.transactions) +
-          '2026-10-01,Shop,-10.00,USD,expense,,a,,\r\n'
-          '2026-10-02,Shop,1e3,USD,expense,,b,,\r\n'
-          '2026-10-03,Shop,10.00,USD,wrong,,c,,\r\n',
-    );
-    final importer = LocalCsvImporter.withHandler(
-      (command) async => ApplicationSuccess<TransactionDto>(_dto(command)),
-    );
-    final preview = await importer.previewTemplate(
-      XFile(file.path),
-      kind: ButlerlyCsvKind.transactions,
-    );
-    expect(preview.errors, hasLength(3));
-    expect(preview.validCount, 0);
-  });
+  test(
+    'CSV rejects signed and scientific amounts rather than silently changing them',
+    () async {
+      final root = await Directory.systemTemp.createTemp('butlerly-template-');
+      addTearDown(() => root.delete(recursive: true));
+      final file = File('${root.path}/transactions.csv');
+      await file.writeAsString(
+        ButlerlyCsvTemplate.content(ButlerlyCsvKind.transactions) +
+            '2026-10-01,Shop,-10.00,USD,expense,,a,,\r\n'
+                '2026-10-02,Shop,1e3,USD,expense,,b,,\r\n'
+                '2026-10-03,Shop,10.00,USD,wrong,,c,,\r\n',
+      );
+      final importer = LocalCsvImporter.withHandler(
+        (command) async => ApplicationSuccess<TransactionDto>(_dto(command)),
+      );
+      final preview = await importer.previewTemplate(
+        XFile(file.path),
+        kind: ButlerlyCsvKind.transactions,
+      );
+      expect(preview.errors, hasLength(3));
+      expect(preview.validCount, 0);
+    },
+  );
 }
 
 DuplicateTransactionCandidate _duplicateCandidate(String id) =>
