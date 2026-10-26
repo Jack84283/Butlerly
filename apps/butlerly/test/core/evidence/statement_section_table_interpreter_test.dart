@@ -20,21 +20,21 @@ void main() {
       ));
     }
 
-    add('Discover More Card ending in 7951', .18, .10, width: .35);
+    add('Discover More Card ending in 2468', .18, .10, width: .35);
     add('OPEN TO CLOSE DATE: 07/29/2026 - 08/28/2026',
         .18, .13, width: .46);
     add('Transactions', .08, .20, width: .40);
     add('Rewards Summary', .70, .20, width: .23);
-    add('TEST CUSTOMER #7951: PAYMENTS AND CREDITS', .08, .25,
+    add('TEST CUSTOMER #2468: PAYMENTS AND CREDITS', .08, .25,
         width: .48);
     add('TRANS. DATE', .08, .28);
     add('PAYMENTS AND CREDITS', .20, .28, width: .34);
     add('AMOUNT', .59, .28, width: .08);
     add('08/22', .08, .31, width: .08);
     add('CARD AUTOPAY PYMT', .20, .31, width: .32);
-    add(r'- $398.56', .59, .31, width: .09);
+    add(r'- $245.67', .59, .31, width: .09);
 
-    add('TEST CUSTOMER #7951: PURCHASES', .08, .35, width: .45);
+    add('TEST CUSTOMER #2468: PURCHASES', .08, .35, width: .45);
     add('TRANS. DATE', .08, .38);
     add('PURCHASES', .20, .38, width: .18);
     add('AMOUNT', .59, .38, width: .08);
@@ -45,25 +45,25 @@ void main() {
       add(amount, .59, top, width: .09);
     }
 
-    purchase('08/03', 'YMCA LOCAL FITNESS', r'$49.00', .42);
-    purchase('08/05', 'APPLE.COM/BILL', r'$0.99', .45);
-    purchase('08/08', 'ONLINE MARKETPLACE/BILL', r'$21.94', .48);
+    purchase('08/03', 'YMCA LOCAL FITNESS', r'$27.50', .42);
+    purchase('08/05', 'APPLE.COM/BILL', r'$2.49', .45);
+    purchase('08/08', 'ONLINE MARKETPLACE/BILL', r'$64.20', .48);
     add('WA', .20, .493, width: .05);
     purchase('08/16', 'WIRELESS BILL PAYMENT 800-555-0100',
-        r'$105.00', .52);
-    purchase('08/18', 'FARM INSURANCE BILLING', r'$577.77', .55);
-    purchase('08/19', 'MUSIC SUBSCRIPTION', r'$12.99', .58);
-    purchase('08/26', 'SCHOOL BOOKS EDUCATION', r'$104.99', .61);
-    purchase('08/27', 'BOOK PUBLISHER', r'$88.76', .64);
+        r'$110.25', .52);
+    purchase('08/18', 'FARM INSURANCE BILLING', r'$321.99', .55);
+    purchase('08/19', 'MUSIC SUBSCRIPTION', r'$6.75', .58);
+    purchase('08/26', 'SCHOOL BOOKS EDUCATION', r'$42.16', .61);
+    purchase('08/27', 'BOOK PUBLISHER', r'$19.95', .64);
 
     add('PREVIOUS BALANCE', .70, .24, width: .19);
-    add(r'$48.88', .91, .24, width: .07);
+    add(r'$78.22', .91, .24, width: .07);
     add('EARNED THIS PERIOD', .70, .27, width: .20);
-    add(r'$8.37', .91, .27, width: .07);
+    add(r'$3.88', .91, .27, width: .07);
     add('REDEEMED THIS PERIOD', .70, .30, width: .20);
-    add(r'-$46.04', .91, .30, width: .07);
+    add(r'-$12.21', .91, .30, width: .07);
     add('CASHBACK BONUS BALANCE', .70, .33, width: .22);
-    add(r'$11.21', .91, .33, width: .07);
+    add(r'$41.00', .91, .33, width: .07);
     add('5% Cashback Bonus', .70, .39, width: .20);
     add('Fees and Interest Charged', .08, .70, width: .48);
     add('TOTAL FEES FOR THIS PERIOD', .08, .73, width: .45);
@@ -80,7 +80,7 @@ void main() {
     expect(result.context.periodStart, DateTime(2026, 7, 29));
     expect(result.context.periodEnd, DateTime(2026, 8, 28));
     expect(result.institution, 'Discover');
-    expect(result.maskedAccountIdentifier, '••••7951');
+    expect(result.maskedAccountIdentifier, '••••2468');
     expect(result.context.profile?.id, 'sectioned-card-transaction-tables');
     expect(result.rows, hasLength(9));
 
@@ -88,7 +88,7 @@ void main() {
       (value) => value.description!.contains('AUTOPAY'),
     );
     expect(payment.date, DateTime(2026, 8, 22));
-    expect(payment.amount, '398.56');
+    expect(payment.amount, '245.67');
     expect(payment.direction, 'transfer');
     expect(payment.currency, 'USD');
 
@@ -97,8 +97,8 @@ void main() {
         .toList();
     expect(purchaseRows, hasLength(8));
     expect(purchaseRows.map((row) => row.amount).toList(),
-        ['49.00', '0.99', '21.94', '105.00', '577.77',
-         '12.99', '104.99', '88.76']);
+        ['27.50', '2.49', '64.20', '110.25', '321.99',
+         '6.75', '42.16', '19.95']);
     expect(purchaseRows[2].description,
         'ONLINE MARKETPLACE/BILL WA');
     expect(purchaseRows[3].description,
@@ -129,7 +129,7 @@ void main() {
           left: .08, top: .25, width: .08, height: .015),
       const OcrObservation(text: 'AUTOPAY PYMT', confidence: .9,
           left: .2, top: .25, width: .24, height: .015),
-      const OcrObservation(text: r'-$398.56', confidence: .9,
+      const OcrObservation(text: r'-$245.67', confidence: .9,
           left: .59, top: .25, width: .08, height: .015),
       const OcrObservation(text: 'PURCHASES', confidence: .9,
           left: .08, top: .40, width: .3, height: .015),
