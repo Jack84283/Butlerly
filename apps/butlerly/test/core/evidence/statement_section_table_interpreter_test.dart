@@ -160,4 +160,69 @@ void main() {
     expect(result.context.profile?.id,
         isNot('sectioned-card-transaction-tables'));
   });
+
+  test('ambiguous row amounts never become confirmed transaction values', () {
+    const observations = [
+      OcrObservation(text: 'Discover More Card ending in 2468',
+          confidence: .9, left: .16, top: .05, width: .3, height: .012),
+      OcrObservation(
+          text: 'OPEN TO CLOSE DATE: 07/29/2026 - 08/28/2026',
+          confidence: .9, left: .16, top: .08, width: .4, height: .012),
+      OcrObservation(text: 'Transactions',
+          confidence: .9, left: .08, top: .12, width: .4, height: .012),
+      OcrObservation(text: 'PAYMENTS AND CREDITS',
+          confidence: .9, left: .08, top: .20, width: .3, height: .012),
+      OcrObservation(text: 'PURCHASES',
+          confidence: .9, left: .08, top: .30, width: .3, height: .012),
+      OcrObservation(text: 'AMOUNT',
+          confidence: .9, left: .59, top: .32, width: .08, height: .012),
+      OcrObservation(text: '08/12',
+          confidence: .9, left: .08, top: .40, width: .08, height: .012),
+      OcrObservation(text: 'CAFE',
+          confidence: .9, left: .20, top: .40, width: .24, height: .012),
+      OcrObservation(text: r'$12.00',
+          confidence: .9, left: .59, top: .40, width: .06, height: .012),
+      OcrObservation(text: r'$13.00',
+          confidence: .9, left: .60, top: .41, width: .06, height: .012),
+      OcrObservation(text: 'Fees and Interest Charged',
+          confidence: .9, left: .08, top: .60, width: .4, height: .012),
+    ];
+    final result = LocalStatementExtractor.fromObservations(
+      observations.map((v) => v.text).join('\n'), observations,
+    );
+    expect(result.rows, hasLength(1));
+    expect(result.rows.single.date, DateTime(2026, 8, 12));
+    expect(result.rows.single.amount, isNull);
+    expect(result.rows.single.isUnresolved, isTrue);
+  });
+
+  test('multi-page documents do not enter the one-page specialized path', () {
+    const observations = [
+      OcrObservation(text: 'Transactions',
+          confidence: .9, left: .08, top: .10,
+          width: .4, height: .012, pageIndex: 0),
+      OcrObservation(text: 'PAYMENTS AND CREDITS',
+          confidence: .9, left: .08, top: .20,
+          width: .3, height: .012, pageIndex: 0),
+      OcrObservation(text: 'PURCHASES',
+          confidence: .9, left: .08, top: .30,
+          width: .3, height: .012, pageIndex: 0),
+      OcrObservation(text: 'AMOUNT',
+          confidence: .9, left: .59, top: .32,
+          width: .08, height: .012, pageIndex: 0),
+      OcrObservation(text: '08/12 SHOP 12.00',
+          confidence: .9, left: .08, top: .40,
+          width: .5, height: .012, pageIndex: 0),
+      OcrObservation(text: '08/13 MARKET 15.00',
+          confidence: .9, left: .08, top: .40,
+          width: .5, height: .012, pageIndex: 1),
+    ];
+    final result = LocalStatementExtractor.fromObservations(
+      'Statement period 08/01/2026 - 08/31/2026\n'
+      'PAYMENTS AND CREDITS\nPURCHASES',
+      observations,
+    );
+    expect(result.context.profile?.id,
+        isNot('sectioned-card-transaction-tables'));
+  });
 }
