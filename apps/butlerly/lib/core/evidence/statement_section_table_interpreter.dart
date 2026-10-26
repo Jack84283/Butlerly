@@ -158,7 +158,7 @@ abstract final class StatementSectionTableInterpreter {
       rows: rows,
       regionsDetected: sections,
       ignoredObservationCount: (observations.length - used)
-          .clamp(0, observations.length),
+          .clamp(0, observations.length).toInt(),
     );
   }
 
