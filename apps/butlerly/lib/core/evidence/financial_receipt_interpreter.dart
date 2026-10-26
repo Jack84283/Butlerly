@@ -5,6 +5,7 @@ import 'ocr_contract.dart';
 /// classifier and deliberately does not replace normal retail-receipt parsing.
 final class FinancialReceiptInterpretation {
   const FinancialReceiptInterpretation({
+    this.isScreenshot = false,
     this.amount,
     this.merchant,
     this.transactionDate,
@@ -14,6 +15,7 @@ final class FinancialReceiptInterpretation {
     this.evidence = const {},
   });
 
+  final bool isScreenshot;
   final String? amount;
   final String? merchant;
   final DateTime? transactionDate;
@@ -155,6 +157,7 @@ abstract final class FinancialReceiptInterpreter {
     if (card != null) evidence['cardLast4'] = 'card ending ' + card;
 
     return FinancialReceiptInterpretation(
+      isScreenshot: true,
       amount: amount,
       merchant: merchant,
       transactionDate: transactionDate,
@@ -309,7 +312,41 @@ abstract final class FinancialReceiptInterpreter {
     if (text.isEmpty || text.length > 100) return null;
     // Preserve raw descriptions separately; only strip recognizable
     // store-number/location suffixes (never numbers inside merchant names).
-    final location = RegExp(r'^(.+?)\s+#?\d{3,6}\s+[A-Z][A-Z\s]+$')
+    final location = RegExp(r'^(.+?)\s+#?\d{3,6}(?:\s+[A-Z][A-Z\s]+)?
+        .firstMatch(text);
+    return location?.group(1)?.trim() ?? text;
+  }
+
+  static DateTime? _parseDate(String text) {
+    final month = RegExp(
+      r'\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|'
+      r'Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|'
+      r'Nov(?:ember)?|Dec(?:ember)?)\s+(\d{1,2}),?\s+(20\d{2})\b',
+      caseSensitive: false,
+    ).firstMatch(text);
+    if (month != null) {
+      final m = _months[month.group(1)!.toLowerCase().substring(0, 3)];
+      if (m == null) return null;
+      return _checkedDate(int.parse(month.group(3)!), m,
+          int.parse(month.group(2)!));
+    }
+    final numeric = RegExp(r'\b(\d{1,2})/(\d{1,2})/(20\d{2})\b')
+        .firstMatch(text);
+    if (numeric == null) return null;
+    return _checkedDate(
+      int.parse(numeric.group(3)!),
+      int.parse(numeric.group(1)!),
+      int.parse(numeric.group(2)!),
+    );
+  }
+
+  static DateTime? _checkedDate(int y, int m, int d) {
+    final value = DateTime(y, m, d);
+    return value.year == y && value.month == m && value.day == d
+        ? value : null;
+  }
+}
+)
         .firstMatch(text);
     return location?.group(1)?.trim() ?? text;
   }
