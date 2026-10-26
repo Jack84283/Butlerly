@@ -361,8 +361,7 @@ final class CalculateInsights {
 
     final expenseChange = usableComparison(expenseResult);
     final incomeChange = usableComparison(incomeResult);
-    final comparisonAvailable =
-        expenseChange != null || incomeChange != null;
+    final comparisonAvailable = expenseChange != null || incomeChange != null;
     // A net comparison needs both sides of the baseline. Do not interpret
     // an unavailable expense or income baseline as a genuine zero.
     final netComparison = _comparison(
@@ -371,13 +370,8 @@ final class CalculateInsights {
           ? _baselineValue(expenseResult, incomeResult)
           : null,
     );
-    final incompleteCurrencyData = [
-      expense,
-      income,
-      net,
-    ].any(
-      (metric) =>
-          metric?.availability == AnalysisDataAvailability.insufficient,
+    final incompleteCurrencyData = [expense, income, net].any(
+      (metric) => metric?.availability == AnalysisDataAvailability.insufficient,
     );
     final summary = PeriodSummary(
       context: context,
