@@ -5,6 +5,8 @@ import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:file_selector/file_selector.dart';
 
+import 'butlerly_csv_template.dart';
+
 final class CsvImportSummary {
   const CsvImportSummary({
     required this.imported,
@@ -31,6 +33,8 @@ final class CsvStatementRow {
     required this.externalReference,
     required this.original,
     this.error,
+    this.merchant,
+    this.notes,
   });
 
   final int rowNumber;
@@ -43,13 +47,20 @@ final class CsvStatementRow {
   final String? externalReference;
   final String original;
   final String? error;
+  final String? merchant;
+  final String? notes;
 
   bool get isValid => error == null;
 }
 
 final class CsvStatementPreview {
-  const CsvStatementPreview({required this.rows, required this.errors});
+  const CsvStatementPreview({
+    required this.rows,
+    required this.errors,
+    this.templateKind,
+  });
 
+  final ButlerlyCsvKind? templateKind;
   final List<CsvStatementRow> rows;
   final List<String> errors;
   int get validCount => rows.where((row) => row.isValid).length;
@@ -151,6 +162,1007 @@ final class LocalCsvImporter {
       if (error != null) errors.add('Row ${index + 1}: $error.');
     }
     return CsvStatementPreview(rows: parsed, errors: errors);
+  }
+
+  /// Only exact Butlerly V1 templates are accepted by the user-facing
+  /// receipt/transaction CSV flow. Bank-specific, aliased statement previews
+  /// remain available through [preview] for compatibility.
+  Future<CsvStatementPreview> previewTemplate(
+    XFile file, {
+    required ButlerlyCsvKind kind,
+  }) async {
+    final rows = _parseCsv(await file.readAsString());
+    final expected = ButlerlyCsvTemplate.headers(kind);
+    if (rows.isEmpty || rows.first != null && rows.first.isEmpty) {
+      return CsvStatementPreview(
+        rows: const [],
+        errors: const ['CSV file is empty.'],
+        templateKind: kind,
+      );
+    }
+    if (!_sameHeaders(rows.first, expected)) {
+      return CsvStatementPreview(
+        rows: const [],
+        errors: [
+          'Incorrect CSV template. Expected ${ButlerlyCsvTemplate.filename(kind)} '
+              'with columns: ${expected.join(', ')}.',
+        ],
+        templateKind: kind,
+      );
+    }
+    final parsed = <CsvStatementRow>[];
+    final errors = <String>[];
+    final references = <String>{};
+    for (var index = 1; index < rows.length; index++) {
+      final values = rows[index];
+      if (values.every((value) => value.trim().isEmpty)) continue;
+      String value(String field) {
+        final column = expected.indexOf(field);
+        return column < 0 || column >= values.length
+            ? ''
+            : values[column].trim();
+      }
+
+      final date = value('date');
+      final amount = kind == ButlerlyCsvKind.receipts
+          ? value('total')
+          : value('amount');
+      final currency = value('currency');
+      final description = kind == ButlerlyCsvKind.receipts
+          ? value('merchant')
+          : value('description');
+      final merchant = value('merchant');
+      final reference = kind == ButlerlyCsvKind.receipts
+          ? value('receipt_id')
+          : value('transaction_id');
+      final direction = kind == ButlerlyCsvKind.receipts
+          ? TransactionDirection.expense
+          : switch (value('direction')) {
+              'expense' => TransactionDirection.expense,
+              'income' => TransactionDirection.income,
+              'transfer' => TransactionDirection.transfer,
+              'refund' => TransactionDirection.refund,
+              'adjustment' => TransactionDirection.adjustment,
+              _ => null,
+            };
+      String? error;
+      if (values.length != expected.length) {
+        error = 'column count does not match the template';
+      } else if (!_validDate(date)) {
+        error = 'invalid date (use YYYY-MM-DD)';
+      } else if (description.isEmpty) {
+        error = kind == ButlerlyCsvKind.receipts
+            ? 'merchant is required'
+            : 'description is required';
+      } else if (kind == ButlerlyCsvKind.receipts && reference.isEmpty) {
+        error = 'receipt_id is required';
+      } else if (!_validTemplateAmount(amount, allowZero: false)) {
+        error = 'invalid amount (use a positive decimal, no sign or grouping)';
+      } else if (!RegExp(r'^[A-Z]{3}
+    CsvStatementPreview preview, {
+    String? paymentSourceId,
+  }) async {
+    final result = <int, List<DuplicateTransactionCandidate>>{};
+    for (final row in preview.rows.where((value) => value.isValid)) {
+      final candidates = await _duplicatesFor(
+        row,
+        paymentSourceId: paymentSourceId,
+      );
+      if (candidates.isNotEmpty) result[row.rowNumber] = candidates;
+    }
+    return Map.unmodifiable(result);
+  }
+
+  Future<CsvImportSummary> commitPreview(
+    CsvStatementPreview preview, {
+    required String sourceId,
+    required String sourceLanguage,
+    String? paymentSourceId,
+    Map<int, String> confirmedDuplicateTokens = const {},
+  }) async {
+    // A malformed template is rejected as a whole: never silently import
+    // only the valid subset of a user-provided Butlerly CSV.
+    if (preview.templateKind != null && preview.errors.isNotEmpty) {
+      return CsvImportSummary(
+        imported: 0,
+        duplicates: 0,
+        failed: preview.rows.where((row) => !row.isValid).length,
+        errors: List.unmodifiable(preview.errors),
+      );
+    }
+    var imported = 0;
+    var duplicates = 0;
+    var failed = 0;
+    final errors = [...preview.errors];
+    for (final row in preview.rows.where((value) => value.isValid)) {
+      try {
+        final duplicateCandidates = await _duplicatesFor(
+          row,
+          paymentSourceId: paymentSourceId,
+        );
+        if (duplicateCandidates.isNotEmpty) {
+          final currentToken = duplicateConfirmationToken(
+            row,
+            duplicateCandidates,
+            paymentSourceId: paymentSourceId,
+          );
+          if (confirmedDuplicateTokens[row.rowNumber] != currentToken) {
+            duplicates++;
+            errors.add(
+              'Row ${row.rowNumber}: possible duplicate requires confirmation.',
+            );
+            continue;
+          }
+        }
+        final fingerprint = _fingerprint(
+          [
+            row.date,
+            row.amount,
+            row.currency,
+            row.direction!.name,
+            row.description,
+            row.cardReference ?? '',
+            row.externalReference ?? '',
+            preview.templateKind?.name ?? '',
+          ].join('|'),
+        );
+        final result = await _importTransaction(
+          ImportTransactionCommand(
+            id: 'payment-$fingerprint',
+            provenanceId: 'payment-provenance-$fingerprint',
+            sourceId: preview.templateKind == null
+                ? sourceId
+                : 'butlerly-csv-${preview.templateKind!.name}:$sourceId',
+            originalRepresentation: row.original,
+            money: Money(
+              amount: DecimalValue.parse(row.amount),
+              currency: CurrencyCode(row.currency),
+            ),
+            direction: row.direction!,
+            transactionDate: row.date,
+            description: row.description,
+            rawCounterparty: row.merchant ?? row.description,
+            sourceLanguage: sourceLanguage,
+            notes: row.notes,
+            paymentSourceId: paymentSourceId,
+            externalReference: row.externalReference ?? row.cardReference,
+          ),
+        );
+        if (result is ApplicationSuccess<TransactionDto>) {
+          imported++;
+        } else if ((result as ApplicationFailure<TransactionDto>)
+                .failure
+                .code ==
+            ApplicationFailureCode.conflict) {
+          duplicates++;
+        } else {
+          failed++;
+          errors.add('Row ${row.rowNumber}: could not be imported.');
+        }
+      } on Object {
+        failed++;
+        errors.add('Row ${row.rowNumber}: could not be imported.');
+      }
+    }
+    return CsvImportSummary(
+      imported: imported,
+      duplicates: duplicates,
+      failed: failed,
+      errors: List.unmodifiable(errors),
+    );
+  }
+
+  static String duplicateConfirmationToken(
+    CsvStatementRow row,
+    List<DuplicateTransactionCandidate> candidates, {
+    String? paymentSourceId,
+  }) {
+    final candidateIds =
+        candidates
+            .map((candidate) => candidate.transaction.id)
+            .toList(growable: false)
+          ..sort();
+    return [
+      '${row.rowNumber}',
+      row.date,
+      row.amount,
+      row.currency,
+      row.direction?.name ?? '',
+      paymentSourceId ?? '',
+      ...candidateIds,
+    ].join('|');
+  }
+
+  Future<List<DuplicateTransactionCandidate>> _duplicatesFor(
+    CsvStatementRow row, {
+    String? paymentSourceId,
+  }) async {
+    final checker = _duplicateChecker;
+    if (checker == null || row.direction == null || !row.isValid) {
+      return const [];
+    }
+    final result = await checker(
+      DuplicateTransactionCheckCommand(
+        transactionDate: row.date,
+        amount: row.amount,
+        currency: row.currency,
+        direction: row.direction!,
+        paymentSourceId: paymentSourceId,
+      ),
+    );
+    return switch (result) {
+      ApplicationSuccess<DuplicateTransactionCheckResult>(:final value) =>
+        value.candidates,
+      ApplicationFailure<DuplicateTransactionCheckResult>() => throw StateError(
+        'Duplicate check could not be completed.',
+      ),
+    };
+  }
+
+  Future<CsvImportSummary> import(
+    XFile file, {
+    required String sourceLanguage,
+  }) async {
+    final content = await file.readAsString();
+    final rows = _parseCsv(content);
+    if (rows.isEmpty) {
+      return const CsvImportSummary(
+        imported: 0,
+        duplicates: 0,
+        failed: 1,
+        errors: ['The CSV file is empty.'],
+      );
+    }
+    final headers = rows.first
+        .map((value) => value.trim().toLowerCase())
+        .toList();
+    if (!headers.toSet().containsAll(acceptedHeaders)) {
+      return const CsvImportSummary(
+        imported: 0,
+        duplicates: 0,
+        failed: 1,
+        errors: ['Required columns: date, amount, currency, direction.'],
+      );
+    }
+
+    var imported = 0;
+    var duplicates = 0;
+    var failed = 0;
+    final errors = <String>[];
+    for (var index = 1; index < rows.length; index++) {
+      final values = rows[index];
+      if (values.every((value) => value.trim().isEmpty)) continue;
+      if (values.length != headers.length) {
+        failed++;
+        errors.add('Row ${index + 1}: column count does not match the header.');
+        continue;
+      }
+      final row = <String, String>{
+        for (var column = 0; column < headers.length; column++)
+          headers[column]: values[column],
+      };
+      try {
+        final direction = _direction(row['direction']!);
+        final amount = _normalizedAmount(row['amount']!);
+        final currency = row['currency']!.trim().toUpperCase();
+        final importRow = CsvStatementRow(
+          rowNumber: index + 1,
+          date: row['date']!.trim(),
+          description: _optional(row['description']) ?? '',
+          amount: amount,
+          currency: currency,
+          direction: direction,
+          cardReference:
+              _optional(row['card_reference']) ??
+              _optional(row['account_reference']),
+          externalReference:
+              _optional(row['transaction_id']) ?? _optional(row['reference']),
+          original: _encodeCsvRow(values),
+        );
+        if ((await _duplicatesFor(importRow)).isNotEmpty) {
+          duplicates++;
+          errors.add(
+            'Row ${index + 1}: possible duplicate requires preview confirmation.',
+          );
+          continue;
+        }
+        final original = importRow.original;
+        final fingerprint = _fingerprint(
+          [
+            row['date']!.trim(),
+            amount,
+            currency,
+            direction.name,
+            row['description'] ?? '',
+            row['counterparty'] ?? '',
+            row['card_reference'] ?? row['account_reference'] ?? '',
+            row['transaction_id'] ?? row['reference'] ?? '',
+          ].join('|'),
+        );
+        final result = await _importTransaction(
+          ImportTransactionCommand(
+            id: 'import-$fingerprint',
+            provenanceId: 'import-provenance-$fingerprint',
+            sourceId: file.name,
+            originalRepresentation: original,
+            money: Money(
+              amount: DecimalValue.parse(amount),
+              currency: CurrencyCode(currency),
+            ),
+            direction: direction,
+            transactionDate: row['date']!.trim(),
+            occurredAtUtc: _optionalInstant(row['occurred_at_utc']),
+            timeZoneId: _optional(row['time_zone_id']),
+            description: _optional(row['description']),
+            rawCounterparty: _optional(row['counterparty']),
+            sourceLanguage: _optional(row['source_language']) ?? sourceLanguage,
+            notes: _optional(row['notes']),
+            externalReference:
+                _optional(row['transaction_id']) ??
+                _optional(row['reference']) ??
+                _optional(row['card_reference']),
+          ),
+        );
+        if (result is ApplicationSuccess<TransactionDto>) {
+          imported++;
+        } else if ((result as ApplicationFailure<TransactionDto>)
+                .failure
+                .code ==
+            ApplicationFailureCode.conflict) {
+          duplicates++;
+        } else {
+          failed++;
+          errors.add('Row ${index + 1}: invalid transaction data.');
+        }
+      } on Object {
+        failed++;
+        errors.add('Row ${index + 1}: invalid transaction data.');
+      }
+    }
+    return CsvImportSummary(
+      imported: imported,
+      duplicates: duplicates,
+      failed: failed,
+      errors: List.unmodifiable(errors),
+    );
+  }
+
+  static String _normalizedAmount(String value) =>
+      value.trim().replaceFirst(RegExp(r'^[+-]'), '').replaceAll(',', '');
+
+  static String _header(String value) => value
+      .trim()
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+      .replaceAll(RegExp(r'^_|_$'), '');
+
+  static Map<String, int> _columnIndexes(List<String> headers) {
+    const aliases = <String, List<String>>{
+      'date': ['date', 'transaction_date', 'posting_date', 'posted_date'],
+      'description': [
+        'description',
+        'merchant',
+        'merchant_name',
+        'details',
+        'memo',
+      ],
+      'amount': ['amount', 'transaction_amount', 'value'],
+      'currency': ['currency', 'currency_code'],
+      'direction': ['direction', 'type', 'debit_credit', 'credit_debit'],
+      'card_reference': [
+        'card',
+        'card_number',
+        'card_reference',
+        'account',
+        'account_reference',
+      ],
+      'transaction_id': [
+        'transaction_id',
+        'transaction_reference',
+        'reference',
+        'id',
+      ],
+    };
+    final result = <String, int>{};
+    for (final entry in aliases.entries) {
+      final index = headers.indexWhere(entry.value.contains);
+      if (index >= 0) result[entry.key] = index;
+    }
+    return result;
+  }
+
+  static bool _validDate(String value) {
+    final parsed = DateTime.tryParse(value);
+    return value.length == 10 &&
+        parsed != null &&
+        parsed.toIso8601String().substring(0, 10) == value;
+  }
+
+  static TransactionDirection? _statementDirection(
+    String value,
+    bool negative,
+  ) {
+    final normalized = value.trim().toLowerCase();
+    if (normalized.contains('credit') ||
+        normalized == 'cr' ||
+        normalized == 'income') {
+      return TransactionDirection.income;
+    }
+    if (normalized.contains('debit') ||
+        normalized == 'dr' ||
+        normalized == 'expense') {
+      return TransactionDirection.expense;
+    }
+    if (negative) return TransactionDirection.expense;
+    return null;
+  }
+
+  static List<List<String>> _parseCsv(String input) {
+    final rows = <List<String>>[];
+    var row = <String>[];
+    var field = StringBuffer();
+    var quoted = false;
+    for (var index = 0; index < input.length; index++) {
+      final character = input[index];
+      if (character == '"') {
+        if (quoted && index + 1 < input.length && input[index + 1] == '"') {
+          field.write('"');
+          index++;
+        } else {
+          quoted = !quoted;
+        }
+      } else if (character == ',' && !quoted) {
+        row.add(field.toString());
+        field = StringBuffer();
+      } else if ((character == '\n' || character == '\r') && !quoted) {
+        if (character == '\r' &&
+            index + 1 < input.length &&
+            input[index + 1] == '\n') {
+          index++;
+        }
+        row.add(field.toString());
+        rows.add(row);
+        row = <String>[];
+        field = StringBuffer();
+      } else {
+        field.write(character);
+      }
+    }
+    if (quoted) throw const FormatException('Unclosed quoted field.');
+    if (field.isNotEmpty || row.isNotEmpty) {
+      row.add(field.toString());
+      rows.add(row);
+    }
+    if (rows.isNotEmpty && rows.first.isNotEmpty) {
+      rows.first[0] = rows.first[0].replaceFirst('\ufeff', '');
+    }
+    return rows;
+  }
+
+  static String _encodeCsvRow(List<String> values) =>
+      values.map((value) => '"${value.replaceAll('"', '""')}"').join(',');
+
+  static String _fingerprint(String value) {
+    var hash = 0x811c9dc5;
+    for (final byte in utf8.encode(value.trim())) {
+      hash ^= byte;
+      hash = (hash * 16777619).toUnsigned(32);
+    }
+    return hash.toRadixString(16).padLeft(8, '0');
+  }
+
+  static TransactionDirection _direction(String value) =>
+      switch (value.trim().toLowerCase()) {
+        'expense' => TransactionDirection.expense,
+        'income' => TransactionDirection.income,
+        'transfer' => TransactionDirection.transfer,
+        'refund' => TransactionDirection.refund,
+        'adjustment' => TransactionDirection.adjustment,
+        _ => throw const FormatException('Unsupported direction.'),
+      };
+
+  static DateTime? _optionalInstant(String? value) {
+    final normalized = _optional(value);
+    if (normalized == null) return null;
+    final parsed = DateTime.tryParse(normalized);
+    if (parsed == null || !parsed.isUtc) {
+      throw const FormatException('Exact timestamps must include UTC Z.');
+    }
+    return parsed;
+  }
+
+  static String? _optional(String? value) {
+    final normalized = value?.trim();
+    return normalized == null || normalized.isEmpty ? null : normalized;
+  }
+}
+).hasMatch(currency)) {
+        error = 'invalid currency (use uppercase ISO code, e.g. USD)';
+      } else if (direction == null) {
+        error = 'invalid direction (use expense, income, transfer, refund, or adjustment)';
+      } else if (kind == ButlerlyCsvKind.receipts &&
+          (!_validTemplateAmount(value('tax'), allowZero: true, optional: true) ||
+              !_validTemplateAmount(value('tip'), allowZero: true, optional: true))) {
+        error = 'invalid tax or tip';
+      } else if (kind == ButlerlyCsvKind.receipts &&
+          DecimalValue.parse(amount).compareTo(
+            DecimalValue.parse(value('tax').isEmpty ? '0' : value('tax'))
+                .add(DecimalValue.parse(value('tip').isEmpty ? '0' : value('tip'))),
+          ) < 0) {
+        error = 'total cannot be less than tax plus tip';
+      } else if (reference.isNotEmpty && !references.add(reference)) {
+        error = 'duplicate receipt_id or transaction_id in file';
+      }
+      final row = CsvStatementRow(
+        rowNumber: index + 1,
+        date: date,
+        description: description,
+        amount: amount,
+        currency: currency,
+        direction: direction,
+        cardReference: kind == ButlerlyCsvKind.transactions
+            ? _optional(value('account_reference'))
+            : null,
+        externalReference: _optional(reference),
+        original: _encodeCsvRow(values),
+        merchant: _optional(merchant),
+        notes: _optional(value('notes')),
+        error: error,
+      );
+      parsed.add(row);
+      if (error != null) errors.add('Row ${index + 1}: $error.');
+    }
+    if (parsed.isEmpty) {
+      errors.add('The CSV template has no data rows.');
+    }
+    return CsvStatementPreview(
+      rows: List.unmodifiable(parsed),
+      errors: List.unmodifiable(errors),
+      templateKind: kind,
+    );
+  }
+
+  static bool _sameHeaders(List<String> actual, List<String> expected) {
+    if (actual.length != expected.length) return false;
+    for (var index = 0; index < expected.length; index++) {
+      if (actual[index].trim() != expected[index]) return false;
+    }
+    return true;
+  }
+
+  static bool _validTemplateAmount(
+    String value, {
+    required bool allowZero,
+    bool optional = false,
+  }) {
+    if (optional && value.isEmpty) return true;
+    if (!RegExp(r'^\\d+(?:\\.\\d{1,4})?
+    CsvStatementPreview preview, {
+    String? paymentSourceId,
+  }) async {
+    final result = <int, List<DuplicateTransactionCandidate>>{};
+    for (final row in preview.rows.where((value) => value.isValid)) {
+      final candidates = await _duplicatesFor(
+        row,
+        paymentSourceId: paymentSourceId,
+      );
+      if (candidates.isNotEmpty) result[row.rowNumber] = candidates;
+    }
+    return Map.unmodifiable(result);
+  }
+
+  Future<CsvImportSummary> commitPreview(
+    CsvStatementPreview preview, {
+    required String sourceId,
+    required String sourceLanguage,
+    String? paymentSourceId,
+    Map<int, String> confirmedDuplicateTokens = const {},
+  }) async {
+    var imported = 0;
+    var duplicates = 0;
+    var failed = 0;
+    final errors = [...preview.errors];
+    for (final row in preview.rows.where((value) => value.isValid)) {
+      try {
+        final duplicateCandidates = await _duplicatesFor(
+          row,
+          paymentSourceId: paymentSourceId,
+        );
+        if (duplicateCandidates.isNotEmpty) {
+          final currentToken = duplicateConfirmationToken(
+            row,
+            duplicateCandidates,
+            paymentSourceId: paymentSourceId,
+          );
+          if (confirmedDuplicateTokens[row.rowNumber] != currentToken) {
+            duplicates++;
+            errors.add(
+              'Row ${row.rowNumber}: possible duplicate requires confirmation.',
+            );
+            continue;
+          }
+        }
+        final fingerprint = _fingerprint(
+          [
+            row.date,
+            row.amount,
+            row.currency,
+            row.direction!.name,
+            row.description,
+            row.cardReference ?? '',
+            row.externalReference ?? '',
+          ].join('|'),
+        );
+        final result = await _importTransaction(
+          ImportTransactionCommand(
+            id: 'payment-$fingerprint',
+            provenanceId: 'payment-provenance-$fingerprint',
+            sourceId: sourceId,
+            originalRepresentation: row.original,
+            money: Money(
+              amount: DecimalValue.parse(row.amount),
+              currency: CurrencyCode(row.currency),
+            ),
+            direction: row.direction!,
+            transactionDate: row.date,
+            description: row.description,
+            rawCounterparty: row.description,
+            sourceLanguage: sourceLanguage,
+            paymentSourceId: paymentSourceId,
+            externalReference: row.externalReference ?? row.cardReference,
+          ),
+        );
+        if (result is ApplicationSuccess<TransactionDto>) {
+          imported++;
+        } else if ((result as ApplicationFailure<TransactionDto>)
+                .failure
+                .code ==
+            ApplicationFailureCode.conflict) {
+          duplicates++;
+        } else {
+          failed++;
+          errors.add('Row ${row.rowNumber}: could not be imported.');
+        }
+      } on Object {
+        failed++;
+        errors.add('Row ${row.rowNumber}: could not be imported.');
+      }
+    }
+    return CsvImportSummary(
+      imported: imported,
+      duplicates: duplicates,
+      failed: failed,
+      errors: List.unmodifiable(errors),
+    );
+  }
+
+  static String duplicateConfirmationToken(
+    CsvStatementRow row,
+    List<DuplicateTransactionCandidate> candidates, {
+    String? paymentSourceId,
+  }) {
+    final candidateIds =
+        candidates
+            .map((candidate) => candidate.transaction.id)
+            .toList(growable: false)
+          ..sort();
+    return [
+      '${row.rowNumber}',
+      row.date,
+      row.amount,
+      row.currency,
+      row.direction?.name ?? '',
+      paymentSourceId ?? '',
+      ...candidateIds,
+    ].join('|');
+  }
+
+  Future<List<DuplicateTransactionCandidate>> _duplicatesFor(
+    CsvStatementRow row, {
+    String? paymentSourceId,
+  }) async {
+    final checker = _duplicateChecker;
+    if (checker == null || row.direction == null || !row.isValid) {
+      return const [];
+    }
+    final result = await checker(
+      DuplicateTransactionCheckCommand(
+        transactionDate: row.date,
+        amount: row.amount,
+        currency: row.currency,
+        direction: row.direction!,
+        paymentSourceId: paymentSourceId,
+      ),
+    );
+    return switch (result) {
+      ApplicationSuccess<DuplicateTransactionCheckResult>(:final value) =>
+        value.candidates,
+      ApplicationFailure<DuplicateTransactionCheckResult>() => throw StateError(
+        'Duplicate check could not be completed.',
+      ),
+    };
+  }
+
+  Future<CsvImportSummary> import(
+    XFile file, {
+    required String sourceLanguage,
+  }) async {
+    final content = await file.readAsString();
+    final rows = _parseCsv(content);
+    if (rows.isEmpty) {
+      return const CsvImportSummary(
+        imported: 0,
+        duplicates: 0,
+        failed: 1,
+        errors: ['The CSV file is empty.'],
+      );
+    }
+    final headers = rows.first
+        .map((value) => value.trim().toLowerCase())
+        .toList();
+    if (!headers.toSet().containsAll(acceptedHeaders)) {
+      return const CsvImportSummary(
+        imported: 0,
+        duplicates: 0,
+        failed: 1,
+        errors: ['Required columns: date, amount, currency, direction.'],
+      );
+    }
+
+    var imported = 0;
+    var duplicates = 0;
+    var failed = 0;
+    final errors = <String>[];
+    for (var index = 1; index < rows.length; index++) {
+      final values = rows[index];
+      if (values.every((value) => value.trim().isEmpty)) continue;
+      if (values.length != headers.length) {
+        failed++;
+        errors.add('Row ${index + 1}: column count does not match the header.');
+        continue;
+      }
+      final row = <String, String>{
+        for (var column = 0; column < headers.length; column++)
+          headers[column]: values[column],
+      };
+      try {
+        final direction = _direction(row['direction']!);
+        final amount = _normalizedAmount(row['amount']!);
+        final currency = row['currency']!.trim().toUpperCase();
+        final importRow = CsvStatementRow(
+          rowNumber: index + 1,
+          date: row['date']!.trim(),
+          description: _optional(row['description']) ?? '',
+          amount: amount,
+          currency: currency,
+          direction: direction,
+          cardReference:
+              _optional(row['card_reference']) ??
+              _optional(row['account_reference']),
+          externalReference:
+              _optional(row['transaction_id']) ?? _optional(row['reference']),
+          original: _encodeCsvRow(values),
+        );
+        if ((await _duplicatesFor(importRow)).isNotEmpty) {
+          duplicates++;
+          errors.add(
+            'Row ${index + 1}: possible duplicate requires preview confirmation.',
+          );
+          continue;
+        }
+        final original = importRow.original;
+        final fingerprint = _fingerprint(
+          [
+            row['date']!.trim(),
+            amount,
+            currency,
+            direction.name,
+            row['description'] ?? '',
+            row['counterparty'] ?? '',
+            row['card_reference'] ?? row['account_reference'] ?? '',
+            row['transaction_id'] ?? row['reference'] ?? '',
+          ].join('|'),
+        );
+        final result = await _importTransaction(
+          ImportTransactionCommand(
+            id: 'import-$fingerprint',
+            provenanceId: 'import-provenance-$fingerprint',
+            sourceId: file.name,
+            originalRepresentation: original,
+            money: Money(
+              amount: DecimalValue.parse(amount),
+              currency: CurrencyCode(currency),
+            ),
+            direction: direction,
+            transactionDate: row['date']!.trim(),
+            occurredAtUtc: _optionalInstant(row['occurred_at_utc']),
+            timeZoneId: _optional(row['time_zone_id']),
+            description: _optional(row['description']),
+            rawCounterparty: _optional(row['counterparty']),
+            sourceLanguage: _optional(row['source_language']) ?? sourceLanguage,
+            notes: _optional(row['notes']),
+            externalReference:
+                _optional(row['transaction_id']) ??
+                _optional(row['reference']) ??
+                _optional(row['card_reference']),
+          ),
+        );
+        if (result is ApplicationSuccess<TransactionDto>) {
+          imported++;
+        } else if ((result as ApplicationFailure<TransactionDto>)
+                .failure
+                .code ==
+            ApplicationFailureCode.conflict) {
+          duplicates++;
+        } else {
+          failed++;
+          errors.add('Row ${index + 1}: invalid transaction data.');
+        }
+      } on Object {
+        failed++;
+        errors.add('Row ${index + 1}: invalid transaction data.');
+      }
+    }
+    return CsvImportSummary(
+      imported: imported,
+      duplicates: duplicates,
+      failed: failed,
+      errors: List.unmodifiable(errors),
+    );
+  }
+
+  static String _normalizedAmount(String value) =>
+      value.trim().replaceFirst(RegExp(r'^[+-]'), '').replaceAll(',', '');
+
+  static String _header(String value) => value
+      .trim()
+      .toLowerCase()
+      .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+      .replaceAll(RegExp(r'^_|_$'), '');
+
+  static Map<String, int> _columnIndexes(List<String> headers) {
+    const aliases = <String, List<String>>{
+      'date': ['date', 'transaction_date', 'posting_date', 'posted_date'],
+      'description': [
+        'description',
+        'merchant',
+        'merchant_name',
+        'details',
+        'memo',
+      ],
+      'amount': ['amount', 'transaction_amount', 'value'],
+      'currency': ['currency', 'currency_code'],
+      'direction': ['direction', 'type', 'debit_credit', 'credit_debit'],
+      'card_reference': [
+        'card',
+        'card_number',
+        'card_reference',
+        'account',
+        'account_reference',
+      ],
+      'transaction_id': [
+        'transaction_id',
+        'transaction_reference',
+        'reference',
+        'id',
+      ],
+    };
+    final result = <String, int>{};
+    for (final entry in aliases.entries) {
+      final index = headers.indexWhere(entry.value.contains);
+      if (index >= 0) result[entry.key] = index;
+    }
+    return result;
+  }
+
+  static bool _validDate(String value) {
+    final parsed = DateTime.tryParse(value);
+    return value.length == 10 &&
+        parsed != null &&
+        parsed.toIso8601String().substring(0, 10) == value;
+  }
+
+  static TransactionDirection? _statementDirection(
+    String value,
+    bool negative,
+  ) {
+    final normalized = value.trim().toLowerCase();
+    if (normalized.contains('credit') ||
+        normalized == 'cr' ||
+        normalized == 'income') {
+      return TransactionDirection.income;
+    }
+    if (normalized.contains('debit') ||
+        normalized == 'dr' ||
+        normalized == 'expense') {
+      return TransactionDirection.expense;
+    }
+    if (negative) return TransactionDirection.expense;
+    return null;
+  }
+
+  static List<List<String>> _parseCsv(String input) {
+    final rows = <List<String>>[];
+    var row = <String>[];
+    var field = StringBuffer();
+    var quoted = false;
+    for (var index = 0; index < input.length; index++) {
+      final character = input[index];
+      if (character == '"') {
+        if (quoted && index + 1 < input.length && input[index + 1] == '"') {
+          field.write('"');
+          index++;
+        } else {
+          quoted = !quoted;
+        }
+      } else if (character == ',' && !quoted) {
+        row.add(field.toString());
+        field = StringBuffer();
+      } else if ((character == '\n' || character == '\r') && !quoted) {
+        if (character == '\r' &&
+            index + 1 < input.length &&
+            input[index + 1] == '\n') {
+          index++;
+        }
+        row.add(field.toString());
+        rows.add(row);
+        row = <String>[];
+        field = StringBuffer();
+      } else {
+        field.write(character);
+      }
+    }
+    if (quoted) throw const FormatException('Unclosed quoted field.');
+    if (field.isNotEmpty || row.isNotEmpty) {
+      row.add(field.toString());
+      rows.add(row);
+    }
+    if (rows.isNotEmpty && rows.first.isNotEmpty) {
+      rows.first[0] = rows.first[0].replaceFirst('\ufeff', '');
+    }
+    return rows;
+  }
+
+  static String _encodeCsvRow(List<String> values) =>
+      values.map((value) => '"${value.replaceAll('"', '""')}"').join(',');
+
+  static String _fingerprint(String value) {
+    var hash = 0x811c9dc5;
+    for (final byte in utf8.encode(value.trim())) {
+      hash ^= byte;
+      hash = (hash * 16777619).toUnsigned(32);
+    }
+    return hash.toRadixString(16).padLeft(8, '0');
+  }
+
+  static TransactionDirection _direction(String value) =>
+      switch (value.trim().toLowerCase()) {
+        'expense' => TransactionDirection.expense,
+        'income' => TransactionDirection.income,
+        'transfer' => TransactionDirection.transfer,
+        'refund' => TransactionDirection.refund,
+        'adjustment' => TransactionDirection.adjustment,
+        _ => throw const FormatException('Unsupported direction.'),
+      };
+
+  static DateTime? _optionalInstant(String? value) {
+    final normalized = _optional(value);
+    if (normalized == null) return null;
+    final parsed = DateTime.tryParse(normalized);
+    if (parsed == null || !parsed.isUtc) {
+      throw const FormatException('Exact timestamps must include UTC Z.');
+    }
+    return parsed;
+  }
+
+  static String? _optional(String? value) {
+    final normalized = value?.trim();
+    return normalized == null || normalized.isEmpty ? null : normalized;
+  }
+}
+).hasMatch(value)) return false;
+    final decimal = DecimalValue.parse(value);
+    return allowZero ? !decimal.isNegative : decimal.isPositive;
   }
 
   Future<Map<int, List<DuplicateTransactionCandidate>>> findDuplicates(
