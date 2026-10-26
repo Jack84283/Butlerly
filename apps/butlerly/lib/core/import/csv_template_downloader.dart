@@ -14,9 +14,13 @@ Future<bool> downloadButlerlyCsvTemplate(ButlerlyCsvKind kind) async {
     utf8.encode(ButlerlyCsvTemplate.content(kind)),
   );
   final file = XFile.fromData(bytes, mimeType: 'text/csv', name: filename);
-  final desktop = !kIsWeb &&
-      {TargetPlatform.macOS, TargetPlatform.windows, TargetPlatform.linux}
-          .contains(defaultTargetPlatform);
+  final desktop =
+      !kIsWeb &&
+      {
+        TargetPlatform.macOS,
+        TargetPlatform.windows,
+        TargetPlatform.linux,
+      }.contains(defaultTargetPlatform);
   if (desktop) {
     final location = await getSaveLocation(
       suggestedName: filename,
@@ -31,11 +35,7 @@ Future<bool> downloadButlerlyCsvTemplate(ButlerlyCsvKind kind) async {
   // Mobile provides Save to Files via its share sheet; the share_plus web
   // fallback downloads the CSV where the Web Share API is unavailable.
   final result = await SharePlus.instance.share(
-    ShareParams(
-      files: [file],
-      fileNameOverrides: [filename],
-      title: filename,
-    ),
+    ShareParams(files: [file], fileNameOverrides: [filename], title: filename),
   );
   return result.status != ShareResultStatus.dismissed;
 }
