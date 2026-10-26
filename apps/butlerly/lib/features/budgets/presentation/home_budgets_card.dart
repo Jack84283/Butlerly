@@ -7,6 +7,7 @@ import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_model.dart';
 import 'package:butlerly/features/budgets/application/budget_change_notifier.dart';
+import 'package:butlerly/features/budgets/application/monthly_budget_actuals.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -149,45 +150,15 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
       return budgets.map((b) => _BudgetProgress(b, null)).toList();
     }
     return budgets.map((budget) {
-      final AnalysisMetric? metric = switch (budget.scope) {
-        'overall' => overview.spending,
-        'category' =>
-          overview.categories
-              .where((m) => analysisRawDimension(m) == budget.scopeId)
-              .firstOrNull,
-        'subcategory' =>
-          overview.subcategories
-              .where((m) => m.dimension == budget.scopeId)
-              .firstOrNull,
-        'merchant' =>
-          overview.merchants
-              .where((m) => m.dimension == budget.scopeId)
-              .firstOrNull,
-        _ => null,
-      };
-      // Match the availability rule used by Home's spending summary.
-      // Quality warnings should not suppress an otherwise usable amount.
-      // Currency must still match so we never compare unlike amounts.
-      final metricCurrency =
-          metric?.currency?.value ?? metric?.context.baseCurrency?.value;
-      if (metric == null ||
-          metric.availability != AnalysisDataAvailability.sufficient ||
-          metricCurrency != budget.currency) {
+      final actual = resolveMonthlyBudgetActual(budget, overview);
+      if (actual.spent == null) {
         debugPrint(
           'My Budgets: monthly metric unavailable for '
           '${budget.scope}/${budget.scopeId} '
-          '${month.year}-${month.month}: '
-          'metric=${metric == null ? 'missing' : metric.availability}, '
-          'currency=${metric?.currency?.value}, expected=${budget.currency}, '
-          'quality=${metric?.qualityIssues.length}',
+          '${month.year}-${month.month}: expected=${budget.currency}',
         );
-        return _BudgetProgress(budget, null);
       }
-      return _BudgetProgress(
-        budget,
-        double.tryParse(metric.value.toString()),
-        metric,
-      );
+      return _BudgetProgress(budget, actual.spent, actual.metric);
     }).toList();
   }
 
