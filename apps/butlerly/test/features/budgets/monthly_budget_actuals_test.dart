@@ -70,7 +70,7 @@ void main() {
     );
     final actual = resolveMonthlyBudgetActual(
       budget('merchant', 'merchant-uuid-123'),
-      AnalysisOverview(spending: overall, merchants: [matched]),
+      _overview(spending: overall, merchants: [matched]),
     );
     expect(actual.spent, 62.5);
     expect(actual.metric, same(matched));
@@ -84,7 +84,7 @@ void main() {
     );
     final actual = resolveMonthlyBudgetActual(
       budget('subcategory', 'subcategory-uuid-4'),
-      AnalysisOverview(spending: overall, subcategories: [matched]),
+      _overview(spending: overall, subcategories: [matched]),
     );
     expect(actual.spent, 23.75);
     expect(actual.metric, same(matched));
@@ -98,26 +98,26 @@ void main() {
     );
     final actual = resolveMonthlyBudgetActual(
       budget('merchant', 'new-merchant'),
-      AnalysisOverview(spending: overall, merchants: [other]),
+      _overview(spending: overall, merchants: [other]),
     );
     expect(actual.spent, 0);
     expect(actual.metric, isNull);
   });
 
   test('missing category and subcategory groups show zero spending', () {
-    const overview = AnalysisOverview();
+    final missingOverview = _overview();
     for (final scope in ['category', 'subcategory']) {
       expect(
         resolveMonthlyBudgetActual(
           budget(scope, 'new-scope-id'),
-          AnalysisOverview(spending: overall),
+          _overview(spending: overall),
         ).spent,
         0,
       );
       expect(
         resolveMonthlyBudgetActual(
           budget(scope, 'new-scope-id'),
-          overview,
+          missingOverview,
         ).spent,
         isNull,
       );
@@ -133,7 +133,7 @@ void main() {
     );
     final actual = resolveMonthlyBudgetActual(
       budget('merchant', 'merchant-new'),
-      AnalysisOverview(spending: overall, merchants: [empty]),
+      _overview(spending: overall, merchants: [empty]),
     );
     expect(actual.spent, 0);
     expect(actual.metric, same(empty));
@@ -142,7 +142,7 @@ void main() {
   test('no valid overall analysis means missing merchant is unavailable', () {
     final actual = resolveMonthlyBudgetActual(
       budget('merchant', 'new-merchant'),
-      const AnalysisOverview(),
+      _overview(),
     );
     expect(actual.spent, isNull);
     expect(actual.metric, isNull);
@@ -156,7 +156,7 @@ void main() {
     expect(
       resolveMonthlyBudgetActual(
         budget('merchant', 'new-merchant'),
-        AnalysisOverview(spending: unavailable),
+        _overview(spending: unavailable),
       ).spent,
       isNull,
     );
@@ -169,7 +169,7 @@ void main() {
     expect(
       resolveMonthlyBudgetActual(
         budget('merchant', 'merchant-new'),
-        AnalysisOverview(spending: overall, merchants: [badGroup]),
+        _overview(spending: overall, merchants: [badGroup]),
       ).spent,
       isNull,
     );
@@ -179,7 +179,7 @@ void main() {
     expect(
       resolveMonthlyBudgetActual(
         budget('merchant', 'new-merchant', currency: 'EUR'),
-        AnalysisOverview(spending: overall),
+        _overview(spending: overall),
       ).spent,
       isNull,
     );
@@ -191,7 +191,7 @@ void main() {
     expect(
       resolveMonthlyBudgetActual(
         budget('merchant', 'merchant-new', currency: 'EUR'),
-        AnalysisOverview(spending: overall, merchants: [group]),
+        _overview(spending: overall, merchants: [group]),
       ).spent,
       isNull,
     );
@@ -200,9 +200,26 @@ void main() {
   test('overall budget still uses the canonical spending metric', () {
     final actual = resolveMonthlyBudgetActual(
       budget('overall', null),
-      AnalysisOverview(spending: overall),
+      _overview(spending: overall),
     );
     expect(actual.spent, 190);
     expect(actual.metric, same(overall));
   });
 }
+
+AnalysisOverview _overview({
+  AnalysisMetric? spending,
+  List<AnalysisMetric> categories = const [],
+  List<AnalysisMetric> subcategories = const [],
+  List<AnalysisMetric> merchants = const [],
+}) => AnalysisOverview(
+  spending: spending,
+  categories: categories,
+  subcategories: subcategories,
+  merchants: merchants,
+  insightUnavailable: false,
+  trend: const [],
+  qualityCount: 0,
+  qualityEvaluated: true,
+  qualityLimited: false,
+);
