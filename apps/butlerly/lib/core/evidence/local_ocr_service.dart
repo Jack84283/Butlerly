@@ -533,10 +533,12 @@ abstract final class ReceiptExtractor {
 
     // On a partially captured itemized receipt, an individual item price is
     // not evidence of the final amount paid. Leave it for user review.
-    final itemized = lines.any((line) => RegExp(
-      r'\b(?:unit\s+price|qty|quantity)\b',
-      caseSensitive: false,
-    ).hasMatch(line.text));
+    final itemized = lines.any(
+      (line) => RegExp(
+        r'\b(?:unit\s+price|qty|quantity)\b',
+        caseSensitive: false,
+      ).hasMatch(line.text),
+    );
     if (itemized) return null;
 
     const positive = [
