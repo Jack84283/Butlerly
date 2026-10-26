@@ -986,7 +986,14 @@ final class LocalStatementExtractor {
           r'\s*(?:-|–|to|through)\s*' +
           date,
       caseSensitive: false,
-    ).firstMatch(text);
+    ).firstMatch(text) ??
+        RegExp(
+          r'\bOPEN\s+TO\s+CLOSE\s+DATE\s*:?\s*' +
+              date +
+              r'\s*(?:-|–|to|through)\s*' +
+              date,
+          caseSensitive: false,
+        ).firstMatch(text);
     if (match == null) {
       if (!RegExp(
         r'\b(?:statement|billing|period|cycle|from|through)\b',
