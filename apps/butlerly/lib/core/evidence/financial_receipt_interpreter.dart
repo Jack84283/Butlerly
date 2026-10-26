@@ -12,6 +12,8 @@ final class FinancialReceiptInterpretation {
     this.postingDate,
     this.cardLast4,
     this.originalMerchantDescription,
+    this.transactionTimeText,
+    this.issuerCategory,
     this.evidence = const {},
   });
 
@@ -22,6 +24,8 @@ final class FinancialReceiptInterpretation {
   final DateTime? postingDate;
   final String? cardLast4;
   final String? originalMerchantDescription;
+  final String? transactionTimeText;
+  final String? issuerCategory;
   final Map<String, String> evidence;
 }
 
@@ -145,6 +149,22 @@ abstract final class FinancialReceiptInterpreter {
       evidence['date'] = transactionText!;
     }
     final postingDate = posted == null ? null : _parseDate(posted);
+    final timeLabel = _field(
+      lines,
+      RegExp(r'^time\s*:?\s*', caseSensitive: false),
+    );
+    final timeSource = timeLabel ?? purchased ?? made;
+    final transactionTimeText = timeSource == null
+        ? null
+        : RegExp(
+            r'\b\d{1,2}:\d{2}\s*(?:AM|PM)'
+            r'(?:\s+(?:ET|EST|EDT|PT|PST|PDT|CT|CST|CDT|MT|MST|MDT))?\b',
+            caseSensitive: false,
+          ).firstMatch(timeSource)?.group(0);
+    final issuerCategory = _field(
+      lines,
+      RegExp(r'^spend category\s*:?\s*', caseSensitive: false),
+    );
 
     // Restrict last-four matching to explicit card context. Store IDs,
     // phone numbers, ZIP codes, and USPS tracking numbers are not cards.
@@ -164,6 +184,8 @@ abstract final class FinancialReceiptInterpreter {
       postingDate: postingDate,
       cardLast4: card,
       originalMerchantDescription: description,
+      transactionTimeText: transactionTimeText,
+      issuerCategory: issuerCategory,
       evidence: evidence,
     );
   }
@@ -252,7 +274,7 @@ abstract final class FinancialReceiptInterpreter {
       }
       if (value.isEmpty) continue;
       if (RegExp(
-            r'^(?:merchant|on your statement as|appears on your statement as)\b',
+            r'^(?:merchant|spend category|on your statement as|appears on your statement as)\b',
             caseSensitive: false,
           ).hasMatch(anchor.text.trim()) &&
           index + 1 < lines.length) {
