@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('extracts labeled transaction notification without a merchant profile', () {
     final result = ReceiptTextParser.parse(r'''
-Transaction Alert
 Amount: $32.47
 Card
 Ending In
@@ -156,5 +155,55 @@ VISA **** 2468
     expect(result.amount, '43.56');
     expect(result.cardLast4, '2468');
     expect(result.date, DateTime(2026, 8, 15));
+  });
+
+  test('associates right-column values and multiline merchant evidence', () {
+    const observations = [
+      OcrObservation(
+        text: 'Amount:', confidence: .94,
+        left: .07, top: .12, width: .23, height: .04,
+      ),
+      OcrObservation(
+        text: r'$32.47', confidence: .94,
+        left: .46, top: .12, width: .21, height: .04,
+      ),
+      OcrObservation(
+        text: 'Card Ending In', confidence: .94,
+        left: .07, top: .21, width: .24, height: .04,
+      ),
+      OcrObservation(
+        text: '1357', confidence: .94,
+        left: .46, top: .21, width: .20, height: .04,
+      ),
+      OcrObservation(
+        text: 'Merchant', confidence: .94,
+        left: .07, top: .33, width: .22, height: .04,
+      ),
+      OcrObservation(
+        text: 'CAFE EXPRESS #24680', confidence: .94,
+        left: .46, top: .33, width: .40, height: .04,
+      ),
+      OcrObservation(
+        text: 'DENVER US', confidence: .94,
+        left: .46, top: .38, width: .36, height: .04,
+      ),
+      OcrObservation(
+        text: 'Date', confidence: .94,
+        left: .07, top: .50, width: .22, height: .04,
+      ),
+      OcrObservation(
+        text: '08/15/2026', confidence: .94,
+        left: .46, top: .50, width: .30, height: .04,
+      ),
+    ];
+    final result = ReceiptExtractor.extract(
+      observations.map((line) => line.text).join('\n'),
+      observations,
+    );
+    expect(result.amount, '32.47');
+    expect(result.merchant, 'CAFE EXPRESS');
+    expect(result.cardLast4, '1357');
+    expect(result.date, DateTime(2026, 8, 15));
+    expect(result.fieldEvidence['merchant'], contains('DENVER US'));
   });
 }
