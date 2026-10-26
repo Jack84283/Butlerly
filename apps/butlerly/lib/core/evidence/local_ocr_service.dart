@@ -1,5 +1,6 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'platform_ocr_recognizer.dart';
+import 'financial_receipt_interpreter.dart';
 
 export 'ocr_contract.dart';
 
@@ -91,6 +92,8 @@ final class ReceiptOcrResult {
     this.amount,
     this.currency,
     this.date,
+    this.postingDate,
+    this.originalMerchantDescription,
     this.tax,
     this.tip,
     this.cardLast4,
@@ -125,6 +128,8 @@ final class ReceiptOcrResult {
   final String? amount;
   final String? currency;
   final DateTime? date;
+  final DateTime? postingDate;
+  final String? originalMerchantDescription;
   final String? tax;
   final String? tip;
   final String? cardLast4;
@@ -156,6 +161,10 @@ final class ReceiptOcrResult {
     if (amount case final value?) values['amount'] = value;
     if (currency case final value?) values['currency'] = value;
     if (date case final value?) values['date'] = _iso(value);
+    if (postingDate case final value?) values['postingDate'] = _iso(value);
+    if (originalMerchantDescription case final value?) {
+      values['originalMerchantDescription'] = value;
+    }
     if (tax case final value?) values['tax'] = value;
     if (tip case final value?) values['tip'] = value;
     if (cardLast4 case final value?) values['cardLast4'] = value;
@@ -216,6 +225,8 @@ final class LocalOcrService {
       amount: extracted.amount,
       currency: extracted.currency,
       date: extracted.date,
+      postingDate: extracted.postingDate,
+      originalMerchantDescription: extracted.originalMerchantDescription,
       tax: extracted.tax,
       tip: extracted.tip,
       cardLast4: extracted.cardLast4,
@@ -342,20 +353,46 @@ abstract final class ReceiptExtractor {
             .where((line) => line.text.trim().isNotEmpty)
             .toList(growable: false);
     final values = _extract(lines);
+    final interpreted = FinancialReceiptInterpreter.interpret(text, lines);
+    final screenshot = interpreted.isScreenshot;
+    final fieldEvidence = <String, String>{
+      ...values.evidence,
+      ...interpreted.evidence,
+    };
+    final fieldConfidence = <String, double>{...values.confidence};
+    final ocrConfidence = <String, double>{...values.ocrConfidence};
+    final extractionConfidence = <String, double>{
+      ...values.extractionConfidence,
+    };
+    // A screenshot without a defensible total must not inherit a reward or
+    // other incidental amount from the legacy receipt heuristic.
+    if (screenshot) {
+      for (final key in ['amount', 'merchant', 'date', 'cardLast4']) {
+        fieldConfidence.remove(key);
+        ocrConfidence.remove(key);
+        extractionConfidence.remove(key);
+        fieldEvidence.remove(key);
+      }
+      for (final entry in interpreted.evidence.entries) {
+        fieldEvidence[entry.key] = entry.value;
+      }
+    }
     return ReceiptOcrResult(
       rawText: text,
       observations: observations,
-      ocrConfidence: values.ocrConfidence,
-      extractionConfidence: values.extractionConfidence,
-      fieldConfidence: values.confidence,
-      fieldEvidence: values.evidence,
-      merchant: values.merchant,
-      amount: values.amount,
+      ocrConfidence: ocrConfidence,
+      extractionConfidence: extractionConfidence,
+      fieldConfidence: fieldConfidence,
+      fieldEvidence: fieldEvidence,
+      merchant: screenshot ? interpreted.merchant : values.merchant,
+      amount: screenshot ? interpreted.amount : values.amount,
       currency: values.currency,
-      date: values.date,
+      date: screenshot ? interpreted.transactionDate : values.date,
+      postingDate: interpreted.postingDate,
+      originalMerchantDescription: interpreted.originalMerchantDescription,
       tax: values.tax,
       tip: values.tip,
-      cardLast4: values.cardLast4,
+      cardLast4: screenshot ? interpreted.cardLast4 : values.cardLast4,
       cardNetwork: values.cardNetwork,
       cardType: values.cardType,
       cardExpiry: values.cardExpiry,
