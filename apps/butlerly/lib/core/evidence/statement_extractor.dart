@@ -252,34 +252,38 @@ final class LocalStatementExtractor {
       defaultCurrency: context.defaultCurrency,
     );
     if (sectioned != null) {
-      final rows = sectioned.rows.map((value) {
-        final unresolved = value.amount == null
-            ? StatementUnresolvedReason.unresolvedAmount
-            : value.date == null
-            ? StatementUnresolvedReason.unresolvedDate
-            : value.description == null
-            ? StatementUnresolvedReason.incompleteTransactionEvidence
-            : value.currency == null
-            ? StatementUnresolvedReason.unresolvedCurrency
-            : value.direction == null
-            ? StatementUnresolvedReason.unresolvedDirection
-            : null;
-        return StatementExtractedRow(
-          originalText: redactPanLikeText(value.originalText),
-          date: value.date,
-          description: value.description == null
-              ? null
-              : redactPanLikeText(value.description!),
-          amount: value.amount,
-          currency: value.currency,
-          direction: value.direction,
-          confidence: unresolved == null
-              ? value.confidence
-              : value.confidence > .5 ? .5 : value.confidence,
-          unresolvedReason: unresolved,
-          sourceObservationIndexes: value.sourceObservationIndexes,
-        );
-      }).toList(growable: false);
+      final rows = sectioned.rows
+          .map((value) {
+            final unresolved = value.amount == null
+                ? StatementUnresolvedReason.unresolvedAmount
+                : value.date == null
+                ? StatementUnresolvedReason.unresolvedDate
+                : value.description == null
+                ? StatementUnresolvedReason.incompleteTransactionEvidence
+                : value.currency == null
+                ? StatementUnresolvedReason.unresolvedCurrency
+                : value.direction == null
+                ? StatementUnresolvedReason.unresolvedDirection
+                : null;
+            return StatementExtractedRow(
+              originalText: redactPanLikeText(value.originalText),
+              date: value.date,
+              description: value.description == null
+                  ? null
+                  : redactPanLikeText(value.description!),
+              amount: value.amount,
+              currency: value.currency,
+              direction: value.direction,
+              confidence: unresolved == null
+                  ? value.confidence
+                  : value.confidence > .5
+                  ? .5
+                  : value.confidence,
+              unresolvedReason: unresolved,
+              sourceObservationIndexes: value.sourceObservationIndexes,
+            );
+          })
+          .toList(growable: false);
       final unresolved = rows.where((value) => value.isUnresolved).length;
       return StatementExtraction(
         rawText: text,
@@ -311,9 +315,9 @@ final class LocalStatementExtractor {
           candidatesReconstructed: rows.length - unresolved,
           unresolvedCandidates: unresolved,
           lowConfidenceCandidates: rows
-              .where((value) => (value.confidence ?? 0) <= .5).length,
-          nonTransactionObservationsIgnored:
-              sectioned.ignoredObservationCount,
+              .where((value) => (value.confidence ?? 0) <= .5)
+              .length,
+          nonTransactionObservationsIgnored: sectioned.ignoredObservationCount,
           nativeDiagnostics: nativeDiagnostics,
         ),
       );
@@ -929,9 +933,12 @@ final class LocalStatementExtractor {
       maskedAccountIdentifier: _maskedAccountIdentifier(text),
       periodStart: _period(text, true),
       periodEnd: _period(text, false),
-      defaultCurrency: _currency(text) ??
-          (RegExp(r'\bDiscover\s+More\s+Card\b', caseSensitive: false)
-                  .hasMatch(text)
+      defaultCurrency:
+          _currency(text) ??
+          (RegExp(
+                r'\bDiscover\s+More\s+Card\b',
+                caseSensitive: false,
+              ).hasMatch(text)
               ? 'USD'
               : null),
       columns: columns,
@@ -980,13 +987,14 @@ final class LocalStatementExtractor {
 
   static DateTime? _period(String text, bool first) {
     const date = r'(\d{4}[-/]\d{1,2}[-/]\d{1,2}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4})';
-    final match = RegExp(
-      r'\b(?:statement|billing)\s+period\s*:?\s*' +
-          date +
-          r'\s*(?:-|–|to|through)\s*' +
-          date,
-      caseSensitive: false,
-    ).firstMatch(text) ??
+    final match =
+        RegExp(
+          r'\b(?:statement|billing)\s+period\s*:?\s*' +
+              date +
+              r'\s*(?:-|–|to|through)\s*' +
+              date,
+          caseSensitive: false,
+        ).firstMatch(text) ??
         RegExp(
           r'\bOPEN\s+TO\s+CLOSE\s+DATE\s*:?\s*' +
               date +
@@ -1067,8 +1075,10 @@ final class LocalStatementExtractor {
       multiLine: true,
     ).firstMatch(text)?.group(1)?.trim();
     if (labeled != null) return labeled;
-    if (RegExp(r'\bDiscover\s+More\s+Card\b', caseSensitive: false)
-        .hasMatch(text)) {
+    if (RegExp(
+      r'\bDiscover\s+More\s+Card\b',
+      caseSensitive: false,
+    ).hasMatch(text)) {
       return 'Discover';
     }
     return null;
