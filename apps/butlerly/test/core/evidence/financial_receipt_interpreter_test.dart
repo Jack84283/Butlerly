@@ -206,4 +206,46 @@ VISA **** 2468
     expect(result.date, DateTime(2026, 8, 15));
     expect(result.fieldEvidence['merchant'], contains('DENVER US'));
   });
+
+  test('joins fractional digits only when adjacent and visibly smaller', () {
+    List<OcrObservation> observations(double centsLeft) => [
+      const OcrObservation(
+        text: 'Transaction Details',
+        confidence: .9,
+        left: .1,
+        top: .02,
+        width: .5,
+        height: .04,
+      ),
+      const OcrObservation(
+        text: r'$43',
+        confidence: .9,
+        left: .05,
+        top: .14,
+        width: .24,
+        height: .09,
+      ),
+      OcrObservation(
+        text: '.56',
+        confidence: .9,
+        left: centsLeft,
+        top: .16,
+        width: .07,
+        height: .04,
+      ),
+    ];
+    final adjacent = observations(.30);
+    final result = ReceiptExtractor.extract(
+      adjacent.map((line) => line.text).join('\n'),
+      adjacent,
+    );
+    expect(result.amount, '43.56');
+
+    final separated = observations(.80);
+    final unresolved = ReceiptExtractor.extract(
+      separated.map((line) => line.text).join('\n'),
+      separated,
+    );
+    expect(unresolved.amount, isNull);
+  });
 }
