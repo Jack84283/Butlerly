@@ -114,9 +114,37 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
       // Missing presentation metadata must not hide saved budgets.
       _labels = null;
     }
+    // A budget's amount must not depend on analysis rules being installed,
+    // materialized, or producing a nonempty summary metric. The canonical
+    // dataset applies the same reconciliation, financial date, and FX policy.
+    CanonicalBudgetActuals? canonical;
+    try {
+      final actualsResult = await finance.calculateCanonicalBudgetActuals(
+        month: month,
+        budgets: budgets,
+      );
+      if (actualsResult is ApplicationSuccess<CanonicalBudgetActuals>) {
+        canonical = actualsResult.value;
+      } else if (actualsResult is ApplicationFailure<CanonicalBudgetActuals>) {
+        debugPrint(
+          'My Budgets: canonical actuals unavailable: '
+          '${actualsResult.failure.code} '
+          '${actualsResult.failure.detail ?? ''}',
+        );
+      }
+    } catch (error) {
+      debugPrint('My Budgets: canonical actuals error: $error');
+    }
+
+    _BudgetProgress progress(Budget budget, [AnalysisMetric? metric]) {
+      final exact = canonical?.byBudgetId[budget.id];
+      final spent = exact == null ? null : double.tryParse(exact.toString());
+      return _BudgetProgress(budget, spent, metric);
+    }
+
     final calculate = finance.calculateAnalysisOverview;
     if (calculate == null) {
-      return budgets.map((b) => _BudgetProgress(b, null)).toList();
+      return budgets.map((b) => progress(b)).toList();
     }
     String date(DateTime value) =>
         '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
@@ -129,36 +157,39 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
         endDate: date(last),
       );
     } catch (_) {
-      return budgets.map((b) => _BudgetProgress(b, null)).toList();
+      return budgets.map((b) => progress(b)).toList();
     }
     if (contextResult is! ApplicationSuccess<AnalysisContext>) {
-      return budgets.map((b) => _BudgetProgress(b, null)).toList();
+      return budgets.map((b) => progress(b)).toList();
     }
     late final ApplicationResult<List<RuleExecutionResult>> result;
     try {
       result = await calculate(contextResult.value);
     } catch (_) {
-      return budgets.map((b) => _BudgetProgress(b, null)).toList();
+      return budgets.map((b) => progress(b)).toList();
     }
     if (result is! ApplicationSuccess<List<RuleExecutionResult>>) {
-      return budgets.map((b) => _BudgetProgress(b, null)).toList();
+      return budgets.map((b) => progress(b)).toList();
     }
     late final AnalysisOverview overview;
     try {
       overview = AnalysisOverview.fromResults(result.value);
     } catch (_) {
-      return budgets.map((b) => _BudgetProgress(b, null)).toList();
+      return budgets.map((b) => progress(b)).toList();
     }
     return budgets.map((budget) {
-      final actual = resolveMonthlyBudgetActual(budget, overview);
-      if (actual.spent == null) {
+      // Analysis metrics remain optional navigation metadata. They are no
+      // longer the source for actual spending or its zero/unavailable state.
+      final metric = resolveMonthlyBudgetActual(budget, overview).metric;
+      final row = progress(budget, metric);
+      if (row.spent == null) {
         debugPrint(
-          'My Budgets: monthly metric unavailable for '
+          'My Budgets: monthly actual unavailable for '
           '${budget.scope}/${budget.scopeId} '
           '${month.year}-${month.month}: expected=${budget.currency}',
         );
       }
-      return _BudgetProgress(budget, actual.spent, actual.metric);
+      return row;
     }).toList();
   }
 
