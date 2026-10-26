@@ -19,6 +19,7 @@ Time
     expect(result.amount, '32.47');
     expect(result.merchant, 'QUICK SHOP');
     expect(result.cardLast4, '1234');
+    expect(result.transactionTimeText, '06:19 PM ET');
     expect(result.date, DateTime(2026, 8, 15));
     expect(result.fieldEvidence['amount'], contains('32.47'));
   });
@@ -43,6 +44,8 @@ Merchant details
     expect(result.cardLast4, '2468');
     expect(result.date, DateTime(2026, 8, 16));
     expect(result.postingDate, DateTime(2026, 8, 17));
+    expect(result.transactionTimeText, '08:46 PM ET');
+    expect(result.issuerCategory, 'Grocery Store, Supermarket');
     expect(
       result.originalMerchantDescription,
       'GROCERY MART #4321 DENVER CO',
