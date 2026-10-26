@@ -2,8 +2,10 @@ import 'package:butlerly/core/evidence/local_ocr_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('extracts labeled transaction notification without a merchant profile', () {
-    final result = ReceiptTextParser.parse(r'''
+  test(
+    'extracts labeled transaction notification without a merchant profile',
+    () {
+      final result = ReceiptTextParser.parse(r'''
 Amount: $32.47
 Card
 Ending In
@@ -16,13 +18,14 @@ Date
 Time
 06:19 PM ET
 ''');
-    expect(result.amount, '32.47');
-    expect(result.merchant, 'QUICK SHOP');
-    expect(result.cardLast4, '1234');
-    expect(result.transactionTimeText, '06:19 PM ET');
-    expect(result.date, DateTime(2026, 8, 15));
-    expect(result.fieldEvidence['amount'], contains('32.47'));
-  });
+      expect(result.amount, '32.47');
+      expect(result.merchant, 'QUICK SHOP');
+      expect(result.cardLast4, '1234');
+      expect(result.transactionTimeText, '06:19 PM ET');
+      expect(result.date, DateTime(2026, 8, 15));
+      expect(result.fieldEvidence['amount'], contains('32.47'));
+    },
+  );
 
   test('separates payment-card product from merchant and posting date', () {
     final result = ReceiptTextParser.parse(r'''
@@ -46,69 +49,106 @@ Merchant details
     expect(result.postingDate, DateTime(2026, 8, 17));
     expect(result.transactionTimeText, '08:46 PM ET');
     expect(result.issuerCategory, 'Grocery Store, Supermarket');
-    expect(
-      result.originalMerchantDescription,
-      'GROCERY MART #4321 DENVER CO',
-    );
-    expect(
-      result.toExtractionValues()['postingDate'],
-      '2026-08-17',
-    );
+    expect(result.originalMerchantDescription, 'GROCERY MART #4321 DENVER CO');
+    expect(result.toExtractionValues()['postingDate'], '2026-08-17');
   });
 
-  test('reconstructs raised cents and excludes unrelated cash-back rewards', () {
-    const lines = [
-      OcrObservation(
-        text: 'Transaction Details', confidence: .96,
-        left: .25, top: .01, width: .5, height: .04,
-      ),
-      OcrObservation(
-        text: r'$120', confidence: .95,
-        left: .03, top: .10, width: .25, height: .09,
-      ),
-      OcrObservation(
-        text: '00', confidence: .95,
-        left: .29, top: .108, width: .07, height: .04,
-      ),
-      OcrObservation(
-        text: '5% cash back', confidence: .95,
-        left: .67, top: .11, width: .3, height: .03,
-      ),
-      OcrObservation(
-        text: r'+$6.00 rewards cash', confidence: .95,
-        left: .67, top: .15, width: .3, height: .03,
-      ),
-      OcrObservation(
-        text: 'Posted on Saturday, August 17, 2026',
-        confidence: .95, left: .03, top: .25, width: .9, height: .04,
-      ),
-      OcrObservation(
-        text: 'Mobile Service', confidence: .95,
-        left: .03, top: .39, width: .5, height: .06,
-      ),
-      OcrObservation(
-        text: 'Appears on your statement as:',
-        confidence: .95, left: .03, top: .55, width: .8, height: .03,
-      ),
-      OcrObservation(
-        text: 'MOBILE*BILL PAYMENT', confidence: .95,
-        left: .03, top: .59, width: .8, height: .03,
-      ),
-      OcrObservation(
-        text: 'Made on Friday, August 16, 2026', confidence: .95,
-        left: .03, top: .65, width: .8, height: .03,
-      ),
-    ];
-    final result = ReceiptExtractor.extract(
-      lines.map((line) => line.text).join('\n'),
-      lines,
-    );
-    expect(result.amount, '120.00');
-    expect(result.merchant, 'Mobile Service');
-    expect(result.date, DateTime(2026, 8, 16));
-    expect(result.postingDate, DateTime(2026, 8, 17));
-    expect(result.amount, isNot('6.00'));
-  });
+  test(
+    'reconstructs raised cents and excludes unrelated cash-back rewards',
+    () {
+      const lines = [
+        OcrObservation(
+          text: 'Transaction Details',
+          confidence: .96,
+          left: .25,
+          top: .01,
+          width: .5,
+          height: .04,
+        ),
+        OcrObservation(
+          text: r'$120',
+          confidence: .95,
+          left: .03,
+          top: .10,
+          width: .25,
+          height: .09,
+        ),
+        OcrObservation(
+          text: '00',
+          confidence: .95,
+          left: .29,
+          top: .108,
+          width: .07,
+          height: .04,
+        ),
+        OcrObservation(
+          text: '5% cash back',
+          confidence: .95,
+          left: .67,
+          top: .11,
+          width: .3,
+          height: .03,
+        ),
+        OcrObservation(
+          text: r'+$6.00 rewards cash',
+          confidence: .95,
+          left: .67,
+          top: .15,
+          width: .3,
+          height: .03,
+        ),
+        OcrObservation(
+          text: 'Posted on Saturday, August 17, 2026',
+          confidence: .95,
+          left: .03,
+          top: .25,
+          width: .9,
+          height: .04,
+        ),
+        OcrObservation(
+          text: 'Mobile Service',
+          confidence: .95,
+          left: .03,
+          top: .39,
+          width: .5,
+          height: .06,
+        ),
+        OcrObservation(
+          text: 'Appears on your statement as:',
+          confidence: .95,
+          left: .03,
+          top: .55,
+          width: .8,
+          height: .03,
+        ),
+        OcrObservation(
+          text: 'MOBILE*BILL PAYMENT',
+          confidence: .95,
+          left: .03,
+          top: .59,
+          width: .8,
+          height: .03,
+        ),
+        OcrObservation(
+          text: 'Made on Friday, August 16, 2026',
+          confidence: .95,
+          left: .03,
+          top: .65,
+          width: .8,
+          height: .03,
+        ),
+      ];
+      final result = ReceiptExtractor.extract(
+        lines.map((line) => line.text).join('\n'),
+        lines,
+      );
+      expect(result.amount, '120.00');
+      expect(result.merchant, 'Mobile Service');
+      expect(result.date, DateTime(2026, 8, 16));
+      expect(result.postingDate, DateTime(2026, 8, 17));
+      expect(result.amount, isNot('6.00'));
+    },
+  );
 
   test('does not invent cents for an unsegmented integer OCR token', () {
     final result = ReceiptTextParser.parse(r'''
@@ -163,40 +203,76 @@ VISA **** 2468
   test('associates right-column values and multiline merchant evidence', () {
     const observations = [
       OcrObservation(
-        text: 'Amount:', confidence: .94,
-        left: .07, top: .12, width: .23, height: .04,
+        text: 'Amount:',
+        confidence: .94,
+        left: .07,
+        top: .12,
+        width: .23,
+        height: .04,
       ),
       OcrObservation(
-        text: r'$32.47', confidence: .94,
-        left: .46, top: .12, width: .21, height: .04,
+        text: r'$32.47',
+        confidence: .94,
+        left: .46,
+        top: .12,
+        width: .21,
+        height: .04,
       ),
       OcrObservation(
-        text: 'Card Ending In', confidence: .94,
-        left: .07, top: .21, width: .24, height: .04,
+        text: 'Card Ending In',
+        confidence: .94,
+        left: .07,
+        top: .21,
+        width: .24,
+        height: .04,
       ),
       OcrObservation(
-        text: '1357', confidence: .94,
-        left: .46, top: .21, width: .20, height: .04,
+        text: '1357',
+        confidence: .94,
+        left: .46,
+        top: .21,
+        width: .20,
+        height: .04,
       ),
       OcrObservation(
-        text: 'Merchant', confidence: .94,
-        left: .07, top: .33, width: .22, height: .04,
+        text: 'Merchant',
+        confidence: .94,
+        left: .07,
+        top: .33,
+        width: .22,
+        height: .04,
       ),
       OcrObservation(
-        text: 'CAFE EXPRESS #24680', confidence: .94,
-        left: .46, top: .33, width: .40, height: .04,
+        text: 'CAFE EXPRESS #24680',
+        confidence: .94,
+        left: .46,
+        top: .33,
+        width: .40,
+        height: .04,
       ),
       OcrObservation(
-        text: 'DENVER US', confidence: .94,
-        left: .46, top: .38, width: .36, height: .04,
+        text: 'DENVER US',
+        confidence: .94,
+        left: .46,
+        top: .38,
+        width: .36,
+        height: .04,
       ),
       OcrObservation(
-        text: 'Date', confidence: .94,
-        left: .07, top: .50, width: .22, height: .04,
+        text: 'Date',
+        confidence: .94,
+        left: .07,
+        top: .50,
+        width: .22,
+        height: .04,
       ),
       OcrObservation(
-        text: '08/15/2026', confidence: .94,
-        left: .46, top: .50, width: .30, height: .04,
+        text: '08/15/2026',
+        confidence: .94,
+        left: .46,
+        top: .50,
+        width: .30,
+        height: .04,
       ),
     ];
     final result = ReceiptExtractor.extract(
