@@ -296,7 +296,7 @@ final class LocalCsvImporter {
     bool optional = false,
   }) {
     if (optional && value.isEmpty) return true;
-    if (!RegExp(r'^\\d+(?:\\.\\d{1,4})?$').hasMatch(value)) return false;
+    if (!RegExp(r'^\d+(?:\.\d{1,4})?$').hasMatch(value)) return false;
     final decimal = DecimalValue.parse(value);
     return allowZero ? !decimal.isNegative : decimal.isPositive;
   }
