@@ -666,14 +666,16 @@ void main() {
       transactionDate: '2025-12-03',
     );
     RuleExecutionResult evaluate(AnalysisEconomicTransaction foreign) =>
-        const AnalysisRuleEngine().execute(
-          dataset: AnalysisDataset(
-            context: baseContext,
-            transactions: [usdTransaction, foreign],
-            baselineTransactions: [baseline],
-          ),
-          definitions: [definition],
-        ).single;
+        const AnalysisRuleEngine()
+            .execute(
+              dataset: AnalysisDataset(
+                context: baseContext,
+                transactions: [usdTransaction, foreign],
+                baselineTransactions: [baseline],
+              ),
+              definitions: [definition],
+            )
+            .single;
 
     final incomplete = evaluate(eurTransaction);
     expect(incomplete.metric!.value, DecimalValue.parse('10'));
@@ -692,19 +694,13 @@ void main() {
       AnalysisEconomicTransaction(
         id: eurTransaction.id,
         money: eurTransaction.money,
-        normalizedMoney: Money(
-          amount: DecimalValue.parse('22'),
-          currency: usd,
-        ),
+        normalizedMoney: Money(amount: DecimalValue.parse('22'), currency: usd),
         direction: eurTransaction.direction,
         transactionDate: eurTransaction.transactionDate,
       ),
     );
     expect(complete.metric!.value, DecimalValue.parse('32'));
-    expect(
-      complete.metric!.availability,
-      AnalysisDataAvailability.sufficient,
-    );
+    expect(complete.metric!.availability, AnalysisDataAvailability.sufficient);
     expect(complete.comparison!.baselineValue, DecimalValue.parse('5'));
     expect(complete.comparison!.absoluteChange, DecimalValue.parse('27'));
   });
