@@ -327,7 +327,7 @@ abstract final class FinancialReceiptInterpreter {
 
   static bool _merchantCandidate(String value) {
     if (value.length < 2 || value.length > 65) return false;
-    if (RegExp(r'^\$|^\d|costco anywhere visa|credit card|transaction '
+    if (RegExp(r'^\$|^\d|credit card|transaction '
         r'details|rewards|cash back|visa\.{2,}|posted on|card ending|'
         r'purchase|^\+|merchant details',
         caseSensitive: false).hasMatch(value)) {
