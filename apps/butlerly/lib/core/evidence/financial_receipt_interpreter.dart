@@ -251,8 +251,10 @@ abstract final class FinancialReceiptInterpreter {
         }
       }
       if (value.isEmpty) continue;
-      if (RegExp(r'^merchant\s*:?', caseSensitive: false)
-          .hasMatch(anchor.text.trim()) &&
+      if (RegExp(
+            r'^(?:merchant|on your statement as|appears on your statement as)\b',
+            caseSensitive: false,
+          ).hasMatch(anchor.text.trim()) &&
           index + 1 < lines.length) {
         // Extend right-column merchant values onto the following line, but
         // stop at another financial field.
