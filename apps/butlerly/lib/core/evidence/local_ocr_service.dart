@@ -1,6 +1,6 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
-import 'platform_ocr_recognizer.dart';
 import 'financial_receipt_interpreter.dart';
+import 'platform_ocr_recognizer.dart';
 
 export 'ocr_contract.dart';
 
