@@ -250,8 +250,7 @@ abstract final class FinancialReceiptInterpreter {
     return null;
   }
 
-  static String wholeMoney(String dollars, String cents) =>
-      '$dollars.$cents';
+  static String wholeMoney(String dollars, String cents) => '$dollars.$cents';
 
   /// Relates labels to values on the same line, the same visual row, or the
   /// following visual line. In multi-column layouts the value can wrap.
