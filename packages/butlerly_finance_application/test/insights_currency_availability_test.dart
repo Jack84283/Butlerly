@@ -106,16 +106,17 @@ final _context = AnalysisContext(
   baseCurrency: CurrencyCode('USD'),
 );
 
-CalculateInsights _insights() {
-  final repository = _UnusedRepositories();
-  return CalculateInsights(
-    CalculateAnalysisOverview(
-      repository,
-      AnalysisDatasetBuilder(repository, repository, null),
-      const AnalysisRuleEngine(),
+CalculateInsights _insights() => CalculateInsights(
+  CalculateAnalysisOverview(
+    _UnusedAnalysisRules(),
+    AnalysisDatasetBuilder(
+      _UnusedTransactions(),
+      _UnusedPreferences(),
+      null,
     ),
-  );
-}
+    const AnalysisRuleEngine(),
+  ),
+);
 
 AnalysisComparison _comparison(String current, String baseline) =>
     AnalysisComparison(
@@ -172,12 +173,20 @@ RuleExecutionResult _result(
   );
 }
 
-// The projection is tested without calling any repositories.
-final class _UnusedRepositories
-    implements
-        AnalysisRuleRepository,
-        TransactionRepository,
-        UserPreferenceRepository {
+// The projection is tested without calling any repositories. Keep these
+// separate because transaction and preference repositories have different
+// save method signatures.
+final class _UnusedAnalysisRules implements AnalysisRuleRepository {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
+}
+
+final class _UnusedTransactions implements TransactionRepository {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
+}
+
+final class _UnusedPreferences implements UserPreferenceRepository {
   @override
   dynamic noSuchMethod(Invocation invocation) => throw UnimplementedError();
 }
