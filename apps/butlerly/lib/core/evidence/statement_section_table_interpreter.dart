@@ -116,7 +116,7 @@ abstract final class StatementSectionTableInterpreter {
       // The transaction amount header is a measured right-column anchor.
       // The rewards heading supplies an independent boundary if present.
       final boundary = rewards == null
-          ? (amountHeader.left + amountHeader.width + .06).clamp(.55, 1.0)
+          ? (amountHeader.left + amountHeader.width + .02).clamp(.55, 1.0)
           : (rewards.left - .015).clamp(.55, 1.0);
       final left = onPage.where((value) =>
           value.left < boundary && value.top >= transactionHeader.top).toList();
