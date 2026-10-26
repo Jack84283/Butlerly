@@ -218,7 +218,9 @@ abstract final class StatementSectionTableInterpreter {
         // Amount candidates must be in the measured amount column OR in a
         // single observation that contains the date and description.
         final amountCell = cell.left >= amountColumn - .055 ||
-            (identical(cell, anchor) && matches.length == 1);
+            (identical(cell, anchor) && matches.length == 1) ||
+            (cell.left + cell.width >= amountColumn - .04 &&
+                content.contains(r'$') && matches.length == 1);
         if (amountCell && matches.isNotEmpty) {
           for (final match in matches) {
             amounts.add(match.group(1)!);
@@ -235,7 +237,14 @@ abstract final class StatementSectionTableInterpreter {
       final parsed = amounts.length == 1 ? _parseAmount(amounts.single) : null;
       final description = descriptions.join(' ')
           .replaceAll(RegExp(r'\s+'), ' ').trim();
+      final isNegative = amounts.length == 1 &&
+          RegExp(r'^\s*[-−(]').hasMatch(amounts.single);
       final direction = switch (section) {
+        'purchases' when isNegative && RegExp(
+            r'\b(?:REFUND|RETURN|REVERSAL|CREDIT)\b',
+            caseSensitive: false,
+          ).hasMatch(description) => 'refund',
+        'purchases' when isNegative => null,
         'purchases' => 'expense',
         'credits' when RegExp(
             r'\b(?:AUTOPAY|AUTO\s*PAY|PAYMENT\s+RECEIVED|'
