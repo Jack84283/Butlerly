@@ -69,6 +69,12 @@ abstract final class StatementSectionTableInterpreter {
         !observations.any((value) => value.width > 0 && value.height > 0)) {
       return null;
     }
+    // This first version handles one captured statement page. A multi-page
+    // PDF must not silently lose transaction rows from pages without repeated
+    // section headings; leave those documents on the existing path.
+    if (observations.map((value) => value.pageIndex).toSet().length != 1) {
+      return null;
+    }
     // Avoid routing generic one-column transactions through a specialized
     // parser unless explicit distinct card-statement sections are present.
     if (!RegExp(r'payments\s+and\s+credits', caseSensitive: false)
