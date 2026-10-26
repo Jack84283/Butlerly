@@ -216,6 +216,175 @@ abstract final class FinancialReceiptInterpreter {
   static String? _field(List<OcrObservation> lines, RegExp label) {
     for (var index = 0; index < lines.length; index++) {
       final anchor = lines[index];
+      // 'Merchant details' is a section heading, not the Merchant field.
+      if (RegExp(r'^merchant details
+      if (match == null) continue;
+      var value = anchor.text.trim().substring(match.end).trim();
+      if (value.isEmpty) {
+        // Values right of a label share its visual row.
+        final adjacent = lines.where((candidate) =>
+            !identical(candidate, anchor) &&
+            candidate.pageIndex == anchor.pageIndex &&
+            anchor.height > 0 &&
+            candidate.height > 0 &&
+            candidate.left >= anchor.left + anchor.width * .8 &&
+            ((candidate.top + candidate.height / 2) -
+                (anchor.top + anchor.height / 2)).abs() <=
+                (anchor.height > candidate.height
+                    ? anchor.height : candidate.height) * .8
+        ).toList()..sort((a, b) => a.left.compareTo(b.left));
+        if (adjacent.isNotEmpty) {
+          value = adjacent.map((item) => item.text.trim()).join(' ');
+        }
+      }
+      if (value.isEmpty && index + 1 < lines.length) {
+        final next = lines[index + 1];
+        if (!_label.hasMatch(next.text.trim()) &&
+            !RegExp(r'^merchant details$', caseSensitive: false)
+                .hasMatch(next.text.trim())) {
+          value = next.text.trim();
+        }
+      }
+      if (value.isEmpty) continue;
+      if (RegExp(r'^merchant\s*:?', caseSensitive: false)
+          .hasMatch(anchor.text.trim()) &&
+          index + 1 < lines.length) {
+        // Extend right-column merchant values onto the following line, but
+        // stop at another financial field.
+        final first = lines.firstWhere(
+          (line) => line.text.trim() == value,
+          orElse: () => anchor,
+        );
+        final position = lines.indexOf(first);
+        if (position >= 0 && position + 1 < lines.length) {
+          final continuation = lines[position + 1];
+          final aligned = first.height > 0 &&
+              continuation.height > 0 &&
+              (continuation.left - first.left).abs() < .06 &&
+              continuation.top > first.top &&
+              continuation.top - first.top < .10;
+          if (aligned && !_label.hasMatch(continuation.text.trim())) {
+            value += ' ' + continuation.text.trim();
+          }
+        }
+      }
+      return value;
+    }
+    return null;
+  }
+
+  static String? _summaryMerchant(List<OcrObservation> lines) {
+    final start = lines.indexWhere((line) =>
+        RegExp(r'^posted on\b', caseSensitive: false)
+            .hasMatch(line.text.trim()));
+    final end = lines.indexWhere((line) =>
+        RegExp(r'^appears on your statement as\b', caseSensitive: false)
+            .hasMatch(line.text.trim()));
+    if (start >= 0 && end > start) {
+      final candidate = lines.sublist(start + 1, end).map((l) => l.text.trim())
+          .where(_merchantCandidate).lastOrNull;
+      if (candidate != null) return candidate;
+    }
+    final purchased = lines.indexWhere((line) =>
+        RegExp(r'^purchased on\b', caseSensitive: false)
+            .hasMatch(line.text.trim()));
+    if (purchased >= 0) {
+      final candidate = lines.take(purchased).map((l) => l.text.trim())
+          .where(_merchantCandidate).lastOrNull;
+      if (candidate != null) return candidate;
+    }
+    return null;
+  }
+
+  static bool _merchantCandidate(String value) {
+    if (value.length < 2 || value.length > 65) return false;
+    if (RegExp(r'^\$|^\d|costco anywhere visa|credit card|transaction '
+        r'details|rewards|cash back|visa\.{2,}|posted on|card ending|'
+        r'purchase|^\+|merchant details',
+        caseSensitive: false).hasMatch(value)) {
+      return false;
+    }
+    return RegExp(r'[A-Za-z\u4e00-\u9fff]').hasMatch(value);
+  }
+
+  static String? _normalizedMerchant(String? value) {
+    if (value == null) return null;
+    final text = value.trim().replaceAll(RegExp(r'\s+'), ' ');
+    if (text.isEmpty || text.length > 100) return null;
+    // Preserve raw descriptions separately; only strip recognizable
+    // store-number/location suffixes (never numbers inside merchant names).
+    final location = RegExp(r'^(.+?)\s+#?\d{3,6}(?:\s+[A-Z][A-Z\s]+)?
+        .firstMatch(text);
+    return location?.group(1)?.trim() ?? text;
+  }
+
+  static DateTime? _parseDate(String text) {
+    final month = RegExp(
+      r'\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|'
+      r'Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|'
+      r'Nov(?:ember)?|Dec(?:ember)?)\s+(\d{1,2}),?\s+(20\d{2})\b',
+      caseSensitive: false,
+    ).firstMatch(text);
+    if (month != null) {
+      final m = _months[month.group(1)!.toLowerCase().substring(0, 3)];
+      if (m == null) return null;
+      return _checkedDate(int.parse(month.group(3)!), m,
+          int.parse(month.group(2)!));
+    }
+    final numeric = RegExp(r'\b(\d{1,2})/(\d{1,2})/(20\d{2})\b')
+        .firstMatch(text);
+    if (numeric == null) return null;
+    return _checkedDate(
+      int.parse(numeric.group(3)!),
+      int.parse(numeric.group(1)!),
+      int.parse(numeric.group(2)!),
+    );
+  }
+
+  static DateTime? _checkedDate(int y, int m, int d) {
+    final value = DateTime(y, m, d);
+    return value.year == y && value.month == m && value.day == d
+        ? value : null;
+  }
+}
+)
+        .firstMatch(text);
+    return location?.group(1)?.trim() ?? text;
+  }
+
+  static DateTime? _parseDate(String text) {
+    final month = RegExp(
+      r'\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|'
+      r'Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|'
+      r'Nov(?:ember)?|Dec(?:ember)?)\s+(\d{1,2}),?\s+(20\d{2})\b',
+      caseSensitive: false,
+    ).firstMatch(text);
+    if (month != null) {
+      final m = _months[month.group(1)!.toLowerCase().substring(0, 3)];
+      if (m == null) return null;
+      return _checkedDate(int.parse(month.group(3)!), m,
+          int.parse(month.group(2)!));
+    }
+    final numeric = RegExp(r'\b(\d{1,2})/(\d{1,2})/(20\d{2})\b')
+        .firstMatch(text);
+    if (numeric == null) return null;
+    return _checkedDate(
+      int.parse(numeric.group(3)!),
+      int.parse(numeric.group(1)!),
+      int.parse(numeric.group(2)!),
+    );
+  }
+
+  static DateTime? _checkedDate(int y, int m, int d) {
+    final value = DateTime(y, m, d);
+    return value.year == y && value.month == m && value.day == d
+        ? value : null;
+  }
+}
+, caseSensitive: false)
+          .hasMatch(anchor.text.trim())) {
+        continue;
+      }
       final match = label.firstMatch(anchor.text.trim());
       if (match == null) continue;
       var value = anchor.text.trim().substring(match.end).trim();
