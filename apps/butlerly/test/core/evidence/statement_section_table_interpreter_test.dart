@@ -6,27 +6,32 @@ void main() {
   test('extracts sectioned card statement purchases and autopay only', () {
     var order = 0;
     final lines = <OcrObservation>[];
-    void add(String text, double left, double top,
-        {double width = .14, int page = 0}) {
-      lines.add(OcrObservation(
-        text: text,
-        confidence: .94,
-        left: left,
-        top: top,
-        width: width,
-        height: .012,
-        pageIndex: page,
-        order: order++,
-      ));
+    void add(
+      String text,
+      double left,
+      double top, {
+      double width = .14,
+      int page = 0,
+    }) {
+      lines.add(
+        OcrObservation(
+          text: text,
+          confidence: .94,
+          left: left,
+          top: top,
+          width: width,
+          height: .012,
+          pageIndex: page,
+          order: order++,
+        ),
+      );
     }
 
     add('Discover More Card ending in 2468', .18, .10, width: .35);
-    add('OPEN TO CLOSE DATE: 07/29/2026 - 08/28/2026',
-        .18, .13, width: .46);
+    add('OPEN TO CLOSE DATE: 07/29/2026 - 08/28/2026', .18, .13, width: .46);
     add('Transactions', .08, .20, width: .40);
     add('Rewards Summary', .70, .20, width: .23);
-    add('TEST CUSTOMER #2468: PAYMENTS AND CREDITS', .08, .25,
-        width: .48);
+    add('TEST CUSTOMER #2468: PAYMENTS AND CREDITS', .08, .25, width: .48);
     add('TRANS. DATE', .08, .28);
     add('PAYMENTS AND CREDITS', .20, .28, width: .34);
     add('AMOUNT', .59, .28, width: .08);
@@ -49,8 +54,7 @@ void main() {
     purchase('08/05', 'APPLE.COM/BILL', r'$2.49', .45);
     purchase('08/08', 'ONLINE MARKETPLACE/BILL', r'$64.20', .48);
     add('WA', .20, .493, width: .05);
-    purchase('08/16', 'WIRELESS BILL PAYMENT 800-555-0100',
-        r'$110.25', .52);
+    purchase('08/16', 'WIRELESS BILL PAYMENT 800-555-0100', r'$110.25', .52);
     purchase('08/18', 'FARM INSURANCE BILLING', r'$321.99', .55);
     purchase('08/19', 'MUSIC SUBSCRIPTION', r'$6.75', .58);
     purchase('08/26', 'SCHOOL BOOKS EDUCATION', r'$42.16', .61);
@@ -74,7 +78,8 @@ void main() {
     // Native OCR can deliver text and observations in independent orders.
     final text = lines.map((entry) => entry.text).join('\n');
     final result = LocalStatementExtractor.fromObservations(
-      text, lines.reversed.toList(),
+      text,
+      lines.reversed.toList(),
     );
 
     expect(result.context.periodStart, DateTime(2026, 7, 29));
@@ -96,56 +101,134 @@ void main() {
         .where((value) => value.direction == 'expense')
         .toList();
     expect(purchaseRows, hasLength(8));
-    expect(purchaseRows.map((row) => row.amount).toList(),
-        ['27.50', '2.49', '64.20', '110.25', '321.99',
-         '6.75', '42.16', '19.95']);
-    expect(purchaseRows[2].description,
-        'ONLINE MARKETPLACE/BILL WA');
-    expect(purchaseRows[3].description,
-        'WIRELESS BILL PAYMENT 800-555-0100');
+    expect(purchaseRows.map((row) => row.amount).toList(), [
+      '27.50',
+      '2.49',
+      '64.20',
+      '110.25',
+      '321.99',
+      '6.75',
+      '42.16',
+      '19.95',
+    ]);
+    expect(purchaseRows[2].description, 'ONLINE MARKETPLACE/BILL WA');
+    expect(purchaseRows[3].description, 'WIRELESS BILL PAYMENT 800-555-0100');
     expect(purchaseRows[3].direction, 'expense');
-    expect(purchaseRows.every((row) =>
-        row.date != null && row.currency == 'USD' && !row.isUnresolved),
-        isTrue);
+    expect(
+      purchaseRows.every(
+        (row) => row.date != null && row.currency == 'USD' && !row.isUnresolved,
+      ),
+      isTrue,
+    );
     expect(result.rows.every((row) => !row.isUnresolved), isTrue);
-    expect(result.rows.any((row) =>
-        row.description!.contains('BALANCE') ||
-        row.description!.contains('CASHBACK') ||
-        row.description!.contains('FEES')), isFalse);
-    expect(result.diagnostics?.transactionRegionsDetected,
-        greaterThanOrEqualTo(2));
+    expect(
+      result.rows.any(
+        (row) =>
+            row.description!.contains('BALANCE') ||
+            row.description!.contains('CASHBACK') ||
+            row.description!.contains('FEES'),
+      ),
+      isFalse,
+    );
+    expect(
+      result.diagnostics?.transactionRegionsDetected,
+      greaterThanOrEqualTo(2),
+    );
     expect(result.debugSummary, isNot(contains('TEST CUSTOMER')));
   });
 
   test('does not invent year when statement period is missing', () {
     final input = [
-      const OcrObservation(text: 'Transactions', confidence: .9,
-          left: .08, top: .1, width: .40, height: .015),
-      const OcrObservation(text: 'PAYMENTS AND CREDITS', confidence: .9,
-          left: .08, top: .2, width: .3, height: .015),
-      const OcrObservation(text: 'AMOUNT', confidence: .9,
-          left: .59, top: .22, width: .08, height: .015),
-      const OcrObservation(text: '08/22', confidence: .9,
-          left: .08, top: .25, width: .08, height: .015),
-      const OcrObservation(text: 'AUTOPAY PYMT', confidence: .9,
-          left: .2, top: .25, width: .24, height: .015),
-      const OcrObservation(text: r'-$245.67', confidence: .9,
-          left: .59, top: .25, width: .08, height: .015),
-      const OcrObservation(text: 'PURCHASES', confidence: .9,
-          left: .08, top: .40, width: .3, height: .015),
-      const OcrObservation(text: '08/23', confidence: .9,
-          left: .08, top: .44, width: .08, height: .015),
-      const OcrObservation(text: 'MARKET', confidence: .9,
-          left: .2, top: .44, width: .24, height: .015),
-      const OcrObservation(text: r'$12.00', confidence: .9,
-          left: .59, top: .44, width: .08, height: .015),
+      const OcrObservation(
+        text: 'Transactions',
+        confidence: .9,
+        left: .08,
+        top: .1,
+        width: .40,
+        height: .015,
+      ),
+      const OcrObservation(
+        text: 'PAYMENTS AND CREDITS',
+        confidence: .9,
+        left: .08,
+        top: .2,
+        width: .3,
+        height: .015,
+      ),
+      const OcrObservation(
+        text: 'AMOUNT',
+        confidence: .9,
+        left: .59,
+        top: .22,
+        width: .08,
+        height: .015,
+      ),
+      const OcrObservation(
+        text: '08/22',
+        confidence: .9,
+        left: .08,
+        top: .25,
+        width: .08,
+        height: .015,
+      ),
+      const OcrObservation(
+        text: 'AUTOPAY PYMT',
+        confidence: .9,
+        left: .2,
+        top: .25,
+        width: .24,
+        height: .015,
+      ),
+      const OcrObservation(
+        text: r'-$245.67',
+        confidence: .9,
+        left: .59,
+        top: .25,
+        width: .08,
+        height: .015,
+      ),
+      const OcrObservation(
+        text: 'PURCHASES',
+        confidence: .9,
+        left: .08,
+        top: .40,
+        width: .3,
+        height: .015,
+      ),
+      const OcrObservation(
+        text: '08/23',
+        confidence: .9,
+        left: .08,
+        top: .44,
+        width: .08,
+        height: .015,
+      ),
+      const OcrObservation(
+        text: 'MARKET',
+        confidence: .9,
+        left: .2,
+        top: .44,
+        width: .24,
+        height: .015,
+      ),
+      const OcrObservation(
+        text: r'$12.00',
+        confidence: .9,
+        left: .59,
+        top: .44,
+        width: .08,
+        height: .015,
+      ),
     ];
     final result = LocalStatementExtractor.fromObservations(
-      input.map((value) => value.text).join('\n'), input,
+      input.map((value) => value.text).join('\n'),
+      input,
     );
     expect(result.rows, hasLength(2));
-    expect(result.rows.every((value) =>
-        value.date == null && value.isUnresolved), isTrue);
+    expect(
+      result.rows.every((value) => value.date == null && value.isUnresolved),
+      isTrue,
+    );
   });
 
   test('ordinary one-column statement parser remains unchanged', () {
@@ -157,38 +240,106 @@ void main() {
     expect(result.rows, hasLength(1));
     expect(result.rows.single.amount, '42.19');
     expect(result.rows.single.direction, 'expense');
-    expect(result.context.profile?.id,
-        isNot('sectioned-card-transaction-tables'));
+    expect(
+      result.context.profile?.id,
+      isNot('sectioned-card-transaction-tables'),
+    );
   });
 
   test('ambiguous row amounts never become confirmed transaction values', () {
     const observations = [
-      OcrObservation(text: 'Discover More Card ending in 2468',
-          confidence: .9, left: .16, top: .05, width: .3, height: .012),
       OcrObservation(
-          text: 'OPEN TO CLOSE DATE: 07/29/2026 - 08/28/2026',
-          confidence: .9, left: .16, top: .08, width: .4, height: .012),
-      OcrObservation(text: 'Transactions',
-          confidence: .9, left: .08, top: .12, width: .4, height: .012),
-      OcrObservation(text: 'PAYMENTS AND CREDITS',
-          confidence: .9, left: .08, top: .20, width: .3, height: .012),
-      OcrObservation(text: 'PURCHASES',
-          confidence: .9, left: .08, top: .30, width: .3, height: .012),
-      OcrObservation(text: 'AMOUNT',
-          confidence: .9, left: .59, top: .32, width: .08, height: .012),
-      OcrObservation(text: '08/12',
-          confidence: .9, left: .08, top: .40, width: .08, height: .012),
-      OcrObservation(text: 'CAFE',
-          confidence: .9, left: .20, top: .40, width: .24, height: .012),
-      OcrObservation(text: r'$12.00',
-          confidence: .9, left: .59, top: .40, width: .06, height: .012),
-      OcrObservation(text: r'$13.00',
-          confidence: .9, left: .60, top: .41, width: .06, height: .012),
-      OcrObservation(text: 'Fees and Interest Charged',
-          confidence: .9, left: .08, top: .60, width: .4, height: .012),
+        text: 'Discover More Card ending in 2468',
+        confidence: .9,
+        left: .16,
+        top: .05,
+        width: .3,
+        height: .012,
+      ),
+      OcrObservation(
+        text: 'OPEN TO CLOSE DATE: 07/29/2026 - 08/28/2026',
+        confidence: .9,
+        left: .16,
+        top: .08,
+        width: .4,
+        height: .012,
+      ),
+      OcrObservation(
+        text: 'Transactions',
+        confidence: .9,
+        left: .08,
+        top: .12,
+        width: .4,
+        height: .012,
+      ),
+      OcrObservation(
+        text: 'PAYMENTS AND CREDITS',
+        confidence: .9,
+        left: .08,
+        top: .20,
+        width: .3,
+        height: .012,
+      ),
+      OcrObservation(
+        text: 'PURCHASES',
+        confidence: .9,
+        left: .08,
+        top: .30,
+        width: .3,
+        height: .012,
+      ),
+      OcrObservation(
+        text: 'AMOUNT',
+        confidence: .9,
+        left: .59,
+        top: .32,
+        width: .08,
+        height: .012,
+      ),
+      OcrObservation(
+        text: '08/12',
+        confidence: .9,
+        left: .08,
+        top: .40,
+        width: .08,
+        height: .012,
+      ),
+      OcrObservation(
+        text: 'CAFE',
+        confidence: .9,
+        left: .20,
+        top: .40,
+        width: .24,
+        height: .012,
+      ),
+      OcrObservation(
+        text: r'$12.00',
+        confidence: .9,
+        left: .59,
+        top: .40,
+        width: .06,
+        height: .012,
+      ),
+      OcrObservation(
+        text: r'$13.00',
+        confidence: .9,
+        left: .60,
+        top: .41,
+        width: .06,
+        height: .012,
+      ),
+      OcrObservation(
+        text: 'Fees and Interest Charged',
+        confidence: .9,
+        left: .08,
+        top: .60,
+        width: .4,
+        height: .012,
+      ),
     ];
     final result = LocalStatementExtractor.fromObservations(
-      observations.map((v) => v.text).join('\n'), observations,
+      observations.map((v) => v.text).join('\n'),
+      observations,
     );
     expect(result.rows, hasLength(1));
     expect(result.rows.single.date, DateTime(2026, 8, 12));
@@ -198,31 +349,69 @@ void main() {
 
   test('multi-page documents do not enter the one-page specialized path', () {
     const observations = [
-      OcrObservation(text: 'Transactions',
-          confidence: .9, left: .08, top: .10,
-          width: .4, height: .012, pageIndex: 0),
-      OcrObservation(text: 'PAYMENTS AND CREDITS',
-          confidence: .9, left: .08, top: .20,
-          width: .3, height: .012, pageIndex: 0),
-      OcrObservation(text: 'PURCHASES',
-          confidence: .9, left: .08, top: .30,
-          width: .3, height: .012, pageIndex: 0),
-      OcrObservation(text: 'AMOUNT',
-          confidence: .9, left: .59, top: .32,
-          width: .08, height: .012, pageIndex: 0),
-      OcrObservation(text: '08/12 SHOP 12.00',
-          confidence: .9, left: .08, top: .40,
-          width: .5, height: .012, pageIndex: 0),
-      OcrObservation(text: '08/13 MARKET 15.00',
-          confidence: .9, left: .08, top: .40,
-          width: .5, height: .012, pageIndex: 1),
+      OcrObservation(
+        text: 'Transactions',
+        confidence: .9,
+        left: .08,
+        top: .10,
+        width: .4,
+        height: .012,
+        pageIndex: 0,
+      ),
+      OcrObservation(
+        text: 'PAYMENTS AND CREDITS',
+        confidence: .9,
+        left: .08,
+        top: .20,
+        width: .3,
+        height: .012,
+        pageIndex: 0,
+      ),
+      OcrObservation(
+        text: 'PURCHASES',
+        confidence: .9,
+        left: .08,
+        top: .30,
+        width: .3,
+        height: .012,
+        pageIndex: 0,
+      ),
+      OcrObservation(
+        text: 'AMOUNT',
+        confidence: .9,
+        left: .59,
+        top: .32,
+        width: .08,
+        height: .012,
+        pageIndex: 0,
+      ),
+      OcrObservation(
+        text: '08/12 SHOP 12.00',
+        confidence: .9,
+        left: .08,
+        top: .40,
+        width: .5,
+        height: .012,
+        pageIndex: 0,
+      ),
+      OcrObservation(
+        text: '08/13 MARKET 15.00',
+        confidence: .9,
+        left: .08,
+        top: .40,
+        width: .5,
+        height: .012,
+        pageIndex: 1,
+      ),
     ];
     final result = LocalStatementExtractor.fromObservations(
       'Statement period 08/01/2026 - 08/31/2026\n'
       'PAYMENTS AND CREDITS\nPURCHASES',
       observations,
     );
-    expect(result.context.profile?.id,
-        isNot('sectioned-card-transaction-tables'));
+    expect(
+      result.context.profile?.id,
+      isNot('sectioned-card-transaction-tables'),
+    );
   });
 }
