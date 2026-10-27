@@ -36,18 +36,15 @@ class AppLocalizations {
 
   static const _strings = <String, Map<String, String>>{
     'en': {
+      'csvDefaultCurrencyApplied': 'Default currency {currency} applied to {count} row(s) with blank Currency.',
       'csvChooseTemplateLanguage': 'Choose your template language',
       'csvGuideExample': 'Example (not included)',
-      'csvGuideOptional':
-          'All other fields are optional. Keep downloaded columns in order. Examples are shown here only, not inserted into your file.',
+      'csvGuideOptional': 'All other fields are optional. Receipt ID, tax and tip aren\'t needed. Keep downloaded columns in order. Examples are shown only here, not written to the file.',
       'csvGuideTypes':
           'Types: expense, income, transfer, refund, adjustment. Translated type values are also accepted.',
-      'csvGuideCommon':
-          'Date: YYYY-MM-DD. Currency: uppercase USD, CNY, EUR, etc. Amount: positive decimal, e.g. 22.50.',
-      'csvGuideTransactionRequired':
-          'Required: Date, Description, Amount, Currency, Type.',
-      'csvGuideReceiptRequired':
-          'Required: Receipt ID, Date, Merchant, Total Paid, Currency. Total Paid includes tax and tip.',
+      'csvGuideCommon': 'Date: YYYY-MM-DD. Amount: positive decimal, e.g. 22.50. Optional Currency: uppercase USD, CNY, EUR, etc. Blank uses the default in Preferences; it does not convert the amount.',
+      'csvGuideTransactionRequired': 'Required: Date, Description, Amount and Type. Currency is optional; blank uses your saved default.',
+      'csvGuideReceiptRequired': 'Required: Date, Merchant and Total Paid. Currency is optional; blank uses your saved default. Total Paid includes any tax and tip.',
       'csvChooseType': 'Choose CSV data type',
       'csvTemplateRequired':
           'Select receipts or transactions. Your CSV must use the corresponding Butlerly V1 template and exact column headers.',
@@ -1029,13 +1026,14 @@ class AppLocalizations {
       'subcategory': 'Subcategory',
     },
     'zh': {
+      'csvDefaultCurrencyApplied': '已为 {count} 行未填写币种的记录使用默认币种 {currency}。',
       'csvChooseTemplateLanguage': '选择模板语言',
       'csvGuideExample': '示例（不会写入文件）',
-      'csvGuideOptional': '其他字段可选。请勿修改下载文件的列名或列顺序。示例仅供参考，不会写入模板。',
+      'csvGuideOptional': '其他字段可选。无需收据编号、税额或小费。请勿修改下载文件的列顺序。示例不会写入文件。',
       'csvGuideTypes': '交易类型：支出、收入、转账、退款、调整。也支持英文或西班牙文类型。',
-      'csvGuideCommon': '日期：YYYY-MM-DD；币种：大写代码（如 USD、CNY、EUR）；金额：正数，例如 22.50。',
-      'csvGuideTransactionRequired': '必填：日期、描述、金额、币种、类型。',
-      'csvGuideReceiptRequired': '必填：收据编号、日期、商家、实付总额、币种。实付总额应已包含税额和小费。',
+      'csvGuideCommon': '日期：YYYY-MM-DD；金额：正数，例如 22.50。币种可选，填写大写代码（如 USD、CNY、EUR）；留空使用偏好设置中的默认币种，不进行货币转换。',
+      'csvGuideTransactionRequired': '必填：日期、描述、金额和类型。币种可留空，使用已保存的默认币种。',
+      'csvGuideReceiptRequired': '必填：日期、商家、实付总额。币种可留空，使用偏好设置中的默认币种。总额包含税费和小费。',
       'csvChooseType': '选择 CSV 数据类型',
       'csvTemplateRequired': '请选择收据或交易。CSV 文件必须使用对应的 Butlerly V1 模板及完全一致的列标题。',
       'csvReceipts': '收据',
@@ -1879,18 +1877,15 @@ class AppLocalizations {
       'subcategory': '子类别',
     },
     'es': {
+      'csvDefaultCurrencyApplied': 'Moneda predeterminada {currency} aplicada a {count} fila(s) con la moneda vacía.',
       'csvChooseTemplateLanguage': 'Elige el idioma de la plantilla',
       'csvGuideExample': 'Ejemplo (no incluido)',
-      'csvGuideOptional':
-          'Los demás campos son opcionales. No cambies los nombres ni el orden de columnas. El ejemplo no se incluye en el CSV.',
+      'csvGuideOptional': 'Los demás campos son opcionales. No necesitas ID de recibo, impuesto ni propina. Conserva el orden de las columnas. El ejemplo no se guarda en el CSV.',
       'csvGuideTypes':
           'Tipos: gasto, ingreso, transferencia, reembolso, ajuste. También se aceptan tipos en inglés o chino.',
-      'csvGuideCommon':
-          'Fecha: AAAA-MM-DD. Moneda: código en mayúsculas (USD, CNY, EUR). Importe: número positivo como 22.50.',
-      'csvGuideTransactionRequired':
-          'Obligatorio: Fecha, Descripción, Importe, Moneda, Tipo.',
-      'csvGuideReceiptRequired':
-          'Obligatorio: ID de recibo, Fecha, Comercio, Total pagado, Moneda. El total incluye impuesto y propina.',
+      'csvGuideCommon': 'Fecha: AAAA-MM-DD. Importe: decimal positivo, p. ej. 22.50. Moneda opcional: USD, CNY, EUR, etc. Si está vacía, se usa la de Preferencias; no se convierte el importe.',
+      'csvGuideTransactionRequired': 'Obligatorio: Fecha, Descripción, Importe y Tipo. La moneda es opcional y, si falta, se usa la predeterminada.',
+      'csvGuideReceiptRequired': 'Obligatorio: Fecha, Comercio y Total pagado. La moneda es opcional: si está vacía se usa la predeterminada guardada. El total incluye impuestos y propinas.',
       'csvChooseType': 'Elegir tipo de datos CSV',
       'csvTemplateRequired':
           'Selecciona recibos o transacciones. El CSV debe usar la plantilla Butlerly V1 correspondiente y sus columnas exactas.',
