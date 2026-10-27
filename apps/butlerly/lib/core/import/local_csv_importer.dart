@@ -287,12 +287,13 @@ final class LocalCsvImporter {
         error: error,
       );
       parsed.add(row);
-      if (error != null)
+      if (error != null) {
         errors.add(switch (language) {
           'zh' => '第${index + 1}行：$error。',
           'es' => 'Fila ${index + 1}: $error.',
           _ => 'Row ${index + 1}: $error.',
         });
+      }
     }
     if (parsed.isEmpty) {
       errors.add(_localizedCsvError('noRows', language));
