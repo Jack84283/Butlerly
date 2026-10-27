@@ -76,7 +76,8 @@ Future<void> startLocalFileImport(
     onImportingChanged?.call(true);
     final finance = services<FinanceServices>();
     final preferencesResult = await finance.loadUserPreference();
-    final defaultCurrency = preferencesResult is ApplicationSuccess<UserPreference?>
+    final defaultCurrency =
+        preferencesResult is ApplicationSuccess<UserPreference?>
         ? preferencesResult.value?.baseCurrency.value
         : null;
     final importer = LocalCsvImporter(finance);
@@ -693,7 +694,8 @@ class _StatementPreviewSheetState extends State<_StatementPreviewSheet> {
           const SizedBox(height: ButlerlySpacing.compact),
           Text(
             context.l10n.text('csvDefaultCurrencyApplied', {
-              'count': '${widget.preview.rows.where((row) => row.usedDefaultCurrency).length}',
+              'count':
+                  '${widget.preview.rows.where((row) => row.usedDefaultCurrency).length}',
               'currency': widget.preview.rows
                   .firstWhere((row) => row.usedDefaultCurrency)
                   .currency,
