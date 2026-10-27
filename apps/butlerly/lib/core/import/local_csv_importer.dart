@@ -5,6 +5,8 @@ import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:file_selector/file_selector.dart';
 
+import 'butlerly_csv_template.dart';
+
 final class CsvImportSummary {
   const CsvImportSummary({
     required this.imported,
@@ -31,6 +33,8 @@ final class CsvStatementRow {
     required this.externalReference,
     required this.original,
     this.error,
+    this.merchant,
+    this.notes,
   });
 
   final int rowNumber;
@@ -43,13 +47,20 @@ final class CsvStatementRow {
   final String? externalReference;
   final String original;
   final String? error;
+  final String? merchant;
+  final String? notes;
 
   bool get isValid => error == null;
 }
 
 final class CsvStatementPreview {
-  const CsvStatementPreview({required this.rows, required this.errors});
+  const CsvStatementPreview({
+    required this.rows,
+    required this.errors,
+    this.templateKind,
+  });
 
+  final ButlerlyCsvKind? templateKind;
   final List<CsvStatementRow> rows;
   final List<String> errors;
   int get validCount => rows.where((row) => row.isValid).length;
@@ -153,6 +164,156 @@ final class LocalCsvImporter {
     return CsvStatementPreview(rows: parsed, errors: errors);
   }
 
+  /// Accept only the selected Butlerly V1 schema in the user import flow.
+  Future<CsvStatementPreview> previewTemplate(
+    XFile file, {
+    required ButlerlyCsvKind kind,
+  }) async {
+    final rows = _parseCsv(await file.readAsString());
+    final expected = ButlerlyCsvTemplate.headers(kind);
+    if (rows.isEmpty) {
+      return CsvStatementPreview(
+        rows: const [],
+        errors: const ['CSV file is empty.'],
+        templateKind: kind,
+      );
+    }
+    if (!_sameHeaders(rows.first, expected)) {
+      return CsvStatementPreview(
+        rows: const [],
+        errors: [
+          'Incorrect CSV template. Expected ${ButlerlyCsvTemplate.filename(kind)} '
+              'with columns: ${expected.join(', ')}.',
+        ],
+        templateKind: kind,
+      );
+    }
+    final parsed = <CsvStatementRow>[];
+    final errors = <String>[];
+    final references = <String>{};
+    for (var index = 1; index < rows.length; index++) {
+      final values = rows[index];
+      if (values.every((value) => value.trim().isEmpty)) continue;
+      String value(String field) {
+        final column = expected.indexOf(field);
+        return column < 0 || column >= values.length
+            ? ''
+            : values[column].trim();
+      }
+
+      final date = value('date');
+      final amount = kind == ButlerlyCsvKind.receipts
+          ? value('total')
+          : value('amount');
+      final currency = value('currency');
+      final description = kind == ButlerlyCsvKind.receipts
+          ? value('merchant')
+          : value('description');
+      final merchant = value('merchant');
+      final reference = kind == ButlerlyCsvKind.receipts
+          ? value('receipt_id')
+          : value('transaction_id');
+      final direction = kind == ButlerlyCsvKind.receipts
+          ? TransactionDirection.expense
+          : switch (value('direction')) {
+              'expense' => TransactionDirection.expense,
+              'income' => TransactionDirection.income,
+              'transfer' => TransactionDirection.transfer,
+              'refund' => TransactionDirection.refund,
+              'adjustment' => TransactionDirection.adjustment,
+              _ => null,
+            };
+      String? error;
+      if (values.length != expected.length) {
+        error = 'column count does not match the template';
+      } else if (!_validDate(date)) {
+        error = 'invalid date (use YYYY-MM-DD)';
+      } else if (description.isEmpty) {
+        error = kind == ButlerlyCsvKind.receipts
+            ? 'merchant is required'
+            : 'description is required';
+      } else if (kind == ButlerlyCsvKind.receipts && reference.isEmpty) {
+        error = 'receipt_id is required';
+      } else if (!_validTemplateAmount(amount, allowZero: false)) {
+        error = 'invalid amount (use a positive decimal, no sign or grouping)';
+      } else if (!RegExp(r'^[A-Z]{3}$').hasMatch(currency)) {
+        error = 'invalid currency (use uppercase ISO code, e.g. USD)';
+      } else if (direction == null) {
+        error =
+            'invalid direction (use expense, income, transfer, refund, or adjustment)';
+      } else if (kind == ButlerlyCsvKind.receipts &&
+          (!_validTemplateAmount(
+                value('tax'),
+                allowZero: true,
+                optional: true,
+              ) ||
+              !_validTemplateAmount(
+                value('tip'),
+                allowZero: true,
+                optional: true,
+              ))) {
+        error = 'invalid tax or tip';
+      } else if (kind == ButlerlyCsvKind.receipts &&
+          DecimalValue.parse(amount).compareTo(
+                DecimalValue.parse(
+                  value('tax').isEmpty ? '0' : value('tax'),
+                ).add(
+                  DecimalValue.parse(value('tip').isEmpty ? '0' : value('tip')),
+                ),
+              ) <
+              0) {
+        error = 'total cannot be less than tax plus tip';
+      } else if (reference.isNotEmpty && !references.add(reference)) {
+        error = 'duplicate receipt_id or transaction_id in file';
+      }
+      final row = CsvStatementRow(
+        rowNumber: index + 1,
+        date: date,
+        description: description,
+        amount: amount,
+        currency: currency,
+        direction: direction,
+        cardReference: kind == ButlerlyCsvKind.transactions
+            ? _optional(value('account_reference'))
+            : null,
+        externalReference: _optional(reference),
+        original: _encodeCsvRow(values),
+        merchant: _optional(merchant),
+        notes: _optional(value('notes')),
+        error: error,
+      );
+      parsed.add(row);
+      if (error != null) errors.add('Row ${index + 1}: $error.');
+    }
+    if (parsed.isEmpty) {
+      errors.add('The CSV template has no data rows.');
+    }
+    return CsvStatementPreview(
+      rows: List.unmodifiable(parsed),
+      errors: List.unmodifiable(errors),
+      templateKind: kind,
+    );
+  }
+
+  static bool _sameHeaders(List<String> actual, List<String> expected) {
+    if (actual.length != expected.length) return false;
+    for (var index = 0; index < expected.length; index++) {
+      if (actual[index].trim() != expected[index]) return false;
+    }
+    return true;
+  }
+
+  static bool _validTemplateAmount(
+    String value, {
+    required bool allowZero,
+    bool optional = false,
+  }) {
+    if (optional && value.isEmpty) return true;
+    if (!RegExp(r'^\d+(?:\.\d{1,4})?$').hasMatch(value)) return false;
+    final decimal = DecimalValue.parse(value);
+    return allowZero ? !decimal.isNegative : decimal.isPositive;
+  }
+
   Future<Map<int, List<DuplicateTransactionCandidate>>> findDuplicates(
     CsvStatementPreview preview, {
     String? paymentSourceId,
@@ -175,6 +336,16 @@ final class LocalCsvImporter {
     String? paymentSourceId,
     Map<int, String> confirmedDuplicateTokens = const {},
   }) async {
+    // Template-based imports are atomic at validation time: the user must
+    // correct every invalid row before any row is committed.
+    if (preview.templateKind != null && preview.errors.isNotEmpty) {
+      return CsvImportSummary(
+        imported: 0,
+        duplicates: 0,
+        failed: preview.rows.where((row) => !row.isValid).length,
+        errors: List.unmodifiable(preview.errors),
+      );
+    }
     var imported = 0;
     var duplicates = 0;
     var failed = 0;
@@ -208,13 +379,16 @@ final class LocalCsvImporter {
             row.description,
             row.cardReference ?? '',
             row.externalReference ?? '',
+            preview.templateKind?.name ?? '',
           ].join('|'),
         );
         final result = await _importTransaction(
           ImportTransactionCommand(
             id: 'payment-$fingerprint',
             provenanceId: 'payment-provenance-$fingerprint',
-            sourceId: sourceId,
+            sourceId: preview.templateKind == null
+                ? sourceId
+                : 'butlerly-csv-${preview.templateKind!.name}:$sourceId',
             originalRepresentation: row.original,
             money: Money(
               amount: DecimalValue.parse(row.amount),
@@ -223,8 +397,9 @@ final class LocalCsvImporter {
             direction: row.direction!,
             transactionDate: row.date,
             description: row.description,
-            rawCounterparty: row.description,
+            rawCounterparty: row.merchant ?? row.description,
             sourceLanguage: sourceLanguage,
+            notes: row.notes,
             paymentSourceId: paymentSourceId,
             externalReference: row.externalReference ?? row.cardReference,
           ),

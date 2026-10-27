@@ -1,5 +1,7 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/core/import/butlerly_csv_template.dart';
+import 'package:butlerly/core/import/csv_template_downloader.dart';
 import 'package:butlerly/core/import/local_csv_importer.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
@@ -39,6 +41,30 @@ Future<void> startLocalFileImport(
 
   try {
     final sourceLanguage = Localizations.localeOf(context).languageCode;
+    final kind = await showButlerlyBottomSheet<ButlerlyCsvKind>(
+      context: context,
+      builder: (sheetContext) => ButlerlySheet(
+        title: Text(sheetContext.l10n.text('csvChooseType')),
+        content: Text(sheetContext.l10n.text('csvTemplateRequired')),
+        actions: [
+          ButlerlyCancelButton(
+            onPressed: () => Navigator.pop(sheetContext),
+            child: Text(sheetContext.l10n.text('cancel')),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.pop(sheetContext, ButlerlyCsvKind.receipts),
+            child: Text(sheetContext.l10n.text('csvReceipts')),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.pop(sheetContext, ButlerlyCsvKind.transactions),
+            child: Text(sheetContext.l10n.text('csvTransactions')),
+          ),
+        ],
+      ),
+    );
+    if (kind == null || !context.mounted) return;
     final group = XTypeGroup(
       label: context.l10n.text('csvFileType'),
       extensions: ['csv'],
@@ -49,10 +75,12 @@ Future<void> startLocalFileImport(
     if (file == null || !context.mounted) return;
     onImportingChanged?.call(true);
     final importer = LocalCsvImporter(services<FinanceServices>());
-    final preview = await importer.preview(file);
+    final preview = await importer.previewTemplate(file, kind: kind);
     if (!context.mounted) return;
     onImportingChanged?.call(false);
-    if (preview.rows.isEmpty || preview.validCount == 0) {
+    if (preview.rows.isEmpty ||
+        preview.validCount == 0 ||
+        preview.errors.isNotEmpty) {
       await showImportMessage(
         context.l10n.text('importValidation'),
         preview.errors.join('\n'),
@@ -253,6 +281,22 @@ class _ImportExportPageState extends State<ImportExportPage> {
     );
   }
 
+  Future<void> _downloadCsvTemplate(ButlerlyCsvKind kind) async {
+    try {
+      final saved = await downloadButlerlyCsvTemplate(kind);
+      if (!mounted || !saved) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.text('csvTemplateSaved'))),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      await _showImportMessage(
+        context.l10n.text('csvDownloadTemplate'),
+        context.l10n.text('csvTemplateDownloadFailed'),
+      );
+    }
+  }
+
   Future<void> _showImportMessage(String title, String message) async {
     await showButlerlyBottomSheet<void>(
       context: context,
@@ -325,6 +369,22 @@ class _ImportExportPageState extends State<ImportExportPage> {
             title: context.l10n.text('importFromFile'),
             subtitle: context.l10n.text('importFromFileBody'),
             onTap: _importing ? () {} : _importCsv,
+          ),
+          _ActionRow(
+            icon: Icons.download_outlined,
+            title: context.l10n.text('csvDownloadTransactionsTemplate'),
+            subtitle: context.l10n.text('csvTransactionsTemplateDescription'),
+            onTap: _importing
+                ? () {}
+                : () => _downloadCsvTemplate(ButlerlyCsvKind.transactions),
+          ),
+          _ActionRow(
+            icon: Icons.download_outlined,
+            title: context.l10n.text('csvDownloadReceiptsTemplate'),
+            subtitle: context.l10n.text('csvReceiptsTemplateDescription'),
+            onTap: _importing
+                ? () {}
+                : () => _downloadCsvTemplate(ButlerlyCsvKind.receipts),
           ),
           _ActionRow(
             icon: Icons.image_outlined,
@@ -525,7 +585,13 @@ class _StatementPreviewSheetState extends State<_StatementPreviewSheet> {
 
   @override
   Widget build(BuildContext context) => ButlerlySheet(
-    title: Text(context.l10n.text('reviewStatementImport')),
+    title: Text(
+      context.l10n.text(
+        widget.preview.templateKind == ButlerlyCsvKind.receipts
+            ? 'csvReviewReceipts'
+            : 'csvReviewTransactions',
+      ),
+    ),
     content: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
