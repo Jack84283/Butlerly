@@ -9,7 +9,18 @@ enum ButlerlyCsvKind { receipts, transactions }
 final class ButlerlyCsvTemplate {
   const ButlerlyCsvTemplate._();
 
+  // The recommended receipt template contains only financial facts. There
+  // is no required merchant receipt number or receipt-level accounting.
   static const receiptHeaders = <String>[
+    'date',
+    'merchant',
+    'total',
+    'currency',
+    'notes',
+  ];
+
+  // Previously downloaded V1 templates remain valid and importable.
+  static const legacyReceiptHeaders = <String>[
     'receipt_id',
     'date',
     'merchant',
@@ -37,13 +48,10 @@ final class ButlerlyCsvTemplate {
   static const _labels = <String, Map<ButlerlyCsvKind, List<String>>>{
     'en': {
       ButlerlyCsvKind.receipts: [
-        'Receipt ID',
         'Date',
         'Merchant',
         'Total Paid',
         'Currency',
-        'Tax',
-        'Tip',
         'Notes',
       ],
       ButlerlyCsvKind.transactions: [
@@ -60,13 +68,10 @@ final class ButlerlyCsvTemplate {
     },
     'zh': {
       ButlerlyCsvKind.receipts: [
-        '收据编号',
         '日期',
         '商家',
         '实付总额',
         '币种',
-        '税额',
-        '小费',
         '备注',
       ],
       ButlerlyCsvKind.transactions: [
@@ -83,13 +88,10 @@ final class ButlerlyCsvTemplate {
     },
     'es': {
       ButlerlyCsvKind.receipts: [
-        'ID de recibo',
         'Fecha',
         'Comercio',
         'Total pagado',
         'Moneda',
-        'Impuesto',
-        'Propina',
         'Notas',
       ],
       ButlerlyCsvKind.transactions: [
@@ -111,6 +113,22 @@ final class ButlerlyCsvTemplate {
     return languages.contains(short) ? short! : 'en';
   }
 
+  // Original translated V1 receipt headers shipped before the simplified
+  // template. Keep recognizing these files without requiring any user edits.
+  static const _legacyReceiptLabels = <String, List<String>>{
+    'en': [
+      'Receipt ID', 'Date', 'Merchant', 'Total Paid', 'Currency',
+      'Tax', 'Tip', 'Notes',
+    ],
+    'zh': [
+      '收据编号', '日期', '商家', '实付总额', '币种', '税额', '小费', '备注',
+    ],
+    'es': [
+      'ID de recibo', 'Fecha', 'Comercio', 'Total pagado',
+      'Moneda', 'Impuesto', 'Propina', 'Notas',
+    ],
+  };
+
   static List<String> headers(ButlerlyCsvKind kind) => switch (kind) {
     ButlerlyCsvKind.receipts => receiptHeaders,
     ButlerlyCsvKind.transactions => transactionHeaders,
@@ -123,7 +141,15 @@ final class ButlerlyCsvTemplate {
 
   /// Column positions are fixed; translated names don't change the mapping.
   /// This also recognizes files created by the original English-only V1.
-  static bool matchesHeaders(ButlerlyCsvKind kind, List<String> actual) {
+  static bool matchesHeaders(ButlerlyCsvKind kind, List<String> actual) =>
+      recognizedHeaders(kind, actual) != null;
+
+  /// Returns canonical positional fields for either downloaded V1 layout.
+  /// Null means an unrecognized template, which must never be guessed.
+  static List<String>? recognizedHeaders(
+    ButlerlyCsvKind kind,
+    List<String> actual,
+  ) {
     bool same(List<String> expected) {
       if (actual.length != expected.length) return false;
       for (var i = 0; i < expected.length; i++) {
@@ -135,8 +161,16 @@ final class ButlerlyCsvTemplate {
       return true;
     }
 
-    return same(headers(kind)) ||
-        languages.any((code) => same(displayHeaders(kind, languageCode: code)));
+    if (same(headers(kind)) ||
+        languages.any((code) => same(displayHeaders(kind, languageCode: code)))) {
+      return headers(kind);
+    }
+    if (kind == ButlerlyCsvKind.receipts &&
+        (same(legacyReceiptHeaders) ||
+            languages.any((code) => same(_legacyReceiptLabels[code]!)))) {
+      return legacyReceiptHeaders;
+    }
+    return null;
   }
 
   static String filename(ButlerlyCsvKind kind, {String languageCode = 'en'}) =>
@@ -184,6 +218,18 @@ final class ButlerlyCsvTemplate {
     final lang = language(languageCode);
     if (kind == ButlerlyCsvKind.receipts) {
       return [
+        '2026-10-15',
+        switch (lang) {
+          'zh' => '示例商店',
+          'es' => 'Tienda ejemplo',
+          _ => 'Example Store',
+        },
+        '22.50',
+        '', // Currency is optional; defaults to the user's configured currency.
+        '',
+      ];
+    }
+    return [
         'R-1001',
         '2026-10-15',
         switch (lang) {
