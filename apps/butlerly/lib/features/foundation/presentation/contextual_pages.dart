@@ -324,11 +324,13 @@ class _ImportExportPageState extends State<ImportExportPage> {
           content: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(sheetContext.l10n.text(
-                kind == ButlerlyCsvKind.receipts
-                    ? 'csvGuideReceiptRequired'
-                    : 'csvGuideTransactionRequired',
-              )),
+              Text(
+                sheetContext.l10n.text(
+                  kind == ButlerlyCsvKind.receipts
+                      ? 'csvGuideReceiptRequired'
+                      : 'csvGuideTransactionRequired',
+                ),
+              ),
               const SizedBox(height: ButlerlySpacing.compact),
               Text(sheetContext.l10n.text('csvGuideCommon')),
               const SizedBox(height: ButlerlySpacing.compact),
