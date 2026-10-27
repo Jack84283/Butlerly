@@ -36,6 +36,20 @@ class AppLocalizations {
 
   static const _strings = <String, Map<String, String>>{
     'en': {
+      'csvDefaultCurrencyApplied':
+          'Default currency {currency} applied to {count} row(s) with blank Currency.',
+      'csvChooseTemplateLanguage': 'Choose your template language',
+      'csvGuideExample': 'Example (not included)',
+      'csvGuideOptional':
+          'All other fields are optional. Receipt ID, tax and tip aren\'t needed. Keep downloaded columns in order. Examples are shown only here, not written to the file.',
+      'csvGuideTypes':
+          'Types: expense, income, transfer, refund, adjustment. Translated type values are also accepted.',
+      'csvGuideCommon':
+          'Date: YYYY-MM-DD. Amount: positive decimal, e.g. 22.50. Optional Currency: uppercase USD, CNY, EUR, etc. Blank uses the default in Preferences; it does not convert the amount.',
+      'csvGuideTransactionRequired':
+          'Required: Date, Description, Amount and Type. Currency is optional; blank uses your saved default.',
+      'csvGuideReceiptRequired':
+          'Required: Date, Merchant and Total Paid. Currency is optional; blank uses your saved default. Total Paid includes any tax and tip.',
       'csvChooseType': 'Choose CSV data type',
       'csvTemplateRequired':
           'Select receipts or transactions. Your CSV must use the corresponding Butlerly V1 template and exact column headers.',
@@ -45,9 +59,9 @@ class AppLocalizations {
       'csvDownloadTransactionsTemplate': 'Download transactions CSV template',
       'csvDownloadReceiptsTemplate': 'Download receipts CSV template',
       'csvTransactionsTemplateDescription':
-          'Blank CSV for expenses, income, transfers and refunds.',
+          'Download an editable CSV with readable column names in English, Chinese or Spanish.',
       'csvReceiptsTemplateDescription':
-          'Blank CSV for receipt totals; no images are attached.',
+          'Download an editable receipt-totals CSV in English, Chinese or Spanish. No images are attached.',
       'csvTemplateSaved': 'CSV template saved or shared.',
       'csvTemplateDownloadFailed': 'The CSV template could not be saved.',
       'csvReviewReceipts': 'Review receipt CSV',
@@ -1017,6 +1031,15 @@ class AppLocalizations {
       'subcategory': 'Subcategory',
     },
     'zh': {
+      'csvDefaultCurrencyApplied': '已为 {count} 行未填写币种的记录使用默认币种 {currency}。',
+      'csvChooseTemplateLanguage': '选择模板语言',
+      'csvGuideExample': '示例（不会写入文件）',
+      'csvGuideOptional': '其他字段可选。无需收据编号、税额或小费。请勿修改下载文件的列顺序。示例不会写入文件。',
+      'csvGuideTypes': '交易类型：支出、收入、转账、退款、调整。也支持英文或西班牙文类型。',
+      'csvGuideCommon':
+          '日期：YYYY-MM-DD；金额：正数，例如 22.50。币种可选，填写大写代码（如 USD、CNY、EUR）；留空使用偏好设置中的默认币种，不进行货币转换。',
+      'csvGuideTransactionRequired': '必填：日期、描述、金额和类型。币种可留空，使用已保存的默认币种。',
+      'csvGuideReceiptRequired': '必填：日期、商家、实付总额。币种可留空，使用偏好设置中的默认币种。总额包含税费和小费。',
       'csvChooseType': '选择 CSV 数据类型',
       'csvTemplateRequired': '请选择收据或交易。CSV 文件必须使用对应的 Butlerly V1 模板及完全一致的列标题。',
       'csvReceipts': '收据',
@@ -1024,8 +1047,8 @@ class AppLocalizations {
       'csvDownloadTemplate': '下载 CSV 模板',
       'csvDownloadTransactionsTemplate': '下载交易 CSV 模板',
       'csvDownloadReceiptsTemplate': '下载收据 CSV 模板',
-      'csvTransactionsTemplateDescription': '用于支出、收入、转账和退款的空白 CSV。',
-      'csvReceiptsTemplateDescription': '用于收据总额的空白 CSV；不会附加图片。',
+      'csvTransactionsTemplateDescription': '下载中文、英文或西班牙文列名的交易 CSV 模板。',
+      'csvReceiptsTemplateDescription': '下载中文、英文或西班牙文的收据总额 CSV 模板；不包含收据图片。',
       'csvTemplateSaved': 'CSV 模板已保存或共享。',
       'csvTemplateDownloadFailed': '无法保存 CSV 模板。',
       'csvReviewReceipts': '检查收据 CSV',
@@ -1860,6 +1883,20 @@ class AppLocalizations {
       'subcategory': '子类别',
     },
     'es': {
+      'csvDefaultCurrencyApplied':
+          'Moneda predeterminada {currency} aplicada a {count} fila(s) con la moneda vacía.',
+      'csvChooseTemplateLanguage': 'Elige el idioma de la plantilla',
+      'csvGuideExample': 'Ejemplo (no incluido)',
+      'csvGuideOptional':
+          'Los demás campos son opcionales. No necesitas ID de recibo, impuesto ni propina. Conserva el orden de las columnas. El ejemplo no se guarda en el CSV.',
+      'csvGuideTypes':
+          'Tipos: gasto, ingreso, transferencia, reembolso, ajuste. También se aceptan tipos en inglés o chino.',
+      'csvGuideCommon':
+          'Fecha: AAAA-MM-DD. Importe: decimal positivo, p. ej. 22.50. Moneda opcional: USD, CNY, EUR, etc. Si está vacía, se usa la de Preferencias; no se convierte el importe.',
+      'csvGuideTransactionRequired':
+          'Obligatorio: Fecha, Descripción, Importe y Tipo. La moneda es opcional y, si falta, se usa la predeterminada.',
+      'csvGuideReceiptRequired':
+          'Obligatorio: Fecha, Comercio y Total pagado. La moneda es opcional: si está vacía se usa la predeterminada guardada. El total incluye impuestos y propinas.',
       'csvChooseType': 'Elegir tipo de datos CSV',
       'csvTemplateRequired':
           'Selecciona recibos o transacciones. El CSV debe usar la plantilla Butlerly V1 correspondiente y sus columnas exactas.',
@@ -1870,9 +1907,9 @@ class AppLocalizations {
           'Descargar plantilla CSV de transacciones',
       'csvDownloadReceiptsTemplate': 'Descargar plantilla CSV de recibos',
       'csvTransactionsTemplateDescription':
-          'CSV vacío para gastos, ingresos, transferencias y reembolsos.',
+          'Descarga una plantilla CSV editable con columnas en inglés, chino o español.',
       'csvReceiptsTemplateDescription':
-          'CSV vacío para totales de recibos; no adjunta imágenes.',
+          'Descarga un CSV de recibos en inglés, chino o español. No se adjuntan imágenes.',
       'csvTemplateSaved': 'Plantilla CSV guardada o compartida.',
       'csvTemplateDownloadFailed': 'No se pudo guardar la plantilla CSV.',
       'csvReviewReceipts': 'Revisar CSV de recibos',

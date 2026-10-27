@@ -35,6 +35,7 @@ final class CsvStatementRow {
     this.error,
     this.merchant,
     this.notes,
+    this.usedDefaultCurrency = false,
   });
 
   final int rowNumber;
@@ -49,6 +50,7 @@ final class CsvStatementRow {
   final String? error;
   final String? merchant;
   final String? notes;
+  final bool usedDefaultCurrency;
 
   bool get isValid => error == null;
 }
@@ -168,22 +170,26 @@ final class LocalCsvImporter {
   Future<CsvStatementPreview> previewTemplate(
     XFile file, {
     required ButlerlyCsvKind kind,
+    String languageCode = 'en',
+    String? defaultCurrency,
   }) async {
+    final language = ButlerlyCsvTemplate.language(languageCode);
     final rows = _parseCsv(await file.readAsString());
-    final expected = ButlerlyCsvTemplate.headers(kind);
     if (rows.isEmpty) {
       return CsvStatementPreview(
         rows: const [],
-        errors: const ['CSV file is empty.'],
+        errors: [_localizedCsvError('empty', language)],
         templateKind: kind,
       );
     }
-    if (!_sameHeaders(rows.first, expected)) {
+    final expected = ButlerlyCsvTemplate.recognizedHeaders(kind, rows.first);
+    if (expected == null) {
       return CsvStatementPreview(
         rows: const [],
         errors: [
-          'Incorrect CSV template. Expected ${ButlerlyCsvTemplate.filename(kind)} '
-              'with columns: ${expected.join(', ')}.',
+          '${_localizedCsvError('headers', language)} '
+              '${ButlerlyCsvTemplate.filename(kind, languageCode: language)}: '
+              '${ButlerlyCsvTemplate.displayHeaders(kind, languageCode: language).join(', ')}.',
         ],
         templateKind: kind,
       );
@@ -205,7 +211,11 @@ final class LocalCsvImporter {
       final amount = kind == ButlerlyCsvKind.receipts
           ? value('total')
           : value('amount');
-      final currency = value('currency');
+      final providedCurrency = value('currency');
+      final usedDefaultCurrency = providedCurrency.isEmpty;
+      final currency = usedDefaultCurrency
+          ? (defaultCurrency?.trim().toUpperCase() ?? '')
+          : providedCurrency;
       final description = kind == ButlerlyCsvKind.receipts
           ? value('merchant')
           : value('description');
@@ -215,7 +225,9 @@ final class LocalCsvImporter {
           : value('transaction_id');
       final direction = kind == ButlerlyCsvKind.receipts
           ? TransactionDirection.expense
-          : switch (value('direction')) {
+          : switch (ButlerlyCsvTemplate.canonicalDirection(
+              value('direction'),
+            )) {
               'expense' => TransactionDirection.expense,
               'income' => TransactionDirection.income,
               'transfer' => TransactionDirection.transfer,
@@ -225,22 +237,21 @@ final class LocalCsvImporter {
             };
       String? error;
       if (values.length != expected.length) {
-        error = 'column count does not match the template';
+        error = _localizedCsvError('columns', language);
       } else if (!_validDate(date)) {
-        error = 'invalid date (use YYYY-MM-DD)';
+        error = _localizedCsvError('date', language);
       } else if (description.isEmpty) {
         error = kind == ButlerlyCsvKind.receipts
-            ? 'merchant is required'
-            : 'description is required';
-      } else if (kind == ButlerlyCsvKind.receipts && reference.isEmpty) {
-        error = 'receipt_id is required';
+            ? _localizedCsvError('merchant', language)
+            : _localizedCsvError('description', language);
       } else if (!_validTemplateAmount(amount, allowZero: false)) {
-        error = 'invalid amount (use a positive decimal, no sign or grouping)';
+        error = _localizedCsvError('amount', language);
+      } else if (usedDefaultCurrency && currency.isEmpty) {
+        error = _localizedCsvError('missingDefaultCurrency', language);
       } else if (!RegExp(r'^[A-Z]{3}$').hasMatch(currency)) {
-        error = 'invalid currency (use uppercase ISO code, e.g. USD)';
+        error = _localizedCsvError('currency', language);
       } else if (direction == null) {
-        error =
-            'invalid direction (use expense, income, transfer, refund, or adjustment)';
+        error = _localizedCsvError('direction', language);
       } else if (kind == ButlerlyCsvKind.receipts &&
           (!_validTemplateAmount(
                 value('tax'),
@@ -252,7 +263,7 @@ final class LocalCsvImporter {
                 allowZero: true,
                 optional: true,
               ))) {
-        error = 'invalid tax or tip';
+        error = _localizedCsvError('tax', language);
       } else if (kind == ButlerlyCsvKind.receipts &&
           DecimalValue.parse(amount).compareTo(
                 DecimalValue.parse(
@@ -262,9 +273,9 @@ final class LocalCsvImporter {
                 ),
               ) <
               0) {
-        error = 'total cannot be less than tax plus tip';
+        error = _localizedCsvError('total', language);
       } else if (reference.isNotEmpty && !references.add(reference)) {
-        error = 'duplicate receipt_id or transaction_id in file';
+        error = _localizedCsvError('duplicate', language);
       }
       final row = CsvStatementRow(
         rowNumber: index + 1,
@@ -280,13 +291,20 @@ final class LocalCsvImporter {
         original: _encodeCsvRow(values),
         merchant: _optional(merchant),
         notes: _optional(value('notes')),
+        usedDefaultCurrency: usedDefaultCurrency,
         error: error,
       );
       parsed.add(row);
-      if (error != null) errors.add('Row ${index + 1}: $error.');
+      if (error != null) {
+        errors.add(switch (language) {
+          'zh' => '第${index + 1}行：$error。',
+          'es' => 'Fila ${index + 1}: $error.',
+          _ => 'Row ${index + 1}: $error.',
+        });
+      }
     }
     if (parsed.isEmpty) {
-      errors.add('The CSV template has no data rows.');
+      errors.add(_localizedCsvError('noRows', language));
     }
     return CsvStatementPreview(
       rows: List.unmodifiable(parsed),
@@ -295,12 +313,66 @@ final class LocalCsvImporter {
     );
   }
 
-  static bool _sameHeaders(List<String> actual, List<String> expected) {
-    if (actual.length != expected.length) return false;
-    for (var index = 0; index < expected.length; index++) {
-      if (actual[index].trim() != expected[index]) return false;
-    }
-    return true;
+  static String _localizedCsvError(String key, String locale) {
+    const labels = <String, Map<String, String>>{
+      'en': {
+        'empty': 'The CSV file is empty.',
+        'headers': 'Incorrect CSV template. Use the downloaded template',
+        'columns': 'column count does not match the template',
+        'date': 'invalid date (use YYYY-MM-DD)',
+        'merchant': 'merchant is required',
+        'description': 'description is required',
+        'receiptId': 'receipt ID is required',
+        'amount': 'invalid amount (positive decimal, no signs or commas)',
+        'currency': 'invalid currency (use uppercase code, e.g. USD)',
+        'missingDefaultCurrency':
+            'Currency is blank and no default currency is configured. Set the default currency in Preferences or enter a currency.',
+        'direction':
+            'invalid type (expense, income, transfer, refund or adjustment)',
+        'tax': 'invalid tax or tip amount',
+        'total': 'total cannot be less than tax plus tip',
+        'duplicate': 'duplicate receipt ID or transaction ID in file',
+        'noRows': 'The CSV template has no data rows.',
+      },
+      'zh': {
+        'empty': 'CSV 文件为空。',
+        'headers': 'CSV 模板不匹配。请使用下载的模板',
+        'columns': '该行的列数与模板不一致',
+        'date': '日期无效（请使用 YYYY-MM-DD）',
+        'merchant': '商家为必填项',
+        'description': '描述为必填项',
+        'receiptId': '收据编号为必填项',
+        'amount': '金额无效（请使用不带符号或千位分隔符的正数）',
+        'currency': '币种无效（请使用大写代码，例如 USD）',
+        'missingDefaultCurrency': '币种为空且未配置默认币种。请在偏好设置中设定默认币种，或填写币种。',
+        'direction': '交易类型无效（支出、收入、转账、退款、调整）',
+        'tax': '税额或小费无效',
+        'total': '实付总额不能小于税额与小费之和',
+        'duplicate': '文件中存在重复的收据编号或交易编号',
+        'noRows': 'CSV 模板中没有数据行。',
+      },
+      'es': {
+        'empty': 'El archivo CSV está vacío.',
+        'headers': 'Plantilla CSV incorrecta. Usa la plantilla descargada',
+        'columns': 'el número de columnas no coincide con la plantilla',
+        'date': 'fecha no válida (usa AAAA-MM-DD)',
+        'merchant': 'el comercio es obligatorio',
+        'description': 'la descripción es obligatoria',
+        'receiptId': 'el ID del recibo es obligatorio',
+        'amount': 'importe no válido (decimal positivo sin signo ni separador)',
+        'currency':
+            'moneda no válida (usa el código en mayúsculas, p. ej., USD)',
+        'missingDefaultCurrency':
+            'La moneda está vacía y no hay moneda predeterminada configurada. Configúrala en Preferencias o indica una moneda.',
+        'direction':
+            'tipo no válido (gasto, ingreso, transferencia, reembolso o ajuste)',
+        'tax': 'impuesto o propina no válidos',
+        'total': 'el total no puede ser menor que impuesto más propina',
+        'duplicate': 'ID de recibo o transacción duplicado en el archivo',
+        'noRows': 'La plantilla CSV no contiene filas de datos.',
+      },
+    };
+    return labels[locale]?[key] ?? labels['en']![key]!;
   }
 
   static bool _validTemplateAmount(
@@ -380,6 +452,11 @@ final class LocalCsvImporter {
             row.cardReference ?? '',
             row.externalReference ?? '',
             preview.templateKind?.name ?? '',
+            // With optional receipt/transaction IDs, two legitimate purchases
+            // can share date, merchant and amount. Preserve distinct rows,
+            // while retaining deterministic IDs for a retry of the same file.
+            if (preview.templateKind != null) sourceId,
+            if (preview.templateKind != null) '${row.rowNumber}',
           ].join('|'),
         );
         final result = await _importTransaction(
