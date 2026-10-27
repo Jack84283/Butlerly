@@ -38,11 +38,16 @@ class AppLocalizations {
     'en': {
       'csvChooseTemplateLanguage': 'Choose your template language',
       'csvGuideExample': 'Example (not included)',
-      'csvGuideOptional': 'All other fields are optional. Keep downloaded columns in order. Examples are shown here only, not inserted into your file.',
-      'csvGuideTypes': 'Types: expense, income, transfer, refund, adjustment. Translated type values are also accepted.',
-      'csvGuideCommon': 'Date: YYYY-MM-DD. Currency: uppercase USD, CNY, EUR, etc. Amount: positive decimal, e.g. 22.50.',
-      'csvGuideTransactionRequired': 'Required: Date, Description, Amount, Currency, Type.',
-      'csvGuideReceiptRequired': 'Required: Receipt ID, Date, Merchant, Total Paid, Currency. Total Paid includes tax and tip.',
+      'csvGuideOptional':
+          'All other fields are optional. Keep downloaded columns in order. Examples are shown here only, not inserted into your file.',
+      'csvGuideTypes':
+          'Types: expense, income, transfer, refund, adjustment. Translated type values are also accepted.',
+      'csvGuideCommon':
+          'Date: YYYY-MM-DD. Currency: uppercase USD, CNY, EUR, etc. Amount: positive decimal, e.g. 22.50.',
+      'csvGuideTransactionRequired':
+          'Required: Date, Description, Amount, Currency, Type.',
+      'csvGuideReceiptRequired':
+          'Required: Receipt ID, Date, Merchant, Total Paid, Currency. Total Paid includes tax and tip.',
       'csvChooseType': 'Choose CSV data type',
       'csvTemplateRequired':
           'Select receipts or transactions. Your CSV must use the corresponding Butlerly V1 template and exact column headers.',
@@ -51,8 +56,10 @@ class AppLocalizations {
       'csvDownloadTemplate': 'Download CSV template',
       'csvDownloadTransactionsTemplate': 'Download transactions CSV template',
       'csvDownloadReceiptsTemplate': 'Download receipts CSV template',
-      'csvTransactionsTemplateDescription': 'Download an editable CSV with readable column names in English, Chinese or Spanish.',
-      'csvReceiptsTemplateDescription': 'Download an editable receipt-totals CSV in English, Chinese or Spanish. No images are attached.',
+      'csvTransactionsTemplateDescription':
+          'Download an editable CSV with readable column names in English, Chinese or Spanish.',
+      'csvReceiptsTemplateDescription':
+          'Download an editable receipt-totals CSV in English, Chinese or Spanish. No images are attached.',
       'csvTemplateSaved': 'CSV template saved or shared.',
       'csvTemplateDownloadFailed': 'The CSV template could not be saved.',
       'csvReviewReceipts': 'Review receipt CSV',
@@ -1874,11 +1881,16 @@ class AppLocalizations {
     'es': {
       'csvChooseTemplateLanguage': 'Elige el idioma de la plantilla',
       'csvGuideExample': 'Ejemplo (no incluido)',
-      'csvGuideOptional': 'Los demás campos son opcionales. No cambies los nombres ni el orden de columnas. El ejemplo no se incluye en el CSV.',
-      'csvGuideTypes': 'Tipos: gasto, ingreso, transferencia, reembolso, ajuste. También se aceptan tipos en inglés o chino.',
-      'csvGuideCommon': 'Fecha: AAAA-MM-DD. Moneda: código en mayúsculas (USD, CNY, EUR). Importe: número positivo como 22.50.',
-      'csvGuideTransactionRequired': 'Obligatorio: Fecha, Descripción, Importe, Moneda, Tipo.',
-      'csvGuideReceiptRequired': 'Obligatorio: ID de recibo, Fecha, Comercio, Total pagado, Moneda. El total incluye impuesto y propina.',
+      'csvGuideOptional':
+          'Los demás campos son opcionales. No cambies los nombres ni el orden de columnas. El ejemplo no se incluye en el CSV.',
+      'csvGuideTypes':
+          'Tipos: gasto, ingreso, transferencia, reembolso, ajuste. También se aceptan tipos en inglés o chino.',
+      'csvGuideCommon':
+          'Fecha: AAAA-MM-DD. Moneda: código en mayúsculas (USD, CNY, EUR). Importe: número positivo como 22.50.',
+      'csvGuideTransactionRequired':
+          'Obligatorio: Fecha, Descripción, Importe, Moneda, Tipo.',
+      'csvGuideReceiptRequired':
+          'Obligatorio: ID de recibo, Fecha, Comercio, Total pagado, Moneda. El total incluye impuesto y propina.',
       'csvChooseType': 'Elegir tipo de datos CSV',
       'csvTemplateRequired':
           'Selecciona recibos o transacciones. El CSV debe usar la plantilla Butlerly V1 correspondiente y sus columnas exactas.',
@@ -1888,8 +1900,10 @@ class AppLocalizations {
       'csvDownloadTransactionsTemplate':
           'Descargar plantilla CSV de transacciones',
       'csvDownloadReceiptsTemplate': 'Descargar plantilla CSV de recibos',
-      'csvTransactionsTemplateDescription': 'Descarga una plantilla CSV editable con columnas en inglés, chino o español.',
-      'csvReceiptsTemplateDescription': 'Descarga un CSV de recibos en inglés, chino o español. No se adjuntan imágenes.',
+      'csvTransactionsTemplateDescription':
+          'Descarga una plantilla CSV editable con columnas en inglés, chino o español.',
+      'csvReceiptsTemplateDescription':
+          'Descarga un CSV de recibos en inglés, chino o español. No se adjuntan imágenes.',
       'csvTemplateSaved': 'Plantilla CSV guardada o compartida.',
       'csvTemplateDownloadFailed': 'No se pudo guardar la plantilla CSV.',
       'csvReviewReceipts': 'Revisar CSV de recibos',
