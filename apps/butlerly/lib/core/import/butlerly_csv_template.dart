@@ -230,21 +230,6 @@ final class ButlerlyCsvTemplate {
       ];
     }
     return [
-        'R-1001',
-        '2026-10-15',
-        switch (lang) {
-          'zh' => '示例商店',
-          'es' => 'Tienda ejemplo',
-          _ => 'Example Store',
-        },
-        '22.50',
-        'USD',
-        '1.50',
-        '3.00',
-        '',
-      ];
-    }
-    return [
       '2026-10-15',
       switch (lang) {
         'zh' => '示例购物',
