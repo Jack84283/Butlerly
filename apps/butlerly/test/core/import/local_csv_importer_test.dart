@@ -476,15 +476,156 @@ void main() {
     },
   );
 
+  test('all localized templates have readable, correctly translated headers', () {
+    const receiptLanguages = ['en', 'zh', 'es'];
+    for (final code in receiptLanguages) {
+      for (final kind in ButlerlyCsvKind.values) {
+        final headers = ButlerlyCsvTemplate.displayHeaders(
+          kind,
+          languageCode: code,
+        );
+        final content = ButlerlyCsvTemplate.content(
+          kind,
+          languageCode: code,
+        );
+        expect(content, startsWith('\ufeff'));
+        expect(content, contains(headers.join(',')));
+        expect(content, endsWith('\r\n'));
+        expect(
+          ButlerlyCsvTemplate.matchesHeaders(kind, headers),
+          isTrue,
+        );
+        expect(
+          ButlerlyCsvTemplate.filename(kind, languageCode: code),
+          contains('_$code.csv'),
+        );
+        expect(
+          ButlerlyCsvTemplate.exampleValues(
+            kind,
+            languageCode: code,
+          ),
+          hasLength(headers.length),
+        );
+      }
+    }
+    // Backward compatibility with V1 files downloaded before localization.
+    expect(
+      ButlerlyCsvTemplate.matchesHeaders(
+        ButlerlyCsvKind.receipts,
+        ButlerlyCsvTemplate.receiptHeaders,
+      ),
+      isTrue,
+    );
+    expect(
+      ButlerlyCsvTemplate.matchesHeaders(
+        ButlerlyCsvKind.transactions,
+        ButlerlyCsvTemplate.transactionHeaders,
+      ),
+      isTrue,
+    );
+  });
+
+  test('localized Chinese and Spanish types import as canonical directions', () async {
+    final root = await Directory.systemTemp.createTemp('butlerly-i18n-csv-');
+    addTearDown(() => root.delete(recursive: true));
+    final imported = <ImportTransactionCommand>[];
+    final importer = LocalCsvImporter.withHandler((command) async {
+      imported.add(command);
+      return ApplicationSuccess<TransactionDto>(_dto(command));
+    });
+
+    for (final code in ['zh', 'es']) {
+      final file = File('${root.path}/$code.csv');
+      final label = code == 'zh' ? '支出' : 'gasto';
+      final merchant = code == 'zh' ? '上海超市' : 'Mercado español';
+      await file.writeAsString(
+        '${ButlerlyCsvTemplate.content(
+          ButlerlyCsvKind.transactions,
+          languageCode: code,
+        )}'
+        '2026-10-15,Ejemplo,22.50,USD,$label,$merchant,ref-$code,,\r\n',
+      );
+      final preview = await importer.previewTemplate(
+        XFile(file.path),
+        kind: ButlerlyCsvKind.transactions,
+        languageCode: 'en', // File language need not equal app language.
+      );
+      expect(preview.errors, isEmpty);
+      expect(preview.validCount, 1);
+      expect(preview.rows.single.direction, TransactionDirection.expense);
+      final summary = await importer.commitPreview(
+        preview,
+        sourceId: file.uri.pathSegments.last,
+        sourceLanguage: code,
+      );
+      expect(summary.imported, 1);
+    }
+    expect(imported, hasLength(2));
+    expect(imported.first.rawCounterparty, '上海超市');
+    expect(imported.last.rawCounterparty, 'Mercado español');
+  });
+
+  test('localized receipts import independently of the active app language', () async {
+    final root = await Directory.systemTemp.createTemp('butlerly-i18n-rcpt-');
+    addTearDown(() => root.delete(recursive: true));
+    final file = File('${root.path}/receipts.csv');
+    await file.writeAsString(
+      '${ButlerlyCsvTemplate.content(
+        ButlerlyCsvKind.receipts,
+        languageCode: 'zh',
+      )}'
+      'r1,2026-10-15,便利店,11.00,CNY,1.00,0.00,测试\r\n',
+    );
+    final importer = LocalCsvImporter.withHandler(
+      (command) async => ApplicationSuccess<TransactionDto>(_dto(command)),
+    );
+    final preview = await importer.previewTemplate(
+      XFile(file.path),
+      kind: ButlerlyCsvKind.receipts,
+      languageCode: 'es',
+    );
+    expect(preview.validCount, 1);
+    expect(preview.errors, isEmpty);
+    expect(preview.rows.single.description, '便利店');
+  });
+
+  test('localized validation errors use the selected UI language', () async {
+    final root = await Directory.systemTemp.createTemp('butlerly-i18n-error-');
+    addTearDown(() => root.delete(recursive: true));
+    final file = File('${root.path}/transactions.csv');
+    await file.writeAsString(
+      '${ButlerlyCsvTemplate.content(
+        ButlerlyCsvKind.transactions,
+        languageCode: 'es',
+      )}'
+      'invalid,Test,22.00,USD,gasto,,ref-1,,\r\n',
+    );
+    final importer = LocalCsvImporter.withHandler(
+      (command) async => ApplicationSuccess<TransactionDto>(_dto(command)),
+    );
+    final zh = await importer.previewTemplate(
+      XFile(file.path),
+      kind: ButlerlyCsvKind.transactions,
+      languageCode: 'zh',
+    );
+    expect(zh.errors.single, contains('日期无效'));
+    final es = await importer.previewTemplate(
+      XFile(file.path),
+      kind: ButlerlyCsvKind.transactions,
+      languageCode: 'es',
+    );
+    expect(es.errors.single, contains('fecha no válida'));
+  });
+
   test('downloaded V1 templates are empty with exact versioned headers', () {
     expect(
       ButlerlyCsvTemplate.content(ButlerlyCsvKind.receipts),
-      'receipt_id,date,merchant,total,currency,tax,tip,notes\r\n',
+      '\ufeffReceipt ID,Date,Merchant,Total Paid,Currency,Tax,Tip,Notes\r\n',
     );
     expect(
       ButlerlyCsvTemplate.content(ButlerlyCsvKind.transactions),
-      'date,description,amount,currency,direction,merchant,'
-      'transaction_id,account_reference,notes\r\n',
+      '\ufeffDate,Description,Amount,Currency,Type,Merchant,'
+      'Transaction ID,Account Reference,Notes\r\n',
     );
   });
 
