@@ -74,11 +74,17 @@ Future<void> startLocalFileImport(
     final file = await openFile(acceptedTypeGroups: [group]);
     if (file == null || !context.mounted) return;
     onImportingChanged?.call(true);
-    final importer = LocalCsvImporter(services<FinanceServices>());
+    final finance = services<FinanceServices>();
+    final preferencesResult = await finance.loadUserPreference();
+    final defaultCurrency = preferencesResult is ApplicationSuccess<UserPreference?>
+        ? preferencesResult.value?.baseCurrency.value
+        : null;
+    final importer = LocalCsvImporter(finance);
     final preview = await importer.previewTemplate(
       file,
       kind: kind,
       languageCode: sourceLanguage,
+      defaultCurrency: defaultCurrency,
     );
     if (!context.mounted) return;
     onImportingChanged?.call(false);
@@ -317,8 +323,8 @@ class _ImportExportPageState extends State<ImportExportPage> {
           languageCode: appLanguage,
         );
         final sample = kind == ButlerlyCsvKind.receipts
-            ? '${example[1]} · ${example[2]} · ${example[4]} ${example[3]}'
-            : '${example[0]} · ${example[1]} · ${example[3]} ${example[2]}';
+            ? '${example[0]} · ${example[1]} · ${example[2]}'
+            : '${example[0]} · ${example[1]} · ${example[2]}';
         return ButlerlySheet(
           title: Text(sheetContext.l10n.text('csvDownloadTemplate')),
           content: Column(
@@ -683,6 +689,17 @@ class _StatementPreviewSheetState extends State<_StatementPreviewSheet> {
             'count': '${widget.preview.validCount}',
           }),
         ),
+        if (widget.preview.rows.any((row) => row.usedDefaultCurrency)) ...[
+          const SizedBox(height: ButlerlySpacing.compact),
+          Text(
+            context.l10n.text('csvDefaultCurrencyApplied', {
+              'count': '${widget.preview.rows.where((row) => row.usedDefaultCurrency).length}',
+              'currency': widget.preview.rows
+                  .firstWhere((row) => row.usedDefaultCurrency)
+                  .currency,
+            }),
+          ),
+        ],
         if (widget.preview.errors.isNotEmpty) ...[
           const SizedBox(height: ButlerlySpacing.compact),
           Text(
