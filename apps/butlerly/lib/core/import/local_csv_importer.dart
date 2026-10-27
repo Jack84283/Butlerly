@@ -35,6 +35,7 @@ final class CsvStatementRow {
     this.error,
     this.merchant,
     this.notes,
+    this.usedDefaultCurrency = false,
   });
 
   final int rowNumber;
@@ -49,6 +50,7 @@ final class CsvStatementRow {
   final String? error;
   final String? merchant;
   final String? notes;
+  final bool usedDefaultCurrency;
 
   bool get isValid => error == null;
 }
@@ -169,10 +171,10 @@ final class LocalCsvImporter {
     XFile file, {
     required ButlerlyCsvKind kind,
     String languageCode = 'en',
+    String? defaultCurrency,
   }) async {
     final language = ButlerlyCsvTemplate.language(languageCode);
     final rows = _parseCsv(await file.readAsString());
-    final expected = ButlerlyCsvTemplate.headers(kind);
     if (rows.isEmpty) {
       return CsvStatementPreview(
         rows: const [],
@@ -180,7 +182,8 @@ final class LocalCsvImporter {
         templateKind: kind,
       );
     }
-    if (!ButlerlyCsvTemplate.matchesHeaders(kind, rows.first)) {
+    final expected = ButlerlyCsvTemplate.recognizedHeaders(kind, rows.first);
+    if (expected == null) {
       return CsvStatementPreview(
         rows: const [],
         errors: [
@@ -208,7 +211,11 @@ final class LocalCsvImporter {
       final amount = kind == ButlerlyCsvKind.receipts
           ? value('total')
           : value('amount');
-      final currency = value('currency');
+      final providedCurrency = value('currency');
+      final usedDefaultCurrency = providedCurrency.isEmpty;
+      final currency = usedDefaultCurrency
+          ? (defaultCurrency?.trim().toUpperCase() ?? '')
+          : providedCurrency;
       final description = kind == ButlerlyCsvKind.receipts
           ? value('merchant')
           : value('description');
@@ -237,10 +244,10 @@ final class LocalCsvImporter {
         error = kind == ButlerlyCsvKind.receipts
             ? _localizedCsvError('merchant', language)
             : _localizedCsvError('description', language);
-      } else if (kind == ButlerlyCsvKind.receipts && reference.isEmpty) {
-        error = _localizedCsvError('receiptId', language);
       } else if (!_validTemplateAmount(amount, allowZero: false)) {
         error = _localizedCsvError('amount', language);
+      } else if (usedDefaultCurrency && currency.isEmpty) {
+        error = _localizedCsvError('missingDefaultCurrency', language);
       } else if (!RegExp(r'^[A-Z]{3}$').hasMatch(currency)) {
         error = _localizedCsvError('currency', language);
       } else if (direction == null) {
@@ -284,6 +291,7 @@ final class LocalCsvImporter {
         original: _encodeCsvRow(values),
         merchant: _optional(merchant),
         notes: _optional(value('notes')),
+        usedDefaultCurrency: usedDefaultCurrency,
         error: error,
       );
       parsed.add(row);
@@ -317,6 +325,7 @@ final class LocalCsvImporter {
         'receiptId': 'receipt ID is required',
         'amount': 'invalid amount (positive decimal, no signs or commas)',
         'currency': 'invalid currency (use uppercase code, e.g. USD)',
+        'missingDefaultCurrency': 'Currency is blank and no default currency is configured. Set the default currency in Preferences or enter a currency.',
         'direction':
             'invalid type (expense, income, transfer, refund or adjustment)',
         'tax': 'invalid tax or tip amount',
@@ -334,6 +343,7 @@ final class LocalCsvImporter {
         'receiptId': '收据编号为必填项',
         'amount': '金额无效（请使用不带符号或千位分隔符的正数）',
         'currency': '币种无效（请使用大写代码，例如 USD）',
+        'missingDefaultCurrency': '币种为空且未配置默认币种。请在偏好设置中设定默认币种，或填写币种。',
         'direction': '交易类型无效（支出、收入、转账、退款、调整）',
         'tax': '税额或小费无效',
         'total': '实付总额不能小于税额与小费之和',
@@ -351,6 +361,7 @@ final class LocalCsvImporter {
         'amount': 'importe no válido (decimal positivo sin signo ni separador)',
         'currency':
             'moneda no válida (usa el código en mayúsculas, p. ej., USD)',
+        'missingDefaultCurrency': 'La moneda está vacía y no hay moneda predeterminada configurada. Configúrala en Preferencias o indica una moneda.',
         'direction':
             'tipo no válido (gasto, ingreso, transferencia, reembolso o ajuste)',
         'tax': 'impuesto o propina no válidos',
