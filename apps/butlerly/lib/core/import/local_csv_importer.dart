@@ -176,7 +176,7 @@ final class LocalCsvImporter {
     if (rows.isEmpty) {
       return CsvStatementPreview(
         rows: const [],
-        errors: [ _localizedCsvError('empty', language) ],
+        errors: [_localizedCsvError('empty', language)],
         templateKind: kind,
       );
     }
@@ -185,8 +185,8 @@ final class LocalCsvImporter {
         rows: const [],
         errors: [
           '${_localizedCsvError('headers', language)} '
-          '${ButlerlyCsvTemplate.filename(kind, languageCode: language)}: '
-          '${ButlerlyCsvTemplate.displayHeaders(kind, languageCode: language).join(', ')}.',
+              '${ButlerlyCsvTemplate.filename(kind, languageCode: language)}: '
+              '${ButlerlyCsvTemplate.displayHeaders(kind, languageCode: language).join(', ')}.',
         ],
         templateKind: kind,
       );
@@ -218,7 +218,9 @@ final class LocalCsvImporter {
           : value('transaction_id');
       final direction = kind == ButlerlyCsvKind.receipts
           ? TransactionDirection.expense
-          : switch (ButlerlyCsvTemplate.canonicalDirection(value('direction'))) {
+          : switch (ButlerlyCsvTemplate.canonicalDirection(
+              value('direction'),
+            )) {
               'expense' => TransactionDirection.expense,
               'income' => TransactionDirection.income,
               'transfer' => TransactionDirection.transfer,
@@ -242,8 +244,7 @@ final class LocalCsvImporter {
       } else if (!RegExp(r'^[A-Z]{3}$').hasMatch(currency)) {
         error = _localizedCsvError('currency', language);
       } else if (direction == null) {
-        error =
-            _localizedCsvError('direction', language);
+        error = _localizedCsvError('direction', language);
       } else if (kind == ButlerlyCsvKind.receipts &&
           (!_validTemplateAmount(
                 value('tax'),
@@ -286,11 +287,12 @@ final class LocalCsvImporter {
         error: error,
       );
       parsed.add(row);
-      if (error != null) errors.add(switch (language) {
-        'zh' => '第${index + 1}行：$error。',
-        'es' => 'Fila ${index + 1}: $error.',
-        _ => 'Row ${index + 1}: $error.',
-      });
+      if (error != null)
+        errors.add(switch (language) {
+          'zh' => '第${index + 1}行：$error。',
+          'es' => 'Fila ${index + 1}: $error.',
+          _ => 'Row ${index + 1}: $error.',
+        });
     }
     if (parsed.isEmpty) {
       errors.add(_localizedCsvError('noRows', language));
@@ -314,7 +316,8 @@ final class LocalCsvImporter {
         'receiptId': 'receipt ID is required',
         'amount': 'invalid amount (positive decimal, no signs or commas)',
         'currency': 'invalid currency (use uppercase code, e.g. USD)',
-        'direction': 'invalid type (expense, income, transfer, refund or adjustment)',
+        'direction':
+            'invalid type (expense, income, transfer, refund or adjustment)',
         'tax': 'invalid tax or tip amount',
         'total': 'total cannot be less than tax plus tip',
         'duplicate': 'duplicate receipt ID or transaction ID in file',
@@ -345,8 +348,10 @@ final class LocalCsvImporter {
         'description': 'la descripción es obligatoria',
         'receiptId': 'el ID del recibo es obligatorio',
         'amount': 'importe no válido (decimal positivo sin signo ni separador)',
-        'currency': 'moneda no válida (usa el código en mayúsculas, p. ej., USD)',
-        'direction': 'tipo no válido (gasto, ingreso, transferencia, reembolso o ajuste)',
+        'currency':
+            'moneda no válida (usa el código en mayúsculas, p. ej., USD)',
+        'direction':
+            'tipo no válido (gasto, ingreso, transferencia, reembolso o ajuste)',
         'tax': 'impuesto o propina no válidos',
         'total': 'el total no puede ser menor que impuesto más propina',
         'duplicate': 'ID de recibo o transacción duplicado en el archivo',
