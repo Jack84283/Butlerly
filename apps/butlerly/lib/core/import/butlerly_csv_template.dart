@@ -139,17 +139,13 @@ final class ButlerlyCsvTemplate {
         languages.any((code) => same(displayHeaders(kind, languageCode: code)));
   }
 
-  static String filename(
-    ButlerlyCsvKind kind, {
-    String languageCode = 'en',
-  }) => 'butlerly_${kind.name}_v1_${language(languageCode)}.csv';
+  static String filename(ButlerlyCsvKind kind, {String languageCode = 'en'}) =>
+      'butlerly_${kind.name}_v1_${language(languageCode)}.csv';
 
   /// UTF-8 BOM helps Excel recognize Chinese/Spanish headers without mojibake.
   /// The CSV is intentionally header-only; examples are shown in the app.
-  static String content(
-    ButlerlyCsvKind kind, {
-    String languageCode = 'en',
-  }) => '\ufeff${displayHeaders(kind, languageCode: languageCode).join(',')}\r\n';
+  static String content(ButlerlyCsvKind kind, {String languageCode = 'en'}) =>
+      '\ufeff${displayHeaders(kind, languageCode: languageCode).join(',')}\r\n';
 
   /// Canonical English data values continue to work in every locale.
   static const _localizedDirections = <String, String>{
