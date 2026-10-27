@@ -452,6 +452,11 @@ final class LocalCsvImporter {
             row.cardReference ?? '',
             row.externalReference ?? '',
             preview.templateKind?.name ?? '',
+            // With optional receipt/transaction IDs, two legitimate purchases
+            // can share date, merchant and amount. Preserve distinct rows,
+            // while retaining deterministic IDs for a retry of the same file.
+            if (preview.templateKind != null) sourceId,
+            if (preview.templateKind != null) '${row.rowNumber}',
           ].join('|'),
         );
         final result = await _importTransaction(
