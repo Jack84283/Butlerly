@@ -67,13 +67,7 @@ final class ButlerlyCsvTemplate {
       ],
     },
     'zh': {
-      ButlerlyCsvKind.receipts: [
-        '日期',
-        '商家',
-        '实付总额',
-        '币种',
-        '备注',
-      ],
+      ButlerlyCsvKind.receipts: ['日期', '商家', '实付总额', '币种', '备注'],
       ButlerlyCsvKind.transactions: [
         '日期',
         '描述',
@@ -117,15 +111,25 @@ final class ButlerlyCsvTemplate {
   // template. Keep recognizing these files without requiring any user edits.
   static const _legacyReceiptLabels = <String, List<String>>{
     'en': [
-      'Receipt ID', 'Date', 'Merchant', 'Total Paid', 'Currency',
-      'Tax', 'Tip', 'Notes',
+      'Receipt ID',
+      'Date',
+      'Merchant',
+      'Total Paid',
+      'Currency',
+      'Tax',
+      'Tip',
+      'Notes',
     ],
-    'zh': [
-      '收据编号', '日期', '商家', '实付总额', '币种', '税额', '小费', '备注',
-    ],
+    'zh': ['收据编号', '日期', '商家', '实付总额', '币种', '税额', '小费', '备注'],
     'es': [
-      'ID de recibo', 'Fecha', 'Comercio', 'Total pagado',
-      'Moneda', 'Impuesto', 'Propina', 'Notas',
+      'ID de recibo',
+      'Fecha',
+      'Comercio',
+      'Total pagado',
+      'Moneda',
+      'Impuesto',
+      'Propina',
+      'Notas',
     ],
   };
 
@@ -162,7 +166,9 @@ final class ButlerlyCsvTemplate {
     }
 
     if (same(headers(kind)) ||
-        languages.any((code) => same(displayHeaders(kind, languageCode: code)))) {
+        languages.any(
+          (code) => same(displayHeaders(kind, languageCode: code)),
+        )) {
       return headers(kind);
     }
     if (kind == ButlerlyCsvKind.receipts &&
