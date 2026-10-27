@@ -325,7 +325,8 @@ final class LocalCsvImporter {
         'receiptId': 'receipt ID is required',
         'amount': 'invalid amount (positive decimal, no signs or commas)',
         'currency': 'invalid currency (use uppercase code, e.g. USD)',
-        'missingDefaultCurrency': 'Currency is blank and no default currency is configured. Set the default currency in Preferences or enter a currency.',
+        'missingDefaultCurrency':
+            'Currency is blank and no default currency is configured. Set the default currency in Preferences or enter a currency.',
         'direction':
             'invalid type (expense, income, transfer, refund or adjustment)',
         'tax': 'invalid tax or tip amount',
@@ -361,7 +362,8 @@ final class LocalCsvImporter {
         'amount': 'importe no válido (decimal positivo sin signo ni separador)',
         'currency':
             'moneda no válida (usa el código en mayúsculas, p. ej., USD)',
-        'missingDefaultCurrency': 'La moneda está vacía y no hay moneda predeterminada configurada. Configúrala en Preferencias o indica una moneda.',
+        'missingDefaultCurrency':
+            'La moneda está vacía y no hay moneda predeterminada configurada. Configúrala en Preferencias o indica una moneda.',
         'direction':
             'tipo no válido (gasto, ingreso, transferencia, reembolso o ajuste)',
         'tax': 'impuesto o propina no válidos',
