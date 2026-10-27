@@ -643,7 +643,7 @@ void main() {
     expect(summary.imported, 2);
     expect(captured.first.money.currency.value, 'USD');
     expect(captured.last.money.currency.value, 'CNY');
-    expect(captured.first.originalRepresentation, contains('12.50,,'));
+    expect(captured.first.originalRepresentation, contains('"12.50",""'));
   });
 
   test(
@@ -789,7 +789,7 @@ void main() {
       expect(preview.errors, isEmpty);
       expect(preview.rows.single.currency, 'USD');
       expect(preview.rows.single.externalReference, isNull);
-      expect(preview.rows.single.original, contains('1.00,2.00'));
+      expect(preview.rows.single.original, contains('"1.00","2.00"'));
     },
   );
 
