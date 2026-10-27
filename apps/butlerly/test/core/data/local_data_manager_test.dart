@@ -81,11 +81,37 @@ void main() {
       'created_at': '2026-08-09T18:00:00.000Z',
     });
     await File(path.join(evidence.path, 'receipt.bin')).writeAsBytes([1, 2, 3]);
+    for (final suffix in const [
+      '.restore-ambiguous',
+      '.restore-previous-ambiguous',
+    ]) {
+      final abandoned = Directory('${evidence.path}$suffix')
+        ..createSync(recursive: true);
+      await File(
+        path.join(abandoned.path, 'private-receipt.bin'),
+      ).writeAsBytes([9, 8, 7]);
+    }
     final manager = LocalDataManager(
       database,
       documentsDirectory: documents,
       localEvidenceDirectory: evidence,
     );
+    for (final suffix in const [
+      '.restore-journal.json',
+      '.restore-journal.json.tmp',
+      '.restore-journal.json.previous',
+      '.restore-origin.json',
+      '.restore-origin.json.tmp',
+      '.restore-origin.json.previous',
+    ]) {
+      File('${evidence.path}$suffix').writeAsStringSync('{}');
+    }
+    final abandonedRestoreStage = Directory(
+      path.join(root.path, '.butlerly-restore-stage-ambiguous'),
+    )..createSync(recursive: true);
+    File(
+      path.join(abandonedRestoreStage.path, 'private-copy.db'),
+    ).writeAsStringSync('private restore copy');
 
     final exported = await manager.exportAll();
     final exportFile = File(
@@ -122,6 +148,25 @@ void main() {
       expect(await database.database.query(table), isEmpty, reason: table);
     }
     expect(evidence.existsSync(), isFalse);
+    expect(
+      Directory('${evidence.path}.restore-ambiguous').existsSync(),
+      isFalse,
+    );
+    expect(
+      Directory('${evidence.path}.restore-previous-ambiguous').existsSync(),
+      isFalse,
+    );
+    expect(abandonedRestoreStage.existsSync(), isFalse);
+    for (final suffix in const [
+      '.restore-journal.json',
+      '.restore-journal.json.tmp',
+      '.restore-journal.json.previous',
+      '.restore-origin.json',
+      '.restore-origin.json.tmp',
+      '.restore-origin.json.previous',
+    ]) {
+      expect(File('${evidence.path}$suffix').existsSync(), isFalse);
+    }
     expect(exported.directory.existsSync(), isFalse);
   });
 }

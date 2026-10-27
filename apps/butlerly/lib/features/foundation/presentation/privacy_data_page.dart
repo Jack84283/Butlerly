@@ -21,7 +21,10 @@ import 'package:path/path.dart' as path;
 import 'package:share_plus/share_plus.dart' as share;
 
 class PrivacyDataPage extends ConsumerStatefulWidget {
-  const PrivacyDataPage({super.key});
+  const PrivacyDataPage({this.shareClient, super.key});
+
+  @visibleForTesting
+  final share.SharePlus? shareClient;
 
   @override
   ConsumerState<PrivacyDataPage> createState() => _PrivacyDataPageState();
@@ -30,7 +33,10 @@ class PrivacyDataPage extends ConsumerStatefulWidget {
 class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
   static const _backupType = XTypeGroup(
     label: 'Butlerly backup',
-    extensions: [PortableBackupPolicy.extension],
+    extensions: [
+      PortableBackupPolicy.extension,
+      PortableBackupPolicy.legacyExtension,
+    ],
     uniformTypeIdentifiers: [PortableBackupPolicy.uniformTypeIdentifier],
   );
 
@@ -46,7 +52,8 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       ':',
       '-',
     );
-    final fileName = 'Butlerly Backup $timestamp.butlerlybackup';
+    final fileName =
+        'Butlerly Backup $timestamp.${PortableBackupPolicy.extension}';
 
     if (_usesNativeMobileShare) {
       final password = await _createBackupPassword();
@@ -97,15 +104,16 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       final shareOrigin = renderBox is RenderBox
           ? renderBox.localToGlobal(Offset.zero) & renderBox.size
           : null;
-      final result = await share.SharePlus.instance.share(
-        share.ShareParams(
-          files: [
-            share.XFile(filePath, mimeType: PortableBackupPolicy.mimeType),
-          ],
-          title: fileName,
-          sharePositionOrigin: shareOrigin,
-        ),
-      );
+      final result = await (widget.shareClient ?? share.SharePlus.instance)
+          .share(
+            share.ShareParams(
+              files: [
+                share.XFile(filePath, mimeType: PortableBackupPolicy.mimeType),
+              ],
+              title: fileName,
+              sharePositionOrigin: shareOrigin,
+            ),
+          );
       if (mounted && result.status == share.ShareResultStatus.success) {
         _message(context.l10n.backupText('backupComplete'));
       }
@@ -256,6 +264,9 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         ),
       );
     } finally {
+      // The modal future completes as soon as the route is popped, while its
+      // reverse animation can still rebuild the TextField.
+      await Future<void>.delayed(const Duration(milliseconds: 300));
       password.dispose();
       confirmation.dispose();
     }
@@ -307,6 +318,8 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         ),
       );
     } finally {
+      // Keep the controller alive through the sheet's reverse animation.
+      await Future<void>.delayed(const Duration(milliseconds: 300));
       password.dispose();
     }
   }
@@ -357,7 +370,14 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
               : context.l10n.backupText('noNewerData');
           return ButlerlySheet(
             title: Text(context.l10n.backupText('restoreTitle')),
-            content: Text('$summary\n${created.toString()}\n\n$body'),
+            content: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.sizeOf(context).height * .45,
+              ),
+              child: SingleChildScrollView(
+                child: Text('$summary\n${created.toString()}\n\n$body'),
+              ),
+            ),
             actions: [
               ButlerlyCancelButton(
                 onPressed: () => Navigator.pop(context),
@@ -653,7 +673,15 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       return _desktopPrivacyPage(context);
     }
     return Scaffold(
-      appBar: AppBar(title: Text(context.l10n.text('privacyAndData'))),
+      appBar: AppBar(
+        leading: IconButton(
+          tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () =>
+              context.canPop() ? context.pop() : context.go('/settings'),
+        ),
+        title: Text(context.l10n.text('privacyAndData')),
+      ),
       body: ButlerlyResponsiveBody(
         contentKey: const ValueKey('privacy-data-content'),
         child: ListView(

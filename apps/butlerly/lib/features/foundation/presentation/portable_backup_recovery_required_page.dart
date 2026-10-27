@@ -24,7 +24,10 @@ class _PortableBackupRecoveryRequiredPageState
     extends ConsumerState<PortableBackupRecoveryRequiredPage> {
   static const _backupType = XTypeGroup(
     label: 'Butlerly backup',
-    extensions: [PortableBackupPolicy.extension],
+    extensions: [
+      PortableBackupPolicy.extension,
+      PortableBackupPolicy.legacyExtension,
+    ],
     uniformTypeIdentifiers: [PortableBackupPolicy.uniformTypeIdentifier],
   );
 

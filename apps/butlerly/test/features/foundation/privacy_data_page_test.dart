@@ -1,13 +1,22 @@
+import 'dart:io';
+
+import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/features/foundation/presentation/privacy_data_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as path;
+import 'package:share_plus/share_plus.dart' as share_plus;
+import 'package:share_plus_platform_interface/share_plus_platform_interface.dart'
+    as share_platform;
 
 void main() {
-  Widget app() => ProviderScope(
+  Widget app({share_plus.SharePlus? shareClient}) => ProviderScope(
     child: MaterialApp(
       locale: const Locale('en'),
       supportedLocales: AppLocalizations.supportedLocales,
@@ -17,7 +26,7 @@ void main() {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      home: const PrivacyDataPage(),
+      home: PrivacyDataPage(shareClient: shareClient),
     ),
   );
 
@@ -96,4 +105,91 @@ void main() {
     expect(find.text('Local data controls'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('mobile backup shares and then removes its temporary file', (
+    tester,
+  ) async {
+    final root = Directory(
+      path.join(
+        Directory.systemTemp.path,
+        'butlerly-share-test-${DateTime.now().microsecondsSinceEpoch}',
+      ),
+    );
+    root.createSync(recursive: true);
+    addTearDown(() async {
+      await services.reset();
+      if (root.existsSync()) root.deleteSync(recursive: true);
+      debugDefaultTargetPlatformOverride = null;
+    });
+    final gateway = _ShareGateway(root);
+    final platform = _SharePlatform();
+    services.registerSingleton<WorkspaceDataService>(
+      WorkspaceDataService(gateway, refreshSystemData: () async {}),
+    );
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+
+    await tester.pumpWidget(
+      app(shareClient: share_plus.SharePlus.custom(platform)),
+    );
+    await tester.pump();
+    await tester.tap(find.text('Back up Butlerly'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    final fields = find.byType(TextField);
+    expect(fields, findsNWidgets(2));
+    await tester.enterText(fields.at(0), 'correct horse battery staple');
+    await tester.enterText(fields.at(1), 'correct horse battery staple');
+    await tester.tap(find.text('Create encrypted backup'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(platform.params, isNotNull);
+    expect(platform.sawFileDuringShare, isTrue);
+    debugDefaultTargetPlatformOverride = null;
+    expect(gateway.discardedPath, isNotNull);
+    expect(File(gateway.discardedPath!).existsSync(), isFalse);
+  });
+}
+
+final class _SharePlatform extends share_platform.SharePlatform {
+  share_plus.ShareParams? params;
+  bool sawFileDuringShare = false;
+
+  @override
+  Future<share_plus.ShareResult> share(share_plus.ShareParams value) async {
+    params = value;
+    final file = value.files!.single;
+    sawFileDuringShare = File(file.path).existsSync();
+    return const share_plus.ShareResult(
+      'shared',
+      share_plus.ShareResultStatus.success,
+    );
+  }
+}
+
+final class _ShareGateway implements LocalDataGateway {
+  _ShareGateway(this.root);
+
+  final Directory root;
+  String? discardedPath;
+
+  @override
+  Future<String> createTemporaryBackup(
+    String fileName, {
+    required String password,
+  }) async {
+    final file = File(path.join(root.path, fileName));
+    file.writeAsBytesSync(const [1, 2, 3]);
+    return file.path;
+  }
+
+  @override
+  Future<void> discardTemporaryBackup(String filePath) async {
+    discardedPath = filePath;
+    final file = File(filePath);
+    if (file.existsSync()) file.deleteSync();
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

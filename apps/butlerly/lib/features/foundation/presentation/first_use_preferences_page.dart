@@ -180,6 +180,7 @@ class _FirstUsePreferencesPageState
               ),
               const SizedBox(height: ButlerlySpacing.section),
               FilledButton(
+                key: const ValueKey('first-use-continue-locally'),
                 onPressed: () => ref
                     .read(userPreferenceProvider.notifier)
                     .saveChanges(

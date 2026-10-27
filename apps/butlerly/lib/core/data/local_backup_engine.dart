@@ -25,6 +25,7 @@ final class _TableSpec {
     this.createdAt,
     this.systemOwned = false,
     this.mergeUnion = false,
+    this.preserveLocalOnMergeConflict = false,
   });
 
   final String name;
@@ -33,6 +34,7 @@ final class _TableSpec {
   final String? createdAt;
   final bool systemOwned;
   final bool mergeUnion;
+  final bool preserveLocalOnMergeConflict;
 }
 
 final class _EvidenceDescriptor {
@@ -78,6 +80,16 @@ final class _PreparedEvidence {
 final class LocalBackupManager {
   const LocalBackupManager(this.database, this.localDataManager);
 
+  static const _builtInTagIds = <String>{
+    'tag.business',
+    'tag.personal',
+    'tag.reimbursable',
+    'tag.tax_related',
+    'tag.travel',
+    'tag.recurring',
+    'tag.subscription',
+  };
+
   final LocalDatabase database;
   final LocalDataManager localDataManager;
 
@@ -100,6 +112,10 @@ final class LocalBackupManager {
       createdAt: 'created_at',
       systemOwned: true,
     ),
+    _TableSpec('category_translations', [
+      'category_id',
+      'locale',
+    ], preserveLocalOnMergeConflict: true),
     _TableSpec(
       'merchants',
       ['id'],
@@ -126,6 +142,10 @@ final class LocalBackupManager {
       createdAt: 'created_at',
       systemOwned: true,
     ),
+    _TableSpec('tag_translations', [
+      'tag_id',
+      'locale',
+    ], preserveLocalOnMergeConflict: true),
     _TableSpec('provenances', ['id'], createdAt: 'captured_at'),
     _TableSpec('exchange_rates', ['id'], createdAt: 'effective_at'),
     _TableSpec(
@@ -214,6 +234,11 @@ final class LocalBackupManager {
     _TableSpec('analysis_rule_configurations', [
       'rule_id',
     ], updatedAt: 'updated_at'),
+    _TableSpec('reference_data', ['id'], preserveLocalOnMergeConflict: true),
+    _TableSpec('reference_data_translations', [
+      'reference_data_id',
+      'locale',
+    ], preserveLocalOnMergeConflict: true),
     _TableSpec('user_preferences', ['id'], updatedAt: 'updated_at'),
     _TableSpec(
       'budgets',
@@ -222,6 +247,34 @@ final class LocalBackupManager {
       createdAt: 'created_at',
     ),
   ];
+
+  /// Returns the table keys emitted by the current snapshot writer, plus the
+  /// tombstone table handled outside the merge specs. Legacy backup schemas
+  /// intentionally omit a small number of keys; callers use
+  /// [requiredTablesForSchema] to preserve those compatibility rules.
+  static Set<String> get backupTableNames => {
+    for (final table in _tables) table.name,
+    'entity_tombstones',
+  };
+
+  static Set<String> requiredTablesForSchema(int sourceSchema) {
+    final required = backupTableNames;
+    if (sourceSchema <= 13) {
+      required.removeAll(const {
+        'category_translations',
+        'tag_translations',
+        'reference_data',
+        'reference_data_translations',
+      });
+    }
+    if (sourceSchema <= 11) {
+      required.remove('recurring_pattern_decisions');
+    }
+    if (sourceSchema <= 8) {
+      required.remove('payment_settlements');
+    }
+    return required;
+  }
 
   static final _specByName = <String, _TableSpec>{
     for (final spec in _tables) spec.name: spec,
@@ -241,7 +294,7 @@ final class LocalBackupManager {
       createdAtUtc: createdAt,
       recordCount: package.manifest['recordCount']! as int,
       evidenceCount: package.manifest['evidenceCount']! as int,
-      changes: await _newerLocalSummary(createdAt),
+      changes: await _newerLocalSummary(createdAt, package.tables),
     );
   }
 
@@ -271,6 +324,7 @@ final class LocalBackupManager {
         );
     final prepared = await _prepareEvidence(package, mode: mode);
     _applyEvidenceRemaps(tablePayload, prepared.pathRemaps);
+    await _validateEvidenceReferences(tablePayload, prepared.directory);
 
     final root = await localDataManager.evidenceDirectory();
     final operationId = 'restore-${DateTime.now().microsecondsSinceEpoch}';
@@ -353,7 +407,7 @@ final class LocalBackupManager {
                     .cast<Map>()
                     .map((row) => row.cast<String, Object?>());
             for (final row in payload) {
-              if (_isSystemOwned(spec, row)) continue;
+              if (await _isSystemOwned(tx, spec, row)) continue;
               if (mode == LocalRestoreMode.merge) {
                 if (_referencesProtectedTransaction(
                   spec,
@@ -369,7 +423,9 @@ final class LocalBackupManager {
                 }
                 final local = await _findRow(tx, spec, row);
                 if (local != null &&
-                    _rowChangedAfter(local, spec, backupTime)) {
+                    !_rowsEqual(local, row) &&
+                    (spec.preserveLocalOnMergeConflict ||
+                        _rowChangedAfter(local, spec, backupTime))) {
                   keptNewer++;
                   continue;
                 }
@@ -386,10 +442,15 @@ final class LocalBackupManager {
                     .cast<Map>();
             for (final raw in tombstones) {
               final row = raw.cast<String, Object?>();
-              if (_isSystemId(
-                row['entity_type'] as String?,
-                row['entity_id'],
-              )) {
+              final entityType = row['entity_type'] as String?;
+              final entityId = row['entity_id'];
+              final spec = entityType == null ? null : _specByName[entityType];
+              if (spec == null || entityId == null) continue;
+              final values = _keyValuesFromTombstone(spec, '$entityId');
+              if (values == null) continue;
+              final localRows = await _queryByKeys(tx, spec, values);
+              if (localRows.isNotEmpty &&
+                  await _isSystemOwned(tx, spec, localRows.single)) {
                 continue;
               }
               await tx.insert(
@@ -855,6 +916,27 @@ final class LocalBackupManager {
     }
   }
 
+  Future<void> _validateEvidenceReferences(
+    Map<String, Object?> tablePayload,
+    Directory evidenceRoot,
+  ) async {
+    for (final row in _tableRows(tablePayload, 'evidence_items')) {
+      final raw = row['local_file_name'];
+      if (raw is! String || raw.trim().isEmpty) continue;
+      final relative = path.normalize(raw);
+      if (path.isAbsolute(relative) ||
+          relative == '..' ||
+          relative.startsWith('../')) {
+        throw const FormatException('Unsafe evidence reference.');
+      }
+      if (!await File(path.join(evidenceRoot.path, relative)).exists()) {
+        throw const FormatException(
+          'Backup evidence reference has no corresponding file.',
+        );
+      }
+    }
+  }
+
   Future<Set<String>> _protectedTransactionIds(
     DatabaseExecutor executor,
     Map<String, Object?> tablePayload,
@@ -910,41 +992,45 @@ final class LocalBackupManager {
     return false;
   }
 
-  Future<BackupChangeSummary> _newerLocalSummary(DateTime backupTime) async {
+  Future<BackupChangeSummary> _newerLocalSummary(
+    DateTime backupTime,
+    Map<String, Object?> tablePayload,
+  ) async {
     final cutoff = backupTime.toIso8601String();
-    final added =
-        Sqflite.firstIntValue(
-          await database.database.rawQuery(
-            'SELECT COUNT(*) FROM transactions WHERE created_at > ?',
-            [cutoff],
-          ),
-        ) ??
-        0;
-    final changed =
-        Sqflite.firstIntValue(
-          await database.database.rawQuery(
-            'SELECT COUNT(*) FROM transactions '
-            'WHERE created_at <= ? AND updated_at > ?',
-            [cutoff, cutoff],
-          ),
-        ) ??
-        0;
+    final transactionSpec = _specByName['transactions']!;
+    final backupTransactions = _tableRows(tablePayload, 'transactions');
+    final backupTransactionsByKey = {
+      for (final row in backupTransactions) _rowKey(transactionSpec, row): row,
+    };
+    var added = 0;
+    var changed = 0;
+    for (final row in await database.database.query('transactions')) {
+      final backup = backupTransactionsByKey[_rowKey(transactionSpec, row)];
+      if (backup == null) {
+        added++;
+      } else if (!_rowsEqual(row, backup)) {
+        changed++;
+      }
+    }
+
+    // Replace clears every persisted table represented in the backup. Compare
+    // values as well as keys: timestamps are useful for merge precedence, but
+    // they cannot detect an older divergent copy from another device.
     var master = 0;
-    for (final query in <String>[
-      "SELECT COUNT(*) FROM payment_sources "
-          "WHERE COALESCE(updated_at, created_at) > '$cutoff'",
-      "SELECT COUNT(*) FROM categories WHERE LOWER(origin) != 'system' "
-          "AND COALESCE(updated_at, created_at) > '$cutoff'",
-      "SELECT COUNT(*) FROM merchants WHERE is_built_in = 0 "
-          "AND COALESCE(updated_at, created_at) > '$cutoff'",
-      "SELECT COUNT(*) FROM tags WHERE id NOT LIKE 'tag.%' "
-          "AND id NOT LIKE 'system-tag-%' "
-          "AND COALESCE(updated_at, created_at) > '$cutoff'",
-      "SELECT COUNT(*) FROM recurring_pattern_decisions "
-          "WHERE updated_at > '$cutoff'",
-    ]) {
-      master +=
-          Sqflite.firstIntValue(await database.database.rawQuery(query)) ?? 0;
+    for (final spec in _tables) {
+      if (spec.name == 'transactions') continue;
+      final backupRows = _tableRows(tablePayload, spec.name);
+      final backupByKey = {
+        for (final row in backupRows) _rowKey(spec, row): row,
+      };
+      final localRows = await database.database.query(spec.name);
+      for (final row in localRows) {
+        if (await _isSystemOwned(database.database, spec, row)) continue;
+        final backup = backupByKey[_rowKey(spec, row)];
+        if (backup == null || !_rowsEqual(row, backup)) {
+          master++;
+        }
+      }
     }
     final deleted =
         Sqflite.firstIntValue(
@@ -976,14 +1062,16 @@ final class LocalBackupManager {
       final entityType = tombstone['entity_type'] as String?;
       final entityId = tombstone['entity_id'];
       final spec = entityType == null ? null : _specByName[entityType];
-      if (spec == null ||
-          entityId == null ||
-          _isSystemId(entityType, entityId)) {
+      if (spec == null || entityId == null) {
         continue;
       }
       final values = _keyValuesFromTombstone(spec, '$entityId');
       if (values == null) continue;
       final localRows = await _queryByKeys(tx, spec, values);
+      if (localRows.isNotEmpty &&
+          await _isSystemOwned(tx, spec, localRows.single)) {
+        continue;
+      }
       if (localRows.isNotEmpty &&
           _rowChangedAfter(localRows.single, spec, backupTime)) {
         kept++;
@@ -1148,22 +1236,58 @@ final class LocalBackupManager {
     return false;
   }
 
-  bool _isSystemOwned(_TableSpec spec, Map<String, Object?> row) =>
-      switch (spec.name) {
-        'categories' => '${row['origin']}'.toLowerCase() == 'system',
-        'merchants' => row['is_built_in'] == 1,
-        'tags' => _isSystemId('tags', row['id']),
-        _ => false,
-      };
+  bool _rowsEqual(Map<String, Object?> left, Map<String, Object?> right) {
+    if (left.length != right.length) return false;
+    for (final entry in left.entries) {
+      if (!right.containsKey(entry.key) || right[entry.key] != entry.value) {
+        return false;
+      }
+    }
+    return true;
+  }
 
-  bool _isSystemId(String? entityType, Object? rawId) {
-    final id = '$rawId';
-    return switch (entityType) {
-      'categories' => id.startsWith('category.'),
-      'merchants' => id.startsWith('merchant.'),
-      'tags' => id.startsWith('tag.') || id.startsWith('system-tag-'),
-      _ => false,
-    };
+  String _rowKey(_TableSpec spec, Map<String, Object?> row) =>
+      spec.keys.map((key) => jsonEncode(row[key])).join('|');
+
+  Future<bool> _isSystemOwned(
+    DatabaseExecutor executor,
+    _TableSpec spec,
+    Map<String, Object?> row,
+  ) async {
+    switch (spec.name) {
+      case 'categories':
+        return '${row['origin']}'.toLowerCase() == 'system';
+      case 'merchants':
+        return row['is_built_in'] == 1;
+      case 'tags':
+        return _builtInTagIds.contains(row['id']);
+      case 'category_translations':
+        final parent = await executor.query(
+          'categories',
+          columns: ['origin'],
+          where: 'id = ?',
+          whereArgs: [row['category_id']],
+          limit: 1,
+        );
+        return parent.isNotEmpty &&
+            '${parent.single['origin']}'.toLowerCase() == 'system';
+      case 'tag_translations':
+        return _builtInTagIds.contains(row['tag_id']);
+      case 'reference_data':
+        return '${row['origin']}'.toLowerCase() == 'system';
+      case 'reference_data_translations':
+        final parent = await executor.query(
+          'reference_data',
+          columns: ['origin'],
+          where: 'id = ?',
+          whereArgs: [row['reference_data_id']],
+          limit: 1,
+        );
+        return parent.isNotEmpty &&
+            '${parent.single['origin']}'.toLowerCase() == 'system';
+      default:
+        return false;
+    }
   }
 
   List<Map<String, Object?>> _tableRows(
@@ -1248,7 +1372,36 @@ final class LocalBackupManager {
   }
 
   Future<void> _clearPortableState(Transaction tx) async {
-    const childFirst = <String>[
+    // Translations and reference data are catalog children. Keep current
+    // system-owned rows so a restore cannot pin an obsolete bundled catalog,
+    // while removing all user-owned rows before restoring the backup payload.
+    await tx.delete(
+      'category_translations',
+      where:
+          'category_id IN ('
+          "SELECT id FROM categories WHERE LOWER(origin) != 'system'"
+          ')',
+    );
+    await tx.delete(
+      'tag_translations',
+      where:
+          'tag_id IN ('
+          "SELECT id FROM tags WHERE id NOT IN ("
+          "'tag.business','tag.personal','tag.reimbursable',"
+          "'tag.tax_related','tag.travel','tag.recurring','tag.subscription'"
+          ')'
+          ')',
+    );
+    await tx.delete(
+      'reference_data_translations',
+      where:
+          'reference_data_id IN ('
+          "SELECT id FROM reference_data WHERE LOWER(origin) != 'system'"
+          ')',
+    );
+    await tx.delete('reference_data', where: "LOWER(origin) != 'system'");
+
+    final childFirst = <String>[
       'budgets',
       'transaction_rules',
       'merchant_normalization_patterns',
@@ -1284,7 +1437,11 @@ final class LocalBackupManager {
     await tx.delete('categories', where: "LOWER(origin) != 'system'");
     await tx.delete(
       'tags',
-      where: "id NOT LIKE 'tag.%' AND id NOT LIKE 'system-tag-%'",
+      where:
+          'id NOT IN ('
+          "'tag.business','tag.personal','tag.reimbursable',"
+          "'tag.tax_related','tag.travel','tag.recurring','tag.subscription'"
+          ')',
     );
     await tx.delete('entity_tombstones');
   }

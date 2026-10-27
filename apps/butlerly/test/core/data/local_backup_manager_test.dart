@@ -27,9 +27,26 @@ void main() {
       'created_at': timestamp,
       'updated_at': timestamp,
     });
+    await fixture.database.database.insert('tags', {
+      'id': 'tag.user-owned',
+      'name': 'User-owned tag',
+      'status': 'active',
+      'created_at': timestamp,
+      'updated_at': timestamp,
+    });
+    await fixture.database.database.insert('tag_translations', {
+      'tag_id': 'tag.user-owned',
+      'locale': 'en',
+      'label': 'User-owned tag',
+    });
     final backup = File(path.join(fixture.root.path, 'budgets.butlerlybackup'));
     await fixture.backups.createBackup(backup);
     await fixture.database.database.delete('budgets');
+    await fixture.database.database.delete(
+      'tags',
+      where: 'id = ?',
+      whereArgs: ['tag.user-owned'],
+    );
 
     await fixture.backups.restore(backup, mode: LocalRestoreMode.replace);
 
@@ -40,7 +57,128 @@ void main() {
     expect(rows.single['scope_id'], 'groceries');
     expect(rows.single['currency'], 'USD');
     expect(rows.single['amount'], '500.00');
+    expect(
+      (await fixture.database.database.query(
+        'tags',
+        where: 'id = ?',
+        whereArgs: ['tag.user-owned'],
+      )).single['name'],
+      'User-owned tag',
+    );
   });
+
+  test(
+    'merge preserves local edits to durable reference and translation data',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      const timestamp = '2026-10-01T00:00:00.000Z';
+      await fixture.database.database.insert('categories', {
+        'id': 'user.category.merge',
+        'name': 'Merge category',
+        'origin': 'user',
+        'parent_id': null,
+        'status': 'active',
+        'created_at': timestamp,
+        'updated_at': timestamp,
+      });
+      await fixture.database.database.insert('category_translations', {
+        'category_id': 'user.category.merge',
+        'locale': 'en',
+        'label': 'Backup category label',
+      });
+      await fixture.database.database.insert('tags', {
+        'id': 'user.tag.merge',
+        'name': 'Merge tag',
+        'status': 'active',
+        'created_at': timestamp,
+        'updated_at': timestamp,
+      });
+      await fixture.database.database.insert('tag_translations', {
+        'tag_id': 'user.tag.merge',
+        'locale': 'en',
+        'label': 'Backup tag label',
+      });
+      await fixture.database.database.insert('reference_data', {
+        'id': 'user.reference.merge',
+        'code': 'backup-reference',
+        'type': 'merge-test',
+        'origin': 'user',
+        'status': 'active',
+      });
+      await fixture.database.database.insert('reference_data_translations', {
+        'reference_data_id': 'user.reference.merge',
+        'locale': 'en',
+        'label': 'Backup reference label',
+      });
+
+      final backup = File(
+        path.join(fixture.root.path, 'reference-merge.butlerly'),
+      );
+      await fixture.backups.createBackup(backup);
+      await fixture.database.database.update(
+        'category_translations',
+        {'label': 'Local category label'},
+        where: 'category_id = ? AND locale = ?',
+        whereArgs: ['user.category.merge', 'en'],
+      );
+      await fixture.database.database.update(
+        'tag_translations',
+        {'label': 'Local tag label'},
+        where: 'tag_id = ? AND locale = ?',
+        whereArgs: ['user.tag.merge', 'en'],
+      );
+      await fixture.database.database.update(
+        'reference_data',
+        {'code': 'local-reference'},
+        where: 'id = ?',
+        whereArgs: ['user.reference.merge'],
+      );
+      await fixture.database.database.update(
+        'reference_data_translations',
+        {'label': 'Local reference label'},
+        where: 'reference_data_id = ? AND locale = ?',
+        whereArgs: ['user.reference.merge', 'en'],
+      );
+
+      final inspection = await fixture.backups.inspect(backup);
+      expect(inspection.changes.masterDataChanged, greaterThanOrEqualTo(4));
+      await fixture.backups.restore(backup, mode: LocalRestoreMode.merge);
+
+      expect(
+        (await fixture.database.database.query(
+          'category_translations',
+          where: 'category_id = ? AND locale = ?',
+          whereArgs: ['user.category.merge', 'en'],
+        )).single['label'],
+        'Local category label',
+      );
+      expect(
+        (await fixture.database.database.query(
+          'tag_translations',
+          where: 'tag_id = ? AND locale = ?',
+          whereArgs: ['user.tag.merge', 'en'],
+        )).single['label'],
+        'Local tag label',
+      );
+      expect(
+        (await fixture.database.database.query(
+          'reference_data',
+          where: 'id = ?',
+          whereArgs: ['user.reference.merge'],
+        )).single['code'],
+        'local-reference',
+      );
+      expect(
+        (await fixture.database.database.query(
+          'reference_data_translations',
+          where: 'reference_data_id = ? AND locale = ?',
+          whereArgs: ['user.reference.merge', 'en'],
+        )).single['label'],
+        'Local reference label',
+      );
+    },
+  );
 
   test('merge retains newer local budget values', () async {
     final fixture = await _Fixture.create();
@@ -70,6 +208,9 @@ void main() {
       whereArgs: ['budget-overall'],
     );
 
+    final inspection = await fixture.backups.inspect(backup);
+    expect(inspection.hasNewerLocalData, isTrue);
+
     await fixture.backups.restore(backup, mode: LocalRestoreMode.merge);
 
     final rows = await fixture.database.database.query(
@@ -78,6 +219,149 @@ void main() {
       whereArgs: ['budget-overall'],
     );
     expect(rows.single['amount'], '1200');
+  });
+
+  test(
+    'replace inspection warns about divergent values with old timestamps',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final old = DateTime.utc(2026, 1, 1);
+      await fixture.database.database.insert('budgets', {
+        'id': 'budget-divergent',
+        'scope': 'overall',
+        'scope_id': null,
+        'currency': 'USD',
+        'amount': '1000',
+        'created_at': old.toIso8601String(),
+        'updated_at': old.toIso8601String(),
+      });
+      await fixture.insertTransaction(
+        id: 'transaction-divergent',
+        description: 'Backup description',
+        updatedAt: old,
+      );
+      final backup = File(
+        path.join(fixture.root.path, 'divergent-values.butlerlybackup'),
+      );
+      await fixture.backups.createBackup(backup);
+      await fixture.database.database.update(
+        'budgets',
+        {'amount': '1200'},
+        where: 'id = ?',
+        whereArgs: ['budget-divergent'],
+      );
+      await fixture.database.database.update(
+        'transactions',
+        {'description': 'Local description'},
+        where: 'id = ?',
+        whereArgs: ['transaction-divergent'],
+      );
+
+      final inspection = await fixture.backups.inspect(backup);
+      expect(inspection.changes.masterDataChanged, greaterThanOrEqualTo(1));
+      expect(inspection.changes.transactionsChanged, greaterThanOrEqualTo(1));
+      expect(inspection.hasNewerLocalData, isTrue);
+    },
+  );
+
+  test('replace inspection warns about local-only catalog children', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    const timestamp = '2026-10-01T00:00:00.000Z';
+    await fixture.database.database.insert('categories', {
+      'id': 'user.category.local-only',
+      'name': 'Local-only category',
+      'origin': 'user',
+      'parent_id': null,
+      'status': 'active',
+      'created_at': timestamp,
+      'updated_at': timestamp,
+    });
+    await fixture.database.database.insert('category_translations', {
+      'category_id': 'user.category.local-only',
+      'locale': 'en',
+      'label': 'Backed-up label',
+    });
+    final backup = File(
+      path.join(fixture.root.path, 'local-only-child.butlerlybackup'),
+    );
+    await fixture.backups.createBackup(backup);
+    await fixture.database.database.insert('category_translations', {
+      'category_id': 'user.category.local-only',
+      'locale': 'fr',
+      'label': 'Local-only label',
+    });
+
+    final inspection = await fixture.backups.inspect(backup);
+    expect(inspection.hasNewerLocalData, isTrue);
+
+    await fixture.backups.restore(backup, mode: LocalRestoreMode.replace);
+
+    expect(
+      await fixture.database.database.query(
+        'category_translations',
+        where: 'category_id = ? AND locale = ?',
+        whereArgs: ['user.category.local-only', 'fr'],
+      ),
+      isEmpty,
+    );
+  });
+
+  test('replace inspection warns about local-only master records', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final backup = File(
+      path.join(fixture.root.path, 'local-only-master.butlerlybackup'),
+    );
+    await fixture.backups.createBackup(backup);
+    const old = '2020-01-01T00:00:00.000Z';
+    await fixture.database.database.insert('categories', {
+      'id': 'user.category.only-master',
+      'name': 'Only local category',
+      'origin': 'user',
+      'parent_id': null,
+      'status': 'active',
+      'created_at': old,
+      'updated_at': old,
+    });
+    await fixture.database.database.insert('merchants', {
+      'id': 'user.merchant.only-master',
+      'name': 'Only local merchant',
+      'status': 'active',
+      'normalized_name': 'only local merchant',
+      'is_built_in': 0,
+      'created_at': old,
+      'updated_at': old,
+    });
+    await fixture.database.database.insert('tags', {
+      'id': 'user.tag.only-master',
+      'name': 'Only local tag',
+      'status': 'active',
+      'created_at': old,
+      'updated_at': old,
+    });
+    await fixture.database.database.insert('payment_sources', {
+      'id': 'only-local-source',
+      'name': 'Only local source',
+      'type': 'card',
+      'status': 'active',
+      'created_at': old,
+      'updated_at': old,
+    });
+    await fixture.database.database.insert('budgets', {
+      'id': 'only-local-budget',
+      'scope': 'overall',
+      'scope_id': null,
+      'currency': 'USD',
+      'amount': '300.00',
+      'created_at': old,
+      'updated_at': old,
+    });
+
+    final inspection = await fixture.backups.inspect(backup);
+    expect(inspection.changes.masterDataChanged, greaterThanOrEqualTo(5));
+    expect(inspection.hasNewerLocalData, isTrue);
   });
 
   test('merge keeps newer local rows and restores older backup rows', () async {
@@ -251,6 +535,19 @@ void main() {
     await fixture.backups.createBackup(backup);
     await _downgradeBackupToV8(backup);
 
+    await fixture.database.database.insert('reference_data', {
+      'id': 'user.reference.legacy-stale',
+      'code': 'legacy-stale',
+      'type': 'legacy-test',
+      'origin': 'user',
+      'status': 'active',
+    });
+    await fixture.database.database.insert('reference_data_translations', {
+      'reference_data_id': 'user.reference.legacy-stale',
+      'locale': 'en',
+      'label': 'Legacy stale reference',
+    });
+
     await fixture.insertPaymentSettlement(
       id: 'local-v9-settlement',
       paymentSourceId: 'visa',
@@ -260,6 +557,14 @@ void main() {
     await fixture.backups.restore(backup, mode: LocalRestoreMode.replace);
 
     expect(await fixture.settlementStatus('local-v9-settlement'), isNull);
+    expect(
+      await fixture.database.database.query(
+        'reference_data',
+        where: 'id = ?',
+        whereArgs: ['user.reference.legacy-stale'],
+      ),
+      isEmpty,
+    );
   });
 
   test(
@@ -484,6 +789,8 @@ Future<void> _downgradeBackupToV8(File backup) async {
   final tables = (metadata['tables']! as Map).cast<String, Object?>();
   manifest['schemaVersion'] = 8;
   tables.remove('payment_settlements');
+  tables.remove('reference_data');
+  tables.remove('reference_data_translations');
 
   final encoded = utf8.encode(jsonEncode(metadata));
   final output = <int>[

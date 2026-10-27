@@ -603,10 +603,18 @@ class _ReviewPageState extends State<ReviewPage> {
         ) ==
         ButlerlyLayoutMode.wide;
     if (_finance == null) {
-      return ButlerlyEmptyState(
-        icon: Icons.fact_check_outlined,
-        title: context.l10n.text('reviewEmpty'),
-        message: context.l10n.text('reviewEmptyBody'),
+      return ButlerlyPage(
+        title: context.l10n.text('review'),
+        leading: _reviewBackButton(context),
+        pinnedSpacing: ButlerlyPinnedPageSpacing.primary,
+        fullWidth: desktop,
+        children: [
+          ButlerlyEmptyState(
+            icon: Icons.fact_check_outlined,
+            title: context.l10n.text('reviewEmpty'),
+            message: context.l10n.text('reviewEmptyBody'),
+          ),
+        ],
       );
     }
     if (_hasReviewScope && !_reviewScopeIsValid) {
@@ -614,6 +622,7 @@ class _ReviewPageState extends State<ReviewPage> {
         title: context.l10n.text('review'),
         pinnedSpacing: ButlerlyPinnedPageSpacing.primary,
         fullWidth: desktop,
+        leading: _reviewBackButton(context),
         children: [
           ButlerlyEmptyState(
             icon: Icons.error_outline_rounded,
@@ -625,6 +634,7 @@ class _ReviewPageState extends State<ReviewPage> {
     }
     final page = ButlerlyPage(
       title: context.l10n.text('review'),
+      leading: _reviewBackButton(context),
       onRefresh: _pullToRefresh,
       refreshKey: ValueKey('review-pull-to-refresh-${_view.name}'),
       pinnedSpacing: ButlerlyPinnedPageSpacing.primary,
@@ -976,6 +986,12 @@ class _ReviewPageState extends State<ReviewPage> {
           : _desktopReviewPanel(_selectedReview!),
     );
   }
+
+  Widget _reviewBackButton(BuildContext context) => IconButton(
+    tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+    icon: const Icon(Icons.arrow_back_rounded),
+    onPressed: () => context.canPop() ? context.pop() : context.go('/'),
+  );
 }
 
 class _ReviewTransactionCard extends StatefulWidget {

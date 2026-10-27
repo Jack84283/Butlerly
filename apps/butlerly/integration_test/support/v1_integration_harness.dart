@@ -44,13 +44,11 @@ final class V1IntegrationHarness {
       configuration: const AppConfiguration(),
       database: database,
       logger: AppLogger(),
-    );
-    finance = services<FinanceServices>();
-    data = LocalDataManager(
-      database,
       documentsDirectory: documents,
       localEvidenceDirectory: evidence,
     );
+    finance = services<FinanceServices>();
+    data = services<LocalDataManager>();
   }
 
   Future<void> restart() async {

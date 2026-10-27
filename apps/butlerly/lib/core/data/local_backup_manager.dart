@@ -13,8 +13,7 @@ import 'package:butlerly/core/data/restore_recovery_state.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/evidence/evidence_mutation_lock.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
-import 'package:butlerly_database/butlerly_database.dart'
-    show Sqflite, int64FromBytes;
+import 'package:butlerly_database/butlerly_database.dart' show int64FromBytes;
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common/sqlite_api.dart';
 
@@ -247,20 +246,7 @@ final class LocalBackupManager {
     try {
       await _assertSupportedBackupSchema(readable.file);
       final base = await _engine.inspect(readable.file);
-      final cutoff = base.createdAtUtc.toIso8601String();
-      final additional = await _countOtherNewerData(cutoff);
-      if (additional == 0) return base;
-      return engine.BackupInspection(
-        createdAtUtc: base.createdAtUtc,
-        recordCount: base.recordCount,
-        evidenceCount: base.evidenceCount,
-        changes: engine.BackupChangeSummary(
-          transactionsAdded: base.changes.transactionsAdded,
-          transactionsChanged: base.changes.transactionsChanged,
-          masterDataChanged: base.changes.masterDataChanged + additional,
-          deletedEntities: base.changes.deletedEntities,
-        ),
-      );
+      return base;
     } finally {
       await readable.dispose();
     }
@@ -734,6 +720,21 @@ final class LocalBackupManager {
           'Backup schema $sourceSchema is not supported by this Butlerly build.',
         );
       }
+      if (sourceSchema != null) {
+        final tables = (metadata['tables'] as Map?)?.cast<String, Object?>();
+        if (tables == null) {
+          throw const FormatException('Backup metadata is missing its tables.');
+        }
+        final missing = engine.LocalBackupManager.requiredTablesForSchema(
+          sourceSchema,
+        ).where((table) => !tables.containsKey(table)).toList()..sort();
+        if (missing.isNotEmpty) {
+          throw FormatException(
+            'Backup schema $sourceSchema is missing required tables: '
+            '${missing.join(', ')}.',
+          );
+        }
+      }
     } finally {
       await raf.close();
     }
@@ -779,39 +780,6 @@ final class LocalBackupManager {
         await entity.copy(file.path);
       }
     }
-  }
-
-  Future<int> _countOtherNewerData(String cutoff) async {
-    var count = 0;
-    for (final query in <String>[
-      'SELECT COUNT(*) FROM evidence_items WHERE created_at > ?',
-      'SELECT COUNT(*) FROM financial_statements WHERE updated_at > ?',
-      'SELECT COUNT(*) FROM payment_settlements WHERE updated_at > ?',
-      'SELECT COUNT(*) FROM merchant_aliases WHERE updated_at > ?',
-      'SELECT COUNT(*) FROM merchant_normalization_patterns '
-          'WHERE updated_at > ?',
-      'SELECT COUNT(*) FROM transaction_rules WHERE updated_at > ?',
-      'SELECT COUNT(*) FROM statement_rows WHERE updated_at > ?',
-      'SELECT COUNT(*) FROM review_issues '
-          'WHERE closed_at IS NOT NULL AND closed_at > ?',
-      'SELECT COUNT(*) FROM suggestions '
-          'WHERE decided_at IS NOT NULL AND decided_at > ?',
-      "SELECT COUNT(*) FROM reconciliation_candidates "
-          "WHERE status != 'proposed' AND updated_at > ?",
-      "SELECT COUNT(*) FROM duplicate_candidate_groups "
-          "WHERE (status != 'unresolved' OR "
-          "(statement_rows IS NOT NULL AND statement_rows != '[]')) "
-          "AND updated_at > ?",
-      // recurring_pattern_decisions are included in the engine summary above;
-      // keep this additional-table pass disjoint so the count is not doubled.
-      'SELECT COUNT(*) FROM analysis_rule_activations WHERE updated_at > ?',
-      'SELECT COUNT(*) FROM analysis_rule_configurations WHERE updated_at > ?',
-      'SELECT COUNT(*) FROM user_preferences WHERE updated_at > ?',
-    ]) {
-      final rows = await database.database.rawQuery(query, [cutoff]);
-      count += Sqflite.firstIntValue(rows) ?? 0;
-    }
-    return count;
   }
 
   Future<void> _pruneSafetyBackupsBestEffort({String? preservePath}) async {

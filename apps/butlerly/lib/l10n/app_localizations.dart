@@ -57,6 +57,7 @@ class AppLocalizations {
           'Suggestion uses three complete prior months. Review before saving.',
       'budgetSuggestionUnavailable':
           'Not enough comparable, complete historical spending data to suggest a budget.',
+      'financialSettings': 'Financial settings',
       'budgets': 'Budgets',
       'backupRestoreSettings': 'Backup & Restore',
       'backupRestoreSettingsBody':
@@ -1033,6 +1034,7 @@ class AppLocalizations {
       'budgetSuggest': '根据历史支出建议',
       'budgetSuggestionPreview': '根据前三个完整月份生成建议；保存前请确认。',
       'budgetSuggestionUnavailable': '历史支出数据不足或不可比较，无法提供预算建议。',
+      'financialSettings': '财务设置',
       'budgets': '预算',
       'backupRestoreSettings': '备份与恢复',
       'backupRestoreSettingsBody': '创建加密备份或恢复数据',
@@ -1882,6 +1884,7 @@ class AppLocalizations {
           'Sugerencia basada en los tres meses completos anteriores. Revísala antes de guardar.',
       'budgetSuggestionUnavailable':
           'No hay suficientes datos históricos completos y comparables para sugerir un presupuesto.',
+      'financialSettings': 'Configuración financiera',
       'budgets': 'Presupuestos',
       'backupRestoreSettings': 'Copia de seguridad y restauración',
       'backupRestoreSettingsBody':

@@ -18,9 +18,11 @@ import 'package:butlerly/features/desktop/presentation/desktop_primary_shell.dar
 import 'package:butlerly/features/foundation/presentation/contextual_pages.dart';
 import 'package:butlerly/features/foundation/presentation/legal_licenses_page.dart';
 import 'package:butlerly/features/foundation/presentation/receipt_capture_page.dart';
+import 'package:butlerly/features/foundation/presentation/review_page.dart';
 import 'package:butlerly/features/foundation/presentation/search_page.dart';
 import 'package:butlerly/features/foundation/presentation/settings_page.dart';
 import 'package:butlerly/features/tools/presentation/tools_page.dart';
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -921,6 +923,68 @@ void main() {
       find.byKey(const ValueKey('primary-medium-navigation')),
       findsNothing,
     );
+  });
+
+  testWidgets('Compact and Medium Review pages provide an escape path', (
+    tester,
+  ) async {
+    final finance = FinanceServices(
+      MemoryTransactionRepository(),
+      MemoryPaymentSources(),
+      MemoryMerchants(),
+      MemoryCategories(),
+      MemoryTags(),
+      MemoryEvidence(),
+      MemoryUserPreferences(),
+    );
+    services.registerSingleton<FinanceServices>(finance);
+    addTearDown(() => services.unregister<FinanceServices>());
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await finance.saveUserPreference(
+      UserPreference(
+        locale: 'en',
+        formattingLocale: 'en-US',
+        regionCode: 'US',
+        baseCurrency: CurrencyCode('USD'),
+        timeZoneId: 'UTC',
+        firstUseCompleted: true,
+      ),
+    );
+
+    for (final size in [const Size(390, 844), const Size(900, 1100)]) {
+      appRouter.go('/review?view=overview');
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      expect(find.byType(ReviewPage), findsOneWidget);
+      expect(find.byIcon(Icons.arrow_back_rounded), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.arrow_back_rounded));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(appRouter.routeInformationProvider.value.uri.path, '/');
+      await tester.pumpWidget(const SizedBox.shrink());
+    }
+  });
+
+  testWidgets('Review unavailable state still provides an escape path', (
+    tester,
+  ) async {
+    if (services.isRegistered<FinanceServices>()) {
+      await services.unregister<FinanceServices>();
+    }
+    appRouter.go('/review?view=overview');
+    await _pumpAt(tester, const Size(390, 844));
+
+    expect(find.byType(ReviewPage), findsOneWidget);
+    expect(find.byIcon(Icons.arrow_back_rounded), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.arrow_back_rounded));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(appRouter.routeInformationProvider.value.uri.path, '/');
   });
 
   testWidgets('direct Wide secondary routes use their documented parent', (

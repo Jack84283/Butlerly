@@ -69,14 +69,24 @@ final class LocalBackupSnapshotWriter {
       recordCount += rows.length;
     }
 
-    final categories = await source.query(
-      'categories',
-      where: 'LOWER(origin) != ?',
-      whereArgs: ['system'],
-      orderBy: 'CASE WHEN parent_id IS NULL THEN 0 ELSE 1 END, id',
+    final categories = _orderCategoriesForBackup(
+      await source.query(
+        'categories',
+        where: 'LOWER(origin) != ?',
+        whereArgs: ['system'],
+        orderBy: 'id',
+      ),
     );
     tables['categories'] = categories;
     recordCount += categories.length;
+    final categoryTranslations = await _rowsForIds(
+      source,
+      table: 'category_translations',
+      field: 'category_id',
+      ids: categories.map((row) => row['id']! as String).toSet(),
+    );
+    tables['category_translations'] = categoryTranslations;
+    recordCount += categoryTranslations.length;
 
     final merchants = await source.query('merchants', where: 'is_built_in = 0');
     tables['merchants'] = merchants;
@@ -84,10 +94,39 @@ final class LocalBackupSnapshotWriter {
 
     final tags = await source.query(
       'tags',
-      where: "id NOT LIKE 'tag.%' AND id NOT LIKE 'system-tag-%'",
+      where:
+          "id NOT IN ("
+          "'tag.business','tag.personal','tag.reimbursable',"
+          "'tag.tax_related','tag.travel','tag.recurring','tag.subscription'"
+          ')',
     );
     tables['tags'] = tags;
     recordCount += tags.length;
+    final tagTranslations = await _rowsForIds(
+      source,
+      table: 'tag_translations',
+      field: 'tag_id',
+      ids: tags.map((row) => row['id']! as String).toSet(),
+    );
+    tables['tag_translations'] = tagTranslations;
+    recordCount += tagTranslations.length;
+
+    final referenceData = await source.query(
+      'reference_data',
+      where: 'LOWER(origin) != ?',
+      whereArgs: ['system'],
+      orderBy: 'id',
+    );
+    tables['reference_data'] = referenceData;
+    recordCount += referenceData.length;
+    final referenceDataTranslations = await _rowsForIds(
+      source,
+      table: 'reference_data_translations',
+      field: 'reference_data_id',
+      ids: referenceData.map((row) => row['id']! as String).toSet(),
+    );
+    tables['reference_data_translations'] = referenceDataTranslations;
+    recordCount += referenceDataTranslations.length;
 
     // Open Review issues are generated from current records. A closed issue is
     // durable evidence of a user's decision and therefore remains portable.
@@ -283,6 +322,33 @@ final class LocalBackupSnapshotWriter {
     if (await destination.exists()) await destination.delete();
     await temporary.rename(destination.path);
     return destination;
+  }
+
+  List<Map<String, Object?>> _orderCategoriesForBackup(
+    List<Map<String, Object?>> rows,
+  ) {
+    final pending = [...rows];
+    final knownIds = rows.map((row) => row['id']).whereType<String>().toSet();
+    final emitted = <String>{};
+    final ordered = <Map<String, Object?>>[];
+    while (pending.isNotEmpty) {
+      final ready = pending.where((row) {
+        final parentId = row['parent_id'] as String?;
+        return parentId == null ||
+            !knownIds.contains(parentId) ||
+            emitted.contains(parentId);
+      }).toList();
+      if (ready.isEmpty) {
+        throw StateError('Category hierarchy contains a cycle.');
+      }
+      for (final row in ready) {
+        pending.remove(row);
+        ordered.add(row);
+        final id = row['id'];
+        if (id is String) emitted.add(id);
+      }
+    }
+    return ordered;
   }
 
   Future<List<Map<String, Object?>>> _rowsForIds(

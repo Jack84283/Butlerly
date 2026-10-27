@@ -67,6 +67,9 @@ final class LocalDataManager {
     // Analysis findings and materialized results are derived from the user's
     // financial data and must not survive an erase/restart boundary. Bundled
     // rule definitions and their catalog remain application-owned config.
+    'budgets',
+    'analysis_rule_configurations',
+    'analysis_rule_activations',
     'analysis_findings',
     'analysis_rule_results',
     'attachment_links',
@@ -242,9 +245,34 @@ final class LocalDataManager {
     });
     final evidence = await evidenceDirectory();
     if (await evidence.exists()) await evidence.delete(recursive: true);
+    final evidenceParent = evidence.parent;
+    if (await evidenceParent.exists()) {
+      final restorePrefix = '${path.basename(evidence.path)}.restore-';
+      await for (final entity in evidenceParent.list(followLinks: false)) {
+        if (entity is Directory &&
+            path.basename(entity.path).startsWith(restorePrefix)) {
+          await entity.delete(recursive: true);
+        }
+      }
+    }
     final pendingEvidence = await pendingEvidenceDirectory();
     if (await pendingEvidence.exists()) {
       await pendingEvidence.delete(recursive: true);
+    }
+
+    // Restore staging workspaces contain private SQLite and evidence copies.
+    // They are normally removed when a restore finishes, but an interrupted
+    // recovery reset must not leave them behind after an explicit erase-all.
+    final databaseDirectory = Directory(
+      path.dirname(database.persistenceDatabase.path),
+    );
+    if (await databaseDirectory.exists()) {
+      await for (final entity in databaseDirectory.list(followLinks: false)) {
+        if (entity is Directory &&
+            path.basename(entity.path).startsWith('.butlerly-restore-stage-')) {
+          await entity.delete(recursive: true);
+        }
+      }
     }
 
     // Recovery snapshots contain user financial state and are part of an
@@ -268,6 +296,16 @@ final class LocalDataManager {
       ]) {
         if (await file.exists()) await file.delete();
       }
+    }
+    for (final file in <File>[
+      File('${evidence.path}.restore-journal.json'),
+      File('${evidence.path}.restore-journal.json.tmp'),
+      File('${evidence.path}.restore-journal.json.previous'),
+      File('${evidence.path}.restore-origin.json'),
+      File('${evidence.path}.restore-origin.json.tmp'),
+      File('${evidence.path}.restore-origin.json.previous'),
+    ]) {
+      if (await file.exists()) await file.delete();
     }
 
     final documents = await documentsDirectory();

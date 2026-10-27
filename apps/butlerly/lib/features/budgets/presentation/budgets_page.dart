@@ -411,6 +411,14 @@ class _BudgetsPageState extends State<BudgetsPage> {
       title: context.l10n.text('budgets'),
       fullWidth: desktop,
       pinnedSpacing: ButlerlyPinnedPageSpacing.tightHeader,
+      leading: desktop
+          ? null
+          : IconButton(
+              tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+              icon: const Icon(Icons.arrow_back_rounded),
+              onPressed: () =>
+                  context.canPop() ? context.pop() : context.go('/settings'),
+            ),
       actions: [
         if (_management != null)
           ButlerlyHeaderAddButton(

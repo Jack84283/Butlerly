@@ -31,8 +31,156 @@ void main() {
     expect((manifest['backupId']! as String), isNotEmpty);
     expect(manifest['appVersion'], '1.0.0');
     expect(manifest['appBuild'], '1');
-    expect(manifest['schemaVersion'], 13);
+    expect(manifest['schemaVersion'], 14);
   });
+
+  test(
+    'current-schema backups reject missing tables before replacing local data',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.database.database.insert('budgets', {
+        'id': 'budget-preserve-on-rejection',
+        'scope': 'overall',
+        'scope_id': null,
+        'currency': 'USD',
+        'amount': '500.00',
+        'created_at': '2026-10-01T00:00:00.000Z',
+        'updated_at': '2026-10-01T00:00:00.000Z',
+      });
+      final backup = File(
+        path.join(fixture.root.path, 'incomplete-current-schema.butlerly'),
+      );
+      await fixture.manager.createBackup(backup);
+      await _removeTableFromBackup(backup, 'budgets');
+
+      await expectLater(
+        fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
+        throwsA(isA<FormatException>()),
+      );
+      expect(
+        await fixture.database.database.query(
+          'budgets',
+          where: 'id = ?',
+          whereArgs: ['budget-preserve-on-rejection'],
+        ),
+        hasLength(1),
+      );
+    },
+  );
+
+  test(
+    'restore rejects missing referenced evidence before activating the package',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.insertTransaction('tx-evidence-preserve');
+      await fixture.database.database.insert('evidence_items', {
+        'id': 'evidence-preserve',
+        'type': 'receipt',
+        'original_name': 'receipt.bin',
+        'media_type': 'application/octet-stream',
+        'provenance_id': 'tx-evidence-preserve-provenance',
+        'created_at': '2026-09-01T00:00:00.000Z',
+        'local_file_name': 'receipt.bin',
+      });
+      final liveEvidence = File(
+        path.join(fixture.evidence.path, 'receipt.bin'),
+      );
+      await liveEvidence.writeAsString('live evidence', flush: true);
+      final backup = File(
+        path.join(fixture.root.path, 'missing-evidence-reference.butlerly'),
+      );
+      await fixture.manager.createBackup(backup);
+      await _rewriteBackupMetadata(backup, (metadata) {
+        final tables = (metadata['tables']! as Map).cast<String, Object?>();
+        final rows = (tables['evidence_items']! as List).cast<Map>();
+        rows.single['local_file_name'] = 'missing.bin';
+      });
+
+      await expectLater(
+        fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
+        throwsA(isA<FormatException>()),
+      );
+      expect(await liveEvidence.readAsString(), 'live evidence');
+      expect(
+        await fixture.database.database.query(
+          'transactions',
+          where: 'id = ?',
+          whereArgs: ['tx-evidence-preserve'],
+        ),
+        hasLength(1),
+      );
+    },
+  );
+
+  test(
+    'restore writes nested user categories in parent-before-child order',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      const timestamp = '2026-10-01T00:00:00.000Z';
+      await fixture.database.database.insert('categories', {
+        'id': 'z-category-parent',
+        'name': 'Parent',
+        'origin': 'user',
+        'parent_id': null,
+        'status': 'active',
+        'created_at': timestamp,
+        'updated_at': timestamp,
+      });
+      await fixture.database.database.insert('categories', {
+        'id': 'a-category-child',
+        'name': 'Child',
+        'origin': 'user',
+        'parent_id': 'z-category-parent',
+        'status': 'active',
+        'created_at': timestamp,
+        'updated_at': timestamp,
+      });
+      final backup = File(
+        path.join(fixture.root.path, 'nested-categories.butlerly'),
+      );
+      await fixture.manager.createBackup(backup);
+      await fixture.database.database.delete(
+        'categories',
+        where: 'id = ?',
+        whereArgs: ['a-category-child'],
+      );
+      await fixture.database.database.delete(
+        'categories',
+        where: 'id = ?',
+        whereArgs: ['z-category-parent'],
+      );
+
+      await fixture.manager.restore(backup, mode: LocalRestoreMode.replace);
+
+      final child = await fixture.database.database.query(
+        'categories',
+        where: 'id = ?',
+        whereArgs: ['a-category-child'],
+      );
+      expect(child.single['parent_id'], 'z-category-parent');
+    },
+  );
+
+  test(
+    'new builds restore schema 13 backups without V1 child tables',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.insertTransaction('tx-schema-13');
+      final backup = File(
+        path.join(fixture.root.path, 'schema-13.butlerlybackup'),
+      );
+      await fixture.manager.createBackup(backup);
+      await _downgradeBackupToV13(backup);
+
+      await fixture.manager.restore(backup, mode: LocalRestoreMode.replace);
+
+      expect(await _ids(fixture, 'transactions'), contains('tx-schema-13'));
+    },
+  );
 
   test(
     'new builds restore schema 12 backups without statement duplicate evidence',
@@ -714,6 +862,38 @@ Future<Map<String, Object?>> _readManifest(File file) async {
   }
 }
 
+Future<void> _removeTableFromBackup(File backup, String tableName) async {
+  await _rewriteBackupMetadata(backup, (metadata) {
+    final tables = (metadata['tables']! as Map).cast<String, Object?>();
+    tables.remove(tableName);
+  });
+}
+
+Future<void> _rewriteBackupMetadata(
+  File backup,
+  void Function(Map<String, Object?> metadata) mutate,
+) async {
+  final bytes = await backup.readAsBytes();
+  final magic = utf8.encode('BUTLERLYBACKUP2');
+  final metadataLength = int64FromBytes(
+    bytes.sublist(magic.length, magic.length + 8),
+  );
+  final metadataStart = magic.length + 8 + 64;
+  final metadataEnd = metadataStart + metadataLength;
+  final metadata =
+      jsonDecode(utf8.decode(bytes.sublist(metadataStart, metadataEnd)))
+          as Map<String, Object?>;
+  mutate(metadata);
+  final encoded = utf8.encode(jsonEncode(metadata));
+  await backup.writeAsBytes([
+    ...magic,
+    ...int64Bytes(encoded.length),
+    ...ascii.encode(sha256Bytes(encoded)),
+    ...encoded,
+    ...bytes.sublist(metadataEnd),
+  ], flush: true);
+}
+
 Future<void> _downgradeBackupToV11(File backup) async {
   final bytes = await backup.readAsBytes();
   final magic = utf8.encode('BUTLERLYBACKUP2');
@@ -756,6 +936,38 @@ Future<void> _downgradeBackupToV12(File backup) async {
   final groups = (tables['duplicate_candidate_groups'] as List?) ?? const [];
   for (final value in groups) {
     if (value is Map) value.remove('statement_rows');
+  }
+  final encoded = utf8.encode(jsonEncode(metadata));
+  await backup.writeAsBytes([
+    ...magic,
+    ...int64Bytes(encoded.length),
+    ...ascii.encode(sha256Bytes(encoded)),
+    ...encoded,
+    ...bytes.sublist(metadataEnd),
+  ], flush: true);
+}
+
+Future<void> _downgradeBackupToV13(File backup) async {
+  final bytes = await backup.readAsBytes();
+  final magic = utf8.encode('BUTLERLYBACKUP2');
+  final metadataLength = int64FromBytes(
+    bytes.sublist(magic.length, magic.length + 8),
+  );
+  final metadataStart = magic.length + 8 + 64;
+  final metadataEnd = metadataStart + metadataLength;
+  final metadata =
+      (jsonDecode(utf8.decode(bytes.sublist(metadataStart, metadataEnd)))
+          as Map<String, Object?>);
+  final manifest = (metadata['manifest']! as Map).cast<String, Object?>();
+  final tables = (metadata['tables']! as Map).cast<String, Object?>();
+  manifest['schemaVersion'] = 13;
+  for (final table in [
+    'category_translations',
+    'tag_translations',
+    'reference_data',
+    'reference_data_translations',
+  ]) {
+    tables.remove(table);
   }
   final encoded = utf8.encode(jsonEncode(metadata));
   await backup.writeAsBytes([
