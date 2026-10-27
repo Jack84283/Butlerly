@@ -684,6 +684,45 @@ void main() {
     },
   );
 
+  test('identical receipts without IDs keep distinct repeatable row identities', () async {
+    final root = await Directory.systemTemp.createTemp('butlerly-distinct-receipts-');
+    addTearDown(() => root.delete(recursive: true));
+    final file = File('${root.path}/receipts.csv');
+    await file.writeAsString(
+      '${ButlerlyCsvTemplate.content(ButlerlyCsvKind.receipts)}'
+      '2026-10-15,Cafe,12.50,,Morning\r\n'
+      '2026-10-15,Cafe,12.50,,Morning\r\n',
+    );
+    final firstPass = <ImportTransactionCommand>[];
+    final importer = LocalCsvImporter.withHandler((command) async {
+      firstPass.add(command);
+      return ApplicationSuccess<TransactionDto>(_dto(command));
+    });
+    final preview = await importer.previewTemplate(
+      XFile(file.path),
+      kind: ButlerlyCsvKind.receipts,
+      defaultCurrency: 'USD',
+    );
+    expect(preview.errors, isEmpty);
+    expect(preview.validCount, 2);
+    final summary = await importer.commitPreview(
+      preview,
+      sourceId: 'receipts.csv',
+      sourceLanguage: 'en',
+    );
+    expect(summary.imported, 2);
+    expect(firstPass.first.id, isNot(firstPass.last.id));
+    final ids = firstPass.map((transaction) => transaction.id).toList();
+    firstPass.clear();
+    final retry = await importer.commitPreview(
+      preview,
+      sourceId: 'receipts.csv',
+      sourceLanguage: 'en',
+    );
+    expect(retry.imported, 2);
+    expect(firstPass.map((transaction) => transaction.id).toList(), ids);
+  });
+
   test(
     'missing saved preference blocks blank currency without silently assuming USD',
     () async {
