@@ -75,7 +75,11 @@ Future<void> startLocalFileImport(
     if (file == null || !context.mounted) return;
     onImportingChanged?.call(true);
     final importer = LocalCsvImporter(services<FinanceServices>());
-    final preview = await importer.previewTemplate(file, kind: kind);
+    final preview = await importer.previewTemplate(
+      file,
+      kind: kind,
+      languageCode: sourceLanguage,
+    );
     if (!context.mounted) return;
     onImportingChanged?.call(false);
     if (preview.rows.isEmpty ||
@@ -281,9 +285,15 @@ class _ImportExportPageState extends State<ImportExportPage> {
     );
   }
 
-  Future<void> _downloadCsvTemplate(ButlerlyCsvKind kind) async {
+  Future<void> _downloadCsvTemplate(
+    ButlerlyCsvKind kind, {
+    required String languageCode,
+  }) async {
     try {
-      final saved = await downloadButlerlyCsvTemplate(kind);
+      final saved = await downloadButlerlyCsvTemplate(
+        kind,
+        languageCode: languageCode,
+      );
       if (!mounted || !saved) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.text('csvTemplateSaved'))),
@@ -295,6 +305,77 @@ class _ImportExportPageState extends State<ImportExportPage> {
         context.l10n.text('csvTemplateDownloadFailed'),
       );
     }
+  }
+
+  Future<void> _showCsvTemplateGuide(ButlerlyCsvKind kind) async {
+    final language = await showButlerlyBottomSheet<String>(
+      context: context,
+      builder: (sheetContext) {
+        final appLanguage = Localizations.localeOf(sheetContext).languageCode;
+        final example = ButlerlyCsvTemplate.exampleValues(
+          kind,
+          languageCode: appLanguage,
+        );
+        final sample = kind == ButlerlyCsvKind.receipts
+            ? '${example[1]} · ${example[2]} · ${example[4]} ${example[3]}'
+            : '${example[0]} · ${example[1]} · ${example[3]} ${example[2]}';
+        return ButlerlySheet(
+          title: Text(sheetContext.l10n.text('csvDownloadTemplate')),
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(sheetContext.l10n.text(
+                kind == ButlerlyCsvKind.receipts
+                    ? 'csvGuideReceiptRequired'
+                    : 'csvGuideTransactionRequired',
+              )),
+              const SizedBox(height: ButlerlySpacing.compact),
+              Text(sheetContext.l10n.text('csvGuideCommon')),
+              const SizedBox(height: ButlerlySpacing.compact),
+              if (kind == ButlerlyCsvKind.transactions) ...[
+                Text(sheetContext.l10n.text('csvGuideTypes')),
+                const SizedBox(height: ButlerlySpacing.compact),
+              ],
+              Text(sheetContext.l10n.text('csvGuideOptional')),
+              const SizedBox(height: ButlerlySpacing.compact),
+              Text('${sheetContext.l10n.text('csvGuideExample')}: $sample'),
+              const SizedBox(height: ButlerlySpacing.standard),
+              Text(
+                sheetContext.l10n.text('csvChooseTemplateLanguage'),
+                style: Theme.of(sheetContext).textTheme.titleSmall,
+              ),
+              for (final code in ButlerlyCsvTemplate.languages)
+                ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.translate_outlined),
+                  title: Text(switch (code) {
+                    'zh' => '简体中文',
+                    'es' => 'Español',
+                    _ => 'English',
+                  }),
+                  subtitle: Text(
+                    ButlerlyCsvTemplate.displayHeaders(
+                      kind,
+                      languageCode: code,
+                    ).take(5).join(' · '),
+                  ),
+                  trailing: const Icon(Icons.download_outlined),
+                  onTap: () => Navigator.pop(sheetContext, code),
+                ),
+            ],
+          ),
+          actions: [
+            ButlerlyCancelButton(
+              onPressed: () => Navigator.pop(sheetContext),
+              child: Text(sheetContext.l10n.text('cancel')),
+            ),
+          ],
+        );
+      },
+    );
+    if (!mounted || language == null) return;
+    await _downloadCsvTemplate(kind, languageCode: language);
   }
 
   Future<void> _showImportMessage(String title, String message) async {
@@ -376,7 +457,7 @@ class _ImportExportPageState extends State<ImportExportPage> {
             subtitle: context.l10n.text('csvTransactionsTemplateDescription'),
             onTap: _importing
                 ? () {}
-                : () => _downloadCsvTemplate(ButlerlyCsvKind.transactions),
+                : () => _showCsvTemplateGuide(ButlerlyCsvKind.transactions),
           ),
           _ActionRow(
             icon: Icons.download_outlined,
@@ -384,7 +465,7 @@ class _ImportExportPageState extends State<ImportExportPage> {
             subtitle: context.l10n.text('csvReceiptsTemplateDescription'),
             onTap: _importing
                 ? () {}
-                : () => _downloadCsvTemplate(ButlerlyCsvKind.receipts),
+                : () => _showCsvTemplateGuide(ButlerlyCsvKind.receipts),
           ),
           _ActionRow(
             icon: Icons.image_outlined,
