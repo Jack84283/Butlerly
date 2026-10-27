@@ -336,6 +336,16 @@ final class LocalCsvImporter {
     String? paymentSourceId,
     Map<int, String> confirmedDuplicateTokens = const {},
   }) async {
+    // Template-based imports are atomic at validation time: the user must
+    // correct every invalid row before any row is committed.
+    if (preview.templateKind != null && preview.errors.isNotEmpty) {
+      return CsvImportSummary(
+        imported: 0,
+        duplicates: 0,
+        failed: preview.rows.where((row) => !row.isValid).length,
+        errors: List.unmodifiable(preview.errors),
+      );
+    }
     var imported = 0;
     var duplicates = 0;
     var failed = 0;
@@ -369,13 +379,16 @@ final class LocalCsvImporter {
             row.description,
             row.cardReference ?? '',
             row.externalReference ?? '',
+            preview.templateKind?.name ?? '',
           ].join('|'),
         );
         final result = await _importTransaction(
           ImportTransactionCommand(
             id: 'payment-$fingerprint',
             provenanceId: 'payment-provenance-$fingerprint',
-            sourceId: sourceId,
+            sourceId: preview.templateKind == null
+                ? sourceId
+                : 'butlerly-csv-${preview.templateKind!.name}:$sourceId',
             originalRepresentation: row.original,
             money: Money(
               amount: DecimalValue.parse(row.amount),
@@ -384,8 +397,9 @@ final class LocalCsvImporter {
             direction: row.direction!,
             transactionDate: row.date,
             description: row.description,
-            rawCounterparty: row.description,
+            rawCounterparty: row.merchant ?? row.description,
             sourceLanguage: sourceLanguage,
+            notes: row.notes,
             paymentSourceId: paymentSourceId,
             externalReference: row.externalReference ?? row.cardReference,
           ),
