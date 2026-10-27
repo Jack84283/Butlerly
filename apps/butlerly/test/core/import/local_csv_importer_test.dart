@@ -609,7 +609,9 @@ void main() {
   });
 
   test('missing currency uses saved default only when cell is blank', () async {
-    final dir = await Directory.systemTemp.createTemp('butlerly-default-currency-');
+    final dir = await Directory.systemTemp.createTemp(
+      'butlerly-default-currency-',
+    );
     addTearDown(() => dir.delete(recursive: true));
     final file = File('${dir.path}/receipts.csv');
     await file.writeAsString(
@@ -644,92 +646,108 @@ void main() {
     expect(captured.first.originalRepresentation, contains('12.50,,'));
   });
 
-  test('transactions with blank currency use default for duplicate preview and save', () async {
-    final dir = await Directory.systemTemp.createTemp('butlerly-transaction-fx-');
-    addTearDown(() => dir.delete(recursive: true));
-    final file = File('${dir.path}/transactions.csv');
-    await file.writeAsString(
-      '${ButlerlyCsvTemplate.content(ButlerlyCsvKind.transactions)}'
-      '2026-10-15,Groceries,40.00,,expense,Shop,,,\r\n'
-      '2026-10-16,Foreign purchase,80.00,EUR,expense,Store,,,\r\n',
-    );
-    final captured = <ImportTransactionCommand>[];
-    final importer = LocalCsvImporter.withHandler((command) async {
-      captured.add(command);
-      return ApplicationSuccess<TransactionDto>(_dto(command));
-    });
-    final preview = await importer.previewTemplate(
-      XFile(file.path),
-      kind: ButlerlyCsvKind.transactions,
-      defaultCurrency: 'USD',
-    );
-    expect(preview.errors, isEmpty);
-    expect(preview.rows.map((row) => row.currency).toList(), ['USD', 'EUR']);
-    final summary = await importer.commitPreview(
-      preview,
-      sourceId: 'transactions.csv',
-      sourceLanguage: 'en',
-    );
-    expect(summary.imported, 2);
-    expect(captured.map((c) => c.money.currency.value).toList(), ['USD', 'EUR']);
-  });
+  test(
+    'transactions with blank currency use default for duplicate preview and save',
+    () async {
+      final dir = await Directory.systemTemp.createTemp(
+        'butlerly-transaction-fx-',
+      );
+      addTearDown(() => dir.delete(recursive: true));
+      final file = File('${dir.path}/transactions.csv');
+      await file.writeAsString(
+        '${ButlerlyCsvTemplate.content(ButlerlyCsvKind.transactions)}'
+        '2026-10-15,Groceries,40.00,,expense,Shop,,,\r\n'
+        '2026-10-16,Foreign purchase,80.00,EUR,expense,Store,,,\r\n',
+      );
+      final captured = <ImportTransactionCommand>[];
+      final importer = LocalCsvImporter.withHandler((command) async {
+        captured.add(command);
+        return ApplicationSuccess<TransactionDto>(_dto(command));
+      });
+      final preview = await importer.previewTemplate(
+        XFile(file.path),
+        kind: ButlerlyCsvKind.transactions,
+        defaultCurrency: 'USD',
+      );
+      expect(preview.errors, isEmpty);
+      expect(preview.rows.map((row) => row.currency).toList(), ['USD', 'EUR']);
+      final summary = await importer.commitPreview(
+        preview,
+        sourceId: 'transactions.csv',
+        sourceLanguage: 'en',
+      );
+      expect(summary.imported, 2);
+      expect(captured.map((c) => c.money.currency.value).toList(), [
+        'USD',
+        'EUR',
+      ]);
+    },
+  );
 
-  test('missing saved preference blocks blank currency without silently assuming USD', () async {
-    final dir = await Directory.systemTemp.createTemp('butlerly-no-default-');
-    addTearDown(() => dir.delete(recursive: true));
-    final file = File('${dir.path}/receipts.csv');
-    await file.writeAsString(
-      '${ButlerlyCsvTemplate.content(ButlerlyCsvKind.receipts)}'
-      '2026-10-15,Store,25.00,,Lunch\r\n',
-    );
-    var imports = 0;
-    final importer = LocalCsvImporter.withHandler((command) async {
-      imports++;
-      return ApplicationSuccess<TransactionDto>(_dto(command));
-    });
-    final invalid = await importer.previewTemplate(
-      XFile(file.path),
-      kind: ButlerlyCsvKind.receipts,
-    );
-    expect(invalid.validCount, 0);
-    expect(invalid.errors.single, contains('no default currency'));
-    final summary = await importer.commitPreview(
-      invalid,
-      sourceId: 'receipts.csv',
-      sourceLanguage: 'en',
-    );
-    expect(summary.imported, 0);
-    expect(imports, 0);
-    final valid = await importer.previewTemplate(
-      XFile(file.path),
-      kind: ButlerlyCsvKind.receipts,
-      defaultCurrency: 'CNY',
-    );
-    expect(valid.errors, isEmpty);
-    expect(valid.rows.single.currency, 'CNY');
-  });
+  test(
+    'missing saved preference blocks blank currency without silently assuming USD',
+    () async {
+      final dir = await Directory.systemTemp.createTemp('butlerly-no-default-');
+      addTearDown(() => dir.delete(recursive: true));
+      final file = File('${dir.path}/receipts.csv');
+      await file.writeAsString(
+        '${ButlerlyCsvTemplate.content(ButlerlyCsvKind.receipts)}'
+        '2026-10-15,Store,25.00,,Lunch\r\n',
+      );
+      var imports = 0;
+      final importer = LocalCsvImporter.withHandler((command) async {
+        imports++;
+        return ApplicationSuccess<TransactionDto>(_dto(command));
+      });
+      final invalid = await importer.previewTemplate(
+        XFile(file.path),
+        kind: ButlerlyCsvKind.receipts,
+      );
+      expect(invalid.validCount, 0);
+      expect(invalid.errors.single, contains('no default currency'));
+      final summary = await importer.commitPreview(
+        invalid,
+        sourceId: 'receipts.csv',
+        sourceLanguage: 'en',
+      );
+      expect(summary.imported, 0);
+      expect(imports, 0);
+      final valid = await importer.previewTemplate(
+        XFile(file.path),
+        kind: ButlerlyCsvKind.receipts,
+        defaultCurrency: 'CNY',
+      );
+      expect(valid.errors, isEmpty);
+      expect(valid.rows.single.currency, 'CNY');
+    },
+  );
 
-  test('old receipt CSV with optional receipt id, tax and tip still imports', () async {
-    final dir = await Directory.systemTemp.createTemp('butlerly-legacy-receipts-');
-    addTearDown(() => dir.delete(recursive: true));
-    final file = File('${dir.path}/old.csv');
-    await file.writeAsString(
-      '\ufeff${ButlerlyCsvTemplate.legacyReceiptHeaders.join(',')}\r\n'
-      ',2026-10-15,Store,15.00,,1.00,2.00,Legacy\r\n',
-    );
-    final importer = LocalCsvImporter.withHandler(
-      (command) async => ApplicationSuccess<TransactionDto>(_dto(command)),
-    );
-    final preview = await importer.previewTemplate(
-      XFile(file.path),
-      kind: ButlerlyCsvKind.receipts,
-      defaultCurrency: 'USD',
-    );
-    expect(preview.errors, isEmpty);
-    expect(preview.rows.single.currency, 'USD');
-    expect(preview.rows.single.externalReference, isNull);
-    expect(preview.rows.single.original, contains('1.00,2.00'));
-  });
+  test(
+    'old receipt CSV with optional receipt id, tax and tip still imports',
+    () async {
+      final dir = await Directory.systemTemp.createTemp(
+        'butlerly-legacy-receipts-',
+      );
+      addTearDown(() => dir.delete(recursive: true));
+      final file = File('${dir.path}/old.csv');
+      await file.writeAsString(
+        '\ufeff${ButlerlyCsvTemplate.legacyReceiptHeaders.join(',')}\r\n'
+        ',2026-10-15,Store,15.00,,1.00,2.00,Legacy\r\n',
+      );
+      final importer = LocalCsvImporter.withHandler(
+        (command) async => ApplicationSuccess<TransactionDto>(_dto(command)),
+      );
+      final preview = await importer.previewTemplate(
+        XFile(file.path),
+        kind: ButlerlyCsvKind.receipts,
+        defaultCurrency: 'USD',
+      );
+      expect(preview.errors, isEmpty);
+      expect(preview.rows.single.currency, 'USD');
+      expect(preview.rows.single.externalReference, isNull);
+      expect(preview.rows.single.original, contains('1.00,2.00'));
+    },
+  );
 
   test('downloaded V1 templates are empty with exact versioned headers', () {
     expect(
