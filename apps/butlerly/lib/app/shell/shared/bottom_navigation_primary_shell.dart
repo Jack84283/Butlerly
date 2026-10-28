@@ -1,5 +1,6 @@
 import 'package:butlerly/app/shell/shared/primary_bottom_navigation.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:flutter/material.dart';
 
 /// Shared shell implementation for the width-driven Compact and Medium
@@ -34,7 +35,11 @@ class BottomNavigationPrimaryShell extends StatelessWidget {
           bottom: false,
           child: ColoredBox(
             key: bodySurfaceKey,
-            color: context.colors.subtleSurface,
+            color:
+                ButlerlyLayout.modeForWidth(MediaQuery.sizeOf(context).width) ==
+                    ButlerlyLayoutMode.medium
+                ? context.colors.background
+                : context.colors.subtleSurface,
             child: body,
           ),
         ),

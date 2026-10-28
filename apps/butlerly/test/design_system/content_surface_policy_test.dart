@@ -81,6 +81,38 @@ void main() {
     );
   });
 
+  testWidgets('medium responsive canvas fills viewport with page background', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(900, 1100);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: const Scaffold(body: ButlerlyResponsiveBody(child: SizedBox())),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final canvas = find.byKey(
+      const ValueKey('butlerly-responsive-body-canvas'),
+    );
+    final surface = find.byKey(
+      const ValueKey('butlerly-responsive-body-content-surface'),
+    );
+    final colors = AppTheme.light.extension<ButlerlySemanticColors>()!;
+    expect(tester.widget<ColoredBox>(canvas).color, colors.background);
+    expect(tester.getSize(canvas).width, 900);
+    expect(tester.getSize(surface).width, ButlerlySize.pageContentMaxWidth);
+    expect(
+      tester.getRect(surface).left,
+      closeTo((900 - ButlerlySize.pageContentMaxWidth) / 2, 0.01),
+    );
+  });
+
   testWidgets('responsive body distinguishes content from outside canvas', (
     tester,
   ) async {
