@@ -239,8 +239,6 @@ final class LocalCsvImporter {
           kind == ButlerlyCsvKind.receipts && expected.contains('tax');
       final tax = value('tax');
       final tip = value('tip');
-      final receiptIdRequired =
-          kind == ButlerlyCsvKind.receipts && expected.contains('receipt_id');
       String? error;
       if (values.length != expected.length) {
         error = _localizedCsvError('columns', language);
@@ -258,8 +256,6 @@ final class LocalCsvImporter {
         error = _localizedCsvError('currency', language);
       } else if (direction == null) {
         error = _localizedCsvError('direction', language);
-      } else if (receiptIdRequired && reference.isEmpty) {
-        error = _localizedCsvError('receiptId', language);
       } else if (hasLegacyReceiptTaxTip &&
           (!_validTemplateAmount(tax, allowZero: true) && tax.isNotEmpty ||
               !_validTemplateAmount(tip, allowZero: true) && tip.isNotEmpty)) {
@@ -378,7 +374,12 @@ final class LocalCsvImporter {
     return labels[locale]?[key] ?? labels['en']![key]!;
   }
 
-  static bool _validTemplateAmount(String value, {required bool allowZero}) {
+  static bool _validTemplateAmount(
+    String value, {
+    required bool allowZero,
+    bool optional = false,
+  }) {
+    if (optional && value.isEmpty) return true;
     if (!RegExp(r'^\d+(?:\.\d{1,4})?$').hasMatch(value)) return false;
     final decimal = DecimalValue.parse(value);
     return allowZero ? !decimal.isNegative : decimal.isPositive;
@@ -466,6 +467,9 @@ final class LocalCsvImporter {
             row.cardReference ?? '',
             row.externalReference ?? '',
             preview.templateKind?.name ?? '',
+            // With optional receipt/transaction IDs, two legitimate purchases
+            // can share date, merchant and amount. Preserve distinct rows,
+            // while retaining deterministic IDs for a retry of the same file.
             if (preview.templateKind != null) sourceId,
             if (preview.templateKind != null) '${row.rowNumber}',
           ].join('|'),

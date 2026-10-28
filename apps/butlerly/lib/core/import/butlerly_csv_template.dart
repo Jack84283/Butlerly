@@ -9,8 +9,9 @@ enum ButlerlyCsvKind { receipts, transactions }
 final class ButlerlyCsvTemplate {
   const ButlerlyCsvTemplate._();
 
+  // The recommended receipt template contains only financial facts. There
+  // is no required merchant receipt number or receipt-level accounting.
   static const receiptHeaders = <String>[
-    'receipt_id',
     'date',
     'merchant',
     'total',
@@ -18,7 +19,9 @@ final class ButlerlyCsvTemplate {
     'notes',
   ];
 
+  // Previously downloaded V1 templates remain valid and importable.
   static const legacySimpleReceiptHeaders = <String>[
+    'receipt_id',
     'date',
     'merchant',
     'total',
@@ -29,7 +32,7 @@ final class ButlerlyCsvTemplate {
   /// Receipt columns emitted by the pre-V1 importer. Tax and tip are not
   /// separate transaction fields in the current model; the importer accepts
   /// this shape for compatibility and preserves those values in notes.
-  static const legacyTaxTipReceiptHeaders = <String>[
+  static const legacyReceiptHeaders = <String>[
     'receipt_id',
     'date',
     'merchant',
@@ -57,7 +60,6 @@ final class ButlerlyCsvTemplate {
   static const _labels = <String, Map<ButlerlyCsvKind, List<String>>>{
     'en': {
       ButlerlyCsvKind.receipts: [
-        'Receipt ID',
         'Date',
         'Merchant',
         'Total Paid',
@@ -77,7 +79,7 @@ final class ButlerlyCsvTemplate {
       ],
     },
     'zh': {
-      ButlerlyCsvKind.receipts: ['收据编号', '日期', '商家', '实付总额', '币种', '备注'],
+      ButlerlyCsvKind.receipts: ['日期', '商家', '实付总额', '币种', '备注'],
       ButlerlyCsvKind.transactions: [
         '日期',
         '描述',
@@ -92,7 +94,6 @@ final class ButlerlyCsvTemplate {
     },
     'es': {
       ButlerlyCsvKind.receipts: [
-        'ID de recibo',
         'Fecha',
         'Comercio',
         'Total pagado',
@@ -118,13 +119,23 @@ final class ButlerlyCsvTemplate {
     return languages.contains(short) ? short! : 'en';
   }
 
+  // Translated receipt headers from the six-column template shipped before
+  // the simplified template.
   static const _legacySimpleReceiptLabels = <String, List<String>>{
-    'en': ['Date', 'Merchant', 'Total Paid', 'Currency', 'Notes'],
-    'zh': ['日期', '商家', '实付总额', '币种', '备注'],
-    'es': ['Fecha', 'Comercio', 'Total pagado', 'Moneda', 'Notas'],
+    'en': ['Receipt ID', 'Date', 'Merchant', 'Total Paid', 'Currency', 'Notes'],
+    'zh': ['收据编号', '日期', '商家', '实付总额', '币种', '备注'],
+    'es': [
+      'ID de recibo',
+      'Fecha',
+      'Comercio',
+      'Total pagado',
+      'Moneda',
+      'Notas',
+    ],
   };
 
-  static const _legacyTaxTipReceiptLabels = <String, List<String>>{
+  // Translated receipt headers from the eight-column legacy template.
+  static const _legacyReceiptLabels = <String, List<String>>{
     'en': [
       'Receipt ID',
       'Date',
@@ -135,7 +146,7 @@ final class ButlerlyCsvTemplate {
       'Tip',
       'Notes',
     ],
-    'zh': ['收据编号', '日期', '商家', '实付总额', '币种', '税费', '小费', '备注'],
+    'zh': ['收据编号', '日期', '商家', '实付总额', '币种', '税额', '小费', '备注'],
     'es': [
       'ID de recibo',
       'Fecha',
@@ -158,17 +169,21 @@ final class ButlerlyCsvTemplate {
     String languageCode = 'en',
   }) => _labels[language(languageCode)]![kind]!;
 
+  /// Column positions are fixed; translated names don't change the mapping.
+  /// This also recognizes files created by earlier V1 templates.
   static bool matchesHeaders(ButlerlyCsvKind kind, List<String> actual) =>
       recognizedHeaders(kind, actual) != null;
 
+  /// Returns canonical positional fields for any supported V1 layout.
+  /// Null means an unrecognized template, which must never be guessed.
   static List<String>? recognizedHeaders(
     ButlerlyCsvKind kind,
     List<String> actual,
   ) {
     bool same(List<String> expected) {
       if (actual.length != expected.length) return false;
-      for (var i = 0; i < actual.length; i++) {
-        if (actual[i].replaceFirst('﻿', '').trim().toLowerCase() !=
+      for (var i = 0; i < expected.length; i++) {
+        if (actual[i].replaceFirst('\ufeff', '').trim().toLowerCase() !=
             expected[i].toLowerCase()) {
           return false;
         }
@@ -176,40 +191,34 @@ final class ButlerlyCsvTemplate {
       return true;
     }
 
-    if (same(headers(kind))) return headers(kind);
-    if (kind == ButlerlyCsvKind.receipts &&
-        (same(legacyTaxTipReceiptHeaders) ||
-            languages.any((code) => same(_legacyTaxTipReceiptLabels[code]!)))) {
-      return legacyTaxTipReceiptHeaders;
+    if (same(headers(kind)) ||
+        languages.any(
+          (code) => same(displayHeaders(kind, languageCode: code)),
+        )) {
+      return headers(kind);
     }
     if (kind == ButlerlyCsvKind.receipts &&
         (same(legacySimpleReceiptHeaders) ||
             languages.any((code) => same(_legacySimpleReceiptLabels[code]!)))) {
       return legacySimpleReceiptHeaders;
     }
-    if (languages.any(
-      (code) => same(displayHeaders(kind, languageCode: code)),
-    )) {
-      return headers(kind);
+    if (kind == ButlerlyCsvKind.receipts &&
+        (same(legacyReceiptHeaders) ||
+            languages.any((code) => same(_legacyReceiptLabels[code]!)))) {
+      return legacyReceiptHeaders;
     }
     return null;
   }
 
-  static String filename(ButlerlyCsvKind kind, {String languageCode = 'en'}) {
-    final suffix = languageCode == 'en' ? '' : '_${language(languageCode)}';
-    return 'butlerly_${kind.name}_v1$suffix.csv';
-  }
+  static String filename(ButlerlyCsvKind kind, {String languageCode = 'en'}) =>
+      'butlerly_${kind.name}_v1_${language(languageCode)}.csv';
 
-  static String content(ButlerlyCsvKind kind, {String languageCode = 'en'}) {
-    final normalizedLanguage = languageCode == 'en'
-        ? 'en'
-        : language(languageCode);
-    final headers = normalizedLanguage == 'en'
-        ? ButlerlyCsvTemplate.headers(kind)
-        : displayHeaders(kind, languageCode: normalizedLanguage);
-    return '\ufeff${headers.join(',')}\r\n';
-  }
+  /// UTF-8 BOM helps Excel recognize Chinese/Spanish headers without mojibake.
+  /// The CSV is intentionally header-only; examples are shown in the app.
+  static String content(ButlerlyCsvKind kind, {String languageCode = 'en'}) =>
+      '\ufeff${displayHeaders(kind, languageCode: languageCode).join(',')}\r\n';
 
+  /// Canonical English data values continue to work in every locale.
   static const _localizedDirections = <String, String>{
     'expense': 'expense',
     'income': 'income',
@@ -238,6 +247,7 @@ final class ButlerlyCsvTemplate {
         _ => 'expense, income, transfer, refund, adjustment',
       };
 
+  /// Safe illustrative values; do not include in the downloadable CSV.
   static List<String> exampleValues(
     ButlerlyCsvKind kind, {
     String languageCode = 'en',
@@ -245,7 +255,6 @@ final class ButlerlyCsvTemplate {
     final lang = language(languageCode);
     if (kind == ButlerlyCsvKind.receipts) {
       return [
-        'receipt-100',
         '2026-10-15',
         switch (lang) {
           'zh' => '示例商店',
@@ -253,7 +262,7 @@ final class ButlerlyCsvTemplate {
           _ => 'Example Store',
         },
         '22.50',
-        '',
+        '', // Currency is optional; defaults to the user's configured currency.
         '',
       ];
     }
