@@ -235,10 +235,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
                     ),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [
-                          Color(0xFFC0974C),
-                          Color(0xFFF3C670),
-                        ],
+                        colors: [Color(0xFFC0974C), Color(0xFFF3C670)],
                       ),
                       borderRadius: BorderRadius.circular(ButlerlyRadius.pill),
                     ),
@@ -247,10 +244,14 @@ class PrimaryBottomNavigation extends StatelessWidget {
                         color: navigationColor.withValues(
                           alpha: ButlerlyOpacity.primaryNavigationSurface,
                         ),
-                        borderRadius: BorderRadius.circular(ButlerlyRadius.pill),
+                        borderRadius: BorderRadius.circular(
+                          ButlerlyRadius.pill,
+                        ),
                       ),
                       child: ClipRRect(
-                        borderRadius: BorderRadius.circular(ButlerlyRadius.pill),
+                        borderRadius: BorderRadius.circular(
+                          ButlerlyRadius.pill,
+                        ),
                         child: Row(
                           key: const ValueKey('primary-navigation-content'),
                           children: [
@@ -261,8 +262,11 @@ class PrimaryBottomNavigation extends StatelessWidget {
                                   destinations[branchIndex]!,
                                   branchIndex,
                                   navigationHeight -
-                                      ButlerlySize.primaryNavigationAddIconSize -
-                                      2 * ButlerlySize.primaryNavigationBorderWidth,
+                                      ButlerlySize
+                                          .primaryNavigationAddIconSize -
+                                      2 *
+                                          ButlerlySize
+                                              .primaryNavigationBorderWidth,
                                 ),
                               ),
                           ],
