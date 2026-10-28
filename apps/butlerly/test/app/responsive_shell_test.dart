@@ -146,9 +146,9 @@ void main() {
       expect(tester.getSize(bodySurface), size);
       expect(
         tester.widget<ColoredBox>(bodySurface).color,
-        Theme.of(tester.element(bodySurface))
-            .extension<ButlerlySemanticColors>()!
-            .background,
+        Theme.of(
+          tester.element(bodySurface),
+        ).extension<ButlerlySemanticColors>()!.background,
       );
       final canvas = find.byKey(
         const ValueKey('butlerly-responsive-body-canvas'),
@@ -156,9 +156,9 @@ void main() {
       expect(tester.getSize(canvas).width, size.width);
       expect(
         tester.widget<ColoredBox>(canvas).color,
-        Theme.of(tester.element(canvas))
-            .extension<ButlerlySemanticColors>()!
-            .background,
+        Theme.of(
+          tester.element(canvas),
+        ).extension<ButlerlySemanticColors>()!.background,
       );
       expect(
         tester.getRect(bodySurface).bottom,
