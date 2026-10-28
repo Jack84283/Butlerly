@@ -7,10 +7,16 @@ import 'package:share_plus/share_plus.dart';
 import 'butlerly_csv_template.dart';
 
 /// Exports exact UTF-8 templates to a user-selected location without network.
-Future<bool> downloadButlerlyCsvTemplate(ButlerlyCsvKind kind) async {
-  final filename = ButlerlyCsvTemplate.filename(kind);
+Future<bool> downloadButlerlyCsvTemplate(
+  ButlerlyCsvKind kind, {
+  String languageCode = 'en',
+}) async {
+  final filename = ButlerlyCsvTemplate.filename(
+    kind,
+    languageCode: languageCode,
+  );
   final bytes = Uint8List.fromList(
-    utf8.encode(ButlerlyCsvTemplate.content(kind)),
+    utf8.encode(ButlerlyCsvTemplate.content(kind, languageCode: languageCode)),
   );
   final file = XFile.fromData(bytes, mimeType: 'text/csv', name: filename);
   final desktop =

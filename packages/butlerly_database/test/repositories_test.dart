@@ -1201,6 +1201,7 @@ void main() {
         allOf(
           containsPair('selected_transaction_id', isNull),
           containsPair('status', DuplicateCandidateGroupStatus.unresolved.name),
+          containsPair('updated_at', isNot(now.toIso8601String())),
         ),
       );
       expect(await database.connection.query('reconciliation_links'), isEmpty);

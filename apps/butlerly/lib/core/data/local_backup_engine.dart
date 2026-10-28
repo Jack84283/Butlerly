@@ -3,10 +3,13 @@ import 'dart:io';
 
 import 'package:butlerly/core/data/backup_container_format.dart';
 import 'package:butlerly/core/data/duplicate_group_backup_policy.dart';
+import 'package:butlerly/core/data/evidence_path_safety.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly_database/butlerly_database.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart'
+    hide Transaction;
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common/sqlite_api.dart';
 
@@ -70,11 +73,13 @@ final class _PreparedEvidence {
     required this.directory,
     required this.addedCount,
     required this.pathRemaps,
+    required this.expectedHashes,
   });
 
   final Directory directory;
   final int addedCount;
   final Map<String, String> pathRemaps;
+  final Map<String, String> expectedHashes;
 }
 
 final class LocalBackupManager {
@@ -260,11 +265,16 @@ final class LocalBackupManager {
   static Set<String> requiredTablesForSchema(int sourceSchema) {
     final required = backupTableNames;
     if (sourceSchema <= 13) {
+      // Schema 13 was emitted both before and after budgets were introduced.
+      // Treat it as a compatibility family: budgets may be absent from a
+      // legitimate historical schema-13 package. Schema 14 is the first
+      // schema that requires budgets.
       required.removeAll(const {
         'category_translations',
         'tag_translations',
         'reference_data',
         'reference_data_translations',
+        'budgets',
       });
     }
     if (sourceSchema <= 11) {
@@ -279,6 +289,85 @@ final class LocalBackupManager {
   static final _specByName = <String, _TableSpec>{
     for (final spec in _tables) spec.name: spec,
   };
+
+  static final _enumColumnsByTable = <String, Map<String, Set<String>>>{
+    'payment_sources': {
+      'type': _enumNames(PaymentSourceType.values),
+      'status': _enumNames(PaymentSourceStatus.values),
+    },
+    'categories': {
+      'origin': _enumNames(CategoryOrigin.values),
+      'status': _enumNames(CategoryStatus.values),
+    },
+    'merchants': {'status': _enumNames(MerchantStatus.values)},
+    'merchant_aliases': {'status': _enumNames(MerchantMatchingStatus.values)},
+    'merchant_normalization_patterns': {
+      'status': _enumNames(MerchantMatchingStatus.values),
+    },
+    'tags': {'status': _enumNames(TagStatus.values)},
+    'provenances': {
+      // `manual` was emitted by early local-first builds before provenance
+      // sources were split into the current enum values.
+      'source_type': {..._enumNames(ProvenanceSourceType.values), 'manual'},
+    },
+    'transactions': {
+      'direction': _enumNames(TransactionDirection.values),
+      'source_type': _enumNames(TransactionSourceType.values),
+      'status': _enumNames(TransactionStatus.values),
+    },
+    'payment_settlements': {
+      'status': _enumNames(PaymentSettlementStatus.values),
+    },
+    'normalized_money': {
+      // `manual` was the historical spelling for user-entered normalization.
+      'normalization_source': {
+        ..._enumNames(NormalizationSource.values),
+        'manual',
+      },
+    },
+    'evidence_items': {
+      // These are persisted reference-data values from the pre-enum schema.
+      'type': {..._enumNames(EvidenceType.values), 'receipt', 'statement'},
+    },
+    'financial_statements': {
+      'status': {..._enumNames(StatementStatus.values), 'processed'},
+    },
+    'statement_rows': {
+      'row_kind': {..._enumNames(StatementRowKind.values), 'transaction'},
+      'status': _enumNames(StatementRowStatus.values),
+      'status_before_skip': _enumNames(StatementRowStatus.values),
+    },
+    'suggestions': {
+      'target': _enumNames(SuggestionTarget.values),
+      // `local` is the historical spelling for the current localAi method.
+      'method': {..._enumNames(SuggestionMethod.values), 'local'},
+      'status': _enumNames(SuggestionStatus.values),
+    },
+    'review_issues': {
+      'reason': _enumNames(ReviewIssueReason.values),
+      'status': _enumNames(ReviewIssueStatus.values),
+    },
+    'reconciliation_candidates': {
+      'status': _enumNames(ReconciliationCandidateStatus.values),
+    },
+    'duplicate_candidate_groups': {
+      'status': _enumNames(DuplicateCandidateGroupStatus.values),
+    },
+    'recurring_pattern_decisions': {
+      'status': _enumNames(RecurringPatternDecisionStatus.values),
+      'cadence': _enumNames(RecurringPatternDecisionCadence.values),
+    },
+    'budgets': {
+      'scope': {'overall', 'category', 'subcategory', 'merchant'},
+    },
+    'reference_data': {
+      'origin': _enumNames(ReferenceDataOrigin.values),
+      'status': _enumNames(ReferenceDataStatus.values),
+    },
+  };
+
+  static Set<String> _enumNames<T extends Enum>(List<T> values) =>
+      values.map((value) => value.name).toSet();
 
   static const _derivedTables = <String>[
     'analysis_findings',
@@ -322,21 +411,36 @@ final class LocalBackupManager {
           ),
           transactions: _tableRows(tablePayload, 'transactions'),
         );
-    final prepared = await _prepareEvidence(package, mode: mode);
-    _applyEvidenceRemaps(tablePayload, prepared.pathRemaps);
-    await _validateEvidenceReferences(tablePayload, prepared.directory);
-
     final root = await localDataManager.evidenceDirectory();
     final operationId = 'restore-${DateTime.now().microsecondsSinceEpoch}';
     final previous = Directory('${root.path}.restore-previous-$operationId');
     final journal = File('${root.path}.restore-journal.json');
-    await _writeJournal(
-      journal,
-      operationId,
-      previous.path,
-      prepared.directory.path,
-      'prepared',
-    );
+    _PreparedEvidence? prepared;
+    try {
+      prepared = await _prepareEvidence(package, mode: mode);
+      _applyEvidenceRemaps(tablePayload, prepared.pathRemaps);
+      await _validateEvidenceReferences(
+        tablePayload,
+        prepared.directory,
+        expectedHashes: prepared.expectedHashes,
+      );
+      await _writeJournal(
+        journal,
+        operationId,
+        previous.path,
+        prepared.directory.path,
+        'prepared',
+      );
+    } catch (_) {
+      // No live state has been activated yet. A validation or journal
+      // initialization failure must not leave a private evidence copy behind.
+      final staging = prepared?.directory;
+      if (staging != null && await staging.exists()) {
+        await staging.delete(recursive: true);
+      }
+      rethrow;
+    }
+    final preparedEvidence = prepared;
 
     var restoredRows = 0;
     var keptNewer = 0;
@@ -344,13 +448,13 @@ final class LocalBackupManager {
     var databaseCommitted = false;
     try {
       if (await root.exists()) await root.rename(previous.path);
-      await prepared.directory.rename(root.path);
+      await preparedEvidence.directory.rename(root.path);
       evidenceActivated = true;
       await _writeJournal(
         journal,
         operationId,
         previous.path,
-        prepared.directory.path,
+        preparedEvidence.directory.path,
         'evidenceActivated',
       );
       await database.database.transaction((tx) async {
@@ -364,7 +468,7 @@ final class LocalBackupManager {
           journal,
           operationId,
           previous.path,
-          prepared.directory.path,
+          preparedEvidence.directory.path,
           'dbWriting',
         );
 
@@ -402,10 +506,13 @@ final class LocalBackupManager {
             );
           }
           for (final spec in _tables) {
-            final payload =
+            var payload =
                 (tablePayload[spec.name] as List? ?? const <Object?>[])
                     .cast<Map>()
                     .map((row) => row.cast<String, Object?>());
+            if (spec.name == 'categories') {
+              payload = _orderCategories(payload.toList(growable: false));
+            }
             for (final row in payload) {
               if (await _isSystemOwned(tx, spec, row)) continue;
               if (mode == LocalRestoreMode.merge) {
@@ -445,9 +552,15 @@ final class LocalBackupManager {
               final entityType = row['entity_type'] as String?;
               final entityId = row['entity_id'];
               final spec = entityType == null ? null : _specByName[entityType];
-              if (spec == null || entityId == null) continue;
+              if (spec == null || entityId == null) {
+                throw const FormatException('Invalid backup tombstone.');
+              }
               final values = _keyValuesFromTombstone(spec, '$entityId');
-              if (values == null) continue;
+              if (values == null) {
+                throw const FormatException(
+                  'Invalid backup tombstone identity.',
+                );
+              }
               final localRows = await _queryByKeys(tx, spec, values);
               if (localRows.isNotEmpty &&
                   await _isSystemOwned(tx, spec, localRows.single)) {
@@ -493,7 +606,7 @@ final class LocalBackupManager {
           journal,
           operationId,
           previous.path,
-          prepared.directory.path,
+          preparedEvidence.directory.path,
           'dbCommitted',
         );
       } on Exception {
@@ -501,7 +614,7 @@ final class LocalBackupManager {
           mode: mode,
           restoredRows: restoredRows,
           keptNewerLocalRows: keptNewer,
-          restoredEvidence: prepared.addedCount,
+          restoredEvidence: preparedEvidence.addedCount,
         );
       }
     } catch (_) {
@@ -509,8 +622,8 @@ final class LocalBackupManager {
         if (evidenceActivated) {
           if (await root.exists()) await root.delete(recursive: true);
           if (await previous.exists()) await previous.rename(root.path);
-        } else if (await prepared.directory.exists()) {
-          await prepared.directory.delete(recursive: true);
+        } else if (await preparedEvidence.directory.exists()) {
+          await preparedEvidence.directory.delete(recursive: true);
         }
         if (await journal.exists()) await journal.delete();
       }
@@ -538,7 +651,7 @@ final class LocalBackupManager {
       mode: mode,
       restoredRows: restoredRows,
       keptNewerLocalRows: keptNewer,
-      restoredEvidence: prepared.addedCount,
+      restoredEvidence: preparedEvidence.addedCount,
     );
   }
 
@@ -549,6 +662,9 @@ final class LocalBackupManager {
     String staging,
     String phase,
   ) async {
+    await rejectSymlinkedPath(journal.path);
+    await rejectSymlinkedPath(previous);
+    await rejectSymlinkedPath(staging);
     await journal.writeAsString(
       jsonEncode({
         'operationId': operationId,
@@ -611,8 +727,10 @@ final class LocalBackupManager {
           'Backup schema is not supported by this Butlerly build.',
         );
       }
+      await _validateTablePayload(sourceSchema, tables);
       var offset = _magic.length + 8 + 64 + metadataLength;
       final descriptors = <_EvidenceDescriptor>[];
+      final normalizedPaths = <String>{};
       final hashPattern = RegExp(r'^[0-9a-f]{64}$');
       for (final raw in evidenceRaw.cast<Map>()) {
         final item = raw.cast<String, Object?>();
@@ -625,6 +743,10 @@ final class LocalBackupManager {
             hash == null ||
             !hashPattern.hasMatch(hash)) {
           throw const FormatException('Invalid evidence descriptor.');
+        }
+        final normalized = normalizeEvidencePath(relative);
+        if (!normalizedPaths.add(evidencePathKey(normalized))) {
+          throw const FormatException('Invalid or duplicate evidence path.');
         }
         descriptors.add(
           _EvidenceDescriptor(
@@ -660,21 +782,18 @@ final class LocalBackupManager {
     final staging = Directory(
       '${root.path}.restore-${DateTime.now().microsecondsSinceEpoch}',
     );
-    if (await staging.exists()) await staging.delete(recursive: true);
-    await staging.create(recursive: true);
-    if (mode == LocalRestoreMode.merge && await root.exists()) {
-      await _copyDirectory(root, staging);
-    }
     var added = 0;
     final remaps = <String, String>{};
+    final expectedHashes = <String, String>{};
     try {
+      if (await staging.exists()) await staging.delete(recursive: true);
+      await staging.create(recursive: true);
+      await rejectEvidenceRoot(root);
+      if (mode == LocalRestoreMode.merge && await root.exists()) {
+        await _copyDirectory(root, staging);
+      }
       for (final item in package.evidence) {
-        final normalized = path.normalize(item.relativePath);
-        if (path.isAbsolute(normalized) ||
-            normalized == '..' ||
-            normalized.startsWith('../')) {
-          throw const FormatException('Unsafe evidence path.');
-        }
+        final normalized = normalizeEvidencePath(item.relativePath);
         final actualHash = await sha256FileRange(
           package.file,
           start: item.offset,
@@ -687,7 +806,10 @@ final class LocalBackupManager {
         var destination = File(path.join(staging.path, relative));
         if (mode == LocalRestoreMode.merge && await destination.exists()) {
           final existingHash = await sha256FileRange(destination);
-          if (existingHash == item.sha256) continue;
+          if (existingHash == item.sha256) {
+            expectedHashes[evidencePathKey(relative)] = item.sha256;
+            continue;
+          }
 
           final extension = path.extension(relative);
           final base = path.basenameWithoutExtension(relative);
@@ -708,7 +830,8 @@ final class LocalBackupManager {
             }
             attempt++;
           }
-          remaps[normalized] = relative;
+          remaps[evidencePathKey(normalized)] = relative;
+          expectedHashes[evidencePathKey(relative)] = item.sha256;
           if (reuseExisting) continue;
         }
         await destination.parent.create(recursive: true);
@@ -722,11 +845,13 @@ final class LocalBackupManager {
           await sink.close();
         }
         added++;
+        expectedHashes[evidencePathKey(relative)] = item.sha256;
       }
       return _PreparedEvidence(
         directory: staging,
         addedCount: added,
         pathRemaps: remaps,
+        expectedHashes: expectedHashes,
       );
     } catch (_) {
       if (await staging.exists()) await staging.delete(recursive: true);
@@ -911,27 +1036,36 @@ final class LocalBackupManager {
       final row = raw.cast<String, Object?>();
       final current = row['local_file_name'] as String?;
       if (current == null) continue;
-      final replacement = remaps[path.normalize(current)];
+      final replacement =
+          remaps[evidencePathKey(normalizeEvidencePath(current))];
       if (replacement != null) row['local_file_name'] = replacement;
     }
   }
 
   Future<void> _validateEvidenceReferences(
     Map<String, Object?> tablePayload,
-    Directory evidenceRoot,
-  ) async {
+    Directory evidenceRoot, {
+    required Map<String, String> expectedHashes,
+  }) async {
     for (final row in _tableRows(tablePayload, 'evidence_items')) {
       final raw = row['local_file_name'];
       if (raw is! String || raw.trim().isEmpty) continue;
-      final relative = path.normalize(raw);
-      if (path.isAbsolute(relative) ||
-          relative == '..' ||
-          relative.startsWith('../')) {
-        throw const FormatException('Unsafe evidence reference.');
-      }
-      if (!await File(path.join(evidenceRoot.path, relative)).exists()) {
+      final relative = await validateEvidenceReferencePath(
+        evidenceRoot,
+        raw,
+        message: 'Unsafe evidence reference.',
+      );
+      final evidence = File(path.join(evidenceRoot.path, relative));
+      if (!await evidence.exists()) {
         throw const FormatException(
           'Backup evidence reference has no corresponding file.',
+        );
+      }
+      final expectedHash = expectedHashes[evidencePathKey(relative)];
+      if (expectedHash != null &&
+          await sha256FileRange(evidence) != expectedHash) {
+        throw const FormatException(
+          'Backup evidence reference points to the wrong file.',
         );
       }
     }
@@ -985,6 +1119,7 @@ final class LocalBackupManager {
       'transaction_id',
       'receipt_transaction_id',
       'payment_transaction_id',
+      'selected_transaction_id',
     ]) {
       final value = row[field];
       if (value is String && protected.contains(value)) return true;
@@ -1002,9 +1137,10 @@ final class LocalBackupManager {
     final backupTransactionsByKey = {
       for (final row in backupTransactions) _rowKey(transactionSpec, row): row,
     };
+    final localRowsByTable = await _portableLocalRows();
     var added = 0;
     var changed = 0;
-    for (final row in await database.database.query('transactions')) {
+    for (final row in localRowsByTable['transactions']!) {
       final backup = backupTransactionsByKey[_rowKey(transactionSpec, row)];
       if (backup == null) {
         added++;
@@ -1023,7 +1159,7 @@ final class LocalBackupManager {
       final backupByKey = {
         for (final row in backupRows) _rowKey(spec, row): row,
       };
-      final localRows = await database.database.query(spec.name);
+      final localRows = localRowsByTable[spec.name]!;
       for (final row in localRows) {
         if (await _isSystemOwned(database.database, spec, row)) continue;
         final backup = backupByKey[_rowKey(spec, row)];
@@ -1035,7 +1171,11 @@ final class LocalBackupManager {
     final deleted =
         Sqflite.firstIntValue(
           await database.database.rawQuery(
-            'SELECT COUNT(*) FROM entity_tombstones WHERE deleted_at > ?',
+            "SELECT COUNT(*) FROM entity_tombstones "
+            "WHERE deleted_at > ? AND entity_type NOT IN ("
+            "'review_issues','suggestions','reconciliation_candidates',"
+            "'duplicate_candidate_groups',"
+            "'duplicate_candidate_group_transactions')",
             [cutoff],
           ),
         ) ??
@@ -1046,6 +1186,555 @@ final class LocalBackupManager {
       masterDataChanged: master,
       deletedEntities: deleted,
     );
+  }
+
+  /// Returns the rows that [LocalBackupSnapshotWriter] carries across a
+  /// device boundary. Generated review/proposal state is deliberately omitted
+  /// from backups, while decided workflow state remains durable and visible to
+  /// inspection.
+  Future<Map<String, List<Map<String, Object?>>>> _portableLocalRows() async {
+    final rowsByTable = <String, List<Map<String, Object?>>>{};
+    for (final spec in _tables) {
+      rowsByTable[spec.name] = await database.database.query(spec.name);
+    }
+
+    rowsByTable['review_issues'] = rowsByTable['review_issues']!
+        .where((row) => row['closed_at'] != null)
+        .toList(growable: false);
+    rowsByTable['suggestions'] = rowsByTable['suggestions']!
+        .where((row) => row['decided_at'] != null)
+        .toList(growable: false);
+
+    final durableReconciliationIds = rowsByTable['reconciliation_candidates']!
+        .where((row) => row['status'] != 'proposed')
+        .map((row) => row['id'])
+        .whereType<String>()
+        .toSet();
+    rowsByTable['reconciliation_candidates'] =
+        rowsByTable['reconciliation_candidates']!
+            .where((row) => row['status'] != 'proposed')
+            .toList(growable: false);
+    rowsByTable['reconciliation_links'] = rowsByTable['reconciliation_links']!
+        .where((row) => durableReconciliationIds.contains(row['candidate_id']))
+        .toList(growable: false);
+
+    final duplicateGroups = rowsByTable['duplicate_candidate_groups']!;
+    final durableUnresolvedDuplicateIds =
+        DuplicateGroupBackupPolicy.durableUnresolvedGroupIds(
+          groups: duplicateGroups,
+          memberships: rowsByTable['duplicate_candidate_group_transactions']!,
+          transactions: rowsByTable['transactions']!,
+        );
+    final portableDuplicateIds = duplicateGroups
+        .where(
+          (row) =>
+              row['status'] != 'unresolved' ||
+              DuplicateGroupBackupPolicy.hasStatementEvidence(
+                row['statement_rows'],
+              ) ||
+              durableUnresolvedDuplicateIds.contains(row['id']),
+        )
+        .map((row) => row['id'])
+        .whereType<String>()
+        .toSet();
+    rowsByTable['duplicate_candidate_groups'] = duplicateGroups
+        .where((row) => portableDuplicateIds.contains(row['id']))
+        .toList(growable: false);
+    rowsByTable['duplicate_candidate_group_transactions'] =
+        rowsByTable['duplicate_candidate_group_transactions']!
+            .where((row) => portableDuplicateIds.contains(row['group_id']))
+            .toList(growable: false);
+    return rowsByTable;
+  }
+
+  Future<void> _validateTablePayload(
+    int sourceSchema,
+    Map<String, Object?> tables,
+  ) async {
+    final required = requiredTablesForSchema(sourceSchema);
+    final missing =
+        required.where((table) => !tables.containsKey(table)).toList()..sort();
+    if (missing.isNotEmpty) {
+      throw FormatException(
+        'Backup schema $sourceSchema is missing required tables: '
+        '${missing.join(', ')}.',
+      );
+    }
+    final unknown =
+        tables.keys.where((table) => !backupTableNames.contains(table)).toList()
+          ..sort();
+    if (unknown.isNotEmpty) {
+      throw FormatException(
+        'Backup schema $sourceSchema contains unknown tables: '
+        '${unknown.join(', ')}.',
+      );
+    }
+
+    for (final table in backupTableNames) {
+      if (!tables.containsKey(table)) continue;
+      final payload = tables[table];
+      if (payload is! List) {
+        throw FormatException(
+          'Backup schema $sourceSchema table "$table" must be a list of rows.',
+        );
+      }
+      final keys = _validationKeysForTable(table);
+      final identityKeys = table == 'entity_tombstones'
+          ? const ['entity_type', 'entity_id']
+          : _specByName[table]?.keys ??
+                const ['entity_type', 'entity_id', 'deleted_at'];
+      final schemaColumns = await _schemaColumns(table);
+      final requiredRowKeys = await _requiredRowKeysForSchema(
+        sourceSchema,
+        table,
+        schemaColumns,
+      );
+      final identities = <String>{};
+      for (var index = 0; index < payload.length; index++) {
+        final raw = payload[index];
+        if (raw is! Map) {
+          throw FormatException(
+            'Backup schema $sourceSchema table "$table" row $index '
+            'must be an object.',
+          );
+        }
+        if (sourceSchema >= schemaVersion &&
+            raw.keys.any((key) => !schemaColumns.contains(key))) {
+          throw FormatException(
+            'Backup schema $sourceSchema table "$table" row $index '
+            'contains an unknown column.',
+          );
+        }
+        for (final key in {...keys, ...requiredRowKeys}) {
+          if (!raw.containsKey(key) || raw[key] == null) {
+            throw FormatException(
+              'Backup schema $sourceSchema table "$table" row $index '
+              'is missing required key "$key".',
+            );
+          }
+        }
+        for (final key in identityKeys) {
+          if (!raw.containsKey(key)) {
+            throw FormatException(
+              'Backup schema $sourceSchema table "$table" row $index '
+              'is missing required key "$key".',
+            );
+          }
+        }
+        final identity = identityKeys
+            .map((key) => jsonEncode(raw[key]))
+            .join('|');
+        if (!identities.add(identity)) {
+          throw FormatException(
+            'Backup schema $sourceSchema table "$table" contains duplicate '
+            'identity at row $index.',
+          );
+        }
+        _validateRowValues(sourceSchema, table, raw, index);
+        _validateSemanticValues(sourceSchema, table, raw, index);
+        if (table == 'entity_tombstones') {
+          _validateTombstoneRow(sourceSchema, raw, index);
+        }
+      }
+    }
+    await _validateTableReferences(sourceSchema, tables);
+  }
+
+  Future<Set<String>> _schemaColumns(String table) async {
+    final rows = await database.database.rawQuery(
+      'PRAGMA table_info("$table")',
+    );
+    return rows.map((row) => row['name']).whereType<String>().toSet();
+  }
+
+  Future<Set<String>> _requiredRowKeysForSchema(
+    int sourceSchema,
+    String table,
+    Set<String> schemaColumns,
+  ) async {
+    // Historical backups are intentionally validated against their historical
+    // contract. Older rows may legitimately omit columns introduced later; the
+    // current schema contract is enforced only for current-schema payloads.
+    if (sourceSchema < schemaVersion) return const <String>{};
+    final rows = await database.database.rawQuery(
+      'PRAGMA table_info("$table")',
+    );
+    final required = rows
+        .where((row) => row['notnull'] == 1 && row['dflt_value'] == null)
+        .map((row) => row['name'])
+        .whereType<String>()
+        .toSet();
+    // This field has a SQLite default, but it is part of the backup contract:
+    // omitting it would let a partial row bypass built-in catalog protection.
+    const protectedHistoricalFields = <String, Set<String>>{
+      'merchants': {'is_built_in'},
+    };
+    required.addAll(protectedHistoricalFields[table] ?? const <String>{});
+    return required.intersection(schemaColumns);
+  }
+
+  void _validateRowValues(int sourceSchema, String table, Map raw, int index) {
+    const timestampColumns = {
+      'captured_at',
+      'closed_at',
+      'created_at',
+      'decided_at',
+      'deleted_at',
+      'effective_at',
+      'generated_at',
+      'installed_at',
+      'occurred_at',
+      'updated_at',
+      'calculated_at',
+      'retired_at',
+    };
+    const dateColumns = {
+      'effective_date',
+      'payment_date',
+      'period_end',
+      'period_start',
+      'posting_date',
+      'statement_date',
+      'transaction_date',
+    };
+    const currencyColumns = {
+      'base_currency',
+      'currency',
+      'from_currency',
+      'payment_currency',
+      'statement_balance_currency',
+      'to_currency',
+    };
+    final coefficientPattern = RegExp(r'_coefficient$');
+    final scalePattern = RegExp(r'_scale$');
+    for (final entry in raw.entries) {
+      final key = entry.key;
+      final value = entry.value;
+      if (value == null) continue;
+      if (value is Map || value is List) {
+        throw FormatException(
+          'Backup schema $sourceSchema table "$table" row $index '
+          'contains a non-scalar value for "$key".',
+        );
+      }
+      if (table == 'evidence_items' &&
+          key == 'local_file_name' &&
+          value is! String) {
+        throw FormatException(
+          'Backup schema $sourceSchema table "$table" row $index '
+          'contains a non-string local evidence reference.',
+        );
+      }
+      if (timestampColumns.contains(key) || dateColumns.contains(key)) {
+        // Duplicate review records intentionally preserve malformed historical
+        // timestamps so the repository can surface them as repair context.
+        if (table == 'duplicate_candidate_groups' &&
+            (key == 'created_at' || key == 'updated_at')) {
+          continue;
+        }
+        if (value is! String || DateTime.tryParse(value) == null) {
+          throw FormatException(
+            'Backup schema $sourceSchema table "$table" row $index '
+            'contains an invalid date value for "$key".',
+          );
+        }
+      }
+      if (coefficientPattern.hasMatch(key)) {
+        if (value is! String) {
+          throw FormatException(
+            'Backup schema $sourceSchema table "$table" row $index '
+            'contains an invalid decimal coefficient for "$key".',
+          );
+        }
+        try {
+          BigInt.parse(value);
+        } on FormatException {
+          throw FormatException(
+            'Backup schema $sourceSchema table "$table" row $index '
+            'contains an invalid decimal coefficient for "$key".',
+          );
+        }
+      }
+      if (scalePattern.hasMatch(key) && (value is! int || value < 0)) {
+        throw FormatException(
+          'Backup schema $sourceSchema table "$table" row $index '
+          'contains an invalid decimal scale for "$key".',
+        );
+      }
+      if (currencyColumns.contains(key) || key.endsWith('_currency')) {
+        if (value is! String || !RegExp(r'^[A-Z]{3}$').hasMatch(value)) {
+          throw FormatException(
+            'Backup schema $sourceSchema table "$table" row $index '
+            'contains an invalid currency value for "$key".',
+          );
+        }
+      }
+      if (key == 'confidence' || key == 'score') {
+        if (value is! num || !value.isFinite || value < 0 || value > 1) {
+          throw FormatException(
+            'Backup schema $sourceSchema table "$table" row $index '
+            'contains an invalid normalized score for "$key".',
+          );
+        }
+      }
+    }
+    if (table == 'budgets') {
+      final amount = raw['amount'];
+      if (amount is! String) {
+        throw FormatException(
+          'Backup schema $sourceSchema table "$table" row $index '
+          'contains an invalid decimal value for "amount".',
+        );
+      }
+      try {
+        if (!DecimalValue.parse(amount).isPositive) {
+          throw const FormatException();
+        }
+      } on Object {
+        throw FormatException(
+          'Backup schema $sourceSchema table "$table" row $index '
+          'contains an invalid decimal value for "amount".',
+        );
+      }
+    }
+    if (table == 'budgets') {
+      final scope = raw['scope'];
+      final scopeId = raw['scope_id'];
+      if (scope == 'overall' && scopeId != null ||
+          scope != 'overall' && scopeId == null) {
+        throw FormatException(
+          'Backup schema $sourceSchema table "$table" row $index '
+          'contains an invalid scope identity.',
+        );
+      }
+    }
+  }
+
+  Future<void> _validateTableReferences(
+    int sourceSchema,
+    Map<String, Object?> tables,
+  ) async {
+    // The snapshot intentionally omits catalog-owned rows; the installed
+    // database reseeds those before restored user rows are applied.
+    const omittedSystemTables = {
+      'categories',
+      'merchants',
+      'reference_data',
+      'tags',
+    };
+    final omittedSystemIds = <String, Set<String>>{
+      'categories': {
+        for (final row in await database.database.query(
+          'categories',
+          columns: ['id'],
+          where: "LOWER(origin) = 'system'",
+        ))
+          row['id']! as String,
+      },
+      'merchants': {
+        for (final row in await database.database.query(
+          'merchants',
+          columns: ['id'],
+          where: 'is_built_in = 1',
+        ))
+          row['id']! as String,
+      },
+      'reference_data': {
+        for (final row in await database.database.query(
+          'reference_data',
+          columns: ['id'],
+          where: "LOWER(origin) = 'system'",
+        ))
+          row['id']! as String,
+      },
+      'tags': _builtInTagIds,
+    };
+    const references = <String, Map<String, String>>{
+      'attachment_links': {
+        'transaction_id': 'transactions',
+        'evidence_id': 'evidence_items',
+      },
+      'categories': {'parent_id': 'categories'},
+      'category_translations': {'category_id': 'categories'},
+      'duplicate_candidate_group_transactions': {
+        'group_id': 'duplicate_candidate_groups',
+        'transaction_id': 'transactions',
+      },
+      'duplicate_candidate_groups': {'selected_transaction_id': 'transactions'},
+      'evidence_items': {'provenance_id': 'provenances'},
+      'extractions': {
+        'evidence_id': 'evidence_items',
+        'provenance_id': 'provenances',
+      },
+      'financial_statements': {
+        'evidence_id': 'evidence_items',
+        'payment_source_id': 'payment_sources',
+      },
+      'merchant_aliases': {'merchant_id': 'merchants'},
+      'merchant_normalization_patterns': {'merchant_id': 'merchants'},
+      'merchants': {
+        'default_category_id': 'categories',
+        'default_subcategory_id': 'categories',
+      },
+      'normalized_money': {
+        'transaction_id': 'transactions',
+        'exchange_rate_id': 'exchange_rates',
+      },
+      'payment_settlements': {'payment_source_id': 'payment_sources'},
+      'reconciliation_candidates': {
+        'receipt_transaction_id': 'transactions',
+        'payment_transaction_id': 'transactions',
+      },
+      'reconciliation_links': {
+        'candidate_id': 'reconciliation_candidates',
+        'receipt_transaction_id': 'transactions',
+        'payment_transaction_id': 'transactions',
+      },
+      'reference_data_translations': {'reference_data_id': 'reference_data'},
+      'review_issues': {'transaction_id': 'transactions'},
+      'statement_rows': {
+        'statement_id': 'financial_statements',
+        'transaction_id': 'transactions',
+        'merchant_id': 'merchants',
+        'category_id': 'categories',
+        'payment_source_id': 'payment_sources',
+        'subcategory_id': 'categories',
+      },
+      'suggestions': {
+        'transaction_id': 'transactions',
+        'provenance_id': 'provenances',
+      },
+      'tag_translations': {'tag_id': 'tags'},
+      'transaction_provenances': {
+        'transaction_id': 'transactions',
+        'provenance_id': 'provenances',
+      },
+      'transaction_rules': {
+        'merchant_id': 'merchants',
+        'category_id': 'categories',
+        'payment_source_id': 'payment_sources',
+        'tag_id': 'tags',
+        'assign_merchant_id': 'merchants',
+        'assign_category_id': 'categories',
+        'assign_payment_source_id': 'payment_sources',
+        'assign_tag_id': 'tags',
+        'assign_subcategory_id': 'categories',
+      },
+      'transaction_tags': {'transaction_id': 'transactions', 'tag_id': 'tags'},
+      'transactions': {
+        'payment_source_id': 'payment_sources',
+        'merchant_id': 'merchants',
+        'category_id': 'categories',
+        'subcategory_id': 'categories',
+      },
+    };
+    for (final entry in references.entries) {
+      final rows = (tables[entry.key] as List?)?.cast<Map>() ?? const <Map>[];
+      for (final raw in rows) {
+        for (final reference in entry.value.entries) {
+          final value = raw[reference.key];
+          if (value == null) continue;
+          final targetRows =
+              (tables[reference.value] as List?)?.cast<Map>() ?? const <Map>[];
+          if (!targetRows.any((target) => target['id'] == value)) {
+            if (omittedSystemTables.contains(reference.value) &&
+                omittedSystemIds[reference.value]!.contains(value)) {
+              continue;
+            }
+            throw FormatException(
+              'Backup schema $sourceSchema table "${entry.key}" references '
+              'missing ${reference.value} row "$value".',
+            );
+          }
+        }
+      }
+    }
+
+    final budgetRows =
+        (tables['budgets'] as List?)?.cast<Map>() ?? const <Map>[];
+    for (var index = 0; index < budgetRows.length; index++) {
+      final raw = budgetRows[index];
+      final scope = raw['scope'];
+      final scopeId = raw['scope_id'];
+      if (scope == 'overall') continue;
+      if (scopeId is! String || scopeId.isEmpty) {
+        throw FormatException(
+          'Backup schema $sourceSchema table "budgets" row $index '
+          'contains an invalid scope identity.',
+        );
+      }
+      final targetTable = scope == 'merchant' ? 'merchants' : 'categories';
+      final targetIds = <String>{
+        ...omittedSystemIds[targetTable]!,
+        for (final target
+            in (tables[targetTable] as List?)?.cast<Map>() ?? const <Map>[])
+          if (target['id'] is String) target['id']! as String,
+      };
+      if (!targetIds.contains(scopeId)) {
+        throw FormatException(
+          'Backup schema $sourceSchema table "budgets" row $index '
+          'references missing $targetTable row "$scopeId".',
+        );
+      }
+    }
+  }
+
+  void _validateTombstoneRow(int sourceSchema, Map raw, int index) {
+    final entityType = raw['entity_type'];
+    final entityId = raw['entity_id'];
+    final spec = entityType is String ? _specByName[entityType] : null;
+    if (spec == null ||
+        entityId == null ||
+        (entityId is String && entityId.isEmpty) ||
+        (entityId is! String && entityId is! num)) {
+      throw FormatException(
+        'Backup schema $sourceSchema table "entity_tombstones" row $index '
+        'contains an unknown or malformed entity identity.',
+      );
+    }
+    if (_keyValuesFromTombstone(spec, '$entityId') == null) {
+      throw FormatException(
+        'Backup schema $sourceSchema table "entity_tombstones" row $index '
+        'contains an invalid entity identity.',
+      );
+    }
+    try {
+      DateTime.parse(raw['deleted_at'] as String);
+    } on Object {
+      throw FormatException(
+        'Backup schema $sourceSchema table "entity_tombstones" row $index '
+        'contains an invalid deleted_at timestamp.',
+      );
+    }
+  }
+
+  void _validateSemanticValues(
+    int sourceSchema,
+    String table,
+    Map raw,
+    int index,
+  ) {
+    final columns = _enumColumnsByTable[table];
+    if (columns == null) return;
+    for (final entry in columns.entries) {
+      final value = raw[entry.key];
+      if (value == null) continue;
+      if (value is! String || !entry.value.contains(value)) {
+        throw FormatException(
+          'Backup schema $sourceSchema table "$table" row $index '
+          'contains invalid ${entry.key} value.',
+        );
+      }
+    }
+  }
+
+  List<String> _validationKeysForTable(String table) {
+    // SQLite permits exchange_rate_id to be NULL for user-entered
+    // normalization. It participates in the lookup key for merge semantics,
+    // but is not a required payload identity field.
+    if (table == 'normalized_money') return const ['transaction_id'];
+    return _specByName[table]?.keys ??
+        const ['entity_type', 'entity_id', 'deleted_at'];
   }
 
   Future<int> _applyBackupTombstones(
@@ -1063,10 +1752,12 @@ final class LocalBackupManager {
       final entityId = tombstone['entity_id'];
       final spec = entityType == null ? null : _specByName[entityType];
       if (spec == null || entityId == null) {
-        continue;
+        throw const FormatException('Invalid backup tombstone.');
       }
       final values = _keyValuesFromTombstone(spec, '$entityId');
-      if (values == null) continue;
+      if (values == null) {
+        throw const FormatException('Invalid backup tombstone identity.');
+      }
       final localRows = await _queryByKeys(tx, spec, values);
       if (localRows.isNotEmpty &&
           await _isSystemOwned(tx, spec, localRows.single)) {
@@ -1074,6 +1765,13 @@ final class LocalBackupManager {
       }
       if (localRows.isNotEmpty &&
           _rowChangedAfter(localRows.single, spec, backupTime)) {
+        kept++;
+        continue;
+      }
+      final localTombstone = await _findTombstone(tx, spec.name, '$entityId');
+      if (localTombstone != null &&
+          _tombstoneTime(localTombstone).compareTo(_tombstoneTime(tombstone)) >=
+              0) {
         kept++;
         continue;
       }
@@ -1086,6 +1784,23 @@ final class LocalBackupManager {
     }
     return kept;
   }
+
+  Future<Map<String, Object?>?> _findTombstone(
+    DatabaseExecutor tx,
+    String entityType,
+    String entityId,
+  ) async {
+    final rows = await tx.query(
+      'entity_tombstones',
+      where: 'entity_type = ? AND entity_id = ?',
+      whereArgs: [entityType, entityId],
+      limit: 1,
+    );
+    return rows.isEmpty ? null : rows.single;
+  }
+
+  DateTime _tombstoneTime(Map<String, Object?> row) =>
+      DateTime.parse(row['deleted_at']! as String).toUtc();
 
   Future<bool> _hasNewerLocalTombstone(
     DatabaseExecutor tx,
@@ -1219,6 +1934,40 @@ final class LocalBackupManager {
       where: where.join(' AND '),
       whereArgs: args,
     );
+  }
+
+  /// Historical snapshots ordered non-root categories by ID, which is not a
+  /// valid insertion order for every multi-level hierarchy. Restore the
+  /// payload topologically while leaving references to installed system
+  /// categories ready to insert immediately.
+  List<Map<String, Object?>> _orderCategories(List<Map<String, Object?>> rows) {
+    final byId = <String, Map<String, Object?>>{
+      for (final row in rows)
+        if (row['id'] is String) row['id']! as String: row,
+    };
+    final pending = rows.toList(growable: true);
+    final ordered = <Map<String, Object?>>[];
+    final inserted = <String>{};
+    while (pending.isNotEmpty) {
+      var progressed = false;
+      for (var index = pending.length - 1; index >= 0; index--) {
+        final row = pending[index];
+        final parentId = row['parent_id'];
+        final parentIsInPayload =
+            parentId is String && byId.containsKey(parentId);
+        if (parentIsInPayload && !inserted.contains(parentId)) continue;
+        pending.removeAt(index);
+        ordered.add(row);
+        if (row['id'] is String) inserted.add(row['id']! as String);
+        progressed = true;
+      }
+      if (!progressed) {
+        throw const FormatException(
+          'Backup contains a cyclic category hierarchy.',
+        );
+      }
+    }
+    return ordered;
   }
 
   bool _rowChangedAfter(
@@ -1447,7 +2196,12 @@ final class LocalBackupManager {
   }
 
   Future<void> _copyDirectory(Directory source, Directory destination) async {
-    await for (final entity in source.list(recursive: true)) {
+    await rejectEvidenceRoot(source);
+    await for (final entity in source.list(
+      recursive: true,
+      followLinks: false,
+    )) {
+      await rejectEvidenceLink(entity);
       final relative = path.relative(entity.path, from: source.path);
       final target = path.join(destination.path, relative);
       if (entity is Directory) {

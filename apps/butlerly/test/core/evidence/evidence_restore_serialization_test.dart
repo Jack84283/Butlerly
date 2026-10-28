@@ -9,6 +9,7 @@ import 'package:butlerly/core/evidence/evidence_mutation_lock.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly_database/butlerly_database.dart';
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
@@ -143,6 +144,105 @@ void main() {
     },
   );
 
+  test(
+    'evidence store resolves safe nested and Windows-style references',
+    () async {
+      final root = await Directory.systemTemp.createTemp(
+        'butlerly-evidence-nested-reference-',
+      );
+      final documents = Directory(path.join(root.path, 'documents'))
+        ..createSync();
+      final evidence = Directory(path.join(root.path, 'evidence'))
+        ..createSync();
+      final database = LocalDatabase(
+        logger: AppLogger(),
+        factory: databaseFactoryFfi,
+        databaseDirectory: root.path,
+      );
+      await database.initialize();
+      addTearDown(() async {
+        await database.close();
+        if (await root.exists()) await root.delete(recursive: true);
+      });
+
+      final data = LocalDataManager(
+        database,
+        documentsDirectory: documents,
+        localEvidenceDirectory: evidence,
+      );
+      final finance = FinanceServices(
+        SqliteTransactionRepository(database.persistenceDatabase),
+        SqlitePaymentSourceRepository(database.persistenceDatabase),
+        SqliteMerchantRepository(database.persistenceDatabase),
+        SqliteCategoryRepository(database.persistenceDatabase),
+        SqliteTagRepository(database.persistenceDatabase),
+        SqliteEvidenceRepository(database.persistenceDatabase),
+        SqliteUserPreferenceRepository(database.persistenceDatabase),
+      );
+      final store = LocalEvidenceStore(data, finance);
+      final nested = File(path.join(evidence.path, 'receipts', 'nested.bin'))
+        ..createSync(recursive: true);
+      await nested.writeAsString('nested evidence');
+      final now = DateTime.utc(2026, 9, 1);
+
+      final resolved = await store.fileFor(
+        EvidenceItem(
+          id: EvidenceId('nested-evidence'),
+          type: EvidenceType.other,
+          originalName: 'nested.bin',
+          mediaType: 'application/octet-stream',
+          localFileName: r'receipts\nested.bin',
+          provenance: Provenance(
+            id: ProvenanceId('nested-provenance'),
+            sourceType: ProvenanceSourceType.userEntry,
+            capturedAt: now,
+            originalRepresentation: 'nested.bin',
+          ),
+          createdAt: now,
+        ),
+      );
+
+      expect(resolved, isNotNull);
+      expect(await resolved!.readAsString(), 'nested evidence');
+
+      final outside = Directory(path.join(root.path, 'outside'))..createSync();
+      final secret = File(path.join(outside.path, 'secret.bin'))
+        ..writeAsStringSync('must survive');
+      await Link(path.join(evidence.path, 'linked')).create(outside.path);
+      final unsafe = await store.fileFor(
+        EvidenceItem(
+          id: EvidenceId('linked-evidence'),
+          type: EvidenceType.other,
+          originalName: 'secret.bin',
+          mediaType: 'application/octet-stream',
+          localFileName: 'linked/secret.bin',
+          provenance: Provenance(
+            id: ProvenanceId('linked-provenance'),
+            sourceType: ProvenanceSourceType.userEntry,
+            capturedAt: now,
+            originalRepresentation: 'secret.bin',
+          ),
+          createdAt: now,
+        ),
+      );
+      expect(unsafe, isNull);
+      expect(await secret.readAsString(), 'must survive');
+
+      final pendingTarget = Directory(path.join(root.path, 'pending-target'))
+        ..createSync();
+      await Link('${evidence.path}.pending').create(pendingTarget.path);
+      final source = File(path.join(root.path, 'capture.pdf'))
+        ..writeAsStringSync('capture');
+      await expectLater(
+        store.preserve(
+          XFile(source.path, name: 'capture.pdf', mimeType: 'application/pdf'),
+        ),
+        throwsA(isA<FormatException>()),
+      );
+      expect(await pendingTarget.list().toList(), isEmpty);
+    },
+  );
+
   test('erase all waits for restore and leaves final state erased', () async {
     final root = await Directory.systemTemp.createTemp(
       'butlerly-restore-erase-lock-',
@@ -217,5 +317,57 @@ void main() {
     expect(await database.database.query('transactions'), isEmpty);
     expect(await database.database.query('evidence_items'), isEmpty);
     expect(await evidence.exists(), isFalse);
+  });
+
+  test('erase all fails closed on a symlinked evidence root', () async {
+    final root = await Directory.systemTemp.createTemp(
+      'butlerly-erase-symlink-',
+    );
+    final documents = Directory(path.join(root.path, 'documents'))
+      ..createSync();
+    final evidence = Directory(path.join(root.path, 'evidence'))..createSync();
+    final outside = Directory(path.join(root.path, 'outside'))..createSync();
+    final protectedFile = File(path.join(outside.path, 'protected.txt'))
+      ..writeAsStringSync('protected');
+    final database = LocalDatabase(
+      logger: AppLogger(),
+      factory: databaseFactoryFfi,
+      databaseDirectory: root.path,
+    );
+    await database.initialize();
+    addTearDown(() async {
+      await database.close();
+      if (await root.exists()) await root.delete(recursive: true);
+    });
+    await database.database.insert('transactions', {
+      'id': 'tx-erase-symlink',
+      'unknown_time_reason': 'unknown',
+      'amount_coefficient': '100',
+      'amount_scale': 2,
+      'currency': 'USD',
+      'direction': 'expense',
+      'source_type': 'manual',
+      'status': 'active',
+      'created_at': DateTime.utc(2026, 9, 1).toIso8601String(),
+      'updated_at': DateTime.utc(2026, 9, 1).toIso8601String(),
+    });
+    await evidence.delete(recursive: true);
+    await Link(evidence.path).create(outside.path);
+    final data = LocalDataManager(
+      database,
+      documentsDirectory: documents,
+      localEvidenceDirectory: evidence,
+    );
+
+    await expectLater(data.eraseAll(), throwsA(isA<FormatException>()));
+    expect(await protectedFile.readAsString(), 'protected');
+    expect(
+      await database.database.query(
+        'transactions',
+        where: 'id = ?',
+        whereArgs: ['tx-erase-symlink'],
+      ),
+      hasLength(1),
+    );
   });
 }

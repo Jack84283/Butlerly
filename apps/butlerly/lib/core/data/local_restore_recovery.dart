@@ -69,6 +69,16 @@ Future<void> recoverInterruptedLocalRestore(
       .whereType<String>()
       .toSet();
   final journalOperationId = data?['operationId'] as String?;
+  if (journalOperationId != null &&
+      !_validRestoreOperationId(journalOperationId)) {
+    await _markFromOriginOrUnknown(
+      state,
+      originState,
+      operationId: 'unknown',
+      reason: 'unsafe-restore-journal-operation',
+    );
+    return;
+  }
   final committedOperationId = _committedOperationId(
     journalOperationId: journalOperationId,
     markerIds: markerIds,
@@ -79,12 +89,48 @@ Future<void> recoverInterruptedLocalRestore(
   final journalPrevious = data?['previousPath'] as String?;
   final journalStaging = data?['stagingPath'] as String?;
   final journalPhase = data?['phase'] as String?;
-  final journalPreviousDirectory = journalPrevious == null
-      ? null
-      : Directory(journalPrevious);
-  final journalStagingDirectory = journalStaging == null
-      ? null
-      : Directory(journalStaging);
+  if (!await _validJournalDirectoryPath(
+        root,
+        journalPrevious,
+        operationId: journalOperationId,
+        previous: true,
+      ) ||
+      !await _validJournalDirectoryPath(
+        root,
+        journalStaging,
+        operationId: journalOperationId,
+        previous: false,
+      )) {
+    await _markFromOriginOrUnknown(
+      state,
+      originState,
+      operationId: journalOperationId ?? 'unknown',
+      reason: 'unsafe-restore-journal-path',
+    );
+    return;
+  }
+  if (await _isJournalLink(journalPrevious) ||
+      await _isJournalLink(journalStaging)) {
+    await _markFromOriginOrUnknown(
+      state,
+      originState,
+      operationId: journalOperationId ?? 'unknown',
+      reason: 'unsafe-restore-journal-path',
+    );
+    return;
+  }
+  final journalPreviousDirectory = _canonicalJournalDirectory(
+    root,
+    journalPrevious,
+    operationId: journalOperationId,
+    previous: true,
+  );
+  final journalStagingDirectory = _canonicalJournalDirectory(
+    root,
+    journalStaging,
+    operationId: journalOperationId,
+    previous: false,
+  );
 
   if (committed) {
     // DB commit is authoritative: keep the live evidence tree. Cleanup is
@@ -360,12 +406,21 @@ Future<void> _markRecoveryRequired(
     await state.markUnknownRequired(operationId: operationId, reason: reason);
     return;
   }
-  await state.markRequired(
-    operationId: operationId,
-    safetyBackup: File(safetyBackupPath),
-    reason: reason,
-    retryCurrentState: retryCurrentState,
-  );
+  try {
+    await state.markRequired(
+      operationId: operationId,
+      safetyBackup: File(safetyBackupPath),
+      reason: reason,
+      retryCurrentState: retryCurrentState,
+    );
+  } on FormatException {
+    // An origin sidecar is untrusted input. Persist a generic gate instead of
+    // allowing an outside safety path to abort before the incident is recorded.
+    await state.markUnknownRequired(
+      operationId: operationId,
+      reason: 'unsafe-restore-safety-path',
+    );
+  }
 }
 
 Future<void> _deleteOriginStateArtifacts(File file) async {
@@ -403,6 +458,86 @@ String? _operationIdFromPrevious(Directory root, Directory? previous) {
   final name = path.basename(previous.path);
   if (!name.startsWith(prefix) || name.length == prefix.length) return null;
   return name.substring(prefix.length);
+}
+
+bool _validRestoreOperationId(String value) =>
+    RegExp(r'^[A-Za-z0-9_-]+$').hasMatch(value) && value.isNotEmpty;
+
+Future<bool> _isJournalLink(String? candidate) async =>
+    candidate != null &&
+    await FileSystemEntity.type(candidate, followLinks: false) ==
+        FileSystemEntityType.link;
+
+Future<bool> _validJournalDirectoryPath(
+  Directory root,
+  String? candidate, {
+  required String? operationId,
+  required bool previous,
+}) async {
+  if (candidate == null) return true;
+  if (!path.isAbsolute(candidate)) return false;
+  final normalizedRoot = path.normalize(path.absolute(root.path));
+  final normalizedCandidate = path.normalize(path.absolute(candidate));
+  if (path.dirname(normalizedCandidate) != path.dirname(normalizedRoot)) {
+    return false;
+  }
+  final base = path.basename(normalizedRoot);
+  final candidateName = path.basename(normalizedCandidate);
+  final prefix = previous ? '$base.restore-previous-' : '$base.restore-';
+  final genericPrefix = '$base.';
+  if (!candidateName.startsWith(genericPrefix) ||
+      candidateName.length == genericPrefix.length) {
+    return false;
+  }
+  final canonical =
+      candidateName.startsWith(prefix) && candidateName.length > prefix.length;
+  final suffix = canonical
+      ? candidateName.substring(prefix.length)
+      : candidateName.substring(genericPrefix.length);
+  if (!_validRestoreOperationId(suffix.replaceFirst('restore-previous-', '')) &&
+      !_validRestoreOperationId(suffix.replaceFirst('restore-', ''))) {
+    return false;
+  }
+  final entityType = await FileSystemEntity.type(
+    normalizedCandidate,
+    followLinks: false,
+  );
+  if (entityType == FileSystemEntityType.link ||
+      (entityType != FileSystemEntityType.notFound &&
+          entityType != FileSystemEntityType.directory)) {
+    return false;
+  }
+  // A missing path is only a cleanup hint and is safe to retain for older
+  // journals that used a different temporary suffix. If it exists, however,
+  // it must belong to the journal operation before recovery can use or delete
+  // it.
+  return entityType == FileSystemEntityType.notFound ||
+      !canonical ||
+      operationId == null ||
+      suffix == operationId;
+}
+
+Directory? _canonicalJournalDirectory(
+  Directory root,
+  String? candidate, {
+  required String? operationId,
+  required bool previous,
+}) {
+  if (candidate == null) return null;
+  final normalizedRoot = path.normalize(path.absolute(root.path));
+  final normalizedCandidate = path.normalize(path.absolute(candidate));
+  final base = path.basename(normalizedRoot);
+  final prefix = previous ? '$base.restore-previous-' : '$base.restore-';
+  if (path.dirname(normalizedCandidate) != path.dirname(normalizedRoot) ||
+      !path.basename(normalizedCandidate).startsWith(prefix)) {
+    return null;
+  }
+  final suffix = path.basename(normalizedCandidate).substring(prefix.length);
+  if (!_validRestoreOperationId(suffix) ||
+      (operationId != null && suffix != operationId)) {
+    return null;
+  }
+  return Directory(normalizedCandidate);
 }
 
 Future<_RecoveryDirectories> _discoverRecoveryDirectories(

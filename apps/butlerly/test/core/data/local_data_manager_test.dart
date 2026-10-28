@@ -12,6 +12,23 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(sqfliteFfiInit);
 
+  test('export and erase contracts cover durable user-owned tables', () {
+    const derivedTables = {'analysis_findings', 'analysis_rule_results'};
+    final exported = LocalDataManager.exportedTableNames.toSet();
+    final erased = LocalDataManager.erasedTableNames.where(
+      (table) => !derivedTables.contains(table),
+    );
+    expect(erased.every(exported.contains), isTrue);
+    expect(
+      exported,
+      containsAll(const [
+        'budgets',
+        'analysis_rule_configurations',
+        'analysis_rule_activations',
+      ]),
+    );
+  });
+
   test('exports local records and evidence then erases both', () async {
     final root = await Directory.systemTemp.createTemp('butlerly-data-test-');
     addTearDown(() => root.delete(recursive: true));
@@ -28,6 +45,31 @@ void main() {
     await database.database.insert('merchants', {
       'id': 'merchant-1',
       'name': 'Private merchant',
+    });
+    await database.database.insert('budgets', {
+      'id': 'budget-export',
+      'scope': 'overall',
+      'scope_id': null,
+      'currency': 'USD',
+      'amount': '300.00',
+      'created_at': '2026-08-09T18:00:00.000Z',
+      'updated_at': '2026-08-09T18:00:00.000Z',
+    });
+    await database.database.insert('analysis_rule_configurations', {
+      'rule_id': 'rule-export',
+      'configuration': '{}',
+      'updated_at': '2026-08-09T18:00:00.000Z',
+    });
+    await database.database.insert('analysis_rule_activations', {
+      'rule_id': 'rule-export',
+      'active_rule_version': '1',
+      'enabled': 1,
+      'updated_at': '2026-08-09T18:00:00.000Z',
+    });
+    await database.database.insert('provenances', {
+      'id': 'provenance-generated-export',
+      'source_type': 'manual',
+      'captured_at': '2026-08-09T18:00:00.000Z',
     });
     for (final id in ['selected-duplicate', 'other-duplicate']) {
       await database.database.insert('transactions', {
@@ -80,6 +122,42 @@ void main() {
       'payment_transaction_id': 'other-duplicate',
       'created_at': '2026-08-09T18:00:00.000Z',
     });
+    await database.database.insert('review_issues', {
+      'id': 'review-open-export',
+      'transaction_id': 'selected-duplicate',
+      'reason': 'open generated issue',
+      'status': 'open',
+      'created_at': '2026-08-09T18:00:00.000Z',
+    });
+    await database.database.insert('review_issues', {
+      'id': 'review-closed-export',
+      'transaction_id': 'selected-duplicate',
+      'reason': 'closed historical issue',
+      'status': 'closed',
+      'created_at': '2026-08-09T18:00:00.000Z',
+      'closed_at': '2026-08-10T18:00:00.000Z',
+    });
+    await database.database.insert('suggestions', {
+      'id': 'suggestion-pending-export',
+      'transaction_id': 'selected-duplicate',
+      'target': 'category',
+      'proposed_value': 'category.food',
+      'method': 'manual',
+      'status': 'pending',
+      'provenance_id': 'provenance-generated-export',
+      'created_at': '2026-08-09T18:00:00.000Z',
+    });
+    await database.database.insert('suggestions', {
+      'id': 'suggestion-decided-export',
+      'transaction_id': 'selected-duplicate',
+      'target': 'category',
+      'proposed_value': 'category.food',
+      'method': 'manual',
+      'status': 'accepted',
+      'provenance_id': 'provenance-generated-export',
+      'created_at': '2026-08-09T18:00:00.000Z',
+      'decided_at': '2026-08-10T18:00:00.000Z',
+    });
     await File(path.join(evidence.path, 'receipt.bin')).writeAsBytes([1, 2, 3]);
     for (final suffix in const [
       '.restore-ambiguous',
@@ -112,6 +190,15 @@ void main() {
     File(
       path.join(abandonedRestoreStage.path, 'private-copy.db'),
     ).writeAsStringSync('private restore copy');
+    final privateArtifacts = <File>[
+      File(path.join(root.path, '.backup-decrypt-orphan.butlerlybackup')),
+      File(path.join(root.path, '.portable-backup-orphan.butlerlybackup')),
+      File(path.join(root.path, '.portable-backup-encrypted-orphan')),
+      File(path.join(root.path, '.portable-backup-recovery-orphan.json')),
+    ];
+    for (final file in privateArtifacts) {
+      await file.writeAsString('private backup data');
+    }
 
     final exported = await manager.exportAll();
     final exportFile = File(
@@ -123,6 +210,15 @@ void main() {
     final tables = json['tables']! as Map<String, Object?>;
     expect(tables['merchants'], isNotEmpty);
     expect(
+      (tables['review_issues']! as List).map((row) => (row as Map)['id']),
+      ['review-closed-export'],
+    );
+    expect((tables['suggestions']! as List).map((row) => (row as Map)['id']), [
+      'suggestion-decided-export',
+    ]);
+    expect(tables['reconciliation_candidates'], isEmpty);
+    expect(tables['reconciliation_links'], isEmpty);
+    expect(
       tables.keys,
       containsAll([
         'financial_statements',
@@ -133,6 +229,9 @@ void main() {
         'tag_translations',
         'reference_data',
         'reference_data_translations',
+        'budgets',
+        'analysis_rule_configurations',
+        'analysis_rule_activations',
       ]),
     );
     expect(
@@ -157,6 +256,9 @@ void main() {
       isFalse,
     );
     expect(abandonedRestoreStage.existsSync(), isFalse);
+    for (final file in privateArtifacts) {
+      expect(await file.exists(), isFalse, reason: file.path);
+    }
     for (final suffix in const [
       '.restore-journal.json',
       '.restore-journal.json.tmp',
@@ -168,5 +270,100 @@ void main() {
       expect(File('${evidence.path}$suffix').existsSync(), isFalse);
     }
     expect(exported.directory.existsSync(), isFalse);
+  });
+
+  test('export rejects symbolic links instead of following them', () async {
+    final root = await Directory.systemTemp.createTemp('butlerly-export-link-');
+    addTearDown(() => root.delete(recursive: true));
+    final documents = Directory(path.join(root.path, 'documents'))
+      ..createSync();
+    final evidence = Directory(path.join(root.path, 'evidence'))..createSync();
+    final database = LocalDatabase(
+      logger: AppLogger(),
+      factory: databaseFactoryFfi,
+      databaseDirectory: root.path,
+    );
+    await database.initialize();
+    addTearDown(database.close);
+    final outside = File(path.join(root.path, 'outside.bin'))
+      ..writeAsStringSync('private');
+    await Link(path.join(evidence.path, 'linked.bin')).create(outside.path);
+    final manager = LocalDataManager(
+      database,
+      documentsDirectory: documents,
+      localEvidenceDirectory: evidence,
+    );
+
+    await expectLater(manager.exportAll(), throwsA(isA<FormatException>()));
+    expect(await outside.readAsString(), 'private');
+  });
+
+  test('export rejects missing referenced evidence', () async {
+    final root = await Directory.systemTemp.createTemp(
+      'butlerly-export-missing-',
+    );
+    addTearDown(() => root.delete(recursive: true));
+    final documents = Directory(path.join(root.path, 'documents'))
+      ..createSync();
+    final evidence = Directory(path.join(root.path, 'evidence'))..createSync();
+    final database = LocalDatabase(
+      logger: AppLogger(),
+      factory: databaseFactoryFfi,
+      databaseDirectory: root.path,
+    );
+    await database.initialize();
+    addTearDown(database.close);
+    await database.database.insert('provenances', {
+      'id': 'provenance-missing-export',
+      'source_type': 'manual',
+      'captured_at': '2026-10-01T00:00:00.000Z',
+    });
+    await database.database.insert('evidence_items', {
+      'id': 'evidence-missing-export',
+      'type': 'receipt',
+      'original_name': 'missing.pdf',
+      'media_type': 'application/pdf',
+      'provenance_id': 'provenance-missing-export',
+      'created_at': '2026-10-01T00:00:00.000Z',
+      'local_file_name': 'missing.pdf',
+    });
+    final manager = LocalDataManager(
+      database,
+      documentsDirectory: documents,
+      localEvidenceDirectory: evidence,
+    );
+
+    await expectLater(manager.exportAll(), throwsA(isA<StateError>()));
+    expect(await documents.list().toList(), isEmpty);
+  });
+
+  test('export rejects a symbolic link at the evidence root', () async {
+    final root = await Directory.systemTemp.createTemp('butlerly-export-root-');
+    addTearDown(() => root.delete(recursive: true));
+    final documents = Directory(path.join(root.path, 'documents'))
+      ..createSync();
+    final evidence = Directory(path.join(root.path, 'evidence'))..createSync();
+    final database = LocalDatabase(
+      logger: AppLogger(),
+      factory: databaseFactoryFfi,
+      databaseDirectory: root.path,
+    );
+    await database.initialize();
+    addTearDown(database.close);
+    final realEvidence = Directory('${evidence.path}-real');
+    await evidence.rename(realEvidence.path);
+    await Link(evidence.path).create(realEvidence.path);
+    final manager = LocalDataManager(
+      database,
+      documentsDirectory: documents,
+      localEvidenceDirectory: evidence,
+    );
+
+    try {
+      await expectLater(manager.exportAll(), throwsA(isA<FormatException>()));
+    } finally {
+      await Link(evidence.path).delete();
+      await realEvidence.rename(evidence.path);
+    }
   });
 }

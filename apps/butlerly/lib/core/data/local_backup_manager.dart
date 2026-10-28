@@ -5,6 +5,7 @@ import 'package:butlerly/core/data/backup_container_format.dart';
 import 'package:butlerly/core/data/backup_destination_writer.dart';
 import 'package:butlerly/core/data/backup_encryption.dart';
 import 'package:butlerly/core/data/backup_publication_recovery_state.dart';
+import 'package:butlerly/core/data/evidence_path_safety.dart';
 import 'package:butlerly/core/data/local_backup_engine.dart' as engine;
 import 'package:butlerly/core/data/local_backup_snapshot_writer.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
@@ -14,6 +15,7 @@ import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/evidence/evidence_mutation_lock.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly_database/butlerly_database.dart' show int64FromBytes;
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common/sqlite_api.dart';
 
@@ -42,9 +44,12 @@ final class LocalBackupManager {
     BackupDestinationWriter? destinationWriter,
     BackupPublicationRecoveryStore? publicationRecoveryStore,
     BackupPublicationRecoveryState? publicationRecoveryState,
+    @visibleForTesting
+    Future<void> Function(Directory root)? afterStagingRootCreated,
   }) : recoveryState = recoveryState ?? RestoreRecoveryState(localDataManager),
        publicationRecoveryState =
            publicationRecoveryState ?? BackupPublicationRecoveryState(),
+       _afterStagingRootCreated = afterStagingRootCreated,
        _engine = engine.LocalBackupManager(database, localDataManager),
        _snapshotWriter = LocalBackupSnapshotWriter(localDataManager),
        _publicationRecovery = BackupPublicationRecoveryManager(
@@ -64,6 +69,7 @@ final class LocalBackupManager {
   final LocalBackupSnapshotWriter _snapshotWriter;
   final BackupPublicationRecoveryManager _publicationRecovery;
   final BackupDestinationWriter _destinationWriter;
+  final Future<void> Function(Directory root)? _afterStagingRootCreated;
   final BackupEncryption _encryption = const BackupEncryption();
 
   static final _backupMagic = BackupContainerFormat.magic;
@@ -482,6 +488,9 @@ final class LocalBackupManager {
     final origin = File('${root.path}.restore-origin.json');
     final temporary = File('${origin.path}.tmp');
     final previous = File('${origin.path}.previous');
+    await rejectSymlinkedPath(origin.path);
+    await rejectSymlinkedPath(temporary.path);
+    await rejectSymlinkedPath(previous.path);
     await temporary.writeAsString(
       jsonEncode({
         'operationId': operationId,
@@ -576,6 +585,7 @@ final class LocalBackupManager {
     if (incident == null) return;
 
     await localDataManager.eraseAll(preserveRecoveryMarker: true);
+    publicationRecoveryState.clear();
     try {
       if (postResetRefresh != null) await postResetRefresh();
       await _clearRestoreOriginState();
@@ -628,34 +638,49 @@ final class LocalBackupManager {
         '.butlerly-restore-stage-$operationId',
       ),
     );
-    await root.create(recursive: true);
-    final stagingDatabasePath = path.join(root.path, 'butlerly.db');
+    await rejectSymlinkedPath(root.path);
+    LocalDatabase? stagingDatabase;
+    try {
+      await root.create(recursive: true);
+      if (_afterStagingRootCreated != null) {
+        await _afterStagingRootCreated(root);
+      }
+      final stagingDatabasePath = path.join(root.path, 'butlerly.db');
 
-    final escaped = stagingDatabasePath.replaceAll("'", "''");
-    await database.database.execute("VACUUM INTO '$escaped'");
+      final escaped = stagingDatabasePath.replaceAll("'", "''");
+      await database.database.execute("VACUUM INTO '$escaped'");
 
-    final stagingDatabase = LocalDatabase(
-      logger: AppLogger(),
-      factory: livePersistence.factory,
-      databaseDirectory: root.path,
-    );
-    await stagingDatabase.initialize();
+      stagingDatabase = LocalDatabase(
+        logger: AppLogger(),
+        factory: livePersistence.factory,
+        databaseDirectory: root.path,
+      );
+      await stagingDatabase.initialize();
 
-    final stagingEvidence = Directory(path.join(root.path, 'evidence'));
-    final liveEvidence = await localDataManager.evidenceDirectory();
-    if (await liveEvidence.exists()) {
-      await _copyDirectory(liveEvidence, stagingEvidence);
-    } else {
-      await stagingEvidence.create(recursive: true);
+      final stagingEvidence = Directory(path.join(root.path, 'evidence'));
+      final liveEvidence = await localDataManager.evidenceDirectory();
+      if (await liveEvidence.exists()) {
+        await _copyDirectory(liveEvidence, stagingEvidence);
+      } else {
+        await stagingEvidence.create(recursive: true);
+      }
+      final stagingDocuments = Directory(path.join(root.path, 'documents'));
+      await stagingDocuments.create(recursive: true);
+      final stagingData = LocalDataManager(
+        stagingDatabase,
+        documentsDirectory: stagingDocuments,
+        localEvidenceDirectory: stagingEvidence,
+      );
+      return _RestoreStagingWorkspace(root, stagingDatabase, stagingData);
+    } catch (_) {
+      try {
+        await stagingDatabase?.close();
+      } catch (_) {}
+      try {
+        if (await root.exists()) await root.delete(recursive: true);
+      } catch (_) {}
+      rethrow;
     }
-    final stagingDocuments = Directory(path.join(root.path, 'documents'));
-    await stagingDocuments.create(recursive: true);
-    final stagingData = LocalDataManager(
-      stagingDatabase,
-      documentsDirectory: stagingDocuments,
-      localEvidenceDirectory: stagingEvidence,
-    );
-    return _RestoreStagingWorkspace(root, stagingDatabase, stagingData);
   }
 
   Future<void> _validateDatabase(DatabaseExecutor db) async {
@@ -677,18 +702,27 @@ final class LocalBackupManager {
 
   Future<void> _validateLiveEvidenceReferences() async {
     final root = await localDataManager.evidenceDirectory();
+    await rejectEvidenceRoot(root);
     final rows = await database.database.query(
       'evidence_items',
       columns: ['local_file_name'],
     );
     for (final row in rows) {
       final raw = row['local_file_name'];
-      if (raw is! String || raw.trim().isEmpty) continue;
-      final relative = path.normalize(raw);
-      if (path.isAbsolute(relative) ||
-          relative == '..' ||
-          relative.startsWith('../')) {
-        throw StateError('Restored evidence contains an unsafe local path.');
+      if (raw == null) continue;
+      if (raw is! String) {
+        throw StateError('Restored evidence contains a non-string path.');
+      }
+      if (raw.trim().isEmpty) continue;
+      late final String relative;
+      try {
+        relative = await validateEvidenceReferencePath(
+          root,
+          raw,
+          message: 'Restored evidence contains an unsafe local path.',
+        );
+      } on FormatException catch (error) {
+        throw StateError(error.message);
       }
       if (!await File(path.join(root.path, relative)).exists()) {
         throw StateError('Restored database references missing evidence.');
@@ -765,11 +799,13 @@ final class LocalBackupManager {
   }
 
   Future<void> _copyDirectory(Directory source, Directory destination) async {
+    await rejectEvidenceRoot(source);
     await destination.create(recursive: true);
     await for (final entity in source.list(
       recursive: true,
       followLinks: false,
     )) {
+      await rejectEvidenceLink(entity);
       final relative = path.relative(entity.path, from: source.path);
       final target = path.join(destination.path, relative);
       if (entity is Directory) {

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math';
 
+import 'package:butlerly/core/data/evidence_path_safety.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/evidence/evidence_mutation_lock.dart';
@@ -46,9 +47,18 @@ final class LocalEvidenceStore {
 
   Future<PreservedEvidenceSource> _preservePending(XFile source) async {
     final directory = await _pendingEvidenceDirectory();
+    await rejectEvidenceRoot(
+      directory,
+      message: 'Unsafe pending evidence root.',
+    );
     await directory.create(recursive: true);
     final extension = path.extension(source.name).toLowerCase();
     final localFileName = _newImmutableFileName(extension);
+    await validateEvidencePath(
+      directory,
+      localFileName,
+      message: 'Unsafe pending evidence path.',
+    );
     final destination = File(path.join(directory.path, localFileName));
 
     // Exclusive creation turns the immutable-path rule into a filesystem
@@ -240,10 +250,24 @@ final class LocalEvidenceStore {
   Future<File?> _promotePreservedUnlocked(
     PreservedEvidenceSource source,
   ) async {
+    final pendingDirectory = await _pendingEvidenceDirectory();
+    await rejectEvidenceTree(
+      pendingDirectory,
+      message: 'Unsafe pending evidence tree.',
+    );
+    final liveDirectory = await data.evidenceDirectory();
+    await rejectEvidenceTree(
+      liveDirectory,
+      message: 'Unsafe live evidence tree.',
+    );
     final pending = await _pendingFileFor(source);
     if (pending == null || !await pending.exists()) return null;
-    final liveDirectory = await data.evidenceDirectory();
     await liveDirectory.create(recursive: true);
+    await validateEvidencePath(
+      liveDirectory,
+      source.localFileName,
+      message: 'Unsafe live evidence path.',
+    );
     final live = File(path.join(liveDirectory.path, source.localFileName));
     if (await live.exists()) {
       // Random immutable names make this effectively impossible, but never
@@ -259,7 +283,16 @@ final class LocalEvidenceStore {
   ) async {
     if (!await liveFile.exists()) return;
     final pendingDirectory = await _pendingEvidenceDirectory();
+    await rejectEvidenceTree(
+      pendingDirectory,
+      message: 'Unsafe pending evidence tree.',
+    );
     await pendingDirectory.create(recursive: true);
+    await validateEvidencePath(
+      pendingDirectory,
+      source.localFileName,
+      message: 'Unsafe pending evidence path.',
+    );
     final pending = File(
       path.join(pendingDirectory.path, source.localFileName),
     );
@@ -279,12 +312,17 @@ final class LocalEvidenceStore {
   }
 
   Future<File?> _pendingFileFor(PreservedEvidenceSource source) async {
-    if (path.basename(source.localFileName) != source.localFileName) {
+    final directory = await _pendingEvidenceDirectory();
+    try {
+      final normalized = await validateEvidencePath(
+        directory,
+        source.localFileName,
+        message: 'Unsafe pending evidence path.',
+      );
+      return File(path.join(directory.path, normalized));
+    } on FormatException {
       return null;
     }
-    return File(
-      path.join((await _pendingEvidenceDirectory()).path, source.localFileName),
-    );
   }
 
   Future<bool> remove(EvidenceItem evidence) =>
@@ -324,8 +362,20 @@ final class LocalEvidenceStore {
 
   Future<File?> fileFor(EvidenceItem evidence) async {
     final name = evidence.localFileName;
-    if (name == null || path.basename(name) != name) return null;
-    return File(path.join((await data.evidenceDirectory()).path, name));
+    if (name == null) return null;
+    final root = await data.evidenceDirectory();
+    try {
+      final normalized = await validateEvidenceReferencePath(
+        root,
+        name,
+        message: 'Unsafe local evidence path.',
+      );
+      return File(path.join(root.path, normalized));
+    } on FormatException {
+      // Invalid or symlinked references are not usable local evidence files.
+      // Treating them as absent keeps preview/delete operations fail-safe.
+      return null;
+    }
   }
 
   Future<File?> fileForPreserved(PreservedEvidenceSource source) =>

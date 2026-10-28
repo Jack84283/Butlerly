@@ -87,7 +87,12 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
   }
 
   @override
-  Future<void> eraseAll() => data.eraseAll();
+  Future<void> eraseAll() async {
+    await data.eraseAll();
+    // Erase All supersedes any in-memory publication-recovery warning because
+    // the private source/previous artifacts and their markers were deleted.
+    backups.publicationRecoveryState.clear();
+  }
 
   @override
   Future<void> recoverControlledState({

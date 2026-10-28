@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:butlerly/core/data/evidence_path_safety.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as path;
 
 export 'package:butlerly_finance_application/butlerly_finance_application.dart'
     show RestoreRecoveryRequiredException;
@@ -41,8 +43,11 @@ final class RestoreRecoveryState extends ChangeNotifier {
   Future<void> initialize() async {
     _incident = null;
     final marker = await _markerFile();
+    await rejectSymlinkedPath(marker.path);
     final temporary = File('${marker.path}.tmp');
     final previous = File('${marker.path}.previous');
+    await rejectSymlinkedPath(temporary.path);
+    await rejectSymlinkedPath(previous.path);
     final markerExists = await marker.exists();
     final temporaryExists = await temporary.exists();
     final previousExists = await previous.exists();
@@ -81,6 +86,7 @@ final class RestoreRecoveryState extends ChangeNotifier {
           (retryCurrentState != null && retryCurrentState is! bool)) {
         throw const FormatException('Incomplete recovery marker payload.');
       }
+      await _validateSafetyBackupPath(safetyBackupPath);
       _incident = RestoreRecoveryIncident(
         operationId: operationId,
         safetyBackupPath: safetyBackupPath,
@@ -127,13 +133,17 @@ final class RestoreRecoveryState extends ChangeNotifier {
   );
 
   Future<void> _persistIncident(RestoreRecoveryIncident incident) async {
+    await _validateSafetyBackupPath(incident.safetyBackupPath);
     _incident = incident;
     notifyListeners();
 
     final marker = await _markerFile();
+    await rejectSymlinkedPath(marker.path);
     await marker.parent.create(recursive: true);
     final temporary = File('${marker.path}.tmp');
     final previous = File('${marker.path}.previous');
+    await rejectSymlinkedPath(temporary.path);
+    await rejectSymlinkedPath(previous.path);
 
     await temporary.writeAsString(
       jsonEncode({
@@ -157,11 +167,13 @@ final class RestoreRecoveryState extends ChangeNotifier {
 
   Future<void> clear() async {
     final marker = await _markerFile();
+    await rejectSymlinkedPath(marker.path);
     for (final file in <File>[
       marker,
       File('${marker.path}.tmp'),
       File('${marker.path}.previous'),
     ]) {
+      await rejectSymlinkedPath(file.path);
       if (await file.exists()) await file.delete();
     }
     _incident = null;
@@ -181,5 +193,31 @@ final class RestoreRecoveryState extends ChangeNotifier {
   Future<File> _markerFile() async {
     final evidence = await localDataManager.evidenceDirectory();
     return File('${evidence.path}.restore-recovery-required.json');
+  }
+
+  Future<void> _validateSafetyBackupPath(String value) async {
+    if (value.isEmpty) return;
+    if (!path.isAbsolute(value)) throw const FormatException();
+    final root = path.normalize(
+      path.absolute((await localDataManager.safetyBackupDirectory()).path),
+    );
+    final candidate = path.normalize(path.absolute(value));
+    if (candidate == root || !path.isWithin(root, candidate)) {
+      throw const FormatException();
+    }
+    if (await FileSystemEntity.type(root, followLinks: false) ==
+        FileSystemEntityType.link) {
+      throw const FormatException();
+    }
+    var current = root;
+    final relative = path.relative(candidate, from: root);
+    for (final component in path.split(relative)) {
+      if (component.isEmpty || component == '.') continue;
+      current = path.join(current, component);
+      if (await FileSystemEntity.type(current, followLinks: false) ==
+          FileSystemEntityType.link) {
+        throw const FormatException();
+      }
+    }
   }
 }

@@ -21,7 +21,7 @@ void main() {
     await fixture.database.database.insert('budgets', {
       'id': 'budget-groceries',
       'scope': 'category',
-      'scope_id': 'groceries',
+      'scope_id': 'category.food.groceries',
       'currency': 'USD',
       'amount': '500.00',
       'created_at': timestamp,
@@ -54,7 +54,7 @@ void main() {
     expect(rows, hasLength(1));
     expect(rows.single['id'], 'budget-groceries');
     expect(rows.single['scope'], 'category');
-    expect(rows.single['scope_id'], 'groceries');
+    expect(rows.single['scope_id'], 'category.food.groceries');
     expect(rows.single['currency'], 'USD');
     expect(rows.single['amount'], '500.00');
     expect(
@@ -262,6 +262,62 @@ void main() {
       expect(inspection.changes.masterDataChanged, greaterThanOrEqualTo(1));
       expect(inspection.changes.transactionsChanged, greaterThanOrEqualTo(1));
       expect(inspection.hasNewerLocalData, isTrue);
+    },
+  );
+
+  test(
+    'inspection ignores generated workflow rows omitted from the backup',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.insertTransaction(
+        id: 'tx-generated-inspection',
+        description: 'generated inspection transaction',
+        updatedAt: DateTime.utc(2026, 1, 1),
+      );
+      const now = '2026-10-01T00:00:00.000Z';
+      await fixture.database.database.insert('provenances', {
+        'id': 'prov-generated-inspection',
+        'source_type': 'manual',
+        'captured_at': now,
+      });
+      final backup = File(
+        path.join(fixture.root.path, 'generated-inspection.butlerly'),
+      );
+      await fixture.backups.createBackup(backup);
+      await fixture.database.database.insert('review_issues', {
+        'id': 'review-generated-inspection',
+        'transaction_id': 'tx-generated-inspection',
+        'reason': 'generated',
+        'status': 'open',
+        'created_at': now,
+      });
+      await fixture.database.database.insert('suggestions', {
+        'id': 'suggestion-generated-inspection',
+        'transaction_id': 'tx-generated-inspection',
+        'target': 'category',
+        'proposed_value': 'category.food',
+        'method': 'local',
+        'status': 'proposed',
+        'provenance_id': 'prov-generated-inspection',
+        'created_at': now,
+      });
+      await fixture.database.database.insert('reconciliation_candidates', {
+        'id': 'candidate-generated-inspection',
+        'receipt_transaction_id': 'tx-generated-inspection',
+        'payment_transaction_id': 'tx-generated-inspection',
+        'score': 0.5,
+        'reasons_json': '[]',
+        'status': 'proposed',
+        'created_at': now,
+        'updated_at': now,
+      });
+
+      final inspection = await fixture.backups.inspect(backup);
+
+      expect(inspection.hasNewerLocalData, isFalse);
+      expect(inspection.changes.masterDataChanged, 0);
+      expect(inspection.changes.deletedEntities, 0);
     },
   );
 

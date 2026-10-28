@@ -66,8 +66,10 @@ void main() {
       await File(
         path.join(previousB.path, 'receipt.bin'),
       ).writeAsString('old-b');
+      final safetyDirectory = await fixture.manager.localDataManager
+          .safetyBackupDirectory();
       final safety = File(
-        path.join(fixture.root.path, 'safety.butlerlybackup'),
+        path.join(safetyDirectory.path, 'safety.butlerlybackup'),
       );
       await fixture.manager.createBackup(safety);
       await _writeOrigin(
@@ -136,6 +138,38 @@ void main() {
   });
 
   test(
+    'external journal paths fail closed without touching their targets',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final outside = Directory(path.join(fixture.root.path, 'outside'))
+        ..createSync(recursive: true);
+      final protectedFile = File(path.join(outside.path, 'must-survive.txt'))
+        ..writeAsStringSync('protected');
+      final journal = File('${fixture.evidence.path}.restore-journal.json');
+      await journal.writeAsString(
+        '{"operationId":"restore-external",'
+        '"previousPath":"${outside.path}",'
+        '"stagingPath":"${outside.path}",'
+        '"phase":"evidenceActivated"}',
+      );
+
+      await expectLater(
+        fixture.manager.recoverInterruptedRestore(),
+        throwsA(isA<RestoreRecoveryRequiredException>()),
+      );
+
+      expect(await protectedFile.readAsString(), 'protected');
+      expect(await outside.exists(), isTrue);
+      expect(await journal.exists(), isTrue);
+      expect(
+        fixture.manager.recoveryState.incident?.reason,
+        'unsafe-restore-journal-path',
+      );
+    },
+  );
+
+  test(
     'pre-commit recovery returns to an originally absent evidence root',
     () async {
       final fixture = await _Fixture.create();
@@ -143,6 +177,8 @@ void main() {
       await fixture.evidence.delete(recursive: true);
 
       const operation = 'restore-empty-origin';
+      final safetyDirectory = await fixture.manager.localDataManager
+          .safetyBackupDirectory();
       await fixture.evidence.create(recursive: true);
       await File(
         path.join(fixture.evidence.path, 'restored.bin'),
@@ -151,7 +187,10 @@ void main() {
         fixture.evidence,
         operationId: 'wrapper-empty-origin',
         rootExisted: false,
-        safetyBackupPath: path.join(fixture.root.path, 'safety.butlerlybackup'),
+        safetyBackupPath: path.join(
+          safetyDirectory.path,
+          'safety.butlerlybackup',
+        ),
       );
       final originState = File('${fixture.evidence.path}.restore-origin.json');
       final journal = File('${fixture.evidence.path}.restore-journal.json');
@@ -178,7 +217,11 @@ void main() {
     await live.writeAsString('uncommitted-live');
 
     const operation = 'restore-missing-previous';
-    final safety = File(path.join(fixture.root.path, 'safety.butlerlybackup'));
+    final safetyDirectory = await fixture.manager.localDataManager
+        .safetyBackupDirectory();
+    final safety = File(
+      path.join(safetyDirectory.path, 'safety.butlerlybackup'),
+    );
     await fixture.manager.createBackup(safety);
     await _writeOrigin(
       fixture.evidence,
@@ -248,8 +291,10 @@ void main() {
     () async {
       final fixture = await _Fixture.create();
       addTearDown(fixture.dispose);
+      final safetyDirectory = await fixture.manager.localDataManager
+          .safetyBackupDirectory();
       final safety = File(
-        path.join(fixture.root.path, 'safety.butlerlybackup'),
+        path.join(safetyDirectory.path, 'safety.butlerlybackup'),
       );
       await fixture.manager.createBackup(safety);
       await _writeOrigin(
@@ -271,16 +316,38 @@ void main() {
     },
   );
 
+  test('outside safety path records a generic recovery gate', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    await _writeOrigin(
+      fixture.evidence,
+      operationId: 'unsafe-safety-path',
+      rootExisted: true,
+      safetyBackupPath: path.join(fixture.root.path, 'outside.butlerlybackup'),
+    );
+
+    await expectLater(
+      fixture.manager.recoverInterruptedRestore(),
+      throwsA(isA<RestoreRecoveryRequiredException>()),
+    );
+
+    final incident = fixture.manager.recoveryState.incident;
+    expect(incident?.reason, 'unsafe-restore-safety-path');
+    expect(incident?.safetyBackupPath, isEmpty);
+  });
+
   test(
     'interrupted origin replacement never trusts the older main intent',
     () async {
       final fixture = await _Fixture.create();
       addTearDown(fixture.dispose);
+      final safetyDirectory = await fixture.manager.localDataManager
+          .safetyBackupDirectory();
       final oldSafety = File(
-        path.join(fixture.root.path, 'old-safety.butlerlybackup'),
+        path.join(safetyDirectory.path, 'old-safety.butlerlybackup'),
       );
       final newSafety = File(
-        path.join(fixture.root.path, 'new-safety.butlerlybackup'),
+        path.join(safetyDirectory.path, 'new-safety.butlerlybackup'),
       );
       await fixture.manager.createBackup(oldSafety);
       await fixture.manager.createBackup(newSafety);

@@ -479,11 +479,11 @@ void main() {
   test('downloaded V1 templates are empty with exact versioned headers', () {
     expect(
       ButlerlyCsvTemplate.content(ButlerlyCsvKind.receipts),
-      'receipt_id,date,merchant,total,currency,tax,tip,notes\r\n',
+      '\ufeffreceipt_id,date,merchant,total,currency,notes\r\n',
     );
     expect(
       ButlerlyCsvTemplate.content(ButlerlyCsvKind.transactions),
-      'date,description,amount,currency,direction,merchant,'
+      '\ufeffdate,description,amount,currency,direction,merchant,'
       'transaction_id,account_reference,notes\r\n',
     );
   });
@@ -496,7 +496,7 @@ void main() {
       final file = File('${root.path}/butlerly_receipts_v1.csv');
       await file.writeAsString(
         '${ButlerlyCsvTemplate.content(ButlerlyCsvKind.receipts)}'
-        'rcpt-100,2026-10-01,"餐馆, 上海",22.40,USD,1.40,3.00,Team lunch\r\n',
+        'rcpt-100,2026-10-01,"餐馆, 上海",22.40,USD,Team lunch\r\n',
       );
       ImportTransactionCommand? captured;
       final importer = LocalCsvImporter.withHandler((command) async {
@@ -522,9 +522,80 @@ void main() {
       expect(captured!.notes, 'Team lunch');
       expect(captured!.externalReference, 'rcpt-100');
       expect(captured!.sourceId, startsWith('butlerly-csv-receipts:'));
-      expect(captured!.originalRepresentation, contains('3.00'));
+      expect(captured!.originalRepresentation, contains('Team lunch'));
     },
   );
+
+  test('localized and legacy receipt templates remain importable', () async {
+    final root = await Directory.systemTemp.createTemp('butlerly-template-');
+    addTearDown(() => root.delete(recursive: true));
+    final file = File('${root.path}/localized-receipts.csv');
+    await file.writeAsString(
+      '${ButlerlyCsvTemplate.content(ButlerlyCsvKind.receipts, languageCode: 'zh')}'
+      'rcpt-legacy,2026-10-01,餐馆,22.40,,Team lunch\r\n',
+    );
+    final importer = LocalCsvImporter.withHandler(
+      (command) async => ApplicationSuccess<TransactionDto>(_dto(command)),
+    );
+
+    final preview = await importer.previewTemplate(
+      XFile(file.path),
+      kind: ButlerlyCsvKind.receipts,
+      languageCode: 'zh-CN',
+      defaultCurrency: 'CNY',
+    );
+
+    expect(preview.errors, isEmpty);
+    expect(preview.rows.single.currency, 'CNY');
+    expect(preview.rows.single.usedDefaultCurrency, isTrue);
+    expect(preview.rows.single.direction, TransactionDirection.expense);
+
+    final legacyFile = File('${root.path}/legacy-receipts.csv');
+    await legacyFile.writeAsString(
+      'date,merchant,total,currency,notes\r\n'
+      '2026-10-02,旧格式商店,10.00,,Legacy\r\n',
+    );
+    final legacyPreview = await importer.previewTemplate(
+      XFile(legacyFile.path),
+      kind: ButlerlyCsvKind.receipts,
+      languageCode: 'zh-CN',
+      defaultCurrency: 'CNY',
+    );
+    expect(legacyPreview.errors, isEmpty);
+    expect(legacyPreview.rows.single.currency, 'CNY');
+  });
+
+  test('legacy receipt tax and tip columns remain importable', () async {
+    final root = await Directory.systemTemp.createTemp('butlerly-template-');
+    addTearDown(() => root.delete(recursive: true));
+    final file = File('${root.path}/legacy-receipts-with-tax.csv');
+    await file.writeAsString(
+      'receipt_id,date,merchant,total,currency,tax,tip,notes\r\n'
+      'rcpt-tax,2026-10-03,Restaurant,22.40,USD,1.90,3.50,Dinner\r\n',
+    );
+    ImportTransactionCommand? captured;
+    final importer = LocalCsvImporter.withHandler((command) async {
+      captured = command;
+      return ApplicationSuccess<TransactionDto>(_dto(command));
+    });
+
+    final preview = await importer.previewTemplate(
+      XFile(file.path),
+      kind: ButlerlyCsvKind.receipts,
+    );
+
+    expect(preview.errors, isEmpty);
+    final summary = await importer.commitPreview(
+      preview,
+      sourceId: file.uri.pathSegments.last,
+      sourceLanguage: 'en',
+    );
+    expect(summary.imported, 1);
+    expect(
+      captured!.notes,
+      'Dinner; Legacy receipt tax: 1.90; Legacy receipt tip: 3.50',
+    );
+  });
 
   test(
     'transaction template accepts valid directions and preserves references',
@@ -593,9 +664,9 @@ void main() {
       final file = File('${root.path}/receipts.csv');
       await file.writeAsString(
         '${ButlerlyCsvTemplate.content(ButlerlyCsvKind.receipts)}'
-        'r1,2026-10-01,Shop,11.00,USD,1.00,0.00,Valid\r\n'
-        'r1,2026-10-02,Shop,9.00,USD,1.00,0.00,Duplicate ID\r\n'
-        'r3,2026-10-03,Shop,2.00,USD,4.00,0.00,Tax exceeds total\r\n',
+        'r1,2026-10-01,Shop,11.00,USD,Valid\r\n'
+        'r1,2026-10-02,Shop,9.00,USD,Duplicate ID\r\n'
+        'r3,2026-10-03,Shop,not-money,USD,Invalid amount\r\n',
       );
       var imports = 0;
       final importer = LocalCsvImporter.withHandler((command) async {
@@ -617,6 +688,27 @@ void main() {
       expect(imports, 0);
     },
   );
+
+  test('canonical receipt templates require a receipt ID', () async {
+    final root = await Directory.systemTemp.createTemp('butlerly-template-');
+    addTearDown(() => root.delete(recursive: true));
+    final file = File('${root.path}/missing-receipt-id.csv');
+    await file.writeAsString(
+      '${ButlerlyCsvTemplate.content(ButlerlyCsvKind.receipts)}'
+      ',2026-10-04,Shop,11.00,USD,Missing ID\r\n',
+    );
+    final importer = LocalCsvImporter.withHandler(
+      (command) async => ApplicationSuccess<TransactionDto>(_dto(command)),
+    );
+
+    final preview = await importer.previewTemplate(
+      XFile(file.path),
+      kind: ButlerlyCsvKind.receipts,
+    );
+
+    expect(preview.validCount, 0);
+    expect(preview.errors.single, contains('receipt ID is required'));
+  });
 
   test(
     'CSV rejects signed and scientific amounts rather than silently changing them',

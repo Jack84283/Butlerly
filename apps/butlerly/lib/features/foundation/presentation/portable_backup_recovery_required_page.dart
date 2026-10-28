@@ -1,4 +1,6 @@
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -35,10 +37,14 @@ class _PortableBackupRecoveryRequiredPageState
   bool _failed = false;
 
   Future<void> _selectLocation() async {
-    final selected =
-        await (widget.selectLocation?.call() ??
-            openFile(acceptedTypeGroups: const [_backupType]));
-    if (selected == null || !mounted) return;
+    final selectedPath = widget.selectLocation != null
+        ? (await widget.selectLocation!.call())?.path
+        : (await getSaveLocation(
+            suggestedName:
+                'Butlerly Recovery.${PortableBackupPolicy.extension}',
+            acceptedTypeGroups: const [_backupType],
+          ))?.path;
+    if (selectedPath == null || !mounted) return;
 
     setState(() {
       _busy = true;
@@ -46,8 +52,45 @@ class _PortableBackupRecoveryRequiredPageState
     });
     try {
       await services<WorkspaceDataService>().recoverPortableBackupPublication(
-        selected.path,
+        selectedPath,
       );
+    } catch (_) {
+      if (mounted) setState(() => _failed = true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _eraseLocalData() async {
+    final confirmed = await showButlerlyBottomSheet<bool>(
+      context: context,
+      builder: (context) => ButlerlySheet(
+        title: Text(context.l10n.backupText('recoveryResetTitle')),
+        content: Text(context.l10n.backupText('recoveryResetBody')),
+        actions: [
+          ButlerlyCancelButton(
+            autofocus: true,
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(context.l10n.text('cancel')),
+          ),
+          ButlerlyDestructiveButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(context.l10n.backupText('recoveryResetConfirm')),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() {
+      _busy = true;
+      _failed = false;
+    });
+    try {
+      // This is the explicit fail-closed escape hatch for a missing or
+      // unavailable publication artifact. It removes local data and all
+      // private recovery material, but never touches the selected destination.
+      await services<WorkspaceDataService>().eraseAll();
     } catch (_) {
       if (mounted) setState(() => _failed = true);
     } finally {
@@ -120,6 +163,12 @@ class _PortableBackupRecoveryRequiredPageState
                           ? null
                           : () => setState(() => _failed = false),
                       child: Text(context.l10n.backupText('keepRecoveryData')),
+                    ),
+                    TextButton(
+                      onPressed: _busy ? null : _eraseLocalData,
+                      child: Text(
+                        context.l10n.backupText('eraseLocalRecoveryData'),
+                      ),
                     ),
                   ],
                 ),

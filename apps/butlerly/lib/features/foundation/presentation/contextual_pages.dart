@@ -74,8 +74,18 @@ Future<void> startLocalFileImport(
     final file = await openFile(acceptedTypeGroups: [group]);
     if (file == null || !context.mounted) return;
     onImportingChanged?.call(true);
-    final importer = LocalCsvImporter(services<FinanceServices>());
-    final preview = await importer.previewTemplate(file, kind: kind);
+    final finance = services<FinanceServices>();
+    final preferenceResult = await finance.loadUserPreference();
+    final preference = preferenceResult is ApplicationSuccess<UserPreference?>
+        ? preferenceResult.value
+        : null;
+    final importer = LocalCsvImporter(finance);
+    final preview = await importer.previewTemplate(
+      file,
+      kind: kind,
+      languageCode: preference?.locale ?? sourceLanguage,
+      defaultCurrency: preference?.baseCurrency.value,
+    );
     if (!context.mounted) return;
     onImportingChanged?.call(false);
     if (preview.rows.isEmpty ||
@@ -87,7 +97,7 @@ Future<void> startLocalFileImport(
       );
       return;
     }
-    final sources = await services<FinanceServices>().listPaymentSources();
+    final sources = await finance.listPaymentSources();
     if (!context.mounted) return;
     final activeSources = sources is ApplicationSuccess<List<PaymentSource>>
         ? sources.value
@@ -283,7 +293,10 @@ class _ImportExportPageState extends State<ImportExportPage> {
 
   Future<void> _downloadCsvTemplate(ButlerlyCsvKind kind) async {
     try {
-      final saved = await downloadButlerlyCsvTemplate(kind);
+      final saved = await downloadButlerlyCsvTemplate(
+        kind,
+        languageCode: Localizations.localeOf(context).languageCode,
+      );
       if (!mounted || !saved) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.text('csvTemplateSaved'))),

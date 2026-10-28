@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:butlerly/core/data/backup_container_format.dart';
 import 'package:butlerly/core/data/duplicate_group_backup_policy.dart';
+import 'package:butlerly/core/data/evidence_path_safety.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly_database/butlerly_database.dart';
 import 'package:path/path.dart' as path;
@@ -227,6 +228,7 @@ final class LocalBackupSnapshotWriter {
     final evidenceRows =
         tables['evidence_items']! as List<Map<String, Object?>>;
     final evidenceRoot = await localDataManager.evidenceDirectory();
+    await rejectEvidenceRoot(evidenceRoot);
 
     // Every DB-referenced binary must exist. In addition, preserve unreferenced
     // files conservatively: a partially completed metadata operation must never
@@ -234,12 +236,11 @@ final class LocalBackupSnapshotWriter {
     for (final row in evidenceRows) {
       final localName = row['local_file_name'] as String?;
       if (localName == null || localName.trim().isEmpty) continue;
-      final normalized = path.normalize(localName);
-      if (path.isAbsolute(normalized) ||
-          normalized == '..' ||
-          normalized.startsWith('../')) {
-        throw const FormatException('Unsafe local evidence path.');
-      }
+      final normalized = await validateEvidenceReferencePath(
+        evidenceRoot,
+        localName,
+        message: 'Unsafe local evidence path.',
+      );
       if (!await File(path.join(evidenceRoot.path, normalized)).exists()) {
         throw StateError('Referenced evidence file is missing.');
       }
@@ -247,7 +248,11 @@ final class LocalBackupSnapshotWriter {
 
     final allEvidenceFiles = <File>[];
     if (await evidenceRoot.exists()) {
-      await for (final entity in evidenceRoot.list(recursive: true)) {
+      await for (final entity in evidenceRoot.list(
+        recursive: true,
+        followLinks: false,
+      )) {
+        await rejectEvidenceLink(entity);
         if (entity is File) allEvidenceFiles.add(entity);
       }
     }
@@ -259,14 +264,17 @@ final class LocalBackupSnapshotWriter {
 
     final evidence = <Map<String, Object?>>[];
     final sourceFiles = <File>[];
+    final evidencePathKeys = <String>{};
     for (final file in allEvidenceFiles) {
-      final relative = path.normalize(
+      final relative = await validateEvidencePath(
+        evidenceRoot,
         path.relative(file.path, from: evidenceRoot.path),
+        message: 'Unsafe local evidence path.',
       );
-      if (path.isAbsolute(relative) ||
-          relative == '..' ||
-          relative.startsWith('../')) {
-        throw const FormatException('Unsafe local evidence path.');
+      if (!evidencePathKeys.add(evidencePathKey(relative))) {
+        throw const FormatException(
+          'Evidence tree contains filesystem-equivalent paths.',
+        );
       }
       final length = await file.length();
       evidence.add({

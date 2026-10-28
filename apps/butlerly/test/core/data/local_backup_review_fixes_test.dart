@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:butlerly/core/data/local_backup_engine.dart' as engine;
 import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/database/local_database.dart';
@@ -132,6 +133,59 @@ void main() {
     expect(rows, hasLength(1));
     expect(rows.single['name'], 'Before backup');
   });
+
+  test(
+    'journal initialization failure removes the unactivated evidence staging tree',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.insertTransaction(
+        'tx-journal-init-failure',
+        DateTime.utc(2025, 1, 1),
+      );
+      final backup = File(
+        path.join(fixture.root.path, 'journal-init-failure.butlerlybackup'),
+      );
+      await fixture.manager.createBackup(backup);
+      final journalBlocker = Directory(
+        '${fixture.evidence.path}.restore-journal.json',
+      )..createSync(recursive: true);
+
+      final directEngine = engine.LocalBackupManager(
+        fixture.database,
+        LocalDataManager(
+          fixture.database,
+          localEvidenceDirectory: fixture.evidence,
+        ),
+      );
+      await expectLater(
+        directEngine.restore(backup, mode: LocalRestoreMode.replace),
+        throwsA(anything),
+      );
+
+      final stagingDirectories = await fixture.evidence.parent
+          .list(followLinks: false)
+          .where((entity) => entity is Directory)
+          .cast<Directory>()
+          .where(
+            (directory) =>
+                path.basename(directory.path).startsWith('evidence.restore-') &&
+                path.basename(directory.path) !=
+                    'evidence.restore-journal.json',
+          )
+          .toList();
+      expect(stagingDirectories, isEmpty);
+      expect(
+        await fixture.database.database.query(
+          'transactions',
+          where: 'id = ?',
+          whereArgs: ['tx-journal-init-failure'],
+        ),
+        hasLength(1),
+      );
+      expect(await journalBlocker.exists(), isTrue);
+    },
+  );
 
   test(
     'merge purges newer unresolved duplicate state transactionally',
