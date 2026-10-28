@@ -16,11 +16,22 @@ Future<void> rejectSymlinkedPath(
     current = path.join(current, components[index]);
     final type = await FileSystemEntity.type(current, followLinks: false);
     if (type == FileSystemEntityType.link &&
-        !(Platform.isMacOS && (current == '/var' || current == '/tmp'))) {
+        !isAllowedSystemPathAlias(current)) {
       throw FormatException(message);
     }
     if (type == FileSystemEntityType.notFound) break;
   }
+}
+
+/// Returns whether [value] is an operating-system alias used by Apple
+/// sandbox paths rather than a user-controlled link inside Butlerly data.
+///
+/// Both macOS and iOS can expose application-container paths through the
+/// `/var` and `/tmp` aliases. These aliases must not be treated as evidence
+/// symlinks, while links below the application container remain rejected.
+bool isAllowedSystemPathAlias(String value, {bool? isMacOS, bool? isIOS}) {
+  final appleUnix = (isMacOS ?? Platform.isMacOS) || (isIOS ?? Platform.isIOS);
+  return appleUnix && (value == '/var' || value == '/tmp');
 }
 
 /// Validates a path stored in Butlerly's private evidence tree.
