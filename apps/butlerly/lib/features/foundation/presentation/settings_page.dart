@@ -708,6 +708,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
             ),
             ButlerlyBrandVersionTile(
+              centered: true,
               appName: context.l10n.text('appName'),
               versionLabel: context.l10n.text('appVersionLabel'),
               version: _desktopVersion,
