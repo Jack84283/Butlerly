@@ -634,10 +634,9 @@ double _homeHeaderExtent(
   final brandWidth = stackedTopRow ? availableWidth : rowWidth * 5 / 9;
   final monthWidth = stackedTopRow ? availableWidth : rowWidth * 4 / 9;
   const brandIconSize = 24.0;
-  final brandNameWidth =
-      (brandWidth - brandIconSize - ButlerlySpacing.compact)
-          .clamp(1.0, double.infinity)
-          .toDouble();
+  final brandNameWidth = (brandWidth - brandIconSize - ButlerlySpacing.compact)
+      .clamp(1.0, double.infinity)
+      .toDouble();
   final brandHeight =
       math.max(brandIconSize, measure(appName, appStyle, brandNameWidth)) +
       ButlerlySpacing.micro +
