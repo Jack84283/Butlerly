@@ -1,3 +1,4 @@
+import 'package:butlerly/design_system/components/butlerly_brand_icon.dart';
 import 'package:butlerly/features/foundation/presentation/legal_licenses_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -64,6 +65,8 @@ void main() {
     );
     expect(find.text('Terms of Use'), findsOneWidget);
     expect(find.text('Privacy Policy'), findsOneWidget);
+    expect(find.byType(ButlerlyBrandVersionTile), findsOneWidget);
+    expect(find.byType(ButlerlyBrandIcon), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

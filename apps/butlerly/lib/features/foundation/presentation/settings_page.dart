@@ -1,6 +1,7 @@
 import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/app/theme/theme_mode_provider.dart';
+import 'package:butlerly/design_system/components/butlerly_brand_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
@@ -394,25 +395,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   key: _aboutKey,
                   title: l10n.text('about'),
                   icon: Icons.info_outline_rounded,
-                  footer: FutureBuilder<String>(
-                    future: _desktopVersion,
-                    builder: (context, snapshot) {
-                      final parts = (snapshot.data ?? '—').split('+');
-                      final build = parts.length > 1
-                          ? ' (${l10n.text('buildLabel')} ${parts.last})'
-                          : '';
-                      return Text(
-                        '${l10n.text('appVersionLabel')} ${parts.first}$build',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: context.colors.secondaryText,
-                        ),
-                      );
-                    },
-                  ),
                   children: [
                     _DesktopMoreRow(
                       title: l10n.text('legalLicenses'),
                       onTap: () => context.push('/legal-licenses'),
+                    ),
+                    ButlerlyBrandVersionTile(
+                      appName: l10n.text('appName'),
+                      versionLabel: l10n.text('appVersionLabel'),
+                      version: _desktopVersion,
                     ),
                   ],
                 ),
@@ -715,6 +706,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 MaterialPageRoute(builder: (_) => const LegalLicensesPage()),
               ),
             ),
+            ButlerlyBrandVersionTile(
+              appName: context.l10n.text('appName'),
+              versionLabel: context.l10n.text('appVersionLabel'),
+              version: _desktopVersion,
+            ),
           ],
         ),
         const SizedBox(height: ButlerlySpacing.structural),
@@ -788,7 +784,6 @@ class _DesktopMoreCard extends StatelessWidget {
     required this.icon,
     required this.children,
     this.description,
-    this.footer,
     super.key,
   });
 
@@ -796,7 +791,6 @@ class _DesktopMoreCard extends StatelessWidget {
   final IconData icon;
   final String? description;
   final List<Widget> children;
-  final Widget? footer;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -843,17 +837,6 @@ class _DesktopMoreCard extends StatelessWidget {
           if (i > 0)
             Divider(height: 1, thickness: 1, color: context.colors.cardDivider),
           children[i],
-        ],
-        if (footer != null) ...[
-          Divider(height: 1, thickness: 1, color: context.colors.cardDivider),
-          Padding(
-            padding: const EdgeInsets.only(
-              left: 38,
-              top: ButlerlySpacing.compact,
-              bottom: ButlerlySpacing.xxs,
-            ),
-            child: footer!,
-          ),
         ],
       ],
     ),

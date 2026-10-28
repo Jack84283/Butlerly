@@ -57,4 +57,5 @@ flutter:
     - assets/icons/categories/
     - assets/icons/payment_sources/
     - assets/branding/butlerly_mark.svg
+    - assets/branding/butlerly_258_abacus_transparent.png
   uses-material-design: true

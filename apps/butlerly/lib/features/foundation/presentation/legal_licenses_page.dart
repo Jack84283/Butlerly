@@ -1,4 +1,5 @@
 import 'package:butlerly/app/shell/adaptive_shell.dart';
+import 'package:butlerly/design_system/components/butlerly_brand_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
@@ -49,18 +50,10 @@ class LegalLicensesPage extends StatelessWidget {
       ),
       children: [
         ButlerlyCard(
-          child: ListTile(
-            leading: Icon(
-              Icons.info_outline_rounded,
-              color: context.colors.interactive,
-            ),
-            title: Text(context.l10n.text('appName')),
-            subtitle: FutureBuilder<String>(
-              future: _bundledVersion,
-              builder: (context, snapshot) {
-                return Text('Version ${snapshot.data ?? '—'}');
-              },
-            ),
+          child: ButlerlyBrandVersionTile(
+            appName: context.l10n.text('appName'),
+            versionLabel: context.l10n.text('appVersionLabel'),
+            version: _bundledVersion,
           ),
         ),
         const SizedBox(height: ButlerlySpacing.section),
@@ -234,14 +227,24 @@ class _DesktopLegalLicensesPageState extends State<_DesktopLegalLicensesPage> {
               horizontal: ButlerlySpacing.standard,
               vertical: ButlerlySpacing.small,
             ),
-            child: FutureBuilder<String>(
-              future: _bundledVersion,
-              builder: (context, snapshot) => Text(
-                '${l10n.text('appName')} · ${l10n.text('appVersionLabel')} ${snapshot.data ?? '—'}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: context.colors.secondaryText,
+            child: Row(
+              children: [
+                const ButlerlyBrandIcon(size: 24),
+                const SizedBox(width: ButlerlySpacing.compact),
+                Expanded(
+                  child: FutureBuilder<String>(
+                    future: _bundledVersion,
+                    builder: (context, snapshot) => Text(
+                      '${l10n.text('appName')} · ${l10n.text('appVersionLabel')} ${snapshot.data ?? '—'}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: context.colors.secondaryText,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ],

@@ -4,6 +4,7 @@ import 'package:butlerly/app/locale/home_greeting.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
+import 'package:butlerly/design_system/components/butlerly_brand_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_month_picker.dart';
@@ -632,8 +633,12 @@ double _homeHeaderExtent(
   final rowWidth = availableWidth - ButlerlySpacing.standard;
   final brandWidth = stackedTopRow ? availableWidth : rowWidth * 5 / 9;
   final monthWidth = stackedTopRow ? availableWidth : rowWidth * 4 / 9;
+  const brandIconSize = 24.0;
+  final brandNameWidth = (brandWidth - brandIconSize - ButlerlySpacing.compact)
+      .clamp(1.0, double.infinity)
+      .toDouble();
   final brandHeight =
-      measure(appName, appStyle, brandWidth) +
+      math.max(brandIconSize, measure(appName, appStyle, brandNameWidth)) +
       ButlerlySpacing.micro +
       measure(brandSubtitle, brandSubtitleStyle, brandWidth);
   final monthHeight = monthButtonHeight(monthWidth);
@@ -740,9 +745,11 @@ class _HomeHeader extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              context.l10n.text('appName'),
-              style: ButlerlyTypography.editorialText(
+            ButlerlyBrandTitle(
+              name: context.l10n.text('appName'),
+              iconSize: 24,
+              gap: ButlerlySpacing.compact,
+              textStyle: ButlerlyTypography.editorialText(
                 context.designTokens.homeTypography.appTitle(
                   Theme.of(context).textTheme.headlineLarge ??
                       const TextStyle(),

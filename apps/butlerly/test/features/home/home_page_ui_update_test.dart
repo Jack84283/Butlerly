@@ -1,4 +1,5 @@
 import 'package:butlerly/app/theme/app_theme.dart';
+import 'package:butlerly/design_system/components/butlerly_brand_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -104,6 +105,15 @@ void main() {
         closeTo(tester.getTopRight(headerContent).dx, 0.01),
       );
       final brand = find.text('Butlerly');
+      final brandIcon = find.descendant(
+        of: find.byKey(const ValueKey('home-header-context')),
+        matching: find.byType(ButlerlyBrandIcon),
+      );
+      expect(brandIcon, findsOneWidget);
+      expect(
+        tester.getRect(brandIcon).right,
+        lessThan(tester.getRect(brand).left),
+      );
       final brandTagline = find.byKey(const ValueKey('home-brand-tagline'));
       final greeting = find.byKey(const ValueKey('home-greeting'));
       final intro = find.byKey(const ValueKey('home-intro'));

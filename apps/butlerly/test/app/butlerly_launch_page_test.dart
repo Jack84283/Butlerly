@@ -1,5 +1,6 @@
 import 'package:butlerly/app/session/butlerly_session_guard.dart';
 import 'package:butlerly/app/theme/app_theme.dart';
+import 'package:butlerly/design_system/components/butlerly_brand_icon.dart';
 import 'package:butlerly/features/foundation/presentation/butlerly_launch_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -32,6 +33,10 @@ void main() {
       MaterialApp.router(theme: AppTheme.light, routerConfig: router),
     );
     await tester.pump();
+    final brand = find.byType(ButlerlyBrandIcon);
+    expect(brand, findsOneWidget);
+    expect(tester.widget<ButlerlyBrandIcon>(brand).size, 80);
+    expect(find.byIcon(Icons.shield_outlined), findsNothing);
     elapsed = ButlerlySessionConfig.launchDuration;
     await tester.pump(ButlerlySessionConfig.launchDuration);
     await tester.pump();

@@ -1,4 +1,5 @@
 import 'package:butlerly/app/router/app_router.dart';
+import 'package:butlerly/design_system/components/butlerly_brand_icon.dart';
 import 'package:butlerly/features/budgets/presentation/budgets_page.dart';
 import 'package:butlerly/features/foundation/presentation/privacy_data_page.dart';
 import 'package:butlerly/features/foundation/presentation/settings_page.dart';
@@ -22,6 +23,49 @@ void main() {
       ],
       home: const SettingsPage(),
     ),
+  );
+
+  testWidgets(
+    'More Legal card shows approved logo and version on all layouts',
+    (tester) async {
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      for (final size in [
+        const Size(390, 844),
+        const Size(900, 1100),
+        const Size(1200, 900),
+      ]) {
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1;
+        await tester.pumpWidget(app());
+        await tester.pumpAndSettle();
+
+        final versionTile = find.byType(ButlerlyBrandVersionTile);
+        for (
+          var attempt = 0;
+          attempt < 12 && versionTile.evaluate().isEmpty;
+          attempt++
+        ) {
+          final scrollable = find.byType(CustomScrollView);
+          if (scrollable.evaluate().isEmpty) break;
+          await tester.drag(scrollable.first, const Offset(0, -350));
+          await tester.pump();
+        }
+
+        expect(versionTile, findsOneWidget, reason: 'viewport $size');
+        expect(
+          find.descendant(
+            of: versionTile,
+            matching: find.byType(ButlerlyBrandIcon),
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('Legal & licenses'), findsWidgets);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox.shrink());
+      }
+    },
   );
 
   testWidgets('More has no duplicate transaction or import entries', (
