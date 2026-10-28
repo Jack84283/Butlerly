@@ -44,32 +44,33 @@ void main() {
     );
   }
 
-  testWidgets('desktop launch paints full-width background without narrow strip', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(1200, 800);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
+  testWidgets(
+    'desktop launch paints full-width background without narrow strip',
+    (tester) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-    final initialization = Completer<void>();
-    await tester.pumpWidget(
-      ButlerlyStartupGate(
-        logger: logger,
-        initialize: () => initialization.future,
-      ),
-    );
-    await tester.pump();
+      final initialization = Completer<void>();
+      await tester.pumpWidget(
+        ButlerlyStartupGate(
+          logger: logger,
+          initialize: () => initialization.future,
+        ),
+      );
+      await tester.pump();
 
-    final launch = find.byKey(const ValueKey('butlerly-launch-content'));
-    expect(launch, findsOneWidget);
-    expect(tester.getSize(launch), const Size(1200, 800));
-    expect(
-      find.byKey(const ValueKey('butlerly-responsive-body-canvas')),
-      findsNothing,
-    );
-    expect(tester.takeException(), isNull);
-  });
+      final launch = find.byKey(const ValueKey('butlerly-launch-content'));
+      expect(launch, findsOneWidget);
+      expect(tester.getSize(launch), const Size(1200, 800));
+      expect(
+        find.byKey(const ValueKey('butlerly-responsive-body-canvas')),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('fatal startup failure is visible and retryable', (tester) async {
     var attempts = 0;
