@@ -1,3 +1,4 @@
+import 'package:butlerly/design_system/components/butlerly_brand_icon.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -208,21 +209,7 @@ class _WideBrand extends StatelessWidget {
     padding: const EdgeInsets.all(ButlerlySpacing.standard),
     child: Row(
       children: [
-        DecoratedBox(
-          decoration: BoxDecoration(
-            color: context.colors.brand,
-            borderRadius: BorderRadius.circular(ButlerlyRadius.small),
-          ),
-          child: const SizedBox(
-            width: ButlerlySize.wideNavigationBrandSize,
-            height: ButlerlySize.wideNavigationBrandSize,
-            child: Icon(
-              Icons.shield_outlined,
-              color: Colors.white,
-              size: ButlerlySize.standardIcon,
-            ),
-          ),
-        ),
+        const ButlerlyBrandIcon(size: ButlerlySize.wideNavigationBrandSize),
         if (expanded) ...[
           const SizedBox(width: ButlerlySpacing.compact),
           Expanded(
