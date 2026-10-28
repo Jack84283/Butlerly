@@ -334,11 +334,22 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   children: [
                     _DesktopMoreRow(
                       title: l10n.text('backupRestoreSettings'),
-                      onTap: () => context.push('/privacy-data'),
+                      onTap: () => context.go('/privacy-data'),
                     ),
                     _DesktopMoreRow(
                       title: l10n.text('managePrivacyData'),
-                      onTap: () => context.push('/privacy-data'),
+                      onTap: () => context.go('/privacy-data'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: ButlerlySpacing.small),
+                _DesktopMoreCard(
+                  title: l10n.text('financialSettings'),
+                  icon: Icons.savings_outlined,
+                  children: [
+                    _DesktopMoreRow(
+                      title: l10n.text('budgetSettings'),
+                      onTap: () => context.go('/budgets'),
                     ),
                   ],
                 ),
@@ -606,7 +617,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 return _SettingsDropdownRow<String>(
                   value: zones.any((zone) => zone.identifier == selected)
                       ? selected
-                      : 'UTC',
+                      : zones.isEmpty
+                      ? selected
+                      : zones.first.identifier,
                   label: context.l10n.text('timeZone'),
                   icon: Icons.schedule_rounded,
                   items: [
@@ -639,13 +652,24 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               icon: Icons.backup_outlined,
               title: context.l10n.text('backupRestoreSettings'),
               subtitle: context.l10n.text('backupRestoreSettingsBody'),
-              onTap: () => context.push('/privacy-data'),
+              onTap: () => context.go('/privacy-data'),
             ),
             _SettingsRow(
               icon: Icons.privacy_tip_outlined,
               title: context.l10n.text('privacyAndData'),
               subtitle: context.l10n.text('privacyAndDataBody'),
-              onTap: () => context.push('/privacy-data'),
+              onTap: () => context.go('/privacy-data'),
+            ),
+          ],
+        ),
+        ButlerlySectionHeader(title: context.l10n.text('financialSettings')),
+        _SettingsSectionCard(
+          children: [
+            _SettingsRow(
+              icon: Icons.savings_outlined,
+              title: context.l10n.text('budgetSettings'),
+              subtitle: context.l10n.text('budgetSettingsBody'),
+              onTap: () => context.go('/budgets'),
             ),
           ],
         ),
@@ -1095,14 +1119,17 @@ class _SettingsDropdownRow<T> extends StatelessWidget {
     ),
     dense: true,
     minVerticalPadding: ButlerlySpacing.compact,
-    onTap: () => _select(context),
+    onTap: items.isEmpty ? null : () => _select(context),
   );
 
   Widget _selectedItem(BuildContext context) {
-    final selected = items.where((item) => item.value == value).first;
+    if (items.isEmpty) {
+      return Text(context.l10n.text('notAvailable'));
+    }
+    final selected = items.where((item) => item.value == value);
     return DefaultTextStyle.merge(
       style: Theme.of(context).textTheme.bodyLarge,
-      child: selected.child,
+      child: (selected.isNotEmpty ? selected.first : items.first).child,
     );
   }
 }

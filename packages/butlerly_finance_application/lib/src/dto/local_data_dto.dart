@@ -83,7 +83,12 @@ final class RestoreRecoveryRequiredException implements Exception {
 /// Product-level portable-backup policy shared by application and adapters.
 abstract final class PortableBackupPolicy {
   static const minimumPasswordLength = 12;
-  static const extension = 'butlerlybackup';
+
+  /// User-visible portable backup suffix. Keep [legacyExtension] accepted by
+  /// file pickers so backups created before the V1 suffix correction remain
+  /// restorable.
+  static const extension = 'butlerly';
+  static const legacyExtension = 'butlerlybackup';
   static const uniformTypeIdentifier = 'com.butlerly.backup';
   static const mimeType = 'application/vnd.butlerly.backup';
 }

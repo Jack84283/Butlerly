@@ -20,6 +20,18 @@ final class ButlerlyCsvTemplate {
   ];
 
   // Previously downloaded V1 templates remain valid and importable.
+  static const legacySimpleReceiptHeaders = <String>[
+    'receipt_id',
+    'date',
+    'merchant',
+    'total',
+    'currency',
+    'notes',
+  ];
+
+  /// Receipt columns emitted by the pre-V1 importer. Tax and tip are not
+  /// separate transaction fields in the current model; the importer accepts
+  /// this shape for compatibility and preserves those values in notes.
   static const legacyReceiptHeaders = <String>[
     'receipt_id',
     'date',
@@ -107,8 +119,22 @@ final class ButlerlyCsvTemplate {
     return languages.contains(short) ? short! : 'en';
   }
 
-  // Original translated V1 receipt headers shipped before the simplified
-  // template. Keep recognizing these files without requiring any user edits.
+  // Translated receipt headers from the six-column template shipped before
+  // the simplified template.
+  static const _legacySimpleReceiptLabels = <String, List<String>>{
+    'en': ['Receipt ID', 'Date', 'Merchant', 'Total Paid', 'Currency', 'Notes'],
+    'zh': ['收据编号', '日期', '商家', '实付总额', '币种', '备注'],
+    'es': [
+      'ID de recibo',
+      'Fecha',
+      'Comercio',
+      'Total pagado',
+      'Moneda',
+      'Notas',
+    ],
+  };
+
+  // Translated receipt headers from the eight-column legacy template.
   static const _legacyReceiptLabels = <String, List<String>>{
     'en': [
       'Receipt ID',
@@ -144,11 +170,11 @@ final class ButlerlyCsvTemplate {
   }) => _labels[language(languageCode)]![kind]!;
 
   /// Column positions are fixed; translated names don't change the mapping.
-  /// This also recognizes files created by the original English-only V1.
+  /// This also recognizes files created by earlier V1 templates.
   static bool matchesHeaders(ButlerlyCsvKind kind, List<String> actual) =>
       recognizedHeaders(kind, actual) != null;
 
-  /// Returns canonical positional fields for either downloaded V1 layout.
+  /// Returns canonical positional fields for any supported V1 layout.
   /// Null means an unrecognized template, which must never be guessed.
   static List<String>? recognizedHeaders(
     ButlerlyCsvKind kind,
@@ -170,6 +196,11 @@ final class ButlerlyCsvTemplate {
           (code) => same(displayHeaders(kind, languageCode: code)),
         )) {
       return headers(kind);
+    }
+    if (kind == ButlerlyCsvKind.receipts &&
+        (same(legacySimpleReceiptHeaders) ||
+            languages.any((code) => same(_legacySimpleReceiptLabels[code]!)))) {
+      return legacySimpleReceiptHeaders;
     }
     if (kind == ButlerlyCsvKind.receipts &&
         (same(legacyReceiptHeaders) ||

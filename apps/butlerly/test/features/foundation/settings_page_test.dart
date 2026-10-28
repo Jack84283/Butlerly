@@ -1,3 +1,6 @@
+import 'package:butlerly/app/router/app_router.dart';
+import 'package:butlerly/features/budgets/presentation/budgets_page.dart';
+import 'package:butlerly/features/foundation/presentation/privacy_data_page.dart';
 import 'package:butlerly/features/foundation/presentation/settings_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/cupertino.dart';
@@ -7,9 +10,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  Widget app() => ProviderScope(
+  Widget app({Locale locale = const Locale('en')}) => ProviderScope(
     child: MaterialApp(
-      locale: const Locale('en'),
+      locale: locale,
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: const [
         AppLocalizations.delegate,
@@ -46,6 +49,142 @@ void main() {
 
     final label = tester.widget<Text>(find.text('Display name').first);
     expect(label.style?.fontWeight, FontWeight.w400);
+  });
+
+  testWidgets(
+    'More exposes separate Budget Settings and Backup & Restore entries',
+    (tester) async {
+      await tester.pumpWidget(app());
+      await tester.pumpAndSettle();
+
+      await tester.scrollUntilVisible(
+        find.text('Budget Settings'),
+        400,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.text('Budget Settings'), findsOneWidget);
+      expect(find.text('Backup & Restore'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'Budget Settings and Backup & Restore navigate to their destinations',
+    (tester) async {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      appRouter.go('/settings');
+      addTearDown(() => appRouter.go('/'));
+      await tester.pumpWidget(
+        ProviderScope(
+          child: MaterialApp.router(
+            routerConfig: appRouter,
+            locale: const Locale('en'),
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Budget Settings'));
+      await tester.tap(
+        find.ancestor(
+          of: find.text('Budget Settings'),
+          matching: find.byType(InkWell),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(appRouter.routeInformationProvider.value.uri.path, '/budgets');
+      expect(find.byType(BudgetsPage), findsOneWidget);
+
+      appRouter.go('/settings');
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Backup & Restore'));
+      await tester.tap(
+        find.ancestor(
+          of: find.text('Backup & Restore'),
+          matching: find.byType(InkWell),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        appRouter.routeInformationProvider.value.uri.path,
+        '/privacy-data',
+      );
+      expect(find.byType(PrivacyDataPage), findsOneWidget);
+    },
+  );
+
+  testWidgets('compact secondary settings destinations have back affordance', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    appRouter.go('/settings');
+    addTearDown(() => appRouter.go('/'));
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp.router(
+          routerConfig: appRouter,
+          locale: const Locale('en'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(appRouter.routeInformationProvider.value.uri.path, '/settings');
+    expect(find.byType(SettingsPage), findsOneWidget);
+    for (var attempt = 0; attempt < 10; attempt++) {
+      if (find.text('Budget Settings').evaluate().isNotEmpty) break;
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -300));
+      await tester.pump();
+    }
+    expect(find.text('Budget Settings'), findsOneWidget);
+    await tester.tap(
+      find
+          .ancestor(
+            of: find.text('Budget Settings'),
+            matching: find.byType(InkWell),
+          )
+          .first,
+    );
+    await tester.pumpAndSettle();
+    expect(appRouter.routeInformationProvider.value.uri.path, '/budgets');
+    expect(find.byIcon(Icons.arrow_back_rounded), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.arrow_back_rounded));
+    await tester.pumpAndSettle();
+    expect(appRouter.routeInformationProvider.value.uri.path, '/settings');
+  });
+
+  testWidgets('financial settings entries use localized labels', (
+    tester,
+  ) async {
+    await tester.pumpWidget(app(locale: const Locale('zh')));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('预算设置'),
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.text('财务设置'), findsOneWidget);
+    expect(find.text('预算设置'), findsOneWidget);
+    expect(find.text('备份与恢复'), findsOneWidget);
   });
 
   testWidgets('display-name sheet saves and can reopen without crashing', (
@@ -101,6 +240,8 @@ void main() {
     );
     expect(find.text('Preferences'), findsOneWidget);
     expect(find.text('Privacy & data'), findsOneWidget);
+    expect(find.text('Budget Settings'), findsOneWidget);
+    expect(find.text('Backup & Restore'), findsOneWidget);
     expect(find.text('Optional features'), findsOneWidget);
     expect(find.text('About Butlerly'), findsOneWidget);
     expect(find.text('Display name'), findsOneWidget);

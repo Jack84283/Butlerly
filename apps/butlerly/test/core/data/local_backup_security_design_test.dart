@@ -24,8 +24,12 @@ void main() {
       final fixture = await _Fixture.create();
       addTearDown(fixture.dispose);
       await fixture.insertTransaction('encrypted-source');
+      final selectedDirectory = await Directory.systemTemp.createTemp(
+        'butlerly-selected-backup-encrypted-',
+      );
+      addTearDown(() => selectedDirectory.delete(recursive: true));
       final backup = File(
-        path.join(fixture.root.path, 'portable.butlerlybackup'),
+        path.join(selectedDirectory.path, 'portable.butlerlybackup'),
       );
 
       await fixture.manager.createPortableBackup(
@@ -56,6 +60,28 @@ void main() {
         password: 'correct horse battery staple',
       );
       expect(inspection.recordCount, greaterThan(0));
+    },
+  );
+
+  test(
+    'safety backup paths reject pre-existing symlinked private directories',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final outside = await Directory.systemTemp.createTemp(
+        'butlerly-recovery-symlink-target-',
+      );
+      addTearDown(() => outside.delete(recursive: true));
+      final recovery = Directory(
+        path.join(fixture.root.path, '.butlerly-recovery'),
+      );
+      await Link(recovery.path).create(outside.path);
+
+      await expectLater(
+        fixture.data.safetyBackupDirectory(),
+        throwsA(isA<FormatException>()),
+      );
+      expect(await _namesStarting(outside, 'Before Restore'), isEmpty);
     },
   );
 
@@ -242,8 +268,9 @@ void main() {
     () async {
       final fixture = await _Fixture.create();
       addTearDown(fixture.dispose);
+      final safetyDirectory = await fixture.data.safetyBackupDirectory();
       final safety = File(
-        path.join(fixture.root.path, 'safety.butlerlybackup'),
+        path.join(safetyDirectory.path, 'safety.butlerlybackup'),
       );
       await fixture.manager.createBackup(safety);
 
@@ -283,6 +310,23 @@ void main() {
     expect(await marker.exists(), isTrue);
   });
 
+  test('restore recovery sidecar symlinks fail closed', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final evidence = await fixture.data.evidenceDirectory();
+    final marker = File('${evidence.path}.restore-recovery-required.json');
+    final temporary = File('${marker.path}.tmp');
+    final target = File('${fixture.root.path}/sidecar-target.json')
+      ..writeAsStringSync('{}');
+    await Link(temporary.path).create(target.path);
+
+    await expectLater(
+      RestoreRecoveryState(fixture.data).initialize(),
+      throwsA(isA<FormatException>()),
+    );
+    expect(await target.readAsString(), '{}');
+  });
+
   test('interrupted recovery marker replacement fails closed', () async {
     final fixture = await _Fixture.create();
     addTearDown(fixture.dispose);
@@ -306,8 +350,9 @@ void main() {
   test('new marker temp prevents trusting an older main marker', () async {
     final fixture = await _Fixture.create();
     addTearDown(fixture.dispose);
+    final safetyDirectory = await fixture.data.safetyBackupDirectory();
     final oldSafety = File(
-      path.join(fixture.root.path, 'old-safety.butlerlybackup'),
+      path.join(safetyDirectory.path, 'old-safety.butlerlybackup'),
     );
     await fixture.manager.createBackup(oldSafety);
     await fixture.manager.recoveryState.markRequired(
@@ -393,7 +438,10 @@ void main() {
       );
       addTearDown(() => selectedDirectory.delete(recursive: true));
       final source = File(
-        path.join(fixture.root.path, '.portable-backup-encrypted-interrupted'),
+        path.join(
+          fixture.root.path,
+          '.portable-backup-encrypted-interrupted.butlerlybackup',
+        ),
       )..writeAsStringSync('new backup');
       final previous = File(
         path.join(
@@ -421,7 +469,9 @@ void main() {
       expect(await previous.exists(), isTrue);
       expect(await store.read(fixture.root), hasLength(1));
 
-      await fixture.manager.recoverInterruptedPortableBackupPublications();
+      await fixture.manager.recoverInterruptedPortableBackupPublications(
+        authorizedDestinationPath: destination.path,
+      );
 
       expect(await destination.readAsString(), 'existing backup');
       expect(await previous.exists(), isFalse);
@@ -463,14 +513,21 @@ void main() {
     () async {
       final fixture = await _Fixture.create();
       addTearDown(fixture.dispose);
+      final selectedRoot = await Directory.systemTemp.createTemp(
+        'butlerly-selected-backup-recovery-auth-',
+      );
+      addTearDown(() => selectedRoot.delete(recursive: true));
       final selectedDirectory = Directory(
-        path.join(fixture.root.path, 'selected-destination'),
+        path.join(selectedRoot.path, 'selected-destination'),
       );
       final destination = File(
         path.join(selectedDirectory.path, 'portable.butlerlybackup'),
       );
       final source = File(
-        path.join(fixture.root.path, '.portable-backup-encrypted-recovery'),
+        path.join(
+          fixture.root.path,
+          '.portable-backup-encrypted-recovery.butlerlybackup',
+        ),
       )..writeAsStringSync('new backup');
       final previous = File(
         path.join(
@@ -519,9 +576,13 @@ void main() {
     () async {
       final fixture = await _Fixture.create();
       addTearDown(fixture.dispose);
+      final selectedDirectory = await Directory.systemTemp.createTemp(
+        'butlerly-selected-backup-finalization-',
+      );
+      addTearDown(() => selectedDirectory.delete(recursive: true));
       await fixture.insertTransaction('recovery-finalization');
       final destination = File(
-        path.join(fixture.root.path, 'portable.butlerlybackup'),
+        path.join(selectedDirectory.path, 'portable.butlerlybackup'),
       )..writeAsStringSync('existing backup');
       final store = _FailOnceClearStore();
       final manager = LocalBackupManager(

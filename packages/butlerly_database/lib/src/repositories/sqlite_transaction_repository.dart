@@ -354,6 +354,7 @@ final class SqliteTransactionRepository
           {
             'selected_transaction_id': null,
             'status': DuplicateCandidateGroupStatus.unresolved.name,
+            'updated_at': DateTime.now().toUtc().toIso8601String(),
           },
           where: 'selected_transaction_id = ?',
           whereArgs: [id.value],

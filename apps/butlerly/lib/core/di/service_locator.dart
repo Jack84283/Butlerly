@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:butlerly/core/analysis/bundled_analysis_rules.dart';
 import 'package:butlerly/core/config/app_configuration.dart';
 import 'package:butlerly/core/data/local_backup_manager.dart';
@@ -19,6 +21,8 @@ void configureDependencies({
   required AppConfiguration configuration,
   required LocalDatabase database,
   required AppLogger logger,
+  Directory? documentsDirectory,
+  Directory? localEvidenceDirectory,
 }) {
   services
     ..registerSingleton<AppConfiguration>(configuration)
@@ -26,7 +30,11 @@ void configureDependencies({
     ..registerSingleton<LocalDatabase>(database);
   services.registerSingleton<OcrRecognizer>(platformOcrRecognizer());
 
-  final localDataManager = LocalDataManager(database);
+  final localDataManager = LocalDataManager(
+    database,
+    documentsDirectory: documentsDirectory,
+    localEvidenceDirectory: localEvidenceDirectory,
+  );
   final restoreRecoveryState = RestoreRecoveryState(localDataManager);
   final publicationRecoveryState = BackupPublicationRecoveryState();
   services

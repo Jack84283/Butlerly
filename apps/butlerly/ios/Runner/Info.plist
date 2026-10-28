@@ -89,6 +89,7 @@
 			<dict>
 				<key>public.filename-extension</key>
 				<array>
+					<string>butlerly</string>
 					<string>butlerlybackup</string>
 				</array>
 				<key>public.mime-type</key>

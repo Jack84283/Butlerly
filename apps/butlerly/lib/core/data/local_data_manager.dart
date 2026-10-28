@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:butlerly/core/data/duplicate_group_backup_policy.dart';
+import 'package:butlerly/core/data/evidence_path_safety.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/evidence/evidence_mutation_lock.dart';
 import 'package:path/path.dart' as path;
@@ -18,12 +20,15 @@ final class LocalDataManager {
     this.database, {
     Directory? documentsDirectory,
     Directory? localEvidenceDirectory,
+    DateTime Function()? clock,
   }) : _documentsDirectory = documentsDirectory,
-       _localEvidenceDirectory = localEvidenceDirectory;
+       _localEvidenceDirectory = localEvidenceDirectory,
+       _clock = clock;
 
   final LocalDatabase database;
   final Directory? _documentsDirectory;
   final Directory? _localEvidenceDirectory;
+  final DateTime Function()? _clock;
 
   static const _exportTables = <String>[
     'payment_sources',
@@ -57,6 +62,9 @@ final class LocalDataManager {
     'duplicate_candidate_groups',
     'duplicate_candidate_group_transactions',
     'recurring_pattern_decisions',
+    'analysis_rule_configurations',
+    'analysis_rule_activations',
+    'budgets',
     'entity_tombstones',
   ];
 
@@ -67,6 +75,9 @@ final class LocalDataManager {
     // Analysis findings and materialized results are derived from the user's
     // financial data and must not survive an erase/restart boundary. Bundled
     // rule definitions and their catalog remain application-owned config.
+    'budgets',
+    'analysis_rule_configurations',
+    'analysis_rule_activations',
     'analysis_findings',
     'analysis_rule_results',
     'attachment_links',
@@ -103,6 +114,25 @@ final class LocalDataManager {
     'entity_tombstones',
   ];
 
+  static const _generatedExportTombstoneTypes = <String>{
+    'review_issues',
+    'suggestions',
+    'reconciliation_candidates',
+    'duplicate_candidate_groups',
+    'duplicate_candidate_group_transactions',
+  };
+
+  /// Durable user-owned tables included by Export All. Derived analysis
+  /// materializations remain intentionally excluded from this contract.
+  static List<String> get exportedTableNames =>
+      List<String>.unmodifiable(_exportTables);
+
+  /// Tables cleared by Erase All, including derived data and generated
+  /// workflow state. The durable subset must remain covered by
+  /// [exportedTableNames].
+  static List<String> get erasedTableNames =>
+      List<String>.unmodifiable(_eraseOrder);
+
   Future<Directory> evidenceDirectory() async {
     if (_localEvidenceDirectory case final directory?) return directory;
     final support = await getApplicationSupportDirectory();
@@ -126,6 +156,7 @@ final class LocalDataManager {
     final directory = Directory(
       path.join(databaseDirectory, '.butlerly-recovery'),
     );
+    await rejectSymlinkedPath(directory.path);
     await directory.create(recursive: true);
     return directory;
   }
@@ -133,6 +164,7 @@ final class LocalDataManager {
   Future<Directory> safetyBackupDirectory() async {
     final recovery = await recoveryDirectory();
     final directory = Directory(path.join(recovery.path, 'safety-backups'));
+    await rejectSymlinkedPath(directory.path);
     await directory.create(recursive: true);
     return directory;
   }
@@ -182,80 +214,326 @@ final class LocalDataManager {
     }
   }
 
-  Future<LocalDataExport> exportAll() async {
-    final documents = await documentsDirectory();
-    final timestamp = DateTime.now().toUtc().toIso8601String().replaceAll(
-      ':',
-      '-',
-    );
-    final destination = Directory(
-      path.join(documents.path, 'Butlerly Export $timestamp'),
-    );
-    await destination.create(recursive: true);
-
-    final data = <String, Object?>{
-      'format': 'butlerly-finance-export',
-      'version': 1,
-      'exportedAtUtc': DateTime.now().toUtc().toIso8601String(),
-      'tables': <String, Object?>{},
-    };
-    var recordCount = 0;
-    final tables = data['tables']! as Map<String, Object?>;
-    for (final table in _exportTables) {
-      final rows = await database.database.query(table);
-      tables[table] = rows;
-      recordCount += rows.length;
-    }
-    await File(
-      path.join(destination.path, 'butlerly-export.json'),
-    ).writeAsString(
-      const JsonEncoder.withIndent('  ').convert(data),
-      flush: true,
-    );
-
-    final evidence = await evidenceDirectory();
-    if (await evidence.exists()) {
-      final exportedEvidence = Directory(
-        path.join(destination.path, 'evidence'),
+  Future<LocalDataExport> exportAll() => EvidenceMutationLock.runExclusive(
+    () async {
+      final documents = await documentsDirectory();
+      await rejectEvidenceRoot(documents, message: 'Unsafe documents root.');
+      final timestamp = (_clock?.call() ?? DateTime.now())
+          .toUtc()
+          .toIso8601String()
+          .replaceAll(':', '-');
+      final destination = Directory(
+        path.join(documents.path, 'Butlerly Export $timestamp'),
       );
-      await exportedEvidence.create();
-      await for (final entity in evidence.list(recursive: true)) {
-        if (entity is File) {
-          final relative = path.relative(entity.path, from: evidence.path);
-          final destination = File(path.join(exportedEvidence.path, relative));
-          await destination.parent.create(recursive: true);
-          await entity.copy(destination.path);
+      final staging = Directory(
+        path.join(documents.path, '.butlerly-export-$timestamp.candidate'),
+      );
+      await _ensureFreshExportPath(destination);
+      await _ensureFreshExportPath(staging);
+      await staging.create(recursive: true);
+
+      final data = <String, Object?>{
+        'format': 'butlerly-finance-export',
+        'version': 1,
+        'exportedAtUtc': DateTime.now().toUtc().toIso8601String(),
+        'tables': <String, Object?>{},
+      };
+      var recordCount = 0;
+      final tables = data['tables']! as Map<String, Object?>;
+      final evidence = await evidenceDirectory();
+      await rejectEvidenceRoot(evidence);
+
+      try {
+        // Keep the database snapshot and evidence tree under the same mutation
+        // boundary. The read transaction remains open while evidence is copied,
+        // so the exported JSON and files describe one logical local state.
+        await database.persistenceDatabase.transaction((snapshot) async {
+          Future<List<Map<String, Object?>>> rowsFor(String table) async {
+            switch (table) {
+              case 'review_issues':
+                return snapshot.query(table, where: 'closed_at IS NOT NULL');
+              case 'suggestions':
+                return snapshot.query(table, where: 'decided_at IS NOT NULL');
+              case 'reconciliation_candidates':
+                return snapshot.query(table, where: "status != 'proposed'");
+              case 'reconciliation_links':
+                final candidates = await rowsFor('reconciliation_candidates');
+                final ids = candidates
+                    .map((row) => row['id'])
+                    .whereType<String>()
+                    .toSet();
+                final rows = await snapshot.query(table);
+                return rows
+                    .where((row) => ids.contains(row['candidate_id']))
+                    .toList(growable: false);
+              case 'duplicate_candidate_groups':
+                final groups = await snapshot.query(table);
+                final members = await snapshot.query(
+                  'duplicate_candidate_group_transactions',
+                );
+                final transactions = await snapshot.query(
+                  'transactions',
+                  columns: [
+                    'id',
+                    'transaction_date',
+                    'amount_coefficient',
+                    'amount_scale',
+                    'currency',
+                    'direction',
+                    'status',
+                  ],
+                );
+                final durable =
+                    DuplicateGroupBackupPolicy.durableUnresolvedGroupIds(
+                      groups: groups,
+                      memberships: members,
+                      transactions: transactions,
+                    );
+                return groups
+                    .where(
+                      (row) =>
+                          row['status'] != 'unresolved' ||
+                          DuplicateGroupBackupPolicy.hasStatementEvidence(
+                            row['statement_rows'],
+                          ) ||
+                          durable.contains(row['id']),
+                    )
+                    .toList(growable: false);
+              case 'duplicate_candidate_group_transactions':
+                final groups = await rowsFor('duplicate_candidate_groups');
+                final ids = groups
+                    .map((row) => row['id'])
+                    .whereType<String>()
+                    .toSet();
+                final rows = await snapshot.query(table);
+                return rows
+                    .where((row) => ids.contains(row['group_id']))
+                    .toList(growable: false);
+              case 'entity_tombstones':
+                final rows = await snapshot.query(table);
+                return rows
+                    .where(
+                      (row) => !_generatedExportTombstoneTypes.contains(
+                        row['entity_type'],
+                      ),
+                    )
+                    .toList(growable: false);
+              default:
+                return snapshot.query(table);
+            }
+          }
+
+          for (final table in _exportTables) {
+            final rows = await rowsFor(table);
+            tables[table] = rows;
+            recordCount += rows.length;
+          }
+          final evidenceRows = (tables['evidence_items']! as List)
+              .cast<Map<String, Object?>>();
+          for (final row in evidenceRows) {
+            final localName = row['local_file_name'] as String?;
+            if (localName == null || localName.trim().isEmpty) continue;
+            final normalized = await validateEvidenceReferencePath(
+              evidence,
+              localName,
+              message: 'Unsafe local evidence path.',
+            );
+            if (!await File(path.join(evidence.path, normalized)).exists()) {
+              throw StateError('Referenced evidence file is missing.');
+            }
+          }
+          await File(
+            path.join(staging.path, 'butlerly-export.json'),
+          ).writeAsString(
+            const JsonEncoder.withIndent('  ').convert(data),
+            flush: true,
+          );
+
+          if (await evidence.exists()) {
+            final exportedEvidence = Directory(
+              path.join(staging.path, 'evidence'),
+            );
+            await exportedEvidence.create();
+            await for (final entity in evidence.list(
+              recursive: true,
+              followLinks: false,
+            )) {
+              await rejectEvidenceLink(entity);
+              if (entity is File) {
+                final relative = await validateEvidencePath(
+                  evidence,
+                  path.relative(entity.path, from: evidence.path),
+                );
+                final target = File(path.join(exportedEvidence.path, relative));
+                await target.parent.create(recursive: true);
+                await entity.copy(target.path);
+              }
+            }
+          }
+        });
+        await staging.rename(destination.path);
+        return LocalDataExport(
+          directory: destination,
+          recordCount: recordCount,
+        );
+      } catch (_) {
+        if (await staging.exists()) {
+          await staging.delete(recursive: true);
         }
+        rethrow;
       }
+    },
+  );
+
+  Future<void> _ensureFreshExportPath(Directory candidate) async {
+    await rejectSymlinkedPath(candidate.path, message: 'Unsafe export path.');
+    if (await FileSystemEntity.type(candidate.path, followLinks: false) !=
+        FileSystemEntityType.notFound) {
+      throw const FormatException('Export path already exists.');
     }
-    return LocalDataExport(directory: destination, recordCount: recordCount);
   }
 
   Future<void> eraseAll({
     bool preserveRecoveryMarker = false,
   }) => EvidenceMutationLock.runExclusive(() async {
+    // Validate every recursive deletion target before touching SQLite. If a
+    // caller or a corrupted recovery artifact has introduced a symlink, fail
+    // closed while all financial data is still intact.
+    final evidence = await evidenceDirectory();
+    final pendingEvidence = await pendingEvidenceDirectory();
+    final evidenceParent = evidence.parent;
+    final databaseDirectory = Directory(
+      path.dirname(database.persistenceDatabase.path),
+    );
+    final recovery = Directory(
+      path.join(databaseDirectory.path, '.butlerly-recovery'),
+    );
+    final documents = await documentsDirectory();
+    await rejectEvidenceTree(evidence, message: 'Unsafe live evidence tree.');
+    await rejectEvidenceTree(
+      pendingEvidence,
+      message: 'Unsafe pending evidence tree.',
+    );
+    await rejectEvidenceTree(recovery, message: 'Unsafe recovery tree.');
+    await rejectEvidenceRoot(
+      databaseDirectory,
+      message: 'Unsafe private data root.',
+    );
+    if (await evidenceParent.exists()) {
+      final restorePrefix = '${path.basename(evidence.path)}.restore-';
+      await for (final entity in evidenceParent.list(followLinks: false)) {
+        final name = path.basename(entity.path);
+        if (!name.startsWith(restorePrefix)) continue;
+        if (entity is Link) {
+          throw const FormatException('Unsafe restore evidence tree.');
+        }
+        if (entity is Directory) {
+          await rejectEvidenceTree(
+            entity,
+            message: 'Unsafe restore evidence tree.',
+          );
+        }
+      }
+    }
+    if (await databaseDirectory.exists()) {
+      await for (final entity in databaseDirectory.list(followLinks: false)) {
+        if (entity is Link) {
+          final name = path.basename(entity.path);
+          if (name.startsWith('.butlerly-restore-stage-') ||
+              name.startsWith('.backup-decrypt-') ||
+              name.startsWith('.portable-backup-')) {
+            throw const FormatException('Unsafe private recovery artifact.');
+          }
+        } else if (entity is Directory &&
+            path.basename(entity.path).startsWith('.butlerly-restore-stage-')) {
+          await rejectEvidenceTree(
+            entity,
+            message: 'Unsafe restore staging tree.',
+          );
+        }
+      }
+    }
+    await rejectEvidenceRoot(documents, message: 'Unsafe documents root.');
+    if (await documents.exists()) {
+      await for (final entity in documents.list(followLinks: false)) {
+        final name = path.basename(entity.path);
+        final removable =
+            name.startsWith('Butlerly Export ') ||
+            name == 'Butlerly Safety Backups';
+        if (!removable) continue;
+        if (entity is Link) {
+          throw const FormatException('Unsafe export artifact.');
+        }
+        if (entity is Directory) {
+          await rejectEvidenceTree(entity, message: 'Unsafe export artifact.');
+        }
+      }
+    }
+    final markerPaths = <String>[
+      '${evidence.path}.restore-recovery-required.json',
+      '${evidence.path}.restore-recovery-required.json.tmp',
+      '${evidence.path}.restore-recovery-required.json.previous',
+      '${evidence.path}.restore-journal.json',
+      '${evidence.path}.restore-journal.json.tmp',
+      '${evidence.path}.restore-journal.json.previous',
+      '${evidence.path}.restore-origin.json',
+      '${evidence.path}.restore-origin.json.tmp',
+      '${evidence.path}.restore-origin.json.previous',
+    ];
+    for (final markerPath in markerPaths) {
+      if (await FileSystemEntity.type(markerPath, followLinks: false) ==
+          FileSystemEntityType.link) {
+        throw const FormatException('Unsafe recovery marker.');
+      }
+    }
+
     // Privacy reset and restore share one evidence mutation boundary.
     await database.persistenceDatabase.transaction((transaction) async {
       for (final table in _eraseOrder) {
         await transaction.delete(table);
       }
     });
-    final evidence = await evidenceDirectory();
     if (await evidence.exists()) await evidence.delete(recursive: true);
-    final pendingEvidence = await pendingEvidenceDirectory();
+    if (await evidenceParent.exists()) {
+      final restorePrefix = '${path.basename(evidence.path)}.restore-';
+      await for (final entity in evidenceParent.list(followLinks: false)) {
+        if (entity is Directory &&
+            path.basename(entity.path).startsWith(restorePrefix)) {
+          await entity.delete(recursive: true);
+        }
+      }
+    }
     if (await pendingEvidence.exists()) {
       await pendingEvidence.delete(recursive: true);
+    }
+
+    // Restore staging workspaces contain private SQLite and evidence copies.
+    // They are normally removed when a restore finishes, but an interrupted
+    // recovery reset must not leave them behind after an explicit erase-all.
+    if (await databaseDirectory.exists()) {
+      await for (final entity in databaseDirectory.list(followLinks: false)) {
+        if (entity is Directory &&
+            path.basename(entity.path).startsWith('.butlerly-restore-stage-')) {
+          await entity.delete(recursive: true);
+        }
+      }
+
+      // Erase All is an explicit privacy boundary. Remove private backup,
+      // decryption, and publication-recovery artifacts too, including any
+      // artifacts protected from ordinary startup cleanup for recovery.
+      await for (final entity in databaseDirectory.list(followLinks: false)) {
+        if (entity is! File) continue;
+        final name = path.basename(entity.path);
+        if (name.startsWith('.backup-decrypt-') ||
+            name.startsWith('.portable-backup-')) {
+          await entity.delete();
+        }
+      }
     }
 
     // Recovery snapshots contain user financial state and are part of an
     // erase-all boundary. A recovery reset may intentionally keep the marker
     // until system-data reseeding/runtime refresh also succeeds.
-    final recovery = Directory(
-      path.join(
-        path.dirname(database.persistenceDatabase.path),
-        '.butlerly-recovery',
-      ),
-    );
     if (await recovery.exists()) await recovery.delete(recursive: true);
     if (!preserveRecoveryMarker) {
       final recoveryMarker = File(
@@ -269,8 +547,17 @@ final class LocalDataManager {
         if (await file.exists()) await file.delete();
       }
     }
+    for (final file in <File>[
+      File('${evidence.path}.restore-journal.json'),
+      File('${evidence.path}.restore-journal.json.tmp'),
+      File('${evidence.path}.restore-journal.json.previous'),
+      File('${evidence.path}.restore-origin.json'),
+      File('${evidence.path}.restore-origin.json.tmp'),
+      File('${evidence.path}.restore-origin.json.previous'),
+    ]) {
+      if (await file.exists()) await file.delete();
+    }
 
-    final documents = await documentsDirectory();
     if (await documents.exists()) {
       await for (final entity in documents.list()) {
         if (entity is Directory &&

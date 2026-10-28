@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:butlerly/core/data/backup_container_format.dart';
 import 'package:butlerly/core/data/duplicate_group_backup_policy.dart';
+import 'package:butlerly/core/data/evidence_path_safety.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly_database/butlerly_database.dart';
 import 'package:path/path.dart' as path;
@@ -69,14 +70,24 @@ final class LocalBackupSnapshotWriter {
       recordCount += rows.length;
     }
 
-    final categories = await source.query(
-      'categories',
-      where: 'LOWER(origin) != ?',
-      whereArgs: ['system'],
-      orderBy: 'CASE WHEN parent_id IS NULL THEN 0 ELSE 1 END, id',
+    final categories = _orderCategoriesForBackup(
+      await source.query(
+        'categories',
+        where: 'LOWER(origin) != ?',
+        whereArgs: ['system'],
+        orderBy: 'id',
+      ),
     );
     tables['categories'] = categories;
     recordCount += categories.length;
+    final categoryTranslations = await _rowsForIds(
+      source,
+      table: 'category_translations',
+      field: 'category_id',
+      ids: categories.map((row) => row['id']! as String).toSet(),
+    );
+    tables['category_translations'] = categoryTranslations;
+    recordCount += categoryTranslations.length;
 
     final merchants = await source.query('merchants', where: 'is_built_in = 0');
     tables['merchants'] = merchants;
@@ -84,10 +95,39 @@ final class LocalBackupSnapshotWriter {
 
     final tags = await source.query(
       'tags',
-      where: "id NOT LIKE 'tag.%' AND id NOT LIKE 'system-tag-%'",
+      where:
+          "id NOT IN ("
+          "'tag.business','tag.personal','tag.reimbursable',"
+          "'tag.tax_related','tag.travel','tag.recurring','tag.subscription'"
+          ')',
     );
     tables['tags'] = tags;
     recordCount += tags.length;
+    final tagTranslations = await _rowsForIds(
+      source,
+      table: 'tag_translations',
+      field: 'tag_id',
+      ids: tags.map((row) => row['id']! as String).toSet(),
+    );
+    tables['tag_translations'] = tagTranslations;
+    recordCount += tagTranslations.length;
+
+    final referenceData = await source.query(
+      'reference_data',
+      where: 'LOWER(origin) != ?',
+      whereArgs: ['system'],
+      orderBy: 'id',
+    );
+    tables['reference_data'] = referenceData;
+    recordCount += referenceData.length;
+    final referenceDataTranslations = await _rowsForIds(
+      source,
+      table: 'reference_data_translations',
+      field: 'reference_data_id',
+      ids: referenceData.map((row) => row['id']! as String).toSet(),
+    );
+    tables['reference_data_translations'] = referenceDataTranslations;
+    recordCount += referenceDataTranslations.length;
 
     // Open Review issues are generated from current records. A closed issue is
     // durable evidence of a user's decision and therefore remains portable.
@@ -188,6 +228,7 @@ final class LocalBackupSnapshotWriter {
     final evidenceRows =
         tables['evidence_items']! as List<Map<String, Object?>>;
     final evidenceRoot = await localDataManager.evidenceDirectory();
+    await rejectEvidenceRoot(evidenceRoot);
 
     // Every DB-referenced binary must exist. In addition, preserve unreferenced
     // files conservatively: a partially completed metadata operation must never
@@ -195,12 +236,11 @@ final class LocalBackupSnapshotWriter {
     for (final row in evidenceRows) {
       final localName = row['local_file_name'] as String?;
       if (localName == null || localName.trim().isEmpty) continue;
-      final normalized = path.normalize(localName);
-      if (path.isAbsolute(normalized) ||
-          normalized == '..' ||
-          normalized.startsWith('../')) {
-        throw const FormatException('Unsafe local evidence path.');
-      }
+      final normalized = await validateEvidenceReferencePath(
+        evidenceRoot,
+        localName,
+        message: 'Unsafe local evidence path.',
+      );
       if (!await File(path.join(evidenceRoot.path, normalized)).exists()) {
         throw StateError('Referenced evidence file is missing.');
       }
@@ -208,7 +248,11 @@ final class LocalBackupSnapshotWriter {
 
     final allEvidenceFiles = <File>[];
     if (await evidenceRoot.exists()) {
-      await for (final entity in evidenceRoot.list(recursive: true)) {
+      await for (final entity in evidenceRoot.list(
+        recursive: true,
+        followLinks: false,
+      )) {
+        await rejectEvidenceLink(entity);
         if (entity is File) allEvidenceFiles.add(entity);
       }
     }
@@ -220,14 +264,17 @@ final class LocalBackupSnapshotWriter {
 
     final evidence = <Map<String, Object?>>[];
     final sourceFiles = <File>[];
+    final evidencePathKeys = <String>{};
     for (final file in allEvidenceFiles) {
-      final relative = path.normalize(
+      final relative = await validateEvidencePath(
+        evidenceRoot,
         path.relative(file.path, from: evidenceRoot.path),
+        message: 'Unsafe local evidence path.',
       );
-      if (path.isAbsolute(relative) ||
-          relative == '..' ||
-          relative.startsWith('../')) {
-        throw const FormatException('Unsafe local evidence path.');
+      if (!evidencePathKeys.add(evidencePathKey(relative))) {
+        throw const FormatException(
+          'Evidence tree contains filesystem-equivalent paths.',
+        );
       }
       final length = await file.length();
       evidence.add({
@@ -283,6 +330,33 @@ final class LocalBackupSnapshotWriter {
     if (await destination.exists()) await destination.delete();
     await temporary.rename(destination.path);
     return destination;
+  }
+
+  List<Map<String, Object?>> _orderCategoriesForBackup(
+    List<Map<String, Object?>> rows,
+  ) {
+    final pending = [...rows];
+    final knownIds = rows.map((row) => row['id']).whereType<String>().toSet();
+    final emitted = <String>{};
+    final ordered = <Map<String, Object?>>[];
+    while (pending.isNotEmpty) {
+      final ready = pending.where((row) {
+        final parentId = row['parent_id'] as String?;
+        return parentId == null ||
+            !knownIds.contains(parentId) ||
+            emitted.contains(parentId);
+      }).toList();
+      if (ready.isEmpty) {
+        throw StateError('Category hierarchy contains a cycle.');
+      }
+      for (final row in ready) {
+        pending.remove(row);
+        ordered.add(row);
+        final id = row['id'];
+        if (id is String) emitted.add(id);
+      }
+    }
+    return ordered;
   }
 
   Future<List<Map<String, Object?>>> _rowsForIds(

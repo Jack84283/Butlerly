@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:butlerly/core/data/local_backup_engine.dart' as engine;
 import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/database/local_database.dart';
@@ -31,7 +32,765 @@ void main() {
     expect((manifest['backupId']! as String), isNotEmpty);
     expect(manifest['appVersion'], '1.0.0');
     expect(manifest['appBuild'], '1');
-    expect(manifest['schemaVersion'], 13);
+    expect(manifest['schemaVersion'], 14);
+  });
+
+  test(
+    'current-schema backups reject missing tables before replacing local data',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.database.database.insert('budgets', {
+        'id': 'budget-preserve-on-rejection',
+        'scope': 'overall',
+        'scope_id': null,
+        'currency': 'USD',
+        'amount': '500.00',
+        'created_at': '2026-10-01T00:00:00.000Z',
+        'updated_at': '2026-10-01T00:00:00.000Z',
+      });
+      final backup = File(
+        path.join(fixture.root.path, 'incomplete-current-schema.butlerly'),
+      );
+      await fixture.manager.createBackup(backup);
+      await _removeTableFromBackup(backup, 'budgets');
+
+      await expectLater(
+        fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
+        throwsA(isA<FormatException>()),
+      );
+      expect(
+        await fixture.database.database.query(
+          'budgets',
+          where: 'id = ?',
+          whereArgs: ['budget-preserve-on-rejection'],
+        ),
+        hasLength(1),
+      );
+    },
+  );
+
+  test(
+    'restore rejects missing referenced evidence before activating the package',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.insertTransaction('tx-evidence-preserve');
+      await fixture.database.database.insert('evidence_items', {
+        'id': 'evidence-preserve',
+        'type': 'receipt',
+        'original_name': 'receipt.bin',
+        'media_type': 'application/octet-stream',
+        'provenance_id': 'tx-evidence-preserve-provenance',
+        'created_at': '2026-09-01T00:00:00.000Z',
+        'local_file_name': 'receipt.bin',
+      });
+      final liveEvidence = File(
+        path.join(fixture.evidence.path, 'receipt.bin'),
+      );
+      await liveEvidence.writeAsString('live evidence', flush: true);
+      final backup = File(
+        path.join(fixture.root.path, 'missing-evidence-reference.butlerly'),
+      );
+      await fixture.manager.createBackup(backup);
+      await _rewriteBackupMetadata(backup, (metadata) {
+        final tables = (metadata['tables']! as Map).cast<String, Object?>();
+        final rows = (tables['evidence_items']! as List).cast<Map>();
+        rows.single['local_file_name'] = 'missing.bin';
+      });
+
+      await expectLater(
+        fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
+        throwsA(isA<FormatException>()),
+      );
+      expect(await liveEvidence.readAsString(), 'live evidence');
+      expect(
+        await fixture.database.database.query(
+          'transactions',
+          where: 'id = ?',
+          whereArgs: ['tx-evidence-preserve'],
+        ),
+        hasLength(1),
+      );
+      final stagingDirectories = await fixture.evidence.parent
+          .list(followLinks: false)
+          .where((entity) => entity is Directory)
+          .cast<Directory>()
+          .where(
+            (directory) =>
+                path.basename(directory.path).startsWith('evidence.restore-'),
+          )
+          .toList();
+      expect(stagingDirectories, isEmpty);
+
+      for (final invalidReference in <Object?>[
+        '../receipt.bin',
+        r'..\receipt.bin',
+        42,
+      ]) {
+        await fixture.manager.createBackup(backup);
+        await _rewriteBackupMetadata(backup, (metadata) {
+          final tables = (metadata['tables']! as Map).cast<String, Object?>();
+          final rows = (tables['evidence_items']! as List).cast<Map>();
+          rows.single['local_file_name'] = invalidReference;
+        });
+        await expectLater(
+          fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
+          throwsA(isA<FormatException>()),
+        );
+        expect(fixture.manager.recoveryState.isRecoveryRequired, isFalse);
+      }
+    },
+  );
+
+  test(
+    'restore rejects malformed budget scope references before mutation',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.database.database.insert('budgets', {
+        'id': 'budget-invalid-scope',
+        'scope': 'overall',
+        'scope_id': null,
+        'currency': 'USD',
+        'amount': '100.00',
+        'created_at': '2026-10-01T00:00:00.000Z',
+        'updated_at': '2026-10-01T00:00:00.000Z',
+      });
+      final backup = File(
+        path.join(fixture.root.path, 'invalid-budget-scope.butlerlybackup'),
+      );
+      await fixture.manager.createBackup(backup);
+
+      for (final invalidScopeId in <Object?>['missing-category', 42]) {
+        await fixture.manager.createBackup(backup);
+        await _rewriteBackupMetadata(backup, (metadata) {
+          final tables = (metadata['tables']! as Map).cast<String, Object?>();
+          final rows = (tables['budgets']! as List).cast<Map>();
+          rows.single['scope'] = 'category';
+          rows.single['scope_id'] = invalidScopeId;
+        });
+
+        await expectLater(
+          fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
+          throwsA(isA<FormatException>()),
+        );
+        expect(
+          await fixture.database.database.query(
+            'budgets',
+            where: 'id = ?',
+            whereArgs: ['budget-invalid-scope'],
+          ),
+          hasLength(1),
+        );
+      }
+    },
+  );
+
+  test(
+    'restore rejects duplicate normalized evidence paths before mutation',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.insertTransaction('tx-duplicate-evidence-path');
+      await fixture.database.database.insert('evidence_items', {
+        'id': 'evidence-one',
+        'type': 'receipt',
+        'original_name': 'one.bin',
+        'media_type': 'application/octet-stream',
+        'provenance_id': 'tx-duplicate-evidence-path-provenance',
+        'created_at': '2026-09-01T00:00:00.000Z',
+        'local_file_name': 'one.bin',
+      });
+      await fixture.database.database.insert('evidence_items', {
+        'id': 'evidence-two',
+        'type': 'receipt',
+        'original_name': 'two.bin',
+        'media_type': 'application/octet-stream',
+        'provenance_id': 'tx-duplicate-evidence-path-provenance',
+        'created_at': '2026-09-01T00:00:00.000Z',
+        'local_file_name': 'two.bin',
+      });
+      await File(
+        path.join(fixture.evidence.path, 'one.bin'),
+      ).writeAsString('one');
+      await File(
+        path.join(fixture.evidence.path, 'two.bin'),
+      ).writeAsString('two');
+      final backup = File(
+        path.join(fixture.root.path, 'duplicate-evidence-path.butlerlybackup'),
+      );
+      await fixture.manager.createBackup(backup);
+      await fixture.database.database.update(
+        'transactions',
+        {'description': 'local edit'},
+        where: 'id = ?',
+        whereArgs: ['tx-duplicate-evidence-path'],
+      );
+      await _rewriteBackupMetadata(backup, (metadata) {
+        final evidence = (metadata['evidence']! as List).cast<Map>();
+        expect(evidence, hasLength(2));
+        evidence[1]['path'] = './${evidence[0]['path']}';
+      });
+
+      await expectLater(
+        fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
+        throwsA(isA<FormatException>()),
+      );
+      expect(
+        (await fixture.database.database.query(
+          'transactions',
+          columns: ['description'],
+          where: 'id = ?',
+          whereArgs: ['tx-duplicate-evidence-path'],
+        )).single['description'],
+        'local edit',
+      );
+      expect(
+        await File(path.join(fixture.evidence.path, 'one.bin')).readAsString(),
+        'one',
+      );
+      expect(
+        await File(path.join(fixture.evidence.path, 'two.bin')).readAsString(),
+        'two',
+      );
+
+      await fixture.manager.createBackup(backup);
+      await _rewriteBackupMetadata(backup, (metadata) {
+        final evidence = (metadata['evidence']! as List).cast<Map>();
+        evidence[1]['path'] = (evidence[0]['path']! as String).toUpperCase();
+      });
+      await expectLater(
+        fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
+        throwsA(isA<FormatException>()),
+      );
+
+      await fixture.manager.createBackup(backup);
+      await _rewriteBackupMetadata(backup, (metadata) {
+        final evidence = (metadata['evidence']! as List).cast<Map>();
+        evidence.first['path'] = r'..\outside.bin';
+      });
+      await expectLater(
+        fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
+        throwsA(isA<FormatException>()),
+      );
+    },
+  );
+
+  test(
+    'restore writes nested user categories in parent-before-child order',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      const timestamp = '2026-10-01T00:00:00.000Z';
+      await fixture.database.database.insert('categories', {
+        'id': 'z-category-parent',
+        'name': 'Parent',
+        'origin': 'user',
+        'parent_id': null,
+        'status': 'active',
+        'created_at': timestamp,
+        'updated_at': timestamp,
+      });
+      await fixture.database.database.insert('categories', {
+        'id': 'a-category-child',
+        'name': 'Child',
+        'origin': 'user',
+        'parent_id': 'z-category-parent',
+        'status': 'active',
+        'created_at': timestamp,
+        'updated_at': timestamp,
+      });
+      await fixture.database.database.insert('categories', {
+        'id': 'a-category-grandchild',
+        'name': 'Grandchild',
+        'origin': 'user',
+        'parent_id': 'a-category-child',
+        'status': 'active',
+        'created_at': timestamp,
+        'updated_at': timestamp,
+      });
+      final backup = File(
+        path.join(fixture.root.path, 'nested-categories.butlerly'),
+      );
+      await fixture.manager.createBackup(backup);
+      await fixture.database.database.delete(
+        'categories',
+        where: 'id = ?',
+        whereArgs: ['a-category-grandchild'],
+      );
+      await fixture.database.database.delete(
+        'categories',
+        where: 'id = ?',
+        whereArgs: ['a-category-child'],
+      );
+      await fixture.database.database.delete(
+        'categories',
+        where: 'id = ?',
+        whereArgs: ['z-category-parent'],
+      );
+
+      await fixture.manager.restore(backup, mode: LocalRestoreMode.replace);
+
+      final child = await fixture.database.database.query(
+        'categories',
+        where: 'id = ?',
+        whereArgs: ['a-category-child'],
+      );
+      expect(child.single['parent_id'], 'z-category-parent');
+      final grandchild = await fixture.database.database.query(
+        'categories',
+        where: 'id = ?',
+        whereArgs: ['a-category-grandchild'],
+      );
+      expect(grandchild.single['parent_id'], 'a-category-child');
+    },
+  );
+
+  test('restore preserves references to omitted system catalog rows', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    await fixture.insertTransaction('tx-system-catalog-reference');
+    await fixture.database.database.update(
+      'transactions',
+      {
+        'merchant_id': 'merchant.safeway',
+        'category_id': 'category.food.groceries',
+      },
+      where: 'id = ?',
+      whereArgs: ['tx-system-catalog-reference'],
+    );
+    final backup = File(
+      path.join(fixture.root.path, 'system-catalog-reference.butlerly'),
+    );
+    await fixture.manager.createBackup(backup);
+    await fixture.database.database.delete(
+      'transactions',
+      where: 'id = ?',
+      whereArgs: ['tx-system-catalog-reference'],
+    );
+
+    await fixture.manager.restore(backup, mode: LocalRestoreMode.replace);
+
+    final row = (await fixture.database.database.query(
+      'transactions',
+      where: 'id = ?',
+      whereArgs: ['tx-system-catalog-reference'],
+    )).single;
+    expect(row['merchant_id'], 'merchant.safeway');
+    expect(row['category_id'], 'category.food.groceries');
+  });
+
+  test(
+    'new builds restore schema 13 backups without V1 child tables',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.insertTransaction('tx-schema-13');
+      final backup = File(
+        path.join(fixture.root.path, 'schema-13.butlerlybackup'),
+      );
+      await fixture.manager.createBackup(backup);
+      await _downgradeBackupToV13(backup);
+
+      await fixture.manager.restore(backup, mode: LocalRestoreMode.replace);
+
+      expect(await _ids(fixture, 'transactions'), contains('tx-schema-13'));
+    },
+  );
+
+  test(
+    'new builds restore historical schema 13 payloads without budgets',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final backup = File(
+        path.join(fixture.root.path, 'historical-schema-13.butlerlybackup'),
+      );
+      await _writeHistoricalSchema13Backup(backup);
+
+      await fixture.manager.restore(backup, mode: LocalRestoreMode.replace);
+
+      expect(
+        await _ids(fixture, 'transactions'),
+        contains('historical-schema-13'),
+      );
+      expect(
+        engine.LocalBackupManager.requiredTablesForSchema(13),
+        isNot(contains('budgets')),
+      );
+      expect(
+        engine.LocalBackupManager.requiredTablesForSchema(14),
+        contains('budgets'),
+      );
+    },
+  );
+
+  test(
+    'schema 14 rejects null and malformed required table payloads before mutation',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.insertTransaction('tx-malformed-payload');
+      await fixture.database.database.insert('budgets', {
+        'id': 'budget-malformed-payload',
+        'scope': 'overall',
+        'scope_id': null,
+        'currency': 'USD',
+        'amount': '500.00',
+        'created_at': '2026-10-01T00:00:00.000Z',
+        'updated_at': '2026-10-01T00:00:00.000Z',
+      });
+
+      final cases = <String, Object?>{'transactions': null, 'budgets': null};
+      for (final entry in cases.entries) {
+        final backup = File(
+          path.join(fixture.root.path, 'malformed-${entry.key}.butlerly'),
+        );
+        await fixture.manager.createBackup(backup);
+        await _rewriteBackupMetadata(backup, (metadata) {
+          final tables = (metadata['tables']! as Map).cast<String, Object?>();
+          tables[entry.key] = entry.value;
+        });
+
+        await expectLater(
+          fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
+          throwsA(isA<FormatException>()),
+        );
+        expect(
+          await fixture.database.database.query(
+            'transactions',
+            where: 'id = ?',
+            whereArgs: ['tx-malformed-payload'],
+          ),
+          hasLength(1),
+        );
+        expect(
+          await fixture.database.database.query(
+            'budgets',
+            where: 'id = ?',
+            whereArgs: ['budget-malformed-payload'],
+          ),
+          hasLength(1),
+        );
+      }
+
+      final malformedRow = File(
+        path.join(fixture.root.path, 'malformed-row.butlerly'),
+      );
+      await fixture.manager.createBackup(malformedRow);
+      await _rewriteBackupMetadata(malformedRow, (metadata) {
+        final tables = (metadata['tables']! as Map).cast<String, Object?>();
+        tables['transactions'] = [
+          <String, Object?>{'description': 'missing transaction identity'},
+        ];
+      });
+      await expectLater(
+        fixture.manager.restore(malformedRow, mode: LocalRestoreMode.replace),
+        throwsA(isA<FormatException>()),
+      );
+      expect(
+        await fixture.database.database.query(
+          'transactions',
+          where: 'id = ?',
+          whereArgs: ['tx-malformed-payload'],
+        ),
+        hasLength(1),
+      );
+
+      final duplicateRows = File(
+        path.join(fixture.root.path, 'duplicate-identity.butlerly'),
+      );
+      await fixture.manager.createBackup(duplicateRows);
+      await _rewriteBackupMetadata(duplicateRows, (metadata) {
+        final tables = (metadata['tables']! as Map).cast<String, Object?>();
+        final budgets = (tables['budgets']! as List).cast<Map>();
+        final original = budgets.single.cast<String, Object?>();
+        tables['budgets'] = [
+          original,
+          <String, Object?>{...original, 'amount': '900.00'},
+        ];
+      });
+      await expectLater(
+        fixture.manager.restore(duplicateRows, mode: LocalRestoreMode.replace),
+        throwsA(isA<FormatException>()),
+      );
+      expect(
+        await fixture.database.database.query(
+          'budgets',
+          where: 'id = ?',
+          whereArgs: ['budget-malformed-payload'],
+        ),
+        hasLength(1),
+      );
+
+      final unknownTable = File(
+        path.join(fixture.root.path, 'unknown-table.butlerly'),
+      );
+      await fixture.manager.createBackup(unknownTable);
+      await _rewriteBackupMetadata(unknownTable, (metadata) {
+        final tables = (metadata['tables']! as Map).cast<String, Object?>();
+        tables['future_table'] = <Object?>[];
+      });
+      await expectLater(
+        fixture.manager.restore(unknownTable, mode: LocalRestoreMode.replace),
+        throwsA(isA<FormatException>()),
+      );
+    },
+  );
+
+  test(
+    'restore rejects partial merchant and transaction rows before merge',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.insertTransaction('tx-partial-row');
+      final merchantBackup = File(
+        path.join(fixture.root.path, 'partial-merchant.butlerly'),
+      );
+      await fixture.manager.createBackup(merchantBackup);
+      await _rewriteBackupMetadata(merchantBackup, (metadata) {
+        final tables = (metadata['tables']! as Map).cast<String, Object?>();
+        tables['merchants'] = [
+          <String, Object?>{
+            'id': 'merchant.safeway',
+            'name': 'Tampered built-in merchant',
+          },
+        ];
+      });
+      await expectLater(
+        fixture.manager.restore(merchantBackup, mode: LocalRestoreMode.merge),
+        throwsA(isA<FormatException>()),
+      );
+      final merchant = (await fixture.database.database.query(
+        'merchants',
+        where: 'id = ?',
+        whereArgs: ['merchant.safeway'],
+      )).single;
+      expect(merchant['name'], 'Safeway');
+
+      final transactionBackup = File(
+        path.join(fixture.root.path, 'partial-transaction.butlerly'),
+      );
+      await fixture.manager.createBackup(transactionBackup);
+      await _rewriteBackupMetadata(transactionBackup, (metadata) {
+        final tables = (metadata['tables']! as Map).cast<String, Object?>();
+        tables['transactions'] = [
+          <String, Object?>{
+            'id': 'tx-partial-row',
+            'amount_coefficient': '999999',
+          },
+        ];
+      });
+      await expectLater(
+        fixture.manager.restore(
+          transactionBackup,
+          mode: LocalRestoreMode.merge,
+        ),
+        throwsA(isA<FormatException>()),
+      );
+      final transaction = (await fixture.database.database.query(
+        'transactions',
+        where: 'id = ?',
+        whereArgs: ['tx-partial-row'],
+      )).single;
+      expect(transaction['amount_coefficient'], '100');
+    },
+  );
+
+  test(
+    'restore rejects invalid row values and references before mutation',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.insertTransaction('tx-invalid-row-shape');
+      final cases = <String, void Function(Map<String, Object?>)>{
+        'timestamp': (row) => row['created_at'] = 'not-a-date',
+        'decimal': (row) => row['amount_coefficient'] = 'not-a-number',
+        'reference': (row) => row['merchant_id'] = 'missing-merchant',
+      };
+
+      for (final entry in cases.entries) {
+        final backup = File(
+          path.join(fixture.root.path, 'invalid-${entry.key}.butlerly'),
+        );
+        await fixture.manager.createBackup(backup);
+        await _rewriteBackupMetadata(backup, (metadata) {
+          final tables = (metadata['tables']! as Map).cast<String, Object?>();
+          final rows = (tables['transactions']! as List).cast<Map>();
+          entry.value(rows.single.cast<String, Object?>());
+        });
+
+        await expectLater(
+          fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
+          throwsA(isA<FormatException>()),
+        );
+        expect(
+          await fixture.database.database.query(
+            'transactions',
+            where: 'id = ?',
+            whereArgs: ['tx-invalid-row-shape'],
+          ),
+          hasLength(1),
+        );
+      }
+    },
+  );
+
+  test(
+    'restore rejects invalid transaction enum values before mutation',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.insertTransaction('tx-invalid-enum');
+      final backup = File(
+        path.join(fixture.root.path, 'invalid-enum.butlerlybackup'),
+      );
+      await fixture.manager.createBackup(backup);
+      await _rewriteBackupMetadata(backup, (metadata) {
+        final tables = (metadata['tables']! as Map).cast<String, Object?>();
+        final rows = (tables['transactions']! as List).cast<Map>();
+        rows.single['status'] = 'not-a-status';
+      });
+
+      await expectLater(
+        fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
+        throwsA(isA<FormatException>()),
+      );
+      expect(
+        await fixture.database.database.query(
+          'transactions',
+          where: 'id = ?',
+          whereArgs: ['tx-invalid-enum'],
+        ),
+        hasLength(1),
+      );
+    },
+  );
+
+  test(
+    'restore rejects unknown tombstone types before replacing local data',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.insertTransaction('tx-unknown-tombstone');
+      final backup = File(
+        path.join(fixture.root.path, 'unknown-tombstone.butlerlybackup'),
+      );
+      await fixture.manager.createBackup(backup);
+      await _rewriteBackupMetadata(backup, (metadata) {
+        final tables = (metadata['tables']! as Map).cast<String, Object?>();
+        final tombstones = (tables['entity_tombstones']! as List).cast<Map>();
+        tombstones.add(<String, Object?>{
+          'entity_type': 'not-a-table',
+          'entity_id': 'tx-unknown-tombstone',
+          'deleted_at': '2026-09-01T00:00:00.000Z',
+        });
+      });
+
+      await expectLater(
+        fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
+        throwsA(isA<FormatException>()),
+      );
+      expect(
+        await fixture.database.database.query(
+          'transactions',
+          where: 'id = ?',
+          whereArgs: ['tx-unknown-tombstone'],
+        ),
+        hasLength(1),
+      );
+    },
+  );
+
+  test(
+    'merge preserves a newer local tombstone when the entity row is absent',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.insertTransaction('tx-newer-tombstone');
+      await fixture.database.database.delete(
+        'transactions',
+        where: 'id = ?',
+        whereArgs: ['tx-newer-tombstone'],
+      );
+      await fixture.database.database.delete(
+        'entity_tombstones',
+        where: 'entity_type = ? AND entity_id = ?',
+        whereArgs: ['transactions', 'tx-newer-tombstone'],
+      );
+      await fixture.database.database.insert('entity_tombstones', {
+        'entity_type': 'transactions',
+        'entity_id': 'tx-newer-tombstone',
+        'deleted_at': '2026-09-01T00:00:00.000Z',
+      });
+      final backup = File(
+        path.join(fixture.root.path, 'older-tombstone.butlerlybackup'),
+      );
+      await fixture.manager.createBackup(backup);
+      await fixture.database.database.update(
+        'entity_tombstones',
+        {'deleted_at': '2026-09-02T00:00:00.000Z'},
+        where: 'entity_type = ? AND entity_id = ?',
+        whereArgs: ['transactions', 'tx-newer-tombstone'],
+      );
+
+      await fixture.manager.restore(backup, mode: LocalRestoreMode.merge);
+
+      final tombstone = await fixture.database.database.query(
+        'entity_tombstones',
+        where: 'entity_type = ? AND entity_id = ?',
+        whereArgs: ['transactions', 'tx-newer-tombstone'],
+      );
+      expect(tombstone.single['deleted_at'], '2026-09-02T00:00:00.000Z');
+      expect(
+        await fixture.database.database.query(
+          'transactions',
+          where: 'id = ?',
+          whereArgs: ['tx-newer-tombstone'],
+        ),
+        isEmpty,
+      );
+    },
+  );
+
+  test('backup rejects symbolic links in the evidence tree', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final outside = File(path.join(fixture.root.path, 'outside.bin'))
+      ..writeAsStringSync('private');
+    await Link(
+      path.join(fixture.evidence.path, 'linked.bin'),
+    ).create(outside.path);
+    final backup = File(
+      path.join(fixture.root.path, 'symlink-evidence.butlerlybackup'),
+    );
+
+    await expectLater(
+      fixture.manager.createBackup(backup),
+      throwsA(isA<FormatException>()),
+    );
+    expect(await outside.readAsString(), 'private');
+  });
+
+  test('backup rejects a symbolic link at the evidence root', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final realEvidence = Directory('${fixture.evidence.path}-real');
+    await fixture.evidence.rename(realEvidence.path);
+    await Link(fixture.evidence.path).create(realEvidence.path);
+    try {
+      final backup = File(
+        path.join(fixture.root.path, 'symlink-root.butlerlybackup'),
+      );
+      await expectLater(
+        fixture.manager.createBackup(backup),
+        throwsA(isA<FormatException>()),
+      );
+    } finally {
+      await Link(fixture.evidence.path).delete();
+      await realEvidence.rename(fixture.evidence.path);
+    }
   });
 
   test(
@@ -714,6 +1473,116 @@ Future<Map<String, Object?>> _readManifest(File file) async {
   }
 }
 
+Future<void> _removeTableFromBackup(File backup, String tableName) async {
+  await _rewriteBackupMetadata(backup, (metadata) {
+    final tables = (metadata['tables']! as Map).cast<String, Object?>();
+    tables.remove(tableName);
+  });
+}
+
+Future<void> _writeHistoricalSchema13Backup(File backup) async {
+  // This is a hand-built payload from the pre-budgets schema-13 format. It is
+  // intentionally not produced by creating a current backup and removing a
+  // table, so the compatibility test exercises the historical table shape.
+  const historicalTables = <String>[
+    'payment_sources',
+    'payment_settlements',
+    'categories',
+    'merchants',
+    'merchant_aliases',
+    'merchant_normalization_patterns',
+    'tags',
+    'provenances',
+    'exchange_rates',
+    'transactions',
+    'normalized_money',
+    'transaction_provenances',
+    'transaction_tags',
+    'transaction_rules',
+    'evidence_items',
+    'financial_statements',
+    'statement_rows',
+    'extractions',
+    'attachment_links',
+    'suggestions',
+    'review_issues',
+    'reconciliation_candidates',
+    'reconciliation_links',
+    'duplicate_candidate_groups',
+    'duplicate_candidate_group_transactions',
+    'recurring_pattern_decisions',
+    'analysis_rule_activations',
+    'analysis_rule_configurations',
+    'user_preferences',
+    'entity_tombstones',
+  ];
+  final tables = <String, Object?>{
+    for (final table in historicalTables) table: <Object?>[],
+  };
+  tables['transactions'] = [
+    <String, Object?>{
+      'id': 'historical-schema-13',
+      'unknown_time_reason': 'unknown',
+      'amount_coefficient': '100',
+      'amount_scale': 2,
+      'currency': 'USD',
+      'direction': 'expense',
+      'source_type': 'manual',
+      'status': 'active',
+      'created_at': '2026-01-01T00:00:00.000Z',
+      'updated_at': '2026-01-01T00:00:00.000Z',
+    },
+  ];
+  final metadata = <String, Object?>{
+    'manifest': <String, Object?>{
+      'format': 'butlerly-backup',
+      'formatVersion': 2,
+      'schemaVersion': 13,
+      'backupId': 'historical-schema-13',
+      'appVersion': '1.0.0',
+      'appBuild': '1',
+      'createdAtUtc': '2026-01-01T00:00:00.000Z',
+      'recordCount': 1,
+      'evidenceCount': 0,
+      'derivedDataPolicy': 'rebuild',
+    },
+    'tables': tables,
+    'evidence': const <Object?>[],
+  };
+  final encoded = utf8.encode(jsonEncode(metadata));
+  await backup.writeAsBytes([
+    ...utf8.encode('BUTLERLYBACKUP2'),
+    ...int64Bytes(encoded.length),
+    ...ascii.encode(sha256Bytes(encoded)),
+    ...encoded,
+  ], flush: true);
+}
+
+Future<void> _rewriteBackupMetadata(
+  File backup,
+  void Function(Map<String, Object?> metadata) mutate,
+) async {
+  final bytes = await backup.readAsBytes();
+  final magic = utf8.encode('BUTLERLYBACKUP2');
+  final metadataLength = int64FromBytes(
+    bytes.sublist(magic.length, magic.length + 8),
+  );
+  final metadataStart = magic.length + 8 + 64;
+  final metadataEnd = metadataStart + metadataLength;
+  final metadata =
+      jsonDecode(utf8.decode(bytes.sublist(metadataStart, metadataEnd)))
+          as Map<String, Object?>;
+  mutate(metadata);
+  final encoded = utf8.encode(jsonEncode(metadata));
+  await backup.writeAsBytes([
+    ...magic,
+    ...int64Bytes(encoded.length),
+    ...ascii.encode(sha256Bytes(encoded)),
+    ...encoded,
+    ...bytes.sublist(metadataEnd),
+  ], flush: true);
+}
+
 Future<void> _downgradeBackupToV11(File backup) async {
   final bytes = await backup.readAsBytes();
   final magic = utf8.encode('BUTLERLYBACKUP2');
@@ -756,6 +1625,38 @@ Future<void> _downgradeBackupToV12(File backup) async {
   final groups = (tables['duplicate_candidate_groups'] as List?) ?? const [];
   for (final value in groups) {
     if (value is Map) value.remove('statement_rows');
+  }
+  final encoded = utf8.encode(jsonEncode(metadata));
+  await backup.writeAsBytes([
+    ...magic,
+    ...int64Bytes(encoded.length),
+    ...ascii.encode(sha256Bytes(encoded)),
+    ...encoded,
+    ...bytes.sublist(metadataEnd),
+  ], flush: true);
+}
+
+Future<void> _downgradeBackupToV13(File backup) async {
+  final bytes = await backup.readAsBytes();
+  final magic = utf8.encode('BUTLERLYBACKUP2');
+  final metadataLength = int64FromBytes(
+    bytes.sublist(magic.length, magic.length + 8),
+  );
+  final metadataStart = magic.length + 8 + 64;
+  final metadataEnd = metadataStart + metadataLength;
+  final metadata =
+      (jsonDecode(utf8.decode(bytes.sublist(metadataStart, metadataEnd)))
+          as Map<String, Object?>);
+  final manifest = (metadata['manifest']! as Map).cast<String, Object?>();
+  final tables = (metadata['tables']! as Map).cast<String, Object?>();
+  manifest['schemaVersion'] = 13;
+  for (final table in [
+    'category_translations',
+    'tag_translations',
+    'reference_data',
+    'reference_data_translations',
+  ]) {
+    tables.remove(table);
   }
   final encoded = utf8.encode(jsonEncode(metadata));
   await backup.writeAsBytes([

@@ -98,7 +98,7 @@ Future<void> startLocalFileImport(
       );
       return;
     }
-    final sources = await services<FinanceServices>().listPaymentSources();
+    final sources = await finance.listPaymentSources();
     if (!context.mounted) return;
     final activeSources = sources is ApplicationSuccess<List<PaymentSource>>
         ? sources.value

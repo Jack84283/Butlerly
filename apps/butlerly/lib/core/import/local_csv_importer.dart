@@ -235,6 +235,10 @@ final class LocalCsvImporter {
               'adjustment' => TransactionDirection.adjustment,
               _ => null,
             };
+      final hasLegacyReceiptTaxTip =
+          kind == ButlerlyCsvKind.receipts && expected.contains('tax');
+      final tax = value('tax');
+      final tip = value('tip');
       String? error;
       if (values.length != expected.length) {
         error = _localizedCsvError('columns', language);
@@ -252,31 +256,25 @@ final class LocalCsvImporter {
         error = _localizedCsvError('currency', language);
       } else if (direction == null) {
         error = _localizedCsvError('direction', language);
-      } else if (kind == ButlerlyCsvKind.receipts &&
-          (!_validTemplateAmount(
-                value('tax'),
-                allowZero: true,
-                optional: true,
-              ) ||
-              !_validTemplateAmount(
-                value('tip'),
-                allowZero: true,
-                optional: true,
-              ))) {
-        error = _localizedCsvError('tax', language);
-      } else if (kind == ButlerlyCsvKind.receipts &&
-          DecimalValue.parse(amount).compareTo(
-                DecimalValue.parse(
-                  value('tax').isEmpty ? '0' : value('tax'),
-                ).add(
-                  DecimalValue.parse(value('tip').isEmpty ? '0' : value('tip')),
-                ),
-              ) <
-              0) {
-        error = _localizedCsvError('total', language);
+      } else if (hasLegacyReceiptTaxTip &&
+          (!_validTemplateAmount(tax, allowZero: true) && tax.isNotEmpty ||
+              !_validTemplateAmount(tip, allowZero: true) && tip.isNotEmpty)) {
+        error = _localizedCsvError('taxTip', language);
+      } else if (hasLegacyReceiptTaxTip &&
+          _legacyTaxTipTotalExceedsReceipt(amount, tax, tip)) {
+        error = _localizedCsvError('taxTipTotal', language);
       } else if (reference.isNotEmpty && !references.add(reference)) {
         error = _localizedCsvError('duplicate', language);
       }
+      final sourceNotes = _optional(value('notes'));
+      final legacyNotes = [
+        ?sourceNotes,
+        if (tax.isNotEmpty) 'Legacy receipt tax: $tax',
+        if (tip.isNotEmpty) 'Legacy receipt tip: $tip',
+      ].join('; ');
+      final notes = hasLegacyReceiptTaxTip
+          ? (legacyNotes.isEmpty ? null : legacyNotes)
+          : sourceNotes;
       final row = CsvStatementRow(
         rowNumber: index + 1,
         date: date,
@@ -290,7 +288,7 @@ final class LocalCsvImporter {
         externalReference: _optional(reference),
         original: _encodeCsvRow(values),
         merchant: _optional(merchant),
-        notes: _optional(value('notes')),
+        notes: notes,
         usedDefaultCurrency: usedDefaultCurrency,
         error: error,
       );
@@ -323,14 +321,14 @@ final class LocalCsvImporter {
         'merchant': 'merchant is required',
         'description': 'description is required',
         'receiptId': 'receipt ID is required',
+        'taxTip': 'invalid tax or tip (positive decimal, no signs or commas)',
+        'taxTipTotal': 'tax and tip cannot exceed the receipt total',
         'amount': 'invalid amount (positive decimal, no signs or commas)',
         'currency': 'invalid currency (use uppercase code, e.g. USD)',
         'missingDefaultCurrency':
             'Currency is blank and no default currency is configured. Set the default currency in Preferences or enter a currency.',
         'direction':
             'invalid type (expense, income, transfer, refund or adjustment)',
-        'tax': 'invalid tax or tip amount',
-        'total': 'total cannot be less than tax plus tip',
         'duplicate': 'duplicate receipt ID or transaction ID in file',
         'noRows': 'The CSV template has no data rows.',
       },
@@ -342,12 +340,12 @@ final class LocalCsvImporter {
         'merchant': '商家为必填项',
         'description': '描述为必填项',
         'receiptId': '收据编号为必填项',
+        'taxTip': '税费或小费无效（请使用不带符号或千位分隔符的正数）',
+        'taxTipTotal': '税费和小费不能超过收据总额',
         'amount': '金额无效（请使用不带符号或千位分隔符的正数）',
         'currency': '币种无效（请使用大写代码，例如 USD）',
         'missingDefaultCurrency': '币种为空且未配置默认币种。请在偏好设置中设定默认币种，或填写币种。',
         'direction': '交易类型无效（支出、收入、转账、退款、调整）',
-        'tax': '税额或小费无效',
-        'total': '实付总额不能小于税额与小费之和',
         'duplicate': '文件中存在重复的收据编号或交易编号',
         'noRows': 'CSV 模板中没有数据行。',
       },
@@ -359,6 +357,9 @@ final class LocalCsvImporter {
         'merchant': 'el comercio es obligatorio',
         'description': 'la descripción es obligatoria',
         'receiptId': 'el ID del recibo es obligatorio',
+        'taxTip':
+            'impuesto o propina no válidos (decimal positivo sin signos ni separadores)',
+        'taxTipTotal': 'el impuesto y la propina no pueden superar el total',
         'amount': 'importe no válido (decimal positivo sin signo ni separador)',
         'currency':
             'moneda no válida (usa el código en mayúsculas, p. ej., USD)',
@@ -366,8 +367,6 @@ final class LocalCsvImporter {
             'La moneda está vacía y no hay moneda predeterminada configurada. Configúrala en Preferencias o indica una moneda.',
         'direction':
             'tipo no válido (gasto, ingreso, transferencia, reembolso o ajuste)',
-        'tax': 'impuesto o propina no válidos',
-        'total': 'el total no puede ser menor que impuesto más propina',
         'duplicate': 'ID de recibo o transacción duplicado en el archivo',
         'noRows': 'La plantilla CSV no contiene filas de datos.',
       },
@@ -384,6 +383,22 @@ final class LocalCsvImporter {
     if (!RegExp(r'^\d+(?:\.\d{1,4})?$').hasMatch(value)) return false;
     final decimal = DecimalValue.parse(value);
     return allowZero ? !decimal.isNegative : decimal.isPositive;
+  }
+
+  static bool _legacyTaxTipTotalExceedsReceipt(
+    String total,
+    String tax,
+    String tip,
+  ) {
+    if (tax.isEmpty && tip.isEmpty) return false;
+    final receiptTotal = DecimalValue.parse(total);
+    final taxTotal = tax.isEmpty
+        ? DecimalValue.fromParts(coefficient: BigInt.zero, scale: 0)
+        : DecimalValue.parse(tax);
+    final tipTotal = tip.isEmpty
+        ? DecimalValue.fromParts(coefficient: BigInt.zero, scale: 0)
+        : DecimalValue.parse(tip);
+    return taxTotal.add(tipTotal).compareTo(receiptTotal) > 0;
   }
 
   Future<Map<int, List<DuplicateTransactionCandidate>>> findDuplicates(
