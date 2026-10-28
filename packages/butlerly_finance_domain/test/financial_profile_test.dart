@@ -51,6 +51,17 @@ void main() {
       ),
       throwsA(isA<DomainValidationException>()),
     );
+
+    expect(
+      () => FinancialProfile(
+        hasMonthlySavingsTarget: null,
+        monthlySavingsTarget: DecimalValue.parse('250'),
+        monthlySavingsTargetCurrency: CurrencyCode('USD'),
+        createdAt: now,
+        updatedAt: now,
+      ),
+      throwsA(isA<DomainValidationException>()),
+    );
   });
 
   test('limits primary spending categories to three unique identifiers', () {

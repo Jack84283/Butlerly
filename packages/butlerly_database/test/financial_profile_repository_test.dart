@@ -83,8 +83,20 @@ void main() {
           FinancialInsightType.savingsOpportunities,
         ]);
         expect(reloaded?.status, FinancialProfileStatus.completed);
+        await database.connection.insert('financial_profiles', {
+          'profile_id': 'financial-profile:orphan',
+          'schema_version': 1,
+          'survey_version': '1.0',
+          'primary_spending_categories': '[]',
+          'categories_to_improve': '[]',
+          'preferred_insight_types': '[]',
+          'survey_status': 'inProgress',
+          'created_at': now.toIso8601String(),
+          'updated_at': now.toIso8601String(),
+        });
         await SqliteFinancialProfileRepository(database).clear();
         expect(await SqliteFinancialProfileRepository(database).load(), isNull);
+        expect(await database.connection.query('financial_profiles'), isEmpty);
         expect(
           await database.connection.query(
             'entity_tombstones',

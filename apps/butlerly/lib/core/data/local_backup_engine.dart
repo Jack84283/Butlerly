@@ -1534,7 +1534,7 @@ final class LocalBackupManager {
 
   void _validateFinancialProfileRow(int sourceSchema, Map raw, int index) {
     final profileId = raw['profile_id'];
-    if (profileId is! String || profileId.trim().isEmpty) {
+    if (profileId != FinancialProfile.defaultProfileId) {
       throw FormatException(
         'Backup schema $sourceSchema table "financial_profiles" row $index '
         'contains an invalid profile identifier.',
@@ -1605,10 +1605,10 @@ final class LocalBackupManager {
         'contains an invalid savings target choice.',
       );
     }
-    if (hasTarget == 0 && target != null) {
+    if (target != null && hasTarget != 1) {
       throw FormatException(
         'Backup schema $sourceSchema table "financial_profiles" row $index '
-        'contains a target while the target choice is disabled.',
+        'contains a target without an enabled target choice.',
       );
     }
     final insightTypes = raw['preferred_insight_types'];

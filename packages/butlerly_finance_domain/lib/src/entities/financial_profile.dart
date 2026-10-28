@@ -90,6 +90,13 @@ final class FinancialProfile {
         message: 'A financial profile identifier is required.',
       );
     }
+    if (profileId != defaultProfileId) {
+      invalid(
+        code: DomainErrorCode.invalidState,
+        field: 'profileId',
+        message: 'Only the default local financial profile is supported.',
+      );
+    }
     if (schemaVersion < 1) {
       invalid(
         code: DomainErrorCode.invalidRange,
@@ -105,7 +112,7 @@ final class FinancialProfile {
       );
     }
     final target = monthlySavingsTarget;
-    if (hasMonthlySavingsTarget == false && target != null) {
+    if (target != null && hasMonthlySavingsTarget != true) {
       invalid(
         code: DomainErrorCode.relationshipMismatch,
         field: 'hasMonthlySavingsTarget',

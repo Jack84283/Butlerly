@@ -98,13 +98,13 @@ final class _FinancialProfilePageState
     }
   }
 
-  Future<void> _save({required bool complete}) async {
+  Future<bool> _save({required bool complete}) async {
     final draft = _draft;
     final finance = _finance;
     if (draft == null || finance?.saveFinancialProfile == null || _saving) {
-      return;
+      return false;
     }
-    if (_targetError != null) return;
+    if (_targetError != null) return false;
     setState(() => _saving = true);
     final now = DateTime.now().toUtc();
     final saved = draft.copyWith(
@@ -115,7 +115,7 @@ final class _FinancialProfilePageState
       completedAt: complete ? now : null,
     );
     final result = await finance!.saveFinancialProfile!(saved);
-    if (!mounted) return;
+    if (!mounted) return false;
     setState(() => _saving = false);
     if (result is! ApplicationSuccess<FinancialProfile>) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -123,7 +123,7 @@ final class _FinancialProfilePageState
           content: Text(context.l10n.text('financialProfileSaveFailed')),
         ),
       );
-      return;
+      return false;
     }
     setState(() {
       _profile = result.value;
@@ -139,17 +139,19 @@ final class _FinancialProfilePageState
         );
       }
     }
+    return true;
   }
 
-  Future<void> _persistProgress() async {
-    if (!widget.onboarding) return;
-    await _save(complete: false);
+  Future<bool> _persistProgress() async {
+    if (!widget.onboarding) return true;
+    return _save(complete: false);
   }
 
   Future<void> _skip() async {
     final draft = _draft;
     if (draft != null && draft.answeredQuestionCount > 0) {
-      await _persistProgress();
+      final saved = await _persistProgress();
+      if (!saved) return;
     }
     if (mounted) context.go('/');
   }
@@ -876,7 +878,8 @@ final class _FinancialProfilePageState
 
   Future<void> _continue() async {
     if (_step < 3) {
-      await _persistProgress();
+      final saved = await _persistProgress();
+      if (!saved) return;
       if (!mounted) return;
       setState(() => _step += 1);
       return;

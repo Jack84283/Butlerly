@@ -62,11 +62,9 @@ final class SqliteFinancialProfileRepository
   Future<void> clear() async {
     try {
       await database.connection.transaction((transaction) async {
-        await transaction.delete(
-          'financial_profiles',
-          where: 'profile_id = ?',
-          whereArgs: [FinancialProfile.defaultProfileId],
-        );
+        // The domain exposes one profile per local workspace. Remove every
+        // row so legacy or malformed orphan rows cannot survive Clear Profile.
+        await transaction.delete('financial_profiles');
         await transaction.insert('entity_tombstones', {
           'entity_type': 'financial_profiles',
           'entity_id': FinancialProfile.defaultProfileId,

@@ -1,4 +1,5 @@
 import 'package:butlerly/app/locale/locale_provider.dart';
+import 'package:butlerly/app/router/app_router.dart';
 import 'package:butlerly/design_system/components/butlerly_brand_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
@@ -8,7 +9,6 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
-import 'package:go_router/go_router.dart';
 
 class FirstUsePreferencesPage extends ConsumerStatefulWidget {
   const FirstUsePreferencesPage({super.key});
@@ -233,9 +233,11 @@ class _FirstUsePreferencesPageState
                       displayName: _nameController.text,
                       firstUseCompleted: true,
                     );
-                if (saved && context.mounted) {
-                  context.go('/financial-profile?onboarding=true');
-                }
+                // Saving first-use completion rebuilds ButlerlyApp and removes
+                // this overlay before the awaited callback resumes. Navigate
+                // through the app router directly so the survey is not
+                // skipped when this page has already been unmounted.
+                if (saved) appRouter.go('/financial-profile?onboarding=true');
               },
               child: Text(context.l10n.text('setUpMyProfile')),
             ),
