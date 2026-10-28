@@ -400,11 +400,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       title: l10n.text('legalLicenses'),
                       onTap: () => context.push('/legal-licenses'),
                     ),
-                    ButlerlyBrandVersionTile(
-                      centered: true,
-                      appName: l10n.text('appName'),
-                      versionLabel: l10n.text('appVersionLabel'),
-                      version: _desktopVersion,
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        top: ButlerlySpacing.small,
+                      ),
+                      child: ButlerlyBrandVersionTile(
+                        centered: true,
+                        appName: l10n.text('appName'),
+                        versionLabel: l10n.text('appVersionLabel'),
+                        version: _desktopVersion,
+                      ),
                     ),
                   ],
                 ),
