@@ -6,6 +6,7 @@ import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
@@ -34,6 +35,7 @@ final class _FinancialProfilePageState
   bool _editing = false;
   bool _saving = false;
   bool _storageUnavailable = false;
+  bool _categoryLoadError = false;
   String? _loadError;
   String? _targetError;
   bool _targetOptionSelected = false;
@@ -56,6 +58,13 @@ final class _FinancialProfilePageState
   }
 
   Future<void> _load() async {
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _loadError = null;
+        _categoryLoadError = false;
+      });
+    }
     final finance = _finance;
     if (finance?.loadFinancialProfile == null ||
         finance?.saveFinancialProfile == null ||
@@ -86,6 +95,7 @@ final class _FinancialProfilePageState
         _draft = draft;
         _masterData = masterData;
         _loading = false;
+        _categoryLoadError = false;
         _targetOptionSelected = draft.hasMonthlySavingsTarget == true;
       });
       _targetController.text = draft.monthlySavingsTarget?.toString() ?? '';
@@ -94,6 +104,7 @@ final class _FinancialProfilePageState
       setState(() {
         _loading = false;
         _loadError = error.toString();
+        _categoryLoadError = error is TransactionMasterDataLoadException;
       });
     }
   }
@@ -314,8 +325,16 @@ final class _FinancialProfilePageState
         context,
         children: [
           ButlerlyErrorState(
-            title: context.l10n.text('financialProfileStorageUnavailable'),
-            message: context.l10n.text('dataPreserved'),
+            title: context.l10n.text(
+              _categoryLoadError
+                  ? 'financialProfileCategoriesUnavailable'
+                  : 'financialProfileStorageUnavailable',
+            ),
+            message: context.l10n.text(
+              _categoryLoadError
+                  ? 'financialProfileCategoriesUnavailableBody'
+                  : 'dataPreserved',
+            ),
             preserved: context.l10n.text('dataPreserved'),
             actionLabel: context.l10n.text('tryAgain'),
             onAction: _load,
@@ -370,7 +389,7 @@ final class _FinancialProfilePageState
                 context.l10n.text(_statusKey(status)),
               ),
               _summaryRow(
-                context.l10n.text('financialProfileAnswered'),
+                context.l10n.text('financialProfileAnsweredLabel'),
                 context.l10n.text('financialProfileAnswered', {
                   'count': '$answered',
                 }),
@@ -956,8 +975,11 @@ final class _FinancialProfilePageState
                     ? 'financialProfileTargetNoAmount'
                     : 'financialProfileTargetNoSpecific',
               )
-            : '${profile.monthlySavingsTargetCurrency?.value ?? ''} '
-                  '${_formatTarget(profile.monthlySavingsTarget!)}',
+            : localizedExactMoney(
+                context,
+                profile.monthlySavingsTarget!.toString(),
+                profile.monthlySavingsTargetCurrency?.value ?? 'USD',
+              ),
       ),
     if (profile.goalTimeframe != null)
       _summaryRow(
@@ -984,13 +1006,6 @@ final class _FinancialProfilePageState
     FinancialProfileStatus.inProgress => 'financialProfileStatusInProgress',
     FinancialProfileStatus.completed => 'financialProfileStatusCompleted',
   };
-
-  String _formatTarget(DecimalValue value) {
-    final separator = NumberFormat.decimalPattern(
-      Localizations.localeOf(context).toString(),
-    ).symbols.DECIMAL_SEP;
-    return value.toString().replaceAll('.', separator);
-  }
 
   String _householdKey(HouseholdSize value) => switch (value) {
     HouseholdSize.one => 'financialProfileHouseholdOne',

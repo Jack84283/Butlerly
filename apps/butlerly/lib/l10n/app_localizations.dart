@@ -146,6 +146,7 @@ class AppLocalizations {
       'financialProfileStatusInProgress': 'In progress',
       'financialProfileStatusCompleted': 'Completed',
       'financialProfileSummary': 'Profile summary',
+      'financialProfileAnsweredLabel': 'Questions answered',
       'financialProfileAnswered': '{count} of 11 questions answered',
       'financialProfileLastUpdated': 'Last updated',
       'financialProfileEdit': 'Edit Profile',
@@ -161,6 +162,10 @@ class AppLocalizations {
           'The Financial Profile could not be saved. Your existing data was unchanged.',
       'financialProfileStorageUnavailable':
           'Financial Profile storage is unavailable.',
+      'financialProfileCategoriesUnavailable':
+          'Categories could not be loaded.',
+      'financialProfileCategoriesUnavailableBody':
+          'Your saved profile is unchanged. Try again to load categories.',
       'financialProfileCategoryLimit': 'Select up to three categories.',
       'financialProfileNoCategories': 'No active categories are available.',
       'financialProfilePrivate':
@@ -1227,6 +1232,7 @@ class AppLocalizations {
       'financialProfileStatusInProgress': '进行中',
       'financialProfileStatusCompleted': '已完成',
       'financialProfileSummary': '档案摘要',
+      'financialProfileAnsweredLabel': '已回答问题',
       'financialProfileAnswered': '已回答 {count}/11 个问题',
       'financialProfileLastUpdated': '上次更新',
       'financialProfileEdit': '编辑档案',
@@ -1241,6 +1247,8 @@ class AppLocalizations {
       'financialProfileStorageUnavailable': '财务档案存储不可用。',
       'financialProfileCategoryLimit': '最多选择三个类别。',
       'financialProfileNoCategories': '没有可用的活动类别。',
+      'financialProfileCategoriesUnavailable': '无法加载类别。',
+      'financialProfileCategoriesUnavailableBody': '已保存的个人资料未更改。请重试以加载类别。',
       'financialProfilePrivate': '可选且私密。答案不会发送到外部服务。',
       'financialProfileBack': '返回',
       'financialProfileContinue': '继续',
@@ -2186,6 +2194,7 @@ class AppLocalizations {
       'financialProfileStatusInProgress': 'En progreso',
       'financialProfileStatusCompleted': 'Completado',
       'financialProfileSummary': 'Resumen del perfil',
+      'financialProfileAnsweredLabel': 'Preguntas respondidas',
       'financialProfileAnswered': '{count} de 11 preguntas respondidas',
       'financialProfileLastUpdated': 'Última actualización',
       'financialProfileEdit': 'Editar perfil',
@@ -2203,6 +2212,10 @@ class AppLocalizations {
           'El almacenamiento del perfil financiero no está disponible.',
       'financialProfileCategoryLimit': 'Elige hasta tres categorías.',
       'financialProfileNoCategories': 'No hay categorías activas disponibles.',
+      'financialProfileCategoriesUnavailable':
+          'No se pudieron cargar las categorías.',
+      'financialProfileCategoriesUnavailableBody':
+          'Tu perfil guardado no cambió. Inténtalo de nuevo para cargar las categorías.',
       'financialProfilePrivate':
           'Opcional y privado. Nada se envía a servicios externos.',
       'financialProfileBack': 'Atrás',

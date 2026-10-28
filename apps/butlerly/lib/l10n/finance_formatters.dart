@@ -1,3 +1,4 @@
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/widgets.dart';
 import 'package:intl/intl.dart';
 
@@ -61,6 +62,55 @@ String localizedCompactMoney(
 
   return '${localizedTransactionAmount(context, value.toString())} '
       '$normalizedCurrency';
+}
+
+String localizedExactMoney(
+  BuildContext context,
+  String canonicalValue,
+  String currency,
+) {
+  final value = DecimalValue.parse(canonicalValue);
+  final code = currency.trim().toUpperCase();
+  final locale = _currencyLocale(context);
+  final decimalFormatter = NumberFormat.decimalPatternDigits(
+    locale: locale,
+    decimalDigits: value.scale,
+  );
+  final exactDecimal = _localizedExactDecimal(value.toString(), locale);
+  final currencyFormatter = NumberFormat.simpleCurrency(
+    locale: locale,
+    name: code,
+    decimalDigits: value.scale,
+  );
+  final currencySymbol = currencyFormatter.currencySymbol.trim();
+  final probe = decimalFormatter.format(1);
+  final currencyProbe = currencyFormatter.format(1);
+  if (currencySymbol.isEmpty ||
+      currencySymbol.toUpperCase() == code ||
+      !currencyProbe.contains(probe)) {
+    return '$exactDecimal $code';
+  }
+  return currencyProbe.replaceFirst(probe, exactDecimal);
+}
+
+String _localizedExactDecimal(String canonicalValue, String locale) {
+  final negative = canonicalValue.startsWith('-');
+  final unsigned = negative ? canonicalValue.substring(1) : canonicalValue;
+  final parts = unsigned.split('.');
+  final integer = parts.first;
+  final grouped = StringBuffer();
+  final firstGroupLength = integer.length % 3 == 0 ? 3 : integer.length % 3;
+  grouped.write(integer.substring(0, firstGroupLength));
+  final symbols = NumberFormat.decimalPattern(locale).symbols;
+  for (var index = firstGroupLength; index < integer.length; index += 3) {
+    grouped.write(symbols.GROUP_SEP);
+    grouped.write(integer.substring(index, index + 3));
+  }
+  if (parts.length == 2) {
+    grouped.write(symbols.DECIMAL_SEP);
+    grouped.write(parts[1]);
+  }
+  return '${negative ? '-' : ''}$grouped';
 }
 
 String _currencyLocale(BuildContext context) {
