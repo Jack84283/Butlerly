@@ -1,3 +1,4 @@
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:flutter/material.dart';
 
 /// The approved frameless 258 abacus mark. The artwork is transparent and
@@ -82,7 +83,11 @@ class ButlerlyBrandVersionTile extends StatelessWidget {
   Widget build(BuildContext context) => Material(
     type: MaterialType.transparency,
     child: centered
-        ? Column(
+        ? Padding(
+            padding: const EdgeInsets.symmetric(
+              vertical: ButlerlySpacing.small,
+            ),
+            child: Column(
             key: const ValueKey('butlerly-brand-version-tile'),
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -104,6 +109,7 @@ class ButlerlyBrandVersionTile extends StatelessWidget {
                 ),
               ),
             ],
+            ),
           )
         : ListTile(
             key: const ValueKey('butlerly-brand-version-tile'),
