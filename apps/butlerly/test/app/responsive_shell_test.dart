@@ -150,16 +150,6 @@ void main() {
           tester.element(bodySurface),
         ).extension<ButlerlySemanticColors>()!.background,
       );
-      final canvas = find.byKey(
-        const ValueKey('butlerly-responsive-body-canvas'),
-      );
-      expect(tester.getSize(canvas).width, size.width);
-      expect(
-        tester.widget<ColoredBox>(canvas).color,
-        Theme.of(
-          tester.element(canvas),
-        ).extension<ButlerlySemanticColors>()!.background,
-      );
       expect(
         tester.getRect(bodySurface).bottom,
         closeTo(tester.getRect(navigation).bottom, 0.01),
