@@ -1605,6 +1605,12 @@ final class LocalBackupManager {
         'contains an invalid savings target choice.',
       );
     }
+    if (hasTarget == 0 && target != null) {
+      throw FormatException(
+        'Backup schema $sourceSchema table "financial_profiles" row $index '
+        'contains a target while the target choice is disabled.',
+      );
+    }
     final insightTypes = raw['preferred_insight_types'];
     if (insightTypes is! String) {
       throw FormatException(

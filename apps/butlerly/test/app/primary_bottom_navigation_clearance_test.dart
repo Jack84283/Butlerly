@@ -98,11 +98,18 @@ void main() {
     );
     final pillContainer = tester.widget<Container>(pill);
     final pillDecoration = pillContainer.decoration! as BoxDecoration;
+    final pillSurface = tester.widget<DecoratedBox>(
+      find.descendant(of: pill, matching: find.byType(DecoratedBox)).last,
+    );
+    final pillSurfaceDecoration = pillSurface.decoration as BoxDecoration;
 
     expect(bodyRect.bottom, closeTo(navigationRect.bottom, 0.01));
     expect(bodyRect.bottom, greaterThan(navigationRect.top));
     expect(navigationMaterial.color, Colors.transparent);
-    expect(pillDecoration.color!.a, ButlerlyOpacity.primaryNavigationSurface);
+    expect(
+      pillSurfaceDecoration.color!.a,
+      ButlerlyOpacity.primaryNavigationSurface,
+    );
     expect(pillRect.top, closeTo(navigationRect.top + 8, 0.01));
     // The floating pill is lifted 12px above the device safe-area inset,
     // without changing its 56px height or consuming a footer area.
@@ -170,25 +177,26 @@ void main() {
         closeTo(ButlerlySpacing.primaryNavigationIconDrop, 0.01),
       );
     }
-    expect(pillDecoration.gradient, isNull);
+    expect(pillDecoration.gradient, isNotNull);
     expect(pillRect.height, closeTo(ButlerlySize.navigationBarHeight, 0.01));
     expect(
       navigationContentRect.height,
       closeTo(
-        ButlerlySize.navigationBarHeight - 2 * ButlerlySize.dividerWidth,
+        ButlerlySize.navigationBarHeight -
+            2 * ButlerlySize.primaryNavigationBorderWidth,
         0.01,
       ),
     );
     expect(ButlerlySize.navigationBarHeight, 56);
     expect(
-      pillDecoration.color,
+      pillSurfaceDecoration.color,
       AppTheme.light
           .extension<ButlerlySemanticColors>()!
           .footerSurface
           .withValues(alpha: ButlerlyOpacity.primaryNavigationSurface),
     );
     expect(
-      pillDecoration.borderRadius,
+      pillSurfaceDecoration.borderRadius,
       BorderRadius.circular(ButlerlyRadius.pill),
     );
     expect(find.byKey(const ValueKey('primary-navigation-base')), findsNothing);
@@ -278,7 +286,7 @@ void main() {
     final pill = tester.widget<Container>(
       find.byKey(const ValueKey('primary-navigation-pill')),
     );
-    expect((pill.decoration! as BoxDecoration).gradient, isNull);
+    expect((pill.decoration! as BoxDecoration).gradient, isNotNull);
     expect(tester.takeException(), isNull);
   });
 

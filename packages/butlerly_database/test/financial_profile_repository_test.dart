@@ -85,6 +85,29 @@ void main() {
         expect(reloaded?.status, FinancialProfileStatus.completed);
         await SqliteFinancialProfileRepository(database).clear();
         expect(await SqliteFinancialProfileRepository(database).load(), isNull);
+        expect(
+          await database.connection.query(
+            'entity_tombstones',
+            where: 'entity_type = ? AND entity_id = ?',
+            whereArgs: [
+              'financial_profiles',
+              FinancialProfile.defaultProfileId,
+            ],
+          ),
+          hasLength(1),
+        );
+        await SqliteFinancialProfileRepository(database).save(profile);
+        expect(
+          await database.connection.query(
+            'entity_tombstones',
+            where: 'entity_type = ? AND entity_id = ?',
+            whereArgs: [
+              'financial_profiles',
+              FinancialProfile.defaultProfileId,
+            ],
+          ),
+          isEmpty,
+        );
         await database.close();
       } finally {
         await directory.delete(recursive: true);

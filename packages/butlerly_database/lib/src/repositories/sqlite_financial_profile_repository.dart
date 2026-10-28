@@ -42,6 +42,11 @@ final class SqliteFinancialProfileRepository
           row,
           conflictAlgorithm: ConflictAlgorithm.replace,
         );
+        await transaction.delete(
+          'entity_tombstones',
+          where: 'entity_type = ? AND entity_id = ?',
+          whereArgs: ['financial_profiles', profile.profileId],
+        );
       });
     } on RepositoryException {
       rethrow;
@@ -56,11 +61,18 @@ final class SqliteFinancialProfileRepository
   @override
   Future<void> clear() async {
     try {
-      await database.connection.delete(
-        'financial_profiles',
-        where: 'profile_id = ?',
-        whereArgs: [FinancialProfile.defaultProfileId],
-      );
+      await database.connection.transaction((transaction) async {
+        await transaction.delete(
+          'financial_profiles',
+          where: 'profile_id = ?',
+          whereArgs: [FinancialProfile.defaultProfileId],
+        );
+        await transaction.insert('entity_tombstones', {
+          'entity_type': 'financial_profiles',
+          'entity_id': FinancialProfile.defaultProfileId,
+          'deleted_at': DateTime.now().toUtc().toIso8601String(),
+        }, conflictAlgorithm: ConflictAlgorithm.replace);
+      });
     } on RepositoryException {
       rethrow;
     } on Exception {

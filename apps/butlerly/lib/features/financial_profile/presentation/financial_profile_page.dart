@@ -130,7 +130,7 @@ final class _FinancialProfilePageState
       _draft = result.value;
       if (complete) _editing = false;
     });
-    if (widget.onboarding || complete) {
+    if (complete) {
       if (widget.onboarding) {
         context.go('/');
       } else {
@@ -285,9 +285,9 @@ final class _FinancialProfilePageState
     _ => context.l10n.text('financialProfilePreferences'),
   };
 
-  String _categoryLabel(String id) {
+  String _categoryLabel(BuildContext context, String id) {
     final master = _masterData?.presentation;
-    return master?.categoryName(id) ?? id;
+    return master?.categoryName(id) ?? context.l10n.text('unavailableCategory');
   }
 
   @override
@@ -843,7 +843,7 @@ final class _FinancialProfilePageState
               children: [
                 for (final category in categories)
                   FilterChip(
-                    label: Text(_categoryLabel(category.id.value)),
+                    label: Text(_categoryLabel(context, category.id.value)),
                     selected: selected.contains(category.id.value),
                     onSelected: (checked) {
                       final next = [...selected];
@@ -923,7 +923,9 @@ final class _FinancialProfilePageState
     if (profile.primarySpendingCategoryIds.isNotEmpty)
       _summaryRow(
         context.l10n.text('financialProfileQ4'),
-        profile.primarySpendingCategoryIds.map(_categoryLabel).join(', '),
+        profile.primarySpendingCategoryIds
+            .map((id) => _categoryLabel(context, id))
+            .join(', '),
       ),
     if (profile.expensePredictability != null)
       _summaryRow(
@@ -933,7 +935,9 @@ final class _FinancialProfilePageState
     if (profile.categoriesToImprove.isNotEmpty)
       _summaryRow(
         context.l10n.text('financialProfileQ6'),
-        profile.categoriesToImprove.map(_categoryLabel).join(', '),
+        profile.categoriesToImprove
+            .map((id) => _categoryLabel(context, id))
+            .join(', '),
       ),
     if (profile.primaryFinancialGoal != null)
       _summaryRow(

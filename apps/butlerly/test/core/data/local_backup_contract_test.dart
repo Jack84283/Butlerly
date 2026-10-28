@@ -121,6 +121,53 @@ void main() {
     expect(restored.single['updated_at'], '2026-10-29T00:00:00.000Z');
   });
 
+  test(
+    'merge restore preserves an explicitly cleared financial profile',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.database.database.insert('financial_profiles', {
+        'profile_id': 'financial-profile:default',
+        'schema_version': 1,
+        'survey_version': '1.0',
+        'household_size': 'two',
+        'dependents_count': null,
+        'housing_situation': null,
+        'primary_spending_categories': '[]',
+        'expense_predictability': null,
+        'categories_to_improve': '[]',
+        'primary_financial_goal': null,
+        'has_monthly_savings_target': null,
+        'monthly_savings_target': null,
+        'monthly_savings_target_currency': null,
+        'goal_timeframe': null,
+        'budgeting_preference': null,
+        'preferred_insight_types': '[]',
+        'survey_status': 'completed',
+        'created_at': '2026-10-28T00:00:00.000Z',
+        'updated_at': '2026-10-28T00:00:00.000Z',
+        'completed_at': '2026-10-28T00:00:00.000Z',
+      });
+      final backup = File(
+        path.join(
+          fixture.root.path,
+          'financial-profile-clear-merge.butlerlybackup',
+        ),
+      );
+      await fixture.manager.createBackup(backup);
+
+      await SqliteFinancialProfileRepository(
+        fixture.database.persistenceDatabase,
+      ).clear();
+      await fixture.manager.restore(backup, mode: LocalRestoreMode.merge);
+
+      expect(
+        await fixture.database.database.query('financial_profiles'),
+        isEmpty,
+      );
+    },
+  );
+
   test('restore rejects an unreconstructable financial profile enum', () async {
     final fixture = await _Fixture.create();
     addTearDown(fixture.dispose);
@@ -213,6 +260,52 @@ void main() {
       'financial_profiles',
     );
     expect(preserved.single['primary_spending_categories'], '[]');
+  });
+
+  test('restore rejects a target when the target choice is disabled', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    await fixture.database.database.insert('financial_profiles', {
+      'profile_id': 'financial-profile:default',
+      'schema_version': 1,
+      'survey_version': '1.0',
+      'household_size': null,
+      'dependents_count': null,
+      'housing_situation': null,
+      'primary_spending_categories': '[]',
+      'expense_predictability': null,
+      'categories_to_improve': '[]',
+      'primary_financial_goal': null,
+      'has_monthly_savings_target': 0,
+      'monthly_savings_target': '12.50',
+      'monthly_savings_target_currency': 'USD',
+      'goal_timeframe': null,
+      'budgeting_preference': null,
+      'preferred_insight_types': '[]',
+      'survey_status': 'inProgress',
+      'created_at': '2026-10-28T00:00:00.000Z',
+      'updated_at': '2026-10-28T00:00:00.000Z',
+      'completed_at': null,
+    });
+    final backup = File(
+      path.join(
+        fixture.root.path,
+        'invalid-financial-profile-target.butlerlybackup',
+      ),
+    );
+    await fixture.manager.createBackup(backup);
+    await _rewriteBackupMetadata(backup, (metadata) {
+      final tables = (metadata['tables']! as Map).cast<String, Object?>();
+      final rows = (tables['financial_profiles']! as List).cast<Map>();
+      rows.single['has_monthly_savings_target'] = 0;
+      rows.single['monthly_savings_target'] = '12.50';
+      rows.single['monthly_savings_target_currency'] = 'USD';
+    });
+
+    await expectLater(
+      fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
+      throwsA(isA<FormatException>()),
+    );
   });
 
   test(

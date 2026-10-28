@@ -161,6 +161,28 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('Step 1 of 4'), findsOneWidget);
   });
+
+  testWidgets('onboarding progress continues to the next section', (
+    tester,
+  ) async {
+    await tester.pumpWidget(app(onboarding: true));
+    await _pumpUntilVisible(tester, find.text('Step 1 of 4'));
+
+    await _tapSurveyAction(
+      tester,
+      const ValueKey('financial-profile-continue'),
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    await _pumpUntilVisible(
+      tester,
+      find.byKey(const ValueKey('financial-profile-back'), skipOffstage: false),
+    );
+
+    expect(
+      find.byKey(const ValueKey('financial-profile-back'), skipOffstage: false),
+      findsOneWidget,
+    );
+  });
 }
 
 Future<void> _pumpUntilVisible(WidgetTester tester, Finder finder) async {
