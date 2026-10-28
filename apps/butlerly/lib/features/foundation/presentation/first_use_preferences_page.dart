@@ -1,4 +1,5 @@
 import 'package:butlerly/app/locale/locale_provider.dart';
+import 'package:butlerly/design_system/components/butlerly_brand_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -45,7 +46,7 @@ class _FirstUsePreferencesPageState
             ),
             children: [
               const SizedBox(height: ButlerlySpacing.large),
-              const Icon(Icons.lock_outline_rounded, size: 48),
+              const ButlerlyBrandIcon(size: 72),
               const SizedBox(height: ButlerlySpacing.section),
               Text(
                 context.l10n.text('firstUseTitle'),
