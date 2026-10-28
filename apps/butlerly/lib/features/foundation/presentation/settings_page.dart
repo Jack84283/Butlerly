@@ -396,14 +396,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   title: l10n.text('about'),
                   icon: Icons.info_outline_rounded,
                   children: [
+                    _DesktopMoreRow(
+                      title: l10n.text('legalLicenses'),
+                      onTap: () => context.push('/legal-licenses'),
+                    ),
                     ButlerlyBrandVersionTile(
                       appName: l10n.text('appName'),
                       versionLabel: l10n.text('appVersionLabel'),
                       version: _desktopVersion,
-                    ),
-                    _DesktopMoreRow(
-                      title: l10n.text('legalLicenses'),
-                      onTap: () => context.push('/legal-licenses'),
                     ),
                   ],
                 ),
@@ -698,11 +698,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ),
         _SettingsSectionCard(
           children: [
-            ButlerlyBrandVersionTile(
-              appName: context.l10n.text('appName'),
-              versionLabel: context.l10n.text('appVersionLabel'),
-              version: _desktopVersion,
-            ),
             _SettingsRow(
               icon: Icons.gavel_outlined,
               title: context.l10n.text('legalLicenses'),
@@ -710,6 +705,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const LegalLicensesPage()),
               ),
+            ),
+            ButlerlyBrandVersionTile(
+              appName: context.l10n.text('appName'),
+              versionLabel: context.l10n.text('appVersionLabel'),
+              version: _desktopVersion,
             ),
           ],
         ),
