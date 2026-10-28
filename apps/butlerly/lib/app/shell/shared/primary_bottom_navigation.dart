@@ -252,21 +252,21 @@ class PrimaryBottomNavigation extends StatelessWidget {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(ButlerlyRadius.pill),
                         child: Row(
-                        key: const ValueKey('primary-navigation-content'),
-                        children: [
-                          for (final branchIndex in visualBranchIndexes)
-                            Expanded(
-                              child: _destination(
-                                context,
-                                destinations[branchIndex]!,
-                                branchIndex,
-                                navigationHeight -
-                                    ButlerlySize.primaryNavigationAddIconSize,
+                          key: const ValueKey('primary-navigation-content'),
+                          children: [
+                            for (final branchIndex in visualBranchIndexes)
+                              Expanded(
+                                child: _destination(
+                                  context,
+                                  destinations[branchIndex]!,
+                                  branchIndex,
+                                  navigationHeight -
+                                      ButlerlySize.primaryNavigationAddIconSize -
+                                      2 * ButlerlySize.primaryNavigationBorderWidth,
+                                ),
                               ),
-                            ),
-                        ],
-                      ),
-                    ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
