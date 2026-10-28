@@ -43,16 +43,13 @@ Future<void> _validateDestinationPath(File destination) async {
     current = path.join(current, components[index]);
     if (await FileSystemEntity.type(current, followLinks: false) ==
             FileSystemEntityType.link &&
-        !_allowedSystemAlias(current)) {
+        !isAllowedSystemPathAlias(current)) {
       throw const FormatException(
         'Portable backup destination cannot contain a symbolic link.',
       );
     }
   }
 }
-
-bool _allowedSystemAlias(String value) =>
-    Platform.isMacOS && (value == '/var' || value == '/tmp');
 
 String _stagingPath(String destinationPath, String operationId) => path.join(
   path.dirname(path.normalize(path.absolute(destinationPath))),
