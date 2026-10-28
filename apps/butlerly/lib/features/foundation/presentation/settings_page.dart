@@ -784,7 +784,6 @@ class _DesktopMoreCard extends StatelessWidget {
     required this.icon,
     required this.children,
     this.description,
-    this.footer,
     super.key,
   });
 
@@ -792,7 +791,6 @@ class _DesktopMoreCard extends StatelessWidget {
   final IconData icon;
   final String? description;
   final List<Widget> children;
-  final Widget? footer;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -839,17 +837,6 @@ class _DesktopMoreCard extends StatelessWidget {
           if (i > 0)
             Divider(height: 1, thickness: 1, color: context.colors.cardDivider),
           children[i],
-        ],
-        if (footer != null) ...[
-          Divider(height: 1, thickness: 1, color: context.colors.cardDivider),
-          Padding(
-            padding: const EdgeInsets.only(
-              left: 38,
-              top: ButlerlySpacing.compact,
-              bottom: ButlerlySpacing.xxs,
-            ),
-            child: footer!,
-          ),
         ],
       ],
     ),
