@@ -81,17 +81,17 @@ class ButlerlyBrandVersionTile extends StatelessWidget {
     type: MaterialType.transparency,
     child: ListTile(
       key: const ValueKey('butlerly-brand-version-tile'),
-    contentPadding: EdgeInsets.zero,
-    leading: const ButlerlyBrandIcon(size: 44),
-    title: Text(appName, maxLines: 1, overflow: TextOverflow.ellipsis),
-    subtitle: FutureBuilder<String>(
-      future: version,
-      builder: (context, snapshot) => Text(
-        '$versionLabel ${snapshot.data ?? '—'}',
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+      contentPadding: EdgeInsets.zero,
+      leading: const ButlerlyBrandIcon(size: 44),
+      title: Text(appName, maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: FutureBuilder<String>(
+        future: version,
+        builder: (context, snapshot) => Text(
+          '$versionLabel ${snapshot.data ?? '—'}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
       ),
-    ),
     ),
   );
 }
