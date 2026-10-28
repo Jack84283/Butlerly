@@ -11,6 +11,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
+import 'package:butlerly/design_system/components/butlerly_brand_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
@@ -292,6 +293,13 @@ void main() {
 
     expect(ButlerlyLayout.mode(size), ButlerlyLayoutMode.wide);
     expect(find.byType(DesktopPrimaryShell), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('primary-wide-navigation')),
+        matching: find.byType(ButlerlyBrandIcon),
+      ),
+      findsOneWidget,
+    );
     expect(find.byType(MediumPrimaryShell), findsNothing);
     expect(find.byType(CompactPrimaryShell), findsNothing);
     expect(find.byType(NavigationRail), findsNothing);
