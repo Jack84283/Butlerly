@@ -69,29 +69,55 @@ class ButlerlyBrandVersionTile extends StatelessWidget {
     required this.appName,
     required this.versionLabel,
     required this.version,
+    this.centered = false,
     super.key,
   });
 
   final String appName;
   final String versionLabel;
   final Future<String> version;
+  final bool centered;
 
   @override
   Widget build(BuildContext context) => Material(
     type: MaterialType.transparency,
-    child: ListTile(
-      key: const ValueKey('butlerly-brand-version-tile'),
-      contentPadding: EdgeInsets.zero,
-      leading: const ButlerlyBrandIcon(size: 44),
-      title: Text(appName, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: FutureBuilder<String>(
-        future: version,
-        builder: (context, snapshot) => Text(
-          '$versionLabel ${snapshot.data ?? '—'}',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ),
-    ),
+    child: centered
+        ? Column(
+            key: const ValueKey('butlerly-brand-version-tile'),
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Center(child: ButlerlyBrandIcon(size: 44)),
+              const SizedBox(height: 8),
+              Text(
+                appName,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              FutureBuilder<String>(
+                future: version,
+                builder: (context, snapshot) => Text(
+                  '$versionLabel ${snapshot.data ?? '—'}',
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          )
+        : ListTile(
+            key: const ValueKey('butlerly-brand-version-tile'),
+            contentPadding: EdgeInsets.zero,
+            leading: const ButlerlyBrandIcon(size: 44),
+            title: Text(appName, maxLines: 1, overflow: TextOverflow.ellipsis),
+            subtitle: FutureBuilder<String>(
+              future: version,
+              builder: (context, snapshot) => Text(
+                '$versionLabel ${snapshot.data ?? '—'}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
   );
 }

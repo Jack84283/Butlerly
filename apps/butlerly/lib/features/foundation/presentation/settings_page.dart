@@ -401,6 +401,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       onTap: () => context.push('/legal-licenses'),
                     ),
                     ButlerlyBrandVersionTile(
+                      centered: true,
                       appName: l10n.text('appName'),
                       versionLabel: l10n.text('appVersionLabel'),
                       version: _desktopVersion,
