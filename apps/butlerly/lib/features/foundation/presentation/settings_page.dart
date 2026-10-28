@@ -1,6 +1,7 @@
 import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/app/theme/theme_mode_provider.dart';
+import 'package:butlerly/design_system/components/butlerly_brand_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
@@ -394,22 +395,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   key: _aboutKey,
                   title: l10n.text('about'),
                   icon: Icons.info_outline_rounded,
-                  footer: FutureBuilder<String>(
-                    future: _desktopVersion,
-                    builder: (context, snapshot) {
-                      final parts = (snapshot.data ?? '—').split('+');
-                      final build = parts.length > 1
-                          ? ' (${l10n.text('buildLabel')} ${parts.last})'
-                          : '';
-                      return Text(
-                        '${l10n.text('appVersionLabel')} ${parts.first}$build',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: context.colors.secondaryText,
-                        ),
-                      );
-                    },
-                  ),
                   children: [
+                    ButlerlyBrandVersionTile(
+                      appName: l10n.text('appName'),
+                      versionLabel: l10n.text('appVersionLabel'),
+                      version: _desktopVersion,
+                    ),
                     _DesktopMoreRow(
                       title: l10n.text('legalLicenses'),
                       onTap: () => context.push('/legal-licenses'),
@@ -707,6 +698,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ),
         _SettingsSectionCard(
           children: [
+            ButlerlyBrandVersionTile(
+              appName: context.l10n.text('appName'),
+              versionLabel: context.l10n.text('appVersionLabel'),
+              version: _desktopVersion,
+            ),
             _SettingsRow(
               icon: Icons.gavel_outlined,
               title: context.l10n.text('legalLicenses'),
