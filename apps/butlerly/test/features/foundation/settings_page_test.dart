@@ -1,5 +1,6 @@
 import 'package:butlerly/app/router/app_router.dart';
 import 'package:butlerly/design_system/components/butlerly_brand_icon.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/budgets/presentation/budgets_page.dart';
 import 'package:butlerly/features/foundation/presentation/privacy_data_page.dart';
 import 'package:butlerly/features/foundation/presentation/settings_page.dart';
@@ -64,6 +65,14 @@ void main() {
           matching: find.byType(Column),
         );
         expect(brandColumn, findsOneWidget);
+        final brandPadding = find.ancestor(
+          of: brandColumn,
+          matching: find.byType(Padding),
+        ).first;
+        expect(
+          tester.widget<Padding>(brandPadding).padding,
+          const EdgeInsets.symmetric(vertical: ButlerlySpacing.small),
+        );
         expect(
           tester.widget<Column>(brandColumn).children.first,
           isA<Center>(),
