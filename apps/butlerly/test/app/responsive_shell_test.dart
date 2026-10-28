@@ -144,6 +144,12 @@ void main() {
         const ValueKey('primary-medium-navigation'),
       );
       expect(tester.getSize(bodySurface), size);
+      expect(
+        tester.widget<ColoredBox>(bodySurface).color,
+        Theme.of(tester.element(bodySurface))
+            .extension<ButlerlySemanticColors>()!
+            .background,
+      );
       final canvas = find.byKey(
         const ValueKey('butlerly-responsive-body-canvas'),
       );
