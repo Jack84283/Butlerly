@@ -3,11 +3,7 @@ import 'package:flutter/material.dart';
 /// The approved frameless 258 abacus mark. The artwork is transparent and
 /// shared by launch, Home, More, and Legal & Licenses in every layout mode.
 class ButlerlyBrandIcon extends StatelessWidget {
-  const ButlerlyBrandIcon({
-    super.key,
-    this.size = 32,
-    this.semanticLabel,
-  });
+  const ButlerlyBrandIcon({super.key, this.size = 32, this.semanticLabel});
 
   static const assetPath =
       'assets/branding/butlerly_258_abacus_transparent.png';
