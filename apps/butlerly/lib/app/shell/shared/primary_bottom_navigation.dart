@@ -230,33 +230,48 @@ class PrimaryBottomNavigation extends StatelessWidget {
                     key: const ValueKey('primary-navigation-pill'),
                     width: double.infinity,
                     height: navigationHeight,
+                    padding: const EdgeInsets.all(
+                      ButlerlySize.primaryNavigationBorderWidth,
+                    ),
                     decoration: BoxDecoration(
-                      color: navigationColor.withValues(
-                        alpha: ButlerlyOpacity.primaryNavigationSurface,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFC0974C), Color(0xFFF3C670)],
                       ),
                       borderRadius: BorderRadius.circular(ButlerlyRadius.pill),
-                      border: Border.all(
-                        width: ButlerlySize.dividerWidth,
-                        color: context.colors.cardDivider.withValues(
-                          alpha: ButlerlyOpacity.primaryNavigationBorder,
+                    ),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: navigationColor.withValues(
+                          alpha: ButlerlyOpacity.primaryNavigationSurface,
+                        ),
+                        borderRadius: BorderRadius.circular(
+                          ButlerlyRadius.pill,
                         ),
                       ),
-                    ),
-                    clipBehavior: Clip.antiAlias,
-                    child: Row(
-                      key: const ValueKey('primary-navigation-content'),
-                      children: [
-                        for (final branchIndex in visualBranchIndexes)
-                          Expanded(
-                            child: _destination(
-                              context,
-                              destinations[branchIndex]!,
-                              branchIndex,
-                              navigationHeight -
-                                  ButlerlySize.primaryNavigationAddIconSize,
-                            ),
-                          ),
-                      ],
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(
+                          ButlerlyRadius.pill,
+                        ),
+                        child: Row(
+                          key: const ValueKey('primary-navigation-content'),
+                          children: [
+                            for (final branchIndex in visualBranchIndexes)
+                              Expanded(
+                                child: _destination(
+                                  context,
+                                  destinations[branchIndex]!,
+                                  branchIndex,
+                                  navigationHeight -
+                                      ButlerlySize
+                                          .primaryNavigationAddIconSize -
+                                      2 *
+                                          ButlerlySize
+                                              .primaryNavigationBorderWidth,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),

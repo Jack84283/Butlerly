@@ -237,6 +237,7 @@ abstract final class ButlerlySize {
   static const sourcePreviewWidth = 64.0;
   static const sourcePreviewHeight = 80.0;
   static const navigationBarHeight = 56.0;
+  static const primaryNavigationBorderWidth = 2.0;
   static const primaryNavigationAddIconSize = 32.0;
   static const primaryNavigationAddGlyphSize = 20.0;
   static const wideNavigationExpandedWidth = 248.0;
