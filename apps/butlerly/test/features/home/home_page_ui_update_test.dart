@@ -110,7 +110,10 @@ void main() {
         matching: find.byType(ButlerlyBrandIcon),
       );
       expect(brandIcon, findsOneWidget);
-      expect(tester.getRect(brandIcon).right, lessThan(tester.getRect(brand).left));
+      expect(
+        tester.getRect(brandIcon).right,
+        lessThan(tester.getRect(brand).left),
+      );
       final brandTagline = find.byKey(const ValueKey('home-brand-tagline'));
       final greeting = find.byKey(const ValueKey('home-greeting'));
       final intro = find.byKey(const ValueKey('home-intro'));
