@@ -20,12 +20,15 @@ final class LocalDataManager {
     this.database, {
     Directory? documentsDirectory,
     Directory? localEvidenceDirectory,
+    DateTime Function()? clock,
   }) : _documentsDirectory = documentsDirectory,
-       _localEvidenceDirectory = localEvidenceDirectory;
+       _localEvidenceDirectory = localEvidenceDirectory,
+       _clock = clock;
 
   final LocalDatabase database;
   final Directory? _documentsDirectory;
   final Directory? _localEvidenceDirectory;
+  final DateTime Function()? _clock;
 
   static const _exportTables = <String>[
     'payment_sources',
@@ -215,16 +218,18 @@ final class LocalDataManager {
     () async {
       final documents = await documentsDirectory();
       await rejectEvidenceRoot(documents, message: 'Unsafe documents root.');
-      final timestamp = DateTime.now().toUtc().toIso8601String().replaceAll(
-        ':',
-        '-',
-      );
+      final timestamp = (_clock?.call() ?? DateTime.now())
+          .toUtc()
+          .toIso8601String()
+          .replaceAll(':', '-');
       final destination = Directory(
         path.join(documents.path, 'Butlerly Export $timestamp'),
       );
       final staging = Directory(
         path.join(documents.path, '.butlerly-export-$timestamp.candidate'),
       );
+      await _ensureFreshExportPath(destination);
+      await _ensureFreshExportPath(staging);
       await staging.create(recursive: true);
 
       final data = <String, Object?>{
@@ -379,6 +384,14 @@ final class LocalDataManager {
       }
     },
   );
+
+  Future<void> _ensureFreshExportPath(Directory candidate) async {
+    await rejectSymlinkedPath(candidate.path, message: 'Unsafe export path.');
+    if (await FileSystemEntity.type(candidate.path, followLinks: false) !=
+        FileSystemEntityType.notFound) {
+      throw const FormatException('Export path already exists.');
+    }
+  }
 
   Future<void> eraseAll({
     bool preserveRecoveryMarker = false,

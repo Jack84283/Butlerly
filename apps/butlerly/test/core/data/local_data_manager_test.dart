@@ -366,4 +366,62 @@ void main() {
       await realEvidence.rename(evidence.path);
     }
   });
+
+  test(
+    'export rejects pre-existing staging and destination symlinks',
+    () async {
+      final root = await Directory.systemTemp.createTemp(
+        'butlerly-export-staging-link-',
+      );
+      addTearDown(() => root.delete(recursive: true));
+      final documents = Directory(path.join(root.path, 'documents'))
+        ..createSync();
+      final evidence = Directory(path.join(root.path, 'evidence'))
+        ..createSync();
+      final database = LocalDatabase(
+        logger: AppLogger(),
+        factory: databaseFactoryFfi,
+        databaseDirectory: root.path,
+      );
+      await database.initialize();
+      addTearDown(database.close);
+      final now = DateTime.utc(2026, 10, 28, 4);
+      final manager = LocalDataManager(
+        database,
+        documentsDirectory: documents,
+        localEvidenceDirectory: evidence,
+        clock: () => now,
+      );
+      final timestamp = now.toIso8601String().replaceAll(':', '-');
+      final staging = Directory(
+        path.join(documents.path, '.butlerly-export-$timestamp.candidate'),
+      );
+      final stagingTarget = Directory(path.join(root.path, 'staging-target'))
+        ..createSync();
+      await Link(staging.path).create(stagingTarget.path);
+
+      await expectLater(manager.exportAll(), throwsA(isA<FormatException>()));
+      expect(await stagingTarget.list().toList(), isEmpty);
+      expect(
+        await FileSystemEntity.type(staging.path, followLinks: false),
+        FileSystemEntityType.link,
+      );
+
+      await Link(staging.path).delete();
+      final destination = Directory(
+        path.join(documents.path, 'Butlerly Export $timestamp'),
+      );
+      final destinationTarget = Directory(
+        path.join(root.path, 'destination-target'),
+      )..createSync();
+      await Link(destination.path).create(destinationTarget.path);
+
+      await expectLater(manager.exportAll(), throwsA(isA<FormatException>()));
+      expect(await destinationTarget.list().toList(), isEmpty);
+      expect(
+        await FileSystemEntity.type(destination.path, followLinks: false),
+        FileSystemEntityType.link,
+      );
+    },
+  );
 }

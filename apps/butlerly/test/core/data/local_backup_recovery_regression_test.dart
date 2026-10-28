@@ -206,6 +206,37 @@ void main() {
     });
   }
 
+  test('symlinked live evidence root fails closed', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final realEvidence = Directory('${fixture.evidence.path}-real')
+      ..createSync(recursive: true);
+    final live = File(path.join(realEvidence.path, 'receipt.bin'))
+      ..writeAsStringSync('must-survive');
+    await fixture.evidence.delete();
+    await Link(fixture.evidence.path).create(realEvidence.path);
+
+    try {
+      await expectLater(
+        fixture.manager.recoverInterruptedRestore(),
+        throwsA(isA<RestoreRecoveryRequiredException>()),
+      );
+
+      expect(await live.readAsString(), 'must-survive');
+      expect(
+        fixture.manager.recoveryState.incident?.reason,
+        'unsafe-restore-evidence-root',
+      );
+      expect(
+        await FileSystemEntity.type(fixture.evidence.path, followLinks: false),
+        FileSystemEntityType.link,
+      );
+    } finally {
+      await Link(fixture.evidence.path).delete();
+      await realEvidence.rename(fixture.evidence.path);
+    }
+  });
+
   test(
     'pre-commit recovery returns to an originally absent evidence root',
     () async {

@@ -20,6 +20,14 @@ Future<void> recoverInterruptedLocalRestore(
   final root = await localDataManager.evidenceDirectory();
   final journal = File('${root.path}.restore-journal.json');
   final originStateFile = File('${root.path}.restore-origin.json');
+  if (await FileSystemEntity.type(root.path, followLinks: false) ==
+      FileSystemEntityType.link) {
+    await state.markUnknownRequired(
+      operationId: 'unknown',
+      reason: 'unsafe-restore-evidence-root',
+    );
+    return;
+  }
   if (await _hasSymlinkedRestoreControlFile(root)) {
     // Journal and origin files control recovery and cleanup. Never read or
     // delete through a symlink because an external payload could direct
