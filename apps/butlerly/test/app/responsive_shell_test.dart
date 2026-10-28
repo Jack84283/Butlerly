@@ -149,10 +149,7 @@ void main() {
       );
       final decoration = pill.decoration! as BoxDecoration;
       final gradient = decoration.gradient! as LinearGradient;
-      expect(
-        gradient.colors,
-        const [Color(0xFFC0974C), Color(0xFFF3C670)],
-      );
+      expect(gradient.colors, const [Color(0xFFC0974C), Color(0xFFF3C670)]);
       expect(
         pill.padding,
         const EdgeInsets.all(ButlerlySize.primaryNavigationBorderWidth),
