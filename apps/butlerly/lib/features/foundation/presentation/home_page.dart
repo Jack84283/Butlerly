@@ -633,8 +633,13 @@ double _homeHeaderExtent(
   final rowWidth = availableWidth - ButlerlySpacing.standard;
   final brandWidth = stackedTopRow ? availableWidth : rowWidth * 5 / 9;
   final monthWidth = stackedTopRow ? availableWidth : rowWidth * 4 / 9;
+  const brandIconSize = 24.0;
+  final brandNameWidth =
+      (brandWidth - brandIconSize - ButlerlySpacing.compact)
+          .clamp(1.0, double.infinity)
+          .toDouble();
   final brandHeight =
-      measure(appName, appStyle, brandWidth) +
+      math.max(brandIconSize, measure(appName, appStyle, brandNameWidth)) +
       ButlerlySpacing.micro +
       measure(brandSubtitle, brandSubtitleStyle, brandWidth);
   final monthHeight = monthButtonHeight(monthWidth);
@@ -743,7 +748,7 @@ class _HomeHeader extends StatelessWidget {
           children: [
             ButlerlyBrandTitle(
               name: context.l10n.text('appName'),
-              iconSize: 28,
+              iconSize: 24,
               gap: ButlerlySpacing.compact,
               textStyle: ButlerlyTypography.editorialText(
                 context.designTokens.homeTypography.appTitle(
