@@ -40,22 +40,26 @@ class ButlerlyBrandTitle extends StatelessWidget {
   final TextStyle? textStyle;
 
   @override
-  Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      ButlerlyBrandIcon(size: iconSize),
-      SizedBox(width: gap),
-      Flexible(
-        child: Text(
-          name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: textStyle,
+  Widget build(BuildContext context) {
+    final largeText = MediaQuery.textScalerOf(context).scale(14) > 18;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ButlerlyBrandIcon(size: iconSize),
+        SizedBox(width: gap),
+        Flexible(
+          child: Text(
+            name,
+            maxLines: largeText ? null : 1,
+            overflow: largeText ? TextOverflow.visible : TextOverflow.ellipsis,
+            softWrap: largeText,
+            style: textStyle,
+          ),
         ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 }
 
 /// A shared identity row using the *bundled* app version (never a hard-coded
@@ -73,8 +77,10 @@ class ButlerlyBrandVersionTile extends StatelessWidget {
   final Future<String> version;
 
   @override
-  Widget build(BuildContext context) => ListTile(
-    key: const ValueKey('butlerly-brand-version-tile'),
+  Widget build(BuildContext context) => Material(
+    type: MaterialType.transparency,
+    child: ListTile(
+      key: const ValueKey('butlerly-brand-version-tile'),
     contentPadding: EdgeInsets.zero,
     leading: const ButlerlyBrandIcon(size: 44),
     title: Text(appName, maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -85,6 +91,7 @@ class ButlerlyBrandVersionTile extends StatelessWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
+    ),
     ),
   );
 }
