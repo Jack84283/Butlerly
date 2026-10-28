@@ -35,7 +35,8 @@ class BottomNavigationPrimaryShell extends StatelessWidget {
           bottom: false,
           child: ColoredBox(
             key: bodySurfaceKey,
-            color: ButlerlyLayout.modeForWidth(MediaQuery.sizeOf(context).width) ==
+            color:
+                ButlerlyLayout.modeForWidth(MediaQuery.sizeOf(context).width) ==
                     ButlerlyLayoutMode.medium
                 ? context.colors.background
                 : context.colors.subtleSurface,
