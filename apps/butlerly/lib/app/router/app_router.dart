@@ -8,6 +8,7 @@ import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_search_selection.dart';
 import 'package:butlerly/features/budgets/presentation/budgets_page.dart';
 import 'package:butlerly/features/desktop/presentation/desktop_home_page.dart';
+import 'package:butlerly/features/financial_profile/presentation/financial_profile_page.dart';
 import 'package:butlerly/features/foundation/presentation/add_page.dart';
 import 'package:butlerly/features/foundation/presentation/butlerly_launch_page.dart';
 import 'package:butlerly/features/foundation/presentation/contextual_pages.dart';
@@ -218,6 +219,12 @@ final appRouter = GoRouter(
           },
         ),
         GoRoute(path: '/budgets', builder: (_, _) => const BudgetsPage()),
+        GoRoute(
+          path: '/financial-profile',
+          builder: (_, state) => FinancialProfilePage(
+            onboarding: state.uri.queryParameters['onboarding'] == 'true',
+          ),
+        ),
         GoRoute(
           path: '/analysis',
           builder: (_, state) => AnalysisPage(

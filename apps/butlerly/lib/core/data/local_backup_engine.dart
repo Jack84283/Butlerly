@@ -246,6 +246,12 @@ final class LocalBackupManager {
     ], preserveLocalOnMergeConflict: true),
     _TableSpec('user_preferences', ['id'], updatedAt: 'updated_at'),
     _TableSpec(
+      'financial_profiles',
+      ['profile_id'],
+      updatedAt: 'updated_at',
+      createdAt: 'created_at',
+    ),
+    _TableSpec(
       'budgets',
       ['id'],
       updatedAt: 'updated_at',
@@ -276,6 +282,9 @@ final class LocalBackupManager {
         'reference_data_translations',
         'budgets',
       });
+    }
+    if (sourceSchema <= 14) {
+      required.remove('financial_profiles');
     }
     if (sourceSchema <= 11) {
       required.remove('recurring_pattern_decisions');
@@ -359,6 +368,16 @@ final class LocalBackupManager {
     },
     'budgets': {
       'scope': {'overall', 'category', 'subcategory', 'merchant'},
+    },
+    'financial_profiles': {
+      'household_size': _enumNames(HouseholdSize.values),
+      'dependents_count': _enumNames(DependentsCount.values),
+      'housing_situation': _enumNames(HousingSituation.values),
+      'expense_predictability': _enumNames(ExpensePredictability.values),
+      'primary_financial_goal': _enumNames(PrimaryFinancialGoal.values),
+      'goal_timeframe': _enumNames(GoalTimeframe.values),
+      'budgeting_preference': _enumNames(BudgetingPreference.values),
+      'survey_status': {'notStarted', 'inProgress', 'completed'},
     },
     'reference_data': {
       'origin': _enumNames(ReferenceDataOrigin.values),
@@ -1508,6 +1527,138 @@ final class LocalBackupManager {
         );
       }
     }
+    if (table == 'financial_profiles') {
+      _validateFinancialProfileRow(sourceSchema, raw, index);
+    }
+  }
+
+  void _validateFinancialProfileRow(int sourceSchema, Map raw, int index) {
+    final profileId = raw['profile_id'];
+    if (profileId is! String || profileId.trim().isEmpty) {
+      throw FormatException(
+        'Backup schema $sourceSchema table "financial_profiles" row $index '
+        'contains an invalid profile identifier.',
+      );
+    }
+    final schemaValue = raw['schema_version'];
+    if (schemaValue is! int || schemaValue < 1) {
+      throw FormatException(
+        'Backup schema $sourceSchema table "financial_profiles" row $index '
+        'contains an invalid profile schema version.',
+      );
+    }
+    final surveyVersion = raw['survey_version'];
+    if (surveyVersion is! String || surveyVersion.trim().isEmpty) {
+      throw FormatException(
+        'Backup schema $sourceSchema table "financial_profiles" row $index '
+        'contains an invalid survey version.',
+      );
+    }
+    _validateFinancialProfileStringList(
+      sourceSchema,
+      raw,
+      index,
+      field: 'primary_spending_categories',
+      max: 3,
+    );
+    _validateFinancialProfileStringList(
+      sourceSchema,
+      raw,
+      index,
+      field: 'categories_to_improve',
+    );
+    final target = raw['monthly_savings_target'];
+    final targetCurrency = raw['monthly_savings_target_currency'];
+    if (target != null) {
+      if (target is! String) {
+        throw FormatException(
+          'Backup schema $sourceSchema table "financial_profiles" row $index '
+          'contains an invalid decimal value for "monthly_savings_target".',
+        );
+      }
+      try {
+        final amount = DecimalValue.parse(target);
+        if (amount.isNegative ||
+            amount.coefficient.abs().toString().length >
+                FinancialProfile.maxSavingsTargetDigits ||
+            amount.scale > FinancialProfile.maxSavingsTargetScale) {
+          throw const FormatException();
+        }
+      } on Object {
+        throw FormatException(
+          'Backup schema $sourceSchema table "financial_profiles" row $index '
+          'contains an invalid decimal value for "monthly_savings_target".',
+        );
+      }
+    }
+    if ((target == null) != (targetCurrency == null)) {
+      throw FormatException(
+        'Backup schema $sourceSchema table "financial_profiles" row $index '
+        'contains an invalid savings target relationship.',
+      );
+    }
+    final hasTarget = raw['has_monthly_savings_target'];
+    if (hasTarget != null &&
+        (hasTarget is! int || (hasTarget != 0 && hasTarget != 1))) {
+      throw FormatException(
+        'Backup schema $sourceSchema table "financial_profiles" row $index '
+        'contains an invalid savings target choice.',
+      );
+    }
+    final insightTypes = raw['preferred_insight_types'];
+    if (insightTypes is! String) {
+      throw FormatException(
+        'Backup schema $sourceSchema table "financial_profiles" row $index '
+        'contains invalid preferred insight types.',
+      );
+    }
+    try {
+      final decoded = jsonDecode(insightTypes);
+      if (decoded is! List || decoded.any((value) => value is! String)) {
+        throw const FormatException();
+      }
+      final allowed = _enumNames(FinancialInsightType.values);
+      if (decoded.any((value) => !allowed.contains(value))) {
+        throw const FormatException();
+      }
+    } on Object {
+      throw FormatException(
+        'Backup schema $sourceSchema table "financial_profiles" row $index '
+        'contains invalid preferred insight types.',
+      );
+    }
+  }
+
+  void _validateFinancialProfileStringList(
+    int sourceSchema,
+    Map raw,
+    int index, {
+    required String field,
+    int? max,
+  }) {
+    final value = raw[field];
+    if (value is! String) {
+      throw FormatException(
+        'Backup schema $sourceSchema table "financial_profiles" row $index '
+        'contains invalid "$field".',
+      );
+    }
+    try {
+      final decoded = jsonDecode(value);
+      if (decoded is! List || decoded.any((item) => item is! String)) {
+        throw const FormatException();
+      }
+      final values = decoded.cast<String>();
+      if (values.any((item) => item.trim().isEmpty) ||
+          (max != null && values.toSet().length > max)) {
+        throw const FormatException();
+      }
+    } on Object {
+      throw FormatException(
+        'Backup schema $sourceSchema table "financial_profiles" row $index '
+        'contains invalid "$field".',
+      );
+    }
   }
 
   Future<void> _validateTableReferences(
@@ -2178,6 +2329,7 @@ final class LocalBackupManager {
       'recurring_pattern_decisions',
       'payment_sources',
       'user_preferences',
+      'financial_profiles',
     ];
     for (final table in childFirst) {
       await tx.delete(table);

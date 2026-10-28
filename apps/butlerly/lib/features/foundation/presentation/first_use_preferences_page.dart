@@ -8,6 +8,7 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:go_router/go_router.dart';
 
 class FirstUsePreferencesPage extends ConsumerStatefulWidget {
   const FirstUsePreferencesPage({super.key});
@@ -21,6 +22,7 @@ class _FirstUsePreferencesPageState
     extends ConsumerState<FirstUsePreferencesPage> {
   final _nameController = TextEditingController();
   bool _nameInitialized = false;
+  bool _showProfileIntro = false;
 
   @override
   void dispose() {
@@ -34,6 +36,9 @@ class _FirstUsePreferencesPageState
     if (!_nameInitialized) {
       _nameController.text = preference.displayName;
       _nameInitialized = true;
+    }
+    if (_showProfileIntro) {
+      return _buildProfileIntro(context);
     }
     return Scaffold(
       body: SafeArea(
@@ -182,12 +187,7 @@ class _FirstUsePreferencesPageState
               const SizedBox(height: ButlerlySpacing.section),
               FilledButton(
                 key: const ValueKey('first-use-continue-locally'),
-                onPressed: () => ref
-                    .read(userPreferenceProvider.notifier)
-                    .saveChanges(
-                      displayName: _nameController.text,
-                      firstUseCompleted: true,
-                    ),
+                onPressed: () => setState(() => _showProfileIntro = true),
                 child: Text(context.l10n.text('continueLocally')),
               ),
             ],
@@ -196,6 +196,70 @@ class _FirstUsePreferencesPageState
       ),
     );
   }
+
+  Widget _buildProfileIntro(BuildContext context) => Scaffold(
+    body: SafeArea(
+      child: ButlerlyResponsiveBody(
+        contentKey: const ValueKey('financial-profile-intro-content'),
+        child: ListView(
+          padding: const EdgeInsets.symmetric(
+            horizontal: ButlerlySize.contentGutter,
+            vertical: ButlerlySpacing.section,
+          ),
+          children: [
+            const SizedBox(height: ButlerlySpacing.large),
+            Text(
+              context.l10n.text('financialProfileIntroTitle'),
+              style: Theme.of(context).textTheme.headlineLarge,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: ButlerlySpacing.small),
+            Text(
+              context.l10n.text('financialProfileIntroBody'),
+              style: Theme.of(context).textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: ButlerlySpacing.section),
+            ButlerlyCard(
+              child: Text(context.l10n.text('financialProfilePrivate')),
+            ),
+            const SizedBox(height: ButlerlySpacing.section),
+            FilledButton(
+              key: const ValueKey('first-use-set-up-profile'),
+              onPressed: () async {
+                final saved = await ref
+                    .read(userPreferenceProvider.notifier)
+                    .saveChanges(
+                      displayName: _nameController.text,
+                      firstUseCompleted: true,
+                    );
+                if (saved && context.mounted) {
+                  context.go('/financial-profile?onboarding=true');
+                }
+              },
+              child: Text(context.l10n.text('setUpMyProfile')),
+            ),
+            const SizedBox(height: ButlerlySpacing.small),
+            OutlinedButton(
+              key: const ValueKey('first-use-maybe-later'),
+              onPressed: () => ref
+                  .read(userPreferenceProvider.notifier)
+                  .saveChanges(
+                    displayName: _nameController.text,
+                    firstUseCompleted: true,
+                  ),
+              child: Text(context.l10n.text('maybeLater')),
+            ),
+            const SizedBox(height: ButlerlySpacing.small),
+            TextButton(
+              onPressed: () => setState(() => _showProfileIntro = false),
+              child: Text(context.l10n.text('financialProfileBack')),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _SetupDropdown<T> extends StatelessWidget {

@@ -160,6 +160,9 @@ void configureDependencies({
         database.persistenceDatabase,
       ),
       budgetRepository: SqliteBudgetRepository(database.persistenceDatabase),
+      financialProfileRepository: SqliteFinancialProfileRepository(
+        database.persistenceDatabase,
+      ),
       analysisInvalidation: invalidateAnalysis,
     );
     services

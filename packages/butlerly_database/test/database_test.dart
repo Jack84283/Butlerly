@@ -45,6 +45,7 @@ void main() {
         'suggestions',
         'review_issues',
         'user_preferences',
+        'financial_profiles',
         'category_translations',
         'tag_translations',
         'reference_data',
