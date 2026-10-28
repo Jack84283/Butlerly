@@ -55,6 +55,20 @@ void main() {
 
         expect(versionTile, findsOneWidget, reason: 'viewport $size');
         expect(
+          tester.widget<ButlerlyBrandVersionTile>(versionTile).centered,
+          isTrue,
+          reason: 'More uses the same centered brand style at $size',
+        );
+        final brandColumn = find.descendant(
+          of: versionTile,
+          matching: find.byType(Column),
+        );
+        expect(brandColumn, findsOneWidget);
+        expect(
+          tester.widget<Column>(brandColumn).children.first,
+          isA<Center>(),
+        );
+        expect(
           find.descendant(
             of: versionTile,
             matching: find.byType(ButlerlyBrandIcon),
