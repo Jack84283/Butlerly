@@ -109,7 +109,7 @@ class ButlerlyBrandVersionTile extends StatelessWidget {
                   ),
                 ),
               ],
-              ),
+            ),
           )
         : ListTile(
             key: const ValueKey('butlerly-brand-version-tile'),
