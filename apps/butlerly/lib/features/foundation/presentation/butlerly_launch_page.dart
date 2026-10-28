@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:butlerly/app/session/butlerly_session_guard.dart';
+import 'package:butlerly/design_system/components/butlerly_brand_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -31,19 +32,7 @@ class ButlerlyLaunchSurface extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: context.colors.brand,
-                  borderRadius: BorderRadius.circular(ButlerlyRadius.large),
-                ),
-                child: const Icon(
-                  Icons.shield_outlined,
-                  color: Colors.white,
-                  size: 44,
-                ),
-              ),
+              const ButlerlyBrandIcon(size: 80),
               const SizedBox(height: ButlerlySpacing.section),
               Text(
                 context.l10n.text('appName'),
