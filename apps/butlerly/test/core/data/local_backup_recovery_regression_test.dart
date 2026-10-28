@@ -169,6 +169,43 @@ void main() {
     },
   );
 
+  for (final controlFile in <({String label, String suffix})>[
+    (label: 'journal', suffix: '.restore-journal.json'),
+    (label: 'journal temp', suffix: '.restore-journal.json.tmp'),
+    (label: 'journal previous', suffix: '.restore-journal.json.previous'),
+    (label: 'origin', suffix: '.restore-origin.json'),
+    (label: 'origin temp', suffix: '.restore-origin.json.tmp'),
+    (label: 'origin previous', suffix: '.restore-origin.json.previous'),
+  ]) {
+    test('symlinked ${controlFile.label} control file fails closed', () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final live = File(path.join(fixture.evidence.path, 'receipt.bin'))
+        ..writeAsStringSync('must-survive');
+      final target = File(
+        path.join(fixture.root.path, '${controlFile.label}-target.json'),
+      )..writeAsStringSync('{}');
+      final link = File('${fixture.evidence.path}${controlFile.suffix}');
+      await Link(link.path).create(target.path);
+
+      await expectLater(
+        fixture.manager.recoverInterruptedRestore(),
+        throwsA(isA<RestoreRecoveryRequiredException>()),
+      );
+
+      expect(await live.readAsString(), 'must-survive');
+      expect(await target.readAsString(), '{}');
+      expect(
+        await FileSystemEntity.type(link.path, followLinks: false),
+        FileSystemEntityType.link,
+      );
+      expect(
+        fixture.manager.recoveryState.incident?.reason,
+        'unsafe-restore-control-path',
+      );
+    });
+  }
+
   test(
     'pre-commit recovery returns to an originally absent evidence root',
     () async {

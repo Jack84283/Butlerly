@@ -20,6 +20,16 @@ Future<void> recoverInterruptedLocalRestore(
   final root = await localDataManager.evidenceDirectory();
   final journal = File('${root.path}.restore-journal.json');
   final originStateFile = File('${root.path}.restore-origin.json');
+  if (await _hasSymlinkedRestoreControlFile(root)) {
+    // Journal and origin files control recovery and cleanup. Never read or
+    // delete through a symlink because an external payload could direct
+    // recovery to the wrong tree or make cleanup affect unrelated state.
+    await state.markUnknownRequired(
+      operationId: 'unknown',
+      reason: 'unsafe-restore-control-path',
+    );
+    return;
+  }
   final originState = await _readOriginState(originStateFile);
 
   if (!await journal.exists()) {
@@ -467,6 +477,25 @@ Future<bool> _isJournalLink(String? candidate) async =>
     candidate != null &&
     await FileSystemEntity.type(candidate, followLinks: false) ==
         FileSystemEntityType.link;
+
+Future<bool> _hasSymlinkedRestoreControlFile(Directory root) async {
+  final rootPath = root.path;
+  final controlFiles = <String>[
+    '$rootPath.restore-journal.json',
+    '$rootPath.restore-journal.json.tmp',
+    '$rootPath.restore-journal.json.previous',
+    '$rootPath.restore-origin.json',
+    '$rootPath.restore-origin.json.tmp',
+    '$rootPath.restore-origin.json.previous',
+  ];
+  for (final file in controlFiles) {
+    if (await FileSystemEntity.type(file, followLinks: false) ==
+        FileSystemEntityType.link) {
+      return true;
+    }
+  }
+  return false;
+}
 
 Future<bool> _validJournalDirectoryPath(
   Directory root,
