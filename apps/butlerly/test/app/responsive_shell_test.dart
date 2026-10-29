@@ -309,6 +309,8 @@ void main() {
     const size = Size(1200, 800);
     await _pumpAt(tester, size);
 
+    expect(ButlerlySize.wideNavigationExpandedWidth, 188.0);
+    expect(ButlerlySize.wideNavigationCollapsedWidth, 72.0);
     expect(ButlerlyLayout.mode(size), ButlerlyLayoutMode.wide);
     expect(find.byType(DesktopPrimaryShell), findsOneWidget);
     expect(
