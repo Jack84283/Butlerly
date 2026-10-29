@@ -124,6 +124,7 @@ class AppLocalizations {
       'financialProfileTargetNoSpecific': 'No specific target',
       'financialProfileTargetNoAmount': 'No amount specified',
       'financialProfileTargetHint': 'Optional amount',
+      'financialProfileClearAnswer': 'Clear answer',
       'financialProfileTargetInvalid': 'Enter a valid nonnegative amount.',
       'financialProfileTargetTooLarge':
           'That amount exceeds the supported limit.',
@@ -1211,6 +1212,7 @@ class AppLocalizations {
       'financialProfileTargetNoSpecific': '没有特定目标',
       'financialProfileTargetNoAmount': '未指定金额',
       'financialProfileTargetHint': '可选金额',
+      'financialProfileClearAnswer': '清除回答',
       'financialProfileTargetInvalid': '请输入有效的非负金额。',
       'financialProfileTargetTooLarge': '金额超过支持的上限。',
       'financialProfileTimeframeShort': '短期',
@@ -2172,6 +2174,7 @@ class AppLocalizations {
       'financialProfileTargetNoSpecific': 'Sin meta específica',
       'financialProfileTargetNoAmount': 'Sin importe especificado',
       'financialProfileTargetHint': 'Importe opcional',
+      'financialProfileClearAnswer': 'Borrar respuesta',
       'financialProfileTargetInvalid':
           'Introduce un importe válido no negativo.',
       'financialProfileTargetTooLarge': 'El importe supera el límite admitido.',

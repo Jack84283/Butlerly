@@ -83,6 +83,25 @@ void main() {
           FinancialInsightType.savingsOpportunities,
         ]);
         expect(reloaded?.status, FinancialProfileStatus.completed);
+        final edited = reloaded!.copyWith(
+          updatedAt: now.add(const Duration(minutes: 10)),
+        );
+        await SqliteFinancialProfileRepository(database).save(edited);
+        final savedAfterEdit = await SqliteFinancialProfileRepository(
+          database,
+        ).load();
+        expect(
+          savedAfterEdit?.monthlySavingsTarget,
+          DecimalValue.parse('750.25'),
+        );
+        final cleared = savedAfterEdit!.copyWith(householdSize: null);
+        await SqliteFinancialProfileRepository(database).save(cleared);
+        final reloadedAfterClear = await SqliteFinancialProfileRepository(
+          database,
+        ).load();
+        expect(reloadedAfterClear?.householdSize, isNull);
+        expect(reloadedAfterClear?.dependentsCount, DependentsCount.one);
+        expect(reloadedAfterClear?.answeredQuestionCount, 10);
         await database.connection.insert('financial_profiles', {
           'profile_id': 'financial-profile:orphan',
           'schema_version': 1,

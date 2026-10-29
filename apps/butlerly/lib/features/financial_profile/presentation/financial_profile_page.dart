@@ -12,7 +12,6 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 final class FinancialProfilePage extends ConsumerStatefulWidget {
   const FinancialProfilePage({this.onboarding = false, super.key});
@@ -39,6 +38,7 @@ final class _FinancialProfilePageState
   String? _loadError;
   String? _targetError;
   bool _targetOptionSelected = false;
+  CurrencyCode? _targetCurrency;
 
   FinanceServices? get _finance => services.isRegistered<FinanceServices>()
       ? services<FinanceServices>()
@@ -97,8 +97,9 @@ final class _FinancialProfilePageState
         _loading = false;
         _categoryLoadError = false;
         _targetOptionSelected = draft.hasMonthlySavingsTarget == true;
+        _targetCurrency = draft.monthlySavingsTargetCurrency;
       });
-      _targetController.text = draft.monthlySavingsTarget?.toString() ?? '';
+      _targetController.text = _targetInputText(draft.monthlySavingsTarget);
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -139,6 +140,7 @@ final class _FinancialProfilePageState
     setState(() {
       _profile = result.value;
       _draft = result.value;
+      _targetCurrency = result.value.monthlySavingsTargetCurrency;
       if (complete) _editing = false;
     });
     if (complete) {
@@ -198,15 +200,23 @@ final class _FinancialProfilePageState
   }
 
   void _startEditing() {
-    final draft = _profile ?? FinancialProfile.empty(now: DateTime.now());
+    _beginEditing(_profile ?? FinancialProfile.empty(now: DateTime.now()));
+  }
+
+  void _startRetaking() {
+    _beginEditing(FinancialProfile.empty(now: DateTime.now()));
+  }
+
+  void _beginEditing(FinancialProfile draft) {
     setState(() {
       _draft = draft;
       _editing = true;
       _step = 0;
       _targetOptionSelected = draft.hasMonthlySavingsTarget == true;
       _targetError = null;
+      _targetCurrency = draft.monthlySavingsTargetCurrency;
     });
-    _targetController.text = draft.monthlySavingsTarget?.toString() ?? '';
+    _targetController.text = _targetInputText(draft.monthlySavingsTarget);
   }
 
   void _updateDraft(FinancialProfile next) => setState(() => _draft = next);
@@ -223,14 +233,15 @@ final class _FinancialProfilePageState
     }
   }
 
-  void _setTargetOption(bool amount) {
+  void _setTargetOption(bool? amount) {
     setState(() {
-      _targetOptionSelected = amount;
+      _targetOptionSelected = amount == true;
       _targetError = null;
-      if (!amount) {
+      if (amount != true) {
+        _targetCurrency = null;
         _targetController.clear();
         _draft = _draft?.copyWith(
-          hasMonthlySavingsTarget: false,
+          hasMonthlySavingsTarget: amount,
           monthlySavingsTarget: null,
           monthlySavingsTargetCurrency: null,
         );
@@ -240,20 +251,17 @@ final class _FinancialProfilePageState
     });
   }
 
-  String _normalizeLocalizedDecimal(String raw) {
-    final symbols = NumberFormat.decimalPattern(
-      Localizations.localeOf(context).toString(),
-    ).symbols;
-    return raw
-        .trim()
-        .replaceAll('\u00a0', '')
-        .replaceAll(symbols.GROUP_SEP, '')
-        .replaceAll(symbols.DECIMAL_SEP, '.');
+  String _targetInputText(DecimalValue? value) {
+    if (value == null) return '';
+    return localizedExactDecimal(context, value.toString());
   }
 
   void _setTarget(String raw) {
-    final value = _normalizeLocalizedDecimal(raw);
-    if (value.isEmpty) {
+    final value = parseLocalizedDecimal(
+      raw,
+      locale: Localizations.localeOf(context).toLanguageTag(),
+    );
+    if (value == '') {
       setState(() {
         _targetError = null;
         _draft = _draft?.copyWith(
@@ -264,9 +272,15 @@ final class _FinancialProfilePageState
       });
       return;
     }
+    if (value == null) {
+      setState(() => _targetError = 'financialProfileTargetInvalid');
+      return;
+    }
     try {
       final parsed = DecimalValue.parse(value);
       final preference = ref.read(userPreferenceProvider).value;
+      final currency =
+          _targetCurrency ?? preference?.baseCurrency ?? CurrencyCode('USD');
       if (parsed.isNegative) {
         throw const _TargetValidationError('financialProfileTargetInvalid');
       }
@@ -280,9 +294,9 @@ final class _FinancialProfilePageState
         _draft = _draft?.copyWith(
           hasMonthlySavingsTarget: true,
           monthlySavingsTarget: parsed,
-          monthlySavingsTargetCurrency:
-              preference?.baseCurrency ?? CurrencyCode('USD'),
+          monthlySavingsTargetCurrency: currency,
         );
+        _targetCurrency = currency;
       });
     } on _TargetValidationError catch (error) {
       setState(() => _targetError = error.key);
@@ -428,7 +442,8 @@ final class _FinancialProfilePageState
         if (profile != null) ...[
           const SizedBox(height: ButlerlySpacing.small),
           OutlinedButton(
-            onPressed: _startEditing,
+            key: const ValueKey('financial-profile-retake'),
+            onPressed: _startRetaking,
             child: Text(context.l10n.text('financialProfileRetake')),
           ),
           const SizedBox(height: ButlerlySpacing.small),
@@ -548,6 +563,7 @@ final class _FinancialProfilePageState
     children: [
       _radioQuestion<HouseholdSize>(
         context,
+        clearKey: 'household-size',
         title: context.l10n.text('financialProfileQ1'),
         value: draft.householdSize,
         options: {
@@ -562,6 +578,7 @@ final class _FinancialProfilePageState
       ),
       _radioQuestion<DependentsCount>(
         context,
+        clearKey: 'dependents-count',
         title: context.l10n.text('financialProfileQ2'),
         value: draft.dependentsCount,
         options: {
@@ -575,6 +592,7 @@ final class _FinancialProfilePageState
       ),
       _radioQuestion<HousingSituation>(
         context,
+        clearKey: 'housing-situation',
         title: context.l10n.text('financialProfileQ3'),
         value: draft.housingSituation,
         options: {
@@ -607,6 +625,7 @@ final class _FinancialProfilePageState
           const SizedBox(height: ButlerlySpacing.standard),
           _radioQuestion<ExpensePredictability>(
             context,
+            clearKey: 'expense-predictability',
             title: context.l10n.text('financialProfileQ5'),
             value: draft.expensePredictability,
             options: {
@@ -634,6 +653,7 @@ final class _FinancialProfilePageState
     children: [
       _radioQuestion<PrimaryFinancialGoal>(
         context,
+        clearKey: 'primary-financial-goal',
         title: context.l10n.text('financialProfileQ7'),
         value: draft.primaryFinancialGoal,
         options: {
@@ -652,6 +672,7 @@ final class _FinancialProfilePageState
       _savingsTargetQuestion(context, draft),
       _radioQuestion<GoalTimeframe>(
         context,
+        clearKey: 'goal-timeframe',
         title: context.l10n.text('financialProfileQ9'),
         value: draft.goalTimeframe,
         options: {
@@ -675,6 +696,7 @@ final class _FinancialProfilePageState
         children: [
           _radioQuestion<BudgetingPreference>(
             context,
+            clearKey: 'budgeting-preference',
             title: context.l10n.text('financialProfileQ10'),
             value: draft.budgetingPreference,
             options: {
@@ -708,73 +730,79 @@ final class _FinancialProfilePageState
         ],
       );
 
-  Widget _savingsTargetQuestion(BuildContext context, FinancialProfile draft) =>
-      ButlerlyCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              context.l10n.text('financialProfileQ8'),
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            RadioGroup<bool>(
-              groupValue: draft.hasMonthlySavingsTarget,
-              onChanged: (selected) {
-                if (selected != null) _setTargetOption(selected);
-              },
-              child: Column(
-                children: [
-                  RadioListTile<bool>(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(
-                      context.l10n.text('financialProfileTargetNoSpecific'),
-                    ),
-                    value: false,
-                  ),
-                  RadioListTile<bool>(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(
-                      context.l10n.text('financialProfileTargetAmount', {
-                        'currency':
-                            ref
-                                .read(userPreferenceProvider)
-                                .value
-                                ?.baseCurrency
-                                .value ??
-                            draft.monthlySavingsTargetCurrency?.value ??
-                            'USD',
-                      }),
-                    ),
-                    value: true,
-                  ),
-                ],
-              ),
-            ),
-            if (_targetOptionSelected)
-              TextField(
-                key: const ValueKey('financial-profile-savings-target'),
-                controller: _targetController,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                decoration: InputDecoration(
-                  hintText: context.l10n.text('financialProfileTargetHint'),
-                  errorText: _targetError == null
-                      ? null
-                      : context.l10n.text(_targetError!),
-                ),
-                onChanged: _setTarget,
-              ),
-          ],
+  Widget _savingsTargetQuestion(
+    BuildContext context,
+    FinancialProfile draft,
+  ) => ButlerlyCard(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          context.l10n.text('financialProfileQ8'),
+          style: Theme.of(context).textTheme.titleMedium,
         ),
-      );
+        RadioGroup<bool>(
+          groupValue: draft.hasMonthlySavingsTarget,
+          onChanged: (selected) {
+            if (selected != null) _setTargetOption(selected);
+          },
+          child: Column(
+            children: [
+              RadioListTile<bool>(
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  context.l10n.text('financialProfileTargetNoSpecific'),
+                ),
+                value: false,
+              ),
+              RadioListTile<bool>(
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  context.l10n.text('financialProfileTargetAmount', {
+                    'currency':
+                        draft.monthlySavingsTargetCurrency?.value ??
+                        ref
+                            .read(userPreferenceProvider)
+                            .value
+                            ?.baseCurrency
+                            .value ??
+                        'USD',
+                  }),
+                ),
+                value: true,
+              ),
+            ],
+          ),
+        ),
+        TextButton(
+          key: const ValueKey('financial-profile-clear-answer-savings-target'),
+          onPressed: () => _setTargetOption(null),
+          child: Text(context.l10n.text('financialProfileClearAnswer')),
+        ),
+        if (_targetOptionSelected)
+          TextField(
+            key: const ValueKey('financial-profile-savings-target'),
+            controller: _targetController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              hintText: context.l10n.text('financialProfileTargetHint'),
+              errorText: _targetError == null
+                  ? null
+                  : context.l10n.text(_targetError!),
+            ),
+            onChanged: _setTarget,
+          ),
+      ],
+    ),
+  );
 
   Widget _radioQuestion<T extends Enum>(
     BuildContext context, {
+    required String clearKey,
     required String title,
     required T? value,
     required Map<T, String> options,
-    required ValueChanged<T> onChanged,
+    required ValueChanged<T?> onChanged,
     Map<T, String> descriptions = const {},
   }) => ButlerlyCard(
     child: RadioGroup<T>(
@@ -795,6 +823,11 @@ final class _FinancialProfilePageState
                   : Text(context.l10n.text(descriptions[entry.key]!)),
               value: entry.key,
             ),
+          TextButton(
+            key: ValueKey('financial-profile-clear-answer-$clearKey'),
+            onPressed: () => onChanged(null),
+            child: Text(context.l10n.text('financialProfileClearAnswer')),
+          ),
         ],
       ),
     ),

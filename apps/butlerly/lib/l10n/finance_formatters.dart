@@ -93,6 +93,52 @@ String localizedExactMoney(
   return currencyProbe.replaceFirst(probe, exactDecimal);
 }
 
+String localizedExactDecimal(BuildContext context, String canonicalValue) {
+  if (canonicalValue.trim().isEmpty) return '';
+  final value = DecimalValue.parse(canonicalValue);
+  return _localizedExactDecimal(value.toString(), _currencyLocale(context));
+}
+
+String? parseLocalizedDecimal(String raw, {required String locale}) {
+  final symbols = NumberFormat.decimalPattern(_numberLocale(locale)).symbols;
+  var input = raw.trim();
+  if (input.isEmpty) return '';
+  if (symbols.GROUP_SEP.trim().isEmpty) {
+    input = input.replaceAll(RegExp(r'\s'), symbols.GROUP_SEP);
+  } else if (RegExp(r'\s').hasMatch(input)) {
+    return null;
+  }
+
+  final decimalParts = input.split(symbols.DECIMAL_SEP);
+  if (decimalParts.length > 2) return null;
+  final integerPart = decimalParts.first;
+  final fractionPart = decimalParts.length == 2 ? decimalParts[1] : null;
+  if (fractionPart != null &&
+      (fractionPart.isEmpty || !_asciiDigits.hasMatch(fractionPart))) {
+    return null;
+  }
+
+  final integerGroups = integerPart.split(symbols.GROUP_SEP);
+  if (integerGroups.any((group) => group.isEmpty)) return null;
+  if (integerGroups.length > 1 &&
+      (integerGroups.first.length > 3 ||
+          integerGroups.skip(1).any((group) => group.length != 3))) {
+    return null;
+  }
+  if (integerGroups.any((group) => !_asciiDigits.hasMatch(group))) {
+    return null;
+  }
+  final canonical =
+      integerGroups.join() + (fractionPart == null ? '' : '.$fractionPart');
+  try {
+    return DecimalValue.parse(canonical).toString();
+  } on DomainValidationException {
+    return null;
+  }
+}
+
+final _asciiDigits = RegExp(r'^\d+$');
+
 String _localizedExactDecimal(String canonicalValue, String locale) {
   final negative = canonicalValue.startsWith('-');
   final unsigned = negative ? canonicalValue.substring(1) : canonicalValue;
@@ -111,6 +157,16 @@ String _localizedExactDecimal(String canonicalValue, String locale) {
     grouped.write(parts[1]);
   }
   return '${negative ? '-' : ''}$grouped';
+}
+
+String _numberLocale(String locale) {
+  final normalized = locale.replaceAll('-', '_');
+  if (normalized.contains('_')) return normalized;
+  return switch (normalized) {
+    'zh' => 'zh_CN',
+    'es' => 'es_ES',
+    _ => 'en_US',
+  };
 }
 
 String _currencyLocale(BuildContext context) {

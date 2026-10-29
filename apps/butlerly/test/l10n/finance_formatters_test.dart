@@ -78,6 +78,7 @@ void main() {
       localizedExactMoney(english, '12345678901234567890.12', 'USD'),
       r'$12,345,678,901,234,567,890.12',
     );
+    expect(localizedExactDecimal(english, '750.25'), '750.25');
 
     late BuildContext spanish;
     await tester.pumpWidget(
@@ -98,6 +99,7 @@ void main() {
       ),
     );
     expect(localizedExactMoney(spanish, '1234.50', 'EUR'), contains('1.234,5'));
+    expect(localizedExactDecimal(spanish, '750.25'), '750,25');
 
     late BuildContext chinese;
     await tester.pumpWidget(
@@ -121,5 +123,16 @@ void main() {
       localizedExactMoney(chinese, '1234.50', 'USD'),
       contains(r'$1,234.5'),
     );
+    expect(localizedExactDecimal(chinese, '750.25'), '750.25');
+  });
+
+  test('localized decimal parsing rejects cross-locale ambiguity', () {
+    expect(parseLocalizedDecimal('750,25', locale: 'es'), '750.25');
+    expect(parseLocalizedDecimal('1.234,5', locale: 'es'), '1234.5');
+    expect(parseLocalizedDecimal('750.25', locale: 'es'), isNull);
+    expect(parseLocalizedDecimal('750,25', locale: 'en'), isNull);
+    expect(parseLocalizedDecimal('750.25', locale: 'en'), '750.25');
+    expect(parseLocalizedDecimal('750.25', locale: 'zh'), '750.25');
+    expect(parseLocalizedDecimal('1.23.4', locale: 'en'), isNull);
   });
 }

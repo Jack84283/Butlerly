@@ -35,6 +35,14 @@ void main() {
       database: database,
       logger: AppLogger(),
     );
+    await SqliteUserPreferenceRepository(database.persistenceDatabase).save(
+      UserPreference(
+        locale: 'en',
+        baseCurrency: CurrencyCode('USD'),
+        timeZoneId: 'UTC',
+        firstUseCompleted: true,
+      ),
+    );
   });
 
   tearDown(() async {
@@ -43,21 +51,25 @@ void main() {
     await root.delete(recursive: true);
   });
 
-  Widget app({Locale locale = const Locale('en'), bool onboarding = false}) =>
-      ProviderScope(
-        child: MaterialApp(
-          locale: locale,
-          themeMode: ThemeMode.light,
-          localizationsDelegates: const [
-            AppLocalizations.delegate,
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Scaffold(body: FinancialProfilePage(onboarding: onboarding)),
-        ),
-      );
+  Widget app({
+    Locale locale = const Locale('en'),
+    bool onboarding = false,
+    Key? key,
+  }) => ProviderScope(
+    key: key,
+    child: MaterialApp(
+      locale: locale,
+      themeMode: ThemeMode.light,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(body: FinancialProfilePage(onboarding: onboarding)),
+    ),
+  );
 
   testWidgets('completes with all optional questions unanswered', (
     tester,
@@ -133,11 +145,11 @@ void main() {
     }
     await tester.pumpAndSettle();
     final targetOptions = find.byType(RadioListTile<bool>);
-    await tester.tap(targetOptions.last);
+    await _tapVisible(tester, targetOptions.last);
     await tester.pump();
     await tester.enterText(
       find.byKey(const ValueKey('financial-profile-savings-target')),
-      '12,50',
+      '750,25',
     );
     for (var step = 0; step < 1; step++) {
       await _tapSurveyAction(
@@ -149,7 +161,169 @@ void main() {
     await _pumpWithRealAsync(tester);
 
     expect(find.text('Perfil financiero'), findsOneWidget);
-    expect(find.textContaining('12,5'), findsOneWidget);
+    expect(find.textContaining('750,25'), findsOneWidget);
+
+    await tester.runAsync(
+      () => SqliteUserPreferenceRepository(database.persistenceDatabase).save(
+        UserPreference(
+          locale: 'en',
+          baseCurrency: CurrencyCode('EUR'),
+          timeZoneId: 'UTC',
+          firstUseCompleted: true,
+        ),
+      ),
+    );
+    await tester.pumpWidget(app(locale: const Locale('es'), key: UniqueKey()));
+    await _pumpUntilVisible(
+      tester,
+      find.byKey(const ValueKey('financial-profile-edit')),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('financial-profile-edit')));
+    await tester.pumpAndSettle();
+    for (var step = 0; step < 2; step++) {
+      await _tapSurveyAction(
+        tester,
+        const ValueKey('financial-profile-continue'),
+      );
+    }
+    await _pumpUntilVisible(
+      tester,
+      find.byKey(const ValueKey('financial-profile-savings-target')),
+    );
+    final targetField = tester.widget<TextField>(
+      find.byKey(const ValueKey('financial-profile-savings-target')),
+    );
+    expect(targetField.controller?.text, '750,25');
+    expect(find.text('Meta mensual (USD)'), findsOneWidget);
+    await tester.enterText(
+      find.byKey(const ValueKey('financial-profile-savings-target')),
+      '750,25',
+    );
+    await _tapSurveyAction(
+      tester,
+      const ValueKey('financial-profile-continue'),
+    );
+    await _tapSurveyAction(tester, const ValueKey('financial-profile-save'));
+    await _pumpWithRealAsync(tester);
+
+    final saved = await tester.runAsync(
+      () =>
+          SqliteFinancialProfileRepository(database.persistenceDatabase).load(),
+    );
+    expect(saved?.monthlySavingsTarget, DecimalValue.parse('750.25'));
+    expect(saved?.monthlySavingsTargetCurrency, CurrencyCode('USD'));
+  });
+
+  testWidgets(
+    'retake starts unanswered and cancel preserves the saved profile',
+    (tester) async {
+      await tester.pumpWidget(app());
+      await _pumpUntilVisible(
+        tester,
+        find.byKey(const ValueKey('financial-profile-edit')),
+      );
+      await tester.tap(find.byKey(const ValueKey('financial-profile-edit')));
+      await tester.pumpAndSettle();
+      await _tapVisible(
+        tester,
+        find.byType(RadioListTile<HouseholdSize>).first,
+      );
+      await _tapVisible(
+        tester,
+        find.byType(RadioListTile<DependentsCount>).first,
+      );
+      for (var step = 0; step < 3; step++) {
+        await _tapSurveyAction(
+          tester,
+          const ValueKey('financial-profile-continue'),
+        );
+      }
+      await _tapSurveyAction(tester, const ValueKey('financial-profile-save'));
+      await _pumpWithRealAsync(tester);
+
+      await tester.tap(find.byKey(const ValueKey('financial-profile-retake')));
+      await tester.pumpAndSettle();
+
+      final householdGroup = tester.widget<RadioGroup<HouseholdSize>>(
+        find.byType(RadioGroup<HouseholdSize>),
+      );
+      expect(householdGroup.groupValue, isNull);
+      final dependentsGroup = tester.widget<RadioGroup<DependentsCount>>(
+        find.byType(RadioGroup<DependentsCount>),
+      );
+      expect(dependentsGroup.groupValue, isNull);
+      await _tapVisible(tester, find.byType(RadioListTile<HouseholdSize>).last);
+      await _invokeButton(tester, const ValueKey('financial-profile-cancel'));
+      await tester.pumpAndSettle();
+
+      final stored = await tester.runAsync(
+        () => SqliteFinancialProfileRepository(
+          database.persistenceDatabase,
+        ).load(),
+      );
+      expect(stored?.householdSize, HouseholdSize.one);
+      expect(stored?.dependentsCount, DependentsCount.none);
+      expect(stored?.answeredQuestionCount, 2);
+    },
+  );
+
+  testWidgets('clearing a single-choice answer returns it to unanswered', (
+    tester,
+  ) async {
+    await tester.pumpWidget(app());
+    await _pumpUntilVisible(
+      tester,
+      find.byKey(const ValueKey('financial-profile-edit')),
+    );
+    await tester.tap(find.byKey(const ValueKey('financial-profile-edit')));
+    await tester.pumpAndSettle();
+    await _tapVisible(tester, find.byType(RadioListTile<HouseholdSize>).first);
+    await _tapVisible(
+      tester,
+      find.byType(RadioListTile<DependentsCount>).first,
+    );
+    for (var step = 0; step < 3; step++) {
+      await _tapSurveyAction(
+        tester,
+        const ValueKey('financial-profile-continue'),
+      );
+    }
+    await _tapSurveyAction(tester, const ValueKey('financial-profile-save'));
+    await _pumpWithRealAsync(tester);
+
+    await tester.tap(find.byKey(const ValueKey('financial-profile-edit')));
+    await tester.pumpAndSettle();
+    await _tapVisible(
+      tester,
+      find.byKey(
+        const ValueKey('financial-profile-clear-answer-household-size'),
+      ),
+    );
+    final householdGroup = tester.widget<RadioGroup<HouseholdSize>>(
+      find.byType(RadioGroup<HouseholdSize>),
+    );
+    expect(householdGroup.groupValue, isNull);
+    final dependentsGroup = tester.widget<RadioGroup<DependentsCount>>(
+      find.byType(RadioGroup<DependentsCount>),
+    );
+    expect(dependentsGroup.groupValue, DependentsCount.none);
+    for (var step = 0; step < 3; step++) {
+      await _tapSurveyAction(
+        tester,
+        const ValueKey('financial-profile-continue'),
+      );
+    }
+    await _tapSurveyAction(tester, const ValueKey('financial-profile-save'));
+    await _pumpWithRealAsync(tester);
+
+    final stored = await tester.runAsync(
+      () =>
+          SqliteFinancialProfileRepository(database.persistenceDatabase).load(),
+    );
+    expect(stored?.householdSize, isNull);
+    expect(stored?.dependentsCount, DependentsCount.none);
+    expect(stored?.answeredQuestionCount, 1);
   });
 
   testWidgets('survey remains usable at large text size', (tester) async {
@@ -198,12 +372,37 @@ Future<void> _pumpUntilVisible(WidgetTester tester, Finder finder) async {
 
 Future<void> _tapSurveyAction(WidgetTester tester, ValueKey<String> key) async {
   final action = find.byKey(key);
+  await tester.pumpAndSettle();
   await tester.scrollUntilVisible(
     action,
     400,
     scrollable: find.byType(Scrollable).first,
   );
   await tester.tap(action);
+  await tester.pump();
+}
+
+Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
+  await tester.scrollUntilVisible(
+    finder,
+    400,
+    scrollable: find.byType(Scrollable).first,
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(finder);
+  await tester.pump();
+}
+
+Future<void> _invokeButton(WidgetTester tester, ValueKey<String> key) async {
+  final action = find.byKey(key);
+  await tester.scrollUntilVisible(
+    action,
+    400,
+    scrollable: find.byType(Scrollable).first,
+  );
+  final button = tester.widget<TextButton>(action);
+  button.onPressed!.call();
+  await tester.pumpAndSettle();
 }
 
 Future<void> _pumpWithRealAsync(WidgetTester tester) async {

@@ -105,10 +105,14 @@ void main() {
       path.join(fixture.root.path, 'financial-profile-merge.butlerlybackup'),
     );
     await fixture.manager.createBackup(backup);
+    final localUpdatedAt = DateTime.now()
+        .toUtc()
+        .add(const Duration(minutes: 1))
+        .toIso8601String();
 
     await fixture.database.database.update(
       'financial_profiles',
-      {'household_size': 'four', 'updated_at': '2026-10-29T00:00:00.000Z'},
+      {'household_size': 'four', 'updated_at': localUpdatedAt},
       where: 'profile_id = ?',
       whereArgs: ['financial-profile:default'],
     );
@@ -118,7 +122,7 @@ void main() {
       'financial_profiles',
     );
     expect(restored.single['household_size'], 'four');
-    expect(restored.single['updated_at'], '2026-10-29T00:00:00.000Z');
+    expect(restored.single['updated_at'], localUpdatedAt);
   });
 
   test(
