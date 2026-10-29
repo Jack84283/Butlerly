@@ -551,9 +551,11 @@ double _homeHeaderExtent(
       textTheme.headlineLarge ?? const TextStyle(),
     ),
   );
-  final brandSubtitleStyle = context.designTokens.homeTypography.subtitle(
-    textTheme.bodySmall ?? const TextStyle(),
-  );
+  final brandSubtitleStyle = ButlerlyTypography.editorialText(
+    context.designTokens.homeTypography.subtitle(
+      textTheme.bodySmall ?? const TextStyle(),
+    ),
+  ).copyWith(color: context.colors.warning);
   final introStyle = context.designTokens.homeTypography.subtitle(
     textTheme.bodySmall ?? const TextStyle(),
   );
@@ -633,7 +635,7 @@ double _homeHeaderExtent(
   final rowWidth = availableWidth - ButlerlySpacing.standard;
   final brandWidth = stackedTopRow ? availableWidth : rowWidth * 5 / 9;
   final monthWidth = stackedTopRow ? availableWidth : rowWidth * 4 / 9;
-  const brandIconSize = 24.0;
+  const brandIconSize = 28.0;
   final brandNameWidth = (brandWidth - brandIconSize - ButlerlySpacing.compact)
       .clamp(1.0, double.infinity)
       .toDouble();
@@ -747,7 +749,7 @@ class _HomeHeader extends StatelessWidget {
           children: [
             ButlerlyBrandTitle(
               name: context.l10n.text('appName'),
-              iconSize: 24,
+              iconSize: 28,
               gap: ButlerlySpacing.compact,
               textStyle: ButlerlyTypography.editorialText(
                 context.designTokens.homeTypography.appTitle(
@@ -761,9 +763,11 @@ class _HomeHeader extends StatelessWidget {
               context.l10n.text('brandTagline'),
               key: const ValueKey('home-brand-tagline'),
               softWrap: true,
-              style: context.designTokens.homeTypography.subtitle(
-                Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
-              ),
+              style: ButlerlyTypography.editorialText(
+                context.designTokens.homeTypography.subtitle(
+                  Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
+                ),
+              ).copyWith(color: context.colors.warning),
             ),
           ],
         );
@@ -1060,16 +1064,16 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
         ? '↓ ${percentValue.abs().toStringAsFixed(1)}% ${context.l10n.text('vsPreviousPeriod')}'
         : '0.0% ${context.l10n.text('vsPreviousPeriod')}';
     final compact = context.designTokens.mode == ButlerlyLayoutMode.compact;
+    final foreground = context.colors.primaryText;
+    final mutedForeground = context.colors.secondaryText;
     final comparisonStyle = Theme.of(context).textTheme.labelSmall?.copyWith(
-      color: percentValue == null
-          ? context.designTokens.homeColors.onMetricMuted
-          : context.designTokens.homeColors.onMetric,
+      color: percentValue == null ? mutedForeground : foreground,
       fontWeight: FontWeight.w600,
       height: compact ? 1.1 : null,
     );
     return Container(
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.80),
+        color: color.withValues(alpha: 0.50),
         borderRadius: BorderRadius.circular(16),
       ),
       padding: compact
@@ -1092,13 +1096,8 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 16,
-            backgroundColor: context.designTokens.homeColors.onMetric
-                .withValues(alpha: .20),
-            child: Icon(
-              icon,
-              color: context.designTokens.homeColors.onMetric,
-              size: 18,
-            ),
+            backgroundColor: foreground.withValues(alpha: .20),
+            child: Icon(icon, color: foreground, size: 18),
           ),
           SizedBox(
             height: compact
@@ -1116,7 +1115,7 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
                 style: TextStyle(
                   fontSize: context.designTokens.homeTypography.summaryLabel,
                   fontWeight: FontWeight.w700,
-                  color: context.designTokens.homeColors.onMetric,
+                  color: foreground,
                 ),
               ),
             ),
@@ -1135,7 +1134,7 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
                 style: TextStyle(
                   fontSize: context.designTokens.homeTypography.summaryAmount,
                   fontWeight: FontWeight.w800,
-                  color: context.designTokens.homeColors.onMetric,
+                  color: foreground,
                   letterSpacing: -.7,
                 ),
               ),

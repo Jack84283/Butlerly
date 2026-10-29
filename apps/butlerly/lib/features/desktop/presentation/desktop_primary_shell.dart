@@ -32,7 +32,7 @@ class _DesktopPrimaryShellState extends State<DesktopPrimaryShell> {
   @override
   Widget build(BuildContext context) {
     // At tablet and narrow desktop widths, keep the rail compact by default.
-    // A fully expanded 248px rail would leave too little space for the content.
+    // Even the 168px expanded rail can crowd content on narrow screens.
     final narrow =
         MediaQuery.sizeOf(context).width < ButlerlySize.wideBreakpoint;
     final expanded = narrow ? _expandedAtNarrowWidths : _expandedAtWideWidths;
@@ -86,7 +86,7 @@ class _WidePrimaryNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    // Switch widths atomically: animating a 248px menu inside a 72px rail
+    // Switch widths atomically: animating a 168px menu inside a 72px rail
     // overflows while transitioning across responsive breakpoints.
     width: expanded
         ? ButlerlySize.wideNavigationExpandedWidth
@@ -208,6 +208,10 @@ class _WideBrand extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.all(ButlerlySpacing.standard),
     child: Row(
+      // Center the mark in the 72px collapsed rail, in line with the menu icons.
+      mainAxisAlignment: expanded
+          ? MainAxisAlignment.start
+          : MainAxisAlignment.center,
       children: [
         const ButlerlyBrandIcon(size: ButlerlySize.wideNavigationBrandSize),
         if (expanded) ...[

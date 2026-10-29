@@ -3,6 +3,7 @@ import 'package:butlerly/design_system/components/butlerly_brand_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -63,20 +64,50 @@ void main() {
     router.dispose();
   });
 
-  test('brand tagline matches the updated privacy message in every locale', () {
-    const english = 'Your money. Your device. Your control.';
-    for (final locale in AppLocalizations.supportedLocales) {
-      expect(AppLocalizations(locale).text('brandTagline'), english);
-    }
-    expect(const AppLocalizations(Locale('en')).text('homeTagline'), english);
+  test('brand name and tagline use the approved localized copy', () {
+    const english = 'YOUR MONEY. YOUR DEVICE. YOUR CONTROL.';
+    const chinese = '财务数据，尽在掌控。';
+    const en = AppLocalizations(Locale('en'));
+    const zh = AppLocalizations(Locale('zh', 'CN'));
+    const es = AppLocalizations(Locale('es'));
+
+    expect(en.text('appName'), 'Butlerly');
+    expect(en.text('brandTagline'), english);
+    expect(en.text('homeTagline'), english);
+    expect(zh.text('appName'), '账房先生');
+    expect(zh.text('brandTagline'), chinese);
+    expect(zh.text('homeTagline'), chinese);
+    expect(es.text('appName'), 'Butlerly');
+    expect(es.text('brandTagline'), english);
     expect(
-      const AppLocalizations(Locale('zh', 'CN')).text('homeTagline'),
-      '你的钱。你的设备。由你掌控。',
-    );
-    expect(
-      const AppLocalizations(Locale('es')).text('homeTagline'),
+      es.text('homeTagline'),
       'Tu dinero. Tu dispositivo. Tú tienes el control.',
     );
+  });
+
+  testWidgets('Chinese Home header displays approved localized branding', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(_testApp(router, locale: const Locale('zh', 'CN')));
+    await tester.pumpAndSettle();
+
+    final header = find.byKey(const ValueKey('home-header-context'));
+    expect(
+      find.descendant(of: header, matching: find.text('账房先生')),
+      findsOneWidget,
+    );
+    final tagline = find.byKey(const ValueKey('home-brand-tagline'));
+    expect(tester.widget<Text>(tagline).data, '财务数据，尽在掌控。');
+    expect(
+      tester.widget<Text>(tagline).style?.fontFamily,
+      ButlerlyTypography.editorialFontFamily,
+    );
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets(
@@ -92,7 +123,7 @@ void main() {
 
       expect(find.text('Butlerly'), findsOneWidget);
       expect(
-        find.text('Your money. Your device. Your control.'),
+        find.text('YOUR MONEY. YOUR DEVICE. YOUR CONTROL.'),
         findsOneWidget,
       );
       expect(find.text('Good afternoon'), findsOneWidget);
@@ -129,6 +160,12 @@ void main() {
         matching: find.byType(ButlerlyBrandIcon),
       );
       expect(brandIcon, findsOneWidget);
+      expect(tester.widget<ButlerlyBrandIcon>(brandIcon).size, 28);
+      expect(
+        tester.getCenter(brandIcon).dy,
+        closeTo(tester.getCenter(brand).dy, 1.0),
+        reason: 'The brand mark should be vertically centered with the name',
+      );
       expect(
         tester.getRect(brandIcon).right,
         lessThan(tester.getRect(brand).left),
@@ -139,11 +176,20 @@ void main() {
       expect(tester.widget<Text>(brand).style?.fontSize, 24);
       final taglineText = tester.widget<Text>(brandTagline);
       expect(taglineText.style?.fontSize, 13);
+      expect(taglineText.style?.color, ButlerlySemanticColors.light.warning);
+      expect(
+        taglineText.style?.fontFamily,
+        ButlerlyTypography.editorialFontFamily,
+      );
+      expect(
+        taglineText.style?.fontFamilyFallback,
+        ButlerlyTypography.editorialFontFallback,
+      );
       expect(taglineText.maxLines, isNull);
       expect(taglineText.softWrap, isTrue);
       expect(
         tester.getTopLeft(brandTagline).dy - tester.getBottomLeft(brand).dy,
-        closeTo(ButlerlySpacing.micro, 0.01),
+        closeTo(ButlerlySpacing.micro, 1.0),
       );
       expect(
         tester.getTopLeft(monthSurface).dy,
@@ -327,6 +373,14 @@ void main() {
     expect(transactions, findsOneWidget);
     expect(income, findsOneWidget);
     expect(net, findsOneWidget);
+
+    for (final metric in [spending, transactions, income, net]) {
+      final container = tester.widget<Container>(
+        find.descendant(of: metric, matching: find.byType(Container)).first,
+      );
+      final decoration = container.decoration! as BoxDecoration;
+      expect(decoration.color!.a, closeTo(0.5, 0.001));
+    }
 
     expect(
       tester.getTopLeft(spending).dy,

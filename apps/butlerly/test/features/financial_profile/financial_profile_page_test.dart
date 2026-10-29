@@ -82,6 +82,11 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('financial-profile-edit')));
     await tester.pumpAndSettle();
     expect(find.text('Household'), findsOneWidget);
+    final firstAnswer = tester.widget<RadioListTile<HouseholdSize>>(
+      find.byType(RadioListTile<HouseholdSize>).first,
+    );
+    expect(firstAnswer.dense, isTrue);
+    expect(firstAnswer.visualDensity?.vertical, -2);
 
     for (var step = 0; step < 3; step++) {
       await _tapSurveyAction(
@@ -241,6 +246,18 @@ void main() {
       }
       await _tapSurveyAction(tester, const ValueKey('financial-profile-save'));
       await _pumpWithRealAsync(tester);
+
+      final question = find.text('How many people are in your household?');
+      final answer = find.text('1');
+      expect(question, findsOneWidget);
+      expect(answer, findsOneWidget);
+      await tester.ensureVisible(question);
+      await tester.pumpAndSettle();
+      expect(
+        tester.getTopLeft(answer).dy,
+        greaterThan(tester.getBottomLeft(question).dy),
+        reason: 'Saved answers should appear below full-width questions',
+      );
 
       await tester.tap(find.byKey(const ValueKey('financial-profile-retake')));
       await tester.pumpAndSettle();

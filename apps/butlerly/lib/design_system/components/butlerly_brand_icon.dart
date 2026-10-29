@@ -45,7 +45,7 @@ class ButlerlyBrandTitle extends StatelessWidget {
     final largeText = MediaQuery.textScalerOf(context).scale(14) > 18;
     return Row(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         ButlerlyBrandIcon(size: iconSize),
         SizedBox(width: gap),
