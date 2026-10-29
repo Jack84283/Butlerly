@@ -10,6 +10,7 @@ export 'src/entities/duplicate_candidate_group.dart';
 export 'src/entities/evidence_item.dart';
 export 'src/entities/exchange_rate.dart';
 export 'src/entities/extraction.dart';
+export 'src/entities/financial_profile.dart';
 export 'src/entities/master_translation.dart';
 export 'src/entities/merchant.dart';
 export 'src/entities/merchant_matching.dart';

@@ -11,6 +11,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_ocr_service.dart';
 import 'package:butlerly/core/import/local_csv_importer.dart';
 import 'package:butlerly/features/budgets/presentation/budgets_page.dart';
+import 'package:butlerly/features/financial_profile/presentation/financial_profile_page.dart';
 import 'package:butlerly/features/foundation/presentation/first_use_preferences_page.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/features/foundation/presentation/privacy_data_page.dart';
@@ -107,6 +108,21 @@ void main() {
           .first,
     );
     await tester.tap(continueButton);
+    await tester.pump();
+    final maybeLaterButton = find.byKey(
+      const ValueKey('first-use-maybe-later'),
+    );
+    await tester.scrollUntilVisible(
+      maybeLaterButton,
+      400,
+      scrollable: find
+          .descendant(
+            of: find.byType(FirstUsePreferencesPage),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.tap(maybeLaterButton);
     await tester.runAsync(() async {
       for (var attempt = 0; attempt < 50; attempt++) {
         final saved = await harness.finance.loadUserPreference();
@@ -136,6 +152,67 @@ void main() {
           ?.firstUseCompleted,
       isTrue,
     );
+  });
+
+  testWidgets('fresh install can enter Financial Profile from setup', (
+    tester,
+  ) async {
+    await harness.finance.saveUserPreference(
+      UserPreference(
+        locale: 'en',
+        formattingLocale: 'en-US',
+        regionCode: 'US',
+        baseCurrency: CurrencyCode('USD'),
+        timeZoneId: 'UTC',
+        firstUseCompleted: false,
+      ),
+    );
+
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+    appRouter.go('/launch');
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump(ButlerlySessionConfig.launchDuration);
+    await tester.pump();
+    expect(find.byType(FirstUsePreferencesPage), findsOneWidget);
+
+    final continueButton = find.byKey(
+      const ValueKey('first-use-continue-locally'),
+    );
+    await tester.scrollUntilVisible(
+      continueButton,
+      400,
+      scrollable: find
+          .descendant(
+            of: find.byType(FirstUsePreferencesPage),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.tap(continueButton);
+    await tester.pump();
+    final setupButton = find.byKey(const ValueKey('first-use-set-up-profile'));
+    await tester.scrollUntilVisible(
+      setupButton,
+      400,
+      scrollable: find
+          .descendant(
+            of: find.byType(FirstUsePreferencesPage),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.tap(setupButton);
+    await tester.pumpAndSettle();
+
+    expect(
+      appRouter.routeInformationProvider.value.uri.path,
+      '/financial-profile',
+    );
+    expect(find.byType(FinancialProfilePage), findsOneWidget);
   });
 
   testWidgets('real UI creates and saves a local transaction', (tester) async {

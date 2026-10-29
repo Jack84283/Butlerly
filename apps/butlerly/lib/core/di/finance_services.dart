@@ -37,6 +37,7 @@ final class FinanceServices {
     MerchantMatchingConfigurationRepository? merchantMatchingConfiguration,
     TransactionRuleRepository? transactionRules,
     BudgetRepository? budgetRepository,
+    FinancialProfileRepository? financialProfileRepository,
     InvalidateAnalysis? analysisInvalidation,
   }) : manageBudgets = budgetRepository == null
            ? null
@@ -220,6 +221,15 @@ final class FinanceServices {
        ),
        loadUserPreference = LoadUserPreference(preferences),
        saveUserPreference = SaveUserPreference(preferences),
+       loadFinancialProfile = financialProfileRepository == null
+           ? null
+           : LoadFinancialProfile(financialProfileRepository),
+       saveFinancialProfile = financialProfileRepository == null
+           ? null
+           : SaveFinancialProfile(financialProfileRepository),
+       clearFinancialProfile = financialProfileRepository == null
+           ? null
+           : ClearFinancialProfile(financialProfileRepository),
        storeAndAttachEvidence = StoreAndAttachEvidence(evidence),
        storeEvidence = StoreEvidence(evidence),
        removeEvidence = RemoveEvidence(evidence),
@@ -578,6 +588,9 @@ final class FinanceServices {
   final GetExtractionForEvidence getExtractionForEvidence;
   final LoadUserPreference loadUserPreference;
   final SaveUserPreference saveUserPreference;
+  final LoadFinancialProfile? loadFinancialProfile;
+  final SaveFinancialProfile? saveFinancialProfile;
+  final ClearFinancialProfile? clearFinancialProfile;
   final StoreAndAttachEvidence storeAndAttachEvidence;
   final StoreEvidence storeEvidence;
   final RemoveEvidence removeEvidence;

@@ -40,6 +40,7 @@ export 'src/use_cases/merchant_review_use_cases.dart';
 export 'src/use_cases/transaction_rule_use_cases.dart';
 export 'src/use_cases/recurring_use_cases.dart';
 export 'src/use_cases/periodic_report_use_cases.dart';
+export 'src/use_cases/financial_profile_use_cases.dart';
 
 export 'src/dto/analysis_overview.dart';
 export 'src/dto/recurring_pattern.dart';

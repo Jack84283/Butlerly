@@ -32,8 +32,379 @@ void main() {
     expect((manifest['backupId']! as String), isNotEmpty);
     expect(manifest['appVersion'], '1.0.0');
     expect(manifest['appBuild'], '1');
-    expect(manifest['schemaVersion'], 14);
+    expect(manifest['schemaVersion'], 15);
   });
+
+  test('backup and restore preserves the optional financial profile', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    await fixture.database.database.insert('financial_profiles', {
+      'profile_id': 'financial-profile:default',
+      'schema_version': 1,
+      'survey_version': '1.0',
+      'household_size': 'two',
+      'dependents_count': null,
+      'housing_situation': null,
+      'primary_spending_categories': '["category.food"]',
+      'expense_predictability': null,
+      'categories_to_improve': '[]',
+      'primary_financial_goal': 'saveMore',
+      'has_monthly_savings_target': 0,
+      'monthly_savings_target': null,
+      'monthly_savings_target_currency': null,
+      'goal_timeframe': null,
+      'budgeting_preference': null,
+      'preferred_insight_types': '["spendingTrends"]',
+      'survey_status': 'inProgress',
+      'created_at': '2026-10-28T00:00:00.000Z',
+      'updated_at': '2026-10-28T00:00:00.000Z',
+      'completed_at': null,
+    });
+    final backup = File(
+      path.join(fixture.root.path, 'financial-profile.butlerlybackup'),
+    );
+
+    await fixture.manager.createBackup(backup);
+    await fixture.database.database.delete('financial_profiles');
+    await fixture.manager.restore(backup, mode: LocalRestoreMode.replace);
+
+    final restored = await fixture.database.database.query(
+      'financial_profiles',
+    );
+    expect(restored.single['household_size'], 'two');
+    expect(restored.single['has_monthly_savings_target'], 0);
+    expect(restored.single['preferred_insight_types'], '["spendingTrends"]');
+  });
+
+  test('merge restore preserves a newer local financial profile', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    await fixture.database.database.insert('financial_profiles', {
+      'profile_id': 'financial-profile:default',
+      'schema_version': 1,
+      'survey_version': '1.0',
+      'household_size': 'two',
+      'dependents_count': null,
+      'housing_situation': null,
+      'primary_spending_categories': '[]',
+      'expense_predictability': null,
+      'categories_to_improve': '[]',
+      'primary_financial_goal': null,
+      'has_monthly_savings_target': null,
+      'monthly_savings_target': null,
+      'monthly_savings_target_currency': null,
+      'goal_timeframe': null,
+      'budgeting_preference': null,
+      'preferred_insight_types': '[]',
+      'survey_status': 'inProgress',
+      'created_at': '2026-10-28T00:00:00.000Z',
+      'updated_at': '2026-10-28T00:00:00.000Z',
+      'completed_at': null,
+    });
+    final backup = File(
+      path.join(fixture.root.path, 'financial-profile-merge.butlerlybackup'),
+    );
+    await fixture.manager.createBackup(backup);
+    final localUpdatedAt = DateTime.now()
+        .toUtc()
+        .add(const Duration(minutes: 1))
+        .toIso8601String();
+
+    await fixture.database.database.update(
+      'financial_profiles',
+      {'household_size': 'four', 'updated_at': localUpdatedAt},
+      where: 'profile_id = ?',
+      whereArgs: ['financial-profile:default'],
+    );
+    await fixture.manager.restore(backup, mode: LocalRestoreMode.merge);
+
+    final restored = await fixture.database.database.query(
+      'financial_profiles',
+    );
+    expect(restored.single['household_size'], 'four');
+    expect(restored.single['updated_at'], localUpdatedAt);
+  });
+
+  test(
+    'merge restore preserves an explicitly cleared financial profile',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.database.database.insert('financial_profiles', {
+        'profile_id': 'financial-profile:default',
+        'schema_version': 1,
+        'survey_version': '1.0',
+        'household_size': 'two',
+        'dependents_count': null,
+        'housing_situation': null,
+        'primary_spending_categories': '[]',
+        'expense_predictability': null,
+        'categories_to_improve': '[]',
+        'primary_financial_goal': null,
+        'has_monthly_savings_target': null,
+        'monthly_savings_target': null,
+        'monthly_savings_target_currency': null,
+        'goal_timeframe': null,
+        'budgeting_preference': null,
+        'preferred_insight_types': '[]',
+        'survey_status': 'completed',
+        'created_at': '2026-10-28T00:00:00.000Z',
+        'updated_at': '2026-10-28T00:00:00.000Z',
+        'completed_at': '2026-10-28T00:00:00.000Z',
+      });
+      final backup = File(
+        path.join(
+          fixture.root.path,
+          'financial-profile-clear-merge.butlerlybackup',
+        ),
+      );
+      await fixture.manager.createBackup(backup);
+
+      await SqliteFinancialProfileRepository(
+        fixture.database.persistenceDatabase,
+      ).clear();
+      await fixture.manager.restore(backup, mode: LocalRestoreMode.merge);
+
+      expect(
+        await fixture.database.database.query('financial_profiles'),
+        isEmpty,
+      );
+    },
+  );
+
+  test('restore rejects an unreconstructable financial profile enum', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    await fixture.database.database.insert('financial_profiles', {
+      'profile_id': 'financial-profile:default',
+      'schema_version': 1,
+      'survey_version': '1.0',
+      'household_size': 'two',
+      'dependents_count': null,
+      'housing_situation': null,
+      'primary_spending_categories': '[]',
+      'expense_predictability': null,
+      'categories_to_improve': '[]',
+      'primary_financial_goal': null,
+      'has_monthly_savings_target': null,
+      'monthly_savings_target': null,
+      'monthly_savings_target_currency': null,
+      'goal_timeframe': null,
+      'budgeting_preference': null,
+      'preferred_insight_types': '[]',
+      'survey_status': 'inProgress',
+      'created_at': '2026-10-28T00:00:00.000Z',
+      'updated_at': '2026-10-28T00:00:00.000Z',
+      'completed_at': null,
+    });
+    final backup = File(
+      path.join(fixture.root.path, 'invalid-financial-profile.butlerlybackup'),
+    );
+    await fixture.manager.createBackup(backup);
+    await _rewriteBackupMetadata(backup, (metadata) {
+      final tables = (metadata['tables']! as Map).cast<String, Object?>();
+      final rows = (tables['financial_profiles']! as List).cast<Map>();
+      rows.single['household_size'] = 'unknown';
+    });
+
+    await expectLater(
+      fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
+      throwsA(isA<FormatException>()),
+    );
+    final preserved = await fixture.database.database.query(
+      'financial_profiles',
+    );
+    expect(preserved.single['household_size'], 'two');
+  });
+
+  test('restore rejects malformed financial profile answer lists', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    await fixture.database.database.insert('financial_profiles', {
+      'profile_id': 'financial-profile:default',
+      'schema_version': 1,
+      'survey_version': '1.0',
+      'household_size': null,
+      'dependents_count': null,
+      'housing_situation': null,
+      'primary_spending_categories': '[]',
+      'expense_predictability': null,
+      'categories_to_improve': '[]',
+      'primary_financial_goal': null,
+      'has_monthly_savings_target': null,
+      'monthly_savings_target': null,
+      'monthly_savings_target_currency': null,
+      'goal_timeframe': null,
+      'budgeting_preference': null,
+      'preferred_insight_types': '[]',
+      'survey_status': 'notStarted',
+      'created_at': '2026-10-28T00:00:00.000Z',
+      'updated_at': '2026-10-28T00:00:00.000Z',
+      'completed_at': null,
+    });
+    final backup = File(
+      path.join(
+        fixture.root.path,
+        'invalid-financial-profile-list.butlerlybackup',
+      ),
+    );
+    await fixture.manager.createBackup(backup);
+    await _rewriteBackupMetadata(backup, (metadata) {
+      final tables = (metadata['tables']! as Map).cast<String, Object?>();
+      final rows = (tables['financial_profiles']! as List).cast<Map>();
+      rows.single['primary_spending_categories'] =
+          '["category.one","category.two","category.three","category.four"]';
+    });
+
+    await expectLater(
+      fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
+      throwsA(isA<FormatException>()),
+    );
+    final preserved = await fixture.database.database.query(
+      'financial_profiles',
+    );
+    expect(preserved.single['primary_spending_categories'], '[]');
+  });
+
+  test('restore rejects a target when the target choice is disabled', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    await fixture.database.database.insert('financial_profiles', {
+      'profile_id': 'financial-profile:default',
+      'schema_version': 1,
+      'survey_version': '1.0',
+      'household_size': null,
+      'dependents_count': null,
+      'housing_situation': null,
+      'primary_spending_categories': '[]',
+      'expense_predictability': null,
+      'categories_to_improve': '[]',
+      'primary_financial_goal': null,
+      'has_monthly_savings_target': 0,
+      'monthly_savings_target': '12.50',
+      'monthly_savings_target_currency': 'USD',
+      'goal_timeframe': null,
+      'budgeting_preference': null,
+      'preferred_insight_types': '[]',
+      'survey_status': 'inProgress',
+      'created_at': '2026-10-28T00:00:00.000Z',
+      'updated_at': '2026-10-28T00:00:00.000Z',
+      'completed_at': null,
+    });
+    final backup = File(
+      path.join(
+        fixture.root.path,
+        'invalid-financial-profile-target.butlerlybackup',
+      ),
+    );
+    await fixture.manager.createBackup(backup);
+    await _rewriteBackupMetadata(backup, (metadata) {
+      final tables = (metadata['tables']! as Map).cast<String, Object?>();
+      final rows = (tables['financial_profiles']! as List).cast<Map>();
+      rows.single['has_monthly_savings_target'] = 0;
+      rows.single['monthly_savings_target'] = '12.50';
+      rows.single['monthly_savings_target_currency'] = 'USD';
+    });
+
+    await expectLater(
+      fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
+      throwsA(isA<FormatException>()),
+    );
+  });
+
+  test(
+    'restore rejects a financial profile with an orphan identifier',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.database.database.insert('financial_profiles', {
+        'profile_id': 'financial-profile:default',
+        'schema_version': 1,
+        'survey_version': '1.0',
+        'household_size': null,
+        'dependents_count': null,
+        'housing_situation': null,
+        'primary_spending_categories': '[]',
+        'expense_predictability': null,
+        'categories_to_improve': '[]',
+        'primary_financial_goal': null,
+        'has_monthly_savings_target': null,
+        'monthly_savings_target': null,
+        'monthly_savings_target_currency': null,
+        'goal_timeframe': null,
+        'budgeting_preference': null,
+        'preferred_insight_types': '[]',
+        'survey_status': 'notStarted',
+        'created_at': '2026-10-28T00:00:00.000Z',
+        'updated_at': '2026-10-28T00:00:00.000Z',
+        'completed_at': null,
+      });
+      final backup = File(
+        path.join(
+          fixture.root.path,
+          'invalid-financial-profile-id.butlerlybackup',
+        ),
+      );
+      await fixture.manager.createBackup(backup);
+      await _rewriteBackupMetadata(backup, (metadata) {
+        final tables = (metadata['tables']! as Map).cast<String, Object?>();
+        final rows = (tables['financial_profiles']! as List).cast<Map>();
+        rows.single['profile_id'] = 'financial-profile:orphan';
+      });
+
+      await expectLater(
+        fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
+        throwsA(isA<FormatException>()),
+      );
+    },
+  );
+
+  test(
+    'restore rejects a target when the target choice is unanswered',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.database.database.insert('financial_profiles', {
+        'profile_id': 'financial-profile:default',
+        'schema_version': 1,
+        'survey_version': '1.0',
+        'household_size': null,
+        'dependents_count': null,
+        'housing_situation': null,
+        'primary_spending_categories': '[]',
+        'expense_predictability': null,
+        'categories_to_improve': '[]',
+        'primary_financial_goal': null,
+        'has_monthly_savings_target': null,
+        'monthly_savings_target': '12.50',
+        'monthly_savings_target_currency': 'USD',
+        'goal_timeframe': null,
+        'budgeting_preference': null,
+        'preferred_insight_types': '[]',
+        'survey_status': 'inProgress',
+        'created_at': '2026-10-28T00:00:00.000Z',
+        'updated_at': '2026-10-28T00:00:00.000Z',
+        'completed_at': null,
+      });
+      final backup = File(
+        path.join(
+          fixture.root.path,
+          'invalid-financial-profile-unanswered.butlerlybackup',
+        ),
+      );
+      await fixture.manager.createBackup(backup);
+      await _rewriteBackupMetadata(backup, (metadata) {
+        final tables = (metadata['tables']! as Map).cast<String, Object?>();
+        final rows = (tables['financial_profiles']! as List).cast<Map>();
+        rows.single['has_monthly_savings_target'] = null;
+      });
+
+      await expectLater(
+        fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
+        throwsA(isA<FormatException>()),
+      );
+    },
+  );
 
   test(
     'current-schema backups reject missing tables before replacing local data',
@@ -422,6 +793,14 @@ void main() {
       expect(
         engine.LocalBackupManager.requiredTablesForSchema(14),
         contains('budgets'),
+      );
+      expect(
+        engine.LocalBackupManager.requiredTablesForSchema(14),
+        isNot(contains('financial_profiles')),
+      );
+      expect(
+        engine.LocalBackupManager.requiredTablesForSchema(15),
+        contains('financial_profiles'),
       );
     },
   );

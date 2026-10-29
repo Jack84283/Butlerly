@@ -6,6 +6,7 @@ import '../entities/duplicate_candidate_group.dart';
 import '../entities/evidence_item.dart';
 import '../entities/exchange_rate.dart';
 import '../entities/extraction.dart';
+import '../entities/financial_profile.dart';
 import '../entities/master_translation.dart';
 import '../entities/merchant.dart';
 import '../entities/merchant_matching.dart';
@@ -353,6 +354,12 @@ abstract interface class ReconciliationWorkflowRepository {
 abstract interface class UserPreferenceRepository {
   Future<UserPreference?> load();
   Future<void> save(UserPreference preference);
+}
+
+abstract interface class FinancialProfileRepository {
+  Future<FinancialProfile?> load();
+  Future<void> save(FinancialProfile profile);
+  Future<void> clear();
 }
 
 abstract interface class RecurringPatternDecisionRepository {

@@ -1,5 +1,6 @@
 import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -32,6 +33,8 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         locale: const Locale('en', 'US'),
+        supportedLocales: const [Locale('en', 'US'), Locale('es', 'ES')],
+        localizationsDelegates: GlobalMaterialLocalizations.delegates,
         home: Builder(
           builder: (value) {
             context = value;
@@ -48,5 +51,88 @@ void main() {
     expect(localizedCompactPercentage(context, '28'), '28%');
     expect(localizedCompactPercentage(context, '28.5'), '28.5%');
     expect(localizedCompactPercentage(context, '0.43', ratio: true), '43%');
+  });
+
+  testWidgets('profile money preserves exact digits and locale separators', (
+    tester,
+  ) async {
+    late BuildContext english;
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en', 'US'),
+        supportedLocales: const [
+          Locale('en', 'US'),
+          Locale('es', 'ES'),
+          Locale('zh', 'CN'),
+        ],
+        localizationsDelegates: GlobalMaterialLocalizations.delegates,
+        home: Builder(
+          builder: (value) {
+            english = value;
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+    expect(
+      localizedExactMoney(english, '12345678901234567890.12', 'USD'),
+      r'$12,345,678,901,234,567,890.12',
+    );
+    expect(localizedExactDecimal(english, '750.25'), '750.25');
+
+    late BuildContext spanish;
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('es', 'ES'),
+        supportedLocales: const [
+          Locale('en', 'US'),
+          Locale('es', 'ES'),
+          Locale('zh', 'CN'),
+        ],
+        localizationsDelegates: GlobalMaterialLocalizations.delegates,
+        home: Builder(
+          builder: (value) {
+            spanish = value;
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+    expect(localizedExactMoney(spanish, '1234.50', 'EUR'), contains('1.234,5'));
+    expect(localizedExactDecimal(spanish, '750.25'), '750,25');
+
+    late BuildContext chinese;
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('zh', 'CN'),
+        supportedLocales: const [
+          Locale('en', 'US'),
+          Locale('es', 'ES'),
+          Locale('zh', 'CN'),
+        ],
+        localizationsDelegates: GlobalMaterialLocalizations.delegates,
+        home: Builder(
+          builder: (value) {
+            chinese = value;
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+    expect(
+      localizedExactMoney(chinese, '1234.50', 'USD'),
+      contains(r'$1,234.5'),
+    );
+    expect(localizedExactDecimal(chinese, '750.25'), '750.25');
+  });
+
+  test('localized decimal parsing rejects cross-locale ambiguity', () {
+    expect(parseLocalizedDecimal('750,25', locale: 'es'), '750.25');
+    expect(parseLocalizedDecimal('1.234,5', locale: 'es'), '1234.5');
+    expect(parseLocalizedDecimal('750.25', locale: 'es'), isNull);
+    expect(parseLocalizedDecimal('750,25', locale: 'en'), isNull);
+    expect(parseLocalizedDecimal('750.25', locale: 'en'), '750.25');
+    expect(parseLocalizedDecimal('750.25', locale: 'zh'), '750.25');
+    expect(parseLocalizedDecimal('1.23.4', locale: 'en'), isNull);
   });
 }

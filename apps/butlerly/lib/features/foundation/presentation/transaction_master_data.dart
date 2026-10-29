@@ -205,6 +205,9 @@ final class TransactionMasterDataProvider {
         locale: languageCode == 'zh' ? 'zh-Hans' : languageCode,
       ),
     ]);
+    if (results[1] is! ApplicationSuccess<List<Category>>) {
+      throw const TransactionMasterDataLoadException();
+    }
     List<T> valueOf<T>(int index) => switch (results[index]) {
       ApplicationSuccess<List<T>>(:final value) => value,
       _ => const <Never>[] as List<T>,
@@ -230,4 +233,8 @@ final class TransactionMasterDataProvider {
       paymentSources: paymentSources,
     );
   }
+}
+
+final class TransactionMasterDataLoadException implements Exception {
+  const TransactionMasterDataLoadException();
 }

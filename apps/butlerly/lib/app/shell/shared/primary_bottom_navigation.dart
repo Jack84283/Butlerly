@@ -178,7 +178,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
         (pillWidth - 2 * ButlerlySize.dividerWidth) /
             visualBranchIndexes.length -
         2 * ButlerlySpacing.micro;
-    return compactNavigationHeightForLabels(
+    final measuredHeight = compactNavigationHeightForLabels(
       textScaler: MediaQuery.textScalerOf(context),
       itemWidth: itemWidth,
       standardLabels: [
@@ -194,6 +194,17 @@ class PrimaryBottomNavigation extends StatelessWidget {
       labelStyle: labelStyle,
       textDirection: Directionality.of(context),
     );
+    // The shared measurement contract includes the legacy one-pixel edge
+    // allowance. Once large text forces the navigation above its baseline
+    // height, account for both sides of the new two-pixel border so the
+    // label slot remains fully laid out inside the bordered content.
+    if (measuredHeight <= ButlerlySize.navigationBarHeight) {
+      return measuredHeight;
+    }
+    return measuredHeight +
+        2 *
+            (ButlerlySize.primaryNavigationBorderWidth -
+                ButlerlySize.dividerWidth);
   }
 
   @override

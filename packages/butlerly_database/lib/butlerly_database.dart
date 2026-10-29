@@ -8,6 +8,7 @@ export 'src/repositories/sqlite_budget_repository.dart';
 export 'src/repositories/sqlite_duplicate_candidate_group_repository.dart';
 export 'src/repositories/sqlite_evidence_repository.dart';
 export 'src/repositories/sqlite_exchange_rate_repository.dart';
+export 'src/repositories/sqlite_financial_profile_repository.dart';
 export 'src/repositories/sqlite_lookup_repositories.dart';
 export 'src/repositories/sqlite_master_translation_repository.dart';
 export 'src/repositories/sqlite_merchant_matching_repository.dart';

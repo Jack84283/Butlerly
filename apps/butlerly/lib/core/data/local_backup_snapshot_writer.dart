@@ -45,6 +45,7 @@ final class LocalBackupSnapshotWriter {
     'analysis_rule_configurations',
     'recurring_pattern_decisions',
     'user_preferences',
+    'financial_profiles',
     'budgets',
   ];
 

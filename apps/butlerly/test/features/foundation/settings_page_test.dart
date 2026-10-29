@@ -2,6 +2,7 @@ import 'package:butlerly/app/router/app_router.dart';
 import 'package:butlerly/design_system/components/butlerly_brand_icon.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/budgets/presentation/budgets_page.dart';
+import 'package:butlerly/features/financial_profile/presentation/financial_profile_page.dart';
 import 'package:butlerly/features/foundation/presentation/privacy_data_page.dart';
 import 'package:butlerly/features/foundation/presentation/settings_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -65,10 +66,9 @@ void main() {
           matching: find.byType(Column),
         );
         expect(brandColumn, findsOneWidget);
-        final brandPadding = find.ancestor(
-          of: brandColumn,
-          matching: find.byType(Padding),
-        ).first;
+        final brandPadding = find
+            .ancestor(of: brandColumn, matching: find.byType(Padding))
+            .first;
         expect(
           tester.widget<Padding>(brandPadding).padding,
           const EdgeInsets.symmetric(vertical: ButlerlySpacing.small),
@@ -134,60 +134,64 @@ void main() {
     },
   );
 
-  testWidgets(
-    'Budget Settings and Backup & Restore navigate to their destinations',
-    (tester) async {
-      tester.view.physicalSize = const Size(1440, 900);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      appRouter.go('/settings');
-      addTearDown(() => appRouter.go('/'));
-      await tester.pumpWidget(
-        ProviderScope(
-          child: MaterialApp.router(
-            routerConfig: appRouter,
-            locale: const Locale('en'),
-            supportedLocales: AppLocalizations.supportedLocales,
-            localizationsDelegates: const [
-              AppLocalizations.delegate,
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-            ],
-          ),
+  testWidgets('settings destinations navigate to their pages', (tester) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    appRouter.go('/settings');
+    addTearDown(() => appRouter.go('/'));
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp.router(
+          routerConfig: appRouter,
+          locale: const Locale('en'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
         ),
-      );
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      await tester.ensureVisible(find.text('Budget Settings'));
-      await tester.tap(
-        find.ancestor(
-          of: find.text('Budget Settings'),
-          matching: find.byType(InkWell),
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(appRouter.routeInformationProvider.value.uri.path, '/budgets');
-      expect(find.byType(BudgetsPage), findsOneWidget);
+    await tester.ensureVisible(find.text('Budget Settings'));
+    await tester.tap(
+      find.ancestor(
+        of: find.text('Budget Settings'),
+        matching: find.byType(InkWell),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(appRouter.routeInformationProvider.value.uri.path, '/budgets');
+    expect(find.byType(BudgetsPage), findsOneWidget);
 
-      appRouter.go('/settings');
-      await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('Backup & Restore'));
-      await tester.tap(
-        find.ancestor(
-          of: find.text('Backup & Restore'),
-          matching: find.byType(InkWell),
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(
-        appRouter.routeInformationProvider.value.uri.path,
-        '/privacy-data',
-      );
-      expect(find.byType(PrivacyDataPage), findsOneWidget);
-    },
-  );
+    appRouter.go('/settings');
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Backup & Restore'));
+    await tester.tap(
+      find.ancestor(
+        of: find.text('Backup & Restore'),
+        matching: find.byType(InkWell),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(appRouter.routeInformationProvider.value.uri.path, '/privacy-data');
+    expect(find.byType(PrivacyDataPage), findsOneWidget);
+
+    appRouter.go('/settings');
+    await tester.pumpAndSettle();
+    appRouter.go('/financial-profile');
+    await tester.pumpAndSettle();
+    expect(
+      appRouter.routeInformationProvider.value.uri.path,
+      '/financial-profile',
+    );
+    expect(find.byType(FinancialProfilePage), findsOneWidget);
+  });
 
   testWidgets('compact secondary settings destinations have back affordance', (
     tester,
@@ -251,6 +255,7 @@ void main() {
     );
     expect(find.text('财务设置'), findsOneWidget);
     expect(find.text('预算设置'), findsOneWidget);
+    expect(find.text('财务档案'), findsOneWidget);
     expect(find.text('备份与恢复'), findsOneWidget);
   });
 
