@@ -129,6 +129,12 @@ void main() {
         matching: find.byType(ButlerlyBrandIcon),
       );
       expect(brandIcon, findsOneWidget);
+      expect(tester.widget<ButlerlyBrandIcon>(brandIcon).size, 28);
+      expect(
+        tester.getCenter(brandIcon).dy,
+        closeTo(tester.getCenter(brand).dy, 1.0),
+        reason: 'The brand mark should be vertically centered with the name',
+      );
       expect(
         tester.getRect(brandIcon).right,
         lessThan(tester.getRect(brand).left),
@@ -327,6 +333,14 @@ void main() {
     expect(transactions, findsOneWidget);
     expect(income, findsOneWidget);
     expect(net, findsOneWidget);
+
+    for (final metric in [spending, transactions, income, net]) {
+      final container = tester.widget<Container>(
+        find.descendant(of: metric, matching: find.byType(Container)).first,
+      );
+      final decoration = container.decoration! as BoxDecoration;
+      expect(decoration.color!.a, closeTo(0.5, 0.001));
+    }
 
     expect(
       tester.getTopLeft(spending).dy,
