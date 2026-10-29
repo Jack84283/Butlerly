@@ -1,16 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:butlerly/core/data/duplicate_group_backup_policy.dart';
 import 'package:butlerly/core/data/evidence_path_safety.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/evidence/evidence_mutation_lock.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
-import 'package:sqflite_common/sqlite_api.dart';
-
-typedef CanonicalTransactionIdsLoader =
-    Future<Set<String>> Function(DatabaseExecutor snapshot);
 
 final class LocalDataExport {
   const LocalDataExport({required this.directory, required this.recordCount});
@@ -25,27 +20,14 @@ final class LocalDataManager {
     Directory? documentsDirectory,
     Directory? localEvidenceDirectory,
     DateTime Function()? clock,
-    CanonicalTransactionIdsLoader? canonicalTransactionIds,
   }) : _documentsDirectory = documentsDirectory,
        _localEvidenceDirectory = localEvidenceDirectory,
-       _clock = clock,
-       _canonicalTransactionIds = canonicalTransactionIds;
+       _clock = clock;
 
   final LocalDatabase database;
   final Directory? _documentsDirectory;
   final Directory? _localEvidenceDirectory;
   final DateTime Function()? _clock;
-  final CanonicalTransactionIdsLoader? _canonicalTransactionIds;
-
-  static const _transactionScopedExportTables = <String>{
-    'review_issues',
-    'suggestions',
-    'transaction_provenances',
-    'transaction_tags',
-    'attachment_links',
-    'normalized_money',
-    'statement_rows',
-  };
 
   static const _exportTables = <String>[
     'payment_sources',
@@ -266,48 +248,16 @@ final class LocalDataManager {
         // boundary. The read transaction remains open while evidence is copied,
         // so the exported JSON and files describe one logical local state.
         await database.persistenceDatabase.transaction((snapshot) async {
-          // Export All is a financial export, so it must not publish duplicate
-          // members that the shared canonical policy excludes. Backups
-          // continue to preserve every source row through LocalBackupManager.
-          final canonicalIds = await _canonicalTransactionIds?.call(snapshot);
-
           Future<List<Map<String, Object?>>> rowsFor(String table) async {
             switch (table) {
               case 'review_issues':
-                final rows = await snapshot.query(
-                  table,
-                  where: 'closed_at IS NOT NULL',
-                );
-                return _filterCanonicalTransactionRows(rows, canonicalIds);
+                return snapshot.query(table, where: 'closed_at IS NOT NULL');
               case 'suggestions':
-                final rows = await snapshot.query(
-                  table,
-                  where: 'decided_at IS NOT NULL',
-                );
-                return _filterCanonicalTransactionRows(rows, canonicalIds);
+                return snapshot.query(table, where: 'decided_at IS NOT NULL');
               case 'transactions':
-                final rows = await snapshot.query(table);
-                if (canonicalIds == null) return rows;
-                return rows
-                    .where((row) => canonicalIds.contains(row['id'] as String?))
-                    .toList(growable: false);
+                return snapshot.query(table);
               case 'reconciliation_candidates':
-                final rows = await snapshot.query(
-                  table,
-                  where: "status != 'proposed'",
-                );
-                if (canonicalIds == null) return rows;
-                return rows
-                    .where(
-                      (row) =>
-                          canonicalIds.contains(
-                            row['receipt_transaction_id'] as String?,
-                          ) &&
-                          canonicalIds.contains(
-                            row['payment_transaction_id'] as String?,
-                          ),
-                    )
-                    .toList(growable: false);
+                return snapshot.query(table, where: "status != 'proposed'");
               case 'reconciliation_links':
                 final candidates = await rowsFor('reconciliation_candidates');
                 final ids = candidates
@@ -319,96 +269,17 @@ final class LocalDataManager {
                     .where((row) => ids.contains(row['candidate_id']))
                     .toList(growable: false);
               case 'evidence_items':
-                final rows = await snapshot.query(table);
-                if (canonicalIds == null) return rows;
-                final links = await snapshot.query('attachment_links');
-                final statementEvidenceIds = (await snapshot.query(
-                  'financial_statements',
-                  columns: ['evidence_id'],
-                )).map((row) => row['evidence_id']).whereType<String>().toSet();
-                return rows
-                    .where((row) {
-                      final evidenceId = row['id'] as String?;
-                      if (evidenceId == null ||
-                          statementEvidenceIds.contains(evidenceId)) {
-                        return true;
-                      }
-                      final evidenceLinks = links.where(
-                        (link) => link['evidence_id'] == evidenceId,
-                      );
-                      // Keep unattached evidence as a durable source record.
-                      // Evidence attached only to excluded duplicate members is
-                      // not part of the canonical financial export.
-                      return evidenceLinks.isEmpty ||
-                          evidenceLinks.any(
-                            (link) => canonicalIds.contains(
-                              link['transaction_id'] as String?,
-                            ),
-                          );
-                    })
-                    .toList(growable: false);
+                return snapshot.query(table);
               case 'extractions':
-                final evidenceIds = (await rowsFor(
-                  'evidence_items',
-                )).map((row) => row['id']).whereType<String>().toSet();
-                final rows = await snapshot.query(table);
-                if (canonicalIds == null) return rows;
-                return rows
-                    .where((row) => evidenceIds.contains(row['evidence_id']))
-                    .toList(growable: false);
+                return snapshot.query(table);
               case 'provenances':
-                if (canonicalIds == null) return snapshot.query(table);
-                final referencedIds = <String>{
-                  ...(await rowsFor(
-                    'transaction_provenances',
-                  )).map((row) => row['provenance_id']).whereType<String>(),
-                  ...(await rowsFor(
-                    'evidence_items',
-                  )).map((row) => row['provenance_id']).whereType<String>(),
-                  ...(await rowsFor(
-                    'extractions',
-                  )).map((row) => row['provenance_id']).whereType<String>(),
-                  ...(await rowsFor(
-                    'suggestions',
-                  )).map((row) => row['provenance_id']).whereType<String>(),
-                };
-                final rows = await snapshot.query(table);
-                return rows
-                    .where((row) => referencedIds.contains(row['id']))
-                    .toList(growable: false);
+                return snapshot.query(table);
               case 'duplicate_candidate_groups':
-                final groups = await snapshot.query(table);
-                final members = await snapshot.query(
-                  'duplicate_candidate_group_transactions',
-                );
-                final transactions = await snapshot.query(
-                  'transactions',
-                  columns: [
-                    'id',
-                    'transaction_date',
-                    'amount_coefficient',
-                    'amount_scale',
-                    'currency',
-                    'direction',
-                    'status',
-                  ],
-                );
-                final durable =
-                    DuplicateGroupBackupPolicy.durableUnresolvedGroupIds(
-                      groups: groups,
-                      memberships: members,
-                      transactions: transactions,
-                    );
-                return groups
-                    .where(
-                      (row) =>
-                          row['status'] != 'unresolved' ||
-                          DuplicateGroupBackupPolicy.hasStatementEvidence(
-                            row['statement_rows'],
-                          ) ||
-                          durable.contains(row['id']),
-                    )
-                    .toList(growable: false);
+                // Export All preserves review state exactly, including an
+                // ordinary unresolved duplicate group. Backup-specific
+                // durability filtering must not remove source records from a
+                // user-requested data export.
+                return snapshot.query(table);
               case 'duplicate_candidate_group_transactions':
                 final groups = await rowsFor('duplicate_candidate_groups');
                 final ids = groups
@@ -417,14 +288,7 @@ final class LocalDataManager {
                     .toSet();
                 final rows = await snapshot.query(table);
                 return rows
-                    .where(
-                      (row) =>
-                          ids.contains(row['group_id']) &&
-                          (canonicalIds == null ||
-                              canonicalIds.contains(
-                                row['transaction_id'] as String?,
-                              )),
-                    )
+                    .where((row) => ids.contains(row['group_id']))
                     .toList(growable: false);
               case 'entity_tombstones':
                 final rows = await snapshot.query(table);
@@ -436,14 +300,7 @@ final class LocalDataManager {
                     )
                     .toList(growable: false);
               default:
-                final rows = await snapshot.query(table);
-                return _transactionScopedExportTables.contains(table)
-                    ? _filterCanonicalTransactionRows(
-                        rows,
-                        canonicalIds,
-                        preserveUnlinked: table == 'statement_rows',
-                      )
-                    : rows;
+                return snapshot.query(table);
             }
           }
 
@@ -454,7 +311,6 @@ final class LocalDataManager {
           }
           final evidenceRows = (tables['evidence_items']! as List)
               .cast<Map<String, Object?>>();
-          final exportedEvidenceNames = <String>{};
           for (final row in evidenceRows) {
             final localName = row['local_file_name'] as String?;
             if (localName == null || localName.trim().isEmpty) continue;
@@ -466,14 +322,7 @@ final class LocalDataManager {
             if (!await File(path.join(evidence.path, normalized)).exists()) {
               throw StateError('Referenced evidence file is missing.');
             }
-            exportedEvidenceNames.add(normalized);
           }
-          final hasEvidenceMetadata = (await snapshot.query(
-            'evidence_items',
-            columns: ['id'],
-          )).isNotEmpty;
-          final copyAllEvidenceFiles =
-              canonicalIds == null || !hasEvidenceMetadata;
           await File(
             path.join(staging.path, 'butlerly-export.json'),
           ).writeAsString(
@@ -496,10 +345,6 @@ final class LocalDataManager {
                   evidence,
                   path.relative(entity.path, from: evidence.path),
                 );
-                if (!copyAllEvidenceFiles &&
-                    !exportedEvidenceNames.contains(relative)) {
-                  continue;
-                }
                 final target = File(path.join(exportedEvidence.path, relative));
                 await target.parent.create(recursive: true);
                 await entity.copy(target.path);
@@ -520,21 +365,6 @@ final class LocalDataManager {
       }
     },
   );
-
-  List<Map<String, Object?>> _filterCanonicalTransactionRows(
-    List<Map<String, Object?>> rows,
-    Set<String>? canonicalIds, {
-    bool preserveUnlinked = false,
-  }) {
-    if (canonicalIds == null) return rows;
-    return rows
-        .where(
-          (row) =>
-              (preserveUnlinked && row['transaction_id'] == null) ||
-              canonicalIds.contains(row['transaction_id'] as String?),
-        )
-        .toList(growable: false);
-  }
 
   Future<void> _ensureFreshExportPath(Directory candidate) async {
     await rejectSymlinkedPath(candidate.path, message: 'Unsafe export path.');

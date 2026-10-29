@@ -34,29 +34,6 @@ void configureDependencies({
     database,
     documentsDirectory: documentsDirectory,
     localEvidenceDirectory: localEvidenceDirectory,
-    canonicalTransactionIds: (snapshot) async {
-      final source = await SqliteTransactionRepository.listAllWithExecutor(
-        snapshot,
-      );
-      final links =
-          await SqliteReconciliationLinkRepository.listAllWithExecutor(
-            snapshot,
-          );
-      final candidates =
-          await SqliteReconciliationCandidateRepository.listAllWithExecutor(
-            snapshot,
-          );
-      final groups =
-          await SqliteDuplicateCandidateGroupRepository.listWithExecutor(
-            snapshot,
-          );
-      return selectCanonicalTransactions(
-        source: source,
-        links: links,
-        reconciliationCandidates: candidates,
-        duplicateGroups: groups,
-      ).transactions.map((value) => value.id.value).toSet();
-    },
   );
   final restoreRecoveryState = RestoreRecoveryState(localDataManager);
   final publicationRecoveryState = BackupPublicationRecoveryState();

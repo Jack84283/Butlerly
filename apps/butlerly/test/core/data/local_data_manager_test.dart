@@ -85,7 +85,11 @@ void main() {
         'local_file_name': row['local_file_name'],
       });
     }
-    for (final id in ['selected-duplicate', 'other-duplicate']) {
+    for (final id in [
+      'selected-duplicate',
+      'other-duplicate',
+      'unresolved-duplicate',
+    ]) {
       await database.database.insert('transactions', {
         'id': id,
         'occurred_at': '2026-08-09T18:00:00.000Z',
@@ -93,7 +97,9 @@ void main() {
         'amount_scale': 0,
         'currency': 'USD',
         'direction': 'expense',
-        'source_type': 'manual',
+        'source_type': id == 'selected-duplicate'
+            ? 'evidenceCapture'
+            : 'manual',
         'status': 'active',
         'created_at': '2026-08-09T18:00:00.000Z',
         'updated_at': '2026-08-09T18:00:00.000Z',
@@ -123,13 +129,30 @@ void main() {
         'transaction_id': id,
       });
     }
+    const unresolvedGroupId = 'unresolved:2026-08-09|25|USD|expense';
+    await database.database.insert('duplicate_candidate_groups', {
+      'id': unresolvedGroupId,
+      'transaction_date': '2026-08-09',
+      'amount_coefficient': '25',
+      'amount_scale': 0,
+      'currency': 'USD',
+      'direction': 'expense',
+      'status': 'unresolved',
+      'selected_transaction_id': null,
+      'created_at': '2026-08-09T18:00:00.000Z',
+      'updated_at': '2026-08-09T18:00:00.000Z',
+    });
+    await database.database.insert('duplicate_candidate_group_transactions', {
+      'group_id': unresolvedGroupId,
+      'transaction_id': 'unresolved-duplicate',
+    });
     await database.database.insert('reconciliation_candidates', {
       'id': 'candidate-1',
       'receipt_transaction_id': 'selected-duplicate',
       'payment_transaction_id': 'other-duplicate',
       'score': 0.9,
       'reasons_json': '[]',
-      'status': 'proposed',
+      'status': 'confirmed',
       'created_at': '2026-08-09T18:00:00.000Z',
       'updated_at': '2026-08-09T18:00:00.000Z',
     });
@@ -189,6 +212,9 @@ void main() {
       'decided_at': '2026-08-10T18:00:00.000Z',
     });
     await File(path.join(evidence.path, 'receipt.bin')).writeAsBytes([1, 2, 3]);
+    await File(
+      path.join(evidence.path, 'excluded.bin'),
+    ).writeAsBytes([4, 5, 6]);
     for (final suffix in const [
       '.restore-ambiguous',
       '.restore-previous-ambiguous',
@@ -203,7 +229,6 @@ void main() {
       database,
       documentsDirectory: documents,
       localEvidenceDirectory: evidence,
-      canonicalTransactionIds: (_) async => {'selected-duplicate'},
     );
     for (final suffix in const [
       '.restore-journal.json',
@@ -242,27 +267,43 @@ void main() {
     expect(tables['merchants'], isNotEmpty);
     expect(
       (tables['transactions']! as List).map((row) => (row as Map)['id']),
-      contains('selected-duplicate'),
-    );
-    expect(
-      (tables['transactions']! as List).map((row) => (row as Map)['id']),
-      isNot(contains('other-duplicate')),
+      containsAll([
+        'selected-duplicate',
+        'other-duplicate',
+        'unresolved-duplicate',
+      ]),
+      reason: 'Export All preserves every original financial transaction.',
     );
     expect(
       (tables['transaction_provenances']! as List).map(
         (row) => (row as Map)['provenance_id'],
       ),
-      contains('provenance-generated-export'),
+      hasLength(3),
+      reason: 'Export All preserves provenance for every original transaction.',
     );
     expect(
       (tables['duplicate_candidate_groups']! as List).map(
         (row) => (row as Map)['id'],
       ),
-      contains(duplicateGroupId),
+      containsAll([duplicateGroupId, unresolvedGroupId]),
+      reason: 'Export All preserves unresolved duplicate decisions.',
+    );
+    expect(
+      (tables['duplicate_candidate_group_transactions']! as List).map(
+        (row) => (row as Map)['transaction_id'],
+      ),
+      contains('unresolved-duplicate'),
     );
     expect(
       (tables['evidence_items']! as List).map((row) => (row as Map)['id']),
-      ['evidence-selected-export'],
+      containsAll(['evidence-selected-export', 'evidence-excluded-export']),
+      reason: 'Export All preserves evidence attached to every source record.',
+    );
+    expect(
+      (tables['attachment_links']! as List).map(
+        (row) => (row as Map)['transaction_id'],
+      ),
+      containsAll(['selected-duplicate', 'other-duplicate']),
     );
     expect((tables['provenances']! as List).map((row) => (row as Map)['id']), [
       'provenance-generated-export',
@@ -280,8 +321,8 @@ void main() {
     expect((tables['suggestions']! as List).map((row) => (row as Map)['id']), [
       'suggestion-decided-export',
     ]);
-    expect(tables['reconciliation_candidates'], isEmpty);
-    expect(tables['reconciliation_links'], isEmpty);
+    expect(tables['reconciliation_candidates'], hasLength(1));
+    expect(tables['reconciliation_links'], hasLength(1));
     expect(
       tables.keys,
       containsAll([
@@ -301,6 +342,12 @@ void main() {
     expect(
       File(
         path.join(exported.directory.path, 'evidence', 'receipt.bin'),
+      ).existsSync(),
+      isTrue,
+    );
+    expect(
+      File(
+        path.join(exported.directory.path, 'evidence', 'excluded.bin'),
       ).existsSync(),
       isTrue,
     );

@@ -64,7 +64,7 @@ CanonicalTransactionSelection selectCanonicalTransactions({
           link.receiptTransactionId != link.paymentTransactionId &&
           receipt != null &&
           payment != null &&
-          ReconciliationPolicy.validLinkEndpoints(receipt, payment);
+          ReconciliationPolicy.validConfirmedLinkEndpoints(receipt, payment);
       if (valid) {
         basicValidLinks.add(link);
       } else {

@@ -437,6 +437,83 @@ void main() {
   );
 
   test(
+    'a confirmed manual reconciliation survives payment-source removal and restart',
+    () async {
+      final fixture = await PersistedFinancialFixture.create();
+      addTearDown(fixture.dispose);
+      final now = DateTime.utc(2026, 9, 1);
+      final paymentSource = PaymentSource(
+        id: PaymentSourceId('manual-card'),
+        name: 'Manual card',
+        type: PaymentSourceType.card,
+      );
+      final receipt = _transaction(
+        'confirmed-receipt',
+        '30',
+        sourceType: TransactionSourceType.evidenceCapture,
+      );
+      final payment = _transaction(
+        'confirmed-payment',
+        '30',
+      ).assignPaymentSource(paymentSource.id, now);
+      await fixture.savePaymentSource(paymentSource);
+      await fixture.saveTransaction(receipt);
+      await fixture.saveTransaction(payment);
+      await fixture.saveReconciliationLink(
+        id: 'confirmed-manual-link',
+        receiptTransactionId: receipt.id,
+        paymentTransactionId: payment.id,
+        createdAt: now,
+      );
+
+      final initial = selectCanonicalTransactions(
+        source: await fixture.transactions.listAll(),
+        links: await fixture.reconciliationLinks.listAll(),
+        reconciliationCandidates: await fixture.reconciliationCandidates
+            .listAll(),
+      );
+      expect(initial.transactions.map((value) => value.id.value), [
+        'confirmed-payment',
+      ]);
+
+      final cleared = await AssignPaymentSource(
+        fixture.transactions,
+        fixture.paymentSources,
+        _Clock(DateTime.utc(2026, 9, 2)),
+      )(payment.id.value, null);
+      expect(cleared, isA<ApplicationSuccess<TransactionDto>>());
+      await fixture.reopen();
+
+      final persistedPayment = await fixture.transactions.findById(payment.id);
+      expect(persistedPayment?.paymentSourceId, isNull);
+      final afterMetadataChange = selectCanonicalTransactions(
+        source: await fixture.transactions.listAll(),
+        links: await fixture.reconciliationLinks.listAll(),
+        reconciliationCandidates: await fixture.reconciliationCandidates
+            .listAll(),
+      );
+      expect(afterMetadataChange.transactions.map((value) => value.id.value), [
+        'confirmed-payment',
+      ]);
+      expect(
+        afterMetadataChange.qualityIssues,
+        isNot(
+          contains(
+            predicate<DataQualityIssue>(
+              (issue) => issue.code == 'malformedReconciliationLink',
+            ),
+          ),
+        ),
+      );
+      expect(await fixture.reconciliationLinks.listAll(), hasLength(1));
+      expect(
+        (await fixture.reconciliationCandidates.listAll()).single.status,
+        ReconciliationCandidateStatus.confirmed,
+      );
+    },
+  );
+
+  test(
     'permanently removing a non-selected member reopens the persisted decision',
     () async {
       final fixture = await PersistedFinancialFixture.create();
