@@ -1,8 +1,11 @@
 import 'package:butlerly/app/session/butlerly_session_guard.dart';
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_brand_icon.dart';
+import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:butlerly/features/foundation/presentation/butlerly_launch_page.dart';
+import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
@@ -36,6 +39,19 @@ void main() {
     final brand = find.byType(ButlerlyBrandIcon);
     expect(brand, findsOneWidget);
     expect(tester.widget<ButlerlyBrandIcon>(brand).size, 80);
+    final tagline = find.byKey(const ValueKey('butlerly-launch-tagline'));
+    expect(tagline, findsOneWidget);
+    final taglineText = tester.widget<Text>(tagline);
+    expect(taglineText.data, 'YOUR MONEY. YOUR DEVICE. YOUR CONTROL.');
+    expect(
+      taglineText.style?.fontFamily,
+      ButlerlyTypography.editorialFontFamily,
+    );
+    expect(taglineText.textAlign, TextAlign.center);
+    expect(
+      tester.getTopLeft(tagline).dy,
+      greaterThan(tester.getBottomLeft(find.text('Butlerly')).dy),
+    );
     expect(find.byIcon(Icons.shield_outlined), findsNothing);
     elapsed = ButlerlySessionConfig.launchDuration;
     await tester.pump(ButlerlySessionConfig.launchDuration);
@@ -43,6 +59,45 @@ void main() {
 
     expect(router.routeInformationProvider.value.uri.path, '/');
     expect(find.text('Home'), findsOneWidget);
+  });
+
+  testWidgets('compact launch localizes the centered tagline without overflow', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(320, 568);
+    tester.view.devicePixelRatio = 1;
+    tester.view.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.platformDispatcher.clearTextScaleFactorTestValue);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        locale: const Locale('zh', 'CN'),
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: const ButlerlyLaunchSurface(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final name = find.text('账房先生');
+    final tagline = find.byKey(const ValueKey('butlerly-launch-tagline'));
+    expect(name, findsOneWidget);
+    expect(tagline, findsOneWidget);
+    final text = tester.widget<Text>(tagline);
+    expect(text.data, '财务数据，尽在掌控。');
+    expect(text.style?.fontFamily, ButlerlyTypography.editorialFontFamily);
+    expect(tester.getTopLeft(tagline).dy, greaterThan(tester.getBottomLeft(name).dy));
+    expect(tester.getRect(tagline).left, greaterThanOrEqualTo(0));
+    expect(tester.getRect(tagline).right, lessThanOrEqualTo(320));
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('launch countdown pauses while Butlerly is backgrounded', (
