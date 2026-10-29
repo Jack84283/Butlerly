@@ -760,8 +760,7 @@ class _HomeHeader extends StatelessWidget {
             Text(
               context.l10n.text('brandTagline'),
               key: const ValueKey('home-brand-tagline'),
-              maxLines: 1,
-              softWrap: false,
+              softWrap: true,
               style: context.designTokens.homeTypography.subtitle(
                 Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
               ),

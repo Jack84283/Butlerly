@@ -63,6 +63,22 @@ void main() {
     router.dispose();
   });
 
+  test('brand tagline matches the updated privacy message in every locale', () {
+    const english = 'Your money. Your device. Your control.';
+    for (final locale in AppLocalizations.supportedLocales) {
+      expect(AppLocalizations(locale).text('brandTagline'), english);
+    }
+    expect(const AppLocalizations(Locale('en')).text('homeTagline'), english);
+    expect(
+      const AppLocalizations(Locale('zh', 'CN')).text('homeTagline'),
+      '你的钱。你的设备。由你掌控。',
+    );
+    expect(
+      const AppLocalizations(Locale('es')).text('homeTagline'),
+      'Tu dinero. Tu dispositivo. Tú tienes el control.',
+    );
+  });
+
   testWidgets(
     'Home header stays pinned with requested left and right content',
     (tester) async {
@@ -75,7 +91,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Butlerly'), findsOneWidget);
-      expect(find.text('A CALMER WAY TO MONEY'), findsOneWidget);
+      expect(find.text('Your money. Your device. Your control.'), findsOneWidget);
       expect(find.text('Good afternoon'), findsOneWidget);
       expect(find.text('Sep 2026'), findsOneWidget);
       expect(
@@ -120,8 +136,8 @@ void main() {
       expect(tester.widget<Text>(brand).style?.fontSize, 24);
       final taglineText = tester.widget<Text>(brandTagline);
       expect(taglineText.style?.fontSize, 13);
-      expect(taglineText.maxLines, 1);
-      expect(taglineText.softWrap, isFalse);
+      expect(taglineText.maxLines, isNull);
+      expect(taglineText.softWrap, isTrue);
       expect(
         tester.getTopLeft(brandTagline).dy - tester.getBottomLeft(brand).dy,
         closeTo(ButlerlySpacing.micro, 0.01),
