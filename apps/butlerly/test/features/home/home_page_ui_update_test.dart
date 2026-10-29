@@ -93,9 +93,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(
-      _testApp(router, locale: const Locale('zh', 'CN')),
-    );
+    await tester.pumpWidget(_testApp(router, locale: const Locale('zh', 'CN')));
     await tester.pumpAndSettle();
 
     final header = find.byKey(const ValueKey('home-header-context'));
