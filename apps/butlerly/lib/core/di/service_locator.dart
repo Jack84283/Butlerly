@@ -30,15 +30,18 @@ void configureDependencies({
     ..registerSingleton<LocalDatabase>(database);
   services.registerSingleton<OcrRecognizer>(platformOcrRecognizer());
 
+  final consistencyGate = AnalysisConsistencyGate();
   final localDataManager = LocalDataManager(
     database,
     documentsDirectory: documentsDirectory,
     localEvidenceDirectory: localEvidenceDirectory,
+    consistencyGate: consistencyGate,
   );
   final restoreRecoveryState = RestoreRecoveryState(localDataManager);
   final publicationRecoveryState = BackupPublicationRecoveryState();
   services
     ..registerSingleton<LocalDataManager>(localDataManager)
+    ..registerSingleton<AnalysisConsistencyGate>(consistencyGate)
     ..registerSingleton<RestoreRecoveryState>(restoreRecoveryState)
     ..registerSingleton<BackupPublicationRecoveryState>(
       publicationRecoveryState,
@@ -49,6 +52,7 @@ void configureDependencies({
         localDataManager,
         recoveryState: restoreRecoveryState,
         publicationRecoveryState: publicationRecoveryState,
+        consistencyGate: consistencyGate,
       ),
     );
 
@@ -58,6 +62,7 @@ void configureDependencies({
         services<LocalBackupManager>(),
         localDataManager,
       ),
+      consistencyGate: consistencyGate,
       refreshSystemData: () async {
         await database.reseedSystemData();
         final finance = services<FinanceServices>();
@@ -97,6 +102,7 @@ void configureDependencies({
       analysisFindings,
       results: analysisResults,
       rules: analysisRules,
+      consistencyGate: consistencyGate,
     );
     final duplicateRefresh = RefreshDuplicateGroupForTransaction(
       duplicateGroups,
@@ -115,6 +121,7 @@ void configureDependencies({
       rawTransactions,
       duplicateRefresh,
       invalidateAnalysis: invalidateAnalysis,
+      consistencyGate: consistencyGate,
     );
     final statements = SqliteStatementRepository(database.persistenceDatabase);
     final finance = FinanceServices(
@@ -166,6 +173,7 @@ void configureDependencies({
         database.persistenceDatabase,
       ),
       analysisInvalidation: invalidateAnalysis,
+      consistencyGate: consistencyGate,
       canonicalTransactionIds: () async {
         final selected = selectCanonicalTransactions(
           source: await rawTransactions.listAll(),

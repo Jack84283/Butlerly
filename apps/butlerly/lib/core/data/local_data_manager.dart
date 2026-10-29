@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:butlerly/core/data/evidence_path_safety.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/evidence/evidence_mutation_lock.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
@@ -20,14 +21,17 @@ final class LocalDataManager {
     Directory? documentsDirectory,
     Directory? localEvidenceDirectory,
     DateTime Function()? clock,
+    AnalysisConsistencyGate? consistencyGate,
   }) : _documentsDirectory = documentsDirectory,
        _localEvidenceDirectory = localEvidenceDirectory,
-       _clock = clock;
+       _clock = clock,
+       _consistencyGate = consistencyGate;
 
   final LocalDatabase database;
   final Directory? _documentsDirectory;
   final Directory? _localEvidenceDirectory;
   final DateTime Function()? _clock;
+  final AnalysisConsistencyGate? _consistencyGate;
 
   static const _exportTables = <String>[
     'payment_sources',
@@ -376,179 +380,193 @@ final class LocalDataManager {
 
   Future<void> eraseAll({
     bool preserveRecoveryMarker = false,
-  }) => EvidenceMutationLock.runExclusive(() async {
-    // Validate every recursive deletion target before touching SQLite. If a
-    // caller or a corrupted recovery artifact has introduced a symlink, fail
-    // closed while all financial data is still intact.
-    final evidence = await evidenceDirectory();
-    final pendingEvidence = await pendingEvidenceDirectory();
-    final evidenceParent = evidence.parent;
-    final databaseDirectory = Directory(
-      path.dirname(database.persistenceDatabase.path),
-    );
-    final recovery = Directory(
-      path.join(databaseDirectory.path, '.butlerly-recovery'),
-    );
-    final documents = await documentsDirectory();
-    await rejectEvidenceTree(evidence, message: 'Unsafe live evidence tree.');
-    await rejectEvidenceTree(
-      pendingEvidence,
-      message: 'Unsafe pending evidence tree.',
-    );
-    await rejectEvidenceTree(recovery, message: 'Unsafe recovery tree.');
-    await rejectEvidenceRoot(
-      databaseDirectory,
-      message: 'Unsafe private data root.',
-    );
-    if (await evidenceParent.exists()) {
-      final restorePrefix = '${path.basename(evidence.path)}.restore-';
-      await for (final entity in evidenceParent.list(followLinks: false)) {
-        final name = path.basename(entity.path);
-        if (!name.startsWith(restorePrefix)) continue;
-        if (entity is Link) {
-          throw const FormatException('Unsafe restore evidence tree.');
-        }
-        if (entity is Directory) {
-          await rejectEvidenceTree(
-            entity,
-            message: 'Unsafe restore evidence tree.',
-          );
-        }
-      }
-    }
-    if (await databaseDirectory.exists()) {
-      await for (final entity in databaseDirectory.list(followLinks: false)) {
-        if (entity is Link) {
-          final name = path.basename(entity.path);
-          if (name.startsWith('.butlerly-restore-stage-') ||
-              name.startsWith('.backup-decrypt-') ||
-              name.startsWith('.portable-backup-')) {
-            throw const FormatException('Unsafe private recovery artifact.');
-          }
-        } else if (entity is Directory &&
-            path.basename(entity.path).startsWith('.butlerly-restore-stage-')) {
-          await rejectEvidenceTree(
-            entity,
-            message: 'Unsafe restore staging tree.',
-          );
-        }
-      }
-    }
-    await rejectEvidenceRoot(documents, message: 'Unsafe documents root.');
-    if (await documents.exists()) {
-      await for (final entity in documents.list(followLinks: false)) {
-        final name = path.basename(entity.path);
-        final removable =
-            name.startsWith('Butlerly Export ') ||
-            name == 'Butlerly Safety Backups';
-        if (!removable) continue;
-        if (entity is Link) {
-          throw const FormatException('Unsafe export artifact.');
-        }
-        if (entity is Directory) {
-          await rejectEvidenceTree(entity, message: 'Unsafe export artifact.');
-        }
-      }
-    }
-    final markerPaths = <String>[
-      '${evidence.path}.restore-recovery-required.json',
-      '${evidence.path}.restore-recovery-required.json.tmp',
-      '${evidence.path}.restore-recovery-required.json.previous',
-      '${evidence.path}.restore-journal.json',
-      '${evidence.path}.restore-journal.json.tmp',
-      '${evidence.path}.restore-journal.json.previous',
-      '${evidence.path}.restore-origin.json',
-      '${evidence.path}.restore-origin.json.tmp',
-      '${evidence.path}.restore-origin.json.previous',
-    ];
-    for (final markerPath in markerPaths) {
-      if (await FileSystemEntity.type(markerPath, followLinks: false) ==
-          FileSystemEntityType.link) {
-        throw const FormatException('Unsafe recovery marker.');
-      }
-    }
-
-    // Privacy reset and restore share one evidence mutation boundary.
-    await database.persistenceDatabase.transaction((transaction) async {
-      for (final table in _eraseOrder) {
-        await transaction.delete(table);
-      }
-    });
-    if (await evidence.exists()) await evidence.delete(recursive: true);
-    if (await evidenceParent.exists()) {
-      final restorePrefix = '${path.basename(evidence.path)}.restore-';
-      await for (final entity in evidenceParent.list(followLinks: false)) {
-        if (entity is Directory &&
-            path.basename(entity.path).startsWith(restorePrefix)) {
-          await entity.delete(recursive: true);
-        }
-      }
-    }
-    if (await pendingEvidence.exists()) {
-      await pendingEvidence.delete(recursive: true);
-    }
-
-    // Restore staging workspaces contain private SQLite and evidence copies.
-    // They are normally removed when a restore finishes, but an interrupted
-    // recovery reset must not leave them behind after an explicit erase-all.
-    if (await databaseDirectory.exists()) {
-      await for (final entity in databaseDirectory.list(followLinks: false)) {
-        if (entity is Directory &&
-            path.basename(entity.path).startsWith('.butlerly-restore-stage-')) {
-          await entity.delete(recursive: true);
-        }
-      }
-
-      // Erase All is an explicit privacy boundary. Remove private backup,
-      // decryption, and publication-recovery artifacts too, including any
-      // artifacts protected from ordinary startup cleanup for recovery.
-      await for (final entity in databaseDirectory.list(followLinks: false)) {
-        if (entity is! File) continue;
-        final name = path.basename(entity.path);
-        if (name.startsWith('.backup-decrypt-') ||
-            name.startsWith('.portable-backup-')) {
-          await entity.delete();
-        }
-      }
-    }
-
-    // Recovery snapshots contain user financial state and are part of an
-    // erase-all boundary. A recovery reset may intentionally keep the marker
-    // until system-data reseeding/runtime refresh also succeeds.
-    if (await recovery.exists()) await recovery.delete(recursive: true);
-    if (!preserveRecoveryMarker) {
-      final recoveryMarker = File(
-        '${evidence.path}.restore-recovery-required.json',
+  }) => _runConsistently(
+    () => EvidenceMutationLock.runExclusive(() async {
+      // Validate every recursive deletion target before touching SQLite. If a
+      // caller or a corrupted recovery artifact has introduced a symlink, fail
+      // closed while all financial data is still intact.
+      final evidence = await evidenceDirectory();
+      final pendingEvidence = await pendingEvidenceDirectory();
+      final evidenceParent = evidence.parent;
+      final databaseDirectory = Directory(
+        path.dirname(database.persistenceDatabase.path),
       );
+      final recovery = Directory(
+        path.join(databaseDirectory.path, '.butlerly-recovery'),
+      );
+      final documents = await documentsDirectory();
+      await rejectEvidenceTree(evidence, message: 'Unsafe live evidence tree.');
+      await rejectEvidenceTree(
+        pendingEvidence,
+        message: 'Unsafe pending evidence tree.',
+      );
+      await rejectEvidenceTree(recovery, message: 'Unsafe recovery tree.');
+      await rejectEvidenceRoot(
+        databaseDirectory,
+        message: 'Unsafe private data root.',
+      );
+      if (await evidenceParent.exists()) {
+        final restorePrefix = '${path.basename(evidence.path)}.restore-';
+        await for (final entity in evidenceParent.list(followLinks: false)) {
+          final name = path.basename(entity.path);
+          if (!name.startsWith(restorePrefix)) continue;
+          if (entity is Link) {
+            throw const FormatException('Unsafe restore evidence tree.');
+          }
+          if (entity is Directory) {
+            await rejectEvidenceTree(
+              entity,
+              message: 'Unsafe restore evidence tree.',
+            );
+          }
+        }
+      }
+      if (await databaseDirectory.exists()) {
+        await for (final entity in databaseDirectory.list(followLinks: false)) {
+          if (entity is Link) {
+            final name = path.basename(entity.path);
+            if (name.startsWith('.butlerly-restore-stage-') ||
+                name.startsWith('.backup-decrypt-') ||
+                name.startsWith('.portable-backup-')) {
+              throw const FormatException('Unsafe private recovery artifact.');
+            }
+          } else if (entity is Directory &&
+              path
+                  .basename(entity.path)
+                  .startsWith('.butlerly-restore-stage-')) {
+            await rejectEvidenceTree(
+              entity,
+              message: 'Unsafe restore staging tree.',
+            );
+          }
+        }
+      }
+      await rejectEvidenceRoot(documents, message: 'Unsafe documents root.');
+      if (await documents.exists()) {
+        await for (final entity in documents.list(followLinks: false)) {
+          final name = path.basename(entity.path);
+          final removable =
+              name.startsWith('Butlerly Export ') ||
+              name == 'Butlerly Safety Backups';
+          if (!removable) continue;
+          if (entity is Link) {
+            throw const FormatException('Unsafe export artifact.');
+          }
+          if (entity is Directory) {
+            await rejectEvidenceTree(
+              entity,
+              message: 'Unsafe export artifact.',
+            );
+          }
+        }
+      }
+      final markerPaths = <String>[
+        '${evidence.path}.restore-recovery-required.json',
+        '${evidence.path}.restore-recovery-required.json.tmp',
+        '${evidence.path}.restore-recovery-required.json.previous',
+        '${evidence.path}.restore-journal.json',
+        '${evidence.path}.restore-journal.json.tmp',
+        '${evidence.path}.restore-journal.json.previous',
+        '${evidence.path}.restore-origin.json',
+        '${evidence.path}.restore-origin.json.tmp',
+        '${evidence.path}.restore-origin.json.previous',
+      ];
+      for (final markerPath in markerPaths) {
+        if (await FileSystemEntity.type(markerPath, followLinks: false) ==
+            FileSystemEntityType.link) {
+          throw const FormatException('Unsafe recovery marker.');
+        }
+      }
+
+      // Privacy reset and restore share one evidence mutation boundary.
+      await database.persistenceDatabase.transaction((transaction) async {
+        for (final table in _eraseOrder) {
+          await transaction.delete(table);
+        }
+      });
+      if (await evidence.exists()) await evidence.delete(recursive: true);
+      if (await evidenceParent.exists()) {
+        final restorePrefix = '${path.basename(evidence.path)}.restore-';
+        await for (final entity in evidenceParent.list(followLinks: false)) {
+          if (entity is Directory &&
+              path.basename(entity.path).startsWith(restorePrefix)) {
+            await entity.delete(recursive: true);
+          }
+        }
+      }
+      if (await pendingEvidence.exists()) {
+        await pendingEvidence.delete(recursive: true);
+      }
+
+      // Restore staging workspaces contain private SQLite and evidence copies.
+      // They are normally removed when a restore finishes, but an interrupted
+      // recovery reset must not leave them behind after an explicit erase-all.
+      if (await databaseDirectory.exists()) {
+        await for (final entity in databaseDirectory.list(followLinks: false)) {
+          if (entity is Directory &&
+              path
+                  .basename(entity.path)
+                  .startsWith('.butlerly-restore-stage-')) {
+            await entity.delete(recursive: true);
+          }
+        }
+
+        // Erase All is an explicit privacy boundary. Remove private backup,
+        // decryption, and publication-recovery artifacts too, including any
+        // artifacts protected from ordinary startup cleanup for recovery.
+        await for (final entity in databaseDirectory.list(followLinks: false)) {
+          if (entity is! File) continue;
+          final name = path.basename(entity.path);
+          if (name.startsWith('.backup-decrypt-') ||
+              name.startsWith('.portable-backup-')) {
+            await entity.delete();
+          }
+        }
+      }
+
+      // Recovery snapshots contain user financial state and are part of an
+      // erase-all boundary. A recovery reset may intentionally keep the marker
+      // until system-data reseeding/runtime refresh also succeeds.
+      if (await recovery.exists()) await recovery.delete(recursive: true);
+      if (!preserveRecoveryMarker) {
+        final recoveryMarker = File(
+          '${evidence.path}.restore-recovery-required.json',
+        );
+        for (final file in <File>[
+          recoveryMarker,
+          File('${recoveryMarker.path}.tmp'),
+          File('${recoveryMarker.path}.previous'),
+        ]) {
+          if (await file.exists()) await file.delete();
+        }
+      }
       for (final file in <File>[
-        recoveryMarker,
-        File('${recoveryMarker.path}.tmp'),
-        File('${recoveryMarker.path}.previous'),
+        File('${evidence.path}.restore-journal.json'),
+        File('${evidence.path}.restore-journal.json.tmp'),
+        File('${evidence.path}.restore-journal.json.previous'),
+        File('${evidence.path}.restore-origin.json'),
+        File('${evidence.path}.restore-origin.json.tmp'),
+        File('${evidence.path}.restore-origin.json.previous'),
       ]) {
         if (await file.exists()) await file.delete();
       }
-    }
-    for (final file in <File>[
-      File('${evidence.path}.restore-journal.json'),
-      File('${evidence.path}.restore-journal.json.tmp'),
-      File('${evidence.path}.restore-journal.json.previous'),
-      File('${evidence.path}.restore-origin.json'),
-      File('${evidence.path}.restore-origin.json.tmp'),
-      File('${evidence.path}.restore-origin.json.previous'),
-    ]) {
-      if (await file.exists()) await file.delete();
-    }
 
-    if (await documents.exists()) {
-      await for (final entity in documents.list()) {
-        if (entity is Directory &&
-            (path.basename(entity.path).startsWith('Butlerly Export ') ||
-                // Remove legacy safety-backup directories created by builds
-                // before recovery data moved to application-private storage.
-                path.basename(entity.path) == 'Butlerly Safety Backups')) {
-          await entity.delete(recursive: true);
+      if (await documents.exists()) {
+        await for (final entity in documents.list()) {
+          if (entity is Directory &&
+              (path.basename(entity.path).startsWith('Butlerly Export ') ||
+                  // Remove legacy safety-backup directories created by builds
+                  // before recovery data moved to application-private storage.
+                  path.basename(entity.path) == 'Butlerly Safety Backups')) {
+            await entity.delete(recursive: true);
+          }
         }
       }
-    }
-  });
+    }),
+  );
+
+  Future<T> _runConsistently<T>(Future<T> Function() operation) {
+    final gate = _consistencyGate;
+    return gate == null ? operation() : gate.runExclusive(operation);
+  }
 }

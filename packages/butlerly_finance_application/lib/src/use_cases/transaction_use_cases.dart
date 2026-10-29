@@ -1,5 +1,6 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
+import '../analysis/invalidation.dart';
 import '../analysis/period_resolver.dart';
 import '../commands/transaction_commands.dart';
 import '../dto/review_item_dto.dart';
@@ -27,6 +28,7 @@ final class CreateTransaction {
     this.classifier,
     this.applyRules,
     this.merchants,
+    this.consistencyGate,
   });
 
   final TransactionRepository repository;
@@ -34,71 +36,78 @@ final class CreateTransaction {
   final ProposeTransactionClassification? classifier;
   final ApplyTransactionRules? applyRules;
   final MerchantRepository? merchants;
+  final AnalysisConsistencyGate? consistencyGate;
 
   Future<ApplicationResult<TransactionDto>> call(
     CreateTransactionCommand command,
-  ) => runApplication('create transaction', () async {
-    final now = clock.now();
-    final proposal = command.categoryId == null && classifier != null
-        ? await classifier!.call(
-            merchantId: command.merchantId == null
-                ? null
-                : MerchantId(command.merchantId!),
-            description: command.description ?? command.rawCounterparty,
-            excludeTransactionId: TransactionId(command.id),
-          )
-        : null;
-    final proposed = proposal is ApplicationSuccess<ClassificationProposal>
-        ? proposal.value
-        : null;
-    final transaction = Transaction(
-      id: TransactionId(command.id),
-      timing: command.timing,
-      money: command.money,
-      direction: command.direction,
-      sourceType: TransactionSourceType.manual,
-      description: command.description,
-      rawCounterparty: command.rawCounterparty,
-      sourceLanguage: command.sourceLanguage,
-      notes: command.notes,
-      externalReference: command.externalReference,
-      paymentSourceId: _optional(command.paymentSourceId, PaymentSourceId.new),
-      merchantId: _optional(
-        command.merchantId ?? proposed?.merchantId?.value,
-        MerchantId.new,
-      ),
-      categoryId: _optional(
-        command.categoryId ?? proposed?.categoryId?.value,
-        CategoryId.new,
-      ),
-      subcategoryId: _optional(
-        command.subcategoryId ?? proposed?.subcategoryId?.value,
-        CategoryId.new,
-      ),
-      tagIds: command.tagIds.map(TagId.new).toList(growable: false),
-      provenance: [
-        Provenance(
-          id: ProvenanceId(command.provenanceId),
-          sourceType: ProvenanceSourceType.userEntry,
-          capturedAt: now,
+  ) => _runExclusive(
+    consistencyGate,
+    () => runApplication('create transaction', () async {
+      final now = clock.now();
+      final proposal = command.categoryId == null && classifier != null
+          ? await classifier!.call(
+              merchantId: command.merchantId == null
+                  ? null
+                  : MerchantId(command.merchantId!),
+              description: command.description ?? command.rawCounterparty,
+              excludeTransactionId: TransactionId(command.id),
+            )
+          : null;
+      final proposed = proposal is ApplicationSuccess<ClassificationProposal>
+          ? proposal.value
+          : null;
+      final transaction = Transaction(
+        id: TransactionId(command.id),
+        timing: command.timing,
+        money: command.money,
+        direction: command.direction,
+        sourceType: TransactionSourceType.manual,
+        description: command.description,
+        rawCounterparty: command.rawCounterparty,
+        sourceLanguage: command.sourceLanguage,
+        notes: command.notes,
+        externalReference: command.externalReference,
+        paymentSourceId: _optional(
+          command.paymentSourceId,
+          PaymentSourceId.new,
         ),
-      ],
-      createdAt: now,
-      updatedAt: now,
-      transactionDate: command.transactionDate,
-      timeZoneId: command.timeZoneId,
-    );
-    final classified = applyRules == null
-        ? transaction
-        : await applyRules!(transaction);
-    final resolved = await synchronizeMerchantReviewIssueBestEffort(
-      classified,
-      now,
-      merchantRepository: merchants,
-    );
-    await repository.save(resolved);
-    return TransactionDto.fromDomain(resolved);
-  });
+        merchantId: _optional(
+          command.merchantId ?? proposed?.merchantId?.value,
+          MerchantId.new,
+        ),
+        categoryId: _optional(
+          command.categoryId ?? proposed?.categoryId?.value,
+          CategoryId.new,
+        ),
+        subcategoryId: _optional(
+          command.subcategoryId ?? proposed?.subcategoryId?.value,
+          CategoryId.new,
+        ),
+        tagIds: command.tagIds.map(TagId.new).toList(growable: false),
+        provenance: [
+          Provenance(
+            id: ProvenanceId(command.provenanceId),
+            sourceType: ProvenanceSourceType.userEntry,
+            capturedAt: now,
+          ),
+        ],
+        createdAt: now,
+        updatedAt: now,
+        transactionDate: command.transactionDate,
+        timeZoneId: command.timeZoneId,
+      );
+      final classified = applyRules == null
+          ? transaction
+          : await applyRules!(transaction);
+      final resolved = await synchronizeMerchantReviewIssueBestEffort(
+        classified,
+        now,
+        merchantRepository: merchants,
+      );
+      await repository.save(resolved);
+      return TransactionDto.fromDomain(resolved);
+    }),
+  );
 }
 
 final class UpdateTransaction {
@@ -107,71 +116,77 @@ final class UpdateTransaction {
     this.clock, {
     this.preferences,
     this.merchants,
+    this.consistencyGate,
   });
 
   final TransactionRepository repository;
   final ApplicationClock clock;
   final UserPreferenceRepository? preferences;
   final MerchantRepository? merchants;
+  final AnalysisConsistencyGate? consistencyGate;
 
   Future<ApplicationResult<TransactionDto>> call(
     UpdateTransactionCommand command,
-  ) => runApplication('update transaction', () async {
-    final operation = 'update transaction';
-    final financialTimeZone = await configuredFinancialTimeZone(preferences);
-    final current = await repository.findById(TransactionId(command.id));
-    if (current == null) {
-      throw RepositoryException(RepositoryFailureCode.notFound, operation);
-    }
-    final updatedAt = clock.now();
-    final updated = await synchronizeMerchantReviewIssueBestEffort(
-      Transaction(
-        id: current.id,
-        timing: command.timing,
-        money: command.money,
-        direction: command.direction,
-        sourceType: current.sourceType,
-        status: current.status,
-        description: command.description,
-        rawCounterparty: command.rawCounterparty,
-        sourceLanguage: command.sourceLanguage,
-        notes: command.notes,
-        externalReference:
-            command.externalReference ?? current.externalReference,
-        paymentSourceId: !command.replacePaymentSource
-            ? current.paymentSourceId
-            : _optional(command.paymentSourceId, PaymentSourceId.new),
-        merchantId: !command.replaceMerchant
-            ? current.merchantId
-            : _optional(command.merchantId, MerchantId.new),
-        categoryId: !command.replaceCategory
-            ? current.categoryId
-            : _optional(command.categoryId, CategoryId.new),
-        subcategoryId: !command.replaceCategory
-            ? current.subcategoryId
-            : _optional(command.subcategoryId, CategoryId.new),
-        tagIds: command.replaceTags
-            ? command.tagIds?.map(TagId.new).toList(growable: false) ?? const []
-            : current.tagIds,
-        provenance: current.provenance,
-        reviewIssues: current.reviewIssues,
-        normalizedMoney: command.money == current.money
-            ? current.normalizedMoney
-            : const [],
-        createdAt: current.createdAt,
-        updatedAt: updatedAt,
-        transactionDate: command.transactionDate ?? current.transactionDate,
-        timeZoneId: command.timeZoneId ?? current.timeZoneId,
-      ),
-      updatedAt,
-      merchantRepository: merchants,
-    );
-    await repository.save(updated);
-    return TransactionDto.fromDomain(
-      updated,
-      financialDate: _financialDateFor(updated, financialTimeZone.id),
-    );
-  });
+  ) => _runExclusive(
+    consistencyGate,
+    () => runApplication('update transaction', () async {
+      final operation = 'update transaction';
+      final financialTimeZone = await configuredFinancialTimeZone(preferences);
+      final current = await repository.findById(TransactionId(command.id));
+      if (current == null) {
+        throw RepositoryException(RepositoryFailureCode.notFound, operation);
+      }
+      final updatedAt = clock.now();
+      final updated = await synchronizeMerchantReviewIssueBestEffort(
+        Transaction(
+          id: current.id,
+          timing: command.timing,
+          money: command.money,
+          direction: command.direction,
+          sourceType: current.sourceType,
+          status: current.status,
+          description: command.description,
+          rawCounterparty: command.rawCounterparty,
+          sourceLanguage: command.sourceLanguage,
+          notes: command.notes,
+          externalReference:
+              command.externalReference ?? current.externalReference,
+          paymentSourceId: !command.replacePaymentSource
+              ? current.paymentSourceId
+              : _optional(command.paymentSourceId, PaymentSourceId.new),
+          merchantId: !command.replaceMerchant
+              ? current.merchantId
+              : _optional(command.merchantId, MerchantId.new),
+          categoryId: !command.replaceCategory
+              ? current.categoryId
+              : _optional(command.categoryId, CategoryId.new),
+          subcategoryId: !command.replaceCategory
+              ? current.subcategoryId
+              : _optional(command.subcategoryId, CategoryId.new),
+          tagIds: command.replaceTags
+              ? command.tagIds?.map(TagId.new).toList(growable: false) ??
+                    const []
+              : current.tagIds,
+          provenance: current.provenance,
+          reviewIssues: current.reviewIssues,
+          normalizedMoney: command.money == current.money
+              ? current.normalizedMoney
+              : const [],
+          createdAt: current.createdAt,
+          updatedAt: updatedAt,
+          transactionDate: command.transactionDate ?? current.transactionDate,
+          timeZoneId: command.timeZoneId ?? current.timeZoneId,
+        ),
+        updatedAt,
+        merchantRepository: merchants,
+      );
+      await repository.save(updated);
+      return TransactionDto.fromDomain(
+        updated,
+        financialDate: _financialDateFor(updated, financialTimeZone.id),
+      );
+    }),
+  );
 }
 
 final class ImportTransaction {
@@ -181,6 +196,7 @@ final class ImportTransaction {
     this.classifier,
     this.applyRules,
     this.merchants,
+    this.consistencyGate,
   });
 
   final TransactionRepository repository;
@@ -188,172 +204,216 @@ final class ImportTransaction {
   final ProposeTransactionClassification? classifier;
   final ApplyTransactionRules? applyRules;
   final MerchantRepository? merchants;
+  final AnalysisConsistencyGate? consistencyGate;
 
   Future<ApplicationResult<TransactionDto>> call(
     ImportTransactionCommand command,
-  ) => runApplication('import transaction', () async {
-    if (await repository.findById(TransactionId(command.id)) != null) {
-      throw const RepositoryException(
-        RepositoryFailureCode.constraint,
-        'import duplicate transaction',
-      );
-    }
-    final date = DateTime.tryParse(command.transactionDate);
-    if (date == null ||
-        command.transactionDate.length != 10 ||
-        date.toIso8601String().substring(0, 10) != command.transactionDate) {
-      throw const DomainValidationException(
-        code: DomainErrorCode.invalidTimestamp,
-        field: 'transactionDate',
-        message: 'Imported business dates must use YYYY-MM-DD.',
-      );
-    }
-    final now = clock.now();
-    final proposal = classifier == null
-        ? null
-        : await classifier!.call(
-            description: command.description ?? command.rawCounterparty,
-            excludeTransactionId: TransactionId(command.id),
-          );
-    final proposed = proposal is ApplicationSuccess<ClassificationProposal>
-        ? proposal.value
-        : null;
-    final transaction = Transaction(
-      id: TransactionId(command.id),
-      timing: command.occurredAtUtc == null
-          ? const UnknownTransactionTime(UnknownTransactionTimeReason.unknown)
-          : KnownTransactionTime(command.occurredAtUtc!),
-      money: command.money,
-      direction: command.direction,
-      sourceType: TransactionSourceType.import,
-      description: command.description,
-      rawCounterparty: command.rawCounterparty,
-      sourceLanguage: command.sourceLanguage,
-      notes: command.notes,
-      externalReference: command.externalReference,
-      paymentSourceId: _optional(command.paymentSourceId, PaymentSourceId.new),
-      merchantId: proposed?.merchantId,
-      categoryId: proposed?.categoryId,
-      subcategoryId: proposed?.subcategoryId,
-      provenance: [
-        Provenance(
-          id: ProvenanceId(command.provenanceId),
-          sourceType: ProvenanceSourceType.import,
-          capturedAt: now,
-          sourceId: command.sourceId,
-          originalRepresentation: command.originalRepresentation,
-          sourceLanguage: command.sourceLanguage,
+  ) => _runExclusive(
+    consistencyGate,
+    () => runApplication('import transaction', () async {
+      if (await repository.findById(TransactionId(command.id)) != null) {
+        throw const RepositoryException(
+          RepositoryFailureCode.constraint,
+          'import duplicate transaction',
+        );
+      }
+      final date = DateTime.tryParse(command.transactionDate);
+      if (date == null ||
+          command.transactionDate.length != 10 ||
+          date.toIso8601String().substring(0, 10) != command.transactionDate) {
+        throw const DomainValidationException(
+          code: DomainErrorCode.invalidTimestamp,
+          field: 'transactionDate',
+          message: 'Imported business dates must use YYYY-MM-DD.',
+        );
+      }
+      final now = clock.now();
+      final proposal = classifier == null
+          ? null
+          : await classifier!.call(
+              description: command.description ?? command.rawCounterparty,
+              excludeTransactionId: TransactionId(command.id),
+            );
+      final proposed = proposal is ApplicationSuccess<ClassificationProposal>
+          ? proposal.value
+          : null;
+      final transaction = Transaction(
+        id: TransactionId(command.id),
+        timing: command.occurredAtUtc == null
+            ? const UnknownTransactionTime(UnknownTransactionTimeReason.unknown)
+            : KnownTransactionTime(command.occurredAtUtc!),
+        money: command.money,
+        direction: command.direction,
+        sourceType: TransactionSourceType.import,
+        description: command.description,
+        rawCounterparty: command.rawCounterparty,
+        sourceLanguage: command.sourceLanguage,
+        notes: command.notes,
+        externalReference: command.externalReference,
+        paymentSourceId: _optional(
+          command.paymentSourceId,
+          PaymentSourceId.new,
         ),
-      ],
-      createdAt: now,
-      updatedAt: now,
-      transactionDate: command.transactionDate,
-      timeZoneId: command.timeZoneId,
-    );
-    final classified = applyRules == null
-        ? transaction
-        : await applyRules!(transaction);
-    final resolved = await synchronizeMerchantReviewIssueBestEffort(
-      classified,
-      now,
-      merchantRepository: merchants,
-    );
-    await repository.save(resolved);
-    return TransactionDto.fromDomain(resolved);
-  });
+        merchantId: proposed?.merchantId,
+        categoryId: proposed?.categoryId,
+        subcategoryId: proposed?.subcategoryId,
+        provenance: [
+          Provenance(
+            id: ProvenanceId(command.provenanceId),
+            sourceType: ProvenanceSourceType.import,
+            capturedAt: now,
+            sourceId: command.sourceId,
+            originalRepresentation: command.originalRepresentation,
+            sourceLanguage: command.sourceLanguage,
+          ),
+        ],
+        createdAt: now,
+        updatedAt: now,
+        transactionDate: command.transactionDate,
+        timeZoneId: command.timeZoneId,
+      );
+      final classified = applyRules == null
+          ? transaction
+          : await applyRules!(transaction);
+      final resolved = await synchronizeMerchantReviewIssueBestEffort(
+        classified,
+        now,
+        merchantRepository: merchants,
+      );
+      await repository.save(resolved);
+      return TransactionDto.fromDomain(resolved);
+    }),
+  );
 }
 
 final class GetTransaction {
-  const GetTransaction(this.repository, {this.preferences});
+  const GetTransaction(
+    this.repository, {
+    this.preferences,
+    this.consistencyGate,
+  });
 
   final TransactionRepository repository;
   final UserPreferenceRepository? preferences;
+  final AnalysisConsistencyGate? consistencyGate;
 
   Future<ApplicationResult<TransactionDto>> call(
     String id, {
     String? timeZoneId,
-  }) => runApplication('get transaction', () async {
-    final financialTimeZone = timeZoneId == null
-        ? await configuredFinancialTimeZone(preferences)
-        : resolveFinancialTimeZone(timeZoneId);
-    final value = await repository.findById(TransactionId(id));
-    if (value == null) {
-      throw RepositoryException(
-        RepositoryFailureCode.notFound,
-        'get transaction',
+  }) => _runExclusive(
+    () => runApplication('get transaction', () async {
+      final financialTimeZone = timeZoneId == null
+          ? await configuredFinancialTimeZone(preferences)
+          : resolveFinancialTimeZone(timeZoneId);
+      final value = await repository.findById(TransactionId(id));
+      if (value == null) {
+        throw RepositoryException(
+          RepositoryFailureCode.notFound,
+          'get transaction',
+        );
+      }
+      return TransactionDto.fromDomain(
+        value,
+        financialDate: _financialDateFor(value, financialTimeZone.id),
       );
-    }
-    return TransactionDto.fromDomain(
-      value,
-      financialDate: _financialDateFor(value, financialTimeZone.id),
-    );
-  });
+    }),
+  );
+
+  Future<ApplicationResult<T>> _runExclusive<T>(
+    Future<ApplicationResult<T>> Function() operation,
+  ) {
+    final gate = consistencyGate;
+    return gate == null ? operation() : gate.runExclusive(operation);
+  }
 }
 
 final class ListTransactions {
-  const ListTransactions(this.repository, {this.preferences});
+  const ListTransactions(
+    this.repository, {
+    this.preferences,
+    this.consistencyGate,
+  });
 
   final TransactionRepository repository;
   final UserPreferenceRepository? preferences;
+  final AnalysisConsistencyGate? consistencyGate;
 
   Future<ApplicationResult<List<TransactionDto>>> call(
     ListTransactionsQuery query,
-  ) => runApplication('list transactions', () async {
-    if (query.from != null &&
-        query.to != null &&
-        query.from!.isAfter(query.to!)) {
-      throw const DomainValidationException(
-        code: DomainErrorCode.invalidRange,
-        field: 'dateRange',
-        message: 'The start of a date range cannot follow its end.',
-      );
-    }
-    final financialTimeZone = query.timeZoneId == null
-        ? await configuredFinancialTimeZone(preferences)
-        : resolveFinancialTimeZone(query.timeZoneId!);
-    final occurredAtBounds = financialInstantRangeForCalendarDates(
-      from: query.from,
-      to: query.to,
-      timeZoneId: financialTimeZone.id,
-    );
-    final values = await repository.query(
-      TransactionRepositoryQuery(
-        text: query.text,
-        transactionIds: query.transactionIds?.map(TransactionId.new).toList(),
+  ) => _runExclusive(
+    () => runApplication('list transactions', () async {
+      if (query.from != null &&
+          query.to != null &&
+          query.from!.isAfter(query.to!)) {
+        throw const DomainValidationException(
+          code: DomainErrorCode.invalidRange,
+          field: 'dateRange',
+          message: 'The start of a date range cannot follow its end.',
+        );
+      }
+      final financialTimeZone = query.timeZoneId == null
+          ? await configuredFinancialTimeZone(preferences)
+          : resolveFinancialTimeZone(query.timeZoneId!);
+      final occurredAtBounds = financialInstantRangeForCalendarDates(
         from: query.from,
         to: query.to,
-        occurredAtFrom: occurredAtBounds.start,
-        occurredAtToExclusive: occurredAtBounds.endExclusive,
-        categoryId: _optional(query.categoryId, CategoryId.new),
-        paymentSourceId: _optional(query.paymentSourceId, PaymentSourceId.new),
-        currency: query.currency,
-        direction: query.direction,
-        status: query.status,
-        needsReview: query.needsReview,
-        uncategorized: query.uncategorized,
-        includeUndated: query.includeUndated,
-      ),
-    );
-    return List.unmodifiable(
-      values.map(
-        (value) => TransactionDto.fromDomain(
-          value,
-          financialDate: _financialDateFor(value, financialTimeZone.id),
+        timeZoneId: financialTimeZone.id,
+      );
+      final values = await repository.query(
+        TransactionRepositoryQuery(
+          text: query.text,
+          transactionIds: query.transactionIds?.map(TransactionId.new).toList(),
+          from: query.from,
+          to: query.to,
+          occurredAtFrom: occurredAtBounds.start,
+          occurredAtToExclusive: occurredAtBounds.endExclusive,
+          categoryId: _optional(query.categoryId, CategoryId.new),
+          paymentSourceId: _optional(
+            query.paymentSourceId,
+            PaymentSourceId.new,
+          ),
+          currency: query.currency,
+          direction: query.direction,
+          status: query.status,
+          needsReview: query.needsReview,
+          uncategorized: query.uncategorized,
+          includeUndated: query.includeUndated,
         ),
-      ),
-    );
-  });
+      );
+      return List.unmodifiable(
+        values.map(
+          (value) => TransactionDto.fromDomain(
+            value,
+            financialDate: _financialDateFor(value, financialTimeZone.id),
+          ),
+        ),
+      );
+    }),
+  );
+
+  Future<ApplicationResult<T>> _runExclusive<T>(
+    Future<ApplicationResult<T>> Function() operation,
+  ) {
+    final gate = consistencyGate;
+    return gate == null ? operation() : gate.runExclusive(operation);
+  }
 }
 
 DateTime? _financialDateFor(Transaction value, String timeZoneId) =>
     transactionFinancialDate(value, timeZoneId);
 
 final class ArchiveTransaction {
-  const ArchiveTransaction(this.repository, this.clock, {this.preferences});
+  const ArchiveTransaction(
+    this.repository,
+    this.clock, {
+    this.preferences,
+    this.consistencyGate,
+  });
 
   final TransactionRepository repository;
   final ApplicationClock clock;
   final UserPreferenceRepository? preferences;
+  final AnalysisConsistencyGate? consistencyGate;
 
   Future<ApplicationResult<TransactionDto>> call(String id) => _mutate(
     repository,
@@ -361,15 +421,22 @@ final class ArchiveTransaction {
     'archive transaction',
     (value) => value.archive(clock.now()),
     preferences: preferences,
+    consistencyGate: consistencyGate,
   );
 }
 
 final class RestoreTransaction {
-  const RestoreTransaction(this.repository, this.clock, {this.preferences});
+  const RestoreTransaction(
+    this.repository,
+    this.clock, {
+    this.preferences,
+    this.consistencyGate,
+  });
 
   final TransactionRepository repository;
   final ApplicationClock clock;
   final UserPreferenceRepository? preferences;
+  final AnalysisConsistencyGate? consistencyGate;
 
   Future<ApplicationResult<TransactionDto>> call(String id) => _mutate(
     repository,
@@ -377,25 +444,28 @@ final class RestoreTransaction {
     'restore transaction',
     (value) => value.restore(clock.now()),
     preferences: preferences,
+    consistencyGate: consistencyGate,
   );
 }
 
 final class DeleteTransactionPermanently {
-  const DeleteTransactionPermanently(this.repository);
+  const DeleteTransactionPermanently(this.repository, {this.consistencyGate});
 
   final TransactionRepository repository;
+  final AnalysisConsistencyGate? consistencyGate;
 
-  Future<ApplicationResult<void>> call(String id) async {
-    final operation = 'delete transaction permanently';
-    final existing = await _find(repository, id, operation);
-    if (existing is ApplicationFailure<Transaction>) {
-      return ApplicationFailure(existing.failure);
-    }
-    return runApplication(
-      operation,
-      () => repository.removePermanently(TransactionId(id)),
-    );
-  }
+  Future<ApplicationResult<void>> call(String id) =>
+      _runExclusive(consistencyGate, () async {
+        final operation = 'delete transaction permanently';
+        final existing = await _find(repository, id, operation);
+        if (existing is ApplicationFailure<Transaction>) {
+          return ApplicationFailure(existing.failure);
+        }
+        return runApplication(
+          operation,
+          () => repository.removePermanently(TransactionId(id)),
+        );
+      });
 }
 
 final class AssignMerchant {
@@ -404,48 +474,57 @@ final class AssignMerchant {
     this.merchants,
     this.clock, {
     this.preferences,
+    this.consistencyGate,
   });
 
   final TransactionRepository repository;
   final MerchantRepository merchants;
   final ApplicationClock clock;
   final UserPreferenceRepository? preferences;
+  final AnalysisConsistencyGate? consistencyGate;
 
   Future<ApplicationResult<TransactionDto>> call(
     String transactionId,
     String? merchantId,
   ) async {
-    return runApplication('assign merchant', () async {
-      if (merchantId != null &&
-          await merchants.findById(MerchantId(merchantId)) == null) {
-        throw const RepositoryException(
-          RepositoryFailureCode.notFound,
-          'assign merchant',
+    return _runExclusive(
+      consistencyGate,
+      () => runApplication('assign merchant', () async {
+        if (merchantId != null &&
+            await merchants.findById(MerchantId(merchantId)) == null) {
+          throw const RepositoryException(
+            RepositoryFailureCode.notFound,
+            'assign merchant',
+          );
+        }
+        final financialTimeZone = await configuredFinancialTimeZone(
+          preferences,
         );
-      }
-      final financialTimeZone = await configuredFinancialTimeZone(preferences);
-      final existing = await repository.findById(TransactionId(transactionId));
-      if (existing == null) {
-        throw const RepositoryException(
-          RepositoryFailureCode.notFound,
-          'assign merchant',
+        final existing = await repository.findById(
+          TransactionId(transactionId),
         );
-      }
-      final now = clock.now();
-      final updated = await synchronizeMerchantReviewIssueBestEffort(
-        existing.assignMerchant(
-          merchantId == null ? null : MerchantId(merchantId),
+        if (existing == null) {
+          throw const RepositoryException(
+            RepositoryFailureCode.notFound,
+            'assign merchant',
+          );
+        }
+        final now = clock.now();
+        final updated = await synchronizeMerchantReviewIssueBestEffort(
+          existing.assignMerchant(
+            merchantId == null ? null : MerchantId(merchantId),
+            now,
+          ),
           now,
-        ),
-        now,
-        merchantRepository: merchants,
-      );
-      await repository.save(updated);
-      return TransactionDto.fromDomain(
-        updated,
-        financialDate: _financialDateFor(updated, financialTimeZone.id),
-      );
-    });
+          merchantRepository: merchants,
+        );
+        await repository.save(updated);
+        return TransactionDto.fromDomain(
+          updated,
+          financialDate: _financialDateFor(updated, financialTimeZone.id),
+        );
+      }),
+    );
   }
 }
 
@@ -455,17 +534,19 @@ final class AssignCategory {
     this.categories,
     this.clock, {
     this.preferences,
+    this.consistencyGate,
   });
 
   final TransactionRepository repository;
   final CategoryRepository categories;
   final ApplicationClock clock;
   final UserPreferenceRepository? preferences;
+  final AnalysisConsistencyGate? consistencyGate;
 
   Future<ApplicationResult<TransactionDto>> call(
     String transactionId,
     String? categoryId,
-  ) async {
+  ) => _runExclusive(consistencyGate, () async {
     if (categoryId != null &&
         await categories.findById(CategoryId(categoryId)) == null) {
       return notFound('assign category');
@@ -479,8 +560,9 @@ final class AssignCategory {
         clock.now(),
       ),
       preferences: preferences,
+      consistencyGate: consistencyGate,
     );
-  }
+  });
 }
 
 final class AssignPaymentSource {
@@ -489,17 +571,19 @@ final class AssignPaymentSource {
     this.sources,
     this.clock, {
     this.preferences,
+    this.consistencyGate,
   });
 
   final TransactionRepository repository;
   final PaymentSourceRepository sources;
   final ApplicationClock clock;
   final UserPreferenceRepository? preferences;
+  final AnalysisConsistencyGate? consistencyGate;
 
   Future<ApplicationResult<TransactionDto>> call(
     String transactionId,
     String? paymentSourceId,
-  ) async {
+  ) => _runExclusive(consistencyGate, () async {
     if (paymentSourceId != null &&
         await sources.findById(PaymentSourceId(paymentSourceId)) == null) {
       return notFound('assign payment source');
@@ -513,22 +597,30 @@ final class AssignPaymentSource {
         clock.now(),
       ),
       preferences: preferences,
+      consistencyGate: consistencyGate,
     );
-  }
+  });
 }
 
 final class AddTag {
-  const AddTag(this.repository, this.tags, this.clock, {this.preferences});
+  const AddTag(
+    this.repository,
+    this.tags,
+    this.clock, {
+    this.preferences,
+    this.consistencyGate,
+  });
 
   final TransactionRepository repository;
   final TagRepository tags;
   final ApplicationClock clock;
   final UserPreferenceRepository? preferences;
+  final AnalysisConsistencyGate? consistencyGate;
 
   Future<ApplicationResult<TransactionDto>> call(
     String transactionId,
     String tagId,
-  ) async {
+  ) => _runExclusive(consistencyGate, () async {
     if (await tags.findById(TagId(tagId)) == null) {
       return notFound('add tag');
     }
@@ -538,16 +630,23 @@ final class AddTag {
       'add tag',
       (value) => value.addTag(TagId(tagId), clock.now()),
       preferences: preferences,
+      consistencyGate: consistencyGate,
     );
-  }
+  });
 }
 
 final class RemoveTag {
-  const RemoveTag(this.repository, this.clock, {this.preferences});
+  const RemoveTag(
+    this.repository,
+    this.clock, {
+    this.preferences,
+    this.consistencyGate,
+  });
 
   final TransactionRepository repository;
   final ApplicationClock clock;
   final UserPreferenceRepository? preferences;
+  final AnalysisConsistencyGate? consistencyGate;
 
   Future<ApplicationResult<TransactionDto>> call(
     String transactionId,
@@ -558,80 +657,99 @@ final class RemoveTag {
     'remove tag',
     (value) => value.removeTag(TagId(tagId), clock.now()),
     preferences: preferences,
+    consistencyGate: consistencyGate,
   );
 }
 
 final class ListReviewItems {
-  const ListReviewItems(this.repository);
+  const ListReviewItems(this.repository, {this.consistencyGate});
 
   final TransactionRepository repository;
+  final AnalysisConsistencyGate? consistencyGate;
 
   Future<ApplicationResult<List<ReviewItemDto>>> call([
     ListReviewItemsQuery query = const ListReviewItemsQuery(),
-  ]) => runApplication('list review items', () async {
-    final scope = query.scope;
-    if (scope.isInvalid || (scope.isScoped && scope.period == null)) {
-      throw const DomainValidationException(
-        code: DomainErrorCode.invalidState,
-        field: 'period',
-        message: 'Review period is invalid.',
-      );
-    }
-    final period = scope.period;
-    final List<Transaction> transactions;
-    if (period == null && repository is ReviewTransactionRepository) {
-      transactions = await (repository as ReviewTransactionRepository)
-          .queryTransactionsForReview();
-    } else {
-      final from = period == null
-          ? null
-          : parseFinancialDateOnly(period.startDate);
-      final to = period == null ? null : parseFinancialDateOnly(period.endDate);
-      if (from != null && to != null && from.isAfter(to)) {
+  ]) => _runExclusive(
+    () => runApplication('list review items', () async {
+      final scope = query.scope;
+      if (scope.isInvalid || (scope.isScoped && scope.period == null)) {
         throw const DomainValidationException(
-          code: DomainErrorCode.invalidRange,
+          code: DomainErrorCode.invalidState,
           field: 'period',
-          message: 'Review period start cannot follow its end.',
+          message: 'Review period is invalid.',
         );
       }
-      final occurredAtBounds = period == null
-          ? const FinancialInstantRange()
-          : financialInstantRangeForCalendarDates(
-              from: from,
-              to: to,
-              timeZoneId: period.timeZoneId,
-            );
-      transactions = await repository.query(
-        TransactionRepositoryQuery(
-          from: from,
-          to: to,
-          occurredAtFrom: occurredAtBounds.start,
-          occurredAtToExclusive: occurredAtBounds.endExclusive,
-          needsReview: true,
-          status: TransactionStatus.active,
+      final period = scope.period;
+      final List<Transaction> transactions;
+      if (period == null && repository is ReviewTransactionRepository) {
+        transactions = await (repository as ReviewTransactionRepository)
+            .queryTransactionsForReview();
+      } else {
+        final from = period == null
+            ? null
+            : parseFinancialDateOnly(period.startDate);
+        final to = period == null
+            ? null
+            : parseFinancialDateOnly(period.endDate);
+        if (from != null && to != null && from.isAfter(to)) {
+          throw const DomainValidationException(
+            code: DomainErrorCode.invalidRange,
+            field: 'period',
+            message: 'Review period start cannot follow its end.',
+          );
+        }
+        final occurredAtBounds = period == null
+            ? const FinancialInstantRange()
+            : financialInstantRangeForCalendarDates(
+                from: from,
+                to: to,
+                timeZoneId: period.timeZoneId,
+              );
+        transactions = await repository.query(
+          TransactionRepositoryQuery(
+            from: from,
+            to: to,
+            occurredAtFrom: occurredAtBounds.start,
+            occurredAtToExclusive: occurredAtBounds.endExclusive,
+            needsReview: true,
+            status: TransactionStatus.active,
+          ),
+        );
+      }
+      return List.unmodifiable(
+        transactions.expand(
+          (transaction) => transaction.reviewIssues
+              .where(
+                (issue) =>
+                    issue.status == ReviewIssueStatus.active &&
+                    (query.reason == null || issue.reason == query.reason),
+              )
+              .map((issue) => ReviewItemDto.fromDomain(transaction, issue)),
         ),
       );
-    }
-    return List.unmodifiable(
-      transactions.expand(
-        (transaction) => transaction.reviewIssues
-            .where(
-              (issue) =>
-                  issue.status == ReviewIssueStatus.active &&
-                  (query.reason == null || issue.reason == query.reason),
-            )
-            .map((issue) => ReviewItemDto.fromDomain(transaction, issue)),
-      ),
-    );
-  });
+    }),
+  );
+
+  Future<ApplicationResult<T>> _runExclusive<T>(
+    Future<ApplicationResult<T>> Function() operation,
+  ) {
+    final gate = consistencyGate;
+    return gate == null ? operation() : gate.runExclusive(operation);
+  }
 }
 
 final class ResolveReviewIssue {
-  const ResolveReviewIssue(this.repository, this.clock, {this.preferences});
+  const ResolveReviewIssue(
+    this.repository,
+    this.clock, {
+    this.preferences,
+    this.consistencyGate,
+  });
 
   final TransactionRepository repository;
   final ApplicationClock clock;
   final UserPreferenceRepository? preferences;
+  final AnalysisConsistencyGate? consistencyGate;
 
   Future<ApplicationResult<TransactionDto>> call(
     String transactionId,
@@ -642,15 +760,22 @@ final class ResolveReviewIssue {
     'resolve review issue',
     (value) => value.resolveReviewIssue(ReviewIssueId(issueId), clock.now()),
     preferences: preferences,
+    consistencyGate: consistencyGate,
   );
 }
 
 final class DismissReviewIssue {
-  const DismissReviewIssue(this.repository, this.clock, {this.preferences});
+  const DismissReviewIssue(
+    this.repository,
+    this.clock, {
+    this.preferences,
+    this.consistencyGate,
+  });
 
   final TransactionRepository repository;
   final ApplicationClock clock;
   final UserPreferenceRepository? preferences;
+  final AnalysisConsistencyGate? consistencyGate;
 
   Future<ApplicationResult<TransactionDto>> call(
     String transactionId,
@@ -661,6 +786,7 @@ final class DismissReviewIssue {
     'dismiss review issue',
     (value) => value.dismissReviewIssue(ReviewIssueId(issueId), clock.now()),
     preferences: preferences,
+    consistencyGate: consistencyGate,
   );
 }
 
@@ -714,8 +840,10 @@ Future<ApplicationResult<TransactionDto>> _mutate(
   String operation,
   Transaction Function(Transaction) change, {
   UserPreferenceRepository? preferences,
-}) async {
-  return runApplication(operation, () async {
+  AnalysisConsistencyGate? consistencyGate,
+}) => _runExclusive(
+  consistencyGate,
+  () => runApplication(operation, () async {
     final financialTimeZone = await configuredFinancialTimeZone(preferences);
     final existing = await repository.findById(TransactionId(id));
     if (existing == null) {
@@ -727,7 +855,15 @@ Future<ApplicationResult<TransactionDto>> _mutate(
       updated,
       financialDate: _financialDateFor(updated, financialTimeZone.id),
     );
-  });
+  }),
+);
+
+Future<ApplicationResult<T>> _runExclusive<T>(
+  AnalysisConsistencyGate? consistencyGate,
+  Future<ApplicationResult<T>> Function() operation,
+) {
+  final gate = consistencyGate;
+  return gate == null ? operation() : gate.runExclusive(operation);
 }
 
 Future<ApplicationResult<Transaction>> _find(

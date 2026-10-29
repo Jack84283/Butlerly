@@ -1,6 +1,7 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
 import '../analysis/canonical_transactions.dart';
+import '../analysis/invalidation.dart';
 import '../analysis/period_resolver.dart';
 import '../dto/recurring_pattern.dart';
 import '../result/application_result.dart';
@@ -17,6 +18,7 @@ final class DetectRecurringPatterns {
     this.candidates,
     this.duplicateGroups,
     this.decisions,
+    this.consistencyGate,
   });
 
   final TransactionRepository transactions;
@@ -25,36 +27,44 @@ final class DetectRecurringPatterns {
   final ReconciliationCandidateRepository? candidates;
   final DuplicateCandidateGroupRepository? duplicateGroups;
   final RecurringPatternDecisionRepository? decisions;
+  final AnalysisConsistencyGate? consistencyGate;
 
   Future<ApplicationResult<List<RecurringPattern>>> call({
     String? timeZoneId,
-  }) => runApplication('detect recurring patterns', () async {
-    final resolvedTimeZone =
-        timeZoneId ?? (await configuredFinancialTimeZone(preferences)).id;
-    final canonical = selectCanonicalTransactions(
-      source: await transactions.listAll(),
-      links: links == null ? const [] : await links!.listAll(),
-      reconciliationCandidates: candidates == null
-          ? null
-          : await candidates!.listAll(),
-      duplicateGroups: duplicateGroups == null
-          ? const []
-          : await duplicateGroups!.list(),
-    );
-    final detected = RecurringPatternDetector(
-      timeZoneId: resolvedTimeZone,
-    ).detect(canonical.transactions, qualityIssues: canonical.qualityIssues);
-    if (decisions == null || detected.isEmpty) return detected;
-    final saved = await decisions!.list();
-    final byKey = {for (final decision in saved) decision.patternKey: decision};
-    final resolved = <RecurringPattern>[];
-    for (final pattern in detected) {
-      final decision = byKey[pattern.patternKey];
-      resolved.add(
-        decision == null ? pattern : pattern.applyDecision(decision),
+  }) => runApplication('detect recurring patterns', () {
+    Future<List<RecurringPattern>> operation() async {
+      final resolvedTimeZone =
+          timeZoneId ?? (await configuredFinancialTimeZone(preferences)).id;
+      final canonical = selectCanonicalTransactions(
+        source: await transactions.listAll(),
+        links: links == null ? const [] : await links!.listAll(),
+        reconciliationCandidates: candidates == null
+            ? null
+            : await candidates!.listAll(),
+        duplicateGroups: duplicateGroups == null
+            ? const []
+            : await duplicateGroups!.list(),
       );
+      final detected = RecurringPatternDetector(
+        timeZoneId: resolvedTimeZone,
+      ).detect(canonical.transactions, qualityIssues: canonical.qualityIssues);
+      if (decisions == null || detected.isEmpty) return detected;
+      final saved = await decisions!.list();
+      final byKey = {
+        for (final decision in saved) decision.patternKey: decision,
+      };
+      final resolved = <RecurringPattern>[];
+      for (final pattern in detected) {
+        final decision = byKey[pattern.patternKey];
+        resolved.add(
+          decision == null ? pattern : pattern.applyDecision(decision),
+        );
+      }
+      return List.unmodifiable(resolved);
     }
-    return List.unmodifiable(resolved);
+
+    final gate = consistencyGate;
+    return gate == null ? operation() : gate.runExclusive(operation);
   });
 }
 

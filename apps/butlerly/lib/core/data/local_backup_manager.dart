@@ -15,6 +15,7 @@ import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/evidence/evidence_mutation_lock.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly_database/butlerly_database.dart' show int64FromBytes;
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common/sqlite_api.dart';
@@ -44,12 +45,14 @@ final class LocalBackupManager {
     BackupDestinationWriter? destinationWriter,
     BackupPublicationRecoveryStore? publicationRecoveryStore,
     BackupPublicationRecoveryState? publicationRecoveryState,
+    AnalysisConsistencyGate? consistencyGate,
     @visibleForTesting
     Future<void> Function(Directory root)? afterStagingRootCreated,
   }) : recoveryState = recoveryState ?? RestoreRecoveryState(localDataManager),
        publicationRecoveryState =
            publicationRecoveryState ?? BackupPublicationRecoveryState(),
        _afterStagingRootCreated = afterStagingRootCreated,
+       _consistencyGate = consistencyGate,
        _engine = engine.LocalBackupManager(database, localDataManager),
        _snapshotWriter = LocalBackupSnapshotWriter(localDataManager),
        _publicationRecovery = BackupPublicationRecoveryManager(
@@ -70,6 +73,7 @@ final class LocalBackupManager {
   final BackupPublicationRecoveryManager _publicationRecovery;
   final BackupDestinationWriter _destinationWriter;
   final Future<void> Function(Directory root)? _afterStagingRootCreated;
+  final AnalysisConsistencyGate? _consistencyGate;
   final BackupEncryption _encryption = const BackupEncryption();
 
   static final _backupMagic = BackupContainerFormat.magic;
@@ -335,11 +339,9 @@ final class LocalBackupManager {
     required engine.LocalRestoreMode mode,
     String? password,
     Future<void> Function()? postActivationRefresh,
-  }) {
+  }) => _runConsistently(() async {
     if (recoveryState.isRecoveryRequired) {
-      return Future<engine.LocalRestoreResult>.error(
-        const RestoreRecoveryRequiredException(),
-      );
+      throw const RestoreRecoveryRequiredException();
     }
 
     return EvidenceMutationLock.runExclusive(() async {
@@ -354,7 +356,7 @@ final class LocalBackupManager {
         await readable.dispose();
       }
     });
-  }
+  });
 
   Future<engine.LocalRestoreResult> _restoreReadableBackup(
     File file, {
@@ -526,7 +528,7 @@ final class LocalBackupManager {
 
   Future<void> recoverControlledState({
     Future<void> Function()? postActivationRefresh,
-  }) async {
+  }) => _runConsistently(() async {
     final incident = recoveryState.incident;
     if (incident == null) return;
 
@@ -576,11 +578,11 @@ final class LocalBackupManager {
       await recoveryState.clear();
       await _pruneSafetyBackupsBestEffort();
     });
-  }
+  });
 
   Future<void> resetControlledRecovery({
     Future<void> Function()? postResetRefresh,
-  }) async {
+  }) => _runConsistently(() async {
     final incident = recoveryState.incident;
     if (incident == null) return;
 
@@ -599,6 +601,11 @@ final class LocalBackupManager {
       } catch (_) {}
       Error.throwWithStackTrace(error, stack);
     }
+  });
+
+  Future<T> _runConsistently<T>(Future<T> Function() operation) {
+    final gate = _consistencyGate;
+    return gate == null ? operation() : gate.runExclusive(operation);
   }
 
   Future<_ReadableBackup> _openReadableBackup(

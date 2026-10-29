@@ -76,6 +76,7 @@ final class StatementServices {
     this.applyRules,
     this.merchants,
     this.invalidateAnalysis,
+    this.consistencyGate,
     required this.duplicateGroups,
     required this.duplicateChecker,
     this.classifier,
@@ -90,6 +91,7 @@ final class StatementServices {
   final ApplyTransactionRules? applyRules;
   final MerchantRepository? merchants;
   final InvalidateAnalysis? invalidateAnalysis;
+  final AnalysisConsistencyGate? consistencyGate;
   final DuplicateCandidateGroupRepository duplicateGroups;
   final DuplicateTransactionChecker duplicateChecker;
   final ProposeTransactionClassification? classifier;
@@ -98,270 +100,275 @@ final class StatementServices {
     FinancialStatement statement,
     List<StatementRow> rows,
     String paymentSourceId,
-  ) => runApplication('assess statement batch', () async {
-    if (statement.paymentSourceId != null &&
-        statement.paymentSourceId != paymentSourceId) {
-      throw const DomainValidationException(
-        code: DomainErrorCode.invalidState,
-        field: 'paymentSourceId',
-        message: 'The selected payment source does not match the statement.',
-      );
-    }
-    final possibleDuplicateRowIds = <String>{
-      ..._sameBatchDuplicateRowIds(rows),
-    };
-    var duplicateCheckUnavailableCount = 0;
-    for (final row in rows) {
-      if (row.amount == null ||
-          row.currency == null ||
-          row.transactionDate == null ||
-          row.direction == null) {
-        continue;
+  ) => _runExclusive(
+    () => runApplication('assess statement batch', () async {
+      if (statement.paymentSourceId != null &&
+          statement.paymentSourceId != paymentSourceId) {
+        throw const DomainValidationException(
+          code: DomainErrorCode.invalidState,
+          field: 'paymentSourceId',
+          message: 'The selected payment source does not match the statement.',
+        );
       }
-      final result = await duplicates(
-        row,
-        excludeTransactionId: _transactionIdForRow(row),
-      );
-      if (result case ApplicationSuccess<DuplicateTransactionCheckResult>(
-        value: final value,
-      ) when value.candidates.isNotEmpty) {
-        possibleDuplicateRowIds.add(row.id);
-      } else if (result
-          is ApplicationFailure<DuplicateTransactionCheckResult>) {
-        duplicateCheckUnavailableCount++;
+      final possibleDuplicateRowIds = <String>{
+        ..._sameBatchDuplicateRowIds(rows),
+      };
+      var duplicateCheckUnavailableCount = 0;
+      for (final row in rows) {
+        if (row.amount == null ||
+            row.currency == null ||
+            row.transactionDate == null ||
+            row.direction == null) {
+          continue;
+        }
+        final result = await duplicates(
+          row,
+          excludeTransactionId: _transactionIdForRow(row),
+        );
+        if (result case ApplicationSuccess<DuplicateTransactionCheckResult>(
+          value: final value,
+        ) when value.candidates.isNotEmpty) {
+          possibleDuplicateRowIds.add(row.id);
+        } else if (result
+            is ApplicationFailure<DuplicateTransactionCheckResult>) {
+          duplicateCheckUnavailableCount++;
+        }
       }
-    }
-    final valid = rows.where(
-      (row) =>
-          row.amount != null &&
-          row.currency != null &&
-          row.transactionDate != null &&
-          row.direction != null,
-    );
-    final currencies = valid.map((row) => row.currency!).toSet();
-    String? aggregate;
-    String? currency;
-    if (currencies.length == 1) {
-      currency = currencies.single;
-      aggregate = DecimalValue.sum(
-        valid.map((row) => DecimalValue.parse(row.amount!)),
-      ).toString();
-    }
-    return StatementImportAssessment(
-      candidateCount: rows.length,
-      aggregateAmount: aggregate,
-      currency: currency,
-      lowConfidenceCount: rows
-          .where((row) => intakePolicy.needsConfidenceReview(row.confidence))
-          .length,
-      possibleDuplicateCount: possibleDuplicateRowIds.length,
-      duplicateCheckUnavailableCount: duplicateCheckUnavailableCount,
-      invalidCount: rows.length - valid.length,
-    );
-  });
+      final valid = rows.where(
+        (row) =>
+            row.amount != null &&
+            row.currency != null &&
+            row.transactionDate != null &&
+            row.direction != null,
+      );
+      final currencies = valid.map((row) => row.currency!).toSet();
+      String? aggregate;
+      String? currency;
+      if (currencies.length == 1) {
+        currency = currencies.single;
+        aggregate = DecimalValue.sum(
+          valid.map((row) => DecimalValue.parse(row.amount!)),
+        ).toString();
+      }
+      return StatementImportAssessment(
+        candidateCount: rows.length,
+        aggregateAmount: aggregate,
+        currency: currency,
+        lowConfidenceCount: rows
+            .where((row) => intakePolicy.needsConfidenceReview(row.confidence))
+            .length,
+        possibleDuplicateCount: possibleDuplicateRowIds.length,
+        duplicateCheckUnavailableCount: duplicateCheckUnavailableCount,
+        invalidCount: rows.length - valid.length,
+      );
+    }),
+  );
 
   Future<ApplicationResult<StatementImportSummary>> importBatch(
     FinancialStatement statement,
     List<StatementRow> rows,
     String paymentSourceId,
-  ) => runApplication('import statement batch', () async {
-    if (statement.paymentSourceId != null &&
-        statement.paymentSourceId != paymentSourceId) {
-      throw const DomainValidationException(
-        code: DomainErrorCode.invalidState,
-        field: 'paymentSourceId',
-        message: 'The selected payment source does not match the statement.',
-      );
-    }
-    var imported = 0;
-    var needsReview = 0;
-    var possibleDuplicates = 0;
-    var failed = 0;
-    final duplicateRowIds = <String>{};
-    final duplicateMetadataRowIds = <String>{};
-    final duplicateCandidateIdsByRow = <String, List<String>>{};
-    final exceptionReasons = <String, String>{};
-    final sameBatchDuplicateRows = _sameBatchDuplicateRowIds(rows);
-    final persistedRows = {
-      for (final value in await statements.listRows(statement.id))
-        value.id: value,
-    };
-    final prepared = <StatementRowTransaction>[];
-    for (final row in rows) {
-      if (row.amount == null ||
-          row.currency == null ||
-          row.transactionDate == null ||
-          row.direction == null) {
-        failed++;
-        exceptionReasons[row.id] = 'statementInvalidRow';
-        continue;
+  ) => _runExclusive(
+    () => runApplication('import statement batch', () async {
+      if (statement.paymentSourceId != null &&
+          statement.paymentSourceId != paymentSourceId) {
+        throw const DomainValidationException(
+          code: DomainErrorCode.invalidState,
+          field: 'paymentSourceId',
+          message: 'The selected payment source does not match the statement.',
+        );
       }
-      final transactionId = _transactionIdForRow(row);
-      final persisted = persistedRows[row.id];
-      final committed =
-          persisted?.status == StatementRowStatus.saved ||
-          persisted?.status == StatementRowStatus.linked ||
-          row.status == StatementRowStatus.saved ||
-          row.status == StatementRowStatus.linked;
-      if (persisted?.status == StatementRowStatus.deferred ||
-          persisted?.status == StatementRowStatus.skipped) {
-        // A retry must not reopen an explicit review decision. The metadata
-        // repair below removes the row from any pending duplicate group while
-        // preserving the user's disposition and retained candidate evidence.
-        duplicateMetadataRowIds.add(row.id);
-        continue;
-      }
-      if (!committed &&
-          persisted?.status == StatementRowStatus.unresolved &&
-          persisted?.reviewReason == 'statementDuplicateCandidate') {
-        final candidateIds = await _candidateTransactionIdsForRow(row);
-        if (candidateIds.isNotEmpty) {
-          // A pending statement duplicate may retain the existing candidate ID
-          // as evidence, but it is not linked until the user explicitly chooses
-          // Link, Skip/Defer, or Create New.
+      var imported = 0;
+      var needsReview = 0;
+      var possibleDuplicates = 0;
+      var failed = 0;
+      final duplicateRowIds = <String>{};
+      final duplicateMetadataRowIds = <String>{};
+      final duplicateCandidateIdsByRow = <String, List<String>>{};
+      final exceptionReasons = <String, String>{};
+      final sameBatchDuplicateRows = _sameBatchDuplicateRowIds(rows);
+      final persistedRows = {
+        for (final value in await statements.listRows(statement.id))
+          value.id: value,
+      };
+      final prepared = <StatementRowTransaction>[];
+      for (final row in rows) {
+        if (row.amount == null ||
+            row.currency == null ||
+            row.transactionDate == null ||
+            row.direction == null) {
+          failed++;
+          exceptionReasons[row.id] = 'statementInvalidRow';
+          continue;
+        }
+        final transactionId = _transactionIdForRow(row);
+        final persisted = persistedRows[row.id];
+        final committed =
+            persisted?.status == StatementRowStatus.saved ||
+            persisted?.status == StatementRowStatus.linked ||
+            row.status == StatementRowStatus.saved ||
+            row.status == StatementRowStatus.linked;
+        if (persisted?.status == StatementRowStatus.deferred ||
+            persisted?.status == StatementRowStatus.skipped) {
+          // A retry must not reopen an explicit review decision. The metadata
+          // repair below removes the row from any pending duplicate group while
+          // preserving the user's disposition and retained candidate evidence.
+          duplicateMetadataRowIds.add(row.id);
+          continue;
+        }
+        if (!committed &&
+            persisted?.status == StatementRowStatus.unresolved &&
+            persisted?.reviewReason == 'statementDuplicateCandidate') {
+          final candidateIds = await _candidateTransactionIdsForRow(row);
+          if (candidateIds.isNotEmpty) {
+            // A pending statement duplicate may retain the existing candidate ID
+            // as evidence, but it is not linked until the user explicitly chooses
+            // Link, Skip/Defer, or Create New.
+            possibleDuplicates++;
+            duplicateRowIds.add(row.id);
+            duplicateCandidateIdsByRow[row.id] = candidateIds;
+            exceptionReasons[row.id] = 'statementDuplicateCandidate';
+            continue;
+          }
+        }
+        final existingTransactionId =
+            (persisted?.reviewReason == 'statementDuplicateCandidate'
+                ? transactionId
+                : persisted?.transactionId) ??
+            (committed ? row.transactionId : null) ??
+            transactionId;
+        final existing = await transactions.findById(
+          TransactionId(existingTransactionId),
+        );
+        if (existing != null) {
+          // A retry of a committed row is idempotent even if a newer matching
+          // transaction now exists. Repair only the duplicate metadata; never
+          // reopen the statement row or overwrite the user's corrections.
+          duplicateMetadataRowIds.add(row.id);
+          continue;
+        }
+        if (sameBatchDuplicateRows.contains(row.id)) {
           possibleDuplicates++;
           duplicateRowIds.add(row.id);
-          duplicateCandidateIdsByRow[row.id] = candidateIds;
           exceptionReasons[row.id] = 'statementDuplicateCandidate';
           continue;
         }
-      }
-      final existingTransactionId =
-          (persisted?.reviewReason == 'statementDuplicateCandidate'
-              ? transactionId
-              : persisted?.transactionId) ??
-          (committed ? row.transactionId : null) ??
-          transactionId;
-      final existing = await transactions.findById(
-        TransactionId(existingTransactionId),
-      );
-      if (existing != null) {
-        // A retry of a committed row is idempotent even if a newer matching
-        // transaction now exists. Repair only the duplicate metadata; never
-        // reopen the statement row or overwrite the user's corrections.
-        duplicateMetadataRowIds.add(row.id);
-        continue;
-      }
-      if (sameBatchDuplicateRows.contains(row.id)) {
-        possibleDuplicates++;
-        duplicateRowIds.add(row.id);
-        exceptionReasons[row.id] = 'statementDuplicateCandidate';
-        continue;
-      }
-      final duplicateResult = await duplicates(
-        row,
-        excludeTransactionId: transactionId,
-      );
-      if (duplicateResult
-          case ApplicationSuccess<DuplicateTransactionCheckResult>(
-            value: final duplicate,
-          ) when duplicate.candidates.isNotEmpty) {
-        // Batch import is exception-first. A suspected duplicate remains a
-        // pending statement row until the user explicitly links it or chooses
-        // to create a separate transaction from the row review flow.
-        possibleDuplicates++;
-        duplicateRowIds.add(row.id);
-        duplicateCandidateIdsByRow[row.id] = duplicate.candidates
-            .map((candidate) => candidate.transaction.id)
-            .toList(growable: false);
-        exceptionReasons[row.id] = 'statementDuplicateCandidate';
-        continue;
-      }
-      if (duplicateResult
-          is ApplicationFailure<DuplicateTransactionCheckResult>) {
-        failed++;
-        exceptionReasons[row.id] = 'statementDuplicateCheckUnavailable';
-        continue;
-      }
-      final transaction = await _prepareTransaction(
-        row,
-        paymentSourceId,
-        allowCreateNew: true,
-      );
-      final now = clock.now();
-      prepared.add(
-        StatementRowTransaction(
-          row: _copy(
-            row,
-            status: StatementRowStatus.saved,
-            transactionId: transaction.value.id.value,
-            dispositionReason: 'createNew',
-            updatedAt: now,
-          ),
-          transaction: transaction.value,
-        ),
-      );
-      imported++;
-      if (intakePolicy.needsConfidenceReview(row.confidence) ||
-          row.status == StatementRowStatus.unresolved) {
-        needsReview++;
-      }
-    }
-    await workflow.saveRowTransactions(prepared);
-    if (prepared.isNotEmpty) await _invalidateAnalysis();
-    for (final entry in exceptionReasons.entries) {
-      final row = rows.where((value) => value.id == entry.key).firstOrNull;
-      if (row == null) continue;
-      try {
-        await _markStatementException(row, entry.value);
-      } on Object {
-        // Keep the committed summary, but surface that the exception marker
-        // itself could not be persisted for a later retry.
-        failed++;
-      }
-    }
-    for (final row in rows) {
-      if (!duplicateRowIds.contains(row.id) &&
-          !duplicateMetadataRowIds.contains(row.id)) {
-        continue;
-      }
-      try {
-        final repairRow = duplicateMetadataRowIds.contains(row.id)
-            ? persistedRows[row.id] ?? row
-            : row;
-        final pendingRows = duplicateRowIds
-            .map((id) => rows.where((value) => value.id == id).firstOrNull)
-            .whereType<StatementRow>()
-            .where(
-              (value) =>
-                  value.amount != null &&
-                  value.currency != null &&
-                  value.transactionDate != null &&
-                  value.direction != null &&
-                  repairRow.amount != null &&
-                  repairRow.currency != null &&
-                  repairRow.transactionDate != null &&
-                  repairRow.direction != null &&
-                  _duplicateKeyForRow(value) == _duplicateKeyForRow(repairRow),
-            )
-            .map(
-              (value) => DuplicateCandidateStatementRow(
-                statementId: value.statementId,
-                rowId: value.id,
-              ),
-            )
-            .toList(growable: false);
-        await _repairDuplicateReview(
-          repairRow,
-          candidateTransactionIds: duplicateCandidateIdsByRow[repairRow.id],
-          pendingStatementRows: duplicateRowIds.contains(row.id)
-              ? pendingRows
-              : const [],
+        final duplicateResult = await duplicates(
+          row,
+          excludeTransactionId: transactionId,
         );
-      } on Object {
-        // Valid rows have already been committed. Return their summary and
-        // expose this metadata failure instead of hiding committed work in an
-        // application failure that invites an unsafe retry.
-        failed++;
+        if (duplicateResult
+            case ApplicationSuccess<DuplicateTransactionCheckResult>(
+              value: final duplicate,
+            ) when duplicate.candidates.isNotEmpty) {
+          // Batch import is exception-first. A suspected duplicate remains a
+          // pending statement row until the user explicitly links it or chooses
+          // to create a separate transaction from the row review flow.
+          possibleDuplicates++;
+          duplicateRowIds.add(row.id);
+          duplicateCandidateIdsByRow[row.id] = duplicate.candidates
+              .map((candidate) => candidate.transaction.id)
+              .toList(growable: false);
+          exceptionReasons[row.id] = 'statementDuplicateCandidate';
+          continue;
+        }
+        if (duplicateResult
+            is ApplicationFailure<DuplicateTransactionCheckResult>) {
+          failed++;
+          exceptionReasons[row.id] = 'statementDuplicateCheckUnavailable';
+          continue;
+        }
+        final transaction = await _prepareTransaction(
+          row,
+          paymentSourceId,
+          allowCreateNew: true,
+        );
+        final now = clock.now();
+        prepared.add(
+          StatementRowTransaction(
+            row: _copy(
+              row,
+              status: StatementRowStatus.saved,
+              transactionId: transaction.value.id.value,
+              dispositionReason: 'createNew',
+              updatedAt: now,
+            ),
+            transaction: transaction.value,
+          ),
+        );
+        imported++;
+        if (intakePolicy.needsConfidenceReview(row.confidence) ||
+            row.status == StatementRowStatus.unresolved) {
+          needsReview++;
+        }
       }
-    }
-    return StatementImportSummary(
-      imported: imported,
-      needsReview: needsReview,
-      possibleDuplicates: possibleDuplicates,
-      failed: failed,
-    );
-  });
+      if (prepared.isNotEmpty) await _invalidateAnalysis();
+      await workflow.saveRowTransactions(prepared);
+      for (final entry in exceptionReasons.entries) {
+        final row = rows.where((value) => value.id == entry.key).firstOrNull;
+        if (row == null) continue;
+        try {
+          await _markStatementException(row, entry.value);
+        } on Object {
+          // Keep the committed summary, but surface that the exception marker
+          // itself could not be persisted for a later retry.
+          failed++;
+        }
+      }
+      for (final row in rows) {
+        if (!duplicateRowIds.contains(row.id) &&
+            !duplicateMetadataRowIds.contains(row.id)) {
+          continue;
+        }
+        try {
+          final repairRow = duplicateMetadataRowIds.contains(row.id)
+              ? persistedRows[row.id] ?? row
+              : row;
+          final pendingRows = duplicateRowIds
+              .map((id) => rows.where((value) => value.id == id).firstOrNull)
+              .whereType<StatementRow>()
+              .where(
+                (value) =>
+                    value.amount != null &&
+                    value.currency != null &&
+                    value.transactionDate != null &&
+                    value.direction != null &&
+                    repairRow.amount != null &&
+                    repairRow.currency != null &&
+                    repairRow.transactionDate != null &&
+                    repairRow.direction != null &&
+                    _duplicateKeyForRow(value) ==
+                        _duplicateKeyForRow(repairRow),
+              )
+              .map(
+                (value) => DuplicateCandidateStatementRow(
+                  statementId: value.statementId,
+                  rowId: value.id,
+                ),
+              )
+              .toList(growable: false);
+          await _repairDuplicateReview(
+            repairRow,
+            candidateTransactionIds: duplicateCandidateIdsByRow[repairRow.id],
+            pendingStatementRows: duplicateRowIds.contains(row.id)
+                ? pendingRows
+                : const [],
+          );
+        } on Object {
+          // Valid rows have already been committed. Return their summary and
+          // expose this metadata failure instead of hiding committed work in an
+          // application failure that invites an unsafe retry.
+          failed++;
+        }
+      }
+      return StatementImportSummary(
+        imported: imported,
+        needsReview: needsReview,
+        possibleDuplicates: possibleDuplicates,
+        failed: failed,
+      );
+    }),
+  );
 
   Future<ApplicationResult<StatementImportSummary>> importRows(
     FinancialStatement statement,
@@ -403,102 +410,123 @@ final class StatementServices {
     () => statements.saveStatementWithRows(statement, rows),
   );
 
-  Future<ApplicationResult<List<FinancialStatement>>> list() =>
-      runApplication('list statements', () => statements.listStatements());
+  Future<ApplicationResult<List<FinancialStatement>>> list() => _runExclusive(
+    () => runApplication('list statements', () => statements.listStatements()),
+  );
 
   Future<ApplicationResult<List<StatementReviewException>>>
-  reviewExceptions() =>
-      runApplication('list statement review exceptions', () async {
-        final result = <StatementReviewException>[];
-        final duplicateReferences = {
-          for (final group in await duplicateGroups.list())
-            for (final reference in group.statementRows) reference.canonical,
-        };
-        for (final statement in await statements.listStatements()) {
-          for (final row in await statements.listRows(statement.id)) {
-            if (row.status != StatementRowStatus.unresolved ||
-                (row.reviewReason == 'statementDuplicateCandidate' &&
-                    duplicateReferences.contains(
-                      '${row.statementId}:${row.id}',
-                    ))) {
-              continue;
-            }
-            result.add(
-              StatementReviewException(
-                statementId: statement.id,
-                rowId: row.id,
-                description: row.description,
-                originalText: row.originalText,
-                reason: row.reviewReason,
-              ),
-            );
+  reviewExceptions() => _runExclusive(
+    () => runApplication('list statement review exceptions', () async {
+      final result = <StatementReviewException>[];
+      final duplicateReferences = {
+        for (final group in await duplicateGroups.list())
+          for (final reference in group.statementRows) reference.canonical,
+      };
+      for (final statement in await statements.listStatements()) {
+        for (final row in await statements.listRows(statement.id)) {
+          if (row.status != StatementRowStatus.unresolved ||
+              (row.reviewReason == 'statementDuplicateCandidate' &&
+                  duplicateReferences.contains(
+                    '${row.statementId}:${row.id}',
+                  ))) {
+            continue;
           }
-        }
-        return List.unmodifiable(result);
-      });
-
-  Future<ApplicationResult<List<StatementRow>>> rows(String id) =>
-      runApplication('list statement rows', () => statements.listRows(id));
-
-  Future<ApplicationResult<String?>> paymentSourceId(String statementId) =>
-      runApplication('read statement payment source', () async {
-        final statement = await statements.findStatement(statementId);
-        if (statement == null) {
-          throw const RepositoryException(
-            RepositoryFailureCode.notFound,
-            'read statement payment source',
+          result.add(
+            StatementReviewException(
+              statementId: statement.id,
+              rowId: row.id,
+              description: row.description,
+              originalText: row.originalText,
+              reason: row.reviewReason,
+            ),
           );
         }
-        return statement.paymentSourceId;
-      });
+      }
+      return List.unmodifiable(result);
+    }),
+  );
+
+  Future<ApplicationResult<List<StatementRow>>> rows(String id) =>
+      _runExclusive(
+        () => runApplication(
+          'list statement rows',
+          () => statements.listRows(id),
+        ),
+      );
+
+  Future<ApplicationResult<String?>> paymentSourceId(String statementId) =>
+      _runExclusive(
+        () => runApplication('read statement payment source', () async {
+          final statement = await statements.findStatement(statementId);
+          if (statement == null) {
+            throw const RepositoryException(
+              RepositoryFailureCode.notFound,
+              'read statement payment source',
+            );
+          }
+          return statement.paymentSourceId;
+        }),
+      );
 
   Future<ApplicationResult<void>> addRows(List<StatementRow> rows) =>
-      runApplication('add statement rows', () => statements.saveRows(rows));
+      _runExclusive(
+        () => runApplication(
+          'add statement rows',
+          () => statements.saveRows(rows),
+        ),
+      );
 
   Future<ApplicationResult<void>> assignSource(String id, String sourceId) =>
-      runApplication(
-        'assign statement payment source',
-        () => statements.assignPaymentSource(id, sourceId, clock.now()),
+      _runExclusive(
+        () => runApplication(
+          'assign statement payment source',
+          () => statements.assignPaymentSource(id, sourceId, clock.now()),
+        ),
       );
 
   Future<ApplicationResult<bool>> canDeleteStatement(String id) =>
-      runApplication('check statement deletion eligibility', () async {
-        final statement = await statements.findStatement(id);
-        if (statement == null) {
-          throw const RepositoryException(
-            RepositoryFailureCode.notFound,
-            'check statement deletion eligibility',
-          );
-        }
-        return statements.canDeleteStatement(id);
-      });
+      _runExclusive(
+        () => runApplication('check statement deletion eligibility', () async {
+          final statement = await statements.findStatement(id);
+          if (statement == null) {
+            throw const RepositoryException(
+              RepositoryFailureCode.notFound,
+              'check statement deletion eligibility',
+            );
+          }
+          return statements.canDeleteStatement(id);
+        }),
+      );
 
   Future<ApplicationResult<EvidenceItem?>> deleteStatement(String id) =>
-      runApplication('delete unprocessed statement', () async {
-        final statement = await statements.findStatement(id);
-        if (statement == null) {
-          throw const RepositoryException(
-            RepositoryFailureCode.notFound,
-            'delete statement',
-          );
-        }
-        if (!await statements.canDeleteStatement(id)) {
-          throw const DomainValidationException(
-            code: DomainErrorCode.invalidState,
-            field: 'statement',
-            message: 'A processed statement cannot be deleted safely.',
-          );
-        }
-        final evidenceRepository = evidence;
-        final ownedEvidence = evidenceRepository == null
-            ? null
-            : await evidenceRepository.findById(
-                EvidenceId(statement.evidenceId),
-              );
-        await _removeStatementDuplicateReferences(id);
-        await statements.removeStatement(id);
-        return ownedEvidence;
-      });
+      _runExclusive(
+        () => runApplication('delete unprocessed statement', () async {
+          final statement = await statements.findStatement(id);
+          if (statement == null) {
+            throw const RepositoryException(
+              RepositoryFailureCode.notFound,
+              'delete statement',
+            );
+          }
+          if (!await statements.canDeleteStatement(id)) {
+            throw const DomainValidationException(
+              code: DomainErrorCode.invalidState,
+              field: 'statement',
+              message: 'A processed statement cannot be deleted safely.',
+            );
+          }
+          final evidenceRepository = evidence;
+          final ownedEvidence = evidenceRepository == null
+              ? null
+              : await evidenceRepository.findById(
+                  EvidenceId(statement.evidenceId),
+                );
+          await _invalidateAnalysis();
+          await _removeStatementDuplicateReferences(id);
+          await statements.removeStatement(id);
+          return ownedEvidence;
+        }),
+      );
 
   // Abandonment currently reuses the relationship-safe deletion primitive;
   // keeping the operation separate at the application boundary preserves the
@@ -513,59 +541,55 @@ final class StatementServices {
   Future<ApplicationResult<void>> setDisposition(
     StatementRow row,
     StatementRowStatus status,
-  ) => runApplication('update statement row', () async {
-    final previous =
-        status == StatementRowStatus.skipped &&
-            row.status != StatementRowStatus.skipped
-        ? row.status
-        : row.status == StatementRowStatus.skipped
-        ? row.statusBeforeSkip
-        : null;
-    final updated = _copy(
-      row,
-      status: status,
-      statusBeforeSkip: previous,
-      clearStatusBeforeSkip:
-          row.status == StatementRowStatus.skipped &&
-          status != StatementRowStatus.skipped,
-      clearTransactionId:
-          status == StatementRowStatus.deferred ||
-          status == StatementRowStatus.skipped,
-      updatedAt: clock.now(),
-    );
-    await statements.updateRow(updated);
-    final hasDuplicateFacts =
-        updated.amount != null &&
-        updated.currency != null &&
-        updated.transactionDate != null &&
-        updated.direction != null;
-    if (status == StatementRowStatus.unresolved) {
-      if (hasDuplicateFacts) {
-        final activeIds = await duplicateGroups.findActiveTransactionIdsForKey(
-          _duplicateKeyForRow(updated),
-        );
-        if (activeIds.isNotEmpty) {
-          await _repairDuplicateReview(
-            updated,
-            pendingStatementRows: [
-              DuplicateCandidateStatementRow(
-                statementId: updated.statementId,
-                rowId: updated.id,
-              ),
-            ],
-          );
+  ) => _runExclusive(
+    () => runApplication('update statement row', () async {
+      final previous =
+          status == StatementRowStatus.skipped &&
+              row.status != StatementRowStatus.skipped
+          ? row.status
+          : row.status == StatementRowStatus.skipped
+          ? row.statusBeforeSkip
+          : null;
+      final updated = _copy(
+        row,
+        status: status,
+        statusBeforeSkip: previous,
+        clearStatusBeforeSkip:
+            row.status == StatementRowStatus.skipped &&
+            status != StatementRowStatus.skipped,
+        clearTransactionId:
+            status == StatementRowStatus.deferred ||
+            status == StatementRowStatus.skipped,
+        updatedAt: clock.now(),
+      );
+      await _invalidateAnalysis();
+      await statements.updateRow(updated);
+      final hasDuplicateFacts =
+          updated.amount != null &&
+          updated.currency != null &&
+          updated.transactionDate != null &&
+          updated.direction != null;
+      if (status == StatementRowStatus.unresolved) {
+        if (hasDuplicateFacts) {
+          final activeIds = await duplicateGroups
+              .findActiveTransactionIdsForKey(_duplicateKeyForRow(updated));
+          if (activeIds.isNotEmpty) {
+            await _repairDuplicateReview(
+              updated,
+              pendingStatementRows: [
+                DuplicateCandidateStatementRow(
+                  statementId: updated.statementId,
+                  rowId: updated.id,
+                ),
+              ],
+            );
+          }
         }
+      } else if (hasDuplicateFacts) {
+        await _repairDuplicateReview(updated);
       }
-    } else if (hasDuplicateFacts) {
-      await _repairDuplicateReview(updated);
-      await _invalidateAnalysis();
-    } else {
-      await _invalidateAnalysis();
-    }
-    if (status == StatementRowStatus.unresolved) {
-      await _invalidateAnalysis();
-    }
-  });
+    }),
+  );
 
   Future<ApplicationResult<void>> toggleSkipRestore(StatementRow row) {
     final target = row.status == StatementRowStatus.skipped
@@ -574,12 +598,12 @@ final class StatementServices {
     return setDisposition(row, target);
   }
 
-  Future<ApplicationResult<void>> correct(StatementRow row) => runApplication(
-    'correct statement row',
-    () async {
+  Future<ApplicationResult<void>> correct(StatementRow row) => _runExclusive(
+    () => runApplication('correct statement row', () async {
       final previous = (await statements.listRows(
         row.statementId,
       )).where((value) => value.id == row.id).firstOrNull;
+      await _invalidateAnalysis();
       await statements.updateRow(row);
       if (previous == null) {
         return;
@@ -620,163 +644,173 @@ final class StatementServices {
           );
         }
       }
-      await _invalidateAnalysis();
-    },
+    }),
   );
 
   Future<ApplicationResult<List<ReconciliationMatchCandidate>>> likelyMatches(
     StatementRow row,
     String paymentSourceId,
-  ) => runApplication('cross-check statement row', () async {
-    if (row.amount == null ||
-        row.currency == null ||
-        row.transactionDate == null) {
-      return const [];
-    }
-    final result = await FindReceiptPaymentMatch(transactions).callAll(
-      ReceiptPaymentMatchCommand(
-        amount: Money(
-          amount: DecimalValue.parse(row.amount!),
-          currency: CurrencyCode(row.currency!),
-        ),
-        currency: row.currency!,
-        transactionDate: row.transactionDate!.toIso8601String().substring(
-          0,
-          10,
-        ),
-        merchant: row.description,
-        paymentSourceId: paymentSourceId,
-        direction: _directionForRow(row),
-      ),
-    );
-    return switch (result) {
-      ApplicationSuccess<List<ReconciliationMatchCandidate>>(:final value) =>
-        value,
-      ApplicationFailure<List<ReconciliationMatchCandidate>>() => const [],
-    };
-  });
+  ) => _runExclusive(
+    () => runApplication('cross-check statement row', () async {
+      if (row.amount == null ||
+          row.currency == null ||
+          row.transactionDate == null) {
+        return const [];
+      }
+      final result =
+          await FindReceiptPaymentMatch(
+            transactions,
+            consistencyGate: consistencyGate,
+          ).callAll(
+            ReceiptPaymentMatchCommand(
+              amount: Money(
+                amount: DecimalValue.parse(row.amount!),
+                currency: CurrencyCode(row.currency!),
+              ),
+              currency: row.currency!,
+              transactionDate: row.transactionDate!.toIso8601String().substring(
+                0,
+                10,
+              ),
+              merchant: row.description,
+              paymentSourceId: paymentSourceId,
+              direction: _directionForRow(row),
+            ),
+          );
+      return switch (result) {
+        ApplicationSuccess<List<ReconciliationMatchCandidate>>(:final value) =>
+          value,
+        ApplicationFailure<List<ReconciliationMatchCandidate>>() => const [],
+      };
+    }),
+  );
 
   Future<ApplicationResult<void>> link(
     StatementRow row,
     String transactionId,
-  ) => runApplication('link statement row', () async {
-    final statement = await statements.findStatement(row.statementId);
-    if (statement == null) {
-      throw const RepositoryException(
-        RepositoryFailureCode.notFound,
-        'link statement row: statement',
-      );
-    }
-    final persisted = (await statements.listRows(
-      row.statementId,
-    )).where((value) => value.id == row.id).firstOrNull;
-    final alreadyLinked =
-        persisted?.status == StatementRowStatus.linked &&
-        persisted?.transactionId == transactionId;
-    if (persisted?.status == StatementRowStatus.linked && !alreadyLinked) {
-      throw const DomainValidationException(
-        code: DomainErrorCode.invalidState,
-        field: 'transactionId',
-        message: 'The statement row is already linked to another transaction.',
-      );
-    }
-    final linked = alreadyLinked
-        ? persisted!
-        : _copy(
-            row,
-            status: StatementRowStatus.linked,
-            transactionId: transactionId,
-            dispositionReason: 'linkExisting',
-            updatedAt: clock.now(),
-          );
-    if (!alreadyLinked) await workflow.linkRow(linked);
-    await _invalidateAnalysis();
-    await _linkStatementEvidence(statement, transactionId);
-    await _repairDuplicateReview(linked);
-  });
+  ) => _runExclusive(
+    () => runApplication('link statement row', () async {
+      final statement = await statements.findStatement(row.statementId);
+      if (statement == null) {
+        throw const RepositoryException(
+          RepositoryFailureCode.notFound,
+          'link statement row: statement',
+        );
+      }
+      final persisted = (await statements.listRows(
+        row.statementId,
+      )).where((value) => value.id == row.id).firstOrNull;
+      final alreadyLinked =
+          persisted?.status == StatementRowStatus.linked &&
+          persisted?.transactionId == transactionId;
+      if (persisted?.status == StatementRowStatus.linked && !alreadyLinked) {
+        throw const DomainValidationException(
+          code: DomainErrorCode.invalidState,
+          field: 'transactionId',
+          message:
+              'The statement row is already linked to another transaction.',
+        );
+      }
+      final linked = alreadyLinked
+          ? persisted!
+          : _copy(
+              row,
+              status: StatementRowStatus.linked,
+              transactionId: transactionId,
+              dispositionReason: 'linkExisting',
+              updatedAt: clock.now(),
+            );
+      await _invalidateAnalysis();
+      if (!alreadyLinked) await workflow.linkRow(linked);
+      await _linkStatementEvidence(statement, transactionId);
+      await _repairDuplicateReview(linked);
+    }),
+  );
 
   Future<ApplicationResult<TransactionDto>> save(
     StatementRow row,
     String paymentSourceId, {
     bool allowCreateNew = false,
-  }) => runApplication('save statement row', () async {
-    final statement = await statements.findStatement(row.statementId);
-    if (statement == null) {
-      throw const RepositoryException(
-        RepositoryFailureCode.notFound,
-        'save statement row: statement',
-      );
-    }
-    if ((row.status == StatementRowStatus.saved ||
-            row.status == StatementRowStatus.linked) &&
-        row.transactionId != null) {
-      final existing = await transactions.findById(
-        TransactionId(row.transactionId!),
-      );
-      if (existing != null) {
-        await _invalidateAnalysis();
-        await _linkStatementEvidence(statement, existing.id.value);
-        await _repairDuplicateReview(
-          row,
-          resolvedStatus: allowCreateNew
-              ? DuplicateCandidateGroupStatus.keepBoth
-              : null,
+  }) => _runExclusive(
+    () => runApplication('save statement row', () async {
+      final statement = await statements.findStatement(row.statementId);
+      if (statement == null) {
+        throw const RepositoryException(
+          RepositoryFailureCode.notFound,
+          'save statement row: statement',
         );
-        return TransactionDto.fromDomain(existing);
       }
-    }
-    final prepared = await _prepareTransaction(
-      row,
-      paymentSourceId,
-      allowCreateNew: allowCreateNew,
-    );
-    final transaction = prepared.value;
-    final now = transaction.updatedAt;
-    final transactionId = transaction.id.value;
-    final savedRow = _copy(
-      row,
-      status: StatementRowStatus.saved,
-      transactionId: transactionId,
-      dispositionReason: 'createNew',
-      updatedAt: now,
-    );
-    await workflow.saveRowTransaction(savedRow, transaction);
-    await _invalidateAnalysis();
-    await _linkStatementEvidence(statement, transactionId);
-    await _repairDuplicateReview(
-      savedRow,
-      resolvedStatus: allowCreateNew
-          ? DuplicateCandidateGroupStatus.keepBoth
-          : null,
-    );
-    final dto = TransactionDto.fromDomain(transaction);
-    return TransactionDto(
-      id: dto.id,
-      amount: dto.amount,
-      currency: dto.currency,
-      direction: dto.direction,
-      status: dto.status,
-      reviewState: dto.reviewState,
-      createdAt: dto.createdAt,
-      updatedAt: dto.updatedAt,
-      occurredAt: dto.occurredAt,
-      transactionDate: dto.transactionDate,
-      timeZoneId: dto.timeZoneId,
-      description: dto.description,
-      rawCounterparty: dto.rawCounterparty,
-      sourceLanguage: dto.sourceLanguage,
-      notes: dto.notes,
-      externalReference: dto.externalReference,
-      paymentSourceId: dto.paymentSourceId,
-      merchantId: dto.merchantId,
-      categoryId: dto.categoryId,
-      subcategoryId: dto.subcategoryId,
-      tagIds: dto.tagIds,
-      provenance: dto.provenance,
-      normalizedMoney: dto.normalizedMoney,
-      classificationProposal: prepared.proposal,
-    );
-  });
+      if ((row.status == StatementRowStatus.saved ||
+              row.status == StatementRowStatus.linked) &&
+          row.transactionId != null) {
+        final existing = await transactions.findById(
+          TransactionId(row.transactionId!),
+        );
+        if (existing != null) {
+          await _invalidateAnalysis();
+          await _linkStatementEvidence(statement, existing.id.value);
+          await _repairDuplicateReview(
+            row,
+            resolvedStatus: allowCreateNew
+                ? DuplicateCandidateGroupStatus.keepBoth
+                : null,
+          );
+          return TransactionDto.fromDomain(existing);
+        }
+      }
+      final prepared = await _prepareTransaction(
+        row,
+        paymentSourceId,
+        allowCreateNew: allowCreateNew,
+      );
+      final transaction = prepared.value;
+      final now = transaction.updatedAt;
+      final transactionId = transaction.id.value;
+      final savedRow = _copy(
+        row,
+        status: StatementRowStatus.saved,
+        transactionId: transactionId,
+        dispositionReason: 'createNew',
+        updatedAt: now,
+      );
+      await _invalidateAnalysis();
+      await workflow.saveRowTransaction(savedRow, transaction);
+      await _linkStatementEvidence(statement, transactionId);
+      await _repairDuplicateReview(
+        savedRow,
+        resolvedStatus: allowCreateNew
+            ? DuplicateCandidateGroupStatus.keepBoth
+            : null,
+      );
+      final dto = TransactionDto.fromDomain(transaction);
+      return TransactionDto(
+        id: dto.id,
+        amount: dto.amount,
+        currency: dto.currency,
+        direction: dto.direction,
+        status: dto.status,
+        reviewState: dto.reviewState,
+        createdAt: dto.createdAt,
+        updatedAt: dto.updatedAt,
+        occurredAt: dto.occurredAt,
+        transactionDate: dto.transactionDate,
+        timeZoneId: dto.timeZoneId,
+        description: dto.description,
+        rawCounterparty: dto.rawCounterparty,
+        sourceLanguage: dto.sourceLanguage,
+        notes: dto.notes,
+        externalReference: dto.externalReference,
+        paymentSourceId: dto.paymentSourceId,
+        merchantId: dto.merchantId,
+        categoryId: dto.categoryId,
+        subcategoryId: dto.subcategoryId,
+        tagIds: dto.tagIds,
+        provenance: dto.provenance,
+        normalizedMoney: dto.normalizedMoney,
+        classificationProposal: prepared.proposal,
+      );
+    }),
+  );
 
   Future<void> _linkStatementEvidence(
     FinancialStatement statement,
@@ -982,6 +1016,13 @@ final class StatementServices {
       }
     }
     return const [];
+  }
+
+  Future<ApplicationResult<T>> _runExclusive<T>(
+    Future<ApplicationResult<T>> Function() operation,
+  ) {
+    final gate = consistencyGate;
+    return gate == null ? operation() : gate.runExclusive(operation);
   }
 
   Future<void> _invalidateAnalysis() async {

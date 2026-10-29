@@ -12,14 +12,16 @@ final class DuplicateReviewingTransactionRepository
     this.delegate,
     this.refresh, {
     this.invalidateAnalysis,
+    this.consistencyGate,
   });
 
   final TransactionRepository delegate;
   final RefreshDuplicateGroupForTransaction refresh;
   final InvalidateAnalysis? invalidateAnalysis;
+  final AnalysisConsistencyGate? consistencyGate;
 
   @override
-  Future<void> save(Transaction transaction) async {
+  Future<void> save(Transaction transaction) => _runExclusive(() async {
     final previous = await delegate.findById(transaction.id);
     await _invalidateAnalysis(
       previous == null
@@ -29,10 +31,10 @@ final class DuplicateReviewingTransactionRepository
     );
     await delegate.save(transaction);
     await _refreshReviewMetadata(previous: previous, current: transaction);
-  }
+  });
 
   @override
-  Future<void> removePermanently(TransactionId id) async {
+  Future<void> removePermanently(TransactionId id) => _runExclusive(() async {
     final previous = await delegate.findById(id);
     await _invalidateAnalysis(
       AnalysisInvalidationReason.transactionDeleted,
@@ -40,7 +42,7 @@ final class DuplicateReviewingTransactionRepository
     );
     await delegate.removePermanently(id);
     await _refreshReviewMetadata(previous: previous);
-  }
+  });
 
   @override
   Future<Transaction?> findById(TransactionId id) => delegate.findById(id);
@@ -89,5 +91,10 @@ final class DuplicateReviewingTransactionRepository
         'invalidate analysis before transaction mutation',
       );
     }
+  }
+
+  Future<T> _runExclusive<T>(Future<T> Function() operation) {
+    final gate = consistencyGate;
+    return gate == null ? operation() : gate.runExclusive(operation);
   }
 }

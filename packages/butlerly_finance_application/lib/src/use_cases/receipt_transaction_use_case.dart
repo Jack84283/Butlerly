@@ -1,5 +1,6 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
+import '../analysis/invalidation.dart';
 import '../dto/transaction_dto.dart';
 import '../result/application_result.dart';
 import 'transaction_use_cases.dart';
@@ -46,6 +47,7 @@ final class CreateReceiptTransaction {
     this.classifier,
     this.applyRules,
     this.merchants,
+    this.consistencyGate,
   });
 
   final TransactionRepository repository;
@@ -53,108 +55,118 @@ final class CreateReceiptTransaction {
   final ProposeTransactionClassification? classifier;
   final ApplyTransactionRules? applyRules;
   final MerchantRepository? merchants;
+  final AnalysisConsistencyGate? consistencyGate;
 
   Future<ApplicationResult<TransactionDto>> call(
     ReceiptTransactionCommand command,
   ) {
-    return runApplication('create receipt transaction', () async {
-      final existing = await repository.findById(TransactionId(command.id));
-      if (existing != null) return TransactionDto.fromDomain(existing);
-      final now = clock.now();
-      final proposal = classifier == null
-          ? null
-          : await classifier!.call(
-              merchantId: command.merchantId == null
-                  ? null
-                  : MerchantId(command.merchantId!),
-              description: command.description ?? command.rawCounterparty,
-              excludeTransactionId: TransactionId(command.id),
-            );
-      final resolvedMerchantId =
-          command.merchantId == null &&
-              proposal is ApplicationSuccess<ClassificationProposal>
-          ? proposal.value.merchantId?.value
-          : command.merchantId;
-      final transaction = Transaction(
-        id: TransactionId(command.id),
-        timing: const UnknownTransactionTime(
-          UnknownTransactionTimeReason.unknown,
-        ),
-        money: command.money,
-        direction: TransactionDirection.expense,
-        sourceType: TransactionSourceType.evidenceCapture,
-        transactionDate: command.transactionDate,
-        rawCounterparty: command.rawCounterparty,
-        description: command.description,
-        notes: command.notes,
-        merchantId: resolvedMerchantId == null
+    return _runExclusive(
+      () => runApplication('create receipt transaction', () async {
+        final existing = await repository.findById(TransactionId(command.id));
+        if (existing != null) return TransactionDto.fromDomain(existing);
+        final now = clock.now();
+        final proposal = classifier == null
             ? null
-            : MerchantId(resolvedMerchantId),
-        categoryId: command.categoryId == null
-            ? proposal is ApplicationSuccess<ClassificationProposal>
-                  ? proposal.value.categoryId
-                  : null
-            : CategoryId(command.categoryId!),
-        subcategoryId: command.subcategoryId == null
-            ? command.categoryId == null &&
-                      proposal is ApplicationSuccess<ClassificationProposal>
-                  ? proposal.value.subcategoryId
-                  : null
-            : CategoryId(command.subcategoryId!),
-        paymentSourceId: command.paymentSourceId == null
-            ? null
-            : PaymentSourceId(command.paymentSourceId!),
-        tagIds: command.tagIds.map(TagId.new).toList(growable: false),
-        provenance: [
-          Provenance(
-            id: ProvenanceId(command.provenanceId),
-            sourceType: ProvenanceSourceType.scan,
-            capturedAt: now,
-            originalRepresentation: command.originalRepresentation,
+            : await classifier!.call(
+                merchantId: command.merchantId == null
+                    ? null
+                    : MerchantId(command.merchantId!),
+                description: command.description ?? command.rawCounterparty,
+                excludeTransactionId: TransactionId(command.id),
+              );
+        final resolvedMerchantId =
+            command.merchantId == null &&
+                proposal is ApplicationSuccess<ClassificationProposal>
+            ? proposal.value.merchantId?.value
+            : command.merchantId;
+        final transaction = Transaction(
+          id: TransactionId(command.id),
+          timing: const UnknownTransactionTime(
+            UnknownTransactionTimeReason.unknown,
           ),
-        ],
-        createdAt: now,
-        updatedAt: now,
-      );
-      final classified = applyRules == null
-          ? transaction
-          : await applyRules!(transaction);
-      final resolved = await synchronizeMerchantReviewIssueBestEffort(
-        classified,
-        now,
-        merchantRepository: merchants,
-      );
-      await repository.save(resolved);
-      final dto = TransactionDto.fromDomain(resolved);
-      return TransactionDto(
-        id: dto.id,
-        amount: dto.amount,
-        currency: dto.currency,
-        direction: dto.direction,
-        status: dto.status,
-        reviewState: dto.reviewState,
-        occurredAt: dto.occurredAt,
-        transactionDate: dto.transactionDate,
-        timeZoneId: dto.timeZoneId,
-        createdAt: dto.createdAt,
-        updatedAt: dto.updatedAt,
-        description: dto.description,
-        rawCounterparty: dto.rawCounterparty,
-        sourceLanguage: dto.sourceLanguage,
-        notes: dto.notes,
-        externalReference: dto.externalReference,
-        paymentSourceId: dto.paymentSourceId,
-        merchantId: dto.merchantId,
-        categoryId: dto.categoryId,
-        subcategoryId: dto.subcategoryId,
-        tagIds: dto.tagIds,
-        provenance: dto.provenance,
-        normalizedMoney: dto.normalizedMoney,
-        classificationProposal:
-            proposal is ApplicationSuccess<ClassificationProposal>
-            ? proposal.value
-            : null,
-      );
-    });
+          money: command.money,
+          direction: TransactionDirection.expense,
+          sourceType: TransactionSourceType.evidenceCapture,
+          transactionDate: command.transactionDate,
+          rawCounterparty: command.rawCounterparty,
+          description: command.description,
+          notes: command.notes,
+          merchantId: resolvedMerchantId == null
+              ? null
+              : MerchantId(resolvedMerchantId),
+          categoryId: command.categoryId == null
+              ? proposal is ApplicationSuccess<ClassificationProposal>
+                    ? proposal.value.categoryId
+                    : null
+              : CategoryId(command.categoryId!),
+          subcategoryId: command.subcategoryId == null
+              ? command.categoryId == null &&
+                        proposal is ApplicationSuccess<ClassificationProposal>
+                    ? proposal.value.subcategoryId
+                    : null
+              : CategoryId(command.subcategoryId!),
+          paymentSourceId: command.paymentSourceId == null
+              ? null
+              : PaymentSourceId(command.paymentSourceId!),
+          tagIds: command.tagIds.map(TagId.new).toList(growable: false),
+          provenance: [
+            Provenance(
+              id: ProvenanceId(command.provenanceId),
+              sourceType: ProvenanceSourceType.scan,
+              capturedAt: now,
+              originalRepresentation: command.originalRepresentation,
+            ),
+          ],
+          createdAt: now,
+          updatedAt: now,
+        );
+        final classified = applyRules == null
+            ? transaction
+            : await applyRules!(transaction);
+        final resolved = await synchronizeMerchantReviewIssueBestEffort(
+          classified,
+          now,
+          merchantRepository: merchants,
+        );
+        await repository.save(resolved);
+        final dto = TransactionDto.fromDomain(resolved);
+        return TransactionDto(
+          id: dto.id,
+          amount: dto.amount,
+          currency: dto.currency,
+          direction: dto.direction,
+          status: dto.status,
+          reviewState: dto.reviewState,
+          occurredAt: dto.occurredAt,
+          transactionDate: dto.transactionDate,
+          timeZoneId: dto.timeZoneId,
+          createdAt: dto.createdAt,
+          updatedAt: dto.updatedAt,
+          description: dto.description,
+          rawCounterparty: dto.rawCounterparty,
+          sourceLanguage: dto.sourceLanguage,
+          notes: dto.notes,
+          externalReference: dto.externalReference,
+          paymentSourceId: dto.paymentSourceId,
+          merchantId: dto.merchantId,
+          categoryId: dto.categoryId,
+          subcategoryId: dto.subcategoryId,
+          tagIds: dto.tagIds,
+          provenance: dto.provenance,
+          normalizedMoney: dto.normalizedMoney,
+          classificationProposal:
+              proposal is ApplicationSuccess<ClassificationProposal>
+              ? proposal.value
+              : null,
+        );
+      }),
+    );
+  }
+
+  Future<ApplicationResult<T>> _runExclusive<T>(
+    Future<ApplicationResult<T>> Function() operation,
+  ) {
+    final gate = consistencyGate;
+    return gate == null ? operation() : gate.runExclusive(operation);
   }
 }

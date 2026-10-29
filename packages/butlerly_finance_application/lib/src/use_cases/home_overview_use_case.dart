@@ -6,6 +6,7 @@ import '../dto/monthly_spending_trend_point.dart';
 import '../dto/review_item_dto.dart';
 import '../dto/review_period_scope.dart';
 import '../dto/transaction_dto.dart';
+import '../analysis/invalidation.dart';
 import '../result/application_result.dart';
 import 'analysis_use_cases.dart';
 import '../commands/transaction_commands.dart';
@@ -33,6 +34,7 @@ final class GetHomeOverview {
     this.listDuplicateCandidateGroups,
     this.merchants,
     this.canonicalTransactionIds,
+    this.consistencyGate,
   });
 
   final ResolveHomePeriod resolveHomePeriod;
@@ -43,8 +45,34 @@ final class GetHomeOverview {
   final ListDuplicateCandidateGroups? listDuplicateCandidateGroups;
   final MerchantRepository? merchants;
   final HomeCanonicalTransactionIdsLoader? canonicalTransactionIds;
+  final AnalysisConsistencyGate? consistencyGate;
 
   Future<ApplicationResult<HomeOverview>> call({
+    required DateTime instant,
+    DateTime? selectedMonth,
+    bool forceAnalysisRefresh = false,
+    int trendMonthCount = 6,
+  }) async {
+    final gate = consistencyGate ?? calculateAnalysis?.consistencyGate;
+    if (gate != null) {
+      return gate.runExclusive(
+        () => _call(
+          instant: instant,
+          selectedMonth: selectedMonth,
+          forceAnalysisRefresh: forceAnalysisRefresh,
+          trendMonthCount: trendMonthCount,
+        ),
+      );
+    }
+    return _call(
+      instant: instant,
+      selectedMonth: selectedMonth,
+      forceAnalysisRefresh: forceAnalysisRefresh,
+      trendMonthCount: trendMonthCount,
+    );
+  }
+
+  Future<ApplicationResult<HomeOverview>> _call({
     required DateTime instant,
     DateTime? selectedMonth,
     bool forceAnalysisRefresh = false,

@@ -2,6 +2,7 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
 import '../analysis/dataset_builder.dart';
 import '../analysis/canonical_transactions.dart';
+import '../analysis/invalidation.dart';
 import '../analysis/period_resolver.dart';
 import '../analysis/result_materialization.dart';
 import '../analysis/rule_engine.dart';
@@ -15,6 +16,7 @@ final class CalculateAnalysisOverview {
     this.engine, {
     this.findings,
     this.results,
+    this.consistencyGate,
     this.periodResolver = const AnalysisPeriodResolver(),
   });
   final AnalysisRuleRepository rules;
@@ -23,6 +25,7 @@ final class CalculateAnalysisOverview {
   final AnalysisPeriodResolver periodResolver;
   final AnalysisFindingRepository? findings;
   final AnalysisRuleResultRepository? results;
+  final AnalysisConsistencyGate? consistencyGate;
 
   /// Resolves a user-facing period choice into the authoritative analysis
   /// context. Presentation code may display this context, but must not derive
@@ -31,45 +34,40 @@ final class CalculateAnalysisOverview {
     String type, {
     DateTime? instant,
     AnalysisPeriod? customPeriod,
-  }) => runApplication('resolve analysis period', () async {
-    final timeZoneId = await datasetBuilder.timeZoneId();
-    final baseCurrency = await datasetBuilder.baseCurrency();
-    final placeholder = AnalysisContext(
-      period:
-          customPeriod ??
-          AnalysisPeriod(
-            startDate: '2000-01-01',
-            endDate: '2000-01-01',
-            timeZoneId: timeZoneId,
-          ),
-      datasetMode: DatasetMode.allEligible,
-      currencyBasis: CurrencyBasis.baseCurrency,
-      baseCurrency: baseCurrency,
-    );
-    final resolution = periodResolver.resolvePrimary(
-      type: type,
-      context: placeholder,
-      now: instant,
-    );
-    if (resolution is AnalysisPeriodResolutionFailure) {
-      throw const DomainValidationException(
-        code: DomainErrorCode.invalidState,
-        field: 'period',
-        message: 'Analysis period could not be resolved.',
+  }) => runApplication('resolve analysis period', () {
+    Future<AnalysisContext> operation() async {
+      final timeZoneId = await datasetBuilder.timeZoneId();
+      final baseCurrency = await datasetBuilder.baseCurrency();
+      final requestedPeriod = customPeriod == null
+          ? null
+          : AnalysisPeriod(
+              startDate: customPeriod.startDate,
+              endDate: customPeriod.endDate,
+              timeZoneId: timeZoneId,
+            );
+      final placeholder = AnalysisContext(
+        period:
+            requestedPeriod ??
+            AnalysisPeriod(
+              startDate: '2000-01-01',
+              endDate: '2000-01-01',
+              timeZoneId: timeZoneId,
+            ),
+        datasetMode: DatasetMode.allEligible,
+        currencyBasis: CurrencyBasis.baseCurrency,
+        baseCurrency: baseCurrency,
+      );
+      return _resolveContext(
+        type: type,
+        placeholder: placeholder,
+        timeZoneId: timeZoneId,
+        baseCurrency: baseCurrency,
+        instant: instant,
       );
     }
-    final window = (resolution as AnalysisPeriodResolved).window;
-    return AnalysisContext(
-      period: AnalysisPeriod(
-        startDate: _date(window.start),
-        endDate: _date(window.endExclusive.subtract(const Duration(days: 1))),
-        timeZoneId: timeZoneId,
-      ),
-      datasetMode: DatasetMode.allEligible,
-      currencyBasis: CurrencyBasis.baseCurrency,
-      baseCurrency: baseCurrency,
-      periodType: type,
-    );
+
+    final gate = consistencyGate;
+    return gate == null ? operation() : gate.runExclusive(operation);
   });
 
   /// Creates a selected-period context from date-only UI input while retaining
@@ -77,17 +75,17 @@ final class CalculateAnalysisOverview {
   Future<ApplicationResult<AnalysisContext>> contextForDates({
     required String startDate,
     required String endDate,
-  }) async {
-    final timeZoneId = await datasetBuilder.timeZoneId();
-    return contextFor(
-      'selected_period',
-      customPeriod: AnalysisPeriod(
-        startDate: startDate,
-        endDate: endDate,
-        timeZoneId: timeZoneId,
-      ),
-    );
-  }
+  }) => contextFor(
+    'selected_period',
+    // The timezone is replaced inside the gate after loading the current
+    // preference. This prevents a preference mutation from interleaving
+    // between timezone resolution and context creation.
+    customPeriod: AnalysisPeriod(
+      startDate: startDate,
+      endDate: endDate,
+      timeZoneId: 'UTC',
+    ),
+  );
 
   /// Resolves the default month in the application layer so presentation never
   /// invents financial windows or timezone policy.
@@ -110,7 +108,101 @@ final class CalculateAnalysisOverview {
     AnalysisContext context, {
     bool forceRefresh = false,
     int sourceRevision = 0,
-  }) => runApplication('calculate analysis overview', () async {
+  }) => runApplication('calculate analysis overview', () {
+    Future<List<RuleExecutionResult>> operation() => _calculate(
+      context,
+      forceRefresh: forceRefresh,
+      sourceRevision: sourceRevision,
+    );
+    final gate = consistencyGate;
+    if (gate == null) return operation();
+    return gate.runExclusive(() async {
+      final current = await _contextWithCurrentPreferences(context);
+      return _calculate(
+        current,
+        forceRefresh: forceRefresh,
+        sourceRevision: sourceRevision,
+      );
+    });
+  });
+
+  /// Re-resolves timezone and base-currency preferences inside the shared
+  /// consistency gate before a composed surface builds presentation values.
+  Future<ApplicationResult<AnalysisContext>> contextWithCurrentPreferences(
+    AnalysisContext context,
+  ) => runApplication('refresh analysis context', () {
+    Future<AnalysisContext> operation() =>
+        _contextWithCurrentPreferences(context);
+    final gate = consistencyGate;
+    return gate == null ? operation() : gate.runExclusive(operation);
+  });
+
+  Future<AnalysisContext> _contextWithCurrentPreferences(
+    AnalysisContext context,
+  ) async {
+    final timeZoneId = await datasetBuilder.timeZoneId();
+    final baseCurrency = await datasetBuilder.baseCurrency();
+    if (context.period.timeZoneId == timeZoneId &&
+        context.baseCurrency == baseCurrency) {
+      return context;
+    }
+    final type = context.periodType;
+    return _resolveContext(
+      type: type,
+      placeholder: AnalysisContext(
+        period: AnalysisPeriod(
+          startDate: context.period.startDate,
+          endDate: context.period.endDate,
+          timeZoneId: timeZoneId,
+        ),
+        datasetMode: context.datasetMode,
+        currencyBasis: context.currencyBasis,
+        baseCurrency: baseCurrency,
+        periodType: type,
+      ),
+      timeZoneId: timeZoneId,
+      baseCurrency: baseCurrency,
+    );
+  }
+
+  AnalysisContext _resolveContext({
+    required String type,
+    required AnalysisContext placeholder,
+    required String timeZoneId,
+    required CurrencyCode? baseCurrency,
+    DateTime? instant,
+  }) {
+    final resolution = periodResolver.resolvePrimary(
+      type: type,
+      context: placeholder,
+      now: instant,
+    );
+    if (resolution is AnalysisPeriodResolutionFailure) {
+      throw const DomainValidationException(
+        code: DomainErrorCode.invalidState,
+        field: 'period',
+        message: 'Analysis period could not be resolved.',
+      );
+    }
+    final window = (resolution as AnalysisPeriodResolved).window;
+    return AnalysisContext(
+      period: AnalysisPeriod(
+        startDate: _date(window.start),
+        endDate: _date(window.endExclusive.subtract(const Duration(days: 1))),
+        timeZoneId: timeZoneId,
+      ),
+      datasetMode: placeholder.datasetMode,
+      currencyBasis: placeholder.currencyBasis,
+      baseCurrency: baseCurrency,
+      periodType: type,
+    );
+  }
+
+  Future<List<RuleExecutionResult>> _calculate(
+    AnalysisContext context, {
+    required bool forceRefresh,
+    required int sourceRevision,
+  }) async {
     final definitions = await rules.listActive();
     final materializedRules = definitions
         .where(
@@ -212,7 +304,7 @@ final class CalculateAnalysisOverview {
       }
     }
     return executionResults;
-  });
+  }
 }
 
 AnalysisFinding _withLifecycle(
@@ -280,20 +372,33 @@ final class CalculateInsights {
     bool forceRefresh = true,
     int sourceRevision = 0,
   }) async {
-    final result = await analysis.call(
-      context,
-      forceRefresh: forceRefresh,
-      sourceRevision: sourceRevision,
-    );
-    if (result is ApplicationFailure<List<RuleExecutionResult>>) {
-      return ApplicationFailure<InsightsEvaluation>(result.failure);
-    }
-    return ApplicationSuccess(
-      _build(
+    Future<ApplicationResult<InsightsEvaluation>> operation() async {
+      final currentContext = await analysis.contextWithCurrentPreferences(
         context,
-        (result as ApplicationSuccess<List<RuleExecutionResult>>).value,
-      ),
-    );
+      );
+      if (currentContext is ApplicationFailure<AnalysisContext>) {
+        return ApplicationFailure<InsightsEvaluation>(currentContext.failure);
+      }
+      final resolvedContext =
+          (currentContext as ApplicationSuccess<AnalysisContext>).value;
+      final result = await analysis.call(
+        resolvedContext,
+        forceRefresh: forceRefresh,
+        sourceRevision: sourceRevision,
+      );
+      if (result is ApplicationFailure<List<RuleExecutionResult>>) {
+        return ApplicationFailure<InsightsEvaluation>(result.failure);
+      }
+      return ApplicationSuccess(
+        _build(
+          resolvedContext,
+          (result as ApplicationSuccess<List<RuleExecutionResult>>).value,
+        ),
+      );
+    }
+
+    final gate = analysis.consistencyGate;
+    return gate == null ? operation() : gate.runExclusive(operation);
   }
 
   /// Builds the presentation-ready Insights evaluation from an Analysis result
@@ -614,47 +719,54 @@ final class QueryTransactionsForFinancialDate {
     this.links,
     this.candidates,
     this.duplicateGroups,
+    this.consistencyGate,
   });
   final TransactionRepository repository;
   final UserPreferenceRepository? preferences;
   final ReconciliationLinkRepository? links;
   final ReconciliationCandidateRepository? candidates;
   final DuplicateCandidateGroupRepository? duplicateGroups;
+  final AnalysisConsistencyGate? consistencyGate;
 
-  Future<ApplicationResult<List<TransactionDto>>> call(String date) =>
-      runApplication('query financial date transactions', () async {
-        final values = await repository.listAll();
-        final timeZone = await configuredFinancialTimeZone(preferences);
-        final canonical = selectCanonicalTransactions(
-          source: values,
-          links: links == null ? const [] : await links!.listAll(),
-          reconciliationCandidates: candidates == null
-              ? null
-              : await candidates!.listAll(),
-          duplicateGroups: duplicateGroups == null
-              ? const []
-              : await duplicateGroups!.list(),
-        );
-        return canonical.transactions
-            .map(
-              (value) => (
-                value: value,
-                financialDate: transactionFinancialDate(value, timeZone.id),
-              ),
-            )
-            .where(
-              (value) =>
-                  value.financialDate?.toIso8601String().substring(0, 10) ==
-                  date,
-            )
-            .map(
-              (value) => TransactionDto.fromDomain(
-                value.value,
-                financialDate: value.financialDate,
-              ),
-            )
-            .toList(growable: false);
-      });
+  Future<ApplicationResult<List<TransactionDto>>> call(
+    String date,
+  ) => runApplication('query financial date transactions', () {
+    Future<List<TransactionDto>> operation() async {
+      final values = await repository.listAll();
+      final timeZone = await configuredFinancialTimeZone(preferences);
+      final canonical = selectCanonicalTransactions(
+        source: values,
+        links: links == null ? const [] : await links!.listAll(),
+        reconciliationCandidates: candidates == null
+            ? null
+            : await candidates!.listAll(),
+        duplicateGroups: duplicateGroups == null
+            ? const []
+            : await duplicateGroups!.list(),
+      );
+      return canonical.transactions
+          .map(
+            (value) => (
+              value: value,
+              financialDate: transactionFinancialDate(value, timeZone.id),
+            ),
+          )
+          .where(
+            (value) =>
+                value.financialDate?.toIso8601String().substring(0, 10) == date,
+          )
+          .map(
+            (value) => TransactionDto.fromDomain(
+              value.value,
+              financialDate: value.financialDate,
+            ),
+          )
+          .toList(growable: false);
+    }
+
+    final gate = consistencyGate;
+    return gate == null ? operation() : gate.runExclusive(operation);
+  });
 }
 
 final class AnalysisCalendarDay {
@@ -698,10 +810,16 @@ final class AnalysisCalendarResult {
 /// Builds the backend contract for a selected financial month. It deliberately
 /// consumes the canonical dataset instead of querying raw SQLite rows.
 final class CalculateAnalysisCalendar {
-  const CalculateAnalysisCalendar(this.datasetBuilder, this.rules, this.engine);
+  const CalculateAnalysisCalendar(
+    this.datasetBuilder,
+    this.rules,
+    this.engine, {
+    this.consistencyGate,
+  });
   final AnalysisDatasetBuilder datasetBuilder;
   final AnalysisRuleRepository rules;
   final AnalysisRuleEngine engine;
+  final AnalysisConsistencyGate? consistencyGate;
 
   Future<ApplicationResult<AnalysisCalendarResult>> call({
     required int year,
@@ -709,85 +827,90 @@ final class CalculateAnalysisCalendar {
     required DatasetMode datasetMode,
     required CurrencyBasis currencyBasis,
     CurrencyCode? baseCurrency,
-  }) => runApplication('calculate analysis calendar', () async {
-    final first = DateTime.utc(year, month, 1);
-    final last = DateTime.utc(year, month + 1, 0);
-    final context = AnalysisContext(
-      period: AnalysisPeriod(
-        startDate: _date(first),
-        endDate: _date(last),
-        timeZoneId: await datasetBuilder.timeZoneId(),
-      ),
-      datasetMode: datasetMode,
-      currencyBasis: currencyBasis,
-      baseCurrency: baseCurrency,
-    );
-    final result = await datasetBuilder.build(context);
-    if (result case ApplicationDatasetFailure(:final code)) {
-      throw RepositoryException(RepositoryFailureCode.unavailable, code);
-    }
-    final dataset = (result as ApplicationDatasetSuccess).dataset;
-    final definitions = (await rules.listActive())
-        .where((rule) => rule.surface == AnalysisSurface.calendar)
-        .toList(growable: false);
-    final metrics = engine
-        .execute(dataset: dataset, definitions: definitions)
-        .where((result) => result.metric != null)
-        .map((result) => result.metric!)
-        .toList(growable: false);
-    final days = <AnalysisCalendarDay>[];
-    for (
-      var day = first;
-      !day.isAfter(last);
-      day = day.add(const Duration(days: 1))
-    ) {
-      final date = _date(day);
-      AnalysisMetric? named(String key) =>
-          metrics.cast<AnalysisMetric?>().firstWhere(
-            (metric) => metric?.dimension == '$date:$key',
-            orElse: () => null,
-          );
-      final countMetric = named('transactionCount');
-      final expenseMetric = named(AnalysisSemanticRole.expenseTotal);
-      final incomeMetric = named(AnalysisSemanticRole.incomeTotal);
-      Money? money(AnalysisMetric? metric) =>
-          metric == null ||
-              metric.availability == AnalysisDataAvailability.insufficient ||
-              metric.currency == null
-          ? null
-          : Money(amount: metric.value, currency: metric.currency!);
-      days.add(
-        AnalysisCalendarDay(
-          financialDate: date,
-          transactionCount:
-              int.tryParse(countMetric?.value.toString() ?? '') ?? 0,
-          expenseTotal: money(expenseMetric),
-          incomeTotal: money(incomeMetric),
-          currencyBasis: currencyBasis,
-          expenseAvailability:
-              expenseMetric?.availability ?? AnalysisDataAvailability.empty,
-          incomeAvailability:
-              incomeMetric?.availability ?? AnalysisDataAvailability.empty,
-          qualityIssues: [
-            ...dataset.qualityIssues,
-            ...?countMetric?.qualityIssues,
-            ...?expenseMetric?.qualityIssues,
-            ...?incomeMetric?.qualityIssues,
-          ],
-          evidence: {
-            ...?countMetric?.evidence,
-            ...?expenseMetric?.evidence,
-            ...?incomeMetric?.evidence,
-          }.toList(growable: false),
+  }) => runApplication('calculate analysis calendar', () {
+    Future<AnalysisCalendarResult> operation() async {
+      final first = DateTime.utc(year, month, 1);
+      final last = DateTime.utc(year, month + 1, 0);
+      final context = AnalysisContext(
+        period: AnalysisPeriod(
+          startDate: _date(first),
+          endDate: _date(last),
+          timeZoneId: await datasetBuilder.timeZoneId(),
         ),
+        datasetMode: datasetMode,
+        currencyBasis: currencyBasis,
+        baseCurrency: baseCurrency,
+      );
+      final result = await datasetBuilder.build(context);
+      if (result case ApplicationDatasetFailure(:final code)) {
+        throw RepositoryException(RepositoryFailureCode.unavailable, code);
+      }
+      final dataset = (result as ApplicationDatasetSuccess).dataset;
+      final definitions = (await rules.listActive())
+          .where((rule) => rule.surface == AnalysisSurface.calendar)
+          .toList(growable: false);
+      final metrics = engine
+          .execute(dataset: dataset, definitions: definitions)
+          .where((result) => result.metric != null)
+          .map((result) => result.metric!)
+          .toList(growable: false);
+      final days = <AnalysisCalendarDay>[];
+      for (
+        var day = first;
+        !day.isAfter(last);
+        day = day.add(const Duration(days: 1))
+      ) {
+        final date = _date(day);
+        AnalysisMetric? named(String key) =>
+            metrics.cast<AnalysisMetric?>().firstWhere(
+              (metric) => metric?.dimension == '$date:$key',
+              orElse: () => null,
+            );
+        final countMetric = named('transactionCount');
+        final expenseMetric = named(AnalysisSemanticRole.expenseTotal);
+        final incomeMetric = named(AnalysisSemanticRole.incomeTotal);
+        Money? money(AnalysisMetric? metric) =>
+            metric == null ||
+                metric.availability == AnalysisDataAvailability.insufficient ||
+                metric.currency == null
+            ? null
+            : Money(amount: metric.value, currency: metric.currency!);
+        days.add(
+          AnalysisCalendarDay(
+            financialDate: date,
+            transactionCount:
+                int.tryParse(countMetric?.value.toString() ?? '') ?? 0,
+            expenseTotal: money(expenseMetric),
+            incomeTotal: money(incomeMetric),
+            currencyBasis: currencyBasis,
+            expenseAvailability:
+                expenseMetric?.availability ?? AnalysisDataAvailability.empty,
+            incomeAvailability:
+                incomeMetric?.availability ?? AnalysisDataAvailability.empty,
+            qualityIssues: [
+              ...dataset.qualityIssues,
+              ...?countMetric?.qualityIssues,
+              ...?expenseMetric?.qualityIssues,
+              ...?incomeMetric?.qualityIssues,
+            ],
+            evidence: {
+              ...?countMetric?.evidence,
+              ...?expenseMetric?.evidence,
+              ...?incomeMetric?.evidence,
+            }.toList(growable: false),
+          ),
+        );
+      }
+      return AnalysisCalendarResult(
+        year: year,
+        month: month,
+        timeZoneId: context.period.timeZoneId,
+        days: days,
       );
     }
-    return AnalysisCalendarResult(
-      year: year,
-      month: month,
-      timeZoneId: context.period.timeZoneId,
-      days: days,
-    );
+
+    final gate = consistencyGate;
+    return gate == null ? operation() : gate.runExclusive(operation);
   });
 }
 

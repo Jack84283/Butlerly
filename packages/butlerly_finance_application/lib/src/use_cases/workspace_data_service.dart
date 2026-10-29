@@ -1,4 +1,5 @@
 import '../dto/local_data_dto.dart';
+import '../analysis/invalidation.dart';
 
 /// Storage port. File handles, SQLite executors, and platform SDKs stay in the
 /// adapter; presentation exchanges selected paths and immutable result values.
@@ -36,9 +37,14 @@ abstract interface class LocalDataGateway {
 /// System-data refresh must complete inside the adapter's restore safety gate.
 /// UI invalidation must wait until restore commits and closes its recovery gate.
 final class WorkspaceDataService {
-  const WorkspaceDataService(this.gateway, {required this.refreshSystemData});
+  const WorkspaceDataService(
+    this.gateway, {
+    required this.refreshSystemData,
+    this.consistencyGate,
+  });
   final LocalDataGateway gateway;
   final Future<void> Function() refreshSystemData;
+  final AnalysisConsistencyGate? consistencyGate;
 
   bool get hasRecoverySafetyCopy => gateway.hasRecoverySafetyCopy;
 
@@ -70,7 +76,7 @@ final class WorkspaceDataService {
     required LocalRestoreMode mode,
     String? password,
     Future<void> Function()? refreshPresentation,
-  }) async {
+  }) => _runConsistently(() async {
     final result = await gateway.restore(
       filePath,
       mode: mode,
@@ -93,22 +99,32 @@ final class WorkspaceDataService {
         presentationRefreshFailed: true,
       );
     }
-  }
+  });
 
-  Future<void> eraseAll({Future<void> Function()? refreshPresentation}) async {
-    await gateway.eraseAll();
-    await _refresh(refreshPresentation);
-  }
+  Future<void> eraseAll({Future<void> Function()? refreshPresentation}) =>
+      _runConsistently(() async {
+        await gateway.eraseAll();
+        await _refresh(refreshPresentation);
+      });
 
   Future<void> recoverControlledState({
     Future<void> Function()? refreshPresentation,
-  }) => gateway.recoverControlledState(
-    postActivationRefresh: () => _refresh(refreshPresentation),
+  }) => _runConsistently(
+    () => gateway.recoverControlledState(
+      postActivationRefresh: () => _refresh(refreshPresentation),
+    ),
   );
 
   Future<void> resetControlledRecovery({
     Future<void> Function()? refreshPresentation,
-  }) => gateway.resetControlledRecovery(
-    postResetRefresh: () => _refresh(refreshPresentation),
+  }) => _runConsistently(
+    () => gateway.resetControlledRecovery(
+      postResetRefresh: () => _refresh(refreshPresentation),
+    ),
   );
+
+  Future<T> _runConsistently<T>(Future<T> Function() operation) {
+    final gate = consistencyGate;
+    return gate == null ? operation() : gate.runExclusive(operation);
+  }
 }
