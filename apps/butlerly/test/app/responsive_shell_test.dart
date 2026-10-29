@@ -1206,10 +1206,9 @@ void _expectCollapsedBrandCentered(WidgetTester tester) {
   expect(brand, findsOneWidget);
   // The 1px right divider is outside the rail's content box. Center
   // the brand in the same content box as the collapsed navigation icons.
-  final railContainer = find.descendant(
-    of: rail,
-    matching: find.byType(Container),
-  ).first;
+  final railContainer = find
+      .descendant(of: rail, matching: find.byType(Container))
+      .first;
   final railDecoration =
       tester.widget<Container>(railContainer).decoration! as BoxDecoration;
   final dividerWidth = (railDecoration.border! as Border).right.width;
