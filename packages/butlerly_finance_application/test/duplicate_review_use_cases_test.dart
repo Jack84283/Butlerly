@@ -916,6 +916,45 @@ void main() {
     },
   );
 
+  test('archive restore preserves stale duplicate repair context', () async {
+    final repository = _Groups(const []);
+    final clock = _Clock(DateTime.utc(2026, 1, 1));
+    final group = DuplicateCandidateGroup(
+      id: 'duplicate:2026-01-01|25|USD|expense',
+      transactionIds: [TransactionId('a'), TransactionId('b')],
+      duplicateKey: _match('a', '25').duplicateKey,
+      status: DuplicateCandidateGroupStatus.unresolved,
+      integrityIssue: const DuplicateCandidateGroupIntegrityIssue(
+        code: 'staleDuplicateGroup',
+        detail: 'The saved relationship no longer matches current facts.',
+      ),
+      createdAt: clock.now(),
+      updatedAt: clock.now(),
+    );
+    await repository.save(group);
+
+    final refresh = RefreshDuplicateGroupForTransaction(repository, clock);
+    await refresh(
+      previous: _transaction('b', amount: '25'),
+      current: _transaction(
+        'b',
+        amount: '25',
+        status: TransactionStatus.archived,
+      ),
+    );
+    await refresh(current: _transaction('b', amount: '25'));
+
+    expect(repository.groups, hasLength(1));
+    expect(repository.groups.single.transactionIds, [
+      TransactionId('a'),
+      TransactionId('b'),
+    ]);
+    expect(
+      repository.groups.single.integrityIssue?.code,
+      'staleDuplicateGroup',
+    );
+  });
+
   test(
     'incremental refresh preserves a resolved group when one of three members archives',
     () async {

@@ -38,13 +38,16 @@ final class FinanceServices {
     TransactionRuleRepository? transactionRules,
     BudgetRepository? budgetRepository,
     FinancialProfileRepository? financialProfileRepository,
+    HomeCanonicalTransactionIdsLoader? canonicalTransactionIds,
     InvalidateAnalysis? analysisInvalidation,
+    AnalysisConsistencyGate? consistencyGate,
   }) : manageBudgets = budgetRepository == null
            ? null
            : ManageBudgets(budgetRepository),
        listTransactions = ListTransactions(
          transactions,
          preferences: preferences,
+         consistencyGate: consistencyGate,
        ),
        calculateCanonicalBudgetActuals = CalculateCanonicalBudgetActuals(
          AnalysisDatasetBuilder(
@@ -55,6 +58,7 @@ final class FinanceServices {
            duplicateGroups: duplicateGroups,
            categories: categories,
          ),
+         consistencyGate: consistencyGate,
        ),
        seedInitialMasterData = SeedInitialMasterData(
          merchants,
@@ -93,6 +97,7 @@ final class FinanceServices {
                  const SystemApplicationClock(),
                ),
          merchants: merchants,
+         consistencyGate: consistencyGate,
        ),
        createReceiptTransaction = CreateReceiptTransaction(
          transactions,
@@ -111,11 +116,13 @@ final class FinanceServices {
                  const SystemApplicationClock(),
                ),
          merchants: merchants,
+         consistencyGate: consistencyGate,
        ),
        createPaymentTransaction = CreatePaymentTransaction(
          transactions,
          const SystemApplicationClock(),
          merchants: merchants,
+         consistencyGate: consistencyGate,
        ),
        importTransaction = ImportTransaction(
          transactions,
@@ -134,27 +141,36 @@ final class FinanceServices {
                  const SystemApplicationClock(),
                ),
          merchants: merchants,
+         consistencyGate: consistencyGate,
        ),
-       getTransaction = GetTransaction(transactions, preferences: preferences),
+       getTransaction = GetTransaction(
+         transactions,
+         preferences: preferences,
+         consistencyGate: consistencyGate,
+       ),
        resolveHomePeriod = ResolveHomePeriod(preferences),
        updateTransaction = UpdateTransaction(
          transactions,
          const SystemApplicationClock(),
          preferences: preferences,
          merchants: merchants,
+         consistencyGate: consistencyGate,
        ),
        archiveTransaction = ArchiveTransaction(
          transactions,
          const SystemApplicationClock(),
          preferences: preferences,
+         consistencyGate: consistencyGate,
        ),
        restoreTransaction = RestoreTransaction(
          transactions,
          const SystemApplicationClock(),
          preferences: preferences,
+         consistencyGate: consistencyGate,
        ),
        deleteTransactionPermanently = DeleteTransactionPermanently(
          transactions,
+         consistencyGate: consistencyGate,
        ),
        listPaymentSources = ListPaymentSources(paymentSources),
        savePaymentSource = SavePaymentSource(paymentSources),
@@ -164,6 +180,7 @@ final class FinanceServices {
          paymentSources,
          const SystemApplicationClock(),
          preferences: preferences,
+         consistencyGate: consistencyGate,
        ),
        listMerchants = ListMerchants(merchants),
        listCategories = ListCategories(categories),
@@ -172,32 +189,43 @@ final class FinanceServices {
          merchants,
          synchronize: _merchantReviewSynchronizer(transactions, merchants),
        ),
-       saveCategory = SaveCategory(categories),
+       saveCategory = SaveCategory(
+         categories,
+         invalidateAnalysis: analysisInvalidation,
+         consistencyGate: consistencyGate,
+       ),
        saveTag = SaveTag(tags),
        assignMerchant = AssignMerchant(
          transactions,
          merchants,
          const SystemApplicationClock(),
          preferences: preferences,
+         consistencyGate: consistencyGate,
        ),
        assignCategory = AssignCategory(
          transactions,
          categories,
          const SystemApplicationClock(),
          preferences: preferences,
+         consistencyGate: consistencyGate,
        ),
        addTag = AddTag(
          transactions,
          tags,
          const SystemApplicationClock(),
          preferences: preferences,
+         consistencyGate: consistencyGate,
        ),
        removeTag = RemoveTag(
          transactions,
          const SystemApplicationClock(),
          preferences: preferences,
+         consistencyGate: consistencyGate,
        ),
-       listReviewItems = ListReviewItems(transactions),
+       listReviewItems = ListReviewItems(
+         transactions,
+         consistencyGate: consistencyGate,
+       ),
        synchronizeMerchantReviewIssues = SynchronizeMerchantReviewIssues(
          transactions,
          merchants,
@@ -207,11 +235,13 @@ final class FinanceServices {
          transactions,
          const SystemApplicationClock(),
          preferences: preferences,
+         consistencyGate: consistencyGate,
        ),
        dismissReviewIssue = DismissReviewIssue(
          transactions,
          const SystemApplicationClock(),
          preferences: preferences,
+         consistencyGate: consistencyGate,
        ),
        listEvidenceForTransaction = ListEvidenceForTransaction(evidence),
        getExtractionForEvidence = GetExtractionForEvidence(
@@ -220,7 +250,11 @@ final class FinanceServices {
              : const _NoExtractionLookupRepository(),
        ),
        loadUserPreference = LoadUserPreference(preferences),
-       saveUserPreference = SaveUserPreference(preferences),
+       saveUserPreference = SaveUserPreference(
+         preferences,
+         invalidateAnalysis: analysisInvalidation,
+         consistencyGate: consistencyGate,
+       ),
        loadFinancialProfile = financialProfileRepository == null
            ? null
            : LoadFinancialProfile(financialProfileRepository),
@@ -237,32 +271,54 @@ final class FinanceServices {
        listReconciliationCandidates = ListReconciliationCandidates(
          reconciliationCandidates ??
              const _NoReconciliationCandidateRepository(),
+         transactions: transactions,
+         consistencyGate: consistencyGate,
        ),
        saveReconciliationCandidate = SaveReconciliationCandidate(
          reconciliationCandidates ??
              const _NoReconciliationCandidateRepository(),
+         invalidateAnalysis: analysisInvalidation,
+         consistencyGate: consistencyGate,
        ),
        refreshReconciliationCandidates = RefreshReconciliationCandidates(
          transactions,
          reconciliationCandidates ??
              const _NoReconciliationCandidateRepository(),
+         invalidateAnalysis: analysisInvalidation,
+         consistencyGate: consistencyGate,
        ),
        saveReconciliationLink = SaveReconciliationLink(
          reconciliationLinks ?? const _NoReconciliationLinkRepository(),
+         candidates:
+             reconciliationCandidates ??
+             const _NoReconciliationCandidateRepository(),
+         invalidateAnalysis: analysisInvalidation,
+         consistencyGate: consistencyGate,
        ),
        listReconciliationLinks = ListReconciliationLinks(
          reconciliationLinks ?? const _NoReconciliationLinkRepository(),
+         consistencyGate: consistencyGate,
        ),
        confirmReconciliation = ConfirmReconciliation(
          reconciliationWorkflow ?? const _NoReconciliationWorkflowRepository(),
-         transactions,
+         transactions: transactions,
+         invalidateAnalysis: analysisInvalidation,
+         consistencyGate: consistencyGate,
        ),
        rejectReconciliation = RejectReconciliation(
          reconciliationWorkflow ?? const _NoReconciliationWorkflowRepository(),
-         transactions,
+         transactions: transactions,
+         invalidateAnalysis: analysisInvalidation,
+         consistencyGate: consistencyGate,
        ),
-       findReceiptPaymentMatch = FindReceiptPaymentMatch(transactions),
-       duplicateTransactionChecker = DuplicateTransactionChecker(transactions),
+       findReceiptPaymentMatch = FindReceiptPaymentMatch(
+         transactions,
+         consistencyGate: consistencyGate,
+       ),
+       duplicateTransactionChecker = DuplicateTransactionChecker(
+         transactions,
+         consistencyGate: consistencyGate,
+       ),
        scanExistingTransactionsForDuplicates = duplicateGroups == null
            ? null
            : ScanExistingTransactionsForDuplicates(
@@ -270,6 +326,7 @@ final class FinanceServices {
                const SystemApplicationClock(),
                transactions: transactions,
                invalidateAnalysis: analysisInvalidation,
+               consistencyGate: consistencyGate,
              ),
        rebuildDuplicateGroupsAfterRestore = duplicateGroups == null
            ? null
@@ -278,6 +335,7 @@ final class FinanceServices {
                const SystemApplicationClock(),
                transactions: transactions,
                invalidateAnalysis: analysisInvalidation,
+               consistencyGate: consistencyGate,
              ),
        listDuplicateCandidateGroups = duplicateGroups == null
            ? null
@@ -286,8 +344,10 @@ final class FinanceServices {
                transactions: ListTransactions(
                  transactions,
                  preferences: preferences,
+                 consistencyGate: consistencyGate,
                ),
                statements: statements,
+               consistencyGate: consistencyGate,
              ),
        resolveDuplicateCandidateGroup = duplicateGroups == null
            ? null
@@ -302,7 +362,9 @@ final class FinanceServices {
                            analysisFindings,
                            results: analysisResults,
                            rules: analysisRules,
+                           consistencyGate: consistencyGate,
                          )),
+               consistencyGate: consistencyGate,
              ),
        repairDuplicateCandidateGroup = duplicateGroups == null
            ? null
@@ -317,18 +379,22 @@ final class FinanceServices {
                            analysisFindings,
                            results: analysisResults,
                            rules: analysisRules,
+                           consistencyGate: consistencyGate,
                          )),
+               consistencyGate: consistencyGate,
              ),
        evaluateTransactionNormalization = EvaluateTransactionNormalization(
          transactions,
          preferences,
          exchangeRates,
          const SystemApplicationClock(),
+         consistencyGate: consistencyGate,
        ),
        confirmUserNormalizedAmount = ConfirmUserNormalizedAmount(
          transactions,
          preferences,
          const SystemApplicationClock(),
+         consistencyGate: consistencyGate,
        ),
        installBuiltInRules = analysisRules == null
            ? null
@@ -348,6 +414,7 @@ final class FinanceServices {
                const AnalysisRuleEngine(),
                findings: analysisFindings,
                results: analysisResults,
+               consistencyGate: consistencyGate,
              ),
        calculateAnalysisCalendar = analysisRules == null
            ? null
@@ -362,6 +429,7 @@ final class FinanceServices {
                ),
                analysisRules,
                const AnalysisRuleEngine(),
+               consistencyGate: consistencyGate,
              ),
        calculateInsights = analysisRules == null
            ? null
@@ -379,14 +447,17 @@ final class FinanceServices {
                  const AnalysisRuleEngine(),
                  findings: analysisFindings,
                  results: analysisResults,
+                 consistencyGate: consistencyGate,
                ),
              ),
        detectRecurringPatterns = DetectRecurringPatterns(
          transactions,
          preferences: preferences,
          links: reconciliationLinks,
+         candidates: reconciliationCandidates,
          duplicateGroups: duplicateGroups,
          decisions: recurringPatternDecisions,
+         consistencyGate: consistencyGate,
        ),
        saveRecurringPatternDecision = recurringPatternDecisions == null
            ? null
@@ -398,7 +469,9 @@ final class FinanceServices {
          transactions,
          preferences: preferences,
          links: reconciliationLinks,
+         candidates: reconciliationCandidates,
          duplicateGroups: duplicateGroups,
+         consistencyGate: consistencyGate,
        ),
        statementServices = statements == null || duplicateGroups == null
            ? null
@@ -410,6 +483,7 @@ final class FinanceServices {
                evidence: evidence,
                merchants: merchants,
                invalidateAnalysis: analysisInvalidation,
+               consistencyGate: consistencyGate,
                applyRules: transactionRules == null
                    ? null
                    : ApplyTransactionRules(
@@ -417,7 +491,10 @@ final class FinanceServices {
                        const SystemApplicationClock(),
                      ),
                duplicateGroups: duplicateGroups,
-               duplicateChecker: DuplicateTransactionChecker(transactions),
+               duplicateChecker: DuplicateTransactionChecker(
+                 transactions,
+                 consistencyGate: consistencyGate,
+               ),
                classifier: ProposeTransactionClassification(
                  transactions,
                  merchants,
@@ -534,6 +611,7 @@ final class FinanceServices {
                analysisFindings,
                results: analysisResults,
                rules: analysisRules,
+               consistencyGate: consistencyGate,
              ) {
     calculateMonthlySpendingTrend = calculateAnalysisOverview == null
         ? null
@@ -546,6 +624,8 @@ final class FinanceServices {
       listReviewItems: listReviewItems,
       listDuplicateCandidateGroups: listDuplicateCandidateGroups,
       merchants: merchants,
+      canonicalTransactionIds: canonicalTransactionIds,
+      consistencyGate: consistencyGate,
     );
   }
 

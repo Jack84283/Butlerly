@@ -1495,6 +1495,191 @@ void main() {
   });
 
   test(
+    'replace and merge restore duplicate decisions with exact canonical totals after restart',
+    () async {
+      final source = await _Fixture.create();
+      addTearDown(source.dispose);
+      await source.insertTransaction(
+        'tx-canonical-a',
+        amountCoefficient: '100',
+      );
+      await source.insertTransaction(
+        'tx-canonical-b',
+        amountCoefficient: '100',
+      );
+      await source.insertTransaction(
+        'tx-unresolved-c',
+        amountCoefficient: '200',
+      );
+      await source.insertTransaction(
+        'tx-unresolved-d',
+        amountCoefficient: '200',
+      );
+      await source.insertTransaction('tx-stale-e', amountCoefficient: '300');
+      await source.insertTransaction('tx-stale-f', amountCoefficient: '300');
+      await source.insertTransaction(
+        'tx-archived-history',
+        amountCoefficient: '500',
+        status: 'archived',
+      );
+      final now = DateTime.utc(2026, 9, 1).toIso8601String();
+      await _insertDuplicateGroup(
+        source,
+        id: 'duplicate-consolidated',
+        status: 'consolidated',
+        now: now,
+        amountCoefficient: '100',
+        selectedTransactionId: 'tx-canonical-a',
+        transactionIds: ['tx-canonical-a', 'tx-canonical-b'],
+      );
+      await _insertDuplicateGroup(
+        source,
+        id: 'duplicate-unresolved',
+        status: 'unresolved',
+        now: now,
+        amountCoefficient: '200',
+        statementRows:
+            '[{"statementId":"statement-unresolved","rowId":"row-unresolved"}]',
+        transactionIds: ['tx-unresolved-c', 'tx-unresolved-d'],
+      );
+      await _insertDuplicateGroup(
+        source,
+        id: 'duplicate-stale',
+        status: 'consolidated',
+        now: now,
+        amountCoefficient: '300',
+        selectedTransactionId: 'tx-stale-e',
+        transactionIds: ['tx-stale-e', 'tx-stale-f'],
+      );
+      await source.database.database.update(
+        'transactions',
+        {'amount_coefficient': '400'},
+        where: 'id = ?',
+        whereArgs: ['tx-stale-f'],
+      );
+      final backup = File(
+        path.join(source.root.path, 'canonical-decisions.butlerlybackup'),
+      );
+      await source.manager.createBackup(backup);
+
+      await source.database.database.delete(
+        'duplicate_candidate_groups',
+        where: 'id = ?',
+        whereArgs: ['duplicate-unresolved'],
+      );
+      await source.database.database.delete(
+        'transactions',
+        where: 'id = ?',
+        whereArgs: ['tx-archived-history'],
+      );
+      await source.manager.restore(backup, mode: LocalRestoreMode.replace);
+      await source.database.close();
+      await source.database.initialize();
+
+      final sourceTransactions = SqliteTransactionRepository(
+        source.database.persistenceDatabase,
+      );
+      final sourceGroups = SqliteDuplicateCandidateGroupRepository(
+        source.database.persistenceDatabase,
+      );
+      final restoredGroups = await sourceGroups.list();
+      expect(
+        restoredGroups.map((group) => group.id),
+        containsAll([
+          'duplicate-consolidated',
+          'duplicate-unresolved',
+          'duplicate-stale',
+        ]),
+      );
+      expect(
+        restoredGroups
+            .singleWhere((group) => group.id == 'duplicate-consolidated')
+            .selectedTransactionId
+            ?.value,
+        'tx-canonical-a',
+      );
+      expect(
+        restoredGroups
+            .singleWhere((group) => group.id == 'duplicate-unresolved')
+            .status,
+        DuplicateCandidateGroupStatus.unresolved,
+      );
+      expect(
+        restoredGroups
+            .singleWhere((group) => group.id == 'duplicate-stale')
+            .integrityIssue
+            ?.code,
+        'staleDuplicateGroup',
+      );
+      final canonical = selectCanonicalTransactions(
+        source: await sourceTransactions.listAll(),
+        duplicateGroups: restoredGroups,
+      );
+      expect(canonical.transactions.map((value) => value.id.value), [
+        'tx-archived-history',
+        'tx-canonical-a',
+        'tx-stale-e',
+        'tx-stale-f',
+        'tx-unresolved-c',
+      ]);
+      expect(
+        DecimalValue.sum(
+          canonical.transactions.map((value) => value.money.amount),
+        ),
+        DecimalValue.parse('15'),
+      );
+      expect(
+        (await source.database.database.query(
+          'transaction_provenances',
+        )).map((row) => row['provenance_id']),
+        containsAll(<String>[
+          'tx-canonical-a-provenance',
+          'tx-unresolved-c-provenance',
+          'tx-stale-f-provenance',
+          'tx-archived-history-provenance',
+        ]),
+      );
+
+      final target = await _Fixture.create();
+      addTearDown(target.dispose);
+      await target.insertTransaction(
+        'tx-target-only',
+        amountCoefficient: '900',
+      );
+      await target.manager.restore(backup, mode: LocalRestoreMode.merge);
+      await target.database.close();
+      await target.database.initialize();
+      final targetTransactions = SqliteTransactionRepository(
+        target.database.persistenceDatabase,
+      );
+      final targetGroups = SqliteDuplicateCandidateGroupRepository(
+        target.database.persistenceDatabase,
+      );
+      final mergedCanonical = selectCanonicalTransactions(
+        source: await targetTransactions.listAll(),
+        duplicateGroups: await targetGroups.list(),
+      );
+      expect(
+        mergedCanonical.transactions.map((value) => value.id.value),
+        containsAll(<String>[
+          'tx-target-only',
+          'tx-canonical-a',
+          'tx-unresolved-c',
+          'tx-stale-e',
+          'tx-stale-f',
+          'tx-archived-history',
+        ]),
+      );
+      expect(
+        DecimalValue.sum(
+          mergedCanonical.transactions.map((value) => value.money.amount),
+        ),
+        DecimalValue.parse('24'),
+      );
+    },
+  );
+
+  test(
     'archive backup and restore preserves unresolved historical duplicate decisions',
     () async {
       final fixture = await _Fixture.create();
@@ -1806,17 +1991,20 @@ Future<void> _insertDuplicateGroup(
   required String id,
   required String status,
   required String now,
+  String amountCoefficient = '100',
+  String? selectedTransactionId,
   String? statementRows,
   List<String> transactionIds = const ['tx-a', 'tx-b'],
 }) async {
   await fixture.database.database.insert('duplicate_candidate_groups', {
     'id': id,
     'transaction_date': '2026-09-01',
-    'amount_coefficient': '100',
+    'amount_coefficient': amountCoefficient,
     'amount_scale': 2,
     'currency': 'USD',
     'direction': 'expense',
     'status': status,
+    'selected_transaction_id': selectedTransactionId,
     ...?(statementRows == null ? null : {'statement_rows': statementRows}),
     'created_at': now,
     'updated_at': now,
@@ -2083,7 +2271,13 @@ final class _Fixture {
     );
   }
 
-  Future<void> insertTransaction(String id, {String? description}) async {
+  Future<void> insertTransaction(
+    String id, {
+    String? description,
+    String amountCoefficient = '100',
+    String transactionDate = '2026-09-01',
+    String status = 'active',
+  }) async {
     final now = DateTime.utc(2026, 9, 1).toIso8601String();
     await database.database.insert('provenances', {
       'id': '$id-provenance',
@@ -2094,13 +2288,13 @@ final class _Fixture {
     await database.database.insert('transactions', {
       'id': id,
       'unknown_time_reason': 'unknown',
-      'amount_coefficient': '100',
+      'amount_coefficient': amountCoefficient,
       'amount_scale': 2,
       'currency': 'USD',
       'direction': 'expense',
-      'transaction_date': '2026-09-01',
+      'transaction_date': transactionDate,
       'source_type': 'manual',
-      'status': 'active',
+      'status': status,
       'description': description,
       'created_at': now,
       'updated_at': now,

@@ -3,6 +3,94 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('candidate generation ignores archived transaction endpoints', () {
+    final now = DateTime.utc(2026, 8, 20);
+    final receipt = _transaction(
+      id: 'archived-endpoint-receipt',
+      sourceType: TransactionSourceType.evidenceCapture,
+      direction: TransactionDirection.expense,
+      date: '2026-08-20',
+      merchant: 'Archived endpoint',
+      provenanceType: ProvenanceSourceType.scan,
+      now: now,
+    );
+    final archivedPayment = _transaction(
+      id: 'archived-endpoint-payment',
+      sourceType: TransactionSourceType.import,
+      direction: TransactionDirection.expense,
+      date: '2026-08-20',
+      merchant: 'Archived endpoint',
+      provenanceType: ProvenanceSourceType.import,
+      now: now,
+    ).archive(now);
+
+    final candidates = const ReconciliationCandidateGenerator().generate([
+      receipt,
+      archivedPayment,
+    ]);
+
+    expect(candidates, isEmpty);
+  });
+
+  test('refresh retires candidates whose endpoint was archived', () async {
+    final now = DateTime.utc(2026, 8, 20);
+    final receipt =
+        _transaction(
+          id: 'refresh-archived-receipt',
+          sourceType: TransactionSourceType.evidenceCapture,
+          direction: TransactionDirection.expense,
+          date: '2026-08-20',
+          merchant: 'Archived endpoint',
+          provenanceType: ProvenanceSourceType.scan,
+          now: now,
+        ).addReviewIssue(
+          ReviewIssue(
+            id: ReviewIssueId('reconciliation-candidate-refresh-archived'),
+            transactionId: TransactionId('refresh-archived-receipt'),
+            reason: ReviewIssueReason.uncertain,
+            detail: 'Pending reconciliation candidate.',
+            createdAt: now,
+          ),
+          now,
+        );
+    final archivedPayment = _transaction(
+      id: 'refresh-archived-payment',
+      sourceType: TransactionSourceType.import,
+      direction: TransactionDirection.expense,
+      date: '2026-08-20',
+      merchant: 'Archived endpoint',
+      provenanceType: ProvenanceSourceType.import,
+      now: now,
+    ).archive(now);
+    final transactions = _MutableTransactions([receipt, archivedPayment]);
+    final candidates = _MemoryCandidates();
+    final candidate = ReconciliationCandidate(
+      id: 'candidate-refresh-archived',
+      receiptTransactionId: receipt.id,
+      paymentTransactionId: archivedPayment.id,
+      score: 0.9,
+      reasons: const ['same amount'],
+      status: ReconciliationCandidateStatus.proposed,
+    );
+    await candidates.save(candidate);
+
+    final result = await RefreshReconciliationCandidates(
+      transactions,
+      candidates,
+    )();
+
+    expect(result, isA<ApplicationSuccess<List<ReconciliationCandidate>>>());
+    expect(
+      (await candidates.findById(candidate.id))!.status,
+      ReconciliationCandidateStatus.rejected,
+    );
+    final refreshedReceipt = await transactions.findById(receipt.id);
+    expect(
+      refreshedReceipt!.reviewIssues.single.status,
+      ReviewIssueStatus.resolved,
+    );
+  });
+
   test('generates a scored candidate between receipt and payment inputs', () {
     final now = DateTime.utc(2026, 8, 20);
     final receipt = Transaction(
@@ -285,6 +373,142 @@ void main() {
     },
   );
 
+  test(
+    'confirm rejects persisted candidates with invalid endpoint roles',
+    () async {
+      final workflow = _FakeWorkflow();
+      final receipt = _transaction(
+        id: 'invalid-role-receipt',
+        sourceType: TransactionSourceType.manual,
+        date: '2026-08-20',
+        merchant: 'Cafe',
+        provenanceType: ProvenanceSourceType.userEntry,
+        now: DateTime.utc(2026, 8, 20),
+      );
+      final payment = _transaction(
+        id: 'valid-role-payment',
+        sourceType: TransactionSourceType.import,
+        date: '2026-08-20',
+        merchant: 'Cafe',
+        provenanceType: ProvenanceSourceType.import,
+        now: DateTime.utc(2026, 8, 20),
+      );
+      final result =
+          await ConfirmReconciliation(
+            workflow,
+            transactions: _MutableTransactions([receipt, payment]),
+          ).call(
+            ReconciliationCandidate(
+              id: 'invalid-role-candidate',
+              receiptTransactionId: receipt.id,
+              paymentTransactionId: payment.id,
+              score: .95,
+              reasons: const ['exact match'],
+            ),
+          );
+
+      expect(result, isA<ApplicationFailure<void>>());
+      expect(workflow.confirmedCandidate, isNull);
+    },
+  );
+
+  test('confirm invalidates materialized financial analysis', () async {
+    final workflow = _FakeWorkflow();
+    final results = _InvalidationResults();
+    final candidate = ReconciliationCandidate(
+      id: 'candidate-invalidates-analysis',
+      receiptTransactionId: TransactionId('receipt-invalidates-analysis'),
+      paymentTransactionId: TransactionId('payment-invalidates-analysis'),
+      score: .95,
+      reasons: const ['exact match'],
+    );
+
+    final result = await ConfirmReconciliation(
+      workflow,
+      transactions: null,
+      invalidateAnalysis: InvalidateAnalysis(
+        _InvalidationFindings(),
+        results: results,
+      ),
+    ).call(candidate);
+
+    expect(result, isA<ApplicationSuccess<void>>());
+    expect(results.markStaleCalls, 1);
+  });
+
+  test('confirmation does not commit when invalidation fails', () async {
+    final workflow = _FakeWorkflow();
+    final candidate = ReconciliationCandidate(
+      id: 'candidate-invalidation-failure',
+      receiptTransactionId: TransactionId('receipt-invalidation-failure'),
+      paymentTransactionId: TransactionId('payment-invalidation-failure'),
+      score: .95,
+      reasons: const ['exact match'],
+    );
+
+    final result = await ConfirmReconciliation(
+      workflow,
+      invalidateAnalysis: InvalidateAnalysis(
+        _InvalidationFindings(),
+        results: _ThrowingInvalidationResults(),
+      ),
+    ).call(candidate);
+
+    expect(result, isA<ApplicationFailure<void>>());
+    expect(workflow.confirmedCandidate, isNull);
+  });
+
+  test('saving a reconciliation candidate invalidates analysis', () async {
+    final candidates = _MemoryReconciliationCandidates();
+    final results = _InvalidationResults();
+    final candidate = ReconciliationCandidate(
+      id: 'candidate-save-invalidates',
+      receiptTransactionId: TransactionId('receipt-save-invalidates'),
+      paymentTransactionId: TransactionId('payment-save-invalidates'),
+      score: .9,
+      reasons: const ['near match'],
+    );
+
+    final result = await SaveReconciliationCandidate(
+      candidates,
+      invalidateAnalysis: InvalidateAnalysis(
+        _InvalidationFindings(),
+        results: results,
+      ),
+    )(candidate);
+
+    expect(result, isA<ApplicationSuccess<void>>());
+    expect(results.markStaleCalls, 1);
+    expect((await candidates.listAll()).single.id, candidate.id);
+  });
+
+  test(
+    'confirmation failure after invalidation leaves the workflow unchanged',
+    () async {
+      final workflow = _FailingWorkflow();
+      final results = _InvalidationResults();
+      final candidate = ReconciliationCandidate(
+        id: 'candidate-mutation-failure',
+        receiptTransactionId: TransactionId('receipt-mutation-failure'),
+        paymentTransactionId: TransactionId('payment-mutation-failure'),
+        score: .95,
+        reasons: const ['exact match'],
+      );
+
+      final result = await ConfirmReconciliation(
+        workflow,
+        invalidateAnalysis: InvalidateAnalysis(
+          _InvalidationFindings(),
+          results: results,
+        ),
+      ).call(candidate);
+
+      expect(result, isA<ApplicationFailure<void>>());
+      expect(workflow.confirmCalls, 1);
+      expect(results.markStaleCalls, 1);
+    },
+  );
+
   test('matcher preserves material conflicts for review', () {
     final now = DateTime.utc(2026, 8, 20);
     final receipt = _transaction(
@@ -335,6 +559,110 @@ void main() {
     expect(workflow.confirmedLink, isNull);
   });
 
+  test('reject invalidates analysis without an active review issue', () async {
+    final workflow = _FakeWorkflow();
+    final results = _InvalidationResults();
+    final candidate = ReconciliationCandidate(
+      id: 'candidate-reject-invalidates',
+      receiptTransactionId: TransactionId('receipt-reject-invalidates'),
+      paymentTransactionId: TransactionId('payment-reject-invalidates'),
+      score: .80,
+      reasons: const ['near match'],
+    );
+
+    final result = await RejectReconciliation(
+      workflow,
+      invalidateAnalysis: InvalidateAnalysis(
+        _InvalidationFindings(),
+        results: results,
+      ),
+    ).call(candidate);
+
+    expect(result, isA<ApplicationSuccess<void>>());
+    expect(results.markStaleCalls, 1);
+  });
+
+  test(
+    'save link requires a confirmed matching candidate and rejects conflicts',
+    () async {
+      final candidates = _MemoryReconciliationCandidates();
+      final links = _MemoryReconciliationLinks();
+      final candidate = ReconciliationCandidate(
+        id: 'candidate-link-validation',
+        receiptTransactionId: TransactionId('receipt-link-validation'),
+        paymentTransactionId: TransactionId('payment-link-validation'),
+        score: .95,
+        reasons: const ['exact match'],
+        status: ReconciliationCandidateStatus.confirmed,
+      );
+      await candidates.save(candidate);
+      final valid = ReconciliationLink(
+        id: 'link-validation',
+        candidateId: candidate.id,
+        receiptTransactionId: candidate.receiptTransactionId,
+        paymentTransactionId: candidate.paymentTransactionId,
+        createdAt: DateTime.utc(2026, 8, 20),
+      );
+
+      final save = SaveReconciliationLink(links, candidates: candidates);
+      expect(await save(valid), isA<ApplicationSuccess<void>>());
+      expect(await save(valid), isA<ApplicationSuccess<void>>());
+
+      final conflicting = ReconciliationLink(
+        id: 'conflicting-link',
+        candidateId: candidate.id,
+        receiptTransactionId: candidate.receiptTransactionId,
+        paymentTransactionId: candidate.paymentTransactionId,
+        createdAt: valid.createdAt,
+      );
+      expect(await save(conflicting), isA<ApplicationFailure<void>>());
+
+      final proposed = ReconciliationCandidate(
+        id: 'candidate-proposed-link',
+        receiptTransactionId: candidate.receiptTransactionId,
+        paymentTransactionId: candidate.paymentTransactionId,
+        score: candidate.score,
+        reasons: candidate.reasons,
+        status: ReconciliationCandidateStatus.proposed,
+      );
+      await candidates.save(proposed);
+      expect(
+        await save(
+          ReconciliationLink(
+            id: 'link-proposed',
+            candidateId: proposed.id,
+            receiptTransactionId: proposed.receiptTransactionId,
+            paymentTransactionId: proposed.paymentTransactionId,
+            createdAt: valid.createdAt,
+          ),
+        ),
+        isA<ApplicationFailure<void>>(),
+      );
+
+      final overlapping = ReconciliationCandidate(
+        id: 'candidate-overlapping-link',
+        receiptTransactionId: candidate.receiptTransactionId,
+        paymentTransactionId: TransactionId('payment-link-validation-2'),
+        score: candidate.score,
+        reasons: candidate.reasons,
+        status: ReconciliationCandidateStatus.confirmed,
+      );
+      await candidates.save(overlapping);
+      expect(
+        await save(
+          ReconciliationLink(
+            id: 'link-overlapping',
+            candidateId: overlapping.id,
+            receiptTransactionId: overlapping.receiptTransactionId,
+            paymentTransactionId: overlapping.paymentTransactionId,
+            createdAt: valid.createdAt,
+          ),
+        ),
+        isA<ApplicationFailure<void>>(),
+      );
+    },
+  );
+
   test(
     'refresh creates one issue and never reopens a decided candidate',
     () async {
@@ -367,7 +695,9 @@ void main() {
         hasLength(1),
       );
 
-      await ConfirmReconciliation(_FakeWorkflow(), transactions)(candidate);
+      await ConfirmReconciliation(_FakeWorkflow(), transactions: transactions)(
+        candidate,
+      );
       expect(
         transactions.values
             .singleWhere((v) => v.id == receipt.id)
@@ -387,6 +717,42 @@ void main() {
       );
     },
   );
+
+  test('refreshing reconciliation candidates invalidates analysis', () async {
+    final now = DateTime.utc(2026, 8, 20);
+    final transactions = _MutableTransactions([
+      _transaction(
+        id: 'receipt-refresh-invalidates',
+        sourceType: TransactionSourceType.evidenceCapture,
+        date: '2026-08-20',
+        merchant: 'Cafe',
+        provenanceType: ProvenanceSourceType.scan,
+        now: now,
+      ),
+      _transaction(
+        id: 'payment-refresh-invalidates',
+        sourceType: TransactionSourceType.import,
+        date: '2026-08-20',
+        merchant: 'Cafe',
+        provenanceType: ProvenanceSourceType.import,
+        now: now,
+      ),
+    ]);
+    final candidates = _MemoryCandidates();
+    final results = _InvalidationResults();
+
+    final result = await RefreshReconciliationCandidates(
+      transactions,
+      candidates,
+      invalidateAnalysis: InvalidateAnalysis(
+        _InvalidationFindings(),
+        results: results,
+      ),
+    )();
+
+    expect(result, isA<ApplicationSuccess<List<ReconciliationCandidate>>>());
+    expect(results.markStaleCalls, 1);
+  });
 }
 
 final class _FakeWorkflow implements ReconciliationWorkflowRepository {
@@ -407,6 +773,25 @@ final class _FakeWorkflow implements ReconciliationWorkflowRepository {
   Future<void> reject(ReconciliationCandidate candidate) async {
     rejected = true;
   }
+}
+
+final class _FailingWorkflow implements ReconciliationWorkflowRepository {
+  var confirmCalls = 0;
+
+  @override
+  Future<void> confirm(
+    ReconciliationCandidate candidate,
+    ReconciliationLink link,
+  ) async {
+    confirmCalls++;
+    throw const RepositoryException(
+      RepositoryFailureCode.unavailable,
+      'workflow mutation failed',
+    );
+  }
+
+  @override
+  Future<void> reject(ReconciliationCandidate candidate) async {}
 }
 
 final class _FakeTransactions implements TransactionRepository {
@@ -457,6 +842,110 @@ final class _MemoryCandidates implements ReconciliationCandidateRepository {
   @override
   Future<List<ReconciliationCandidate>> listAll() async =>
       values.values.toList();
+}
+
+final class _MemoryReconciliationCandidates
+    implements ReconciliationCandidateRepository {
+  final values = <String, ReconciliationCandidate>{};
+
+  @override
+  Future<void> save(ReconciliationCandidate candidate) async =>
+      values[candidate.id] = candidate;
+
+  @override
+  Future<ReconciliationCandidate?> findById(String id) async => values[id];
+
+  @override
+  Future<List<ReconciliationCandidate>> listAll() async =>
+      values.values.toList();
+}
+
+final class _MemoryReconciliationLinks implements ReconciliationLinkRepository {
+  final values = <String, ReconciliationLink>{};
+
+  @override
+  Future<void> save(ReconciliationLink link) async => values[link.id] = link;
+
+  @override
+  Future<List<ReconciliationLink>> listAll() async => values.values.toList();
+}
+
+final class _InvalidationResults implements AnalysisRuleResultRepository {
+  var markStaleCalls = 0;
+
+  @override
+  Future<List<AnalysisRuleResult>> findAll({
+    required AnalysisRuleDefinition rule,
+    required AnalysisContext context,
+    int? sourceRevision,
+  }) async => const [];
+
+  @override
+  Future<AnalysisRuleResult?> find({
+    required AnalysisRuleDefinition rule,
+    required AnalysisContext context,
+    String? dimension,
+    int? sourceRevision,
+  }) async => null;
+
+  @override
+  Future<void> save(AnalysisRuleResult result) async {}
+
+  @override
+  Future<void> markStale({
+    String? periodStart,
+    String? periodEnd,
+    Set<String>? ruleIds,
+  }) async {
+    markStaleCalls++;
+  }
+}
+
+final class _ThrowingInvalidationResults
+    implements AnalysisRuleResultRepository {
+  @override
+  Future<List<AnalysisRuleResult>> findAll({
+    required AnalysisRuleDefinition rule,
+    required AnalysisContext context,
+    int? sourceRevision,
+  }) async => const [];
+
+  @override
+  Future<AnalysisRuleResult?> find({
+    required AnalysisRuleDefinition rule,
+    required AnalysisContext context,
+    String? dimension,
+    int? sourceRevision,
+  }) async => null;
+
+  @override
+  Future<void> save(AnalysisRuleResult result) async {}
+
+  @override
+  Future<void> markStale({
+    String? periodStart,
+    String? periodEnd,
+    Set<String>? ruleIds,
+  }) async => throw const RepositoryException(
+    RepositoryFailureCode.unavailable,
+    'invalidation failed',
+  );
+}
+
+final class _InvalidationFindings implements AnalysisFindingRepository {
+  @override
+  Future<void> save(AnalysisFinding finding) async {}
+
+  @override
+  Future<List<AnalysisFinding>> list({FindingLifecycle? lifecycle}) async =>
+      const [];
+
+  @override
+  Future<void> updateLifecycle(
+    String id,
+    FindingLifecycle lifecycle,
+    DateTime at,
+  ) async {}
 }
 
 Transaction _transaction({

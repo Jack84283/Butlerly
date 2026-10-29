@@ -210,9 +210,15 @@ class _InsightsPageState extends State<InsightsPage> {
             AnalysisInvalidationReason.transactionChanged,
             DateTime.now().toUtc(),
           );
-    final result = await invalidated.then(
-      (_) => _load(period, generation: generation),
-    );
+    final result = await invalidated
+        .then<ApplicationResult<InsightsEvaluation>>((invalidationResult) {
+          if (invalidationResult is ApplicationFailure<void>) {
+            return ApplicationFailure<InsightsEvaluation>(
+              invalidationResult.failure,
+            );
+          }
+          return _load(period, generation: generation);
+        });
     if (!mounted || generation != _loadGeneration) return;
     if (result is ApplicationFailure<InsightsEvaluation>) {
       ScaffoldMessenger.of(context).showSnackBar(

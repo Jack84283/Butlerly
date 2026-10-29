@@ -1,5 +1,6 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
+import '../analysis/invalidation.dart';
 import '../dto/transaction_dto.dart';
 import '../result/application_result.dart';
 
@@ -47,43 +48,53 @@ final class DuplicateTransactionCheckResult {
 /// This is intentionally separate from [ReconciliationMatcher], whose fuzzy
 /// score answers a different question about evidence representing one event.
 final class DuplicateTransactionChecker {
-  const DuplicateTransactionChecker(this.repository);
+  const DuplicateTransactionChecker(this.repository, {this.consistencyGate});
   final TransactionRepository repository;
+  final AnalysisConsistencyGate? consistencyGate;
 
   Future<ApplicationResult<DuplicateTransactionCheckResult>> call(
     DuplicateTransactionCheckCommand command,
-  ) => runApplication('check duplicate transaction', () async {
-    final amount = DecimalValue.parse(command.amount);
-    final currency = command.currency.trim().toUpperCase();
-    final candidates = await repository.query(
-      TransactionRepositoryQuery(
-        from: DateTime.parse(command.transactionDate),
-        to: DateTime.parse(command.transactionDate),
-        currency: currency,
-        direction: command.direction,
-        status: TransactionStatus.active,
-      ),
-    );
-    final matches = candidates
-        .where(
-          (value) =>
-              value.id.value != command.excludeTransactionId &&
-              value.transactionDate == command.transactionDate &&
-              value.money.amount == amount &&
-              value.money.currency.value == currency,
-        )
-        .map(
-          (value) => DuplicateTransactionCandidate(
-            transaction: TransactionDto.fromDomain(value),
-            confidence: 0.75,
-            matchingReasons: const [
-              'transaction date matches',
-              'exact amount and currency match',
-              'financial direction matches',
-            ],
-          ),
-        )
-        .toList(growable: false);
-    return DuplicateTransactionCheckResult(List.unmodifiable(matches));
-  });
+  ) => _runExclusive(
+    () => runApplication('check duplicate transaction', () async {
+      final amount = DecimalValue.parse(command.amount);
+      final currency = command.currency.trim().toUpperCase();
+      final candidates = await repository.query(
+        TransactionRepositoryQuery(
+          from: DateTime.parse(command.transactionDate),
+          to: DateTime.parse(command.transactionDate),
+          currency: currency,
+          direction: command.direction,
+          status: TransactionStatus.active,
+        ),
+      );
+      final matches = candidates
+          .where(
+            (value) =>
+                value.id.value != command.excludeTransactionId &&
+                value.transactionDate == command.transactionDate &&
+                value.money.amount == amount &&
+                value.money.currency.value == currency,
+          )
+          .map(
+            (value) => DuplicateTransactionCandidate(
+              transaction: TransactionDto.fromDomain(value),
+              confidence: 0.75,
+              matchingReasons: const [
+                'transaction date matches',
+                'exact amount and currency match',
+                'financial direction matches',
+              ],
+            ),
+          )
+          .toList(growable: false);
+      return DuplicateTransactionCheckResult(List.unmodifiable(matches));
+    }),
+  );
+
+  Future<ApplicationResult<T>> _runExclusive<T>(
+    Future<ApplicationResult<T>> Function() operation,
+  ) {
+    final gate = consistencyGate;
+    return gate == null ? operation() : gate.runExclusive(operation);
+  }
 }

@@ -30,15 +30,18 @@ void configureDependencies({
     ..registerSingleton<LocalDatabase>(database);
   services.registerSingleton<OcrRecognizer>(platformOcrRecognizer());
 
+  final consistencyGate = AnalysisConsistencyGate();
   final localDataManager = LocalDataManager(
     database,
     documentsDirectory: documentsDirectory,
     localEvidenceDirectory: localEvidenceDirectory,
+    consistencyGate: consistencyGate,
   );
   final restoreRecoveryState = RestoreRecoveryState(localDataManager);
   final publicationRecoveryState = BackupPublicationRecoveryState();
   services
     ..registerSingleton<LocalDataManager>(localDataManager)
+    ..registerSingleton<AnalysisConsistencyGate>(consistencyGate)
     ..registerSingleton<RestoreRecoveryState>(restoreRecoveryState)
     ..registerSingleton<BackupPublicationRecoveryState>(
       publicationRecoveryState,
@@ -49,6 +52,7 @@ void configureDependencies({
         localDataManager,
         recoveryState: restoreRecoveryState,
         publicationRecoveryState: publicationRecoveryState,
+        consistencyGate: consistencyGate,
       ),
     );
 
@@ -58,6 +62,7 @@ void configureDependencies({
         services<LocalBackupManager>(),
         localDataManager,
       ),
+      consistencyGate: consistencyGate,
       refreshSystemData: () async {
         await database.reseedSystemData();
         final finance = services<FinanceServices>();
@@ -97,6 +102,7 @@ void configureDependencies({
       analysisFindings,
       results: analysisResults,
       rules: analysisRules,
+      consistencyGate: consistencyGate,
     );
     final duplicateRefresh = RefreshDuplicateGroupForTransaction(
       duplicateGroups,
@@ -105,10 +111,17 @@ void configureDependencies({
     final rawTransactions = SqliteTransactionRepository(
       database.persistenceDatabase,
     );
+    final reconciliationCandidates = SqliteReconciliationCandidateRepository(
+      database.persistenceDatabase,
+    );
+    final reconciliationLinks = SqliteReconciliationLinkRepository(
+      database.persistenceDatabase,
+    );
     final transactions = DuplicateReviewingTransactionRepository(
       rawTransactions,
       duplicateRefresh,
       invalidateAnalysis: invalidateAnalysis,
+      consistencyGate: consistencyGate,
     );
     final statements = SqliteStatementRepository(database.persistenceDatabase);
     final finance = FinanceServices(
@@ -125,12 +138,8 @@ void configureDependencies({
       referenceData: SqliteReferenceDataRepository(
         database.persistenceDatabase,
       ),
-      reconciliationCandidates: SqliteReconciliationCandidateRepository(
-        database.persistenceDatabase,
-      ),
-      reconciliationLinks: SqliteReconciliationLinkRepository(
-        database.persistenceDatabase,
-      ),
+      reconciliationCandidates: reconciliationCandidates,
+      reconciliationLinks: reconciliationLinks,
       reconciliationWorkflow: SqliteReconciliationWorkflowRepository(
         database.persistenceDatabase,
       ),
@@ -164,6 +173,16 @@ void configureDependencies({
         database.persistenceDatabase,
       ),
       analysisInvalidation: invalidateAnalysis,
+      consistencyGate: consistencyGate,
+      canonicalTransactionIds: () async {
+        final selected = selectCanonicalTransactions(
+          source: await rawTransactions.listAll(),
+          links: await reconciliationLinks.listAll(),
+          reconciliationCandidates: await reconciliationCandidates.listAll(),
+          duplicateGroups: await duplicateGroups.list(),
+        );
+        return selected.transactions.map((value) => value.id.value).toSet();
+      },
     );
     services
       ..registerSingleton<FinanceServices>(finance)

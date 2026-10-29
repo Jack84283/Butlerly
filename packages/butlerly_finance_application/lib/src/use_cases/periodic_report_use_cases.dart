@@ -17,20 +17,25 @@ final class CalculatePeriodicFinancialReport {
 
   Future<ApplicationResult<PeriodicFinancialReport>> call(
     AnalysisContext context,
-  ) => runApplication('calculate periodic financial report', () async {
-    final results = await analysis.call(context);
-    if (results is! ApplicationSuccess<List<RuleExecutionResult>>) {
-      throw const RepositoryException(
-        RepositoryFailureCode.unavailable,
-        'periodic report analysis is unavailable',
+  ) => runApplication('calculate periodic financial report', () {
+    Future<PeriodicFinancialReport> operation() async {
+      final results = await analysis.call(context);
+      if (results is! ApplicationSuccess<List<RuleExecutionResult>>) {
+        throw const RepositoryException(
+          RepositoryFailureCode.unavailable,
+          'periodic report analysis is unavailable',
+        );
+      }
+      final patterns = await recurring(timeZoneId: context.period.timeZoneId);
+      return PeriodicFinancialReport(
+        context: context,
+        results: results.value,
+        overview: AnalysisOverview.fromResults(results.value),
+        recurringPatternsResult: patterns,
       );
     }
-    final patterns = await recurring(timeZoneId: context.period.timeZoneId);
-    return PeriodicFinancialReport(
-      context: context,
-      results: results.value,
-      overview: AnalysisOverview.fromResults(results.value),
-      recurringPatternsResult: patterns,
-    );
+
+    final gate = analysis.consistencyGate;
+    return gate == null ? operation() : gate.runExclusive(operation);
   });
 }

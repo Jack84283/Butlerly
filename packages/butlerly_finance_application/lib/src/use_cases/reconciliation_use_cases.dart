@@ -1,5 +1,6 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
+import '../analysis/invalidation.dart';
 import '../dto/transaction_dto.dart';
 import '../result/application_result.dart';
 import 'reconciliation_policy.dart';
@@ -23,59 +24,62 @@ final class ReceiptPaymentMatchCommand {
 }
 
 final class FindReceiptPaymentMatch {
-  const FindReceiptPaymentMatch(this.repository);
+  const FindReceiptPaymentMatch(this.repository, {this.consistencyGate});
 
   final TransactionRepository repository;
+  final AnalysisConsistencyGate? consistencyGate;
 
   Future<ApplicationResult<List<ReconciliationMatchCandidate>>> callAll(
     ReceiptPaymentMatchCommand command,
-  ) => runApplication('find receipt payment match', () async {
-    final receipt = Transaction(
-      id: TransactionId('__receipt_match__'),
-      timing: const UnknownTransactionTime(
-        UnknownTransactionTimeReason.unknown,
-      ),
-      money: command.amount,
-      direction: command.direction,
-      sourceType: TransactionSourceType.evidenceCapture,
-      transactionDate: command.transactionDate,
-      rawCounterparty: command.merchant,
-      paymentSourceId: command.paymentSourceId == null
-          ? null
-          : PaymentSourceId(command.paymentSourceId!),
-      provenance: [
-        Provenance(
-          id: ProvenanceId('__receipt_match_provenance__'),
-          sourceType: ProvenanceSourceType.scan,
-          capturedAt: DateTime.utc(1970),
-          originalRepresentation: 'receipt match input',
+  ) => _runExclusive(
+    () => runApplication('find receipt payment match', () async {
+      final receipt = Transaction(
+        id: TransactionId('__receipt_match__'),
+        timing: const UnknownTransactionTime(
+          UnknownTransactionTimeReason.unknown,
         ),
-      ],
-      createdAt: DateTime.utc(1970),
-      updatedAt: DateTime.utc(1970),
-    );
-    final scored = <ReconciliationMatchCandidate>[];
-    for (final transaction in await repository.listAll()) {
-      final isPayment =
-          transaction.status == TransactionStatus.active &&
-          (transaction.sourceType == TransactionSourceType.import ||
-              transaction.sourceType == TransactionSourceType.integration ||
-              transaction.sourceType == TransactionSourceType.manual);
-      if (!isPayment) continue;
-      final assessment = ReconciliationMatcher.assess(receipt, transaction);
-      if (!assessment.incompatible &&
-          assessment.score >= ReconciliationPolicy.candidateMinimumScore) {
-        scored.add(
-          ReconciliationMatchCandidate(
-            transaction: TransactionDto.fromDomain(transaction),
-            assessment: assessment,
+        money: command.amount,
+        direction: command.direction,
+        sourceType: TransactionSourceType.evidenceCapture,
+        transactionDate: command.transactionDate,
+        rawCounterparty: command.merchant,
+        paymentSourceId: command.paymentSourceId == null
+            ? null
+            : PaymentSourceId(command.paymentSourceId!),
+        provenance: [
+          Provenance(
+            id: ProvenanceId('__receipt_match_provenance__'),
+            sourceType: ProvenanceSourceType.scan,
+            capturedAt: DateTime.utc(1970),
+            originalRepresentation: 'receipt match input',
           ),
-        );
+        ],
+        createdAt: DateTime.utc(1970),
+        updatedAt: DateTime.utc(1970),
+      );
+      final scored = <ReconciliationMatchCandidate>[];
+      for (final transaction in await repository.listAll()) {
+        final isPayment =
+            transaction.status == TransactionStatus.active &&
+            (transaction.sourceType == TransactionSourceType.import ||
+                transaction.sourceType == TransactionSourceType.integration ||
+                transaction.sourceType == TransactionSourceType.manual);
+        if (!isPayment) continue;
+        final assessment = ReconciliationMatcher.assess(receipt, transaction);
+        if (!assessment.incompatible &&
+            assessment.score >= ReconciliationPolicy.candidateMinimumScore) {
+          scored.add(
+            ReconciliationMatchCandidate(
+              transaction: TransactionDto.fromDomain(transaction),
+              assessment: assessment,
+            ),
+          );
+        }
       }
-    }
-    scored.sort((a, b) => b.assessment.score.compareTo(a.assessment.score));
-    return List.unmodifiable(scored);
-  });
+      scored.sort((a, b) => b.assessment.score.compareTo(a.assessment.score));
+      return List.unmodifiable(scored);
+    }),
+  );
 
   Future<ApplicationResult<TransactionDto?>> call(
     ReceiptPaymentMatchCommand command,
@@ -87,6 +91,13 @@ final class FindReceiptPaymentMatch {
       _ => const ApplicationSuccess<TransactionDto?>(null),
     },
   );
+
+  Future<ApplicationResult<T>> _runExclusive<T>(
+    Future<ApplicationResult<T>> Function() operation,
+  ) {
+    final gate = consistencyGate;
+    return gate == null ? operation() : gate.runExclusive(operation);
+  }
 }
 
 final class ReconciliationMatchCandidate {
@@ -103,18 +114,24 @@ final class ReconciliationCandidateGenerator {
 
   List<ReconciliationCandidate> generate(List<Transaction> transactions) {
     final receipts = transactions.where(
-      (value) => value.sourceType == TransactionSourceType.evidenceCapture,
+      (value) =>
+          value.status == TransactionStatus.active &&
+          value.sourceType == TransactionSourceType.evidenceCapture,
     );
     final payments = transactions.where(
       (value) =>
-          value.sourceType == TransactionSourceType.import ||
-          value.sourceType == TransactionSourceType.integration ||
-          (value.sourceType == TransactionSourceType.manual &&
-              value.paymentSourceId != null),
+          value.status == TransactionStatus.active &&
+          (value.sourceType == TransactionSourceType.import ||
+              value.sourceType == TransactionSourceType.integration ||
+              (value.sourceType == TransactionSourceType.manual &&
+                  value.paymentSourceId != null)),
     );
     final candidates = <ReconciliationCandidate>[];
     for (final receipt in receipts) {
       for (final payment in payments) {
+        if (!ReconciliationPolicy.validLinkEndpoints(receipt, payment)) {
+          continue;
+        }
         final assessment = ReconciliationMatcher.assess(receipt, payment);
         if (assessment.incompatible) continue;
         final score = assessment.score;
@@ -288,55 +305,152 @@ final class ReconciliationMatcher {
 }
 
 final class ListReconciliationCandidates {
-  const ListReconciliationCandidates(this.repository);
+  const ListReconciliationCandidates(
+    this.repository, {
+    this.transactions,
+    this.consistencyGate,
+  });
   final ReconciliationCandidateRepository repository;
+  final TransactionRepository? transactions;
+  final AnalysisConsistencyGate? consistencyGate;
 
-  Future<ApplicationResult<List<ReconciliationCandidate>>> call() async {
-    try {
-      return ApplicationSuccess(await repository.listAll());
-    } on Object {
-      return const ApplicationFailure(
-        ApplicationFailureDetail(
-          code: ApplicationFailureCode.storage,
-          operation: 'list reconciliation candidates',
-        ),
-      );
-    }
+  Future<ApplicationResult<List<ReconciliationCandidate>>> call() =>
+      _runExclusive(() async {
+        try {
+          final values = await repository.listAll();
+          final transactionRepository = transactions;
+          if (transactionRepository == null) return ApplicationSuccess(values);
+          final activeIds = (await transactionRepository.listAll())
+              .where((value) => value.status == TransactionStatus.active)
+              .map((value) => value.id)
+              .toSet();
+          return ApplicationSuccess(
+            values
+                .where(
+                  (value) =>
+                      activeIds.contains(value.receiptTransactionId) &&
+                      activeIds.contains(value.paymentTransactionId),
+                )
+                .toList(growable: false),
+          );
+        } on Object {
+          return const ApplicationFailure(
+            ApplicationFailureDetail(
+              code: ApplicationFailureCode.storage,
+              operation: 'list reconciliation candidates',
+            ),
+          );
+        }
+      });
+
+  Future<ApplicationResult<T>> _runExclusive<T>(
+    Future<ApplicationResult<T>> Function() operation,
+  ) {
+    final gate = consistencyGate;
+    return gate == null ? operation() : gate.runExclusive(operation);
   }
 }
 
 final class SaveReconciliationCandidate {
-  const SaveReconciliationCandidate(this.repository);
+  const SaveReconciliationCandidate(
+    this.repository, {
+    this.invalidateAnalysis,
+    this.consistencyGate,
+  });
   final ReconciliationCandidateRepository repository;
+  final InvalidateAnalysis? invalidateAnalysis;
+  final AnalysisConsistencyGate? consistencyGate;
 
-  Future<ApplicationResult<void>> call(
-    ReconciliationCandidate candidate,
-  ) async {
-    try {
-      await repository.save(candidate);
-      return const ApplicationSuccess(null);
-    } on Object {
-      return const ApplicationFailure(
-        ApplicationFailureDetail(
-          code: ApplicationFailureCode.storage,
-          operation: 'save reconciliation candidate',
-        ),
-      );
-    }
+  Future<ApplicationResult<void>> call(ReconciliationCandidate candidate) =>
+      _runExclusive(() async {
+        try {
+          final invalidation = invalidateAnalysis;
+          if (invalidation != null) {
+            final result = await invalidation(
+              AnalysisInvalidationReason.reconciliationChanged,
+              DateTime.now().toUtc(),
+            );
+            if (result is ApplicationFailure<void>) {
+              throw const RepositoryException(
+                RepositoryFailureCode.unavailable,
+                'invalidate analysis before saving reconciliation candidate',
+              );
+            }
+          }
+          await repository.save(candidate);
+          return const ApplicationSuccess(null);
+        } on Object {
+          return const ApplicationFailure(
+            ApplicationFailureDetail(
+              code: ApplicationFailureCode.storage,
+              operation: 'save reconciliation candidate',
+            ),
+          );
+        }
+      });
+
+  Future<ApplicationResult<T>> _runExclusive<T>(
+    Future<ApplicationResult<T>> Function() operation,
+  ) {
+    final gate = consistencyGate;
+    return gate == null ? operation() : gate.runExclusive(operation);
   }
 }
 
 final class RefreshReconciliationCandidates {
-  const RefreshReconciliationCandidates(this.transactions, this.candidates);
+  const RefreshReconciliationCandidates(
+    this.transactions,
+    this.candidates, {
+    this.invalidateAnalysis,
+    this.consistencyGate,
+  });
 
   final TransactionRepository transactions;
   final ReconciliationCandidateRepository candidates;
+  final InvalidateAnalysis? invalidateAnalysis;
+  final AnalysisConsistencyGate? consistencyGate;
 
-  Future<ApplicationResult<List<ReconciliationCandidate>>> call() async {
+  Future<ApplicationResult<List<ReconciliationCandidate>>>
+  call() => _runExclusive(() async {
     try {
+      final invalidation = invalidateAnalysis;
+      if (invalidation != null) {
+        final result = await invalidation(
+          AnalysisInvalidationReason.reconciliationChanged,
+          DateTime.now().toUtc(),
+        );
+        if (result is ApplicationFailure<void>) {
+          throw const RepositoryException(
+            RepositoryFailureCode.unavailable,
+            'invalidate analysis before refreshing reconciliation candidates',
+          );
+        }
+      }
       final generated = const ReconciliationCandidateGenerator().generate(
         await transactions.listAll(),
       );
+      final generatedIds = generated.map((value) => value.id).toSet();
+      final now = DateTime.now().toUtc();
+      for (final existing in await candidates.listAll()) {
+        if (existing.status != ReconciliationCandidateStatus.proposed ||
+            generatedIds.contains(existing.id)) {
+          continue;
+        }
+        await candidates.save(existing.reject());
+        final receipt = await transactions.findById(
+          existing.receiptTransactionId,
+        );
+        final issue = receipt?.reviewIssues
+            .where(
+              (value) =>
+                  value.id.value == 'reconciliation-${existing.id}' &&
+                  value.status == ReviewIssueStatus.active,
+            )
+            .firstOrNull;
+        if (receipt != null && issue != null) {
+          await transactions.save(receipt.resolveReviewIssue(issue.id, now));
+        }
+      }
       for (final candidate in generated) {
         // A refresh must not resurrect a pair the user already confirmed or
         // rejected. Those decisions are durable review state.
@@ -355,7 +469,6 @@ final class RefreshReconciliationCandidates {
             final issue = transaction.reviewIssues
                 .where((value) => value.id == issueId)
                 .firstOrNull;
-            final now = DateTime.now().toUtc();
             final updated = issue == null
                 ? transaction.addReviewIssue(
                     ReviewIssue(
@@ -384,57 +497,178 @@ final class RefreshReconciliationCandidates {
         ),
       );
     }
+  });
+
+  Future<ApplicationResult<T>> _runExclusive<T>(
+    Future<ApplicationResult<T>> Function() operation,
+  ) {
+    final gate = consistencyGate;
+    return gate == null ? operation() : gate.runExclusive(operation);
   }
 }
 
 final class SaveReconciliationLink {
-  const SaveReconciliationLink(this.repository);
+  const SaveReconciliationLink(
+    this.repository, {
+    required this.candidates,
+    this.invalidateAnalysis,
+    this.consistencyGate,
+  });
 
   final ReconciliationLinkRepository repository;
+  final ReconciliationCandidateRepository candidates;
+  final InvalidateAnalysis? invalidateAnalysis;
+  final AnalysisConsistencyGate? consistencyGate;
 
-  Future<ApplicationResult<void>> call(ReconciliationLink link) async {
-    try {
-      await repository.save(link);
-      return const ApplicationSuccess(null);
-    } on Object {
-      return const ApplicationFailure(
-        ApplicationFailureDetail(
-          code: ApplicationFailureCode.storage,
-          operation: 'save reconciliation link',
-        ),
-      );
-    }
+  Future<ApplicationResult<void>> call(ReconciliationLink link) =>
+      _runExclusive(() async {
+        try {
+          final candidate = await candidates.findById(link.candidateId);
+          if (candidate == null) {
+            throw const RepositoryException(
+              RepositoryFailureCode.notFound,
+              'save reconciliation link candidate',
+            );
+          }
+          if (candidate.status != ReconciliationCandidateStatus.confirmed) {
+            throw const DomainValidationException(
+              code: DomainErrorCode.invalidState,
+              field: 'candidateId',
+              message:
+                  'Only confirmed reconciliation candidates can be linked.',
+            );
+          }
+          if (candidate.receiptTransactionId != link.receiptTransactionId ||
+              candidate.paymentTransactionId != link.paymentTransactionId) {
+            throw const DomainValidationException(
+              code: DomainErrorCode.relationshipMismatch,
+              field: 'candidateId',
+              message: 'The reconciliation link must match its candidate.',
+            );
+          }
+          final existing = await repository.listAll();
+          for (final current in existing) {
+            final isSame =
+                current.id == link.id &&
+                current.candidateId == link.candidateId &&
+                current.receiptTransactionId == link.receiptTransactionId &&
+                current.paymentTransactionId == link.paymentTransactionId;
+            if (isSame) return const ApplicationSuccess(null);
+            if (current.id == link.id ||
+                current.candidateId == link.candidateId ||
+                current.receiptTransactionId == link.receiptTransactionId ||
+                current.paymentTransactionId == link.paymentTransactionId) {
+              throw const RepositoryException(
+                RepositoryFailureCode.constraint,
+                'conflicting reconciliation link',
+              );
+            }
+          }
+          final invalidation = invalidateAnalysis;
+          if (invalidation != null) {
+            final result = await invalidation(
+              AnalysisInvalidationReason.reconciliationChanged,
+              DateTime.now().toUtc(),
+            );
+            if (result is ApplicationFailure<void>) {
+              throw const RepositoryException(
+                RepositoryFailureCode.unavailable,
+                'invalidate analysis after reconciliation link',
+              );
+            }
+          }
+          await repository.save(link);
+          return const ApplicationSuccess(null);
+        } on Object {
+          return const ApplicationFailure(
+            ApplicationFailureDetail(
+              code: ApplicationFailureCode.storage,
+              operation: 'save reconciliation link',
+            ),
+          );
+        }
+      });
+
+  Future<ApplicationResult<T>> _runExclusive<T>(
+    Future<ApplicationResult<T>> Function() operation,
+  ) {
+    final gate = consistencyGate;
+    return gate == null ? operation() : gate.runExclusive(operation);
   }
 }
 
 final class ConfirmReconciliation {
-  const ConfirmReconciliation(this.repository, [this.transactions]);
+  const ConfirmReconciliation(
+    this.repository, {
+    this.transactions,
+    this.invalidateAnalysis,
+    this.consistencyGate,
+  });
 
   final ReconciliationWorkflowRepository repository;
   final TransactionRepository? transactions;
+  final InvalidateAnalysis? invalidateAnalysis;
+  final AnalysisConsistencyGate? consistencyGate;
 
-  Future<ApplicationResult<void>> call(ReconciliationCandidate candidate) =>
-      runApplication('confirm reconciliation', () async {
-        if (candidate.status != ReconciliationCandidateStatus.proposed) {
-          throw const DomainValidationException(
-            code: DomainErrorCode.invalidState,
-            field: 'status',
-            message:
-                'Only proposed reconciliation candidates can be confirmed.',
+  Future<ApplicationResult<void>> call(
+    ReconciliationCandidate candidate,
+  ) => _runExclusive(
+    () => runApplication('confirm reconciliation', () async {
+      if (candidate.status != ReconciliationCandidateStatus.proposed) {
+        throw const DomainValidationException(
+          code: DomainErrorCode.invalidState,
+          field: 'status',
+          message: 'Only proposed reconciliation candidates can be confirmed.',
+        );
+      }
+      final transactionRepository = transactions;
+      if (transactionRepository != null) {
+        final receipt = await transactionRepository.findById(
+          candidate.receiptTransactionId,
+        );
+        final payment = await transactionRepository.findById(
+          candidate.paymentTransactionId,
+        );
+        if (receipt == null || payment == null) {
+          throw const RepositoryException(
+            RepositoryFailureCode.notFound,
+            'confirm reconciliation endpoints',
           );
         }
-        await repository.confirm(
-          candidate,
-          ReconciliationLink(
-            id: 'link-${candidate.id}',
-            candidateId: candidate.id,
-            receiptTransactionId: candidate.receiptTransactionId,
-            paymentTransactionId: candidate.paymentTransactionId,
-            createdAt: DateTime.now().toUtc(),
-          ),
+        if (!ReconciliationPolicy.validLinkEndpoints(receipt, payment)) {
+          throw const DomainValidationException(
+            code: DomainErrorCode.relationshipMismatch,
+            field: 'candidateId',
+            message: 'The reconciliation endpoints are invalid.',
+          );
+        }
+      }
+      final invalidation = invalidateAnalysis;
+      if (invalidation != null) {
+        final result = await invalidation(
+          AnalysisInvalidationReason.reconciliationChanged,
+          DateTime.now().toUtc(),
         );
-        if (transactions != null) await _resolveIssue(transactions!, candidate);
-      });
+        if (result is ApplicationFailure<void>) {
+          throw const RepositoryException(
+            RepositoryFailureCode.unavailable,
+            'invalidate analysis before reconciliation confirmation',
+          );
+        }
+      }
+      await repository.confirm(
+        candidate,
+        ReconciliationLink(
+          id: 'link-${candidate.id}',
+          candidateId: candidate.id,
+          receiptTransactionId: candidate.receiptTransactionId,
+          paymentTransactionId: candidate.paymentTransactionId,
+          createdAt: DateTime.now().toUtc(),
+        ),
+      );
+      if (transactions != null) await _resolveIssue(transactions!, candidate);
+    }),
+  );
 
   static Future<void> _resolveIssue(
     TransactionRepository transactions,
@@ -456,45 +690,91 @@ final class ConfirmReconciliation {
       );
     }
   }
+
+  Future<ApplicationResult<T>> _runExclusive<T>(
+    Future<ApplicationResult<T>> Function() operation,
+  ) {
+    final gate = consistencyGate;
+    return gate == null ? operation() : gate.runExclusive(operation);
+  }
 }
 
 final class RejectReconciliation {
-  const RejectReconciliation(this.repository, [this.transactions]);
+  const RejectReconciliation(
+    this.repository, {
+    this.transactions,
+    this.invalidateAnalysis,
+    this.consistencyGate,
+  });
 
   final ReconciliationWorkflowRepository repository;
   final TransactionRepository? transactions;
+  final InvalidateAnalysis? invalidateAnalysis;
+  final AnalysisConsistencyGate? consistencyGate;
 
   Future<ApplicationResult<void>> call(ReconciliationCandidate candidate) =>
-      runApplication('reject reconciliation', () async {
-        if (candidate.status != ReconciliationCandidateStatus.proposed) {
-          throw const DomainValidationException(
-            code: DomainErrorCode.invalidState,
-            field: 'status',
-            message: 'Only proposed reconciliation candidates can be rejected.',
-          );
-        }
-        await repository.reject(candidate);
-        if (transactions != null) {
-          await ConfirmReconciliation._resolveIssue(transactions!, candidate);
-        }
-      });
+      _runExclusive(
+        () => runApplication('reject reconciliation', () async {
+          if (candidate.status != ReconciliationCandidateStatus.proposed) {
+            throw const DomainValidationException(
+              code: DomainErrorCode.invalidState,
+              field: 'status',
+              message:
+                  'Only proposed reconciliation candidates can be rejected.',
+            );
+          }
+          final invalidation = invalidateAnalysis;
+          if (invalidation != null) {
+            final result = await invalidation(
+              AnalysisInvalidationReason.reconciliationChanged,
+              DateTime.now().toUtc(),
+            );
+            if (result is ApplicationFailure<void>) {
+              throw const RepositoryException(
+                RepositoryFailureCode.unavailable,
+                'invalidate analysis before reconciliation rejection',
+              );
+            }
+          }
+          await repository.reject(candidate);
+          if (transactions != null) {
+            await ConfirmReconciliation._resolveIssue(transactions!, candidate);
+          }
+        }),
+      );
+
+  Future<ApplicationResult<T>> _runExclusive<T>(
+    Future<ApplicationResult<T>> Function() operation,
+  ) {
+    final gate = consistencyGate;
+    return gate == null ? operation() : gate.runExclusive(operation);
+  }
 }
 
 final class ListReconciliationLinks {
-  const ListReconciliationLinks(this.repository);
+  const ListReconciliationLinks(this.repository, {this.consistencyGate});
 
   final ReconciliationLinkRepository repository;
+  final AnalysisConsistencyGate? consistencyGate;
 
-  Future<ApplicationResult<List<ReconciliationLink>>> call() async {
-    try {
-      return ApplicationSuccess(await repository.listAll());
-    } on Object {
-      return const ApplicationFailure(
-        ApplicationFailureDetail(
-          code: ApplicationFailureCode.storage,
-          operation: 'list reconciliation links',
-        ),
-      );
-    }
+  Future<ApplicationResult<List<ReconciliationLink>>> call() =>
+      _runExclusive(() async {
+        try {
+          return ApplicationSuccess(await repository.listAll());
+        } on Object {
+          return const ApplicationFailure(
+            ApplicationFailureDetail(
+              code: ApplicationFailureCode.storage,
+              operation: 'list reconciliation links',
+            ),
+          );
+        }
+      });
+
+  Future<ApplicationResult<T>> _runExclusive<T>(
+    Future<ApplicationResult<T>> Function() operation,
+  ) {
+    final gate = consistencyGate;
+    return gate == null ? operation() : gate.runExclusive(operation);
   }
 }

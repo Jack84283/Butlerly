@@ -1219,6 +1219,139 @@ void main() {
     },
   );
 
+  test(
+    'reconciliation confirmation rejects caller endpoints that differ from SQLite',
+    () async {
+      final receipt = duplicateTransaction(now, id: 'reconciliation-receipt');
+      final payment = duplicateTransaction(now, id: 'reconciliation-payment');
+      final other = duplicateTransaction(now, id: 'reconciliation-other');
+      await transactions.save(receipt);
+      await transactions.save(payment);
+      await transactions.save(other);
+      await database.connection.insert('reconciliation_candidates', {
+        'id': 'reconciliation-endpoint-candidate',
+        'receipt_transaction_id': receipt.id.value,
+        'payment_transaction_id': payment.id.value,
+        'score': 0.9,
+        'reasons_json': '[]',
+        'status': ReconciliationCandidateStatus.proposed.name,
+        'created_at': now.toIso8601String(),
+        'updated_at': now.toIso8601String(),
+      });
+
+      final candidate = ReconciliationCandidate(
+        id: 'reconciliation-endpoint-candidate',
+        receiptTransactionId: other.id,
+        paymentTransactionId: payment.id,
+        score: 0.9,
+        reasons: const [],
+      );
+      final link = ReconciliationLink(
+        id: 'reconciliation-endpoint-link',
+        candidateId: candidate.id,
+        receiptTransactionId: candidate.receiptTransactionId,
+        paymentTransactionId: candidate.paymentTransactionId,
+        createdAt: now,
+      );
+
+      await expectLater(
+        SqliteReconciliationWorkflowRepository(
+          database,
+        ).confirm(candidate, link),
+        throwsA(
+          isA<RepositoryException>().having(
+            (error) => error.code,
+            'code',
+            RepositoryFailureCode.constraint,
+          ),
+        ),
+      );
+      expect(
+        (await database.connection.query(
+          'reconciliation_candidates',
+          where: 'id = ?',
+          whereArgs: [candidate.id],
+        )).single['status'],
+        ReconciliationCandidateStatus.proposed.name,
+      );
+      expect(await database.connection.query('reconciliation_links'), isEmpty);
+    },
+  );
+
+  test(
+    'reconciliation confirmation rejects reused receipt or payment endpoints',
+    () async {
+      final receipt = duplicateTransaction(now, id: 'reused-receipt');
+      final payment = duplicateTransaction(now, id: 'reused-payment');
+      final otherPayment = duplicateTransaction(
+        now,
+        id: 'reused-other-payment',
+      );
+      await transactions.save(receipt);
+      await transactions.save(payment);
+      await transactions.save(otherPayment);
+      for (final candidate in [('first', payment), ('second', otherPayment)]) {
+        await database.connection.insert('reconciliation_candidates', {
+          'id': 'reused-${candidate.$1}',
+          'receipt_transaction_id': receipt.id.value,
+          'payment_transaction_id': candidate.$2.id.value,
+          'score': 0.9,
+          'reasons_json': '[]',
+          'status': ReconciliationCandidateStatus.proposed.name,
+          'created_at': now.toIso8601String(),
+          'updated_at': now.toIso8601String(),
+        });
+      }
+      final workflow = SqliteReconciliationWorkflowRepository(database);
+      await workflow.confirm(
+        ReconciliationCandidate(
+          id: 'reused-first',
+          receiptTransactionId: receipt.id,
+          paymentTransactionId: payment.id,
+          score: .9,
+          reasons: const [],
+        ),
+        ReconciliationLink(
+          id: 'reused-first-link',
+          candidateId: 'reused-first',
+          receiptTransactionId: receipt.id,
+          paymentTransactionId: payment.id,
+          createdAt: now,
+        ),
+      );
+
+      await expectLater(
+        workflow.confirm(
+          ReconciliationCandidate(
+            id: 'reused-second',
+            receiptTransactionId: receipt.id,
+            paymentTransactionId: otherPayment.id,
+            score: .9,
+            reasons: const [],
+          ),
+          ReconciliationLink(
+            id: 'reused-second-link',
+            candidateId: 'reused-second',
+            receiptTransactionId: receipt.id,
+            paymentTransactionId: otherPayment.id,
+            createdAt: now,
+          ),
+        ),
+        throwsA(
+          isA<RepositoryException>().having(
+            (error) => error.code,
+            'code',
+            RepositoryFailureCode.constraint,
+          ),
+        ),
+      );
+      expect(
+        (await database.connection.query('reconciliation_links')).length,
+        1,
+      );
+    },
+  );
+
   test('searches and filters transactions locally', () async {
     final paymentSource = PaymentSource(
       id: PaymentSourceId('search-source'),

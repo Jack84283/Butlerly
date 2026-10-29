@@ -1,5 +1,6 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
+import '../analysis/invalidation.dart';
 import '../result/application_result.dart';
 import 'merchant_review_use_cases.dart';
 
@@ -197,30 +198,57 @@ final class ListMerchants {
 }
 
 final class SaveCategory {
-  const SaveCategory(this.repository);
+  const SaveCategory(
+    this.repository, {
+    this.invalidateAnalysis,
+    this.consistencyGate,
+  });
   final CategoryRepository repository;
+  final InvalidateAnalysis? invalidateAnalysis;
+  final AnalysisConsistencyGate? consistencyGate;
 
-  Future<ApplicationResult<Category>> call(Category value) =>
-      runApplication('save category', () async {
-        if (value.parentId != null) {
-          final parent = await repository.findById(value.parentId!);
-          if (parent == null) {
-            throw const RepositoryException(
-              RepositoryFailureCode.notFound,
-              'parent category',
-            );
-          }
-          if (parent.parentId != null || parent.id == value.id) {
-            invalid(
-              code: DomainErrorCode.relationshipMismatch,
-              field: 'parentId',
-              message: 'A subcategory must belong to a root category.',
-            );
-          }
+  Future<ApplicationResult<Category>> call(Category value) => _runExclusive(
+    () => runApplication('save category', () async {
+      if (value.parentId != null) {
+        final parent = await repository.findById(value.parentId!);
+        if (parent == null) {
+          throw const RepositoryException(
+            RepositoryFailureCode.notFound,
+            'parent category',
+          );
         }
-        await repository.save(value);
-        return value;
-      });
+        if (parent.parentId != null || parent.id == value.id) {
+          invalid(
+            code: DomainErrorCode.relationshipMismatch,
+            field: 'parentId',
+            message: 'A subcategory must belong to a root category.',
+          );
+        }
+      }
+      final invalidation = invalidateAnalysis;
+      if (invalidation != null) {
+        final result = await invalidation(
+          AnalysisInvalidationReason.categoryChanged,
+          DateTime.now().toUtc(),
+        );
+        if (result is ApplicationFailure<void>) {
+          throw const RepositoryException(
+            RepositoryFailureCode.unavailable,
+            'invalidate analysis after category change',
+          );
+        }
+      }
+      await repository.save(value);
+      return value;
+    }),
+  );
+
+  Future<ApplicationResult<Category>> _runExclusive(
+    Future<ApplicationResult<Category>> Function() operation,
+  ) {
+    final gate = consistencyGate;
+    return gate == null ? operation() : gate.runExclusive(operation);
+  }
 }
 
 final class ListCategories {
@@ -263,14 +291,53 @@ final class LoadUserPreference {
 }
 
 final class SaveUserPreference {
-  const SaveUserPreference(this.repository);
+  const SaveUserPreference(
+    this.repository, {
+    this.invalidateAnalysis,
+    this.consistencyGate,
+  });
   final UserPreferenceRepository repository;
+  final InvalidateAnalysis? invalidateAnalysis;
+  final AnalysisConsistencyGate? consistencyGate;
 
   Future<ApplicationResult<UserPreference>> call(UserPreference value) =>
-      runApplication('save user preferences', () async {
-        await repository.save(value);
-        return value;
-      });
+      _runExclusive(
+        () => runApplication('save user preferences', () async {
+          final previous = await repository.load();
+          if (previous != null) {
+            final invalidation = invalidateAnalysis;
+            if (invalidation != null) {
+              final reasons = [
+                if (previous.baseCurrency != value.baseCurrency)
+                  AnalysisInvalidationReason.baseCurrencyChanged,
+                if (previous.timeZoneId != value.timeZoneId)
+                  AnalysisInvalidationReason.timeZoneChanged,
+              ];
+              for (final reason in reasons) {
+                final result = await invalidation(
+                  reason,
+                  DateTime.now().toUtc(),
+                );
+                if (result is ApplicationFailure<void>) {
+                  throw const RepositoryException(
+                    RepositoryFailureCode.unavailable,
+                    'invalidate analysis after preference change',
+                  );
+                }
+              }
+            }
+          }
+          await repository.save(value);
+          return value;
+        }),
+      );
+
+  Future<ApplicationResult<T>> _runExclusive<T>(
+    Future<ApplicationResult<T>> Function() operation,
+  ) {
+    final gate = consistencyGate;
+    return gate == null ? operation() : gate.runExclusive(operation);
+  }
 }
 
 final class StoreAndAttachEvidence {

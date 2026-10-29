@@ -287,9 +287,17 @@ class _AnalysisPageState extends State<AnalysisPage> {
             AnalysisInvalidationReason.transactionChanged,
             DateTime.now().toUtc(),
           );
-    final result = await reload.then(
-      (_) => _load(period, generation: generation),
-    );
+    final result = await reload
+        .then<ApplicationResult<List<RuleExecutionResult>>>((
+          invalidationResult,
+        ) {
+          if (invalidationResult is ApplicationFailure<void>) {
+            return ApplicationFailure<List<RuleExecutionResult>>(
+              invalidationResult.failure,
+            );
+          }
+          return _load(period, generation: generation);
+        });
     if (!mounted || generation != _loadGeneration) return;
     if (result is ApplicationFailure<List<RuleExecutionResult>>) {
       ScaffoldMessenger.of(context).showSnackBar(

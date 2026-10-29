@@ -1,5 +1,6 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
+import '../analysis/invalidation.dart';
 import '../dto/transaction_dto.dart';
 import '../result/application_result.dart';
 import 'merchant_review_use_cases.dart';
@@ -36,49 +37,64 @@ final class PaymentTransactionCommand {
 }
 
 final class CreatePaymentTransaction {
-  const CreatePaymentTransaction(this.repository, this.clock, {this.merchants});
+  const CreatePaymentTransaction(
+    this.repository,
+    this.clock, {
+    this.merchants,
+    this.consistencyGate,
+  });
 
   final TransactionRepository repository;
   final ApplicationClock clock;
   final MerchantRepository? merchants;
+  final AnalysisConsistencyGate? consistencyGate;
 
   Future<ApplicationResult<TransactionDto>> call(
     PaymentTransactionCommand command,
-  ) => runApplication('create payment transaction', () async {
-    final now = clock.now();
-    final transaction = Transaction(
-      id: TransactionId(command.id),
-      timing: const UnknownTransactionTime(
-        UnknownTransactionTimeReason.unknown,
-      ),
-      money: command.money,
-      direction: command.direction,
-      sourceType: command.sourceType,
-      transactionDate: command.transactionDate,
-      description: command.description,
-      rawCounterparty: command.description,
-      paymentSourceId: command.paymentSourceId == null
-          ? null
-          : PaymentSourceId(command.paymentSourceId!),
-      externalReference: command.externalReference,
-      provenance: [
-        Provenance(
-          id: ProvenanceId(command.provenanceId),
-          sourceType: command.provenanceSourceType,
-          capturedAt: now,
-          sourceId: command.sourceId,
-          originalRepresentation: command.originalRepresentation,
+  ) => _runExclusive(
+    () => runApplication('create payment transaction', () async {
+      final now = clock.now();
+      final transaction = Transaction(
+        id: TransactionId(command.id),
+        timing: const UnknownTransactionTime(
+          UnknownTransactionTimeReason.unknown,
         ),
-      ],
-      createdAt: now,
-      updatedAt: now,
-    );
-    final resolved = await synchronizeMerchantReviewIssueBestEffort(
-      transaction,
-      now,
-      merchantRepository: merchants,
-    );
-    await repository.save(resolved);
-    return TransactionDto.fromDomain(resolved);
-  });
+        money: command.money,
+        direction: command.direction,
+        sourceType: command.sourceType,
+        transactionDate: command.transactionDate,
+        description: command.description,
+        rawCounterparty: command.description,
+        paymentSourceId: command.paymentSourceId == null
+            ? null
+            : PaymentSourceId(command.paymentSourceId!),
+        externalReference: command.externalReference,
+        provenance: [
+          Provenance(
+            id: ProvenanceId(command.provenanceId),
+            sourceType: command.provenanceSourceType,
+            capturedAt: now,
+            sourceId: command.sourceId,
+            originalRepresentation: command.originalRepresentation,
+          ),
+        ],
+        createdAt: now,
+        updatedAt: now,
+      );
+      final resolved = await synchronizeMerchantReviewIssueBestEffort(
+        transaction,
+        now,
+        merchantRepository: merchants,
+      );
+      await repository.save(resolved);
+      return TransactionDto.fromDomain(resolved);
+    }),
+  );
+
+  Future<ApplicationResult<T>> _runExclusive<T>(
+    Future<ApplicationResult<T>> Function() operation,
+  ) {
+    final gate = consistencyGate;
+    return gate == null ? operation() : gate.runExclusive(operation);
+  }
 }

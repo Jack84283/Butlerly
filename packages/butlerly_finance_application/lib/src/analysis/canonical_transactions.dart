@@ -1,5 +1,7 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
+import '../use_cases/reconciliation_policy.dart';
+
 /// Selects the economic transaction representatives used by historical
 /// analysis. Review and candidate-generation workflows deliberately do not
 /// use this helper: those workflows remain Active-only.
@@ -32,15 +34,83 @@ final class CanonicalTransactionSelection {
 CanonicalTransactionSelection selectCanonicalTransactions({
   required List<Transaction> source,
   List<ReconciliationLink> links = const [],
+  List<ReconciliationCandidate>? reconciliationCandidates,
   List<DuplicateCandidateGroup> duplicateGroups = const [],
 }) {
-  final receiptIds = links.map((value) => value.receiptTransactionId).toSet();
   final historicalById = {
     for (final value in source)
       if (value.status == TransactionStatus.active ||
           value.status == TransactionStatus.archived)
         value.id: value,
   };
+  final validLinks = <ReconciliationLink>[];
+  final linkIssues = <DataQualityIssue>[];
+  if (reconciliationCandidates == null) {
+    validLinks.addAll(links);
+  } else {
+    final candidatesById = {
+      for (final candidate in reconciliationCandidates) candidate.id: candidate,
+    };
+    final basicValidLinks = <ReconciliationLink>[];
+    for (final link in links) {
+      final candidate = candidatesById[link.candidateId];
+      final receipt = historicalById[link.receiptTransactionId];
+      final payment = historicalById[link.paymentTransactionId];
+      final valid =
+          candidate != null &&
+          candidate.status == ReconciliationCandidateStatus.confirmed &&
+          candidate.receiptTransactionId == link.receiptTransactionId &&
+          candidate.paymentTransactionId == link.paymentTransactionId &&
+          link.receiptTransactionId != link.paymentTransactionId &&
+          receipt != null &&
+          payment != null &&
+          ReconciliationPolicy.validConfirmedLinkEndpoints(receipt, payment);
+      if (valid) {
+        basicValidLinks.add(link);
+      } else {
+        linkIssues.add(
+          DataQualityIssue(
+            code: 'malformedReconciliationLink',
+            detail:
+                'A persisted reconciliation link has invalid candidate, endpoint, role, or source references and needs repair.',
+          ),
+        );
+      }
+    }
+    final receiptLinkCounts = <TransactionId, int>{};
+    final paymentLinkCounts = <TransactionId, int>{};
+    for (final link in basicValidLinks) {
+      receiptLinkCounts.update(
+        link.receiptTransactionId,
+        (count) => count + 1,
+        ifAbsent: () => 1,
+      );
+      paymentLinkCounts.update(
+        link.paymentTransactionId,
+        (count) => count + 1,
+        ifAbsent: () => 1,
+      );
+    }
+    for (final link in basicValidLinks) {
+      final conflicting =
+          receiptLinkCounts[link.receiptTransactionId]! > 1 ||
+          paymentLinkCounts[link.paymentTransactionId]! > 1;
+      if (conflicting) {
+        linkIssues.add(
+          DataQualityIssue(
+            code: 'conflictingReconciliationLinks',
+            detail:
+                'Multiple persisted reconciliation links reuse a receipt or payment endpoint and need repair.',
+          ),
+        );
+      } else {
+        validLinks.add(link);
+      }
+    }
+  }
+  final receiptIds = validLinks
+      .map((value) => value.receiptTransactionId)
+      .toSet();
   final eligible =
       source
           .where(
@@ -55,7 +125,7 @@ CanonicalTransactionSelection selectCanonicalTransactions({
 
   final selectedIds = <TransactionId>{};
   final issuesByTransaction = <TransactionId, List<DataQualityIssue>>{};
-  final globalIssues = <DataQualityIssue>[];
+  final globalIssues = <DataQualityIssue>[...linkIssues];
   final groups = [...duplicateGroups]
     ..sort((left, right) => left.id.compareTo(right.id));
 

@@ -6,6 +6,7 @@ import '../dto/monthly_spending_trend_point.dart';
 import '../dto/review_item_dto.dart';
 import '../dto/review_period_scope.dart';
 import '../dto/transaction_dto.dart';
+import '../analysis/invalidation.dart';
 import '../result/application_result.dart';
 import 'analysis_use_cases.dart';
 import '../commands/transaction_commands.dart';
@@ -15,6 +16,8 @@ import 'duplicate_review_use_cases.dart';
 import 'classification_use_cases.dart';
 import 'merchant_review_use_cases.dart';
 import 'transaction_use_cases.dart';
+
+typedef HomeCanonicalTransactionIdsLoader = Future<Set<String>> Function();
 
 /// Coordinates the application data needed by Home for one selected month.
 ///
@@ -30,6 +33,8 @@ final class GetHomeOverview {
     required this.listReviewItems,
     this.listDuplicateCandidateGroups,
     this.merchants,
+    this.canonicalTransactionIds,
+    this.consistencyGate,
   });
 
   final ResolveHomePeriod resolveHomePeriod;
@@ -39,8 +44,35 @@ final class GetHomeOverview {
   final ListReviewItems listReviewItems;
   final ListDuplicateCandidateGroups? listDuplicateCandidateGroups;
   final MerchantRepository? merchants;
+  final HomeCanonicalTransactionIdsLoader? canonicalTransactionIds;
+  final AnalysisConsistencyGate? consistencyGate;
 
   Future<ApplicationResult<HomeOverview>> call({
+    required DateTime instant,
+    DateTime? selectedMonth,
+    bool forceAnalysisRefresh = false,
+    int trendMonthCount = 6,
+  }) async {
+    final gate = consistencyGate ?? calculateAnalysis?.consistencyGate;
+    if (gate != null) {
+      return gate.runExclusive(
+        () => _call(
+          instant: instant,
+          selectedMonth: selectedMonth,
+          forceAnalysisRefresh: forceAnalysisRefresh,
+          trendMonthCount: trendMonthCount,
+        ),
+      );
+    }
+    return _call(
+      instant: instant,
+      selectedMonth: selectedMonth,
+      forceAnalysisRefresh: forceAnalysisRefresh,
+      trendMonthCount: trendMonthCount,
+    );
+  }
+
+  Future<ApplicationResult<HomeOverview>> _call({
     required DateTime instant,
     DateTime? selectedMonth,
     bool forceAnalysisRefresh = false,
@@ -112,8 +144,32 @@ final class GetHomeOverview {
         ),
       );
     }
-    final transactions =
+    final queriedTransactions =
         (transactionResult as ApplicationSuccess<List<TransactionDto>>).value;
+    final canonicalLoader = canonicalTransactionIds;
+    final Set<String>? canonicalIds;
+    if (canonicalLoader == null) {
+      canonicalIds = null;
+    } else {
+      try {
+        canonicalIds = await canonicalLoader();
+      } on Object {
+        await reviewResultFuture;
+        await duplicateResultFuture;
+        return ApplicationSuccess(
+          HomeOverview.transactionsUnavailable(
+            context: context,
+            currentFinancialMonth: homePeriod.currentFinancialMonth,
+            displayMonth: homePeriod.displayMonth,
+          ),
+        );
+      }
+    }
+    final transactions = canonicalIds == null
+        ? queriedTransactions
+        : queriedTransactions
+              .where((value) => canonicalIds!.contains(value.id))
+              .toList(growable: false);
     final reviewResult = await reviewResultFuture;
     final duplicateResult = await duplicateResultFuture;
 

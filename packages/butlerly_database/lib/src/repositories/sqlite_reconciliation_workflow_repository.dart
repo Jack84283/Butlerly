@@ -26,7 +26,11 @@ final class SqliteReconciliationWorkflowRepository
       await database.transaction((transaction) async {
         final rows = await transaction.query(
           'reconciliation_candidates',
-          columns: ['status'],
+          columns: [
+            'status',
+            'receipt_transaction_id',
+            'payment_transaction_id',
+          ],
           where: 'id = ?',
           whereArgs: [candidate.id],
           limit: 1,
@@ -37,7 +41,35 @@ final class SqliteReconciliationWorkflowRepository
             'confirm reconciliation candidate',
           );
         }
-        final status = rows.single['status'] as String;
+        final endpointConflicts = await transaction.query(
+          'reconciliation_links',
+          columns: ['id'],
+          where:
+              '(receipt_transaction_id = ? OR payment_transaction_id = ?) '
+              'AND candidate_id != ?',
+          whereArgs: [
+            candidate.receiptTransactionId.value,
+            candidate.paymentTransactionId.value,
+            candidate.id,
+          ],
+        );
+        if (endpointConflicts.isNotEmpty) {
+          throw const RepositoryException(
+            RepositoryFailureCode.constraint,
+            'reconciliation endpoint is already linked',
+          );
+        }
+        final row = rows.single;
+        if (row['receipt_transaction_id'] !=
+                candidate.receiptTransactionId.value ||
+            row['payment_transaction_id'] !=
+                candidate.paymentTransactionId.value) {
+          throw const RepositoryException(
+            RepositoryFailureCode.constraint,
+            'reconciliation candidate endpoints do not match',
+          );
+        }
+        final status = row['status'] as String;
         if (status == ReconciliationCandidateStatus.confirmed.name) {
           final existing = await transaction.query(
             'reconciliation_links',
@@ -45,7 +77,19 @@ final class SqliteReconciliationWorkflowRepository
             whereArgs: [candidate.id],
             limit: 1,
           );
-          if (existing.isNotEmpty) return;
+          if (existing.isNotEmpty) {
+            final existingLink = existing.single;
+            if (existingLink['receipt_transaction_id'] !=
+                    candidate.receiptTransactionId.value ||
+                existingLink['payment_transaction_id'] !=
+                    candidate.paymentTransactionId.value) {
+              throw const RepositoryException(
+                RepositoryFailureCode.constraint,
+                'stored reconciliation link endpoints do not match',
+              );
+            }
+            return;
+          }
         }
         if (status != ReconciliationCandidateStatus.proposed.name) {
           throw const RepositoryException(

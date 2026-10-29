@@ -1,6 +1,7 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
 import '../analysis/dataset_builder.dart';
+import '../analysis/invalidation.dart';
 import '../result/application_result.dart';
 
 /// Monthly budget spending is derived from canonical economic transactions,
@@ -14,47 +15,56 @@ final class CanonicalBudgetActuals {
 }
 
 final class CalculateCanonicalBudgetActuals {
-  const CalculateCanonicalBudgetActuals(this.datasetBuilder);
+  const CalculateCanonicalBudgetActuals(
+    this.datasetBuilder, {
+    this.consistencyGate,
+  });
 
   final AnalysisDatasetBuilder datasetBuilder;
+  final AnalysisConsistencyGate? consistencyGate;
 
   Future<ApplicationResult<CanonicalBudgetActuals>> call({
     required DateTime month,
     required List<Budget> budgets,
-  }) => runApplication('calculate monthly budget actuals', () async {
-    final currency = await datasetBuilder.baseCurrency();
-    if (currency == null) {
-      throw const RepositoryException(
-        RepositoryFailureCode.unavailable,
-        'Budget calculation requires configured financial preferences.',
+  }) => runApplication('calculate monthly budget actuals', () {
+    Future<CanonicalBudgetActuals> operation() async {
+      final currency = await datasetBuilder.baseCurrency();
+      if (currency == null) {
+        throw const RepositoryException(
+          RepositoryFailureCode.unavailable,
+          'Budget calculation requires configured financial preferences.',
+        );
+      }
+      final timeZoneId = await datasetBuilder.timeZoneId();
+      final first = DateTime.utc(month.year, month.month);
+      final last = DateTime.utc(month.year, month.month + 1, 0);
+      String date(DateTime value) =>
+          '${value.year.toString().padLeft(4, '0')}-'
+          '${value.month.toString().padLeft(2, '0')}-'
+          '${value.day.toString().padLeft(2, '0')}';
+      final context = AnalysisContext(
+        period: AnalysisPeriod(
+          startDate: date(first),
+          endDate: date(last),
+          timeZoneId: timeZoneId,
+        ),
+        datasetMode: DatasetMode.allEligible,
+        currencyBasis: CurrencyBasis.baseCurrency,
+        baseCurrency: currency,
+        periodType: 'selected_period',
       );
+      final result = await datasetBuilder.build(context);
+      if (result is! ApplicationDatasetSuccess) {
+        throw const RepositoryException(
+          RepositoryFailureCode.unavailable,
+          'Canonical transaction data is unavailable for the budget month.',
+        );
+      }
+      return calculateBudgetActualsFromDataset(result.dataset, budgets);
     }
-    final timeZoneId = await datasetBuilder.timeZoneId();
-    final first = DateTime.utc(month.year, month.month);
-    final last = DateTime.utc(month.year, month.month + 1, 0);
-    String date(DateTime value) =>
-        '${value.year.toString().padLeft(4, '0')}-'
-        '${value.month.toString().padLeft(2, '0')}-'
-        '${value.day.toString().padLeft(2, '0')}';
-    final context = AnalysisContext(
-      period: AnalysisPeriod(
-        startDate: date(first),
-        endDate: date(last),
-        timeZoneId: timeZoneId,
-      ),
-      datasetMode: DatasetMode.allEligible,
-      currencyBasis: CurrencyBasis.baseCurrency,
-      baseCurrency: currency,
-      periodType: 'selected_period',
-    );
-    final result = await datasetBuilder.build(context);
-    if (result is! ApplicationDatasetSuccess) {
-      throw const RepositoryException(
-        RepositoryFailureCode.unavailable,
-        'Canonical transaction data is unavailable for the budget month.',
-      );
-    }
-    return calculateBudgetActualsFromDataset(result.dataset, budgets);
+
+    final gate = consistencyGate;
+    return gate == null ? operation() : gate.runExclusive(operation);
   });
 }
 
