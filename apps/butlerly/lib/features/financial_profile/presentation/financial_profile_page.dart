@@ -969,35 +969,32 @@ final class _FinancialProfilePageState
     ),
   );
 
-  Widget _summaryAnswer(
-    BuildContext context,
-    String question,
-    String answer,
-  ) => Padding(
-    padding: const EdgeInsets.only(bottom: ButlerlySpacing.standard),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('•', style: Theme.of(context).textTheme.bodyMedium),
-        const SizedBox(width: ButlerlySpacing.compact),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                question,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+  Widget _summaryAnswer(BuildContext context, String question, String answer) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: ButlerlySpacing.standard),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('•', style: Theme.of(context).textTheme.bodyMedium),
+            const SizedBox(width: ButlerlySpacing.compact),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    question,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: ButlerlySpacing.micro),
+                  Text(answer, style: Theme.of(context).textTheme.bodyMedium),
+                ],
               ),
-              const SizedBox(height: ButlerlySpacing.micro),
-              Text(answer, style: Theme.of(context).textTheme.bodyMedium),
-            ],
-          ),
+            ),
+          ],
         ),
-      ],
-    ),
-  );
+      );
 
   List<Widget> _summaryAnswers(
     BuildContext context,
