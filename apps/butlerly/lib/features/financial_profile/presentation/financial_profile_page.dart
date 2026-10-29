@@ -389,13 +389,6 @@ final class _FinancialProfilePageState
             children: [
               ButlerlyCardHeader(
                 title: context.l10n.text('financialProfileSummary'),
-                subtitle: context.l10n.text(switch (status) {
-                  FinancialProfileStatus.notStarted =>
-                    'financialProfileNoProfile',
-                  FinancialProfileStatus.inProgress =>
-                    'financialProfileInProgressBody',
-                  FinancialProfileStatus.completed => 'financialProfileBody',
-                }),
               ),
               const SizedBox(height: ButlerlySpacing.standard),
               _summaryRow(
@@ -421,9 +414,12 @@ final class _FinancialProfilePageState
         const SizedBox(height: ButlerlySpacing.standard),
         if (profile != null && profile.answeredQuestionCount > 0)
           ButlerlyCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: _summaryAnswers(context, profile),
+            child: SizedBox(
+              width: double.infinity,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: _summaryAnswers(context, profile),
+              ),
             ),
           ),
         const SizedBox(height: ButlerlySpacing.standard),
@@ -576,6 +572,7 @@ final class _FinancialProfilePageState
         onChanged: (value) =>
             _updateDraft(draft.copyWith(householdSize: value)),
       ),
+      const SizedBox(height: ButlerlySpacing.standard),
       _radioQuestion<DependentsCount>(
         context,
         clearKey: 'dependents-count',
@@ -590,6 +587,7 @@ final class _FinancialProfilePageState
         onChanged: (value) =>
             _updateDraft(draft.copyWith(dependentsCount: value)),
       ),
+      const SizedBox(height: ButlerlySpacing.standard),
       _radioQuestion<HousingSituation>(
         context,
         clearKey: 'housing-situation',
@@ -639,6 +637,7 @@ final class _FinancialProfilePageState
             onChanged: (value) =>
                 _updateDraft(draft.copyWith(expensePredictability: value)),
           ),
+          const SizedBox(height: ButlerlySpacing.standard),
           _categoryQuestion(
             context,
             title: context.l10n.text('financialProfileQ6'),
@@ -669,7 +668,9 @@ final class _FinancialProfilePageState
         onChanged: (value) =>
             _updateDraft(draft.copyWith(primaryFinancialGoal: value)),
       ),
+      const SizedBox(height: ButlerlySpacing.standard),
       _savingsTargetQuestion(context, draft),
+      const SizedBox(height: ButlerlySpacing.standard),
       _radioQuestion<GoalTimeframe>(
         context,
         clearKey: 'goal-timeframe',
@@ -710,6 +711,7 @@ final class _FinancialProfilePageState
             onChanged: (value) =>
                 _updateDraft(draft.copyWith(budgetingPreference: value)),
           ),
+          const SizedBox(height: ButlerlySpacing.standard),
           _multiChoiceQuestion<FinancialInsightType>(
             context,
             title: context.l10n.text('financialProfileQ11'),
@@ -750,6 +752,10 @@ final class _FinancialProfilePageState
             children: [
               RadioListTile<bool>(
                 contentPadding: EdgeInsets.zero,
+                dense: MediaQuery.textScalerOf(context).scale(14) <= 18,
+                visualDensity: MediaQuery.textScalerOf(context).scale(14) <= 18
+                    ? const VisualDensity(vertical: -2)
+                    : VisualDensity.standard,
                 title: Text(
                   context.l10n.text('financialProfileTargetNoSpecific'),
                 ),
@@ -757,6 +763,10 @@ final class _FinancialProfilePageState
               ),
               RadioListTile<bool>(
                 contentPadding: EdgeInsets.zero,
+                dense: MediaQuery.textScalerOf(context).scale(14) <= 18,
+                visualDensity: MediaQuery.textScalerOf(context).scale(14) <= 18
+                    ? const VisualDensity(vertical: -2)
+                    : VisualDensity.standard,
                 title: Text(
                   context.l10n.text('financialProfileTargetAmount', {
                     'currency':
@@ -817,6 +827,10 @@ final class _FinancialProfilePageState
           for (final entry in options.entries)
             RadioListTile<T>(
               contentPadding: EdgeInsets.zero,
+              dense: MediaQuery.textScalerOf(context).scale(14) <= 18,
+              visualDensity: MediaQuery.textScalerOf(context).scale(14) <= 18
+                  ? const VisualDensity(vertical: -2)
+                  : VisualDensity.standard,
               title: Text(context.l10n.text(entry.value)),
               subtitle: descriptions[entry.key] == null
                   ? null
@@ -847,6 +861,10 @@ final class _FinancialProfilePageState
         for (final entry in options.entries)
           CheckboxListTile(
             contentPadding: EdgeInsets.zero,
+            dense: MediaQuery.textScalerOf(context).scale(14) <= 18,
+            visualDensity: MediaQuery.textScalerOf(context).scale(14) <= 18
+                ? const VisualDensity(vertical: -2)
+                : VisualDensity.standard,
             title: Text(context.l10n.text(entry.value)),
             value: selected.contains(entry.key),
             onChanged: (checked) {
@@ -951,6 +969,36 @@ final class _FinancialProfilePageState
     ),
   );
 
+  Widget _summaryAnswer(
+    BuildContext context,
+    String question,
+    String answer,
+  ) => Padding(
+    padding: const EdgeInsets.only(bottom: ButlerlySpacing.standard),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('•', style: Theme.of(context).textTheme.bodyMedium),
+        const SizedBox(width: ButlerlySpacing.compact),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                question,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: ButlerlySpacing.micro),
+              Text(answer, style: Theme.of(context).textTheme.bodyMedium),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+
   List<Widget> _summaryAnswers(
     BuildContext context,
     FinancialProfile profile,
@@ -961,46 +1009,54 @@ final class _FinancialProfilePageState
     ),
     const SizedBox(height: ButlerlySpacing.small),
     if (profile.householdSize != null)
-      _summaryRow(
+      _summaryAnswer(
+        context,
         context.l10n.text('financialProfileQ1'),
         context.l10n.text(_householdKey(profile.householdSize!)),
       ),
     if (profile.dependentsCount != null)
-      _summaryRow(
+      _summaryAnswer(
+        context,
         context.l10n.text('financialProfileQ2'),
         context.l10n.text(_dependentsKey(profile.dependentsCount!)),
       ),
     if (profile.housingSituation != null)
-      _summaryRow(
+      _summaryAnswer(
+        context,
         context.l10n.text('financialProfileQ3'),
         context.l10n.text(_housingKey(profile.housingSituation!)),
       ),
     if (profile.primarySpendingCategoryIds.isNotEmpty)
-      _summaryRow(
+      _summaryAnswer(
+        context,
         context.l10n.text('financialProfileQ4'),
         profile.primarySpendingCategoryIds
             .map((id) => _categoryLabel(context, id))
             .join(', '),
       ),
     if (profile.expensePredictability != null)
-      _summaryRow(
+      _summaryAnswer(
+        context,
         context.l10n.text('financialProfileQ5'),
         context.l10n.text(_expenseKey(profile.expensePredictability!)),
       ),
     if (profile.categoriesToImprove.isNotEmpty)
-      _summaryRow(
+      _summaryAnswer(
+        context,
         context.l10n.text('financialProfileQ6'),
         profile.categoriesToImprove
             .map((id) => _categoryLabel(context, id))
             .join(', '),
       ),
     if (profile.primaryFinancialGoal != null)
-      _summaryRow(
+      _summaryAnswer(
+        context,
         context.l10n.text('financialProfileQ7'),
         context.l10n.text(_goalKey(profile.primaryFinancialGoal!)),
       ),
     if (profile.hasMonthlySavingsTarget != null)
-      _summaryRow(
+      _summaryAnswer(
+        context,
         context.l10n.text('financialProfileQ8'),
         profile.monthlySavingsTarget == null
             ? context.l10n.text(
@@ -1015,17 +1071,20 @@ final class _FinancialProfilePageState
               ),
       ),
     if (profile.goalTimeframe != null)
-      _summaryRow(
+      _summaryAnswer(
+        context,
         context.l10n.text('financialProfileQ9'),
         context.l10n.text(_timeframeKey(profile.goalTimeframe!)),
       ),
     if (profile.budgetingPreference != null)
-      _summaryRow(
+      _summaryAnswer(
+        context,
         context.l10n.text('financialProfileQ10'),
         context.l10n.text(_budgetKey(profile.budgetingPreference!)),
       ),
     if (profile.preferredInsightTypes.isNotEmpty)
-      _summaryRow(
+      _summaryAnswer(
+        context,
         context.l10n.text('financialProfileQ11'),
         profile.preferredInsightTypes
             .map(_insightKey)
