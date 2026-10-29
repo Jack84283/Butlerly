@@ -389,6 +389,13 @@ final class _FinancialProfilePageState
             children: [
               ButlerlyCardHeader(
                 title: context.l10n.text('financialProfileSummary'),
+                subtitle: status == FinancialProfileStatus.completed
+                    ? null
+                    : context.l10n.text(
+                        status == FinancialProfileStatus.notStarted
+                            ? 'financialProfileNoProfile'
+                            : 'financialProfileInProgressBody',
+                      ),
               ),
               const SizedBox(height: ButlerlySpacing.standard),
               _summaryRow(
