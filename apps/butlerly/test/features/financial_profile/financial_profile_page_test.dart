@@ -363,7 +363,7 @@ Future<void> _pumpUntilVisible(WidgetTester tester, Finder finder) async {
   for (var attempt = 0; attempt < 100; attempt++) {
     await tester.pump(const Duration(milliseconds: 100));
     await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 10)),
+      () => Future<void>.delayed(const Duration(milliseconds: 50)),
     );
     if (finder.evaluate().isNotEmpty) return;
   }
