@@ -3,6 +3,7 @@ import 'package:butlerly/design_system/components/butlerly_brand_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -64,7 +65,7 @@ void main() {
   });
 
   test('brand tagline matches the updated privacy message in every locale', () {
-    const english = 'Your money. Your device. Your control.';
+    const english = 'YOUR MONEY. YOUR DEVICE. YOUR CONTROL.';
     for (final locale in AppLocalizations.supportedLocales) {
       expect(AppLocalizations(locale).text('brandTagline'), english);
     }
@@ -92,7 +93,7 @@ void main() {
 
       expect(find.text('Butlerly'), findsOneWidget);
       expect(
-        find.text('Your money. Your device. Your control.'),
+        find.text('YOUR MONEY. YOUR DEVICE. YOUR CONTROL.'),
         findsOneWidget,
       );
       expect(find.text('Good afternoon'), findsOneWidget);
@@ -145,6 +146,14 @@ void main() {
       expect(tester.widget<Text>(brand).style?.fontSize, 24);
       final taglineText = tester.widget<Text>(brandTagline);
       expect(taglineText.style?.fontSize, 13);
+      expect(
+        taglineText.style?.fontFamily,
+        ButlerlyTypography.editorialFontFamily,
+      );
+      expect(
+        taglineText.style?.fontFamilyFallback,
+        ButlerlyTypography.editorialFontFallback,
+      );
       expect(taglineText.maxLines, isNull);
       expect(taglineText.softWrap, isTrue);
       expect(
