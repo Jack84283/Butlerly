@@ -4,6 +4,8 @@ import 'package:butlerly/app/session/butlerly_session_guard.dart';
 import 'package:butlerly/design_system/components/butlerly_brand_icon.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
+import 'package:butlerly/design_system/theme/butlerly_responsive_design_tokens.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -37,6 +39,24 @@ class ButlerlyLaunchSurface extends StatelessWidget {
               Text(
                 context.l10n.text('appName'),
                 style: Theme.of(context).textTheme.displaySmall,
+              ),
+              const SizedBox(height: ButlerlySpacing.compact),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: ButlerlySpacing.section,
+                ),
+                child: Text(
+                  context.l10n.text('brandTagline'),
+                  key: const ValueKey('butlerly-launch-tagline'),
+                  textAlign: TextAlign.center,
+                  softWrap: true,
+                  style: ButlerlyTypography.editorialText(
+                    context.designTokens.homeTypography.subtitle(
+                      Theme.of(context).textTheme.bodySmall ??
+                          const TextStyle(),
+                    ),
+                  ),
+                ),
               ),
               if (footer != null) ...[
                 const SizedBox(height: ButlerlySpacing.section),
