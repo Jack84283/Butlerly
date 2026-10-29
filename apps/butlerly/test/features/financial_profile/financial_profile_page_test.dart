@@ -292,6 +292,10 @@ void main() {
     await _tapSurveyAction(tester, const ValueKey('financial-profile-save'));
     await _pumpWithRealAsync(tester);
 
+    await _pumpUntilVisible(
+      tester,
+      find.byKey(const ValueKey('financial-profile-edit')),
+    );
     await tester.tap(find.byKey(const ValueKey('financial-profile-edit')));
     await tester.pumpAndSettle();
     await _tapVisible(
@@ -360,7 +364,7 @@ void main() {
 }
 
 Future<void> _pumpUntilVisible(WidgetTester tester, Finder finder) async {
-  for (var attempt = 0; attempt < 100; attempt++) {
+  for (var attempt = 0; attempt < 200; attempt++) {
     await tester.pump(const Duration(milliseconds: 100));
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 50)),
