@@ -1090,9 +1090,7 @@ class _DesktopMetric extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: _desktopHomeCardTitleStyle.copyWith(
-                    color: foreground,
-                  ),
+                  style: _desktopHomeCardTitleStyle.copyWith(color: foreground),
                 ),
                 const SizedBox(height: 4),
                 FittedBox(
