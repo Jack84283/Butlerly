@@ -84,9 +84,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('compact launch localizes the centered tagline without overflow', (
-    tester,
-  ) async {
+  testWidgets('compact launch tagline is localized and fits', (tester) async {
     tester.view.physicalSize = const Size(320, 568);
     tester.view.devicePixelRatio = 1;
     tester.view.platformDispatcher.textScaleFactorTestValue = 2;
