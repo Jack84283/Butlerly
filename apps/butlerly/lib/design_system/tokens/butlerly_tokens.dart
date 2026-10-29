@@ -240,7 +240,7 @@ abstract final class ButlerlySize {
   static const primaryNavigationBorderWidth = 2.0;
   static const primaryNavigationAddIconSize = 32.0;
   static const primaryNavigationAddGlyphSize = 20.0;
-  static const wideNavigationExpandedWidth = 248.0;
+  static const wideNavigationExpandedWidth = 188.0;
   static const wideNavigationCollapsedWidth = 72.0;
   static const wideNavigationItemHeight = minimumTarget;
   static const wideNavigationBrandSize = 32.0;
