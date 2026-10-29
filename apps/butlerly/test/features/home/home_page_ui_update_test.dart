@@ -176,6 +176,7 @@ void main() {
       expect(tester.widget<Text>(brand).style?.fontSize, 24);
       final taglineText = tester.widget<Text>(brandTagline);
       expect(taglineText.style?.fontSize, 13);
+      expect(taglineText.style?.color, ButlerlySemanticColors.light.warning);
       expect(
         taglineText.style?.fontFamily,
         ButlerlyTypography.editorialFontFamily,
