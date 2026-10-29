@@ -220,6 +220,7 @@ void main() {
       900 - ButlerlySize.wideNavigationCollapsedWidth,
     );
     expect(find.byKey(const ValueKey('wide-collapsed-home')), findsOneWidget);
+    _expectCollapsedBrandCentered(tester);
 
     tester.view.physicalSize = const Size(1200, 800);
     await tester.pumpAndSettle();
@@ -792,6 +793,7 @@ void main() {
       tester.getSize(find.byKey(const ValueKey('primary-wide-navigation'))),
       const Size(ButlerlySize.wideNavigationCollapsedWidth, 800),
     );
+    _expectCollapsedBrandCentered(tester);
     expect(
       tester.getRect(find.byKey(const ValueKey('wide-collapsed-home'))).top,
       lessThan(
@@ -1191,6 +1193,35 @@ void main() {
       ButlerlySize.pageContentMaxWidth,
     );
   });
+}
+
+void _expectCollapsedBrandCentered(WidgetTester tester) {
+  final rail = find.byKey(const ValueKey('primary-wide-navigation'));
+  final brand = find.descendant(
+    of: rail,
+    matching: find.byType(ButlerlyBrandIcon),
+  );
+  expect(brand, findsOneWidget);
+  final centerX = tester.getCenter(rail).dx;
+  expect(tester.getCenter(brand).dx, closeTo(centerX, 0.01));
+  for (final (key, icon) in [
+    ('wide-collapsed-home', Icons.home_rounded),
+    ('wide-collapsed-transactions', Icons.format_list_bulleted_rounded),
+    ('wide-collapsed-add', Icons.add_rounded),
+    ('wide-collapsed-tools', Icons.bar_chart_rounded),
+    ('wide-collapsed-more', Icons.settings_outlined),
+  ]) {
+    final navIcon = find.descendant(
+      of: find.byKey(ValueKey(key)),
+      matching: find.byIcon(icon),
+    );
+    expect(navIcon, findsOneWidget);
+    expect(
+      tester.getCenter(brand).dx,
+      closeTo(tester.getCenter(navIcon).dx, 0.01),
+      reason: 'Collapsed brand must line up with $key.',
+    );
+  }
 }
 
 Future<void> _pumpAt(WidgetTester tester, Size size) async {
