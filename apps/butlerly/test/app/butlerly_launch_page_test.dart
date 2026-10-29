@@ -65,10 +65,7 @@ void main() {
 
   testWidgets('dark launch uses the existing gold accent', (tester) async {
     await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.dark,
-        home: const ButlerlyLaunchSurface(),
-      ),
+      MaterialApp(theme: AppTheme.dark, home: const ButlerlyLaunchSurface()),
     );
     await tester.pumpAndSettle();
 
@@ -77,10 +74,7 @@ void main() {
     );
     expect(tagline.data, 'YOUR MONEY. YOUR DEVICE. YOUR CONTROL.');
     expect(tagline.style?.color, ButlerlySemanticColors.dark.warning);
-    expect(
-      tagline.style?.fontFamily,
-      ButlerlyTypography.editorialFontFamily,
-    );
+    expect(tagline.style?.fontFamily, ButlerlyTypography.editorialFontFamily);
     expect(tester.takeException(), isNull);
   });
 
