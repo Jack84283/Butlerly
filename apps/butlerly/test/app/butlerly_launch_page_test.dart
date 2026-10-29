@@ -1,6 +1,7 @@
 import 'package:butlerly/app/session/butlerly_session_guard.dart';
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_brand_icon.dart';
+import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:butlerly/features/foundation/presentation/butlerly_launch_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -48,6 +49,7 @@ void main() {
       ButlerlyTypography.editorialFontFamily,
     );
     expect(taglineText.textAlign, TextAlign.center);
+    expect(taglineText.style?.color, ButlerlySemanticColors.light.warning);
     expect(
       tester.getTopLeft(tagline).dy,
       greaterThan(tester.getBottomLeft(find.text('Butlerly')).dy),
@@ -94,6 +96,7 @@ void main() {
     final text = tester.widget<Text>(tagline);
     expect(text.data, '财务数据，尽在掌控。');
     expect(text.style?.fontFamily, ButlerlyTypography.editorialFontFamily);
+    expect(text.style?.color, ButlerlySemanticColors.light.warning);
     expect(
       tester.getTopLeft(tagline).dy,
       greaterThan(tester.getBottomLeft(name).dy),
