@@ -700,8 +700,7 @@ class _InsightItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final compactText =
-        context.designTokens.mode == ButlerlyLayoutMode.compact;
+    final compactText = context.designTokens.mode == ButlerlyLayoutMode.compact;
     final semantic = _semanticPresentation(
       context,
       escalation?.presentation.semanticType ??
@@ -756,10 +755,13 @@ class _InsightItem extends StatelessWidget {
                         Expanded(
                           child: Text(
                             identity ?? ruleName,
-                            style: (compactText
-                                ? Theme.of(context).textTheme.bodyMedium
-                                : Theme.of(context).textTheme.titleMedium)
-                                ?.copyWith(fontWeight: FontWeight.w600),
+                            style:
+                                (compactText
+                                        ? Theme.of(context).textTheme.bodyMedium
+                                        : Theme.of(
+                                            context,
+                                          ).textTheme.titleMedium)
+                                    ?.copyWith(fontWeight: FontWeight.w600),
                           ),
                         ),
                         Icon(semantic.icon, color: semantic.color, size: 18),
@@ -822,10 +824,11 @@ class _InsightItem extends StatelessWidget {
                         if (baseline != null)
                           Text(
                             baseline,
-                            style: (compactText
-                                ? Theme.of(context).textTheme.bodyMedium
-                                : Theme.of(context).textTheme.bodyLarge)
-                                ?.copyWith(fontWeight: FontWeight.w600),
+                            style:
+                                (compactText
+                                        ? Theme.of(context).textTheme.bodyMedium
+                                        : Theme.of(context).textTheme.bodyLarge)
+                                    ?.copyWith(fontWeight: FontWeight.w600),
                           ),
                         if (baseline != null && current != null)
                           Text(
@@ -835,10 +838,11 @@ class _InsightItem extends StatelessWidget {
                         if (current != null)
                           Text(
                             current,
-                            style: (compactText
-                                ? Theme.of(context).textTheme.bodyMedium
-                                : Theme.of(context).textTheme.bodyLarge)
-                                ?.copyWith(fontWeight: FontWeight.w600),
+                            style:
+                                (compactText
+                                        ? Theme.of(context).textTheme.bodyMedium
+                                        : Theme.of(context).textTheme.bodyLarge)
+                                    ?.copyWith(fontWeight: FontWeight.w600),
                           ),
                       ],
                     ),
@@ -851,10 +855,11 @@ class _InsightItem extends StatelessWidget {
                         difference,
                         percent,
                       ].whereType<String>().join(' · '),
-                      style: (compactText
-                              ? Theme.of(context).textTheme.bodySmall
-                              : Theme.of(context).textTheme.bodyMedium)
-                          ?.copyWith(color: semantic.color),
+                      style:
+                          (compactText
+                                  ? Theme.of(context).textTheme.bodySmall
+                                  : Theme.of(context).textTheme.bodyMedium)
+                              ?.copyWith(color: semantic.color),
                     ),
                   ],
                   if (onViewTransactions != null) ...[
