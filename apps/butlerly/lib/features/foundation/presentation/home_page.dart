@@ -555,7 +555,7 @@ double _homeHeaderExtent(
     context.designTokens.homeTypography.subtitle(
       textTheme.bodySmall ?? const TextStyle(),
     ),
-  );
+  ).copyWith(color: context.colors.warning);
   final introStyle = context.designTokens.homeTypography.subtitle(
     textTheme.bodySmall ?? const TextStyle(),
   );
@@ -767,7 +767,7 @@ class _HomeHeader extends StatelessWidget {
                 context.designTokens.homeTypography.subtitle(
                   Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
                 ),
-              ),
+              ).copyWith(color: context.colors.warning),
             ),
           ],
         );
