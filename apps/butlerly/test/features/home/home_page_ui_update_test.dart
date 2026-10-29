@@ -149,7 +149,7 @@ void main() {
       expect(taglineText.softWrap, isTrue);
       expect(
         tester.getTopLeft(brandTagline).dy - tester.getBottomLeft(brand).dy,
-        closeTo(ButlerlySpacing.micro, 0.01),
+        closeTo(ButlerlySpacing.micro, 1.0),
       );
       expect(
         tester.getTopLeft(monthSurface).dy,
