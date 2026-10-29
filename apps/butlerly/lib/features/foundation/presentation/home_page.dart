@@ -633,7 +633,7 @@ double _homeHeaderExtent(
   final rowWidth = availableWidth - ButlerlySpacing.standard;
   final brandWidth = stackedTopRow ? availableWidth : rowWidth * 5 / 9;
   final monthWidth = stackedTopRow ? availableWidth : rowWidth * 4 / 9;
-  const brandIconSize = 24.0;
+  const brandIconSize = 28.0;
   final brandNameWidth = (brandWidth - brandIconSize - ButlerlySpacing.compact)
       .clamp(1.0, double.infinity)
       .toDouble();
@@ -747,7 +747,7 @@ class _HomeHeader extends StatelessWidget {
           children: [
             ButlerlyBrandTitle(
               name: context.l10n.text('appName'),
-              iconSize: 24,
+              iconSize: 28,
               gap: ButlerlySpacing.compact,
               textStyle: ButlerlyTypography.editorialText(
                 context.designTokens.homeTypography.appTitle(
@@ -1069,7 +1069,7 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
     );
     return Container(
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.80),
+        color: color.withValues(alpha: 0.50),
         borderRadius: BorderRadius.circular(16),
       ),
       padding: compact
