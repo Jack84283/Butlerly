@@ -94,7 +94,10 @@ void main() {
     final text = tester.widget<Text>(tagline);
     expect(text.data, '财务数据，尽在掌控。');
     expect(text.style?.fontFamily, ButlerlyTypography.editorialFontFamily);
-    expect(tester.getTopLeft(tagline).dy, greaterThan(tester.getBottomLeft(name).dy));
+    expect(
+      tester.getTopLeft(tagline).dy,
+      greaterThan(tester.getBottomLeft(name).dy),
+    );
     expect(tester.getRect(tagline).left, greaterThanOrEqualTo(0));
     expect(tester.getRect(tagline).right, lessThanOrEqualTo(320));
     expect(tester.takeException(), isNull);
