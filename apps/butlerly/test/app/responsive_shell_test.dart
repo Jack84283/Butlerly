@@ -1202,8 +1202,13 @@ void _expectCollapsedBrandCentered(WidgetTester tester) {
     matching: find.byType(ButlerlyBrandIcon),
   );
   expect(brand, findsOneWidget);
-  final centerX = tester.getCenter(rail).dx;
-  expect(tester.getCenter(brand).dx, closeTo(centerX, 0.01));
+  // The 1px right divider is outside the rail's content box. Center
+  // the brand in the same content box as the collapsed navigation icons.
+  final railDecoration =
+      tester.widget<Container>(rail).decoration! as BoxDecoration;
+  final dividerWidth = (railDecoration.border! as Border).right.width;
+  final contentCenterX = tester.getCenter(rail).dx - dividerWidth / 2;
+  expect(tester.getCenter(brand).dx, closeTo(contentCenterX, 0.01));
   for (final (key, icon) in [
     ('wide-collapsed-home', Icons.home_rounded),
     ('wide-collapsed-transactions', Icons.format_list_bulleted_rounded),
