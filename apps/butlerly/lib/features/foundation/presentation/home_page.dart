@@ -1063,9 +1063,7 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
     final foreground = context.colors.primaryText;
     final mutedForeground = context.colors.secondaryText;
     final comparisonStyle = Theme.of(context).textTheme.labelSmall?.copyWith(
-      color: percentValue == null
-          ? mutedForeground
-          : foreground,
+      color: percentValue == null ? mutedForeground : foreground,
       fontWeight: FontWeight.w600,
       height: compact ? 1.1 : null,
     );
@@ -1094,13 +1092,8 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 16,
-            backgroundColor: foreground
-                .withValues(alpha: .20),
-            child: Icon(
-              icon,
-              color: foreground,
-              size: 18,
-            ),
+            backgroundColor: foreground.withValues(alpha: .20),
+            child: Icon(icon, color: foreground, size: 18),
           ),
           SizedBox(
             height: compact
