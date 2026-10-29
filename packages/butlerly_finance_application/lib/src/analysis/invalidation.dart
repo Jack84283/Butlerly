@@ -105,7 +105,9 @@ final class InvalidateAnalysis {
         ).any((measure) => fields.contains(measure.field)) ||
         (fields.contains('baseCurrency') &&
             _effectiveMeasures(rule).any(
-              (measure) => measure.currencyBasis == CurrencyBasis.baseCurrency,
+              (measure) =>
+                  measure.currencyBasis == CurrencyBasis.baseCurrency ||
+                  measure.field == 'missingFx',
             )) ||
         fields.contains('all');
     final fields = switch (reason) {

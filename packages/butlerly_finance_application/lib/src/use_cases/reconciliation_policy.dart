@@ -1,3 +1,5 @@
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
+
 /// Current explainable receipt/payment matching policy. Centralized without
 /// changing the existing thresholds, ranking weights, or financial meaning.
 abstract final class ReconciliationPolicy {
@@ -13,4 +15,15 @@ abstract final class ReconciliationPolicy {
   static const exactMerchantWeight = 0.15;
   static const partialMerchantWeight = 0.10;
   static const paymentSourceWeight = 0.05;
+
+  static bool validLinkEndpoints(Transaction receipt, Transaction payment) {
+    final paymentRole =
+        payment.sourceType == TransactionSourceType.import ||
+        payment.sourceType == TransactionSourceType.integration ||
+        (payment.sourceType == TransactionSourceType.manual &&
+            payment.paymentSourceId != null);
+    return receipt.sourceType == TransactionSourceType.evidenceCapture &&
+        paymentRole &&
+        receipt.direction == payment.direction;
+  }
 }

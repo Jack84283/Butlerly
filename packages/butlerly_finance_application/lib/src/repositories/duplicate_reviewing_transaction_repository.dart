@@ -21,6 +21,12 @@ final class DuplicateReviewingTransactionRepository
   @override
   Future<void> save(Transaction transaction) async {
     final previous = await delegate.findById(transaction.id);
+    await _invalidateAnalysis(
+      previous == null
+          ? AnalysisInvalidationReason.transactionCreated
+          : AnalysisInvalidationReason.transactionChanged,
+      transaction.updatedAt,
+    );
     await delegate.save(transaction);
     await _refreshReviewMetadata(previous: previous, current: transaction);
   }
@@ -28,6 +34,10 @@ final class DuplicateReviewingTransactionRepository
   @override
   Future<void> removePermanently(TransactionId id) async {
     final previous = await delegate.findById(id);
+    await _invalidateAnalysis(
+      AnalysisInvalidationReason.transactionDeleted,
+      previous?.updatedAt ?? DateTime.now().toUtc(),
+    );
     await delegate.removePermanently(id);
     await _refreshReviewMetadata(previous: previous);
   }
@@ -64,20 +74,19 @@ final class DuplicateReviewingTransactionRepository
     } on Object {
       // Persistence failures are surfaced by the explicit rescan operation.
     }
+  }
+
+  Future<void> _invalidateAnalysis(
+    AnalysisInvalidationReason reason,
+    DateTime at,
+  ) async {
     final invalidation = invalidateAnalysis;
     if (invalidation == null) return;
-    final result = await invalidation(
-      current == null
-          ? AnalysisInvalidationReason.transactionDeleted
-          : previous == null
-          ? AnalysisInvalidationReason.transactionCreated
-          : AnalysisInvalidationReason.transactionChanged,
-      current?.updatedAt ?? previous?.updatedAt ?? DateTime.now().toUtc(),
-    );
+    final result = await invalidation(reason, at);
     if (result is ApplicationFailure<void>) {
       throw const RepositoryException(
         RepositoryFailureCode.unavailable,
-        'invalidate analysis after transaction mutation',
+        'invalidate analysis before transaction mutation',
       );
     }
   }

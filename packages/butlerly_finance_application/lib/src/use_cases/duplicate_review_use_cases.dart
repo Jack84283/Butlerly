@@ -39,6 +39,7 @@ final class ScanExistingTransactionsForDuplicates {
 
   Future<ApplicationResult<List<DuplicateCandidateGroup>>> call() =>
       runApplication('scan existing transactions for duplicates', () async {
+        await _invalidateDuplicateAnalysis(invalidateAnalysis, clock);
         final matches = await groups.findActiveDuplicateGroups();
         final existing = await groups.list();
         final existingById = {for (final group in existing) group.id: group};
@@ -84,7 +85,6 @@ final class ScanExistingTransactionsForDuplicates {
             await groups.remove(group.id);
           }
         }
-        await _invalidateDuplicateAnalysis(invalidateAnalysis, clock);
         return result;
       });
 
@@ -110,6 +110,7 @@ final class RebuildDuplicateGroupsAfterRestore {
 
   Future<ApplicationResult<List<DuplicateCandidateGroup>>> call() =>
       runApplication('rebuild duplicate groups after restore', () async {
+        await _invalidateDuplicateAnalysis(invalidateAnalysis, clock);
         final matches = await groups.findActiveDuplicateGroups();
         final existing = await groups.list();
         final existingById = {for (final group in existing) group.id: group};
@@ -155,7 +156,6 @@ final class RebuildDuplicateGroupsAfterRestore {
             await groups.remove(group.id);
           }
         }
-        await _invalidateDuplicateAnalysis(invalidateAnalysis, clock);
         return result;
       });
 }
@@ -242,6 +242,7 @@ final class RefreshDuplicateGroupForTransaction {
       }
       if (previous?.hasStatementCandidates ?? false) return;
       if (preserveHistoricalMembership) return;
+      if (previous?.integrityIssue?.code == 'staleDuplicateGroup') return;
       if (previous != null && previous.isUnresolved) {
         await groups.remove(groupId);
       }
@@ -463,6 +464,19 @@ final class ResolveDuplicateCandidateGroup {
         message: 'A consolidated group requires a selected transaction.',
       );
     }
+    final invalidation = invalidateAnalysis;
+    if (invalidation != null) {
+      final result = await invalidation.call(
+        AnalysisInvalidationReason.duplicateDecisionChanged,
+        clock.now(),
+      );
+      if (result is ApplicationFailure<void>) {
+        throw const RepositoryException(
+          RepositoryFailureCode.unavailable,
+          'invalidate analysis before duplicate decision',
+        );
+      }
+    }
     await repository.save(
       DuplicateCandidateGroup(
         id: group.id,
@@ -475,19 +489,6 @@ final class ResolveDuplicateCandidateGroup {
         updatedAt: clock.now(),
       ),
     );
-    final invalidation = invalidateAnalysis;
-    if (invalidation != null) {
-      final result = await invalidation.call(
-        AnalysisInvalidationReason.duplicateDecisionChanged,
-        clock.now(),
-      );
-      if (result is ApplicationFailure<void>) {
-        throw const RepositoryException(
-          RepositoryFailureCode.unavailable,
-          'invalidate analysis after duplicate decision',
-        );
-      }
-    }
   });
 }
 
@@ -522,7 +523,6 @@ final class RepairDuplicateCandidateGroup {
           message: 'This duplicate group does not support metadata repair.',
         );
       }
-      await repository.remove(id);
       final invalidation = invalidateAnalysis;
       if (invalidation != null) {
         final result = await invalidation(
@@ -532,10 +532,11 @@ final class RepairDuplicateCandidateGroup {
         if (result is ApplicationFailure<void>) {
           throw const RepositoryException(
             RepositoryFailureCode.unavailable,
-            'invalidate analysis after duplicate evidence repair',
+            'invalidate analysis before duplicate evidence repair',
           );
         }
       }
+      await repository.remove(id);
     },
   );
 }

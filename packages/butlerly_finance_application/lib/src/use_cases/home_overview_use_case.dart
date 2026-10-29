@@ -16,6 +16,8 @@ import 'classification_use_cases.dart';
 import 'merchant_review_use_cases.dart';
 import 'transaction_use_cases.dart';
 
+typedef HomeCanonicalTransactionIdsLoader = Future<Set<String>> Function();
+
 /// Coordinates the application data needed by Home for one selected month.
 ///
 /// This use case owns financial period and query orchestration while keeping
@@ -30,6 +32,7 @@ final class GetHomeOverview {
     required this.listReviewItems,
     this.listDuplicateCandidateGroups,
     this.merchants,
+    this.canonicalTransactionIds,
   });
 
   final ResolveHomePeriod resolveHomePeriod;
@@ -39,6 +42,7 @@ final class GetHomeOverview {
   final ListReviewItems listReviewItems;
   final ListDuplicateCandidateGroups? listDuplicateCandidateGroups;
   final MerchantRepository? merchants;
+  final HomeCanonicalTransactionIdsLoader? canonicalTransactionIds;
 
   Future<ApplicationResult<HomeOverview>> call({
     required DateTime instant,
@@ -112,8 +116,32 @@ final class GetHomeOverview {
         ),
       );
     }
-    final transactions =
+    final queriedTransactions =
         (transactionResult as ApplicationSuccess<List<TransactionDto>>).value;
+    final canonicalLoader = canonicalTransactionIds;
+    final Set<String>? canonicalIds;
+    if (canonicalLoader == null) {
+      canonicalIds = null;
+    } else {
+      try {
+        canonicalIds = await canonicalLoader();
+      } on Object {
+        await reviewResultFuture;
+        await duplicateResultFuture;
+        return ApplicationSuccess(
+          HomeOverview.transactionsUnavailable(
+            context: context,
+            currentFinancialMonth: homePeriod.currentFinancialMonth,
+            displayMonth: homePeriod.displayMonth,
+          ),
+        );
+      }
+    }
+    final transactions = canonicalIds == null
+        ? queriedTransactions
+        : queriedTransactions
+              .where((value) => canonicalIds!.contains(value.id))
+              .toList(growable: false);
     final reviewResult = await reviewResultFuture;
     final duplicateResult = await duplicateResultFuture;
 

@@ -14,6 +14,7 @@ final class DetectRecurringPatterns {
     this.transactions, {
     required this.preferences,
     this.links,
+    this.candidates,
     this.duplicateGroups,
     this.decisions,
   });
@@ -21,6 +22,7 @@ final class DetectRecurringPatterns {
   final TransactionRepository transactions;
   final UserPreferenceRepository preferences;
   final ReconciliationLinkRepository? links;
+  final ReconciliationCandidateRepository? candidates;
   final DuplicateCandidateGroupRepository? duplicateGroups;
   final RecurringPatternDecisionRepository? decisions;
 
@@ -32,6 +34,9 @@ final class DetectRecurringPatterns {
     final canonical = selectCanonicalTransactions(
       source: await transactions.listAll(),
       links: links == null ? const [] : await links!.listAll(),
+      reconciliationCandidates: candidates == null
+          ? null
+          : await candidates!.listAll(),
       duplicateGroups: duplicateGroups == null
           ? const []
           : await duplicateGroups!.list(),

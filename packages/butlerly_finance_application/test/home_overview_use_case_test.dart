@@ -56,6 +56,21 @@ void main() {
     },
   );
 
+  test('recent transactions use the persisted canonical projection', () async {
+    final overview = await _homeOverview(
+      transactions,
+      preferences,
+      [_expenseRule()],
+      canonicalTransactionIds: () async => {'sep-1', 'sep-3', 'sep-5'},
+    )(instant: DateTime.utc(2026, 9, 16, 12));
+
+    expect(
+      (overview as ApplicationSuccess<HomeOverview>).value.recentTransactions
+          .map((value) => value.id),
+      ['sep-1', 'sep-3', 'sep-5'],
+    );
+  });
+
   test(
     'uses the selected historical month for context and transactions',
     () async {
@@ -316,6 +331,7 @@ GetHomeOverview _homeOverview(
   List<AnalysisRuleDefinition> rules, {
   DuplicateCandidateGroupRepository? duplicateGroups,
   MerchantRepository? merchants,
+  HomeCanonicalTransactionIdsLoader? canonicalTransactionIds,
 }) {
   final analysis = CalculateAnalysisOverview(
     _Rules(rules),
@@ -332,6 +348,7 @@ GetHomeOverview _homeOverview(
         ? null
         : ListDuplicateCandidateGroups(duplicateGroups),
     merchants: merchants,
+    canonicalTransactionIds: canonicalTransactionIds,
   );
 }
 

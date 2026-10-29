@@ -38,6 +38,7 @@ final class FinanceServices {
     TransactionRuleRepository? transactionRules,
     BudgetRepository? budgetRepository,
     FinancialProfileRepository? financialProfileRepository,
+    HomeCanonicalTransactionIdsLoader? canonicalTransactionIds,
     InvalidateAnalysis? analysisInvalidation,
   }) : manageBudgets = budgetRepository == null
            ? null
@@ -220,7 +221,10 @@ final class FinanceServices {
              : const _NoExtractionLookupRepository(),
        ),
        loadUserPreference = LoadUserPreference(preferences),
-       saveUserPreference = SaveUserPreference(preferences),
+       saveUserPreference = SaveUserPreference(
+         preferences,
+         invalidateAnalysis: analysisInvalidation,
+       ),
        loadFinancialProfile = financialProfileRepository == null
            ? null
            : LoadFinancialProfile(financialProfileRepository),
@@ -237,29 +241,38 @@ final class FinanceServices {
        listReconciliationCandidates = ListReconciliationCandidates(
          reconciliationCandidates ??
              const _NoReconciliationCandidateRepository(),
+         transactions: transactions,
        ),
        saveReconciliationCandidate = SaveReconciliationCandidate(
          reconciliationCandidates ??
              const _NoReconciliationCandidateRepository(),
+         invalidateAnalysis: analysisInvalidation,
        ),
        refreshReconciliationCandidates = RefreshReconciliationCandidates(
          transactions,
          reconciliationCandidates ??
              const _NoReconciliationCandidateRepository(),
+         invalidateAnalysis: analysisInvalidation,
        ),
        saveReconciliationLink = SaveReconciliationLink(
          reconciliationLinks ?? const _NoReconciliationLinkRepository(),
+         candidates:
+             reconciliationCandidates ??
+             const _NoReconciliationCandidateRepository(),
+         invalidateAnalysis: analysisInvalidation,
        ),
        listReconciliationLinks = ListReconciliationLinks(
          reconciliationLinks ?? const _NoReconciliationLinkRepository(),
        ),
        confirmReconciliation = ConfirmReconciliation(
          reconciliationWorkflow ?? const _NoReconciliationWorkflowRepository(),
-         transactions,
+         transactions: transactions,
+         invalidateAnalysis: analysisInvalidation,
        ),
        rejectReconciliation = RejectReconciliation(
          reconciliationWorkflow ?? const _NoReconciliationWorkflowRepository(),
-         transactions,
+         transactions: transactions,
+         invalidateAnalysis: analysisInvalidation,
        ),
        findReceiptPaymentMatch = FindReceiptPaymentMatch(transactions),
        duplicateTransactionChecker = DuplicateTransactionChecker(transactions),
@@ -385,6 +398,7 @@ final class FinanceServices {
          transactions,
          preferences: preferences,
          links: reconciliationLinks,
+         candidates: reconciliationCandidates,
          duplicateGroups: duplicateGroups,
          decisions: recurringPatternDecisions,
        ),
@@ -398,6 +412,7 @@ final class FinanceServices {
          transactions,
          preferences: preferences,
          links: reconciliationLinks,
+         candidates: reconciliationCandidates,
          duplicateGroups: duplicateGroups,
        ),
        statementServices = statements == null || duplicateGroups == null
@@ -546,6 +561,7 @@ final class FinanceServices {
       listReviewItems: listReviewItems,
       listDuplicateCandidateGroups: listDuplicateCandidateGroups,
       merchants: merchants,
+      canonicalTransactionIds: canonicalTransactionIds,
     );
   }
 

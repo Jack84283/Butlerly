@@ -41,21 +41,25 @@ final class AnalysisDatasetBuilder {
     final reconciliationLinks = links == null
         ? const <ReconciliationLink>[]
         : await links!.listAll();
-    final reconciliationCandidates = candidates == null
-        ? const <ReconciliationCandidate>[]
-        : await candidates!.listAll();
+    final List<ReconciliationCandidate>? reconciliationCandidates =
+        candidates == null ? null : await candidates!.listAll();
     final duplicateCandidateGroups = duplicateGroups == null
         ? const <DuplicateCandidateGroup>[]
         : await duplicateGroups!.list();
     final canonical = selectCanonicalTransactions(
       source: source,
       links: reconciliationLinks,
+      reconciliationCandidates: reconciliationCandidates,
       duplicateGroups: duplicateCandidateGroups,
     );
     final quality = <DataQualityIssue>[
       ...canonical.qualityIssues.where((issue) => issue.transactionId == null),
     ];
     final result = <AnalysisEconomicTransaction>[];
+    final activeIds = source
+        .where((value) => value.status == TransactionStatus.active)
+        .map((value) => value.id)
+        .toSet();
     for (final transaction in canonical.transactions) {
       final transactionDate = transactionFinancialDate(
         transaction,
@@ -93,8 +97,11 @@ final class AnalysisDatasetBuilder {
           ),
         );
       }
-      for (final candidate in reconciliationCandidates) {
+      for (final candidate
+          in reconciliationCandidates ?? const <ReconciliationCandidate>[]) {
         if (candidate.status == ReconciliationCandidateStatus.proposed &&
+            activeIds.contains(candidate.receiptTransactionId) &&
+            activeIds.contains(candidate.paymentTransactionId) &&
             candidate.paymentTransactionId == transaction.id) {
           transactionQuality.add(
             DataQualityIssue(

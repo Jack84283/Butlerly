@@ -1,5 +1,6 @@
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
+import '../analysis/invalidation.dart';
 import '../result/application_result.dart';
 import 'merchant_review_use_cases.dart';
 
@@ -263,11 +264,33 @@ final class LoadUserPreference {
 }
 
 final class SaveUserPreference {
-  const SaveUserPreference(this.repository);
+  const SaveUserPreference(this.repository, {this.invalidateAnalysis});
   final UserPreferenceRepository repository;
+  final InvalidateAnalysis? invalidateAnalysis;
 
   Future<ApplicationResult<UserPreference>> call(UserPreference value) =>
       runApplication('save user preferences', () async {
+        final previous = await repository.load();
+        if (previous != null) {
+          final invalidation = invalidateAnalysis;
+          if (invalidation != null) {
+            final reasons = [
+              if (previous.baseCurrency != value.baseCurrency)
+                AnalysisInvalidationReason.baseCurrencyChanged,
+              if (previous.timeZoneId != value.timeZoneId)
+                AnalysisInvalidationReason.timeZoneChanged,
+            ];
+            for (final reason in reasons) {
+              final result = await invalidation(reason, DateTime.now().toUtc());
+              if (result is ApplicationFailure<void>) {
+                throw const RepositoryException(
+                  RepositoryFailureCode.unavailable,
+                  'invalidate analysis after preference change',
+                );
+              }
+            }
+          }
+        }
         await repository.save(value);
         return value;
       });

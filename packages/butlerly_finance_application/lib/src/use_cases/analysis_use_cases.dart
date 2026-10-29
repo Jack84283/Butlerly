@@ -612,11 +612,13 @@ final class QueryTransactionsForFinancialDate {
     this.repository, {
     this.preferences,
     this.links,
+    this.candidates,
     this.duplicateGroups,
   });
   final TransactionRepository repository;
   final UserPreferenceRepository? preferences;
   final ReconciliationLinkRepository? links;
+  final ReconciliationCandidateRepository? candidates;
   final DuplicateCandidateGroupRepository? duplicateGroups;
 
   Future<ApplicationResult<List<TransactionDto>>> call(String date) =>
@@ -626,6 +628,9 @@ final class QueryTransactionsForFinancialDate {
         final canonical = selectCanonicalTransactions(
           source: values,
           links: links == null ? const [] : await links!.listAll(),
+          reconciliationCandidates: candidates == null
+              ? null
+              : await candidates!.listAll(),
           duplicateGroups: duplicateGroups == null
               ? const []
               : await duplicateGroups!.list(),

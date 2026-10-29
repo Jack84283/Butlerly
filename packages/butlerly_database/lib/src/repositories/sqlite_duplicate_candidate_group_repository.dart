@@ -7,15 +7,31 @@ import '../database/butlerly_database.dart';
 
 final class SqliteDuplicateCandidateGroupRepository
     implements DuplicateCandidateGroupRepository {
-  const SqliteDuplicateCandidateGroupRepository(this.database);
+  const SqliteDuplicateCandidateGroupRepository(this.database)
+    : _executor = null;
 
-  final ButlerlyDatabase database;
+  const SqliteDuplicateCandidateGroupRepository.forExecutor(
+    DatabaseExecutor executor,
+  ) : database = null,
+      _executor = executor;
+
+  final ButlerlyDatabase? database;
+  final DatabaseExecutor? _executor;
+
+  DatabaseExecutor get _readExecutor => _executor ?? database!.connection;
+
+  static Future<List<DuplicateCandidateGroup>> listWithExecutor(
+    DatabaseExecutor executor, {
+    DuplicateCandidateGroupStatus? status,
+  }) => SqliteDuplicateCandidateGroupRepository.forExecutor(
+    executor,
+  ).list(status: status);
 
   @override
   Future<List<DuplicateCandidateGroup>> list({
     DuplicateCandidateGroupStatus? status,
   }) async {
-    final rows = await database.connection.query(
+    final rows = await _readExecutor.query(
       'duplicate_candidate_groups',
       where: status == null ? null : 'status = ?',
       whereArgs: status == null ? null : [status.name],
@@ -35,7 +51,7 @@ final class SqliteDuplicateCandidateGroupRepository
   @override
   Future<List<DuplicateTransactionGroupMatch>>
   findActiveDuplicateGroups() async {
-    final rows = await database.connection.rawQuery(
+    final rows = await _readExecutor.rawQuery(
       '''
       SELECT t.transaction_date, t.amount_coefficient,
              t.amount_scale, UPPER(t.currency) AS currency, t.direction,
@@ -79,7 +95,7 @@ final class SqliteDuplicateCandidateGroupRepository
   Future<List<TransactionId>> findActiveTransactionIdsForKey(
     DuplicateTransactionKey key,
   ) async {
-    final rows = await database.connection.query(
+    final rows = await _readExecutor.query(
       'transactions',
       columns: ['id'],
       where:
@@ -104,7 +120,7 @@ final class SqliteDuplicateCandidateGroupRepository
   @override
   Future<void> save(DuplicateCandidateGroup group) async {
     try {
-      await database.transaction((tx) async {
+      await database!.transaction((tx) async {
         await tx.insert(
           'duplicate_candidate_groups',
           _groupRow(group),
@@ -130,7 +146,7 @@ final class SqliteDuplicateCandidateGroupRepository
   @override
   Future<void> remove(String id) async {
     try {
-      await database.connection.delete(
+      await database!.connection.delete(
         'duplicate_candidate_groups',
         where: 'id = ?',
         whereArgs: [id],
@@ -158,7 +174,7 @@ final class SqliteDuplicateCandidateGroupRepository
   };
 
   Future<DuplicateCandidateGroup> _hydrate(Map<String, Object?> row) async {
-    final links = await database.connection.query(
+    final links = await _readExecutor.query(
       'duplicate_candidate_group_transactions',
       columns: ['transaction_id'],
       where: 'group_id = ?',
@@ -223,7 +239,7 @@ final class SqliteDuplicateCandidateGroupRepository
   ) async {
     final transactionIds = <TransactionId>[];
     try {
-      final links = await database.connection.query(
+      final links = await _readExecutor.query(
         'duplicate_candidate_group_transactions',
         columns: ['transaction_id'],
         where: 'group_id = ?',
@@ -317,7 +333,7 @@ final class SqliteDuplicateCandidateGroupRepository
     List<TransactionId> ids,
   ) async {
     for (final id in ids) {
-      final rows = await database.connection.query(
+      final rows = await _readExecutor.query(
         'transactions',
         columns: [
           'transaction_date',
@@ -384,7 +400,7 @@ final class SqliteDuplicateCandidateGroupRepository
         }
       }
       for (final reference in _statementRows(value)) {
-        final rows = await database.connection.query(
+        final rows = await _readExecutor.query(
           'statement_rows',
           columns: ['id'],
           where: 'id = ? AND statement_id = ?',
@@ -408,7 +424,7 @@ final class SqliteDuplicateCandidateGroupRepository
   Future<List<TransactionId>> _findHistoricalTransactionIdsForKey(
     DuplicateTransactionKey key,
   ) async {
-    final rows = await database.connection.query(
+    final rows = await _readExecutor.query(
       'transactions',
       columns: ['id'],
       where:
@@ -435,7 +451,7 @@ final class SqliteDuplicateCandidateGroupRepository
     List<TransactionId> transactionIds,
   ) async {
     for (final id in transactionIds) {
-      final rows = await database.connection.query(
+      final rows = await _readExecutor.query(
         'transactions',
         where: 'id = ?',
         whereArgs: [id.value],

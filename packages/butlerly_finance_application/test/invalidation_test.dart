@@ -90,6 +90,26 @@ void main() {
     },
   );
 
+  test(
+    'invalidates missing-FX data-quality results when the base changes',
+    () async {
+      final missingFx = rule(
+        'ANL-R091',
+        type: AnalysisRuleType.dataQuality,
+        measure: const RuleMeasure(
+          operation: RuleOperation.count,
+          field: 'missingFx',
+        ),
+      );
+      expect(
+        await invalidate(AnalysisInvalidationReason.baseCurrencyChanged, [
+          missingFx,
+        ]),
+        {'ANL-R091'},
+      );
+    },
+  );
+
   test('retains multi-measure support and propagates to dependents', () async {
     final root = rule(
       'ANL-R001',

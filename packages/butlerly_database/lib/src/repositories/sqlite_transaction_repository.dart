@@ -106,6 +106,19 @@ final class SqliteTransactionRepository
     return Future.wait(rows.map(_hydrate));
   }
 
+  /// Reads the complete transaction aggregate from a caller-owned SQLite
+  /// snapshot. Exporters use this to keep canonical selection and row export
+  /// on the same database view.
+  static Future<List<Transaction>> listAllWithExecutor(
+    DatabaseExecutor executor,
+  ) async {
+    final rows = await executor.query(
+      'transactions',
+      orderBy: 'julianday(COALESCE(occurred_at, created_at)) DESC, id',
+    );
+    return Future.wait(rows.map((row) => _hydrateWithExecutor(executor, row)));
+  }
+
   @override
   Future<List<Transaction>> query(TransactionRepositoryQuery query) async {
     final conditions = <String>[];
@@ -356,7 +369,11 @@ final class SqliteTransactionRepository
             'status': DuplicateCandidateGroupStatus.unresolved.name,
             'updated_at': DateTime.now().toUtc().toIso8601String(),
           },
-          where: 'selected_transaction_id = ?',
+          where: '''id IN (
+            SELECT group_id
+            FROM duplicate_candidate_group_transactions
+            WHERE transaction_id = ?
+          )''',
           whereArgs: [id.value],
         );
         await tx.delete(
@@ -377,26 +394,33 @@ final class SqliteTransactionRepository
   }
 
   Future<Transaction> _hydrate(Map<String, Object?> row) async {
+    return _hydrateWithExecutor(database.connection, row);
+  }
+
+  static Future<Transaction> _hydrateWithExecutor(
+    DatabaseExecutor executor,
+    Map<String, Object?> row,
+  ) async {
     final id = row['id']! as String;
-    final provenanceRows = await database.connection.rawQuery(
+    final provenanceRows = await executor.rawQuery(
       '''SELECT p.* FROM provenances p
          INNER JOIN transaction_provenances tp ON tp.provenance_id = p.id
          WHERE tp.transaction_id = ? ORDER BY p.captured_at''',
       [id],
     );
-    final tagRows = await database.connection.query(
+    final tagRows = await executor.query(
       'transaction_tags',
       columns: ['tag_id'],
       where: 'transaction_id = ?',
       whereArgs: [id],
     );
-    final issueRows = await database.connection.query(
+    final issueRows = await executor.query(
       'review_issues',
       where: 'transaction_id = ?',
       whereArgs: [id],
       orderBy: 'created_at',
     );
-    final normalizedRows = await database.connection.rawQuery(
+    final normalizedRows = await executor.rawQuery(
       '''SELECT n.amount_coefficient, n.amount_scale, n.currency,
                 r.id AS rate_id, r.from_currency, r.to_currency,
                 r.rate_coefficient, r.rate_scale, r.effective_at, r.source
@@ -415,7 +439,7 @@ final class SqliteTransactionRepository
     );
   }
 
-  Transaction _hydrateFromRows(
+  static Transaction _hydrateFromRows(
     Map<String, Object?> row, {
     required List<Map<String, Object?>> provenanceRows,
     required List<Map<String, Object?>> tagRows,

@@ -71,6 +71,20 @@ void main() {
       'source_type': 'manual',
       'captured_at': '2026-08-09T18:00:00.000Z',
     });
+    for (final row in const [
+      {'id': 'evidence-selected-export', 'local_file_name': 'receipt.bin'},
+      {'id': 'evidence-excluded-export', 'local_file_name': 'excluded.bin'},
+    ]) {
+      await database.database.insert('evidence_items', {
+        'id': row['id'],
+        'type': 'receipt',
+        'original_name': '${row['id']}.pdf',
+        'media_type': 'application/pdf',
+        'provenance_id': 'provenance-generated-export',
+        'created_at': '2026-08-09T18:00:00.000Z',
+        'local_file_name': row['local_file_name'],
+      });
+    }
     for (final id in ['selected-duplicate', 'other-duplicate']) {
       await database.database.insert('transactions', {
         'id': id,
@@ -84,6 +98,10 @@ void main() {
         'created_at': '2026-08-09T18:00:00.000Z',
         'updated_at': '2026-08-09T18:00:00.000Z',
         'transaction_date': '2026-08-09',
+      });
+      await database.database.insert('transaction_provenances', {
+        'transaction_id': id,
+        'provenance_id': 'provenance-generated-export',
       });
     }
     const duplicateGroupId = 'duplicate:2026-08-09|25|USD|expense';
@@ -120,6 +138,18 @@ void main() {
       'candidate_id': 'candidate-1',
       'receipt_transaction_id': 'selected-duplicate',
       'payment_transaction_id': 'other-duplicate',
+      'created_at': '2026-08-09T18:00:00.000Z',
+    });
+    await database.database.insert('attachment_links', {
+      'id': 'attachment-selected-export',
+      'transaction_id': 'selected-duplicate',
+      'evidence_id': 'evidence-selected-export',
+      'created_at': '2026-08-09T18:00:00.000Z',
+    });
+    await database.database.insert('attachment_links', {
+      'id': 'attachment-excluded-export',
+      'transaction_id': 'other-duplicate',
+      'evidence_id': 'evidence-excluded-export',
       'created_at': '2026-08-09T18:00:00.000Z',
     });
     await database.database.insert('review_issues', {
@@ -173,6 +203,7 @@ void main() {
       database,
       documentsDirectory: documents,
       localEvidenceDirectory: evidence,
+      canonicalTransactionIds: (_) async => {'selected-duplicate'},
     );
     for (final suffix in const [
       '.restore-journal.json',
@@ -209,6 +240,39 @@ void main() {
         jsonDecode(await exportFile.readAsString()) as Map<String, Object?>;
     final tables = json['tables']! as Map<String, Object?>;
     expect(tables['merchants'], isNotEmpty);
+    expect(
+      (tables['transactions']! as List).map((row) => (row as Map)['id']),
+      contains('selected-duplicate'),
+    );
+    expect(
+      (tables['transactions']! as List).map((row) => (row as Map)['id']),
+      isNot(contains('other-duplicate')),
+    );
+    expect(
+      (tables['transaction_provenances']! as List).map(
+        (row) => (row as Map)['provenance_id'],
+      ),
+      contains('provenance-generated-export'),
+    );
+    expect(
+      (tables['duplicate_candidate_groups']! as List).map(
+        (row) => (row as Map)['id'],
+      ),
+      contains(duplicateGroupId),
+    );
+    expect(
+      (tables['evidence_items']! as List).map((row) => (row as Map)['id']),
+      ['evidence-selected-export'],
+    );
+    expect((tables['provenances']! as List).map((row) => (row as Map)['id']), [
+      'provenance-generated-export',
+    ]);
+    expect(
+      tables,
+      isNot(contains('analysis_rule_results')),
+      reason:
+          'Export All contains durable source records, not calculated totals.',
+    );
     expect(
       (tables['review_issues']! as List).map((row) => (row as Map)['id']),
       ['review-closed-export'],

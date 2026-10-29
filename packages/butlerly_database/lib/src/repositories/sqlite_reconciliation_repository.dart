@@ -46,8 +46,22 @@ final class SqliteReconciliationCandidateRepository
       'reconciliation_candidates',
       orderBy: 'score DESC, created_at DESC',
     );
-    return rows.map(_fromRow).toList(growable: false);
+    return _fromRows(rows);
   }
+
+  static Future<List<ReconciliationCandidate>> listAllWithExecutor(
+    DatabaseExecutor executor,
+  ) async {
+    final rows = await executor.query(
+      'reconciliation_candidates',
+      orderBy: 'score DESC, created_at DESC',
+    );
+    return _fromRows(rows);
+  }
+
+  static List<ReconciliationCandidate> _fromRows(
+    List<Map<String, Object?>> rows,
+  ) => rows.map(_fromRow).toList(growable: false);
 
   static ReconciliationCandidate _fromRow(Map<String, Object?> row) {
     final reasons = jsonDecode(row['reasons_json']! as String) as List<dynamic>;

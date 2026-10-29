@@ -34,6 +34,29 @@ void configureDependencies({
     database,
     documentsDirectory: documentsDirectory,
     localEvidenceDirectory: localEvidenceDirectory,
+    canonicalTransactionIds: (snapshot) async {
+      final source = await SqliteTransactionRepository.listAllWithExecutor(
+        snapshot,
+      );
+      final links =
+          await SqliteReconciliationLinkRepository.listAllWithExecutor(
+            snapshot,
+          );
+      final candidates =
+          await SqliteReconciliationCandidateRepository.listAllWithExecutor(
+            snapshot,
+          );
+      final groups =
+          await SqliteDuplicateCandidateGroupRepository.listWithExecutor(
+            snapshot,
+          );
+      return selectCanonicalTransactions(
+        source: source,
+        links: links,
+        reconciliationCandidates: candidates,
+        duplicateGroups: groups,
+      ).transactions.map((value) => value.id.value).toSet();
+    },
   );
   final restoreRecoveryState = RestoreRecoveryState(localDataManager);
   final publicationRecoveryState = BackupPublicationRecoveryState();
@@ -105,6 +128,12 @@ void configureDependencies({
     final rawTransactions = SqliteTransactionRepository(
       database.persistenceDatabase,
     );
+    final reconciliationCandidates = SqliteReconciliationCandidateRepository(
+      database.persistenceDatabase,
+    );
+    final reconciliationLinks = SqliteReconciliationLinkRepository(
+      database.persistenceDatabase,
+    );
     final transactions = DuplicateReviewingTransactionRepository(
       rawTransactions,
       duplicateRefresh,
@@ -125,12 +154,8 @@ void configureDependencies({
       referenceData: SqliteReferenceDataRepository(
         database.persistenceDatabase,
       ),
-      reconciliationCandidates: SqliteReconciliationCandidateRepository(
-        database.persistenceDatabase,
-      ),
-      reconciliationLinks: SqliteReconciliationLinkRepository(
-        database.persistenceDatabase,
-      ),
+      reconciliationCandidates: reconciliationCandidates,
+      reconciliationLinks: reconciliationLinks,
       reconciliationWorkflow: SqliteReconciliationWorkflowRepository(
         database.persistenceDatabase,
       ),
@@ -164,6 +189,15 @@ void configureDependencies({
         database.persistenceDatabase,
       ),
       analysisInvalidation: invalidateAnalysis,
+      canonicalTransactionIds: () async {
+        final selected = selectCanonicalTransactions(
+          source: await rawTransactions.listAll(),
+          links: await reconciliationLinks.listAll(),
+          reconciliationCandidates: await reconciliationCandidates.listAll(),
+          duplicateGroups: await duplicateGroups.list(),
+        );
+        return selected.transactions.map((value) => value.id.value).toSet();
+      },
     );
     services
       ..registerSingleton<FinanceServices>(finance)
