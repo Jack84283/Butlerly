@@ -208,6 +208,10 @@ class _WideBrand extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.all(ButlerlySpacing.standard),
     child: Row(
+      // Center the mark in the 72px collapsed rail, in line with the menu icons.
+      mainAxisAlignment: expanded
+          ? MainAxisAlignment.start
+          : MainAxisAlignment.center,
       children: [
         const ButlerlyBrandIcon(size: ButlerlySize.wideNavigationBrandSize),
         if (expanded) ...[
