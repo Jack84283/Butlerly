@@ -551,8 +551,10 @@ double _homeHeaderExtent(
       textTheme.headlineLarge ?? const TextStyle(),
     ),
   );
-  final brandSubtitleStyle = context.designTokens.homeTypography.subtitle(
-    textTheme.bodySmall ?? const TextStyle(),
+  final brandSubtitleStyle = ButlerlyTypography.editorialText(
+    context.designTokens.homeTypography.subtitle(
+      textTheme.bodySmall ?? const TextStyle(),
+    ),
   );
   final introStyle = context.designTokens.homeTypography.subtitle(
     textTheme.bodySmall ?? const TextStyle(),
@@ -761,8 +763,10 @@ class _HomeHeader extends StatelessWidget {
               context.l10n.text('brandTagline'),
               key: const ValueKey('home-brand-tagline'),
               softWrap: true,
-              style: context.designTokens.homeTypography.subtitle(
-                Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
+              style: ButlerlyTypography.editorialText(
+                context.designTokens.homeTypography.subtitle(
+                  Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
+                ),
               ),
             ),
           ],
