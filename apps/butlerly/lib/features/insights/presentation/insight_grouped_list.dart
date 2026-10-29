@@ -700,7 +700,7 @@ class _InsightItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final compactText = context.designTokens.mode == ButlerlyLayoutMode.compact;
+    final compactText = context.designTokens.mode != ButlerlyLayoutMode.wide;
     final semantic = _semanticPresentation(
       context,
       escalation?.presentation.semanticType ??
