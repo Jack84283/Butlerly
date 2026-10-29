@@ -63,6 +63,27 @@ void main() {
     expect(find.text('Home'), findsOneWidget);
   });
 
+  testWidgets('dark launch uses the existing gold accent', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        home: const ButlerlyLaunchSurface(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final tagline = tester.widget<Text>(
+      find.byKey(const ValueKey('butlerly-launch-tagline')),
+    );
+    expect(tagline.data, 'YOUR MONEY. YOUR DEVICE. YOUR CONTROL.');
+    expect(tagline.style?.color, ButlerlySemanticColors.dark.warning);
+    expect(
+      tagline.style?.fontFamily,
+      ButlerlyTypography.editorialFontFamily,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('compact launch localizes the centered tagline without overflow', (
     tester,
   ) async {
