@@ -1060,10 +1060,12 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
         ? '↓ ${percentValue.abs().toStringAsFixed(1)}% ${context.l10n.text('vsPreviousPeriod')}'
         : '0.0% ${context.l10n.text('vsPreviousPeriod')}';
     final compact = context.designTokens.mode == ButlerlyLayoutMode.compact;
+    final foreground = context.colors.primaryText;
+    final mutedForeground = context.colors.secondaryText;
     final comparisonStyle = Theme.of(context).textTheme.labelSmall?.copyWith(
       color: percentValue == null
-          ? context.designTokens.homeColors.onMetricMuted
-          : context.designTokens.homeColors.onMetric,
+          ? mutedForeground
+          : foreground,
       fontWeight: FontWeight.w600,
       height: compact ? 1.1 : null,
     );
@@ -1092,11 +1094,11 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 16,
-            backgroundColor: context.designTokens.homeColors.onMetric
+            backgroundColor: foreground
                 .withValues(alpha: .20),
             child: Icon(
               icon,
-              color: context.designTokens.homeColors.onMetric,
+              color: foreground,
               size: 18,
             ),
           ),
@@ -1116,7 +1118,7 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
                 style: TextStyle(
                   fontSize: context.designTokens.homeTypography.summaryLabel,
                   fontWeight: FontWeight.w700,
-                  color: context.designTokens.homeColors.onMetric,
+                  color: foreground,
                 ),
               ),
             ),
@@ -1135,7 +1137,7 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
                 style: TextStyle(
                   fontSize: context.designTokens.homeTypography.summaryAmount,
                   fontWeight: FontWeight.w800,
-                  color: context.designTokens.homeColors.onMetric,
+                  color: foreground,
                   letterSpacing: -.7,
                 ),
               ),
