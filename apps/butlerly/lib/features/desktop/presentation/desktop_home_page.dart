@@ -498,7 +498,8 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                       height:
                                           _desktopHomeBreakdownContentHeight -
                                           2 * ButlerlySpacing.small,
-                                      child: (analysis?.categories
+                                      child:
+                                          (analysis?.categories
                                                   .where(
                                                     (category) =>
                                                         category.availability ==
@@ -517,52 +518,53 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                             )
                                           : ListView(
                                               children: [
-                                          for (final metric
-                                              in analysis?.categories
-                                                      .where(
-                                                        (category) =>
-                                                            category
-                                                                .availability ==
-                                                            AnalysisDataAvailability
-                                                                .sufficient,
-                                                      )
-                                                      .take(6) ??
-                                                  <AnalysisMetric>[])
-                                            Column(
-                                              children: [
-                                                _DesktopCategorySummaryRow(
-                                                  metric: metric,
-                                                  share:
-                                                      analysis
-                                                          ?.categoryShares[metric
-                                                          .id],
-                                                  masterData: _masterData,
-                                                  amount: _money(
-                                                    metric,
-                                                    currency,
+                                                for (final metric
+                                                    in analysis?.categories
+                                                            .where(
+                                                              (category) =>
+                                                                  category
+                                                                      .availability ==
+                                                                  AnalysisDataAvailability
+                                                                      .sufficient,
+                                                            )
+                                                            .take(6) ??
+                                                        <AnalysisMetric>[])
+                                                  Column(
+                                                    children: [
+                                                      _DesktopCategorySummaryRow(
+                                                        metric: metric,
+                                                        share:
+                                                            analysis
+                                                                ?.categoryShares[metric
+                                                                .id],
+                                                        masterData: _masterData,
+                                                        amount: _money(
+                                                          metric,
+                                                          currency,
+                                                        ),
+                                                        onTap: () => _go(
+                                                          '/analysis?$query',
+                                                        ),
+                                                      ),
+                                                      const SizedBox(
+                                                        height: ButlerlySpacing
+                                                            .compact,
+                                                      ),
+                                                      Divider(
+                                                        height: 1,
+                                                        thickness: 1,
+                                                        color: context
+                                                            .colors
+                                                            .cardDivider,
+                                                      ),
+                                                      const SizedBox(
+                                                        height: ButlerlySpacing
+                                                            .compact,
+                                                      ),
+                                                    ],
                                                   ),
-                                                  onTap: () =>
-                                                      _go('/analysis?$query'),
-                                                ),
-                                                const SizedBox(
-                                                  height:
-                                                      ButlerlySpacing.compact,
-                                                ),
-                                                Divider(
-                                                  height: 1,
-                                                  thickness: 1,
-                                                  color: context
-                                                      .colors
-                                                      .cardDivider,
-                                                ),
-                                                const SizedBox(
-                                                  height:
-                                                      ButlerlySpacing.compact,
-                                                ),
                                               ],
                                             ),
-                                        ],
-                                      ),
                                     ),
                                   ),
                                 );
