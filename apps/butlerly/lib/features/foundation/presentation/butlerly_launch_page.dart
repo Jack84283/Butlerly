@@ -55,7 +55,7 @@ class ButlerlyLaunchSurface extends StatelessWidget {
                       Theme.of(context).textTheme.bodySmall ??
                           const TextStyle(),
                     ),
-                  ),
+                  ).copyWith(color: context.colors.warning),
                 ),
               ),
               if (footer != null) ...[
