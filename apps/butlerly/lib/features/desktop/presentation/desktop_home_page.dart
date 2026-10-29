@@ -1051,6 +1051,8 @@ class _DesktopMetric extends StatelessWidget {
             ? const Color(0xFFE24247)
             : const Color(0xFF1769E8));
     final fill = color.withValues(alpha: _desktopHomeTintOpacity);
+    final foreground = context.colors.primaryText;
+    final mutedForeground = context.colors.secondaryText;
     final percent = comparison?.percentageChange;
     final usable =
         comparison?.availability == AnalysisDataAvailability.sufficient &&
@@ -1078,8 +1080,8 @@ class _DesktopMetric extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 20,
-            backgroundColor: Colors.white.withValues(alpha: .20),
-            child: Icon(icon, color: Colors.white, size: 22),
+            backgroundColor: foreground.withValues(alpha: .20),
+            child: Icon(icon, color: foreground, size: 22),
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -1089,7 +1091,7 @@ class _DesktopMetric extends StatelessWidget {
                 Text(
                   title,
                   style: _desktopHomeCardTitleStyle.copyWith(
-                    color: Colors.white,
+                    color: foreground,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1101,7 +1103,7 @@ class _DesktopMetric extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w800,
-                      color: Colors.white,
+                      color: foreground,
                       letterSpacing: -.7,
                     ),
                   ),
@@ -1112,7 +1114,7 @@ class _DesktopMetric extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: percentValue == null ? Colors.white70 : Colors.white,
+                    color: percentValue == null ? mutedForeground : foreground,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
