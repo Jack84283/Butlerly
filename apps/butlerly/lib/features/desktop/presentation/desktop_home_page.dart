@@ -498,8 +498,25 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                       height:
                                           _desktopHomeBreakdownContentHeight -
                                           2 * ButlerlySpacing.small,
-                                      child: ListView(
-                                        children: [
+                                      child: (analysis?.categories
+                                                  .where(
+                                                    (category) =>
+                                                        category.availability ==
+                                                        AnalysisDataAvailability
+                                                            .sufficient,
+                                                  )
+                                                  .isEmpty ??
+                                              true)
+                                          ? Center(
+                                              child: Text(
+                                                context.l10n.text(
+                                                  'desktopNoCategoryData',
+                                                ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                            )
+                                          : ListView(
+                                              children: [
                                           for (final metric
                                               in analysis?.categories
                                                       .where(
@@ -543,20 +560,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                                       ButlerlySpacing.compact,
                                                 ),
                                               ],
-                                            ),
-                                          if (analysis?.categories
-                                                  .where(
-                                                    (category) =>
-                                                        category.availability ==
-                                                        AnalysisDataAvailability
-                                                            .sufficient,
-                                                  )
-                                                  .isEmpty ??
-                                              true)
-                                            Text(
-                                              context.l10n.text(
-                                                'desktopNoCategoryData',
-                                              ),
                                             ),
                                         ],
                                       ),
@@ -933,7 +936,7 @@ class _DesktopCategoryLeadingIcon extends StatelessWidget {
 }
 
 // Applies to colored fills only; text and icons stay fully opaque for contrast.
-const double _desktopHomeTintOpacity = 0.80;
+const double _desktopHomeTintOpacity = 0.50;
 // Match device Home: the selected month is solid, other months are muted.
 const double _desktopHomeActionTintOpacity = 0.18;
 const TextStyle _desktopHomeCardTitleStyle = TextStyle(
