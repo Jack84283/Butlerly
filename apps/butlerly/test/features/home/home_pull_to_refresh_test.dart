@@ -224,7 +224,10 @@ void main() {
     );
     expect(summaryAmount.style?.fontSize, 20);
     expect(summaryAmount.style?.fontWeight, FontWeight.w800);
-    expect(summaryAmount.style?.color, Colors.white);
+    expect(
+      summaryAmount.style?.color,
+      AppTheme.light.extension<ButlerlySemanticColors>()!.primaryText,
+    );
     expect(find.byKey(const ValueKey('home-attention-card')), findsOneWidget);
     expect(find.text('1 merchant to review'), findsOneWidget);
     expect(find.byKey(const ValueKey('home-insight-card')), findsOneWidget);
@@ -707,7 +710,7 @@ void main() {
         find.descendant(of: card, matching: find.byType(Container)).first,
       );
       final decoration = container.decoration! as BoxDecoration;
-      expect(decoration.color, entry.$3.withValues(alpha: 0.80));
+      expect(decoration.color, entry.$3.withValues(alpha: 0.50));
       expect(decoration.borderRadius, BorderRadius.circular(16));
       expect(
         find.descendant(of: card, matching: find.text(entry.$2)),
@@ -715,7 +718,10 @@ void main() {
       );
       final icon = find.descendant(of: card, matching: find.byIcon(entry.$4));
       expect(icon, findsOneWidget);
-      expect(tester.widget<Icon>(icon).color, Colors.white);
+      expect(
+        tester.widget<Icon>(icon).color,
+        AppTheme.light.extension<ButlerlySemanticColors>()!.primaryText,
+      );
       expect(
         find.descendant(
           of: card,
