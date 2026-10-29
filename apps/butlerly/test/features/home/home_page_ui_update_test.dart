@@ -91,7 +91,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Butlerly'), findsOneWidget);
-      expect(find.text('Your money. Your device. Your control.'), findsOneWidget);
+      expect(
+        find.text('Your money. Your device. Your control.'),
+        findsOneWidget,
+      );
       expect(find.text('Good afternoon'), findsOneWidget);
       expect(find.text('Sep 2026'), findsOneWidget);
       expect(
