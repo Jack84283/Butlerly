@@ -12,6 +12,7 @@ import 'package:butlerly/core/data/restore_recovery_state.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/features/foundation/presentation/butlerly_launch_page.dart';
@@ -514,6 +515,80 @@ Future<void> initializeButlerly(AppLogger logger) async {
 
     if (services.isRegistered<FinanceServices>() &&
         !(recoveryState?.isRecoveryRequired ?? false)) {
+      phase = 'evidence deletion recovery';
+      final evidenceStore = services.isRegistered<LocalEvidenceStore>()
+          ? services<LocalEvidenceStore>()
+          : null;
+      if (evidenceStore != null) {
+        var recoveryFailure = false;
+        var pendingStatements = 0;
+        var pendingReceipts = 0;
+        var repaired = 0;
+        try {
+          await evidenceStore.recoverStagedEvidenceDeletions();
+        } catch (error, stackTrace) {
+          recoveryFailure = true;
+          logger.severe(
+            'Staged evidence deletion recovery failed; retaining artifacts',
+            error,
+            stackTrace,
+          );
+        }
+        try {
+          pendingStatements = await evidenceStore
+              .recoverPendingStatementCaptures();
+        } catch (error, stackTrace) {
+          recoveryFailure = true;
+          logger.severe(
+            'Pending statement recovery failed; retaining artifacts',
+            error,
+            stackTrace,
+          );
+        }
+        try {
+          pendingReceipts = await evidenceStore.recoverPendingReceiptCaptures();
+        } catch (error, stackTrace) {
+          recoveryFailure = true;
+          logger.severe(
+            'Pending receipt recovery failed; retaining artifacts',
+            error,
+            stackTrace,
+          );
+        }
+        try {
+          await evidenceStore.recoverUnclaimedPendingCaptures();
+        } catch (error, stackTrace) {
+          recoveryFailure = true;
+          logger.severe(
+            'Unclaimed pending capture cleanup failed; retaining artifacts',
+            error,
+            stackTrace,
+          );
+        }
+        if (!recoveryFailure) {
+          try {
+            repaired = await evidenceStore.recoverUnreferencedEvidence();
+          } catch (error, stackTrace) {
+            recoveryFailure = true;
+            logger.severe(
+              'Unreferenced evidence recovery failed; retaining artifacts',
+              error,
+              stackTrace,
+            );
+          }
+        } else {
+          logger.warning(
+            'Startup: skipping unreferenced evidence cleanup until all '
+            'recovery journals are healthy',
+          );
+        }
+        logger.info(
+          'Startup: evidence recovery checked '
+          '($pendingStatements statements, $pendingReceipts receipts, '
+          '$repaired evidence repaired, failure=$recoveryFailure)',
+        );
+      }
+
       phase = 'merchant review reconciliation';
       final merchantReviewSynchronization = await services<FinanceServices>()
           .synchronizeMerchantReviewIssues();

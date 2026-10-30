@@ -31,6 +31,32 @@ final class ReceiptCaptureInitialData {
   final TransactionMasterDataSnapshot snapshot;
 }
 
+final class _ReceiptSaveSnapshot {
+  const _ReceiptSaveSnapshot({
+    required this.amount,
+    required this.currency,
+    required this.merchantRaw,
+    required this.date,
+    required this.paymentSourceId,
+    required this.merchantId,
+    required this.categoryId,
+    required this.subcategoryId,
+    required this.tagIds,
+    required this.notes,
+  });
+
+  final String amount;
+  final String currency;
+  final String merchantRaw;
+  final DateTime date;
+  final String? paymentSourceId;
+  final String? merchantId;
+  final String? categoryId;
+  final String? subcategoryId;
+  final List<String> tagIds;
+  final String notes;
+}
+
 class ReceiptCapturePage extends StatefulWidget {
   const ReceiptCapturePage({
     this.finance,
@@ -43,6 +69,9 @@ class ReceiptCapturePage extends StatefulWidget {
     this.fileForPreserved,
     this.discardPreserved,
     this.attachPreserved,
+    this.preparePendingReceipt,
+    this.rebindPendingReceipt,
+    this.completePendingReceipt,
     this.loadInitialData,
     super.key,
   });
@@ -63,6 +92,14 @@ class ReceiptCapturePage extends StatefulWidget {
     PreservedEvidenceSource source,
   )?
   attachPreserved;
+  final Future<void> Function(
+    String transactionId,
+    PreservedEvidenceSource source,
+  )?
+  preparePendingReceipt;
+  final Future<void> Function(String captureId, String transactionId)?
+  rebindPendingReceipt;
+  final Future<bool> Function(String transactionId)? completePendingReceipt;
   final Future<ReceiptCaptureInitialData> Function()? loadInitialData;
 
   @override
@@ -86,8 +123,12 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   DateTime? _date;
   bool _dateNeedsReview = false;
   bool _processing = false;
+  bool _captureInFlight = false;
   bool _saving = false;
   bool _committed = false;
+  bool _retainPreservedForRecovery = false;
+  String? _pendingReceiptCaptureId;
+  EvidenceItem? _plannedPendingEvidence;
   String? _merchantId;
   String? _categoryId;
   String? _subcategoryId;
@@ -116,8 +157,17 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
 
   @override
   void dispose() {
-    if (!_committed && _preserved != null) {
-      unawaited(evidenceStore.discardPreserved(_preserved!));
+    final preserveForRecovery =
+        _retainPreservedForRecovery ||
+        _saving ||
+        _processing ||
+        _captureInFlight;
+    final pendingCaptureId = _pendingReceiptCaptureId;
+    if (pendingCaptureId != null && !preserveForRecovery) {
+      unawaited(_completePendingReceipt(pendingCaptureId));
+    }
+    if (!_committed && !preserveForRecovery && _preserved != null) {
+      unawaited(_discard(_preserved!));
     }
     _amount.dispose();
     _currency.dispose();
@@ -195,41 +245,64 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   }
 
   Future<void> _camera() async {
-    final source = widget.pickImage != null
-        ? await widget.pickImage!(ImageSource.camera)
-        : await ImagePicker().pickImage(
-            source: ImageSource.camera,
-            imageQuality: 95,
-            requestFullMetadata: false,
-          );
-    if (source != null) await _process(source);
+    if (_saving || _captureInFlight) return;
+    _captureInFlight = true;
+    try {
+      final source = widget.pickImage != null
+          ? await widget.pickImage!(ImageSource.camera)
+          : await ImagePicker().pickImage(
+              source: ImageSource.camera,
+              imageQuality: 95,
+              requestFullMetadata: false,
+            );
+      if (source != null) await _process(source);
+    } finally {
+      _captureInFlight = false;
+    }
   }
 
   Future<void> _photo() async {
-    final source = widget.pickImage != null
-        ? await widget.pickImage!(ImageSource.gallery)
-        : await ImagePicker().pickImage(
-            source: ImageSource.gallery,
-            imageQuality: 100,
-            requestFullMetadata: false,
-          );
-    if (source != null) await _process(source);
+    if (_saving || _captureInFlight) return;
+    _captureInFlight = true;
+    try {
+      final source = widget.pickImage != null
+          ? await widget.pickImage!(ImageSource.gallery)
+          : await ImagePicker().pickImage(
+              source: ImageSource.gallery,
+              imageQuality: 100,
+              requestFullMetadata: false,
+            );
+      if (source != null) await _process(source);
+    } finally {
+      _captureInFlight = false;
+    }
   }
 
   Future<void> _file() async {
-    final group = files.XTypeGroup(
-      label: context.l10n.text('receiptImages'),
-      extensions: ['jpg', 'jpeg', 'png', 'heic', 'webp'],
-    );
-    final source = widget.openFile != null
-        ? await widget.openFile!(group)
-        : await files.openFile(acceptedTypeGroups: [group]);
-    if (source != null) {
-      await _process(XFile(source.path, name: source.name));
+    if (_saving || _captureInFlight) return;
+    _captureInFlight = true;
+    try {
+      final group = files.XTypeGroup(
+        label: context.l10n.text('receiptImages'),
+        extensions: ['jpg', 'jpeg', 'png', 'heic', 'webp'],
+      );
+      final source = widget.openFile != null
+          ? await widget.openFile!(group)
+          : await files.openFile(acceptedTypeGroups: [group]);
+      if (source != null) {
+        await _process(XFile(source.path, name: source.name));
+      }
+    } finally {
+      _captureInFlight = false;
     }
   }
 
   Future<void> _process(XFile source) async {
+    if (_saving || _processing) return;
+    // Claim the capture before opening the confirmation sheet. The first
+    // await otherwise lets a second picker operation overwrite the pending
+    // source and journal while this one is still being confirmed.
+    setState(() => _processing = true);
     final confirmed = await showButlerlyBottomSheet<bool>(
       context: context,
       builder: (dialogContext) => ButlerlySheet(
@@ -250,9 +323,12 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         ],
       ),
     );
-    if (confirmed != true || !mounted) return;
+    if (confirmed != true || !mounted) {
+      if (mounted) setState(() => _processing = false);
+      return;
+    }
 
-    PreservedEvidenceSource preserved;
+    PreservedEvidenceSource? preserved;
     File? stableFile;
     try {
       preserved = widget.preserveEvidence == null
@@ -265,29 +341,55 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         throw const FileSystemException('Preserved receipt is unavailable.');
       }
     } catch (_) {
+      final failedPreserved = preserved;
+      if (failedPreserved != null) {
+        await _discard(failedPreserved);
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.text('receiptStoreFailed'))),
       );
+      if (mounted) setState(() => _processing = false);
       return;
     }
+    final captured = preserved;
+    final capturedFile = stableFile;
 
     final previous = _preserved;
-    if (previous != null) await _discard(previous);
+    final previousCaptureId = _pendingReceiptCaptureId;
+    try {
+      if (previousCaptureId != null) {
+        await _completePendingReceipt(previousCaptureId);
+        _pendingReceiptCaptureId = null;
+        _plannedPendingEvidence = null;
+      }
+      if (previous != null) await _discard(previous);
+      final captureId = 'transaction-${DateTime.now().microsecondsSinceEpoch}';
+      final planned = await _preparePendingReceipt(captureId, captured);
+      _pendingReceiptCaptureId = captureId;
+      _plannedPendingEvidence = planned;
+    } catch (_) {
+      await _discard(captured);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.text('receiptStoreFailed'))),
+      );
+      if (mounted) setState(() => _processing = false);
+      return;
+    }
     if (!mounted) {
-      await _discard(preserved);
+      await _discard(captured);
       return;
     }
 
     final stableSource = XFile(
-      stableFile.path,
-      name: preserved.originalName,
-      mimeType: preserved.mediaType,
+      capturedFile.path,
+      name: captured.originalName,
+      mimeType: captured.mediaType,
     );
     setState(() {
-      _preserved = preserved;
+      _preserved = captured;
       _source = stableSource;
-      _processing = true;
       _ocrResult = null;
       _dateNeedsReview = false;
     });
@@ -341,15 +443,50 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       ? evidenceStore.discardPreserved(source)
       : widget.discardPreserved!(source);
 
-  Future<EvidenceItem?> _attach(
+  Future<EvidenceItem?> _attachWithinMutation(
     String transactionId,
-    PreservedEvidenceSource source,
-  ) => widget.attachPreserved == null
-      ? evidenceStore.attachPreservedAndReturn(
+    PreservedEvidenceSource source, {
+    EvidenceItem? planned,
+  }) => widget.attachPreserved == null
+      ? evidenceStore.attachPreservedAndReturnWithinMutation(
           transactionId: transactionId,
           source: source,
+          planned: planned,
         )
       : widget.attachPreserved!(transactionId, source);
+
+  Future<EvidenceItem?> _preparePendingReceipt(
+    String transactionId,
+    PreservedEvidenceSource source,
+  ) async {
+    if (widget.preparePendingReceipt != null) {
+      await widget.preparePendingReceipt!(transactionId, source);
+      return null;
+    }
+    return evidenceStore.preparePendingReceiptCapture(
+      transactionId: transactionId,
+      source: source,
+    );
+  }
+
+  Future<bool> _completePendingReceipt(String transactionId) =>
+      widget.completePendingReceipt == null
+      ? evidenceStore.completePendingReceiptCaptureWithinMutation(transactionId)
+      : widget.completePendingReceipt!(transactionId);
+
+  Future<void> _rebindPendingReceipt(
+    String captureId,
+    String transactionId,
+  ) async {
+    if (widget.rebindPendingReceipt != null) {
+      await widget.rebindPendingReceipt!(captureId, transactionId);
+      return;
+    }
+    await evidenceStore.rebindPendingReceiptCaptureWithinMutation(
+      captureId: captureId,
+      transactionId: transactionId,
+    );
+  }
 
   Future<String?> _resolvePaymentSource(String? lastFour) async {
     if (lastFour == null) return null;
@@ -380,20 +517,20 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     );
   }
 
-  Future<List<ReconciliationMatchCandidate>>
-  _findExistingPaymentMatches() async {
-    final amount = _amount.text.trim();
-    if (amount.isEmpty) return const [];
+  Future<List<ReconciliationMatchCandidate>> _findExistingPaymentMatches(
+    _ReceiptSaveSnapshot snapshot,
+  ) async {
+    if (snapshot.amount.isEmpty) return const [];
     final result = await finance.findReceiptPaymentMatch.callAll(
       ReceiptPaymentMatchCommand(
         amount: Money(
-          amount: DecimalValue.parse(amount),
-          currency: CurrencyCode(_currency.text.trim()),
+          amount: DecimalValue.parse(snapshot.amount),
+          currency: CurrencyCode(snapshot.currency),
         ),
-        currency: _currency.text.trim(),
-        transactionDate: _date == null ? null : _iso(_date!),
-        merchant: _merchantRaw.text.trim(),
-        paymentSourceId: _paymentSourceId,
+        currency: snapshot.currency,
+        transactionDate: _iso(snapshot.date),
+        merchant: snapshot.merchantRaw,
+        paymentSourceId: snapshot.paymentSourceId,
       ),
     );
     return result is ApplicationSuccess<List<ReconciliationMatchCandidate>>
@@ -437,6 +574,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     EvidenceItem evidence,
     ReceiptOcrResult? ocr,
     String token,
+    _ReceiptSaveSnapshot snapshot,
   ) {
     if (ocr == null) return null;
     return Extraction(
@@ -444,9 +582,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       evidenceId: evidence.id,
       values: {
         ...ocr.toExtractionValues(),
-        'confirmedAmount': _amount.text.trim(),
-        'confirmedCurrency': _currency.text.trim(),
-        if (_date != null) 'confirmedDate': _iso(_date!),
+        'confirmedAmount': snapshot.amount,
+        'confirmedCurrency': snapshot.currency,
+        'confirmedDate': _iso(snapshot.date),
       },
       provenance: Provenance(
         id: ProvenanceId('extraction-provenance-$token'),
@@ -474,11 +612,17 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     required EvidenceItem evidence,
     required ReceiptOcrResult? ocr,
     required String extractionToken,
+    required _ReceiptSaveSnapshot snapshot,
   }) {
     _committed = true;
     notifyTransactionChanged();
     try {
-      final extraction = _buildExtraction(evidence, ocr, extractionToken);
+      final extraction = _buildExtraction(
+        evidence,
+        ocr,
+        extractionToken,
+        snapshot,
+      );
       if (extraction != null) {
         final financeForSave = finance;
         unawaited(_persistExtractionBestEffort(financeForSave, extraction));
@@ -493,7 +637,8 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
 
   Future<bool> _rollbackCreatedTransaction(String transactionId) async {
     try {
-      final result = await finance.deleteTransactionPermanently(transactionId);
+      final result = await evidenceStore
+          .deleteTransactionPermanentlyWithinMutation(transactionId);
       if (result is ApplicationSuccess<void>) return true;
       if (result is ApplicationFailure<void> &&
           result.failure.code == ApplicationFailureCode.notFound) {
@@ -505,48 +650,52 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     }
   }
 
-  Future<void> _handleCreatedTransactionAttachFailure(
-    String transactionId,
-  ) async {
-    final rolledBack = await _rollbackCreatedTransaction(transactionId);
-    if (!rolledBack) {
-      // The transaction may already be durable. Refresh the rest of the app and
-      // leave this route so a retry cannot create a second transaction.
-      notifyTransactionChanged();
-    }
-    if (!mounted) return;
-    setState(() => _saving = false);
-    _showSaveMessage('evidenceAttachFailed');
-    if (!rolledBack) {
-      Navigator.pop(context, true);
-    }
-  }
-
-  Future<void> _attachReceiptToExisting(TransactionDto transaction) async {
+  Future<void> _attachReceiptToExisting(
+    TransactionDto transaction, {
+    required _ReceiptSaveSnapshot snapshot,
+  }) async {
     final preserved = _preserved;
     final ocr = _ocrResult;
     if (preserved == null) {
       _showSaveMessage('receiptStoreFailed');
       return;
     }
+    final captureId = _pendingReceiptCaptureId;
+    if (captureId == null) {
+      _showSaveMessage('receiptStoreFailed');
+      return;
+    }
     setState(() => _saving = true);
     EvidenceItem? evidence;
     try {
-      evidence = await _attach(transaction.id, preserved);
+      await evidenceStore.runFinancialEvidenceMutation(() async {
+        await _rebindPendingReceipt(captureId, transaction.id);
+        evidence = await _attachWithinMutation(
+          transaction.id,
+          preserved,
+          planned: _plannedPendingEvidence,
+        );
+      });
     } catch (_) {
       evidence = null;
     }
-    if (evidence == null) {
+    final committedEvidence = evidence;
+    if (committedEvidence == null) {
       if (mounted) {
         setState(() => _saving = false);
         _showSaveMessage('evidenceAttachFailed');
       }
       return;
     }
+    if (await _completePendingReceipt(captureId)) {
+      _pendingReceiptCaptureId = null;
+      _plannedPendingEvidence = null;
+    }
     _finishCommittedSave(
-      evidence: evidence,
+      evidence: committedEvidence,
       ocr: ocr,
-      extractionToken: evidence.id.value,
+      extractionToken: committedEvidence.id.value,
+      snapshot: snapshot,
     );
   }
 
@@ -569,6 +718,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       '${value.day.toString().padLeft(2, '0')}';
 
   Future<void> _pickDate() async {
+    if (_saving) return;
     final value = await showButlerlyDatePicker(
       context: context,
       title: context.l10n.text('date'),
@@ -587,6 +737,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   }
 
   Future<void> _save() async {
+    if (_saving) return;
     final source = _source;
     final preserved = _preserved;
     if (source == null || preserved == null) {
@@ -601,33 +752,44 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       if (!mounted || _date == null) return;
     }
 
+    final snapshot = _ReceiptSaveSnapshot(
+      amount: _amount.text.trim(),
+      currency: _currency.text.trim().toUpperCase(),
+      merchantRaw: _merchantRaw.text.trim(),
+      date: _date!,
+      paymentSourceId: _paymentSourceId,
+      merchantId: _merchantId,
+      categoryId: _categoryId,
+      subcategoryId: _subcategoryId,
+      tagIds: List.unmodifiable(_tagIds),
+      notes: _notes.text.trim(),
+    );
+
     setState(() => _saving = true);
 
-    TransactionDto? createdTransaction;
-    String? extractionToken;
     try {
       // Check strict duplicates immediately before creating anything so the
       // final decision uses the values the user actually approved.
       final proposed = TransactionDto(
         id: '__receipt-proposed__',
-        amount: _amount.text.trim(),
-        currency: _currency.text.trim().toUpperCase(),
+        amount: snapshot.amount,
+        currency: snapshot.currency,
         direction: TransactionDirection.expense.name,
         status: TransactionStatus.active.name,
         reviewState: TransactionReviewState.clear.name,
-        transactionDate: _iso(_date!),
+        transactionDate: _iso(snapshot.date),
         createdAt: DateTime.now().toUtc(),
         updatedAt: DateTime.now().toUtc(),
-        description: _merchantRaw.text.trim().isEmpty
+        description: snapshot.merchantRaw.isEmpty
             ? 'Receipt purchase'
-            : _merchantRaw.text.trim(),
-        rawCounterparty: _merchantRaw.text.trim().isEmpty
+            : snapshot.merchantRaw,
+        rawCounterparty: snapshot.merchantRaw.isEmpty
             ? null
-            : _merchantRaw.text.trim(),
-        paymentSourceId: _paymentSourceId,
-        merchantId: _merchantId,
-        categoryId: _categoryId,
-        tagIds: _tagIds.toList(growable: false),
+            : snapshot.merchantRaw,
+        paymentSourceId: snapshot.paymentSourceId,
+        merchantId: snapshot.merchantId,
+        categoryId: snapshot.categoryId,
+        tagIds: snapshot.tagIds,
       );
       final duplicate = await finance.duplicateTransactionChecker.call(
         DuplicateTransactionCheckCommand(
@@ -635,11 +797,17 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
           amount: proposed.amount,
           currency: proposed.currency,
           direction: TransactionDirection.expense,
-          paymentSourceId: _paymentSourceId,
-          merchantId: _merchantId,
+          paymentSourceId: snapshot.paymentSourceId,
+          merchantId: snapshot.merchantId,
         ),
       );
+      final approvedDuplicateIds = <String>{};
       if (!mounted) return;
+      if (duplicate is! ApplicationSuccess<DuplicateTransactionCheckResult>) {
+        setState(() => _saving = false);
+        _showSaveMessage('duplicateCheckUnavailable');
+        return;
+      }
       if (duplicate case ApplicationSuccess<DuplicateTransactionCheckResult>(
         value: final check,
       ) when check.requiresConfirmation) {
@@ -669,51 +837,156 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
               .where((candidate) => candidate.transaction.id == selectedId)
               .firstOrNull;
           if (selected != null) {
-            await _attachReceiptToExisting(selected.transaction);
+            await _attachReceiptToExisting(
+              selected.transaction,
+              snapshot: snapshot,
+            );
           } else if (mounted) {
             setState(() => _saving = false);
             _showSaveMessage('dataPreserved');
           }
           return;
         }
+        approvedDuplicateIds.addAll(
+          check.candidates.map((candidate) => candidate.transaction.id),
+        );
       }
 
       // Reconciliation is deliberately separate from strict duplicate identity.
-      final matches = await _findExistingPaymentMatches();
+      final matches = await _findExistingPaymentMatches(snapshot);
       if (matches.isNotEmpty && mounted) {
         final selected = await _selectExistingMatch(matches);
         if (selected != null) {
-          await _attachReceiptToExisting(selected.transaction);
+          await _attachReceiptToExisting(
+            selected.transaction,
+            snapshot: snapshot,
+          );
           return;
         }
       }
 
       final token = DateTime.now().microsecondsSinceEpoch;
-      final result = await finance.createReceiptTransaction(
-        ReceiptTransactionCommand(
-          id: 'transaction-$token',
-          provenanceId: 'receipt-transaction-$token',
-          money: Money(
-            amount: DecimalValue.parse(_amount.text.trim()),
-            currency: CurrencyCode(_currency.text.trim()),
-          ),
-          transactionDate: _iso(_date!),
-          originalRepresentation: source.name,
-          rawCounterparty: _merchantRaw.text.trim().isEmpty
-              ? null
-              : _merchantRaw.text.trim(),
-          description: _merchantRaw.text.trim().isEmpty
-              ? 'Receipt purchase'
-              : _merchantRaw.text.trim(),
-          notes: _notes.text.trim().isEmpty ? null : _notes.text.trim(),
-          merchantId: _merchantId,
-          categoryId: _categoryId,
-          subcategoryId: _subcategoryId,
-          paymentSourceId: _paymentSourceId,
-          tagIds: _tagIds.toList(growable: false),
-        ),
+      final transactionId = _pendingReceiptCaptureId ?? 'transaction-$token';
+      final outcome = await evidenceStore.runFinancialEvidenceMutation(
+        () async {
+          final latestDuplicate = await finance.duplicateTransactionChecker
+              .call(
+                DuplicateTransactionCheckCommand(
+                  transactionDate: proposed.transactionDate!,
+                  amount: proposed.amount,
+                  currency: proposed.currency,
+                  direction: TransactionDirection.expense,
+                  paymentSourceId: snapshot.paymentSourceId,
+                  merchantId: snapshot.merchantId,
+                ),
+              );
+          if (latestDuplicate
+              is! ApplicationSuccess<DuplicateTransactionCheckResult>) {
+            return (
+              result: null,
+              evidence: null,
+              rolledBack: true,
+              duplicateConflict: false,
+              duplicateUnavailable: true,
+            );
+          }
+          if (latestDuplicate
+              case ApplicationSuccess<DuplicateTransactionCheckResult>(
+                value: final check,
+              )
+              when check.requiresConfirmation &&
+                  check.candidates.any(
+                    (candidate) => !approvedDuplicateIds.contains(
+                      candidate.transaction.id,
+                    ),
+                  )) {
+            return (
+              result: null,
+              evidence: null,
+              rolledBack: true,
+              duplicateConflict: true,
+              duplicateUnavailable: false,
+            );
+          }
+          final result = await finance.createReceiptTransaction(
+            ReceiptTransactionCommand(
+              id: transactionId,
+              provenanceId: 'receipt-transaction-$token',
+              money: Money(
+                amount: DecimalValue.parse(snapshot.amount),
+                currency: CurrencyCode(snapshot.currency),
+              ),
+              transactionDate: _iso(snapshot.date),
+              originalRepresentation: source.name,
+              rawCounterparty: snapshot.merchantRaw.isEmpty
+                  ? null
+                  : snapshot.merchantRaw,
+              description: snapshot.merchantRaw.isEmpty
+                  ? 'Receipt purchase'
+                  : snapshot.merchantRaw,
+              notes: snapshot.notes.isEmpty ? null : snapshot.notes,
+              merchantId: snapshot.merchantId,
+              categoryId: snapshot.categoryId,
+              subcategoryId: snapshot.subcategoryId,
+              paymentSourceId: snapshot.paymentSourceId,
+              tagIds: snapshot.tagIds,
+            ),
+          );
+          if (result is! ApplicationSuccess<TransactionDto>) {
+            return (
+              result: result,
+              evidence: null,
+              rolledBack: true,
+              duplicateConflict: false,
+              duplicateUnavailable: false,
+            );
+          }
+          final attached = await _attachWithinMutation(
+            result.value.id,
+            preserved,
+            planned: _plannedPendingEvidence,
+          );
+          if (attached != null) {
+            if (await _completePendingReceipt(transactionId)) {
+              _pendingReceiptCaptureId = null;
+              _plannedPendingEvidence = null;
+            }
+            return (
+              result: result,
+              evidence: attached,
+              rolledBack: true,
+              duplicateConflict: false,
+              duplicateUnavailable: false,
+            );
+          }
+          final rolledBack = await _rollbackCreatedTransaction(result.value.id);
+          // Keep the journal and pending source after rollback. The page can
+          // retry the same capture, and a process stop before disposal still
+          // leaves startup with a deterministic not-found cleanup path.
+          return (
+            result: result,
+            evidence: null,
+            rolledBack: rolledBack,
+            duplicateConflict: false,
+            duplicateUnavailable: false,
+          );
+        },
       );
-
+      final result = outcome.result;
+      if (outcome.duplicateUnavailable) {
+        if (mounted) {
+          setState(() => _saving = false);
+          _showSaveMessage('duplicateCheckUnavailable');
+        }
+        return;
+      }
+      if (outcome.duplicateConflict) {
+        if (mounted) {
+          setState(() => _saving = false);
+          _showSaveMessage('duplicateReviewRequired');
+        }
+        return;
+      }
       if (result is! ApplicationSuccess<TransactionDto>) {
         if (mounted) {
           setState(() => _saving = false);
@@ -721,8 +994,28 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         }
         return;
       }
-      createdTransaction = result.value;
-      extractionToken = token.toString();
+      if (outcome.evidence == null) {
+        if (!outcome.rolledBack) {
+          // The durable receipt intent remains in the pending area. Keep its
+          // source binary when rollback cannot complete so startup recovery
+          // can attach it to the already-created transaction.
+          _retainPreservedForRecovery = true;
+          notifyTransactionChanged();
+          if (mounted) Navigator.pop(context, true);
+        }
+        if (mounted) {
+          setState(() => _saving = false);
+          _showSaveMessage('evidenceAttachFailed');
+        }
+        return;
+      }
+      _finishCommittedSave(
+        evidence: outcome.evidence!,
+        ocr: _ocrResult,
+        extractionToken: token.toString(),
+        snapshot: snapshot,
+      );
+      return;
     } catch (_) {
       if (!mounted) return;
       setState(() => _saving = false);
@@ -730,22 +1023,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       return;
     }
 
-    EvidenceItem? evidence;
-    try {
-      evidence = await _attach(createdTransaction.id, preserved);
-    } catch (_) {
-      evidence = null;
-    }
-    if (evidence == null) {
-      await _handleCreatedTransactionAttachFailure(createdTransaction.id);
-      return;
-    }
-
-    _finishCommittedSave(
-      evidence: evidence,
-      ocr: _ocrResult,
-      extractionToken: extractionToken,
-    );
+    // The create-and-attach path returns from the consistency boundary above.
   }
 
   @override
@@ -773,6 +1051,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         children: [
           TextFormField(
             controller: _merchantRaw,
+            readOnly: _saving,
             decoration: InputDecoration(
               labelText: context.l10n.text('description'),
             ),
@@ -788,6 +1067,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
           SizedBox(height: fieldGap),
           TextFormField(
             controller: _amount,
+            readOnly: _saving,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(labelText: context.l10n.text('amount')),
             validator: (value) {
@@ -802,6 +1082,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
           SizedBox(height: fieldGap),
           TextFormField(
             controller: _currency,
+            readOnly: _saving,
             textCapitalization: TextCapitalization.characters,
             decoration: InputDecoration(
               labelText: context.l10n.text('currency'),
@@ -821,7 +1102,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
             title: Text(context.l10n.text('purchaseDate')),
             subtitle: Text(_date == null ? '—' : _iso(_date!)),
             trailing: const Icon(Icons.calendar_today_outlined),
-            onTap: _pickDate,
+            onTap: _saving ? null : _pickDate,
           ),
           if (_dateNeedsReview)
             Align(
@@ -838,11 +1119,14 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
             categories: activeCategories,
             masterData: _masterData,
             value: selectedParentId,
-            onChanged: (value) => setState(() {
-              _classificationOverridden = true;
-              _categoryId = value;
-              _subcategoryId = null;
-            }),
+            onChanged: (value) {
+              if (_saving) return;
+              setState(() {
+                _classificationOverridden = true;
+                _categoryId = value;
+                _subcategoryId = null;
+              });
+            },
           ),
           SizedBox(height: fieldGap),
           ButlerlySubcategorySelector(
@@ -852,11 +1136,14 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
             masterData: _masterData,
             parentId: selectedParentId,
             value: _subcategoryId,
-            onChanged: (value) => setState(() {
-              _classificationOverridden = true;
-              _subcategoryId = value;
-              _categoryId = selectedParentId;
-            }),
+            onChanged: (value) {
+              if (_saving) return;
+              setState(() {
+                _classificationOverridden = true;
+                _subcategoryId = value;
+                _categoryId = selectedParentId;
+              });
+            },
           ),
           SizedBox(height: fieldGap),
           ButlerlyPaymentSourceSelector(
@@ -864,7 +1151,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
             clearLabel: context.l10n.text('clear'),
             sources: _sources,
             value: _paymentSourceId,
-            onChanged: (value) => setState(() => _paymentSourceId = value),
+            onChanged: (value) {
+              if (!_saving) setState(() => _paymentSourceId = value);
+            },
           ),
           SizedBox(height: fieldGap),
           Align(
@@ -879,11 +1168,14 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                   tags: _tags,
                   masterData: _masterData,
                   selected: _tagIds,
-                  onChanged: (value) => setState(() {
-                    _tagIds
-                      ..clear()
-                      ..addAll(value);
-                  }),
+                  onChanged: (value) {
+                    if (_saving) return;
+                    setState(() {
+                      _tagIds
+                        ..clear()
+                        ..addAll(value);
+                    });
+                  },
                 ),
               ],
             ),
@@ -891,6 +1183,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
           SizedBox(height: fieldGap),
           TextFormField(
             controller: _notes,
+            readOnly: _saving,
             maxLines: 2,
             decoration: InputDecoration(labelText: context.l10n.text('notes')),
           ),
@@ -917,126 +1210,132 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         ],
       ),
     );
-    return Scaffold(
-      appBar: AppBar(title: Text(context.l10n.text('captureReceipt'))),
-      body: SafeArea(
-        child: ButlerlyResponsiveBody(
-          contentKey: const ValueKey('receipt-capture-content'),
-          fullWidth: desktop,
-          child: ListView(
-            padding: const EdgeInsets.all(ButlerlySpacing.standard),
-            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            children: [
-              if (_source == null) ...[
-                Text(
-                  context.l10n.text('addReceipt'),
-                  style: Theme.of(context).textTheme.headlineMedium,
-                ),
-                const SizedBox(height: ButlerlySpacing.small),
-                FilledButton.icon(
-                  onPressed: _camera,
-                  icon: const Icon(Icons.camera_alt_outlined),
-                  label: Text(context.l10n.text('takePhoto')),
-                ),
-                const SizedBox(height: ButlerlySpacing.compact),
-                OutlinedButton.icon(
-                  onPressed: _photo,
-                  icon: const Icon(Icons.photo_library_outlined),
-                  label: Text(context.l10n.text('choosePhotos')),
-                ),
-                const SizedBox(height: ButlerlySpacing.compact),
-                OutlinedButton.icon(
-                  onPressed: _file,
-                  icon: const Icon(Icons.folder_open_outlined),
-                  label: Text(context.l10n.text('chooseFiles')),
-                ),
-              ] else ...[
-                if (desktop)
-                  Row(
-                    key: const ValueKey('receipt-desktop-review-layout'),
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            SizedBox(
-                              height: ButlerlySize.sourcePreviewHeight * 3,
-                              child: Image.file(
-                                File(_source!.path),
-                                fit: BoxFit.contain,
-                              ),
-                            ),
-                            if (_processing) ...[
-                              const SizedBox(height: ButlerlySpacing.small),
-                              const LinearProgressIndicator(),
-                              const SizedBox(height: ButlerlySpacing.compact),
-                              Text(context.l10n.text('readingReceipt')),
-                            ] else
-                              Wrap(
-                                children: [
-                                  TextButton.icon(
-                                    onPressed: _camera,
-                                    icon: const Icon(Icons.refresh),
-                                    label: Text(context.l10n.text('retake')),
-                                  ),
-                                  TextButton.icon(
-                                    onPressed: _photo,
-                                    icon: const Icon(Icons.swap_horiz),
-                                    label: Text(context.l10n.text('replace')),
-                                  ),
-                                  TextButton.icon(
-                                    onPressed: _file,
-                                    icon: const Icon(
-                                      Icons.folder_open_outlined,
-                                    ),
-                                    label: Text(
-                                      context.l10n.text('chooseFiles'),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: ButlerlySpacing.cardGap),
-                      Expanded(
-                        child: _processing
-                            ? const SizedBox.shrink()
-                            : receiptForm,
-                      ),
-                    ],
-                  )
-                else ...[
-                  SizedBox(
-                    height: ButlerlySize.sourcePreviewHeight * 3,
-                    child: Image.file(File(_source!.path), fit: BoxFit.contain),
+    return PopScope(
+      canPop: !_saving && !_processing && !_captureInFlight,
+      child: Scaffold(
+        appBar: AppBar(title: Text(context.l10n.text('captureReceipt'))),
+        body: SafeArea(
+          child: ButlerlyResponsiveBody(
+            contentKey: const ValueKey('receipt-capture-content'),
+            fullWidth: desktop,
+            child: ListView(
+              padding: const EdgeInsets.all(ButlerlySpacing.standard),
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              children: [
+                if (_source == null) ...[
+                  Text(
+                    context.l10n.text('addReceipt'),
+                    style: Theme.of(context).textTheme.headlineMedium,
                   ),
-                  if (_processing) ...[
-                    const SizedBox(height: ButlerlySpacing.small),
-                    const LinearProgressIndicator(),
-                    const SizedBox(height: ButlerlySpacing.compact),
-                    Text(context.l10n.text('readingReceipt')),
-                  ] else ...[
+                  const SizedBox(height: ButlerlySpacing.small),
+                  FilledButton.icon(
+                    onPressed: _saving ? null : _camera,
+                    icon: const Icon(Icons.camera_alt_outlined),
+                    label: Text(context.l10n.text('takePhoto')),
+                  ),
+                  const SizedBox(height: ButlerlySpacing.compact),
+                  OutlinedButton.icon(
+                    onPressed: _saving ? null : _photo,
+                    icon: const Icon(Icons.photo_library_outlined),
+                    label: Text(context.l10n.text('choosePhotos')),
+                  ),
+                  const SizedBox(height: ButlerlySpacing.compact),
+                  OutlinedButton.icon(
+                    onPressed: _saving ? null : _file,
+                    icon: const Icon(Icons.folder_open_outlined),
+                    label: Text(context.l10n.text('chooseFiles')),
+                  ),
+                ] else ...[
+                  if (desktop)
                     Row(
+                      key: const ValueKey('receipt-desktop-review-layout'),
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        TextButton.icon(
-                          onPressed: _camera,
-                          icon: const Icon(Icons.refresh),
-                          label: Text(context.l10n.text('retake')),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              SizedBox(
+                                height: ButlerlySize.sourcePreviewHeight * 3,
+                                child: Image.file(
+                                  File(_source!.path),
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                              if (_processing) ...[
+                                const SizedBox(height: ButlerlySpacing.small),
+                                const LinearProgressIndicator(),
+                                const SizedBox(height: ButlerlySpacing.compact),
+                                Text(context.l10n.text('readingReceipt')),
+                              ] else
+                                Wrap(
+                                  children: [
+                                    TextButton.icon(
+                                      onPressed: _saving ? null : _camera,
+                                      icon: const Icon(Icons.refresh),
+                                      label: Text(context.l10n.text('retake')),
+                                    ),
+                                    TextButton.icon(
+                                      onPressed: _saving ? null : _photo,
+                                      icon: const Icon(Icons.swap_horiz),
+                                      label: Text(context.l10n.text('replace')),
+                                    ),
+                                    TextButton.icon(
+                                      onPressed: _saving ? null : _file,
+                                      icon: const Icon(
+                                        Icons.folder_open_outlined,
+                                      ),
+                                      label: Text(
+                                        context.l10n.text('chooseFiles'),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                            ],
+                          ),
                         ),
-                        TextButton.icon(
-                          onPressed: _photo,
-                          icon: const Icon(Icons.swap_horiz),
-                          label: Text(context.l10n.text('replace')),
+                        const SizedBox(width: ButlerlySpacing.cardGap),
+                        Expanded(
+                          child: _processing
+                              ? const SizedBox.shrink()
+                              : receiptForm,
                         ),
                       ],
+                    )
+                  else ...[
+                    SizedBox(
+                      height: ButlerlySize.sourcePreviewHeight * 3,
+                      child: Image.file(
+                        File(_source!.path),
+                        fit: BoxFit.contain,
+                      ),
                     ),
-                    receiptForm,
+                    if (_processing) ...[
+                      const SizedBox(height: ButlerlySpacing.small),
+                      const LinearProgressIndicator(),
+                      const SizedBox(height: ButlerlySpacing.compact),
+                      Text(context.l10n.text('readingReceipt')),
+                    ] else ...[
+                      Row(
+                        children: [
+                          TextButton.icon(
+                            onPressed: _saving ? null : _camera,
+                            icon: const Icon(Icons.refresh),
+                            label: Text(context.l10n.text('retake')),
+                          ),
+                          TextButton.icon(
+                            onPressed: _saving ? null : _photo,
+                            icon: const Icon(Icons.swap_horiz),
+                            label: Text(context.l10n.text('replace')),
+                          ),
+                        ],
+                      ),
+                      receiptForm,
+                    ],
                   ],
                 ],
               ],
-            ],
+            ),
           ),
         ),
       ),

@@ -9,6 +9,7 @@ import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly/features/foundation/presentation/receipt_capture_page.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -57,6 +58,8 @@ void main() {
           },
           discardPreserved: (_) async {},
           ocrRecognizer: _FakeOcrRecognizer(events),
+          preparePendingReceipt: (_, _) async {},
+          completePendingReceipt: (_) async => true,
           loadInitialData: _emptyInitialData,
         ),
       ),
@@ -91,6 +94,11 @@ void main() {
     expect(find.byType(CalendarDatePicker), findsOneWidget);
     expect(find.byType(DatePickerDialog), findsNothing);
     expect(tester.takeException(), isNull);
+
+    // Leave the test with no modal route open so the next widget test starts
+    // from the same navigation state as a real user flow.
+    await tester.tap(find.text('Cancel').last);
+    await tester.pumpAndSettle();
   });
 
   testWidgets(
@@ -119,6 +127,8 @@ void main() {
             return _receiptEvidence('evidence-success');
           },
           ocr: (_) async => _recognizedReceipt(),
+          preparePendingReceipt: (_, _) async {},
+          completePendingReceipt: (_) async => true,
           loadInitialData: _emptyInitialData,
         ),
         onResult: (value) => routeResult = value,
@@ -162,6 +172,8 @@ void main() {
           discardPreserved: (_) async {},
           attachPreserved: (_, _) async => null,
           ocr: (_) async => _recognizedReceipt(),
+          preparePendingReceipt: (_, _) async {},
+          completePendingReceipt: (_) async => true,
           loadInitialData: _emptyInitialData,
         ),
       ),
@@ -190,6 +202,7 @@ void main() {
       final finance = _finance(transactions);
       final fixturePath = _fixturePath();
       final source = XFile(fixturePath, name: 'receipt.png');
+      var discarded = false;
       bool? routeResult;
 
       _resetView(tester);
@@ -202,9 +215,13 @@ void main() {
           pickImage: (_) async => source,
           preserveEvidence: (_) async => _preservedReceipt,
           fileForPreserved: (_) async => File(fixturePath),
-          discardPreserved: (_) async {},
+          discardPreserved: (_) async {
+            discarded = true;
+          },
           attachPreserved: (_, _) async => null,
           ocr: (_) async => _recognizedReceipt(),
+          preparePendingReceipt: (_, _) async {},
+          completePendingReceipt: (_) async => true,
           loadInitialData: _emptyInitialData,
         ),
         onResult: (value) => routeResult = value,
@@ -220,8 +237,63 @@ void main() {
 
       expect(routeResult, isTrue);
       expect(transactions.values, hasLength(1));
+      expect(discarded, isFalse);
       expect(find.byType(ReceiptCapturePage), findsNothing);
       expect(find.text('Evidence could not be stored.'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'rechecks a concurrent duplicate before creating a receipt transaction',
+    (tester) async {
+      final transactions = _ReceiptTransactionRepository();
+      final concurrent = _receiptTransaction('concurrent-receipt');
+      transactions.afterFirstQuery = () async {
+        await transactions.save(concurrent);
+        transactions.hideFromListAll.add(concurrent.id.value);
+      };
+      final finance = _finance(
+        transactions,
+        consistencyGate: AnalysisConsistencyGate(),
+      );
+      final fixturePath = _fixturePath();
+      final source = XFile(fixturePath, name: 'receipt.png');
+
+      _resetView(tester);
+      await tester.pumpWidget(
+        _localizedApp(
+          ReceiptCapturePage(
+            finance: finance,
+            evidenceStore: _evidenceStore(finance),
+            pickImage: (_) async => source,
+            preserveEvidence: (_) async => _preservedReceipt,
+            fileForPreserved: (_) async => File(fixturePath),
+            discardPreserved: (_) async {},
+            attachPreserved: (_, _) async => _receiptEvidence('evidence-race'),
+            ocr: (_) async => _recognizedReceipt(),
+            preparePendingReceipt: (_, _) async {},
+            completePendingReceipt: (_) async => true,
+            loadInitialData: _emptyInitialData,
+          ),
+        ),
+      );
+      await tester.pump();
+      await _captureAndAcceptReceipt(tester);
+      await _scrollToAndTap(
+        tester,
+        find.widgetWithText(FilledButton, 'Save receipt transaction'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(transactions.values.keys, contains(concurrent.id.value));
+      expect(transactions.values, hasLength(1));
+      expect(
+        find.text(
+          'A matching transaction appeared while saving. Review it before trying again.',
+        ),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
     },
   );
@@ -251,6 +323,8 @@ void main() {
           discardPreserved: (_) async {},
           attachPreserved: (_, _) async => _receiptEvidence('evidence-throw'),
           ocr: (_) async => _recognizedReceipt(),
+          preparePendingReceipt: (_, _) async {},
+          completePendingReceipt: (_) async => true,
           loadInitialData: _emptyInitialData,
         ),
         onResult: (value) => routeResult = value,
@@ -292,6 +366,7 @@ ReceiptOcrResult _recognizedReceipt() => ReceiptOcrResult(
 FinanceServices _finance(
   TransactionRepository transactions, {
   EvidenceRepository? evidence,
+  AnalysisConsistencyGate? consistencyGate,
 }) => FinanceServices(
   transactions,
   MemoryPaymentSources(),
@@ -300,13 +375,16 @@ FinanceServices _finance(
   MemoryTags(),
   evidence ?? MemoryEvidence(),
   MemoryUserPreferences(),
+  consistencyGate: consistencyGate,
 );
 
 LocalEvidenceStore _evidenceStore(FinanceServices finance) =>
     LocalEvidenceStore(
       LocalDataManager(
         LocalDatabase(logger: AppLogger()),
-        localEvidenceDirectory: Directory.systemTemp,
+        localEvidenceDirectory: Directory(
+          '${Directory.current.path}/.test-evidence',
+        ),
       ),
       finance,
     );
@@ -394,6 +472,10 @@ Future<void> _scrollToAndTap(WidgetTester tester, Finder target) async {
   await tester.scrollUntilVisible(target, 400, scrollable: scrollable.first);
   await tester.pumpAndSettle();
   await tester.tap(target);
+  await tester.runAsync(
+    () => Future<void>.delayed(const Duration(milliseconds: 100)),
+  );
+  await tester.pumpAndSettle();
 }
 
 EvidenceItem _receiptEvidence(String id) {
@@ -419,36 +501,45 @@ final class _ReceiptTransactionRepository implements TransactionRepository {
 
   final bool failDelete;
   final values = <String, Transaction>{};
+  final hideFromListAll = <String>{};
+  Future<void> Function()? afterFirstQuery;
+  var _queryCount = 0;
 
   @override
   Future<Transaction?> findById(TransactionId id) async => values[id.value];
 
   @override
-  Future<List<Transaction>> listAll() async => values.values.toList();
+  Future<List<Transaction>> listAll() async => values.values
+      .where((transaction) => !hideFromListAll.contains(transaction.id.value))
+      .toList();
 
   @override
-  Future<List<Transaction>> query(TransactionRepositoryQuery query) async =>
-      values.values.where((transaction) {
-        if (query.status != null && transaction.status != query.status) {
-          return false;
-        }
-        if (query.direction != null &&
-            transaction.direction != query.direction) {
-          return false;
-        }
-        if (query.currency != null &&
-            transaction.money.currency.value != query.currency) {
-          return false;
-        }
-        if (query.from != null || query.to != null) {
-          final dateText = transaction.transactionDate;
-          final date = dateText == null ? null : DateTime.tryParse(dateText);
-          if (date == null) return false;
-          if (query.from != null && date.isBefore(query.from!)) return false;
-          if (query.to != null && date.isAfter(query.to!)) return false;
-        }
-        return true;
-      }).toList();
+  Future<List<Transaction>> query(TransactionRepositoryQuery query) async {
+    final result = values.values.where((transaction) {
+      if (query.status != null && transaction.status != query.status) {
+        return false;
+      }
+      if (query.direction != null && transaction.direction != query.direction) {
+        return false;
+      }
+      if (query.currency != null &&
+          transaction.money.currency.value != query.currency) {
+        return false;
+      }
+      if (query.from != null || query.to != null) {
+        final dateText = transaction.transactionDate;
+        final date = dateText == null ? null : DateTime.tryParse(dateText);
+        if (date == null) return false;
+        if (query.from != null && date.isBefore(query.from!)) return false;
+        if (query.to != null && date.isAfter(query.to!)) return false;
+      }
+      return true;
+    }).toList();
+    if (_queryCount++ == 0 && afterFirstQuery != null) {
+      await afterFirstQuery!();
+    }
+    return result;
+  }
 
   @override
   Future<void> removePermanently(TransactionId id) async {
@@ -467,12 +558,41 @@ final class _ReceiptTransactionRepository implements TransactionRepository {
   }
 }
 
+Transaction _receiptTransaction(String id) {
+  final now = DateTime.utc(2026, 9, 15, 12);
+  return Transaction(
+    id: TransactionId(id),
+    timing: KnownTransactionTime(now),
+    money: Money(
+      amount: DecimalValue.parse('12.34'),
+      currency: CurrencyCode('USD'),
+    ),
+    direction: TransactionDirection.expense,
+    sourceType: TransactionSourceType.manual,
+    transactionDate: '2026-09-15',
+    provenance: [
+      Provenance(
+        id: ProvenanceId('$id-provenance'),
+        sourceType: ProvenanceSourceType.userEntry,
+        capturedAt: now,
+      ),
+    ],
+    createdAt: now,
+    updatedAt: now,
+  );
+}
+
 final class _ThrowingExtractionEvidence implements EvidenceRepository {
   @override
   Future<EvidenceItem?> findById(EvidenceId id) async => null;
 
   @override
   Future<void> link(AttachmentLink link) async {}
+  @override
+  Future<void> unlinkFromTransaction(
+    TransactionId transactionId,
+    EvidenceId evidenceId,
+  ) async {}
 
   @override
   Future<List<EvidenceItem>> listForTransaction(TransactionId id) async =>

@@ -1,0 +1,791 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:butlerly/core/config/app_configuration.dart';
+import 'package:butlerly/core/data/local_data_manager.dart';
+import 'package:butlerly/core/database/local_database.dart';
+import 'package:butlerly/core/di/finance_services.dart';
+import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/core/evidence/local_evidence_store.dart';
+import 'package:butlerly/core/logging/app_logger.dart';
+import 'package:butlerly_database/butlerly_database.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
+import 'package:file_selector/file_selector.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as path;
+import 'package:sqflite_common_ffi/sqflite_ffi.dart' hide Transaction;
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(sqfliteFfiInit);
+
+  late Directory root;
+  late Directory evidenceDirectory;
+  late LocalDatabase database;
+
+  setUp(() async {
+    await services.reset();
+    root = await Directory.systemTemp.createTemp(
+      'butlerly-permanent-evidence-',
+    );
+    evidenceDirectory = Directory(path.join(root.path, 'evidence'));
+    database = LocalDatabase(
+      logger: AppLogger(),
+      factory: databaseFactoryFfi,
+      databaseDirectory: root.path,
+    );
+    await database.initialize();
+    configureDependencies(
+      configuration: const AppConfiguration(),
+      database: database,
+      logger: AppLogger(),
+      documentsDirectory: Directory(path.join(root.path, 'documents')),
+      localEvidenceDirectory: evidenceDirectory,
+    );
+  });
+
+  tearDown(() async {
+    await services.reset();
+    await database.close();
+    await root.delete(recursive: true);
+  });
+
+  test(
+    'permanent delete removes exclusive files and preserves shared files',
+    () async {
+      final now = DateTime.utc(2026, 8, 9, 20);
+      final first = _transaction('transaction-evidence-owner', now);
+      final second = _transaction('transaction-evidence-shared', now);
+      final transactions = SqliteTransactionRepository(
+        database.persistenceDatabase,
+      );
+      final evidence = SqliteEvidenceRepository(database.persistenceDatabase);
+      await transactions.save(first);
+      await transactions.save(second);
+
+      final exclusive = _evidence('evidence-exclusive', now);
+      final shared = _evidence('evidence-shared', now);
+      await evidence.save(exclusive);
+      await evidence.save(shared);
+      await evidence.link(
+        AttachmentLink(
+          id: AttachmentLinkId('attachment-exclusive'),
+          transactionId: first.id,
+          evidenceId: exclusive.id,
+          createdAt: now,
+        ),
+      );
+      await evidence.link(
+        AttachmentLink(
+          id: AttachmentLinkId('attachment-shared-first'),
+          transactionId: first.id,
+          evidenceId: shared.id,
+          createdAt: now,
+        ),
+      );
+      await evidence.link(
+        AttachmentLink(
+          id: AttachmentLinkId('attachment-shared-second'),
+          transactionId: second.id,
+          evidenceId: shared.id,
+          createdAt: now,
+        ),
+      );
+      await evidenceDirectory.create(recursive: true);
+      final exclusiveFile = File(
+        path.join(evidenceDirectory.path, exclusive.localFileName!),
+      );
+      final sharedFile = File(
+        path.join(evidenceDirectory.path, shared.localFileName!),
+      );
+      await exclusiveFile.writeAsBytes([1, 2, 3], flush: true);
+      await sharedFile.writeAsBytes([4, 5, 6], flush: true);
+
+      final unlinkResult = await services<LocalEvidenceStore>()
+          .removeEvidenceFromTransaction(first.id.value, shared.id.value);
+      expect(unlinkResult, isA<ApplicationSuccess<bool>>());
+      expect((unlinkResult as ApplicationSuccess<bool>).value, isTrue);
+      expect(await sharedFile.exists(), isTrue);
+      expect(await evidence.findById(shared.id), isNotNull);
+      expect(
+        (await evidence.listForTransaction(second.id)).single.id,
+        shared.id,
+      );
+
+      final result = await services<FinanceServices>()
+          .deleteTransactionPermanently(first.id.value);
+
+      expect(result, isA<ApplicationSuccess<void>>());
+      expect(await exclusiveFile.exists(), isFalse);
+      expect(await sharedFile.exists(), isTrue);
+      expect(await evidence.findById(exclusive.id), isNull);
+      expect(await evidence.findById(shared.id), isNotNull);
+      expect(await transactions.findById(first.id), isNull);
+      expect(await transactions.findById(second.id), isNotNull);
+    },
+  );
+
+  test(
+    'startup cleanup removes a capture abandoned before specific journaling',
+    () async {
+      final sourceFile = File(path.join(root.path, 'abandoned-capture.pdf'));
+      await sourceFile.writeAsBytes([8, 6, 7, 5], flush: true);
+      final store = services<LocalEvidenceStore>();
+
+      final preserved = await store.preserve(
+        XFile(sourceFile.path, name: 'abandoned-capture.pdf'),
+      );
+      final pending = Directory('${evidenceDirectory.path}.pending');
+      final pendingFile = File(
+        path.join(pending.path, preserved.localFileName),
+      );
+      final genericJournal = File(
+        path.join(pending.path, 'capture-${preserved.localFileName}.json'),
+      );
+      expect(await pendingFile.exists(), isTrue);
+      expect(await genericJournal.exists(), isTrue);
+
+      expect(await store.recoverUnclaimedPendingCaptures(), 1);
+      expect(await pendingFile.exists(), isFalse);
+      expect(await genericJournal.exists(), isFalse);
+    },
+  );
+
+  test(
+    'receipt publication works inside an already-owned evidence boundary',
+    () async {
+      final now = DateTime.utc(2026, 8, 9, 20);
+      final transaction = _transaction('transaction-receipt-boundary', now);
+      final transactions = SqliteTransactionRepository(
+        database.persistenceDatabase,
+      );
+      await transactions.save(transaction);
+      final source = File(path.join(root.path, 'receipt.png'));
+      await source.writeAsBytes([1, 4, 9], flush: true);
+      final store = services<LocalEvidenceStore>();
+      final preserved = await store.preserve(
+        XFile(source.path, name: 'receipt.png', mimeType: 'image/png'),
+      );
+
+      final result = await store.runFinancialEvidenceMutation(
+        () => store.attachPreservedAndReturnWithinMutation(
+          transactionId: transaction.id.value,
+          source: preserved,
+        ),
+      );
+      expect(result, isA<EvidenceItem>());
+      final evidence = result as EvidenceItem;
+      final published = await store.fileFor(evidence);
+      expect(published, isNotNull);
+      expect(await published!.readAsBytes(), [1, 4, 9]);
+
+      final deleted = await store.deleteTransactionPermanently(
+        transaction.id.value,
+      );
+      expect(deleted, isA<ApplicationSuccess<void>>());
+      expect(await published.exists(), isFalse);
+    },
+  );
+
+  test(
+    'startup recovery removes evidence orphaned by an interrupted delete',
+    () async {
+      final now = DateTime.utc(2026, 8, 9, 20);
+      final transaction = _transaction('transaction-interrupted-delete', now);
+      final transactions = SqliteTransactionRepository(
+        database.persistenceDatabase,
+      );
+      final evidence = SqliteEvidenceRepository(database.persistenceDatabase);
+      final item = _evidence('evidence-interrupted-delete', now);
+      await transactions.save(transaction);
+      await evidence.save(item);
+      await evidence.link(
+        AttachmentLink(
+          id: AttachmentLinkId('attachment-interrupted-delete'),
+          transactionId: transaction.id,
+          evidenceId: item.id,
+          createdAt: now,
+        ),
+      );
+      await evidenceDirectory.create(recursive: true);
+      final file = File(path.join(evidenceDirectory.path, item.localFileName!));
+      await file.writeAsBytes([9, 8, 7], flush: true);
+
+      // Model a process ending after the source transaction commit and before
+      // the reference-aware evidence cleanup phase.
+      await transactions.removePermanently(transaction.id);
+      expect(await evidence.findById(item.id), isNotNull);
+
+      await database.close();
+      await services.reset();
+      await database.initialize();
+      configureDependencies(
+        configuration: const AppConfiguration(),
+        database: database,
+        logger: AppLogger(),
+        localEvidenceDirectory: evidenceDirectory,
+      );
+
+      final repaired = await services<LocalEvidenceStore>()
+          .recoverUnreferencedEvidence();
+      expect(repaired, 1);
+      expect(await file.exists(), isFalse);
+      expect(
+        await SqliteEvidenceRepository(
+          database.persistenceDatabase,
+        ).findById(item.id),
+        isNull,
+      );
+    },
+  );
+
+  test('database cleanup failure leaves staged evidence recoverable', () async {
+    final now = DateTime.utc(2026, 8, 9, 20);
+    final transaction = _transaction('transaction-db-cleanup-failure', now);
+    final transactions = SqliteTransactionRepository(
+      database.persistenceDatabase,
+    );
+    final evidence = SqliteEvidenceRepository(database.persistenceDatabase);
+    final item = _evidence('evidence-db-cleanup-failure', now);
+    await transactions.save(transaction);
+    await evidence.save(item);
+    await evidence.link(
+      AttachmentLink(
+        id: AttachmentLinkId('attachment-db-cleanup-failure'),
+        transactionId: transaction.id,
+        evidenceId: item.id,
+        createdAt: now,
+      ),
+    );
+    await evidenceDirectory.create(recursive: true);
+    final file = File(path.join(evidenceDirectory.path, item.localFileName!));
+    await file.writeAsBytes([2, 4, 6], flush: true);
+    await database.persistenceDatabase.connection.execute(
+      'CREATE TRIGGER fail_evidence_delete '
+      'BEFORE DELETE ON evidence_items '
+      "BEGIN SELECT RAISE(ABORT, 'forced evidence delete failure'); END",
+    );
+
+    final result = await services<FinanceServices>()
+        .deleteTransactionPermanently(transaction.id.value);
+    expect(result, isA<ApplicationFailure<void>>());
+    expect(await file.exists(), isFalse);
+
+    await database.persistenceDatabase.connection.execute(
+      'DROP TRIGGER fail_evidence_delete',
+    );
+    await services<LocalEvidenceStore>().recoverStagedEvidenceDeletions();
+
+    expect(await file.exists(), isTrue);
+    expect(await file.readAsBytes(), [2, 4, 6]);
+    expect(await evidence.findById(item.id), isNotNull);
+  });
+
+  test(
+    'startup recovery completes an interrupted receipt evidence attachment',
+    () async {
+      final now = DateTime.utc(2026, 8, 9, 20);
+      final transaction = _transaction('transaction-receipt-recovery', now);
+      final transactions = SqliteTransactionRepository(
+        database.persistenceDatabase,
+      );
+      await transactions.save(transaction);
+      final store = services<LocalEvidenceStore>();
+      final source = const PreservedEvidenceSource(
+        originalName: 'receipt-recovery.png',
+        localFileName: 'receipt-recovery.png',
+        mediaType: 'image/png',
+        sourceFingerprint: 'fingerprint-recovery',
+      );
+      final pending = Directory('${evidenceDirectory.path}.pending');
+      await pending.create(recursive: true);
+      await File(
+        path.join(pending.path, source.localFileName),
+      ).writeAsBytes([7, 8, 9], flush: true);
+
+      await store.preparePendingReceiptCapture(
+        transactionId: transaction.id.value,
+        source: source,
+      );
+
+      final recovered = await store.recoverPendingReceiptCaptures();
+      expect(recovered, 1);
+      final attached = await SqliteEvidenceRepository(
+        database.persistenceDatabase,
+      ).listForTransaction(transaction.id);
+      expect(attached, hasLength(1));
+      final published = await store.fileFor(attached.single);
+      expect(published, isNotNull);
+      expect(await published!.readAsBytes(), [7, 8, 9]);
+    },
+  );
+
+  test(
+    'receipt recovery does not duplicate an attachment committed before cleanup',
+    () async {
+      final now = DateTime.utc(2026, 8, 9, 20);
+      final transaction = _transaction('transaction-receipt-duplicate', now);
+      final transactions = SqliteTransactionRepository(
+        database.persistenceDatabase,
+      );
+      await transactions.save(transaction);
+      final store = services<LocalEvidenceStore>();
+      final source = const PreservedEvidenceSource(
+        originalName: 'receipt-duplicate.png',
+        localFileName: 'receipt-duplicate.png',
+        mediaType: 'image/png',
+        sourceFingerprint: 'fingerprint-duplicate',
+      );
+      final pending = Directory('${evidenceDirectory.path}.pending');
+      await pending.create(recursive: true);
+      await File(
+        path.join(pending.path, source.localFileName),
+      ).writeAsBytes([3, 3, 3], flush: true);
+      const captureId = 'transaction-receipt-capture';
+      final planned = await store.preparePendingReceiptCapture(
+        transactionId: captureId,
+        source: source,
+      );
+      expect(
+        await store.rebindPendingReceiptCapture(
+          captureId: captureId,
+          transactionId: transaction.id.value,
+        ),
+        isTrue,
+      );
+      final attached = await store.runFinancialEvidenceMutation(
+        () => store.attachPreservedAndReturnWithinMutation(
+          transactionId: transaction.id.value,
+          source: source,
+          planned: planned,
+        ),
+      );
+      expect(attached, isNotNull);
+
+      // Model a stop before the normal manifest completion. The planned ID is
+      // explicitly reused by the production mutation path.
+      final existing = await SqliteEvidenceRepository(
+        database.persistenceDatabase,
+      ).listForTransaction(transaction.id);
+      expect(existing.single.id, planned.id);
+      final recovered = await store.recoverPendingReceiptCaptures();
+      expect(recovered, 1);
+      final after = await SqliteEvidenceRepository(
+        database.persistenceDatabase,
+      ).listForTransaction(transaction.id);
+      expect(after, hasLength(1));
+      expect(
+        await File(path.join(pending.path, 'receipt-$captureId.json')).exists(),
+        isFalse,
+      );
+    },
+  );
+
+  test('receipt recovery clears a journal for a deleted transaction', () async {
+    final store = services<LocalEvidenceStore>();
+    final source = const PreservedEvidenceSource(
+      originalName: 'receipt-deleted.png',
+      localFileName: 'receipt-deleted.png',
+      mediaType: 'image/png',
+    );
+    final pending = Directory('${evidenceDirectory.path}.pending');
+    await pending.create(recursive: true);
+    final pendingFile = File(path.join(pending.path, source.localFileName));
+    await pendingFile.writeAsBytes([1, 1, 1], flush: true);
+    await store.preparePendingReceiptCapture(
+      transactionId: 'transaction-already-deleted',
+      source: source,
+    );
+
+    expect(await store.recoverPendingReceiptCaptures(), 0);
+    expect(await pendingFile.exists(), isFalse);
+    expect(
+      await File(
+        path.join(pending.path, 'receipt-transaction-already-deleted.json'),
+      ).exists(),
+      isFalse,
+    );
+  });
+
+  test(
+    'statement capture journal is recoverable before evidence publication',
+    () async {
+      final store = services<LocalEvidenceStore>();
+      final now = DateTime.utc(2026, 8, 9, 20);
+      await SqliteTransactionRepository(
+        database.persistenceDatabase,
+      ).save(_transaction('transaction-mixed-recovery', now));
+      final source = const PreservedEvidenceSource(
+        originalName: 'statement-before-ocr.pdf',
+        localFileName: 'statement-before-ocr.pdf',
+        mediaType: 'application/pdf',
+        sourceFingerprint: 'fingerprint-before-ocr',
+      );
+      final pending = Directory('${evidenceDirectory.path}.pending');
+      await pending.create(recursive: true);
+      await File(
+        path.join(pending.path, source.localFileName),
+      ).writeAsBytes([5, 4, 3], flush: true);
+      const receiptSource = PreservedEvidenceSource(
+        originalName: 'receipt-mixed-recovery.png',
+        localFileName: 'receipt-mixed-recovery.png',
+        mediaType: 'image/png',
+      );
+      await File(
+        path.join(pending.path, receiptSource.localFileName),
+      ).writeAsBytes([2, 2, 2], flush: true);
+      await store.preparePendingReceiptCapture(
+        transactionId: 'transaction-mixed-recovery',
+        source: receiptSource,
+      );
+
+      final planned = await store.preparePendingStatementCapture(
+        statementId: 'statement-before-ocr',
+        source: source,
+        originalFilename: source.originalName,
+        createdAt: DateTime.utc(2026, 8, 9, 20),
+      );
+      expect(planned.localFileName, source.localFileName);
+      expect(
+        await File(
+          path.join(pending.path, 'statement-statement-before-ocr.json'),
+        ).exists(),
+        isTrue,
+      );
+
+      final recovered = await store.recoverPendingStatementCaptures();
+      expect(recovered, 1);
+      final statements = await services<FinanceServices>().statementServices!
+          .list(includeArchived: true);
+      expect(
+        statements,
+        isA<ApplicationSuccess<List<FinancialStatement>>>().having(
+          (value) => value.value.single.id,
+          'statement id',
+          'statement-before-ocr',
+        ),
+      );
+      expect(
+        await SqliteEvidenceRepository(
+          database.persistenceDatabase,
+        ).findById(planned.id),
+        isNotNull,
+      );
+      expect(
+        await File(
+          path.join(pending.path, 'receipt-transaction-mixed-recovery.json'),
+        ).exists(),
+        isTrue,
+      );
+    },
+  );
+
+  test(
+    'statement publication failure retains its journal for restart recovery',
+    () async {
+      final store = services<LocalEvidenceStore>();
+      final source = const PreservedEvidenceSource(
+        originalName: 'statement-publication-failure.pdf',
+        localFileName: 'statement-publication-failure.pdf',
+        mediaType: 'application/pdf',
+      );
+      final pending = Directory('${evidenceDirectory.path}.pending');
+      await pending.create(recursive: true);
+      await File(
+        path.join(pending.path, source.localFileName),
+      ).writeAsBytes([6, 5, 4], flush: true);
+      final planned = await store.preparePendingStatementCapture(
+        statementId: 'statement-publication-failure',
+        source: source,
+        originalFilename: source.originalName,
+        createdAt: DateTime.utc(2026, 8, 9, 20),
+      );
+      await database.persistenceDatabase.connection.execute(
+        '''CREATE TRIGGER fail_statement_evidence_insert
+           BEFORE INSERT ON evidence_items
+           BEGIN SELECT RAISE(ABORT, 'injected evidence failure'); END;''',
+      );
+      final published = await store.storePreservedStatement(
+        source,
+        pendingStatementId: 'statement-publication-failure',
+        pendingOriginalFilename: source.originalName,
+        pendingCreatedAt: DateTime.utc(2026, 8, 9, 20),
+        planned: planned,
+      );
+      expect(published, isNull);
+      expect(
+        await File(path.join(pending.path, source.localFileName)).exists(),
+        isTrue,
+      );
+      expect(
+        await File(
+          path.join(
+            pending.path,
+            'statement-statement-publication-failure.json',
+          ),
+        ).exists(),
+        isTrue,
+      );
+      await database.persistenceDatabase.connection.execute(
+        'DROP TRIGGER fail_statement_evidence_insert',
+      );
+
+      expect(await store.recoverPendingStatementCaptures(), 1);
+    },
+  );
+
+  test(
+    'startup recovery restores staged statement evidence after interruption',
+    () async {
+      final now = DateTime.utc(2026, 8, 9, 20);
+      final item = _evidence('evidence-staged-statement', now);
+      final evidence = SqliteEvidenceRepository(database.persistenceDatabase);
+      await evidence.save(item);
+      await SqliteStatementRepository(
+        database.persistenceDatabase,
+      ).saveStatement(
+        FinancialStatement(
+          id: 'statement-staged-evidence',
+          evidenceId: item.id.value,
+          status: StatementStatus.needsSource,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      final deleting = Directory('${evidenceDirectory.path}.deleting');
+      await deleting.create(recursive: true);
+      final staged = File(path.join(deleting.path, 'delete-recovery-token'));
+      final manifest = File('${staged.path}.json');
+      await staged.writeAsBytes([6, 5, 4], flush: true);
+      await manifest.writeAsString(
+        jsonEncode({
+          'evidenceId': item.id.value,
+          'localFileName': item.localFileName,
+          'stagedFileName': path.basename(staged.path),
+        }),
+        flush: true,
+      );
+
+      await database.close();
+      await services.reset();
+      await database.initialize();
+      configureDependencies(
+        configuration: const AppConfiguration(),
+        database: database,
+        logger: AppLogger(),
+        localEvidenceDirectory: evidenceDirectory,
+      );
+      await services<LocalEvidenceStore>().recoverStagedEvidenceDeletions();
+
+      final live = File(path.join(evidenceDirectory.path, item.localFileName!));
+      expect(await live.readAsBytes(), [6, 5, 4]);
+      expect(await staged.exists(), isFalse);
+      expect(await manifest.exists(), isFalse);
+    },
+  );
+
+  test(
+    'staged deletion recovery rejects traversal in an interrupted manifest',
+    () async {
+      final outside = File(path.join(evidenceDirectory.path, 'outside.bin'));
+      await outside.parent.create(recursive: true);
+      await outside.writeAsBytes([1, 2, 3], flush: true);
+      final deleting = Directory('${evidenceDirectory.path}.deleting');
+      await deleting.create(recursive: true);
+      final manifest = File(path.join(deleting.path, 'malformed.json'));
+      await manifest.writeAsString(
+        jsonEncode({
+          'evidenceId': 'missing-evidence',
+          'localFileName': 'missing.png',
+          'stagedFileName': '../outside.bin',
+        }),
+        flush: true,
+      );
+
+      await expectLater(
+        services<LocalEvidenceStore>().recoverStagedEvidenceDeletions(),
+        throwsA(isA<FormatException>()),
+      );
+
+      expect(await outside.readAsBytes(), [1, 2, 3]);
+      expect(await manifest.exists(), isTrue);
+    },
+  );
+
+  test('erase all removes the staged evidence deletion tree', () async {
+    final deleting = Directory('${evidenceDirectory.path}.deleting');
+    await deleting.create(recursive: true);
+    await File(
+      path.join(deleting.path, 'delete-recovery.bin'),
+    ).writeAsBytes([4, 5, 6], flush: true);
+
+    await services<LocalDataManager>().eraseAll();
+
+    expect(await deleting.exists(), isFalse);
+  });
+
+  test(
+    'shared evidence filenames are retained for the remaining owner',
+    () async {
+      final now = DateTime.utc(2026, 8, 9, 20);
+      final first = _transaction('transaction-shared-file-first', now);
+      final second = _transaction('transaction-shared-file-second', now);
+      final transactions = SqliteTransactionRepository(
+        database.persistenceDatabase,
+      );
+      final evidence = SqliteEvidenceRepository(database.persistenceDatabase);
+      final firstEvidence = _evidence('evidence-shared-file-first', now);
+      final secondEvidence = EvidenceItem(
+        id: EvidenceId('evidence-shared-file-second'),
+        type: EvidenceType.receiptImage,
+        originalName: 'second.png',
+        mediaType: 'image/png',
+        localFileName: firstEvidence.localFileName,
+        provenance: Provenance(
+          id: ProvenanceId('evidence-shared-file-second-provenance'),
+          sourceType: ProvenanceSourceType.scan,
+          capturedAt: now,
+          originalRepresentation: 'second.png',
+        ),
+        createdAt: now,
+      );
+      await transactions.save(first);
+      await transactions.save(second);
+      await evidence.save(firstEvidence);
+      await evidence.save(secondEvidence);
+      await evidence.link(
+        AttachmentLink(
+          id: AttachmentLinkId('attachment-shared-file-first'),
+          transactionId: first.id,
+          evidenceId: firstEvidence.id,
+          createdAt: now,
+        ),
+      );
+      await evidence.link(
+        AttachmentLink(
+          id: AttachmentLinkId('attachment-shared-file-second'),
+          transactionId: second.id,
+          evidenceId: secondEvidence.id,
+          createdAt: now,
+        ),
+      );
+      await evidenceDirectory.create(recursive: true);
+      final file = File(
+        path.join(evidenceDirectory.path, firstEvidence.localFileName!),
+      );
+      await file.writeAsBytes([8, 8, 8], flush: true);
+
+      final result = await services<FinanceServices>()
+          .deleteTransactionPermanently(first.id.value);
+      expect(result, isA<ApplicationSuccess<void>>());
+      expect(await file.exists(), isTrue);
+      expect(await evidence.findById(firstEvidence.id), isNull);
+      expect(await evidence.findById(secondEvidence.id), isNotNull);
+    },
+  );
+
+  test(
+    'unprocessed statement deletion retains a shared evidence filename',
+    () async {
+      final now = DateTime.utc(2026, 8, 9, 20);
+      final transaction = _transaction(
+        'transaction-shared-statement-file',
+        now,
+      );
+      final transactions = SqliteTransactionRepository(
+        database.persistenceDatabase,
+      );
+      final evidence = SqliteEvidenceRepository(database.persistenceDatabase);
+      final statements = SqliteStatementRepository(
+        database.persistenceDatabase,
+      );
+      final firstEvidence = _evidence('evidence-shared-statement-first', now);
+      final secondEvidence = EvidenceItem(
+        id: EvidenceId('evidence-shared-statement-second'),
+        type: EvidenceType.document,
+        originalName: 'statement-second.pdf',
+        mediaType: 'application/pdf',
+        localFileName: firstEvidence.localFileName,
+        provenance: Provenance(
+          id: ProvenanceId('evidence-shared-statement-second-provenance'),
+          sourceType: ProvenanceSourceType.scan,
+          capturedAt: now,
+          originalRepresentation: 'statement-second.pdf',
+        ),
+        createdAt: now,
+      );
+      await transactions.save(transaction);
+      await evidence.save(firstEvidence);
+      await evidence.save(secondEvidence);
+      await statements.saveStatement(
+        FinancialStatement(
+          id: 'statement-shared-file',
+          evidenceId: firstEvidence.id.value,
+          status: StatementStatus.needsSource,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      await evidence.link(
+        AttachmentLink(
+          id: AttachmentLinkId('attachment-shared-statement-second'),
+          transactionId: transaction.id,
+          evidenceId: secondEvidence.id,
+          createdAt: now,
+        ),
+      );
+      await evidenceDirectory.create(recursive: true);
+      final file = File(
+        path.join(evidenceDirectory.path, firstEvidence.localFileName!),
+      );
+      await file.writeAsBytes([9, 8, 7], flush: true);
+
+      expect(
+        await services<LocalEvidenceStore>().removeUnprocessedStatement(
+          'statement-shared-file',
+        ),
+        isTrue,
+      );
+      expect(await file.exists(), isTrue);
+      expect(await evidence.findById(firstEvidence.id), isNull);
+      expect(await evidence.findById(secondEvidence.id), isNotNull);
+    },
+  );
+}
+
+Transaction _transaction(String id, DateTime now) => Transaction(
+  id: TransactionId(id),
+  timing: KnownTransactionTime(now),
+  money: Money(
+    amount: DecimalValue.parse('12.50'),
+    currency: CurrencyCode('USD'),
+  ),
+  direction: TransactionDirection.expense,
+  sourceType: TransactionSourceType.manual,
+  transactionDate: '2026-08-09',
+  provenance: [
+    Provenance(
+      id: ProvenanceId('$id-provenance'),
+      sourceType: ProvenanceSourceType.userEntry,
+      capturedAt: now,
+    ),
+  ],
+  createdAt: now,
+  updatedAt: now,
+);
+
+EvidenceItem _evidence(String id, DateTime now) => EvidenceItem(
+  id: EvidenceId(id),
+  type: EvidenceType.receiptImage,
+  originalName: '$id.png',
+  mediaType: 'image/png',
+  localFileName: '$id.png',
+  provenance: Provenance(
+    id: ProvenanceId('$id-provenance'),
+    sourceType: ProvenanceSourceType.scan,
+    capturedAt: now,
+    originalRepresentation: '$id.png',
+  ),
+  createdAt: now,
+);

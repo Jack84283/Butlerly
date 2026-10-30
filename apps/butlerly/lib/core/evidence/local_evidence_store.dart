@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
@@ -5,6 +6,7 @@ import 'package:butlerly/core/data/evidence_path_safety.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/evidence/evidence_mutation_lock.dart';
+import 'package:butlerly_database/butlerly_database.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:file_selector/file_selector.dart';
@@ -15,11 +17,13 @@ final class PreservedEvidenceSource {
     required this.originalName,
     required this.localFileName,
     required this.mediaType,
+    this.sourceFingerprint,
   });
 
   final String originalName;
   final String localFileName;
   final String mediaType;
+  final String? sourceFingerprint;
 }
 
 final class LocalEvidenceStore {
@@ -43,7 +47,7 @@ final class LocalEvidenceStore {
   /// Publication later moves the immutable binary into the live root and writes
   /// its SQLite evidence record under one [EvidenceMutationLock] boundary.
   Future<PreservedEvidenceSource> preserve(XFile source) =>
-      _preservePending(source);
+      _runFinancialEvidenceMutation(() => _preservePending(source));
 
   Future<PreservedEvidenceSource> _preservePending(XFile source) async {
     final directory = await _pendingEvidenceDirectory();
@@ -59,6 +63,11 @@ final class LocalEvidenceStore {
       localFileName,
       message: 'Unsafe pending evidence path.',
     );
+    await _writePreCaptureManifest(
+      localFileName: localFileName,
+      originalName: source.name,
+      mediaType: source.mimeType ?? _mediaType(extension),
+    );
     final destination = File(path.join(directory.path, localFileName));
 
     // Exclusive creation turns the immutable-path rule into a filesystem
@@ -66,26 +75,28 @@ final class LocalEvidenceStore {
     // existing pending or published evidence binary.
     await destination.create(exclusive: true);
     try {
-      await destination.writeAsBytes(await source.readAsBytes(), flush: true);
+      final bytes = await source.readAsBytes();
+      await destination.writeAsBytes(bytes, flush: true);
+      return PreservedEvidenceSource(
+        originalName: source.name,
+        localFileName: localFileName,
+        mediaType: source.mimeType ?? _mediaType(extension),
+        sourceFingerprint: sha256Bytes(bytes),
+      );
     } catch (_) {
       if (await destination.exists()) await destination.delete();
+      await _removePreCaptureManifest(localFileName);
       rethrow;
     }
-    return PreservedEvidenceSource(
-      originalName: source.name,
-      localFileName: localFileName,
-      mediaType: source.mimeType ?? _mediaType(extension),
-    );
   }
 
   Future<void> discardPreserved(PreservedEvidenceSource source) =>
-      EvidenceMutationLock.runExclusive(
-        () => _discardPreservedUnlocked(source),
-      );
+      _runFinancialEvidenceMutation(() => _discardPreservedUnlocked(source));
 
   Future<void> _discardPreservedUnlocked(PreservedEvidenceSource source) async {
     final file = await _pendingFileFor(source);
     if (file != null && await file.exists()) await file.delete();
+    await _removePreCaptureManifest(source.localFileName);
   }
 
   /// Publishes an already preserved receipt and its SQLite evidence record as
@@ -99,7 +110,36 @@ final class LocalEvidenceStore {
     required String transactionId,
     required PreservedEvidenceSource source,
     ProvenanceSourceType sourceType = ProvenanceSourceType.scan,
-  }) => EvidenceMutationLock.runExclusive(() async {
+    EvidenceItem? planned,
+  }) => _runFinancialEvidenceMutation(
+    () => attachPreservedAndReturnWithinMutation(
+      transactionId: transactionId,
+      source: source,
+      sourceType: sourceType,
+      planned: planned,
+    ),
+  );
+
+  /// Publishes a preserved receipt when the caller already owns the analysis
+  /// and evidence mutation boundary.
+  Future<EvidenceItem?> attachPreservedAndReturnWithinMutation({
+    required String transactionId,
+    required PreservedEvidenceSource source,
+    ProvenanceSourceType sourceType = ProvenanceSourceType.scan,
+    EvidenceItem? planned,
+  }) => _attachPreservedAndReturnWithinMutation(
+    transactionId: transactionId,
+    source: source,
+    sourceType: sourceType,
+    planned: planned,
+  );
+
+  Future<EvidenceItem?> _attachPreservedAndReturnWithinMutation({
+    required String transactionId,
+    required PreservedEvidenceSource source,
+    ProvenanceSourceType sourceType = ProvenanceSourceType.scan,
+    EvidenceItem? planned,
+  }) async {
     final liveFile = await _promotePreservedUnlocked(source);
     if (liveFile == null) return null;
     try {
@@ -107,6 +147,7 @@ final class LocalEvidenceStore {
         transactionId: transactionId,
         source: source,
         sourceType: sourceType,
+        planned: planned,
       );
       if (result != null) return result;
       await _returnToPendingUnlocked(source, liveFile);
@@ -115,30 +156,33 @@ final class LocalEvidenceStore {
       await _returnToPendingUnlocked(source, liveFile);
       rethrow;
     }
-  });
+  }
 
   Future<EvidenceItem?> _attachPreservedAndReturnUnlocked({
     required String transactionId,
     required PreservedEvidenceSource source,
     ProvenanceSourceType sourceType = ProvenanceSourceType.scan,
+    EvidenceItem? planned,
   }) async {
     final extension = path.extension(source.originalName).toLowerCase();
     final token = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
     final now = DateTime.now().toUtc();
-    final evidence = EvidenceItem(
-      id: EvidenceId('evidence-$token'),
-      type: _type(extension),
-      originalName: source.originalName,
-      mediaType: source.mediaType,
-      localFileName: source.localFileName,
-      provenance: Provenance(
-        id: ProvenanceId('evidence-provenance-$token'),
-        sourceType: sourceType,
-        capturedAt: now,
-        originalRepresentation: source.originalName,
-      ),
-      createdAt: now,
-    );
+    final evidence =
+        planned ??
+        EvidenceItem(
+          id: EvidenceId('evidence-$token'),
+          type: _type(extension),
+          originalName: source.originalName,
+          mediaType: source.mediaType,
+          localFileName: source.localFileName,
+          provenance: Provenance(
+            id: ProvenanceId('evidence-provenance-$token'),
+            sourceType: sourceType,
+            capturedAt: now,
+            originalRepresentation: source.originalName,
+          ),
+          createdAt: now,
+        );
     final result = await finance.storeAndAttachEvidence(
       evidence,
       AttachmentLink(
@@ -148,7 +192,10 @@ final class LocalEvidenceStore {
         createdAt: now,
       ),
     );
-    if (result is ApplicationSuccess<EvidenceItem>) return result.value;
+    if (result is ApplicationSuccess<EvidenceItem>) {
+      await _removePreCaptureManifest(source.localFileName);
+      return result.value;
+    }
     await finance.removeEvidence(evidence.id.value);
     return null;
   }
@@ -156,27 +203,67 @@ final class LocalEvidenceStore {
   /// Publishes a preserved statement binary and its SQLite evidence record under
   /// the same mutation boundary as restore.
   Future<EvidenceItem?> storePreservedStatement(
-    PreservedEvidenceSource source,
-  ) => EvidenceMutationLock.runExclusive(() async {
+    PreservedEvidenceSource source, {
+    String? pendingStatementId,
+    String? pendingOriginalFilename,
+    DateTime? pendingCreatedAt,
+    String? pendingPaymentSourceId,
+    EvidenceItem? planned,
+  }) => _runFinancialEvidenceMutation(() async {
+    EvidenceItem? plannedEvidence = planned;
+    if (pendingStatementId != null &&
+        pendingOriginalFilename != null &&
+        pendingCreatedAt != null) {
+      // Journal the capture intent before promoting or committing SQLite. A
+      // process stop at any later point can reconstruct the source evidence
+      // and statement instead of allowing orphan cleanup to discard it.
+      plannedEvidence ??= await _preparePendingStatementCaptureUnlocked(
+        statementId: pendingStatementId,
+        source: source,
+        originalFilename: pendingOriginalFilename,
+        createdAt: pendingCreatedAt,
+        paymentSourceId: pendingPaymentSourceId,
+      );
+    }
     final liveFile = await _promotePreservedUnlocked(source);
     if (liveFile == null) return null;
+    EvidenceItem? result;
     try {
-      final result = await _storePreservedStatementUnlocked(source);
+      result = await _storePreservedStatementUnlocked(
+        source,
+        planned: plannedEvidence,
+      );
       if (result != null) return result;
       await _returnToPendingUnlocked(source, liveFile);
       return null;
     } catch (_) {
+      if (result != null) {
+        try {
+          await finance.removeEvidence(result.id.value);
+        } catch (_) {}
+      }
       await _returnToPendingUnlocked(source, liveFile);
       rethrow;
     }
   });
 
   Future<EvidenceItem?> _storePreservedStatementUnlocked(
-    PreservedEvidenceSource source,
-  ) async {
+    PreservedEvidenceSource source, {
+    EvidenceItem? planned,
+  }) async {
+    final evidence = planned ?? _newStatementEvidence(source);
+    final result = await finance.storeEvidence(evidence);
+    if (result is ApplicationSuccess<EvidenceItem>) {
+      await _removePreCaptureManifest(source.localFileName);
+      return result.value;
+    }
+    return null;
+  }
+
+  EvidenceItem _newStatementEvidence(PreservedEvidenceSource source) {
     final token = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
     final now = DateTime.now().toUtc();
-    final evidence = EvidenceItem(
+    return EvidenceItem(
       id: EvidenceId('statement-evidence-$token'),
       type: EvidenceType.document,
       originalName: source.originalName,
@@ -186,12 +273,50 @@ final class LocalEvidenceStore {
         id: ProvenanceId('statement-evidence-provenance-$token'),
         sourceType: ProvenanceSourceType.scan,
         capturedAt: now,
+        sourceId: source.sourceFingerprint == null
+            ? null
+            : statementSourceFingerprintPrefix + source.sourceFingerprint!,
         originalRepresentation: source.originalName,
       ),
       createdAt: now,
     );
-    final result = await finance.storeEvidence(evidence);
-    return result is ApplicationSuccess<EvidenceItem> ? result.value : null;
+  }
+
+  /// Creates the statement recovery journal before OCR begins. The source
+  /// binary and this intent are both durable before any slow recognition work
+  /// runs, so a process stop can reconstruct a reviewable statement shell.
+  Future<EvidenceItem> preparePendingStatementCapture({
+    required String statementId,
+    required PreservedEvidenceSource source,
+    required String originalFilename,
+    required DateTime createdAt,
+    String? paymentSourceId,
+  }) => _runFinancialEvidenceMutation(
+    () => _preparePendingStatementCaptureUnlocked(
+      statementId: statementId,
+      source: source,
+      originalFilename: originalFilename,
+      createdAt: createdAt,
+      paymentSourceId: paymentSourceId,
+    ),
+  );
+
+  Future<EvidenceItem> _preparePendingStatementCaptureUnlocked({
+    required String statementId,
+    required PreservedEvidenceSource source,
+    required String originalFilename,
+    required DateTime createdAt,
+    String? paymentSourceId,
+  }) async {
+    final evidence = _newStatementEvidence(source);
+    await _writePendingStatementManifest(
+      statementId: statementId,
+      evidence: evidence,
+      originalFilename: originalFilename,
+      createdAt: createdAt,
+      paymentSourceId: paymentSourceId,
+    );
+    return evidence;
   }
 
   /// Creates and publishes a receipt as one lock-protected logical mutation.
@@ -199,7 +324,7 @@ final class LocalEvidenceStore {
     required String transactionId,
     required XFile source,
     ProvenanceSourceType sourceType = ProvenanceSourceType.scan,
-  }) => EvidenceMutationLock.runExclusive(() async {
+  }) => _runFinancialEvidenceMutation(() async {
     final preserved = await _preservePending(source);
     final liveFile = await _promotePreservedUnlocked(preserved);
     if (liveFile == null) {
@@ -227,7 +352,7 @@ final class LocalEvidenceStore {
   /// mutation. Callers that do not need pre-publication OCR should prefer this
   /// over the split preserve/store API.
   Future<EvidenceItem?> preserveAndStoreStatement(XFile source) =>
-      EvidenceMutationLock.runExclusive(() async {
+      _runFinancialEvidenceMutation(() async {
         final preserved = await _preservePending(source);
         final liveFile = await _promotePreservedUnlocked(preserved);
         if (liveFile == null) {
@@ -325,40 +450,962 @@ final class LocalEvidenceStore {
     }
   }
 
-  Future<bool> remove(EvidenceItem evidence) =>
-      EvidenceMutationLock.runExclusive(() async {
-        final result = await finance.removeEvidence(evidence.id.value);
-        if (result is! ApplicationSuccess<void>) return false;
-        final file = await fileFor(evidence);
-        if (file != null && await file.exists()) await file.delete();
+  Future<File> _preCaptureManifestFor(String localFileName) async {
+    final directory = await _pendingEvidenceDirectory();
+    final name = await validateEvidencePath(
+      directory,
+      'capture-$localFileName.json',
+      message: 'Unsafe pending capture manifest path.',
+    );
+    return File(path.join(directory.path, name));
+  }
+
+  Future<void> _writePreCaptureManifest({
+    required String localFileName,
+    required String originalName,
+    required String mediaType,
+  }) async {
+    final directory = await _pendingEvidenceDirectory();
+    await rejectEvidenceRoot(
+      directory,
+      message: 'Unsafe pending evidence root.',
+    );
+    await directory.create(recursive: true);
+    final manifest = await _preCaptureManifestFor(localFileName);
+    await manifest.writeAsString(
+      jsonEncode({
+        'localFileName': localFileName,
+        'originalName': originalName,
+        'mediaType': mediaType,
+      }),
+      flush: true,
+    );
+  }
+
+  Future<void> _removePreCaptureManifest(String localFileName) async {
+    final manifest = await _preCaptureManifestFor(localFileName);
+    if (await manifest.exists()) await manifest.delete();
+  }
+
+  Future<bool> _hasSpecificPendingJournal(
+    Directory directory,
+    String localFileName,
+  ) async {
+    await for (final entity in directory.list(followLinks: false)) {
+      if (entity is! File || !entity.path.endsWith('.json')) continue;
+      final name = path.basename(entity.path);
+      if (!name.startsWith('statement-') && !name.startsWith('receipt-')) {
+        continue;
+      }
+      try {
+        final decoded = jsonDecode(await entity.readAsString());
+        if (decoded is Map<String, dynamic> &&
+            decoded['localFileName'] == localFileName) {
+          return true;
+        }
+      } on Object {
+        // Keep the generic journal when a specific journal is malformed.
         return true;
+      }
+    }
+    return false;
+  }
+
+  /// Removes pending binaries whose process stopped before a statement or
+  /// receipt-specific journal could be created. The generic journal is written
+  /// before the binary copy, so this cleanup is deterministic and private.
+  Future<int> recoverUnclaimedPendingCaptures() async =>
+      _runFinancialEvidenceMutation(() async {
+        final directory = await _pendingEvidenceDirectory();
+        if (!await directory.exists()) return 0;
+        var cleaned = 0;
+        await for (final entity in directory.list(followLinks: false)) {
+          final name = path.basename(entity.path);
+          if (entity is! File ||
+              !name.endsWith('.json') ||
+              !name.startsWith('capture-')) {
+            continue;
+          }
+          final decoded = jsonDecode(await entity.readAsString());
+          if (decoded is! Map<String, dynamic> ||
+              decoded['localFileName'] is! String) {
+            throw const FormatException('Invalid pending capture manifest.');
+          }
+          final localFileName = decoded['localFileName'] as String;
+          if (await _hasSpecificPendingJournal(directory, localFileName)) {
+            continue;
+          }
+          final normalized = await validateEvidencePath(
+            directory,
+            localFileName,
+            message: 'Unsafe pending capture source path.',
+          );
+          final pending = File(path.join(directory.path, normalized));
+          if (await pending.exists()) await pending.delete();
+          if (await entity.exists()) await entity.delete();
+          cleaned++;
+        }
+        return cleaned;
       });
+
+  Future<bool> remove(EvidenceItem evidence) =>
+      _runFinancialEvidenceMutation(() async {
+        final result = await finance.cleanupUnreferencedEvidence(
+          evidence.id.value,
+        );
+        return result is ApplicationSuccess<bool> && result.value == true;
+      });
+
+  /// Deletes a transaction and its exclusively-owned evidence while holding
+  /// the evidence mutation lock across the database and filesystem work.
+  Future<ApplicationResult<void>> deleteTransactionPermanently(
+    String transactionId,
+  ) => finance.deleteTransactionPermanently(transactionId);
+
+  /// Rolls back a transaction while the caller already owns the enclosing
+  /// analysis/evidence mutation boundary.
+  Future<ApplicationResult<void>> deleteTransactionPermanentlyWithinMutation(
+    String transactionId,
+  ) => finance.deleteTransactionPermanently.callWithinEvidenceMutation(
+    transactionId,
+  );
+
+  Future<bool> retryEvidenceCleanup(String evidenceId) =>
+      _runFinancialEvidenceMutation(() async {
+        final result = await finance.cleanupUnreferencedEvidence(evidenceId);
+        if (result is! ApplicationSuccess<bool> || !result.value) return false;
+        try {
+          await _finalizeDeletedEvidenceForId(evidenceId);
+          return true;
+        } on Object {
+          return false;
+        }
+      });
+
+  Future<ApplicationResult<bool>> removeEvidenceFromTransaction(
+    String transactionId,
+    String evidenceId,
+  ) => finance.removeEvidenceFromTransaction(transactionId, evidenceId);
+
+  Future<int> recoverUnreferencedEvidence() async {
+    final result = await _runFinancialEvidenceMutation(
+      () => finance.recoverUnreferencedEvidence(),
+    );
+    if (result is ApplicationSuccess<int>) return result.value;
+    if (result is ApplicationFailure<int>) {
+      throw StateError(
+        'Evidence recovery failed: ${result.failure.operation} '
+        '${result.failure.detail ?? result.failure.code.name}',
+      );
+    }
+    throw StateError('Evidence recovery returned an invalid result.');
+  }
+
+  /// Called by the finance use cases before SQLite metadata cleanup. The
+  /// binary is moved to the durable deletion journal first, so a database
+  /// rollback can restore it during startup recovery.
+  Future<void> deletePublishedFile(EvidenceItem evidence) async {
+    await _stagePublishedFileForDeletion(evidence);
+  }
+
+  /// Finalizes a staged binary after its SQLite metadata has committed. If the
+  /// process stops before this runs, startup recovery sees the missing
+  /// evidence row and removes the staged binary safely.
+  Future<void> finalizeDeletedEvidenceFile(EvidenceItem evidence) async {
+    await _finalizeDeletedEvidenceForId(evidence.id.value);
+  }
+
+  Future<void> _finalizeDeletedEvidenceForId(String evidenceId) async {
+    final root = await data.evidenceDirectory();
+    final deleting = Directory('${root.path}.deleting');
+    await rejectEvidenceRoot(
+      deleting,
+      message: 'Unsafe deleting evidence root.',
+    );
+    if (!await deleting.exists()) return;
+    await for (final entity in deleting.list(followLinks: false)) {
+      if (entity is! File || !entity.path.endsWith('.json')) continue;
+      try {
+        final decoded = jsonDecode(await entity.readAsString());
+        if (decoded is! Map<String, dynamic> ||
+            decoded['evidenceId'] != evidenceId) {
+          continue;
+        }
+        final stagedFileName = decoded['stagedFileName'];
+        if (stagedFileName is! String) continue;
+        final normalized = await validateEvidencePath(
+          deleting,
+          stagedFileName,
+          message: 'Unsafe staged evidence finalization path.',
+        );
+        final staged = File(path.join(deleting.path, normalized));
+        if (await staged.exists()) await staged.delete();
+        if (await entity.exists()) await entity.delete();
+        return;
+      } on Object {
+        // Leave the manifest for startup recovery, while surfacing the
+        // failure so callers can present a recoverable cleanup state.
+        rethrow;
+      }
+    }
+  }
 
   Future<bool> removeUnprocessedStatement(String statementId) =>
-      EvidenceMutationLock.runExclusive(() async {
-        final result = await finance.statementServices?.deleteStatement(
+      _runFinancialEvidenceMutation(
+        () => _removeStatementSafely(
           statementId,
-        );
-        if (result is! ApplicationSuccess<EvidenceItem?>) return false;
-        final evidence = result.value;
-        if (evidence == null) return true;
-        final file = await fileFor(evidence);
-        if (file != null && await file.exists()) await file.delete();
-        return true;
-      });
+          () => finance.statementServices?.deleteStatement(statementId),
+        ),
+      );
 
   Future<bool> abandonStatementImport(String statementId) =>
-      EvidenceMutationLock.runExclusive(() async {
-        final result = await finance.statementServices?.abandonImport(
+      _runFinancialEvidenceMutation(
+        () => _removeStatementSafely(
           statementId,
-        );
-        if (result is! ApplicationSuccess<EvidenceItem?>) return false;
-        final evidence = result.value;
-        if (evidence == null) return true;
-        final file = await fileFor(evidence);
-        if (file != null && await file.exists()) await file.delete();
+          () => finance.statementServices?.abandonImport(statementId),
+        ),
+      );
+
+  Future<bool> _removeStatementSafely(
+    String statementId,
+    Future<ApplicationResult<EvidenceItem?>>? Function() removeStatement,
+  ) async {
+    final statements = finance.statementServices;
+    if (statements == null) return false;
+    final listed = await statements.list();
+    if (listed is! ApplicationSuccess<List<FinancialStatement>>) return false;
+    final statement = listed.value
+        .where((value) => value.id == statementId)
+        .firstOrNull;
+    if (statement == null) return false;
+    final evidenceResult = await finance.getEvidence(statement.evidenceId);
+    if (evidenceResult is! ApplicationSuccess<EvidenceItem?> ||
+        evidenceResult.value == null) {
+      return false;
+    }
+    final evidence = evidenceResult.value!;
+    ({File original, File staged, File manifest})? staged;
+    try {
+      final allEvidence = await finance.listAllEvidence.call();
+      if (allEvidence is! ApplicationSuccess<List<EvidenceItem>>) {
+        return false;
+      }
+      final sharedFile = allEvidence.value.any(
+        (item) =>
+            item.id != evidence.id &&
+            item.localFileName != null &&
+            item.localFileName == evidence.localFileName,
+      );
+      staged = sharedFile
+          ? null
+          : await _stagePublishedFileForDeletion(evidence);
+    } on Object {
+      return false;
+    }
+    final result = await removeStatement();
+    if (result is! ApplicationSuccess<EvidenceItem?>) {
+      if (staged != null) {
+        try {
+          await _restoreStagedFile(staged);
+        } catch (_) {
+          // Keep the staged file for the next recovery pass.
+        }
+      }
+      return false;
+    }
+    if (staged != null) {
+      try {
+        await staged.staged.delete();
+        await staged.manifest.delete();
+      } on Object {
+        // The database record is gone; retain the manifest for startup
+        // recovery if filesystem cleanup was interrupted. The logical delete
+        // succeeded, so callers must not retry it by the now-missing ID.
         return true;
+      }
+    }
+    return true;
+  }
+
+  Future<({File original, File staged, File manifest})?>
+  _stagePublishedFileForDeletion(EvidenceItem evidence) async {
+    final original = await fileFor(evidence);
+    if (original == null || !await original.exists()) return null;
+    final root = await data.evidenceDirectory();
+    final deleting = Directory('${root.path}.deleting');
+    await rejectEvidenceRoot(
+      deleting,
+      message: 'Unsafe deleting evidence root.',
+    );
+    await deleting.create(recursive: true);
+    final token = _newImmutableFileName(path.extension(original.path));
+    final stagedName = 'delete-$token';
+    final manifestName = '$stagedName.json';
+    await validateEvidencePath(
+      deleting,
+      stagedName,
+      message: 'Unsafe staged evidence path.',
+    );
+    await validateEvidencePath(
+      deleting,
+      manifestName,
+      message: 'Unsafe staged evidence manifest path.',
+    );
+    final staged = File(path.join(deleting.path, stagedName));
+    final manifest = File(path.join(deleting.path, manifestName));
+    await manifest.writeAsString(
+      jsonEncode({
+        'evidenceId': evidence.id.value,
+        'localFileName': evidence.localFileName,
+        'stagedFileName': stagedName,
+      }),
+      flush: true,
+    );
+    try {
+      await original.rename(staged.path);
+    } catch (_) {
+      if (await manifest.exists()) await manifest.delete();
+      rethrow;
+    }
+    return (original: original, staged: staged, manifest: manifest);
+  }
+
+  Future<void> _restoreStagedFile(
+    ({File original, File staged, File manifest}) staged,
+  ) async {
+    if (!await staged.staged.exists()) {
+      if (await staged.manifest.exists()) await staged.manifest.delete();
+      return;
+    }
+    if (await staged.original.exists()) {
+      await staged.staged.delete();
+      if (await staged.manifest.exists()) await staged.manifest.delete();
+      return;
+    }
+    await staged.staged.rename(staged.original.path);
+    if (await staged.manifest.exists()) await staged.manifest.delete();
+  }
+
+  Future<void> recoverStagedEvidenceDeletions() =>
+      _runFinancialEvidenceMutation(() async {
+        final root = await data.evidenceDirectory();
+        final deleting = Directory('${root.path}.deleting');
+        await rejectEvidenceRoot(root, message: 'Unsafe live evidence root.');
+        await rejectEvidenceRoot(
+          deleting,
+          message: 'Unsafe deleting evidence root.',
+        );
+        if (!await deleting.exists()) return;
+        Object? firstFailure;
+        await for (final entity in deleting.list(followLinks: false)) {
+          if (entity is! File || !entity.path.endsWith('.json')) continue;
+          final manifest = entity;
+          try {
+            final decoded = jsonDecode(await manifest.readAsString());
+            if (decoded is! Map<String, dynamic>) {
+              throw const FormatException('Invalid evidence manifest.');
+            }
+            final evidenceId = decoded['evidenceId'];
+            final localFileName = decoded['localFileName'];
+            final stagedFileName = decoded['stagedFileName'];
+            if (evidenceId is! String ||
+                localFileName is! String ||
+                stagedFileName is! String) {
+              throw const FormatException('Invalid evidence manifest fields.');
+            }
+            final normalizedStagedFileName = await validateEvidencePath(
+              deleting,
+              stagedFileName,
+              message: 'Unsafe staged evidence recovery path.',
+            );
+            final staged = File(
+              path.join(deleting.path, normalizedStagedFileName),
+            );
+            final evidenceResult = await finance.getEvidence(evidenceId);
+            if (evidenceResult is! ApplicationSuccess<EvidenceItem?>) {
+              throw StateError('Evidence metadata is unavailable.');
+            }
+            final evidence = evidenceResult.value;
+            if (evidence != null && evidence.localFileName == localFileName) {
+              final live = File(path.join(root.path, localFileName));
+              await validateEvidenceReferencePath(
+                root,
+                localFileName,
+                message: 'Unsafe staged evidence recovery path.',
+              );
+              await root.create(recursive: true);
+              if (await staged.exists()) {
+                if (await live.exists()) {
+                  await staged.delete();
+                } else {
+                  await staged.rename(live.path);
+                }
+              }
+            } else if (await staged.exists()) {
+              await staged.delete();
+            }
+            if (await manifest.exists()) await manifest.delete();
+          } on Object catch (error) {
+            // Retain malformed or unavailable recovery artifacts for the next
+            // startup rather than deleting user evidence blindly.
+            firstFailure ??= error;
+          }
+        }
+        final failure = firstFailure;
+        if (failure != null) throw failure;
       });
+
+  Future<void> _writePendingStatementManifest({
+    required String statementId,
+    required EvidenceItem evidence,
+    required String originalFilename,
+    required DateTime createdAt,
+    String? paymentSourceId,
+  }) async {
+    final directory = await _pendingEvidenceDirectory();
+    await rejectEvidenceRoot(
+      directory,
+      message: 'Unsafe pending evidence root.',
+    );
+    await directory.create(recursive: true);
+    final name = 'statement-$statementId.json';
+    await validateEvidencePath(
+      directory,
+      name,
+      message: 'Unsafe pending statement manifest path.',
+    );
+    final manifest = File(path.join(directory.path, name));
+    final manifestData = <String, Object?>{
+      'statementId': statementId,
+      'evidenceId': evidence.id.value,
+      'evidenceType': evidence.type.name,
+      'evidenceOriginalName': evidence.originalName,
+      'evidenceMediaType': evidence.mediaType,
+      'localFileName': evidence.localFileName,
+      'provenanceId': evidence.provenance.id.value,
+      'provenanceCapturedAt': evidence.provenance.capturedAt
+          .toUtc()
+          .toIso8601String(),
+      'evidenceCreatedAt': evidence.createdAt.toUtc().toIso8601String(),
+      'originalFilename': originalFilename,
+      'createdAt': createdAt.toUtc().toIso8601String(),
+    };
+    if (evidence.provenance.sourceId != null) {
+      manifestData['provenanceSourceId'] = evidence.provenance.sourceId;
+    }
+    if (paymentSourceId != null) {
+      manifestData['paymentSourceId'] = paymentSourceId;
+    }
+    await manifest.writeAsString(jsonEncode(manifestData), flush: true);
+  }
+
+  Future<bool> completePendingStatementCapture(String statementId) =>
+      _runFinancialEvidenceMutation(() async {
+        final directory = await _pendingEvidenceDirectory();
+        try {
+          final name = await validateEvidencePath(
+            directory,
+            'statement-$statementId.json',
+            message: 'Unsafe pending statement manifest path.',
+          );
+          final manifest = File(path.join(directory.path, name));
+          if (!await manifest.exists()) return true;
+          String? localFileName;
+          try {
+            final decoded = jsonDecode(await manifest.readAsString());
+            if (decoded is Map<String, dynamic> &&
+                decoded['localFileName'] is String) {
+              localFileName = decoded['localFileName'] as String;
+            }
+          } on Object {
+            // The statement journal is no longer needed after the publication
+            // succeeded. The generic journal remains recoverable if this
+            // manifest is malformed.
+          }
+          await manifest.delete();
+          if (localFileName != null) {
+            await _removePreCaptureManifest(localFileName);
+          }
+          return true;
+        } on Object {
+          return false;
+        }
+      });
+
+  /// Journals a receipt transaction before its source transaction is created.
+  /// The journal lets startup finish the evidence attachment if the process
+  /// stops after the transaction commit and before attachment completes.
+  Future<EvidenceItem> preparePendingReceiptCapture({
+    required String transactionId,
+    required PreservedEvidenceSource source,
+  }) => _runFinancialEvidenceMutation(
+    () => preparePendingReceiptCaptureWithinMutation(
+      transactionId: transactionId,
+      source: source,
+    ),
+  );
+
+  Future<EvidenceItem> preparePendingReceiptCaptureWithinMutation({
+    required String transactionId,
+    required PreservedEvidenceSource source,
+  }) async {
+    final evidence = _newReceiptEvidence(source);
+    final directory = await _pendingEvidenceDirectory();
+    await rejectEvidenceRoot(
+      directory,
+      message: 'Unsafe pending evidence root.',
+    );
+    await directory.create(recursive: true);
+    final name = await validateEvidencePath(
+      directory,
+      'receipt-$transactionId.json',
+      message: 'Unsafe pending receipt manifest path.',
+    );
+    final manifest = File(path.join(directory.path, name));
+    await manifest.writeAsString(
+      jsonEncode({
+        'transactionId': transactionId,
+        'evidenceId': evidence.id.value,
+        'evidenceType': evidence.type.name,
+        'evidenceOriginalName': evidence.originalName,
+        'evidenceMediaType': evidence.mediaType,
+        'localFileName': evidence.localFileName,
+        'provenanceId': evidence.provenance.id.value,
+        'provenanceCapturedAt': evidence.provenance.capturedAt
+            .toUtc()
+            .toIso8601String(),
+        'evidenceCreatedAt': evidence.createdAt.toUtc().toIso8601String(),
+        'provenanceSourceId': source.sourceFingerprint,
+        'sourceFingerprint': source.sourceFingerprint,
+      }),
+      flush: true,
+    );
+    return evidence;
+  }
+
+  Future<bool> completePendingReceiptCapture(String transactionId) =>
+      _runFinancialEvidenceMutation(
+        () => completePendingReceiptCaptureWithinMutation(transactionId),
+      );
+
+  Future<bool> completePendingReceiptCaptureWithinMutation(
+    String transactionId,
+  ) async {
+    final directory = await _pendingEvidenceDirectory();
+    final name = await validateEvidencePath(
+      directory,
+      'receipt-$transactionId.json',
+      message: 'Unsafe pending receipt manifest path.',
+    );
+    final manifest = File(path.join(directory.path, name));
+    if (!await manifest.exists()) return true;
+    String? localFileName;
+    try {
+      final decoded = jsonDecode(await manifest.readAsString());
+      if (decoded is Map<String, dynamic> &&
+          decoded['localFileName'] is String) {
+        localFileName = decoded['localFileName'] as String;
+      }
+    } on Object {
+      // The specific journal can still be completed; generic cleanup remains
+      // conservative if its local filename cannot be trusted.
+    }
+    await manifest.delete();
+    if (localFileName != null) {
+      await _removePreCaptureManifest(localFileName);
+    }
+    return true;
+  }
+
+  /// Retargets a receipt journal from the provisional new-transaction ID to an
+  /// existing transaction selected during duplicate/reconciliation review.
+  /// The manifest filename remains the immutable capture ID, so recovery never
+  /// has a gap between the old and new target.
+  Future<bool> rebindPendingReceiptCapture({
+    required String captureId,
+    required String transactionId,
+  }) => _runFinancialEvidenceMutation(
+    () => rebindPendingReceiptCaptureWithinMutation(
+      captureId: captureId,
+      transactionId: transactionId,
+    ),
+  );
+
+  Future<bool> rebindPendingReceiptCaptureWithinMutation({
+    required String captureId,
+    required String transactionId,
+  }) async {
+    final directory = await _pendingEvidenceDirectory();
+    final name = await validateEvidencePath(
+      directory,
+      'receipt-$captureId.json',
+      message: 'Unsafe pending receipt manifest path.',
+    );
+    final manifest = File(path.join(directory.path, name));
+    if (!await manifest.exists()) return false;
+    final decoded = jsonDecode(await manifest.readAsString());
+    if (decoded is! Map<String, dynamic>) {
+      throw const FormatException('Invalid pending receipt manifest.');
+    }
+    decoded['transactionId'] = transactionId;
+    await manifest.writeAsString(jsonEncode(decoded), flush: true);
+    return true;
+  }
+
+  Future<void> _discardPendingReceiptJournal(
+    File manifest,
+    String localFileName,
+  ) async {
+    final directory = await _pendingEvidenceDirectory();
+    final normalized = await validateEvidencePath(
+      directory,
+      localFileName,
+      message: 'Unsafe pending receipt source path.',
+    );
+    final pending = File(path.join(directory.path, normalized));
+    if (await pending.exists()) await pending.delete();
+    if (await manifest.exists()) await manifest.delete();
+    await _removePreCaptureManifest(localFileName);
+  }
+
+  Future<int> recoverPendingReceiptCaptures() async {
+    final result = await _runFinancialEvidenceMutation(() async {
+      final directory = await _pendingEvidenceDirectory();
+      if (!await directory.exists()) return 0;
+      var recovered = 0;
+      Object? firstFailure;
+      await for (final entity in directory.list(followLinks: false)) {
+        final name = path.basename(entity.path);
+        if (entity is! File ||
+            !name.endsWith('.json') ||
+            !name.startsWith('receipt-')) {
+          continue;
+        }
+        try {
+          final decoded = jsonDecode(await entity.readAsString());
+          if (decoded is! Map<String, dynamic>) {
+            throw const FormatException('Invalid pending receipt manifest.');
+          }
+          final transactionId = decoded['transactionId'];
+          final evidenceId = decoded['evidenceId'];
+          final localFileName = decoded['localFileName'];
+          final originalName = decoded['evidenceOriginalName'];
+          final mediaType = decoded['evidenceMediaType'];
+          final sourceFingerprint = decoded['sourceFingerprint'];
+          if (transactionId is! String ||
+              evidenceId is! String ||
+              localFileName is! String ||
+              originalName is! String ||
+              mediaType is! String ||
+              (sourceFingerprint != null && sourceFingerprint is! String)) {
+            throw const FormatException('Invalid pending receipt fields.');
+          }
+          final transaction = await finance.getTransaction.call(transactionId);
+          if (transaction is! ApplicationSuccess<TransactionDto>) {
+            if (transaction is ApplicationFailure<TransactionDto> &&
+                transaction.failure.code == ApplicationFailureCode.notFound) {
+              await _discardPendingReceiptJournal(entity, localFileName);
+              continue;
+            }
+            throw StateError('Receipt transaction lookup failed.');
+          }
+          final existingEvidence = await finance.listEvidenceForTransaction
+              .call(transactionId);
+          if (existingEvidence is! ApplicationSuccess<List<EvidenceItem>>) {
+            throw StateError('Receipt evidence lookup failed.');
+          }
+          if (existingEvidence.value.any(
+            (item) => item.id.value == evidenceId,
+          )) {
+            await entity.delete();
+            await _removePreCaptureManifest(localFileName);
+            recovered++;
+            continue;
+          }
+          final evidence = _evidenceFromPendingStatementManifest(decoded);
+          if (evidence == null) continue;
+          final source = PreservedEvidenceSource(
+            originalName: originalName,
+            localFileName: localFileName,
+            mediaType: mediaType,
+            sourceFingerprint: sourceFingerprint as String?,
+          );
+          final liveRoot = await data.evidenceDirectory();
+          await rejectEvidenceRoot(
+            liveRoot,
+            message: 'Unsafe live evidence tree.',
+          );
+          await liveRoot.create(recursive: true);
+          final live = File(path.join(liveRoot.path, localFileName));
+          if (!await live.exists()) {
+            await _promotePreservedUnlocked(source);
+          }
+          if (!await live.exists()) continue;
+          final now = evidence.createdAt;
+          final attached = await finance.storeAndAttachEvidence(
+            evidence,
+            AttachmentLink(
+              id: AttachmentLinkId('attachment-${evidence.id.value}'),
+              transactionId: TransactionId(transactionId),
+              evidenceId: evidence.id,
+              createdAt: now,
+            ),
+          );
+          if (attached is! ApplicationSuccess<EvidenceItem>) {
+            throw StateError('Receipt evidence attachment failed.');
+          }
+          await entity.delete();
+          await _removePreCaptureManifest(localFileName);
+          recovered++;
+        } on Object catch (error) {
+          // Keep the manifest and source for the next restart if the database
+          // or filesystem is temporarily unavailable.
+          firstFailure ??= error;
+        }
+      }
+      final failure = firstFailure;
+      if (failure != null) throw failure;
+      return recovered;
+    });
+    return result;
+  }
+
+  EvidenceItem _newReceiptEvidence(PreservedEvidenceSource source) {
+    final token = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
+    final now = DateTime.now().toUtc();
+    final extension = path.extension(source.originalName).toLowerCase();
+    return EvidenceItem(
+      id: EvidenceId('evidence-$token'),
+      type: _type(extension),
+      originalName: source.originalName,
+      mediaType: source.mediaType,
+      localFileName: source.localFileName,
+      provenance: Provenance(
+        id: ProvenanceId('evidence-provenance-$token'),
+        sourceType: ProvenanceSourceType.scan,
+        capturedAt: now,
+        sourceId: source.sourceFingerprint,
+        originalRepresentation: source.originalName,
+      ),
+      createdAt: now,
+    );
+  }
+
+  /// Reconstructs a recoverable statement shell for a capture whose evidence
+  /// was published before the process stopped. The shell keeps the original
+  /// document visible and exposes the existing technical-retry flow instead
+  /// of allowing orphan recovery to discard the user's source.
+  Future<int> recoverPendingStatementCaptures() async {
+    final result = await _runFinancialEvidenceMutation(() async {
+      final statements = finance.statementServices;
+      if (statements == null) return 0;
+      final directory = await _pendingEvidenceDirectory();
+      await rejectEvidenceRoot(
+        directory,
+        message: 'Unsafe pending evidence root.',
+      );
+      if (!await directory.exists()) return 0;
+      final listed = await statements.list(includeArchived: true);
+      if (listed is! ApplicationSuccess<List<FinancialStatement>>) {
+        throw StateError('Pending statement listing failed.');
+      }
+      final existing = [...listed.value];
+      var recovered = 0;
+      await for (final entity in directory.list(followLinks: false)) {
+        final name = path.basename(entity.path);
+        if (entity is! File ||
+            !name.endsWith('.json') ||
+            !name.startsWith('statement-')) {
+          continue;
+        }
+        final manifest = entity;
+        try {
+          final decoded = jsonDecode(await manifest.readAsString());
+          if (decoded is! Map<String, dynamic>) {
+            throw const FormatException('Invalid pending statement manifest.');
+          }
+          final statementId = decoded['statementId'];
+          final evidenceId = decoded['evidenceId'];
+          final originalFilename = decoded['originalFilename'];
+          final createdAtValue = decoded['createdAt'];
+          final paymentSourceId = decoded['paymentSourceId'];
+          final manifestLocalFileName = decoded['localFileName'];
+          if (statementId is! String ||
+              evidenceId is! String ||
+              originalFilename is! String ||
+              createdAtValue is! String ||
+              manifestLocalFileName is! String ||
+              (paymentSourceId != null && paymentSourceId is! String)) {
+            throw const FormatException('Invalid pending statement fields.');
+          }
+          final createdAt = DateTime.tryParse(createdAtValue)?.toUtc();
+          if (createdAt == null) {
+            throw const FormatException('Invalid pending statement timestamp.');
+          }
+          final alreadyReferenced = existing.any(
+            (item) => item.id == statementId || item.evidenceId == evidenceId,
+          );
+          if (alreadyReferenced) {
+            await manifest.delete();
+            await _removePreCaptureManifest(manifestLocalFileName);
+            continue;
+          }
+          final evidenceResult = await finance.getEvidence(evidenceId);
+          var evidence = evidenceResult is ApplicationSuccess<EvidenceItem?>
+              ? evidenceResult.value
+              : null;
+          if (evidence == null) {
+            // The manifest is written before SQLite publication. If the
+            // process stopped between those operations, rebuild the evidence
+            // row from the journal and promote its already-preserved binary.
+            final reconstructed = _evidenceFromPendingStatementManifest(
+              decoded,
+            );
+            if (reconstructed == null) {
+              throw const FormatException(
+                'Pending statement evidence cannot be reconstructed.',
+              );
+            }
+            final liveRoot = await data.evidenceDirectory();
+            await rejectEvidenceRoot(
+              liveRoot,
+              message: 'Unsafe live evidence tree.',
+            );
+            final liveName = await validateEvidenceReferencePath(
+              liveRoot,
+              reconstructed.localFileName!,
+              message: 'Unsafe pending statement evidence path.',
+            );
+            final pendingName = await validateEvidencePath(
+              directory,
+              reconstructed.localFileName!,
+              message: 'Unsafe pending statement evidence path.',
+            );
+            await liveRoot.create(recursive: true);
+            final live = File(path.join(liveRoot.path, liveName));
+            final pending = File(path.join(directory.path, pendingName));
+            if (!await live.exists() && await pending.exists()) {
+              await pending.rename(live.path);
+            }
+            if (!await live.exists()) {
+              throw StateError('Pending statement source is unavailable.');
+            }
+            final stored = await finance.storeEvidence(reconstructed);
+            if (stored is! ApplicationSuccess<EvidenceItem>) {
+              throw StateError('Pending statement evidence store failed.');
+            }
+            evidence = reconstructed;
+          }
+          final localFileName = evidence.localFileName;
+          if (localFileName == null) {
+            throw StateError('Pending statement has no local evidence file.');
+          }
+          final liveRoot = await data.evidenceDirectory();
+          final liveName = await validateEvidenceReferencePath(
+            liveRoot,
+            localFileName,
+            message: 'Unsafe pending statement evidence path.',
+          );
+          final pendingName = await validateEvidencePath(
+            directory,
+            localFileName,
+            message: 'Unsafe pending statement evidence path.',
+          );
+          final live = File(path.join(liveRoot.path, liveName));
+          final pending = File(path.join(directory.path, pendingName));
+          if (!await live.exists() && await pending.exists()) {
+            await liveRoot.create(recursive: true);
+            await pending.rename(live.path);
+          }
+          final statement = FinancialStatement(
+            id: statementId,
+            evidenceId: evidenceId,
+            paymentSourceId: paymentSourceId as String?,
+            status: paymentSourceId == null
+                ? StatementStatus.needsSource
+                : StatementStatus.ready,
+            originalFilename: originalFilename,
+            createdAt: createdAt,
+            updatedAt: createdAt,
+            extractionMessage: 'statementProcessingFailed',
+          );
+          final created = await statements.create(statement, const []);
+          if (created is! ApplicationSuccess<void>) {
+            throw StateError('Pending statement creation failed.');
+          }
+          existing.add(statement);
+          await manifest.delete();
+          await _removePreCaptureManifest(manifestLocalFileName);
+          recovered++;
+        } on Object catch (error, stackTrace) {
+          // Do not let orphan cleanup run after an unresolved journal failure.
+          // The manifest and any source evidence remain for the next recovery.
+          Error.throwWithStackTrace(error, stackTrace);
+        }
+      }
+      return recovered;
+    });
+    return result;
+  }
+
+  EvidenceItem? _evidenceFromPendingStatementManifest(
+    Map<String, dynamic> decoded,
+  ) {
+    final evidenceId = decoded['evidenceId'];
+    final type = decoded['evidenceType'];
+    final originalName = decoded['evidenceOriginalName'];
+    final mediaType = decoded['evidenceMediaType'];
+    final localFileName = decoded['localFileName'];
+    final provenanceId = decoded['provenanceId'];
+    final capturedAtValue = decoded['provenanceCapturedAt'];
+    final createdAtValue = decoded['evidenceCreatedAt'];
+    final sourceId = decoded['provenanceSourceId'];
+    if (evidenceId is! String ||
+        type is! String ||
+        originalName is! String ||
+        mediaType is! String ||
+        localFileName is! String ||
+        provenanceId is! String ||
+        capturedAtValue is! String ||
+        createdAtValue is! String ||
+        (sourceId != null && sourceId is! String)) {
+      return null;
+    }
+    final capturedAt = DateTime.tryParse(capturedAtValue)?.toUtc();
+    final createdAt = DateTime.tryParse(createdAtValue)?.toUtc();
+    if (capturedAt == null || createdAt == null) return null;
+    final evidenceType = switch (type) {
+      'document' => EvidenceType.document,
+      'receiptImage' => EvidenceType.receiptImage,
+      'other' => EvidenceType.other,
+      _ => null,
+    };
+    if (evidenceType == null) return null;
+    return EvidenceItem(
+      id: EvidenceId(evidenceId),
+      type: evidenceType,
+      originalName: originalName,
+      mediaType: mediaType,
+      localFileName: localFileName,
+      provenance: Provenance(
+        id: ProvenanceId(provenanceId),
+        sourceType: ProvenanceSourceType.scan,
+        capturedAt: capturedAt,
+        sourceId: sourceId as String?,
+        originalRepresentation: originalName,
+      ),
+      createdAt: createdAt,
+    );
+  }
+
+  Future<T> _runFinancialEvidenceMutation<T>(Future<T> Function() operation) {
+    final gate = finance.consistencyGate;
+    Future<T> locked() => EvidenceMutationLock.runExclusive(operation);
+    return gate == null ? locked() : gate.runExclusive(locked);
+  }
+
+  Future<T> runFinancialEvidenceMutation<T>(Future<T> Function() operation) =>
+      _runFinancialEvidenceMutation(operation);
 
   Future<File?> fileFor(EvidenceItem evidence) async {
     final name = evidence.localFileName;
@@ -380,6 +1427,36 @@ final class LocalEvidenceStore {
 
   Future<File?> fileForPreserved(PreservedEvidenceSource source) =>
       _pendingFileFor(source);
+
+  /// Finds a statement by immutable source bytes, including statements
+  /// created before source fingerprints were persisted in provenance.
+  Future<FinancialStatement?> findStatementBySourceFingerprint(
+    String fingerprint,
+  ) async {
+    final statements = finance.statementServices;
+    if (statements == null) return null;
+    final indexed = await statements.findBySourceFingerprint(fingerprint);
+    if (indexed case ApplicationSuccess<FinancialStatement?>(
+      value: final item,
+    ) when item != null) {
+      return item;
+    }
+    final listed = await statements.list(includeArchived: true);
+    if (listed is! ApplicationSuccess<List<FinancialStatement>>) return null;
+    for (final item in listed.value) {
+      final evidenceResult = await finance.getEvidence(item.evidenceId);
+      if (evidenceResult is! ApplicationSuccess<EvidenceItem?> ||
+          evidenceResult.value == null ||
+          evidenceResult.value!.provenance.sourceId != null) {
+        continue;
+      }
+      final file = await fileFor(evidenceResult.value!);
+      if (file != null && await file.exists()) {
+        if (await sha256FileRange(file) == fingerprint) return item;
+      }
+    }
+    return null;
+  }
 
   static String _newImmutableFileName(String extension) {
     final random = Random.secure();

@@ -11,6 +11,8 @@ import 'statement_intake_policy.dart';
 import 'transaction_use_cases.dart';
 import 'transaction_rule_use_cases.dart';
 
+const statementSourceFingerprintPrefix = 'statement-sha256:';
+
 final class StatementImportSummary {
   const StatementImportSummary({
     required this.imported,
@@ -405,13 +407,79 @@ final class StatementServices {
   Future<ApplicationResult<void>> create(
     FinancialStatement statement,
     List<StatementRow> rows,
-  ) => runApplication(
-    'create statement',
-    () => statements.saveStatementWithRows(statement, rows),
+  ) => _runExclusive(
+    () => runApplication(
+      'create statement',
+      () => statements.saveStatementWithRows(statement, rows),
+    ),
   );
 
-  Future<ApplicationResult<List<FinancialStatement>>> list() => _runExclusive(
-    () => runApplication('list statements', () => statements.listStatements()),
+  /// Replaces a technical OCR failure only when the persisted statement still
+  /// has the same revision and no user-authored rows. This keeps retry from
+  /// overwriting corrections made while OCR was running.
+  Future<ApplicationResult<void>> retryTechnicalFailure({
+    required FinancialStatement expected,
+    required FinancialStatement updated,
+    required List<StatementRow> rows,
+    Extraction? extraction,
+  }) => _runExclusive(
+    () => runApplication('retry statement OCR', () async {
+      final current = await statements.findStatement(expected.id);
+      if (current == null || current.updatedAt != expected.updatedAt) {
+        throw const RepositoryException(
+          RepositoryFailureCode.constraint,
+          'retry statement OCR: statement changed',
+        );
+      }
+      final existingRows = await statements.listRows(expected.id);
+      if (existingRows.isNotEmpty) {
+        throw const RepositoryException(
+          RepositoryFailureCode.constraint,
+          'retry statement OCR: statement rows changed',
+        );
+      }
+      if (extraction != null) {
+        final evidenceRepository = evidence;
+        if (evidenceRepository == null) {
+          throw const RepositoryException(
+            RepositoryFailureCode.unavailable,
+            'retry statement OCR: evidence repository',
+          );
+        }
+        await evidenceRepository.saveExtraction(extraction);
+      }
+      await statements.saveStatementWithRows(updated, rows);
+    }),
+  );
+
+  Future<ApplicationResult<List<FinancialStatement>>> list({
+    bool includeArchived = false,
+  }) => _runExclusive(
+    () => runApplication(
+      'list statements',
+      () => statements.listStatements(includeArchived: includeArchived),
+    ),
+  );
+
+  /// Finds a previously captured statement by immutable source bytes.
+  ///
+  /// The fingerprint is stored in evidence provenance, so this remains stable
+  /// across process restarts without adding a schema migration.
+  Future<ApplicationResult<FinancialStatement?>> findBySourceFingerprint(
+    String fingerprint,
+  ) => _runExclusive(
+    () => runApplication('find statement source', () async {
+      final sourceId = statementSourceFingerprintPrefix + fingerprint;
+      for (final item in await statements.listStatements(
+        includeArchived: true,
+      )) {
+        final evidenceItem = evidence == null
+            ? null
+            : await evidence!.findById(EvidenceId(item.evidenceId));
+        if (evidenceItem?.provenance.sourceId == sourceId) return item;
+      }
+      return null;
+    }),
   );
 
   Future<ApplicationResult<List<StatementReviewException>>>

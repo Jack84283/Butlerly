@@ -4283,6 +4283,11 @@ final class MemoryEvidence implements EvidenceRepository {
   @override
   Future<void> link(AttachmentLink link) async {}
   @override
+  Future<void> unlinkFromTransaction(
+    TransactionId transactionId,
+    EvidenceId evidenceId,
+  ) async {}
+  @override
   Future<List<EvidenceItem>> listForTransaction(TransactionId id) async {
     listCalls++;
     return items;

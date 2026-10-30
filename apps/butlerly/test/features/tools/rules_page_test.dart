@@ -809,6 +809,12 @@ final class _Evidence implements EvidenceRepository {
   Future<void> link(AttachmentLink link) async {}
 
   @override
+  Future<void> unlinkFromTransaction(
+    TransactionId transactionId,
+    EvidenceId evidenceId,
+  ) async {}
+
+  @override
   Future<EvidenceItem?> findById(EvidenceId id) async => null;
 
   @override

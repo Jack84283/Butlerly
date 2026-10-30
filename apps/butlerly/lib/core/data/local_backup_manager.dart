@@ -79,10 +79,11 @@ final class LocalBackupManager {
   static final _backupMagic = BackupContainerFormat.magic;
   static const _supportedSchemaVersion = BackupContainerFormat.schemaVersion;
 
-  Future<File> createBackup(File destination) =>
-      EvidenceMutationLock.runExclusive(
-        () => _createBackupUnlocked(destination),
-      );
+  Future<File> createBackup(File destination) => _runConsistently(
+    () => EvidenceMutationLock.runExclusive(
+      () => _createBackupUnlocked(destination),
+    ),
+  );
 
   Future<File> createPortableBackup(
     File destination, {
@@ -114,8 +115,10 @@ final class LocalBackupManager {
 
     var preservePublicationRecovery = false;
     try {
-      await EvidenceMutationLock.runExclusive(
-        () => _createBackupUnlocked(plain),
+      await _runConsistently(
+        () => EvidenceMutationLock.runExclusive(
+          () => _createBackupUnlocked(plain),
+        ),
       );
       await _encryption.encrypt(plain, encryptedCandidate, password: password);
       await _encryption.decrypt(

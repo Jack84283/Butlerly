@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 
@@ -10,24 +11,47 @@ import '../result/application_result.dart';
 /// marked, then publish that old calculation as fresh after the mutation.
 final class AnalysisConsistencyGate {
   static final Object _ownerKey = Object();
-  Future<void> _tail = Future<void>.value();
+  final Queue<void Function()> _queue = Queue<void Function()>();
+  bool _locked = false;
 
-  Future<T> runExclusive<T>(Future<T> Function() operation) async {
+  Future<T> runExclusive<T>(Future<T> Function() operation) {
     if (Zone.current[_ownerKey] == this) {
       return operation();
     }
-    final previous = _tail;
-    final release = Completer<void>();
-    _tail = release.future;
-    await previous;
+    final completer = Completer<T>();
+    void start() => _start(operation, completer);
+    if (!_locked) {
+      _locked = true;
+      start();
+    } else {
+      _queue.add(start);
+    }
+    return completer.future;
+  }
+
+  Future<void> _start<T>(
+    Future<T> Function() operation,
+    Completer<T> completer,
+  ) async {
     try {
-      return await runZoned(
+      final result = await runZoned(
         operation,
         zoneValues: <Object, Object>{_ownerKey: this},
       );
+      completer.complete(result);
+    } catch (error, stackTrace) {
+      completer.completeError(error, stackTrace);
     } finally {
-      release.complete();
+      scheduleMicrotask(_releaseNext);
     }
+  }
+
+  void _releaseNext() {
+    if (_queue.isEmpty) {
+      _locked = false;
+      return;
+    }
+    _queue.removeFirst()();
   }
 }
 

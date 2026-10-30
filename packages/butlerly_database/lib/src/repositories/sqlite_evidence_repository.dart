@@ -7,7 +7,11 @@ import '../database/butlerly_database.dart';
 import '../mappers/sqlite_helpers.dart';
 
 final class SqliteEvidenceRepository
-    implements EvidenceRepository, ExtractionLookupRepository {
+    implements
+        EvidenceRepository,
+        ExtractionLookupRepository,
+        ReferenceAwareEvidenceRepository,
+        EvidenceListingRepository {
   const SqliteEvidenceRepository(this.database);
   final ButlerlyDatabase database;
 
@@ -100,6 +104,22 @@ final class SqliteEvidenceRepository
   }
 
   @override
+  Future<void> unlinkFromTransaction(
+    TransactionId transactionId,
+    EvidenceId evidenceId,
+  ) async {
+    try {
+      await database.connection.delete(
+        'attachment_links',
+        where: 'transaction_id = ? AND evidence_id = ?',
+        whereArgs: [transactionId.value, evidenceId.value],
+      );
+    } on DatabaseException catch (error) {
+      throw mapDatabaseException(error, 'unlink evidence');
+    }
+  }
+
+  @override
   Future<EvidenceItem?> findById(EvidenceId id) async {
     final rows = await database.connection.rawQuery(
       '''SELECT e.*, p.id AS p_id, p.source_type, p.captured_at,
@@ -111,6 +131,19 @@ final class SqliteEvidenceRepository
       [id.value],
     );
     return rows.isEmpty ? null : _fromRow(rows.single);
+  }
+
+  @override
+  Future<List<EvidenceItem>> listAll() async {
+    final rows = await database.connection.rawQuery(
+      '''SELECT e.*, p.id AS p_id, p.source_type, p.captured_at,
+                p.source_id, p.original_representation,
+                p.source_language AS p_source_language
+         FROM evidence_items e
+         INNER JOIN provenances p ON p.id = e.provenance_id
+         ORDER BY e.created_at, e.id''',
+    );
+    return rows.map(_fromRow).toList(growable: false);
   }
 
   @override
@@ -132,12 +165,7 @@ final class SqliteEvidenceRepository
   Future<void> remove(EvidenceId id) async {
     try {
       await database.transaction((executor) async {
-        final rows = await executor.query(
-          'evidence_items',
-          columns: ['provenance_id'],
-          where: 'id = ?',
-          whereArgs: [id.value],
-        );
+        final provenanceIds = await _provenanceIdsForEvidence(executor, id);
         await executor.delete(
           'attachment_links',
           where: 'evidence_id = ?',
@@ -148,16 +176,121 @@ final class SqliteEvidenceRepository
           where: 'id = ?',
           whereArgs: [id.value],
         );
-        if (rows.isNotEmpty) {
-          await executor.delete(
-            'provenances',
-            where: 'id = ?',
-            whereArgs: [rows.single['provenance_id']],
-          );
-        }
+        await _deleteUnreferencedProvenances(executor, provenanceIds);
       });
     } on DatabaseException catch (error) {
       throw mapDatabaseException(error, 'remove evidence');
+    }
+  }
+
+  @override
+  Future<bool> removeIfUnreferenced(
+    EvidenceId id, {
+    Future<bool> Function()? beforeRemove,
+  }) async {
+    try {
+      return await database.transaction((tx) async {
+        final provenanceIds = await _provenanceIdsForEvidence(tx, id);
+        final evidence = await tx.query(
+          'evidence_items',
+          columns: ['provenance_id', 'local_file_name'],
+          where: 'id = ?',
+          whereArgs: [id.value],
+          limit: 1,
+        );
+        if (evidence.isEmpty) return false;
+        final references = await tx.rawQuery(
+          '''SELECT 1 FROM attachment_links WHERE evidence_id = ?
+             UNION ALL SELECT 1 FROM financial_statements WHERE evidence_id = ?
+             LIMIT 1''',
+          [id.value, id.value],
+        );
+        if (references.isNotEmpty) return false;
+        final localFileName = evidence.single['local_file_name'] as String?;
+        final sharedFile =
+            localFileName != null &&
+            (await tx.query(
+              'evidence_items',
+              columns: ['id'],
+              where: 'local_file_name = ? AND id != ?',
+              whereArgs: [localFileName, id.value],
+              limit: 1,
+            )).isNotEmpty;
+        if (!sharedFile && beforeRemove != null && !await beforeRemove()) {
+          return false;
+        }
+
+        await tx.delete(
+          'evidence_items',
+          where: 'id = ?',
+          whereArgs: [id.value],
+        );
+        await _deleteUnreferencedProvenances(tx, provenanceIds);
+        return true;
+      });
+    } on DatabaseException catch (error) {
+      throw mapDatabaseException(error, 'remove unreferenced evidence');
+    }
+  }
+
+  @override
+  Future<bool> hasReferences(EvidenceId id) async {
+    try {
+      final rows = await database.connection.rawQuery(
+        '''SELECT 1 FROM attachment_links WHERE evidence_id = ?
+           UNION ALL SELECT 1 FROM financial_statements WHERE evidence_id = ?
+           LIMIT 1''',
+        [id.value, id.value],
+      );
+      return rows.isNotEmpty;
+    } on DatabaseException catch (error) {
+      throw mapDatabaseException(error, 'check evidence references');
+    }
+  }
+
+  Future<Set<String>> _provenanceIdsForEvidence(
+    DatabaseExecutor executor,
+    EvidenceId id,
+  ) async {
+    final evidence = await executor.query(
+      'evidence_items',
+      columns: ['provenance_id'],
+      where: 'id = ?',
+      whereArgs: [id.value],
+      limit: 1,
+    );
+    final extractions = await executor.query(
+      'extractions',
+      columns: ['provenance_id'],
+      where: 'evidence_id = ?',
+      whereArgs: [id.value],
+    );
+    return {
+      ...evidence.map((row) => row['provenance_id']! as String),
+      ...extractions.map((row) => row['provenance_id']! as String),
+    };
+  }
+
+  Future<void> _deleteUnreferencedProvenances(
+    DatabaseExecutor executor,
+    Iterable<String> provenanceIds,
+  ) async {
+    for (final provenanceId in provenanceIds) {
+      final remaining = await executor.rawQuery(
+        '''SELECT 1 FROM evidence_items WHERE provenance_id = ?
+           UNION ALL SELECT 1 FROM extractions WHERE provenance_id = ?
+           UNION ALL SELECT 1 FROM transaction_provenances WHERE provenance_id = ?
+           UNION ALL SELECT 1 FROM suggestions WHERE provenance_id = ?
+           LIMIT 1''',
+        [provenanceId, provenanceId, provenanceId, provenanceId],
+      );
+      if (remaining.isEmpty) {
+        await executor.delete(
+          'provenances',
+          where: 'id = ?',
+          whereArgs: [provenanceId],
+        );
+      }
     }
   }
 

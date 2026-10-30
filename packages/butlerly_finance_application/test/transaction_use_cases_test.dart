@@ -1642,6 +1642,12 @@ final class FailingEvidence implements EvidenceRepository {
   Future<void> link(AttachmentLink link) async {}
 
   @override
+  Future<void> unlinkFromTransaction(
+    TransactionId transactionId,
+    EvidenceId evidenceId,
+  ) async {}
+
+  @override
   Future<List<EvidenceItem>> listForTransaction(TransactionId id) async {
     throw const RepositoryException(
       RepositoryFailureCode.unavailable,

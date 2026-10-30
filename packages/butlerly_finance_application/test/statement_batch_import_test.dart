@@ -877,6 +877,12 @@ final class _FailingEvidence implements EvidenceRepository {
   }
 
   @override
+  Future<void> unlinkFromTransaction(
+    TransactionId transactionId,
+    EvidenceId evidenceId,
+  ) async {}
+
+  @override
   Future<EvidenceItem?> findById(EvidenceId id) async => null;
 
   @override

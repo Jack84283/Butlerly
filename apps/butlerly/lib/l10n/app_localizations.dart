@@ -539,6 +539,10 @@ class AppLocalizations {
       'evidenceAttachFailed': 'Evidence could not be stored.',
       'evidenceCleanupFailed':
           'The transaction was not deleted because linked evidence could not be removed safely.',
+      'transactionDeletedEvidenceCleanupPending':
+          'The transaction was deleted, but linked evidence cleanup needs recovery.',
+      'evidenceCleanupCompleted': 'Linked evidence cleanup completed.',
+      'evidenceRemoveFailed': 'The evidence could not be removed safely.',
       'evidencePreview': 'Evidence preview',
       'viewImage': 'View image',
       'evidenceFileMissing': 'The local evidence file could not be found.',
@@ -625,6 +629,8 @@ class AppLocalizations {
       'fourDigitsOrEmpty':
           'Enter exactly four digits, or leave the field empty.',
       'statementCouldNotBeStored': 'The statement could not be stored.',
+      'statementAlreadyImported': 'This statement file was already imported.',
+      'retry': 'Retry',
       'statementCouldNotBeCreated': 'The statement could not be created.',
       'paymentSourceCouldNotBeCreated':
           'The payment source could not be created.',
@@ -714,6 +720,10 @@ class AppLocalizations {
       'selectPaymentSource':
           'Select the payment source ending in these last four digits.',
       'existingTransactionFound': 'Existing transaction found',
+      'duplicateReviewRequired':
+          'A matching transaction appeared while saving. Review it before trying again.',
+      'duplicateCheckUnavailable':
+          'Duplicate checking is temporarily unavailable. Nothing was saved; try again.',
       'notThisTransaction': 'Not this transaction',
       'matchConfidence': 'match confidence',
       'receipt': 'Receipt',
@@ -1122,6 +1132,8 @@ class AppLocalizations {
           'Some transaction-like rows were found but need review.',
       'statementProcessingFailed':
           'Statement processing failed because of a technical OCR error.',
+      'statementChangedDuringRetry':
+          'This statement changed while retrying. Open it again and retry from the latest saved version.',
       'abandonStatementImport': 'Abandon import',
       'abandonStatementImportTitle': 'Abandon this import?',
       'abandonStatementImportBody':
@@ -1574,6 +1586,9 @@ class AppLocalizations {
       'evidenceAttached': '凭证已存储在本地。',
       'evidenceAttachFailed': '无法存储凭证。',
       'evidenceCleanupFailed': '无法安全删除关联凭证，因此未删除该交易。',
+      'transactionDeletedEvidenceCleanupPending': '交易已删除，但关联凭证清理需要恢复处理。',
+      'evidenceCleanupCompleted': '关联凭证清理已完成。',
+      'evidenceRemoveFailed': '无法安全移除凭证。',
       'evidencePreview': '凭证预览',
       'viewImage': '查看图片',
       'evidenceFileMissing': '找不到本地凭证文件。',
@@ -1653,6 +1668,8 @@ class AppLocalizations {
       'createAndUse': '创建并使用',
       'fourDigitsOrEmpty': '请输入四位数字，或留空。',
       'statementCouldNotBeStored': '无法存储账单。',
+      'statementAlreadyImported': '此账单文件已经导入。',
+      'retry': '重试',
       'statementCouldNotBeCreated': '无法创建账单。',
       'paymentSourceCouldNotBeCreated': '无法创建付款来源。',
       'sourceCreatedCouldNotBeLinked': '来源已创建，但无法关联。请选择它后重试。',
@@ -1731,6 +1748,8 @@ class AppLocalizations {
       'multiplePaymentSourcesMatch': '多个付款来源匹配',
       'selectPaymentSource': '请选择末四位匹配的付款来源。',
       'existingTransactionFound': '找到现有交易',
+      'duplicateReviewRequired': '保存时出现了匹配交易。请先审核，再重试。',
+      'duplicateCheckUnavailable': '暂时无法检查重复交易。未保存任何内容，请重试。',
       'notThisTransaction': '不是这笔交易',
       'matchConfidence': '匹配置信度',
       'receipt': '收据',
@@ -2071,6 +2090,7 @@ class AppLocalizations {
       'statementNoRows': '已识别文字，但未找到交易行。',
       'statementUnresolvedEvidence': '发现疑似交易内容，需要审核。',
       'statementProcessingFailed': '由于本地文字识别技术错误，账单处理失败。',
+      'statementChangedDuringRetry': '重试期间账单发生了变化。请重新打开账单，并从最新保存的版本重试。',
       'abandonStatementImport': '放弃导入',
       'abandonStatementImportTitle': '放弃此次导入？',
       'abandonStatementImportBody': '扫描的账单及其提取数据将被删除。不会更改您的原始文件。',
@@ -2601,6 +2621,12 @@ class AppLocalizations {
       'evidenceAttachFailed': 'No se pudo guardar la evidencia.',
       'evidenceCleanupFailed':
           'La transacción no se eliminó porque la evidencia vinculada no pudo borrarse de forma segura.',
+      'transactionDeletedEvidenceCleanupPending':
+          'La transacción se eliminó, pero la limpieza de la evidencia vinculada requiere recuperación.',
+      'evidenceCleanupCompleted':
+          'Se completó la limpieza de la evidencia vinculada.',
+      'evidenceRemoveFailed':
+          'No se pudo eliminar la evidencia de forma segura.',
       'evidencePreview': 'Vista previa de evidencia',
       'viewImage': 'Ver imagen',
       'evidenceFileMissing':
@@ -2693,6 +2719,8 @@ class AppLocalizations {
       'fourDigitsOrEmpty':
           'Introduce exactamente cuatro dígitos o deja el campo vacío.',
       'statementCouldNotBeStored': 'No se pudo guardar el extracto.',
+      'statementAlreadyImported': 'Este archivo de extracto ya se importó.',
+      'retry': 'Reintentar',
       'statementCouldNotBeCreated': 'No se pudo crear el extracto.',
       'paymentSourceCouldNotBeCreated': 'No se pudo crear la fuente de pago.',
       'sourceCreatedCouldNotBeLinked':
@@ -2781,6 +2809,10 @@ class AppLocalizations {
       'selectPaymentSource':
           'Selecciona la fuente de pago que termina en estos cuatro dígitos.',
       'existingTransactionFound': 'Se encontró una transacción existente',
+      'duplicateReviewRequired':
+          'Apareció una transacción coincidente mientras se guardaba. Revísala antes de volver a intentarlo.',
+      'duplicateCheckUnavailable':
+          'La comprobación de duplicados no está disponible temporalmente. No se guardó nada; inténtalo de nuevo.',
       'notThisTransaction': 'No es esta transacción',
       'matchConfidence': 'confianza de coincidencia',
       'receipt': 'Recibo',
@@ -3199,6 +3231,8 @@ class AppLocalizations {
           'Hay evidencia similar a una transacción que requiere revisión.',
       'statementProcessingFailed':
           'El procesamiento del extracto falló por un error técnico de OCR.',
+      'statementChangedDuringRetry':
+          'El extracto cambió durante el reintento. Ábrelo de nuevo y reintenta desde la última versión guardada.',
       'abandonStatementImport': 'Abandonar importación',
       'abandonStatementImportTitle': '¿Abandonar esta importación?',
       'abandonStatementImportBody':

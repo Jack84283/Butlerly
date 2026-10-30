@@ -1585,6 +1585,20 @@ void main() {
         createdAt: now,
       ),
     );
+    await evidenceRepository.saveExtraction(
+      Extraction(
+        id: ExtractionId('evidence-extraction'),
+        evidenceId: evidence.id,
+        values: const {'rawText': 'sensitive OCR text'},
+        provenance: Provenance(
+          id: ProvenanceId('extraction-provenance'),
+          sourceType: ProvenanceSourceType.evidenceExtraction,
+          capturedAt: now,
+          originalRepresentation: 'sensitive OCR text',
+        ),
+        createdAt: now,
+      ),
+    );
     await evidenceRepository.link(
       AttachmentLink(
         id: AttachmentLinkId('link-duplicate'),
@@ -1642,7 +1656,169 @@ void main() {
       ),
       isEmpty,
     );
+    expect(
+      await database.connection.query(
+        'provenances',
+        where: 'id = ?',
+        whereArgs: ['extraction-provenance'],
+      ),
+      isEmpty,
+      reason:
+          'Permanent evidence deletion must remove orphaned OCR provenance.',
+    );
   });
+
+  test(
+    'permanent deletion removes only exclusively owned evidence files',
+    () async {
+      final exclusiveTransaction = minimalTransaction(
+        now,
+        id: 'evidence-owner',
+      );
+      final sharedTransaction = minimalTransaction(now, id: 'evidence-shared');
+      final statementTransaction = minimalTransaction(
+        now,
+        id: 'evidence-statement-owner',
+      );
+      await transactions.save(exclusiveTransaction);
+      await transactions.save(sharedTransaction);
+      await transactions.save(statementTransaction);
+
+      final evidenceRepository = SqliteEvidenceRepository(database);
+      Future<EvidenceItem> saveEvidence(String id) async {
+        final value = EvidenceItem(
+          id: EvidenceId(id),
+          type: EvidenceType.document,
+          originalName: '$id.pdf',
+          mediaType: 'application/pdf',
+          provenance: Provenance(
+            id: ProvenanceId('$id-provenance'),
+            sourceType: ProvenanceSourceType.scan,
+            capturedAt: now,
+            originalRepresentation: '$id.pdf',
+          ),
+          createdAt: now,
+          localFileName: '$id.pdf',
+        );
+        await evidenceRepository.save(value);
+        return value;
+      }
+
+      final exclusive = await saveEvidence('evidence-exclusive');
+      final shared = await saveEvidence('evidence-shared');
+      final statementOwned = await saveEvidence('evidence-statement');
+      await evidenceRepository.link(
+        AttachmentLink(
+          id: AttachmentLinkId('attachment-exclusive'),
+          transactionId: exclusiveTransaction.id,
+          evidenceId: exclusive.id,
+          createdAt: now,
+        ),
+      );
+      await evidenceRepository.link(
+        AttachmentLink(
+          id: AttachmentLinkId('attachment-shared-one'),
+          transactionId: exclusiveTransaction.id,
+          evidenceId: shared.id,
+          createdAt: now,
+        ),
+      );
+      await evidenceRepository.link(
+        AttachmentLink(
+          id: AttachmentLinkId('attachment-shared-two'),
+          transactionId: sharedTransaction.id,
+          evidenceId: shared.id,
+          createdAt: now,
+        ),
+      );
+      await evidenceRepository.link(
+        AttachmentLink(
+          id: AttachmentLinkId('attachment-statement'),
+          transactionId: statementTransaction.id,
+          evidenceId: statementOwned.id,
+          createdAt: now,
+        ),
+      );
+      await SqliteStatementRepository(database).saveStatement(
+        FinancialStatement(
+          id: 'statement-owned-evidence',
+          evidenceId: statementOwned.id.value,
+          status: StatementStatus.needsSource,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      final deletedFiles = <String>[];
+      final delete = DeleteTransactionPermanently(
+        transactions,
+        evidence: evidenceRepository,
+        deleteEvidenceFile: (value) async {
+          deletedFiles.add(value.id.value);
+        },
+      );
+      expect(
+        await delete(exclusiveTransaction.id.value),
+        isA<ApplicationSuccess<void>>(),
+      );
+      expect(await evidenceRepository.findById(exclusive.id), isNull);
+      expect(deletedFiles, [exclusive.id.value]);
+      expect(await evidenceRepository.findById(shared.id), isNotNull);
+      expect(await evidenceRepository.findById(statementOwned.id), isNotNull);
+      expect(
+        (await evidenceRepository.listForTransaction(
+          sharedTransaction.id,
+        )).single.id,
+        shared.id,
+      );
+
+      final cleanupFailureTransaction = minimalTransaction(
+        now,
+        id: 'cleanup-failure-transaction',
+      );
+      final cleanupFailureEvidence = testEvidence(
+        'cleanup-failure-evidence',
+        now,
+      );
+      await transactions.save(cleanupFailureTransaction);
+      await evidenceRepository.save(cleanupFailureEvidence);
+      await evidenceRepository.link(
+        AttachmentLink(
+          id: AttachmentLinkId('attachment-cleanup-failure'),
+          transactionId: cleanupFailureTransaction.id,
+          evidenceId: cleanupFailureEvidence.id,
+          createdAt: now,
+        ),
+      );
+      final cleanupFailureDelete = DeleteTransactionPermanently(
+        transactions,
+        evidence: evidenceRepository,
+        deleteEvidenceFile: (_) async {
+          throw const FileSystemException('forced evidence cleanup failure');
+        },
+      );
+      expect(
+        await cleanupFailureDelete(cleanupFailureTransaction.id.value),
+        isA<ApplicationFailure<void>>(),
+      );
+      expect(
+        await evidenceRepository.findById(cleanupFailureEvidence.id),
+        isNotNull,
+        reason: 'Failed file cleanup must retain metadata for recovery.',
+      );
+      final recovery = CleanupUnreferencedEvidence(
+        evidenceRepository,
+        deleteEvidenceFile: (_) async {},
+      );
+      final recovered = await recovery(cleanupFailureEvidence.id.value);
+      expect(recovered, isA<ApplicationSuccess<bool>>());
+      expect((recovered as ApplicationSuccess<bool>).value, isTrue);
+      expect(
+        await evidenceRepository.findById(cleanupFailureEvidence.id),
+        isNull,
+      );
+    },
+  );
 
   test(
     'bounds null-date occurred_at fallback rows at the database query boundary',
@@ -1854,4 +2030,19 @@ Provenance importProvenance(DateTime now) => Provenance(
   sourceId: 'file-row-1',
   originalRepresentation: '元の取引',
   sourceLanguage: 'ja',
+);
+
+EvidenceItem testEvidence(String id, DateTime now) => EvidenceItem(
+  id: EvidenceId(id),
+  type: EvidenceType.receiptImage,
+  originalName: '$id.png',
+  mediaType: 'image/png',
+  localFileName: '$id.png',
+  provenance: Provenance(
+    id: ProvenanceId('$id-provenance'),
+    sourceType: ProvenanceSourceType.scan,
+    capturedAt: now,
+    originalRepresentation: '$id.png',
+  ),
+  createdAt: now,
 );

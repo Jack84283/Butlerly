@@ -387,6 +387,7 @@ final class LocalDataManager {
       // closed while all financial data is still intact.
       final evidence = await evidenceDirectory();
       final pendingEvidence = await pendingEvidenceDirectory();
+      final deletingEvidence = Directory('${evidence.path}.deleting');
       final evidenceParent = evidence.parent;
       final databaseDirectory = Directory(
         path.dirname(database.persistenceDatabase.path),
@@ -399,6 +400,10 @@ final class LocalDataManager {
       await rejectEvidenceTree(
         pendingEvidence,
         message: 'Unsafe pending evidence tree.',
+      );
+      await rejectEvidenceTree(
+        deletingEvidence,
+        message: 'Unsafe deleting evidence tree.',
       );
       await rejectEvidenceTree(recovery, message: 'Unsafe recovery tree.');
       await rejectEvidenceRoot(
@@ -496,6 +501,9 @@ final class LocalDataManager {
       }
       if (await pendingEvidence.exists()) {
         await pendingEvidence.delete(recursive: true);
+      }
+      if (await deletingEvidence.exists()) {
+        await deletingEvidence.delete(recursive: true);
       }
 
       // Restore staging workspaces contain private SQLite and evidence copies.
