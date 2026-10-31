@@ -245,8 +245,18 @@ void main() {
       flush: true,
     );
 
+    await expectLater(
+      services<LocalEvidenceStore>().exportStagedEvidenceRecovery(
+        Directory(path.join(root.path, 'documents')),
+      ),
+      throwsA(isA<FormatException>()),
+    );
+    final selectedRoot = await Directory.systemTemp.createTemp(
+      'butlerly-selected-recovery-',
+    );
+    addTearDown(() => selectedRoot.delete(recursive: true));
     final exported = await services<LocalEvidenceStore>()
-        .exportStagedEvidenceRecovery();
+        .exportStagedEvidenceRecovery(selectedRoot);
     expect(await staged.readAsBytes(), [9, 8, 7, 6]);
     expect(
       await File(
@@ -263,6 +273,16 @@ void main() {
             as Map<String, dynamic>;
     expect(exportedManifest['format'], 'butlerly-staged-evidence-recovery');
     expect(exportedManifest['files'], hasLength(2));
+
+    await services<LocalDataManager>().eraseAll();
+
+    expect(await exported.exists(), isTrue);
+    expect(
+      await File(
+        path.join(exported.path, 'staged', 'delete-orphan.bin'),
+      ).readAsBytes(),
+      [9, 8, 7, 6],
+    );
   });
 
   test(

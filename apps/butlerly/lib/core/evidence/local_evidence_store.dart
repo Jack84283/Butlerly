@@ -181,7 +181,7 @@ final class LocalEvidenceStore {
   /// directory without changing the source tree. This gives the user a
   /// durable safety copy before an optional destructive reset while preserving
   /// the original bytes for a later validated retry.
-  Future<Directory> exportStagedEvidenceRecovery() {
+  Future<Directory> exportStagedEvidenceRecovery(Directory destinationRoot) {
     return _runFinancialEvidenceMutation(() async {
       final deleting = Directory(
         '${(await data.evidenceDirectory()).path}.deleting',
@@ -196,18 +196,26 @@ final class LocalEvidenceStore {
         );
       }
 
-      final documents = await data.documentsDirectory();
-      await rejectEvidenceRoot(documents, message: 'Unsafe documents root.');
-      await documents.create(recursive: true);
+      await _validateExternalRecoveryExportRoot(destinationRoot);
       final timestamp = DateTime.now().toUtc().toIso8601String().replaceAll(
         ':',
         '-',
       );
       final destination = Directory(
-        path.join(documents.path, 'Butlerly Evidence Recovery $timestamp'),
+        path.join(
+          destinationRoot.path,
+          'Butlerly Evidence Recovery $timestamp',
+        ),
       );
       final staging = Directory(
-        path.join(documents.path, '.butlerly-evidence-recovery-$timestamp'),
+        path.join(
+          destinationRoot.path,
+          '.butlerly-evidence-recovery-$timestamp',
+        ),
+      );
+      await rejectSymlinkedPath(
+        staging.path,
+        message: 'Unsafe recovery export path.',
       );
       await staging.create(recursive: true);
       try {
@@ -223,13 +231,19 @@ final class LocalEvidenceStore {
             path.relative(entity.path, from: deleting.path),
             message: 'Unsafe staged evidence path.',
           );
+          final sourceLength = await entity.length();
+          final sourceFingerprint = await sha256FileRange(entity);
           final target = File(path.join(staging.path, 'staged', relative));
           await target.parent.create(recursive: true);
           await entity.copy(target.path);
+          if (await target.length() != sourceLength ||
+              await sha256FileRange(target) != sourceFingerprint) {
+            throw StateError('Recovery export verification failed.');
+          }
           files.add({
             'path': relative,
-            'byteLength': await target.length(),
-            'sha256': await sha256FileRange(target),
+            'byteLength': sourceLength,
+            'sha256': sourceFingerprint,
           });
         }
         if (files.isEmpty) {
@@ -255,6 +269,33 @@ final class LocalEvidenceStore {
         rethrow;
       }
     });
+  }
+
+  Future<void> _validateExternalRecoveryExportRoot(
+    Directory destinationRoot,
+  ) async {
+    await rejectSymlinkedPath(
+      destinationRoot.path,
+      message: 'Unsafe recovery export path.',
+    );
+    if (await FileSystemEntity.type(destinationRoot.path, followLinks: false) !=
+        FileSystemEntityType.directory) {
+      throw const FormatException('Recovery export folder is unavailable.');
+    }
+    final candidate = path.normalize(path.absolute(destinationRoot.path));
+    final managedRoots = <String>{
+      path.dirname(data.database.persistenceDatabase.path),
+      (await data.documentsDirectory()).path,
+      (await data.evidenceDirectory()).path,
+      (await data.pendingEvidenceDirectory()).path,
+    }.map(path.normalize).map(path.absolute);
+    for (final managedRoot in managedRoots) {
+      if (candidate == managedRoot || path.isWithin(managedRoot, candidate)) {
+        throw const FormatException(
+          'Recovery export must be outside Butlerly local data.',
+        );
+      }
+    }
   }
 
   Future<void> _discardPreservedUnlocked(PreservedEvidenceSource source) async {

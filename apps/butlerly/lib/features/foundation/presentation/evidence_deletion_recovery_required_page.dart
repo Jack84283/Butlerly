@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/evidence_deletion_recovery_state.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
@@ -6,6 +8,7 @@ import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/app_localizations_backup.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
 /// Recovery-only surface shown when a staged evidence deletion could not be
@@ -15,11 +18,15 @@ class EvidenceDeletionRecoveryRequiredPage extends StatefulWidget {
   const EvidenceDeletionRecoveryRequiredPage({
     super.key,
     this.retryRecovery,
+    this.selectRecoveryLocation,
     required this.resetRecovery,
   });
 
   @visibleForTesting
   final Future<void> Function()? retryRecovery;
+
+  @visibleForTesting
+  final Future<String?> Function()? selectRecoveryLocation;
 
   /// Explicitly erases all local data when evidence recovery cannot be
   /// completed. This is intentionally destructive and is only offered after
@@ -81,8 +88,16 @@ class _EvidenceDeletionRecoveryRequiredPageState
   Future<void> _exportRecoveryArtifacts() async {
     setState(() => _busy = true);
     try {
+      final selectedPath = widget.selectRecoveryLocation != null
+          ? await widget.selectRecoveryLocation!()
+          : await getDirectoryPath(
+              confirmButtonText: context.l10n.backupText(
+                'recoveryEvidenceChooseLocation',
+              ),
+            );
+      if (selectedPath == null || !mounted) return;
       final directory = await services<LocalEvidenceStore>()
-          .exportStagedEvidenceRecovery();
+          .exportStagedEvidenceRecovery(Directory(selectedPath));
       if (!mounted) return;
       await showButlerlyBottomSheet<void>(
         context: context,

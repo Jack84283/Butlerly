@@ -76,6 +76,7 @@ const _backupStrings = <String, Map<String, String>>{
     'recoveryStillRequired':
         'Recovery is still required. Normal editing remains disabled and available recovery material has been preserved.',
     'recoveryEvidenceExport': 'Export preserved evidence',
+    'recoveryEvidenceChooseLocation': 'Choose recovery folder',
     'recoveryEvidenceExported': 'Evidence recovery copy created',
     'recoveryEvidenceExportedBody':
         'The unresolved staged evidence was copied without changing the original recovery files. You can use this copy before choosing a destructive reset.',
@@ -141,6 +142,7 @@ const _backupStrings = <String, Map<String, String>>{
     'recoveryStillRequired':
         'La recuperación sigue siendo necesaria. La edición normal continúa deshabilitada y se ha conservado el material de recuperación disponible.',
     'recoveryEvidenceExport': 'Exportar la evidencia conservada',
+    'recoveryEvidenceChooseLocation': 'Elegir carpeta de recuperación',
     'recoveryEvidenceExported':
         'Se creó una copia de recuperación de evidencia',
     'recoveryEvidenceExportedBody':
@@ -199,6 +201,7 @@ const _backupStrings = <String, Map<String, String>>{
     'recoveryResetConfirm': '清除并重新开始',
     'recoveryStillRequired': '仍需要执行恢复。正常编辑仍未启用，可用的恢复材料已保留。',
     'recoveryEvidenceExport': '导出已保留的凭证',
+    'recoveryEvidenceChooseLocation': '选择恢复文件夹',
     'recoveryEvidenceExported': '已创建凭证恢复副本',
     'recoveryEvidenceExportedBody': '未解决的暂存凭证已复制，原始恢复文件未被更改。您可以在选择清除数据前使用此副本。',
     'portableRecoveryTitle': '需要恢复备份',
