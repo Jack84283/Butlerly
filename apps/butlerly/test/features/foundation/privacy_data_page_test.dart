@@ -10,15 +10,27 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:path/path.dart' as path;
 import 'package:share_plus/share_plus.dart' as share_plus;
 import 'package:share_plus_platform_interface/share_plus_platform_interface.dart'
     as share_platform;
 
 void main() {
-  Widget app({share_plus.SharePlus? shareClient}) => ProviderScope(
+  setUpAll(() async {
+    await Future.wait([
+      initializeDateFormatting('en'),
+      initializeDateFormatting('es'),
+      initializeDateFormatting('zh'),
+    ]);
+  });
+
+  Widget app({
+    share_plus.SharePlus? shareClient,
+    Locale locale = const Locale('en'),
+  }) => ProviderScope(
     child: MaterialApp(
-      locale: const Locale('en'),
+      locale: locale,
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: const [
         AppLocalizations.delegate,
@@ -148,6 +160,25 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
     expect(gateway.discardedPath, isNotNull);
     expect(File(gateway.discardedPath!).existsSync(), isFalse);
+  });
+
+  testWidgets('restore preview formats its creation date for each locale', (
+    tester,
+  ) async {
+    final date = DateTime(2026, 10, 31, 13, 45);
+    for (final locale in const [
+      Locale('en'),
+      Locale('es'),
+      Locale('zh', 'CN'),
+    ]) {
+      await tester.pumpWidget(app(locale: locale));
+      await tester.pumpAndSettle();
+      final context = tester.element(find.byType(PrivacyDataPage));
+      final formatted = formatBackupInspectionDate(context, date);
+
+      expect(formatted, contains('2026'));
+      expect(formatted, isNot(contains('T13:45:00')));
+    }
   });
 }
 

@@ -5,7 +5,9 @@ import 'dart:convert';
 abstract final class BackupContainerFormat {
   static const name = 'butlerly-backup';
   static const version = 2;
-  static const schemaVersion = 15;
+  // Incremented when persisted analysis rule definitions and findings became
+  // part of the portable archive contract.
+  static const schemaVersion = 16;
   static List<int> get magic => utf8.encode('BUTLERLYBACKUP2');
   static const appVersion = String.fromEnvironment(
     'BUTLERLY_APP_VERSION',

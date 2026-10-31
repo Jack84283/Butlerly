@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:butlerly/core/analysis/bundled_analysis_rules.dart';
+import 'package:butlerly/core/data/backup_encryption.dart';
 import 'package:butlerly/core/data/local_backup_engine.dart' as engine;
 import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
@@ -32,7 +34,7 @@ void main() {
     expect((manifest['backupId']! as String), isNotEmpty);
     expect(manifest['appVersion'], '1.0.0');
     expect(manifest['appBuild'], '1');
-    expect(manifest['schemaVersion'], 15);
+    expect(manifest['schemaVersion'], 16);
   });
 
   test('backup and restore preserves the optional financial profile', () async {
@@ -75,6 +77,321 @@ void main() {
     expect(restored.single['has_monthly_savings_target'], 0);
     expect(restored.single['preferred_insight_types'], '["spendingTrends"]');
   });
+
+  test(
+    'backup and replace restore preserves rule definitions exactly',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final rules = SqliteAnalysisRuleRepository(
+        fixture.database.persistenceDatabase,
+      );
+      final installation = await installBundledAnalysisRules(
+        InstallBuiltInRules(rules),
+      );
+      expect(installation.diagnostics, isEmpty);
+      final sourceDefinition = (await fixture.database.database.query(
+        'analysis_rule_definitions',
+        limit: 1,
+      )).single;
+      final sourceRuleId = sourceDefinition['rule_id']! as String;
+      final backup = File(
+        path.join(fixture.root.path, 'rule-definitions.butlerlybackup'),
+      );
+      await fixture.manager.createBackup(backup);
+      await fixture.database.database.insert('analysis_rule_definitions', {
+        ...sourceDefinition,
+        'rule_id': 'ANL-OBSOLETE-351',
+      });
+
+      await fixture.manager.restore(backup, mode: LocalRestoreMode.replace);
+
+      final rows = await fixture.database.database.query(
+        'analysis_rule_definitions',
+        orderBy: 'rule_id',
+      );
+      expect(
+        rows.map((row) => row['rule_id']),
+        isNot(contains('ANL-OBSOLETE-351')),
+      );
+      expect(rows.map((row) => row['rule_id']), contains(sourceRuleId));
+      expect(await rules.listDefinitions(), isNotEmpty);
+    },
+  );
+
+  test(
+    'schema 15 replacement clears rule history absent from the package',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      Map<String, Object?> definition(String ruleId) => {
+        'rule_id': ruleId,
+        'rule_version': '1.0.0',
+        'schema_version': '1.0.0',
+        'source_type': 'user',
+        'definition': ruleId,
+        'canonical_definition': ruleId,
+        'definition_hash': '$ruleId-hash',
+        'validation_status': 'valid',
+        'validation_diagnostics': null,
+        'installed_at': '2026-10-30T00:00:00.000Z',
+        'retired_at': null,
+      };
+      await fixture.database.database.insert(
+        'analysis_rule_definitions',
+        definition('ANL-SCHEMA-15-LOCAL'),
+      );
+      final backup = File(
+        path.join(fixture.root.path, 'schema-15-rules.butlerlybackup'),
+      );
+      await fixture.manager.createBackup(backup);
+      await _rewriteBackupMetadata(backup, (metadata) {
+        final manifest = (metadata['manifest']! as Map).cast<String, Object?>();
+        manifest['schemaVersion'] = 15;
+        final tables = (metadata['tables']! as Map).cast<String, Object?>();
+        tables.remove('analysis_rule_definitions');
+        tables.remove('analysis_findings');
+      });
+      await fixture.database.database.insert(
+        'analysis_rule_definitions',
+        definition('ANL-SCHEMA-15-LOCAL-ONLY'),
+      );
+
+      await fixture.manager.restore(backup, mode: LocalRestoreMode.replace);
+
+      final rows = await fixture.database.database.query(
+        'analysis_rule_definitions',
+        columns: ['rule_id'],
+        orderBy: 'rule_id',
+      );
+      expect(rows, isEmpty);
+    },
+  );
+
+  test(
+    'backup and replace restore preserves analysis finding lifecycle',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final rules = SqliteAnalysisRuleRepository(
+        fixture.database.persistenceDatabase,
+      );
+      final installation = await installBundledAnalysisRules(
+        InstallBuiltInRules(rules),
+      );
+      expect(installation.diagnostics, isEmpty);
+      final definition = (await fixture.database.database.query(
+        'analysis_rule_definitions',
+        where: 'rule_id = ?',
+        whereArgs: ['ANL-R001'],
+        limit: 1,
+      )).single;
+      await _insertFinding(
+        fixture,
+        id: 'finding-dismissed-351',
+        lifecycle: 'dismissed',
+        definitionHash: definition['definition_hash']! as String,
+        ruleVersion: definition['rule_version']! as String,
+      );
+      await _insertFinding(
+        fixture,
+        id: 'finding-active-351',
+        lifecycle: 'active',
+        definitionHash: definition['definition_hash']! as String,
+        ruleVersion: definition['rule_version']! as String,
+      );
+      final backup = File(
+        path.join(fixture.root.path, 'analysis-findings.butlerlybackup'),
+      );
+      await fixture.manager.createBackup(backup);
+      await _insertFinding(
+        fixture,
+        id: 'finding-obsolete-351',
+        lifecycle: 'acknowledged',
+        definitionHash: definition['definition_hash']! as String,
+        ruleVersion: definition['rule_version']! as String,
+      );
+
+      await fixture.manager.restore(backup, mode: LocalRestoreMode.replace);
+
+      final rows = await fixture.database.database.query(
+        'analysis_findings',
+        columns: ['id', 'lifecycle'],
+        orderBy: 'id',
+      );
+      expect(rows, [
+        {'id': 'finding-active-351', 'lifecycle': 'active'},
+        {'id': 'finding-dismissed-351', 'lifecycle': 'dismissed'},
+      ]);
+    },
+  );
+
+  test(
+    'restore rejects malformed analysis definitions and findings before mutation',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final rules = SqliteAnalysisRuleRepository(
+        fixture.database.persistenceDatabase,
+      );
+      final installation = await installBundledAnalysisRules(
+        InstallBuiltInRules(rules),
+      );
+      expect(installation.diagnostics, isEmpty);
+      final definition = (await fixture.database.database.query(
+        'analysis_rule_definitions',
+        where: 'rule_id = ?',
+        whereArgs: ['ANL-R001'],
+        limit: 1,
+      )).single;
+      await fixture.insertTransaction('tx-analysis-validation-351');
+      await _insertFinding(
+        fixture,
+        id: 'finding-validation-351',
+        lifecycle: 'active',
+        definitionHash: definition['definition_hash']! as String,
+        ruleVersion: definition['rule_version']! as String,
+      );
+
+      final cases = <String, void Function(Map<String, Object?>)>{
+        'canonical': (tables) {
+          final rows = (tables['analysis_rule_definitions']! as List)
+              .cast<Map>();
+          rows.first['canonical_definition'] = 'not-json';
+        },
+        'lifecycle': (tables) {
+          final rows = (tables['analysis_findings']! as List).cast<Map>();
+          rows.single['lifecycle'] = 'unknown';
+        },
+        'rule-reference': (tables) {
+          final rows = (tables['analysis_findings']! as List).cast<Map>();
+          rows.single['rule_id'] = 'ANL-MISSING-351';
+        },
+        'reversed-period': (tables) {
+          final rows = (tables['analysis_findings']! as List).cast<Map>();
+          rows.single['period_start'] = '2026-10-31';
+          rows.single['period_end'] = '2026-10-30';
+        },
+        'invalid-timezone': (tables) {
+          final rows = (tables['analysis_findings']! as List).cast<Map>();
+          rows.single['time_zone_id'] = 'Mars/Phobos';
+        },
+      };
+      for (final entry in cases.entries) {
+        final backup = File(
+          path.join(
+            fixture.root.path,
+            'invalid-analysis-${entry.key}.butlerly',
+          ),
+        );
+        await fixture.manager.createBackup(backup);
+        await _rewriteBackupMetadata(backup, (metadata) {
+          final tables = (metadata['tables']! as Map).cast<String, Object?>();
+          entry.value(tables);
+        });
+
+        await expectLater(
+          fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
+          throwsA(isA<FormatException>()),
+        );
+        expect(
+          await fixture.database.database.query(
+            'transactions',
+            where: 'id = ?',
+            whereArgs: ['tx-analysis-validation-351'],
+          ),
+          hasLength(1),
+        );
+        expect(
+          await fixture.database.database.query(
+            'analysis_findings',
+            where: 'id = ?',
+            whereArgs: ['finding-validation-351'],
+          ),
+          hasLength(1),
+        );
+      }
+    },
+  );
+
+  test(
+    'encrypted production restore rejects an unlinked finding evidence reference',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final rules = SqliteAnalysisRuleRepository(
+        fixture.database.persistenceDatabase,
+      );
+      final installation = await installBundledAnalysisRules(
+        InstallBuiltInRules(rules),
+      );
+      expect(installation.diagnostics, isEmpty);
+      final definition = (await fixture.database.database.query(
+        'analysis_rule_definitions',
+        where: 'rule_id = ?',
+        whereArgs: ['ANL-R001'],
+        limit: 1,
+      )).single;
+      await fixture.insertTransaction('tx-analysis-evidence-351');
+      await fixture.database.database.insert('evidence_items', {
+        'id': 'evidence-not-linked-351',
+        'type': 'receipt',
+        'original_name': 'receipt.txt',
+        'media_type': 'text/plain',
+        'provenance_id': 'tx-analysis-evidence-351-provenance',
+        'created_at': '2026-10-30T00:00:00.000Z',
+        'source_language': null,
+        'local_file_name': null,
+      });
+      await _insertFinding(
+        fixture,
+        id: 'finding-evidence-351',
+        lifecycle: 'active',
+        definitionHash: definition['definition_hash']! as String,
+        ruleVersion: definition['rule_version']! as String,
+      );
+      final plain = File(
+        path.join(fixture.root.path, 'invalid.butlerlybackup'),
+      );
+      final encrypted = File(path.join(fixture.root.path, 'invalid.butlerly'));
+      await fixture.manager.createBackup(plain);
+      await _rewriteBackupMetadata(plain, (metadata) {
+        final tables = (metadata['tables']! as Map).cast<String, Object?>();
+        final rows = (tables['analysis_findings']! as List).cast<Map>();
+        rows.single['payload'] = jsonEncode({
+          'evidence': [
+            {
+              'transactionId': 'tx-analysis-evidence-351',
+              'evidenceId': 'evidence-not-linked-351',
+            },
+          ],
+        });
+      });
+      const password = 'correct horse battery staple';
+      await const BackupEncryption().encrypt(
+        plain,
+        encrypted,
+        password: password,
+      );
+
+      await expectLater(
+        fixture.manager.restore(
+          encrypted,
+          mode: LocalRestoreMode.replace,
+          password: password,
+        ),
+        throwsA(isA<FormatException>()),
+      );
+      expect(
+        await fixture.database.database.query(
+          'transactions',
+          where: 'id = ?',
+          whereArgs: ['tx-analysis-evidence-351'],
+        ),
+        hasLength(1),
+      );
+    },
+  );
 
   test('merge restore preserves a newer local financial profile', () async {
     final fixture = await _Fixture.create();
@@ -801,6 +1118,22 @@ void main() {
       expect(
         engine.LocalBackupManager.requiredTablesForSchema(15),
         contains('financial_profiles'),
+      );
+      expect(
+        engine.LocalBackupManager.requiredTablesForSchema(15),
+        isNot(contains('analysis_rule_definitions')),
+      );
+      expect(
+        engine.LocalBackupManager.requiredTablesForSchema(16),
+        contains('analysis_rule_definitions'),
+      );
+      expect(
+        engine.LocalBackupManager.requiredTablesForSchema(15),
+        isNot(contains('analysis_findings')),
+      );
+      expect(
+        engine.LocalBackupManager.requiredTablesForSchema(16),
+        contains('analysis_findings'),
       );
     },
   );
@@ -2300,6 +2633,29 @@ Future<void> _downgradeBackupToV13(File backup) async {
     ...encoded,
     ...bytes.sublist(metadataEnd),
   ], flush: true);
+}
+
+Future<void> _insertFinding(
+  _Fixture fixture, {
+  required String id,
+  required String lifecycle,
+  String definitionHash = 'test-hash',
+  String ruleVersion = '1.0.0',
+}) async {
+  final now = DateTime.utc(2026, 10, 30).toIso8601String();
+  await fixture.database.database.insert('analysis_findings', {
+    'id': id,
+    'rule_id': 'ANL-R001',
+    'rule_version': ruleVersion,
+    'definition_hash': definitionHash,
+    'period_start': '2026-10-01',
+    'period_end': '2026-10-30',
+    'time_zone_id': 'UTC',
+    'payload': '{}',
+    'lifecycle': lifecycle,
+    'generated_at': now,
+    'updated_at': now,
+  });
 }
 
 final class _Fixture {

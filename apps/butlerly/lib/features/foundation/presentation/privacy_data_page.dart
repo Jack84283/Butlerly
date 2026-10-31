@@ -17,6 +17,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:path/path.dart' as path;
 import 'package:share_plus/share_plus.dart' as share;
 
@@ -28,6 +29,12 @@ class PrivacyDataPage extends ConsumerStatefulWidget {
 
   @override
   ConsumerState<PrivacyDataPage> createState() => _PrivacyDataPageState();
+}
+
+@visibleForTesting
+String formatBackupInspectionDate(BuildContext context, DateTime date) {
+  final locale = Localizations.localeOf(context).toLanguageTag();
+  return DateFormat.yMMMd(locale).add_jm().format(date);
 }
 
 class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
@@ -137,11 +144,15 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     final manager = services<WorkspaceDataService>();
     String? password;
     try {
-      if (await manager.isEncryptedBackup(file)) {
-        if (!mounted) return;
-        password = await _requestRestorePassword();
-        if (password == null || !mounted) return;
+      if (!await manager.isEncryptedBackup(file)) {
+        if (mounted) {
+          _message(context.l10n.backupText('encryptedBackupRequired'));
+        }
+        return;
       }
+      if (!mounted) return;
+      password = await _requestRestorePassword();
+      if (password == null || !mounted) return;
 
       setState(() => _busy = true);
       final inspection = await manager.inspect(file, password: password);
@@ -165,8 +176,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       if (!mounted) return;
       final summary = context.l10n
           .backupText('restoreResult')
-          .replaceAll('{restored}', '${result.restoredRows}')
-          .replaceAll('{kept}', '${result.keptNewerLocalRows}');
+          .replaceAll('{restored}', '${result.restoredRows}');
       _message(
         '${context.l10n.backupText('restoreComplete')} $summary'
         '${result.presentationRefreshFailed ? ' ${context.l10n.text('restoreRefreshWarning')}' : ''}',
@@ -364,6 +374,12 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
               .replaceAll('{records}', '${inspection.recordCount}')
               .replaceAll('{evidence}', '${inspection.evidenceCount}');
           final created = inspection.createdAtUtc.toLocal();
+          final createdLabel = context.l10n
+              .backupText('backupCreatedAt')
+              .replaceAll(
+                '{date}',
+                formatBackupInspectionDate(context, created),
+              );
           final details = _changeDetails(inspection);
           final body = inspection.hasNewerLocalData
               ? '${context.l10n.backupText('newerData')}\n\n$details'
@@ -375,7 +391,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
                 maxHeight: MediaQuery.sizeOf(context).height * .45,
               ),
               child: SingleChildScrollView(
-                child: Text('$summary\n${created.toString()}\n\n$body'),
+                child: Text('$summary\n$createdLabel\n\n$body'),
               ),
             ),
             actions: [
@@ -387,10 +403,6 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
                 onPressed: () =>
                     Navigator.pop(context, LocalRestoreMode.replace),
                 child: Text(context.l10n.backupText('replace')),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, LocalRestoreMode.merge),
-                child: Text(context.l10n.backupText('merge')),
               ),
             ],
           );

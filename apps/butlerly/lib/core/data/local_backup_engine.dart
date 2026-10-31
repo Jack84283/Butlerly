@@ -252,6 +252,18 @@ final class LocalBackupManager {
     _TableSpec('analysis_rule_configurations', [
       'rule_id',
     ], updatedAt: 'updated_at'),
+    _TableSpec(
+      'analysis_rule_definitions',
+      ['rule_id', 'rule_version'],
+      createdAt: 'installed_at',
+      preserveLocalOnMergeConflict: true,
+    ),
+    _TableSpec(
+      'analysis_findings',
+      ['id'],
+      updatedAt: 'updated_at',
+      createdAt: 'generated_at',
+    ),
     _TableSpec('reference_data', ['id'], preserveLocalOnMergeConflict: true),
     _TableSpec('reference_data_translations', [
       'reference_data_id',
@@ -283,6 +295,15 @@ final class LocalBackupManager {
 
   static Set<String> requiredTablesForSchema(int sourceSchema) {
     final required = backupTableNames;
+    if (sourceSchema <= 15) {
+      // Schema 16 is the first archive contract that includes persisted rule
+      // definitions and findings. Keep historical packages readable without
+      // treating these newly portable tables as missing legacy payloads.
+      required.removeAll(const {
+        'analysis_rule_definitions',
+        'analysis_findings',
+      });
+    }
     if (sourceSchema <= 13) {
       // Schema 13 was emitted both before and after budgets were introduced.
       // Treat it as a compatibility family: budgets may be absent from a
@@ -401,10 +422,7 @@ final class LocalBackupManager {
   static Set<String> _enumNames<T extends Enum>(List<T> values) =>
       values.map((value) => value.name).toSet();
 
-  static const _derivedTables = <String>[
-    'analysis_findings',
-    'analysis_rule_results',
-  ];
+  static const _derivedTables = <String>['analysis_rule_results'];
 
   Future<BackupInspection> inspect(File file) async {
     final package = await _readPackage(file);
@@ -426,14 +444,12 @@ final class LocalBackupManager {
     // Package parsing, evidence integrity verification, and construction of the
     // final staging tree all finish before the live database is mutated.
     final package = await _readPackage(file);
+    final sourceSchema = package.manifest['schemaVersion']! as int;
     final backupTime = DateTime.parse(
       package.manifest['createdAtUtc']! as String,
     ).toUtc();
     final tablePayload = <String, Object?>{...package.tables};
-    _migratePaymentSettlementBackupPayload(
-      tablePayload,
-      package.manifest['schemaVersion']! as int,
-    );
+    _migratePaymentSettlementBackupPayload(tablePayload, sourceSchema);
     final durableUnresolvedDuplicateGroupIds =
         DuplicateGroupBackupPolicy.durableUnresolvedGroupIds(
           groups: _tableRows(tablePayload, 'duplicate_candidate_groups'),
@@ -1728,6 +1744,7 @@ final class LocalBackupManager {
       }
     }
     await _validateTableReferences(sourceSchema, tables);
+    _validateAnalysisTables(sourceSchema, tables);
   }
 
   Future<Set<String>> _schemaColumns(String table) async {
@@ -2206,6 +2223,442 @@ final class LocalBackupManager {
       }
     }
   }
+
+  void _validateAnalysisTables(int sourceSchema, Map<String, Object?> tables) {
+    // These tables were not portable before schema 16. Historical packages
+    // may therefore contain activations without the definitions that were
+    // installed locally when the package was created.
+    final hasDefinitionsTable = tables.containsKey('analysis_rule_definitions');
+    final hasFindingsTable = tables.containsKey('analysis_findings');
+    if (sourceSchema < schemaVersion &&
+        !hasDefinitionsTable &&
+        !hasFindingsTable) {
+      return;
+    }
+    // Validate newly present tables even when a package advertises an older
+    // schema. This keeps historical packages safe without making the
+    // validation depend solely on the manifest version.
+    final requireDefinitionReferences =
+        sourceSchema >= schemaVersion || hasDefinitionsTable;
+
+    final definitionRows = _tableRows(tables, 'analysis_rule_definitions');
+    final definitionsByKey = <String, Map>{};
+    for (var index = 0; index < definitionRows.length; index++) {
+      final row = definitionRows[index];
+      final ruleId = row['rule_id'];
+      final ruleVersion = row['rule_version'];
+      if (ruleId is! String ||
+          ruleId.isEmpty ||
+          ruleVersion is! String ||
+          ruleVersion.isEmpty) {
+        throw FormatException(
+          'Backup schema $sourceSchema table "analysis_rule_definitions" '
+          'row $index contains an invalid rule identity.',
+        );
+      }
+      final key = '$ruleId:$ruleVersion';
+      definitionsByKey[key] = row;
+
+      final status = row['validation_status'];
+      if (status is! String || !{'valid', 'invalid'}.contains(status)) {
+        throw FormatException(
+          'Backup schema $sourceSchema table "analysis_rule_definitions" '
+          'row $index contains an invalid validation status.',
+        );
+      }
+      if (status != 'valid') continue;
+
+      final canonical = row['canonical_definition'];
+      if (canonical is! String || canonical.isEmpty) {
+        throw FormatException(
+          'Backup schema $sourceSchema table "analysis_rule_definitions" '
+          'row $index contains an invalid canonical definition.',
+        );
+      }
+      final values = _decodeRuleDefinition(canonical, sourceSchema, index);
+      final result = const RuleDefinitionValidator().validate(
+        ParsedRuleDocument(values),
+      );
+      if (result.definition == null) {
+        final diagnostic = result.diagnostics.isEmpty
+            ? 'definition could not be reconstructed'
+            : result.diagnostics.first.message;
+        throw FormatException(
+          'Backup schema $sourceSchema table "analysis_rule_definitions" '
+          'row $index is invalid: $diagnostic',
+        );
+      }
+      final definition = result.definition!;
+      if (canonicalize(values) != canonical ||
+          definition.identity.value != ruleId ||
+          definition.version.value != ruleVersion ||
+          definition.schemaVersion != row['schema_version'] ||
+          definition.definitionHash.value != row['definition_hash']) {
+        throw FormatException(
+          'Backup schema $sourceSchema table "analysis_rule_definitions" '
+          'row $index does not match its canonical identity or hash.',
+        );
+      }
+    }
+
+    final activationRows = _tableRows(tables, 'analysis_rule_activations');
+    for (var index = 0; index < activationRows.length; index++) {
+      final row = activationRows[index];
+      final ruleId = row['rule_id'];
+      final ruleVersion = row['active_rule_version'];
+      final enabled = row['enabled'];
+      if (ruleId is! String ||
+          ruleId.isEmpty ||
+          ruleVersion is! String ||
+          ruleVersion.isEmpty ||
+          enabled is! int ||
+          (enabled != 0 && enabled != 1)) {
+        throw FormatException(
+          'Backup schema $sourceSchema table "analysis_rule_activations" '
+          'row $index contains an invalid activation.',
+        );
+      }
+      final definition = definitionsByKey['$ruleId:$ruleVersion'];
+      if (requireDefinitionReferences &&
+          (definition == null || definition['validation_status'] != 'valid')) {
+        throw FormatException(
+          'Backup schema $sourceSchema table "analysis_rule_activations" '
+          'row $index references a missing rule definition.',
+        );
+      }
+    }
+
+    final configurationRows = _tableRows(
+      tables,
+      'analysis_rule_configurations',
+    );
+    for (var index = 0; index < configurationRows.length; index++) {
+      final row = configurationRows[index];
+      final ruleId = row['rule_id'];
+      final configuration = row['configuration'];
+      if (ruleId is! String || ruleId.isEmpty || configuration is! String) {
+        throw FormatException(
+          'Backup schema $sourceSchema table '
+          '"analysis_rule_configurations" row $index contains an invalid '
+          'configuration.',
+        );
+      }
+      if (requireDefinitionReferences &&
+          !definitionsByKey.values.any(
+            (definition) =>
+                definition['rule_id'] == ruleId &&
+                definition['validation_status'] == 'valid',
+          )) {
+        throw FormatException(
+          'Backup schema $sourceSchema table '
+          '"analysis_rule_configurations" row $index references a missing '
+          'rule definition.',
+        );
+      }
+      try {
+        final decoded = jsonDecode(configuration);
+        if (decoded is! Map) throw const FormatException();
+      } on Object {
+        throw FormatException(
+          'Backup schema $sourceSchema table '
+          '"analysis_rule_configurations" row $index contains invalid JSON.',
+        );
+      }
+    }
+
+    final transactionIds = _stringIds(tables, 'transactions', 'id');
+    final evidenceIds = _stringIds(tables, 'evidence_items', 'id');
+    final attachmentPairs = {
+      for (final row in _tableRows(tables, 'attachment_links'))
+        if (row['transaction_id'] is String && row['evidence_id'] is String)
+          '${row['transaction_id']}:${row['evidence_id']}',
+    };
+    final findingRows = _tableRows(tables, 'analysis_findings');
+    for (var index = 0; index < findingRows.length; index++) {
+      final row = findingRows[index];
+      final ruleId = row['rule_id'];
+      final ruleVersion = row['rule_version'];
+      final definitionHash = row['definition_hash'];
+      final lifecycle = row['lifecycle'];
+      if (ruleId is! String ||
+          ruleVersion is! String ||
+          definitionHash is! String ||
+          lifecycle is! String ||
+          !FindingLifecycle.values.any((value) => value.name == lifecycle)) {
+        throw FormatException(
+          'Backup schema $sourceSchema table "analysis_findings" row $index '
+          'contains an invalid rule identity or lifecycle.',
+        );
+      }
+      final definition = definitionsByKey['$ruleId:$ruleVersion'];
+      if (definition == null ||
+          definition['validation_status'] != 'valid' ||
+          definition['definition_hash'] != definitionHash) {
+        throw FormatException(
+          'Backup schema $sourceSchema table "analysis_findings" row $index '
+          'references an unavailable or mismatched rule definition.',
+        );
+      }
+      final periodStart = row['period_start'];
+      final periodEnd = row['period_end'];
+      final timeZoneId = row['time_zone_id'];
+      if (periodStart is! String ||
+          periodEnd is! String ||
+          timeZoneId is! String) {
+        throw FormatException(
+          'Backup schema $sourceSchema table "analysis_findings" row $index '
+          'contains an invalid analysis period.',
+        );
+      }
+      try {
+        final start = parseFinancialDateOnly(periodStart);
+        final end = parseFinancialDateOnly(periodEnd);
+        if (start.isAfter(end)) {
+          throw const FormatException('Analysis period is reversed.');
+        }
+        resolveFinancialTimeZone(timeZoneId);
+      } on Object {
+        throw FormatException(
+          'Backup schema $sourceSchema table "analysis_findings" row $index '
+          'contains an invalid analysis period or timezone.',
+        );
+      }
+      final payloadValue = row['payload'];
+      if (payloadValue is! String) {
+        throw FormatException(
+          'Backup schema $sourceSchema table "analysis_findings" row $index '
+          'contains an invalid payload.',
+        );
+      }
+      final payload = _decodeFindingPayload(payloadValue, sourceSchema, index);
+      _validateFindingPayload(
+        sourceSchema,
+        index,
+        payload,
+        transactionIds: transactionIds,
+        evidenceIds: evidenceIds,
+        attachmentPairs: attachmentPairs,
+      );
+    }
+  }
+
+  Map<String, Object?> _decodeRuleDefinition(
+    String value,
+    int sourceSchema,
+    int index,
+  ) {
+    try {
+      final decoded = jsonDecode(value);
+      if (decoded is! Map) throw const FormatException();
+      return decoded.map<String, Object?>(
+        (key, value) => MapEntry(key.toString(), value),
+      );
+    } on Object {
+      throw FormatException(
+        'Backup schema $sourceSchema table "analysis_rule_definitions" '
+        'row $index contains invalid canonical JSON.',
+      );
+    }
+  }
+
+  Map<String, dynamic> _decodeFindingPayload(
+    String value,
+    int sourceSchema,
+    int index,
+  ) {
+    try {
+      final decoded = jsonDecode(value);
+      if (decoded is! Map) throw const FormatException();
+      return decoded.cast<String, dynamic>();
+    } on Object {
+      throw FormatException(
+        'Backup schema $sourceSchema table "analysis_findings" row $index '
+        'contains invalid JSON payload.',
+      );
+    }
+  }
+
+  void _validateFindingPayload(
+    int sourceSchema,
+    int index,
+    Map<String, dynamic> payload, {
+    required Set<String> transactionIds,
+    required Set<String> evidenceIds,
+    required Set<String> attachmentPairs,
+  }) {
+    final severity = payload['severity'];
+    if (severity != null || payload.containsKey('severity')) {
+      if (severity is! String ||
+          !RuleSeverity.values.any((value) => value.name == severity)) {
+        throw FormatException(
+          'Backup schema $sourceSchema table "analysis_findings" row $index '
+          'contains an invalid severity.',
+        );
+      }
+    }
+    final datasetMode = payload['datasetMode'];
+    if (datasetMode != null &&
+        (datasetMode is! String ||
+            !DatasetMode.values.any((value) => value.name == datasetMode))) {
+      throw FormatException(
+        'Backup schema $sourceSchema table "analysis_findings" row $index '
+        'contains an invalid dataset mode.',
+      );
+    }
+    final currencyBasis = payload['currencyBasis'];
+    if (currencyBasis != null &&
+        (currencyBasis is! String ||
+            !CurrencyBasis.values.any(
+              (value) => value.name == currencyBasis,
+            ))) {
+      throw FormatException(
+        'Backup schema $sourceSchema table "analysis_findings" row $index '
+        'contains an invalid currency basis.',
+      );
+    }
+    final baseCurrency = payload['baseCurrency'];
+    if (baseCurrency != null &&
+        (baseCurrency is! String ||
+            !RegExp(r'^[A-Z]{3}$').hasMatch(baseCurrency))) {
+      throw FormatException(
+        'Backup schema $sourceSchema table "analysis_findings" row $index '
+        'contains an invalid base currency.',
+      );
+    }
+    if (payload['dimension'] != null && payload['dimension'] is! String) {
+      throw FormatException(
+        'Backup schema $sourceSchema table "analysis_findings" row $index '
+        'contains an invalid dimension.',
+      );
+    }
+    for (final field in const [
+      'currentValue',
+      'baselineValue',
+      'absoluteChange',
+      'percentageChange',
+    ]) {
+      final value = payload[field];
+      if (value == null) continue;
+      if (value is! String) {
+        throw FormatException(
+          'Backup schema $sourceSchema table "analysis_findings" row $index '
+          'contains a non-string $field.',
+        );
+      }
+      try {
+        DecimalValue.parse(value);
+      } on Object {
+        throw FormatException(
+          'Backup schema $sourceSchema table "analysis_findings" row $index '
+          'contains an invalid $field.',
+        );
+      }
+    }
+    final supportingMetrics = payload['supportingMetrics'];
+    if (supportingMetrics != null && supportingMetrics is! List) {
+      throw FormatException(
+        'Backup schema $sourceSchema table "analysis_findings" row $index '
+        'contains invalid supporting metrics.',
+      );
+    }
+    _validateFindingEvidence(
+      sourceSchema,
+      index,
+      payload['evidence'],
+      transactionIds: transactionIds,
+      evidenceIds: evidenceIds,
+      attachmentPairs: attachmentPairs,
+      field: 'evidence',
+      requireTransaction: true,
+    );
+    _validateFindingEvidence(
+      sourceSchema,
+      index,
+      payload['qualityIssues'],
+      transactionIds: transactionIds,
+      evidenceIds: evidenceIds,
+      attachmentPairs: attachmentPairs,
+      field: 'qualityIssues',
+      requireTransaction: false,
+    );
+  }
+
+  void _validateFindingEvidence(
+    int sourceSchema,
+    int index,
+    Object? raw, {
+    required Set<String> transactionIds,
+    required Set<String> evidenceIds,
+    required Set<String> attachmentPairs,
+    required String field,
+    required bool requireTransaction,
+  }) {
+    if (raw == null) return;
+    if (raw is! List) {
+      throw FormatException(
+        'Backup schema $sourceSchema table "analysis_findings" row $index '
+        'contains invalid $field.',
+      );
+    }
+    for (final item in raw) {
+      if (item is! Map) {
+        throw FormatException(
+          'Backup schema $sourceSchema table "analysis_findings" row $index '
+          'contains invalid $field entries.',
+        );
+      }
+      final transactionId = item['transactionId'];
+      if (requireTransaction &&
+          (transactionId is! String ||
+              !transactionIds.contains(transactionId))) {
+        throw FormatException(
+          'Backup schema $sourceSchema table "analysis_findings" row $index '
+          'references a missing transaction from $field.',
+        );
+      }
+      if (!requireTransaction &&
+          transactionId != null &&
+          (transactionId is! String ||
+              !transactionIds.contains(transactionId))) {
+        throw FormatException(
+          'Backup schema $sourceSchema table "analysis_findings" row $index '
+          'references a missing transaction from $field.',
+        );
+      }
+      final evidenceId = item['evidenceId'];
+      if (evidenceId != null &&
+          (evidenceId is! String || !evidenceIds.contains(evidenceId))) {
+        throw FormatException(
+          'Backup schema $sourceSchema table "analysis_findings" row $index '
+          'references missing evidence from $field.',
+        );
+      }
+      if (evidenceId != null &&
+          (transactionId is! String ||
+              !attachmentPairs.contains('$transactionId:$evidenceId'))) {
+        throw FormatException(
+          'Backup schema $sourceSchema table "analysis_findings" row $index '
+          'references an unlinked evidence item from $field.',
+        );
+      }
+      if (field == 'qualityIssues' &&
+          (item['code'] is! String || item['detail'] is! String)) {
+        throw FormatException(
+          'Backup schema $sourceSchema table "analysis_findings" row $index '
+          'contains an invalid quality issue.',
+        );
+      }
+    }
+  }
+
+  Set<String> _stringIds(
+    Map<String, Object?> tables,
+    String table,
+    String field,
+  ) => {
+    for (final row in _tableRows(tables, table))
+      if (row[field] is String) row[field]! as String,
+  };
 
   void _validateTombstoneRow(int sourceSchema, Map raw, int index) {
     final entityType = raw['entity_type'];
@@ -2703,6 +3156,8 @@ final class LocalBackupManager {
       'provenances',
       'analysis_rule_configurations',
       'analysis_rule_activations',
+      'analysis_findings',
+      'analysis_rule_definitions',
       'recurring_pattern_decisions',
       'payment_sources',
       'user_preferences',
