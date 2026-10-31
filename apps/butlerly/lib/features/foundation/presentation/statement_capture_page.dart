@@ -289,6 +289,36 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     }
   }
 
+  Future<void> _dismissPendingRecoveryIssue(String fileName) async {
+    final l10n = context.l10n;
+    final confirmed = await showButlerlyConfirmationSheet(
+      context: context,
+      title: l10n.text('captureRecoveryDismissTitle'),
+      message: l10n.text('captureRecoveryDismissBody'),
+      cancelLabel: l10n.text('cancel'),
+      confirmLabel: l10n.text('captureRecoveryDismiss'),
+      destructive: true,
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      final resolution = await services<LocalEvidenceStore>()
+          .dismissPendingCaptureJournalIssue(fileName);
+      if (!mounted) return;
+      _message(
+        context.l10n.text(switch (resolution) {
+          PendingCaptureJournalResolution.dismissed =>
+            'captureRecoveryDismissed',
+          _ => 'captureRecoveryRepairUnavailable',
+        }),
+      );
+      await _loadPendingGenericRecovery();
+    } catch (_) {
+      if (mounted) {
+        _message(context.l10n.text('captureRecoveryRepairUnavailable'));
+      }
+    }
+  }
+
   Future<void> _captureImage(ImageSource source) async {
     if (_busy) return;
     setState(() => _busy = true);
@@ -1038,6 +1068,13 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                                 context.l10n.text('captureRecoveryRepair'),
                               ),
                             ),
+                          TextButton(
+                            onPressed: () =>
+                                _dismissPendingRecoveryIssue(issue.fileName),
+                            child: Text(
+                              context.l10n.text('captureRecoveryDismiss'),
+                            ),
+                          ),
                         ],
                       ),
                     ),

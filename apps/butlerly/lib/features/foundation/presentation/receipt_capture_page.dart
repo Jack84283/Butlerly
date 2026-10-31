@@ -618,6 +618,32 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     }
   }
 
+  Future<void> _dismissPendingRecoveryIssue(String fileName) async {
+    final l10n = context.l10n;
+    final confirmed = await showButlerlyConfirmationSheet(
+      context: context,
+      title: l10n.text('captureRecoveryDismissTitle'),
+      message: l10n.text('captureRecoveryDismissBody'),
+      cancelLabel: l10n.text('cancel'),
+      confirmLabel: l10n.text('captureRecoveryDismiss'),
+      destructive: true,
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      final resolution = await evidenceStore.dismissPendingCaptureJournalIssue(
+        fileName,
+      );
+      if (!mounted) return;
+      _showSaveMessage(switch (resolution) {
+        PendingCaptureJournalResolution.dismissed => 'captureRecoveryDismissed',
+        _ => 'captureRecoveryRepairUnavailable',
+      });
+      await _loadPendingReceiptRecovery();
+    } catch (_) {
+      if (mounted) _showSaveMessage('captureRecoveryRepairUnavailable');
+    }
+  }
+
   Future<ReceiptOcrResult> _recognizeReceipt(String path) async {
     if (widget.ocr != null) return widget.ocr!(path);
     final recognizer =
@@ -1504,6 +1530,17 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                                         ),
                                       ),
                                     ),
+                                  TextButton(
+                                    onPressed: () =>
+                                        _dismissPendingRecoveryIssue(
+                                          issue.fileName,
+                                        ),
+                                    child: Text(
+                                      context.l10n.text(
+                                        'captureRecoveryDismiss',
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),

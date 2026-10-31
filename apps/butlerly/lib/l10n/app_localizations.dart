@@ -1103,6 +1103,10 @@ class AppLocalizations {
       'captureRecoverySourceUnavailable':
           'A recovery record source is unavailable. The record was kept safely for recovery.',
       'captureRecoveryRepair': 'Resolve recovery record',
+      'captureRecoveryDismiss': 'Dismiss record',
+      'captureRecoveryDismissTitle': 'Dismiss recovery record?',
+      'captureRecoveryDismissBody':
+          'The recovery record will be removed, but uncertain source files will remain on this device.',
       'captureRecoveryRepaired':
           'The source was preserved as a retryable capture.',
       'captureRecoveryDismissed':
@@ -2096,6 +2100,9 @@ class AppLocalizations {
       'captureRecoveryJournalIssue': '恢复记录无法读取。来源已安全保留，请重试恢复。',
       'captureRecoverySourceUnavailable': '恢复记录的来源不可用。记录已安全保留以便恢复。',
       'captureRecoveryRepair': '处理恢复记录',
+      'captureRecoveryDismiss': '关闭记录',
+      'captureRecoveryDismissTitle': '关闭恢复记录？',
+      'captureRecoveryDismissBody': '恢复记录将被移除，但不确定的来源文件会保留在此设备上。',
       'captureRecoveryRepaired': '来源已保留为可重试的捕获记录。',
       'captureRecoveryDismissed': '已关闭恢复记录；不确定的文件已安全保留。',
       'captureRecoveryRepairUnavailable': '恢复记录无法修复，其文件已安全保留。',
@@ -3251,6 +3258,10 @@ class AppLocalizations {
       'captureRecoverySourceUnavailable':
           'El origen de un registro de recuperación no está disponible. El registro se conservó de forma segura para recuperarlo.',
       'captureRecoveryRepair': 'Resolver registro de recuperación',
+      'captureRecoveryDismiss': 'Descartar registro',
+      'captureRecoveryDismissTitle': '¿Descartar el registro de recuperación?',
+      'captureRecoveryDismissBody':
+          'Se quitará el registro de recuperación, pero los archivos de origen inciertos permanecerán en este dispositivo.',
       'captureRecoveryRepaired':
           'El origen se conservó como una captura que se puede reintentar.',
       'captureRecoveryDismissed':

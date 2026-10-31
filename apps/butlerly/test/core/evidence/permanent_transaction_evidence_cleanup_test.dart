@@ -248,8 +248,11 @@ void main() {
         isTrue,
       );
       final visible = await store.listPendingGenericCaptures();
-      expect(visible, hasLength(1));
-      expect(visible.single.source.localFileName, unrelated.localFileName);
+      expect(visible, hasLength(2));
+      expect(
+        visible.map((capture) => capture.source.localFileName),
+        containsAll([preserved.localFileName, unrelated.localFileName]),
+      );
       final issues = await store.listPendingCaptureJournalIssues();
       expect(issues, hasLength(2));
       expect(
@@ -269,7 +272,7 @@ void main() {
         contains(preserved.localFileName),
       );
       expect(
-        await store.resolvePendingCaptureJournalIssue('receipt-unrelated.json'),
+        await store.dismissPendingCaptureJournalIssue('receipt-unrelated.json'),
         PendingCaptureJournalResolution.dismissed,
       );
       expect(await malformed.exists(), isFalse);
@@ -639,6 +642,46 @@ void main() {
       );
     },
   );
+
+  test('tampered receipt recovery is not resumable or listable', () async {
+    final store = services<LocalEvidenceStore>();
+    final sourceFile = File(path.join(root.path, 'receipt-tampered.png'));
+    await sourceFile.writeAsBytes([7, 8, 9], flush: true);
+    final source = await store.preserve(
+      XFile(sourceFile.path, name: 'receipt-tampered.png'),
+      captureKind: 'receipt',
+    );
+    await store.preparePendingReceiptCapture(
+      transactionId: 'transaction-tampered-receipt',
+      source: source,
+    );
+    final pendingFile = File(
+      path.join('${evidenceDirectory.path}.pending', source.localFileName),
+    );
+    await pendingFile.writeAsBytes([0], flush: true);
+
+    expect(await store.fileForPreserved(source), isNull);
+    expect(await store.listPendingReceiptCaptures(), isEmpty);
+    final issues = await store.listPendingCaptureJournalIssues();
+    expect(
+      issues.map((issue) => issue.fileName),
+      contains('receipt-transaction-tampered-receipt.json'),
+    );
+    await expectLater(
+      store.recoverPendingReceiptCaptures(),
+      throwsA(isA<StateError>()),
+    );
+    expect(await pendingFile.exists(), isTrue);
+    expect(
+      await File(
+        path.join(
+          '${evidenceDirectory.path}.pending',
+          'receipt-transaction-tampered-receipt.json',
+        ),
+      ).exists(),
+      isTrue,
+    );
+  });
 
   test(
     'receipt recovery does not duplicate an attachment committed before cleanup',
@@ -1212,6 +1255,12 @@ void main() {
       );
       await pendingFile.writeAsBytes([4], flush: true);
 
+      final issues = await store.listPendingCaptureJournalIssues();
+      expect(
+        issues.map((issue) => issue.fileName),
+        contains('statement-statement-corrupt-source.json'),
+      );
+
       await expectLater(
         store.recoverPendingStatementCaptures(),
         throwsA(isA<StateError>()),
@@ -1616,6 +1665,87 @@ void main() {
         ).findById(item.id),
         isNotNull,
       );
+    },
+  );
+
+  test(
+    'staged deletion recovery retains artifacts for mismatched evidence metadata',
+    () async {
+      final now = DateTime.utc(2026, 8, 9, 20);
+      final item = _evidence('evidence-staged-mismatch', now);
+      final evidence = SqliteEvidenceRepository(database.persistenceDatabase);
+      await evidence.save(item);
+      final live = File(path.join(evidenceDirectory.path, item.localFileName!));
+      await live.parent.create(recursive: true);
+      await live.writeAsBytes([9, 8, 7], flush: true);
+      final store = services<LocalEvidenceStore>();
+
+      await store.deletePublishedFile(item);
+      final deleting = Directory('${evidenceDirectory.path}.deleting');
+      final manifest =
+          (await deleting
+                  .list()
+                  .where(
+                    (entity) => entity is File && entity.path.endsWith('.json'),
+                  )
+                  .cast<File>()
+                  .toList())
+              .single;
+      final decoded =
+          jsonDecode(await manifest.readAsString()) as Map<String, dynamic>;
+      final staged = File(
+        path.join(deleting.path, decoded['stagedFileName'] as String),
+      );
+      decoded['localFileName'] = 'different-source.png';
+      await manifest.writeAsString(jsonEncode(decoded), flush: true);
+
+      await expectLater(
+        store.recoverStagedEvidenceDeletions(),
+        throwsA(isA<StateError>()),
+      );
+      expect(await staged.exists(), isTrue);
+      expect(await manifest.exists(), isTrue);
+      expect(await evidence.findById(item.id), isNotNull);
+    },
+  );
+
+  test(
+    'staged deletion recovery retains prepared artifacts when the row is missing',
+    () async {
+      final now = DateTime.utc(2026, 8, 9, 20);
+      final item = _evidence('evidence-staged-missing-row', now);
+      final evidence = SqliteEvidenceRepository(database.persistenceDatabase);
+      await evidence.save(item);
+      final live = File(path.join(evidenceDirectory.path, item.localFileName!));
+      await live.parent.create(recursive: true);
+      await live.writeAsBytes([3, 2, 1], flush: true);
+      final store = services<LocalEvidenceStore>();
+
+      await store.deletePublishedFile(item);
+      final deleting = Directory('${evidenceDirectory.path}.deleting');
+      final manifest =
+          (await deleting
+                  .list()
+                  .where(
+                    (entity) => entity is File && entity.path.endsWith('.json'),
+                  )
+                  .cast<File>()
+                  .toList())
+              .single;
+      final decoded =
+          jsonDecode(await manifest.readAsString()) as Map<String, dynamic>;
+      final staged = File(
+        path.join(deleting.path, decoded['stagedFileName'] as String),
+      );
+      await evidence.remove(item.id);
+
+      await expectLater(
+        store.recoverStagedEvidenceDeletions(),
+        throwsA(isA<StateError>()),
+      );
+      expect(await staged.exists(), isTrue);
+      expect(await manifest.exists(), isTrue);
+      expect(await evidence.findById(item.id), isNull);
     },
   );
 
