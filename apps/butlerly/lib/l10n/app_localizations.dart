@@ -1096,6 +1096,8 @@ class AppLocalizations {
       'receiptRecoverySourceUnavailable':
           'The saved receipt source is unavailable. The recovery record was kept.',
       'receiptRecoveryDiscarded': 'The saved receipt capture was discarded.',
+      'receiptRecoveryWarning':
+          'Some receipt recovery records need attention. Their source files were kept.',
       'captureReceipt': 'Capture receipt',
       'addReceipt': 'Add a receipt',
       'takePhoto': 'Take photo',
@@ -1140,6 +1142,13 @@ class AppLocalizations {
           'Some transaction-like rows were found but need review.',
       'statementProcessingFailed':
           'Statement processing failed because of a technical OCR error.',
+      'statementRecoveryTitle': 'Statement import needs review',
+      'statementRecoveryBody':
+          'A statement source is still retained on this device after an interrupted import.',
+      'statementRecoveryResume': 'Resume import',
+      'statementRecoveryCancel': 'Discard source',
+      'statementRecoveryWarning':
+          'Some capture recovery records need attention. Their source files were kept.',
       'statementChangedDuringRetry':
           'This statement changed while retrying. Open it again and retry from the latest saved version.',
       'abandonStatementImport': 'Abandon import',
@@ -2070,6 +2079,7 @@ class AppLocalizations {
       'receiptRecoveryCancel': '放弃捕获',
       'receiptRecoverySourceUnavailable': '已保存的收据来源不可用，恢复记录已保留。',
       'receiptRecoveryDiscarded': '已放弃保存的收据捕获。',
+      'receiptRecoveryWarning': '部分收据恢复记录需要处理，来源文件已保留。',
       'captureReceipt': '拍摄收据',
       'addReceipt': '添加收据',
       'takePhoto': '拍照',
@@ -2104,6 +2114,11 @@ class AppLocalizations {
       'statementNoRows': '已识别文字，但未找到交易行。',
       'statementUnresolvedEvidence': '发现疑似交易内容，需要审核。',
       'statementProcessingFailed': '由于本地文字识别技术错误，账单处理失败。',
+      'statementRecoveryTitle': '账单导入需要处理',
+      'statementRecoveryBody': '中断的账单来源仍保留在此设备上。',
+      'statementRecoveryResume': '继续导入',
+      'statementRecoveryCancel': '放弃来源',
+      'statementRecoveryWarning': '部分捕获恢复记录需要处理，来源文件已保留。',
       'statementChangedDuringRetry': '重试期间账单发生了变化。请重新打开账单，并从最新保存的版本重试。',
       'abandonStatementImport': '放弃导入',
       'abandonStatementImportTitle': '放弃此次导入？',
@@ -3209,6 +3224,8 @@ class AppLocalizations {
       'receiptRecoverySourceUnavailable':
           'La fuente guardada del recibo no está disponible. Se conservó el registro de recuperación.',
       'receiptRecoveryDiscarded': 'Se descartó la captura de recibo guardada.',
+      'receiptRecoveryWarning':
+          'Algunos registros de recuperación de recibos necesitan atención. Sus archivos de origen se conservaron.',
       'captureReceipt': 'Capturar recibo',
       'addReceipt': 'Añadir un recibo',
       'takePhoto': 'Tomar foto',
@@ -3253,6 +3270,13 @@ class AppLocalizations {
           'Hay evidencia similar a una transacción que requiere revisión.',
       'statementProcessingFailed':
           'El procesamiento del extracto falló por un error técnico de OCR.',
+      'statementRecoveryTitle': 'La importación del extracto necesita revisión',
+      'statementRecoveryBody':
+          'El origen de un extracto interrumpido aún se conserva en este dispositivo.',
+      'statementRecoveryResume': 'Reanudar importación',
+      'statementRecoveryCancel': 'Descartar origen',
+      'statementRecoveryWarning':
+          'Algunos registros de recuperación necesitan atención. Sus archivos de origen se conservaron.',
       'statementChangedDuringRetry':
           'El extracto cambió durante el reintento. Ábrelo de nuevo y reintenta desde la última versión guardada.',
       'abandonStatementImport': 'Abandonar importación',

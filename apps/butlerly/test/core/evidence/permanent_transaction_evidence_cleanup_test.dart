@@ -186,6 +186,9 @@ void main() {
         isTrue,
       );
       expect(await malformed.exists(), isTrue);
+      final visible = await store.listPendingGenericCaptures();
+      expect(visible, hasLength(1));
+      expect(visible.single.source.localFileName, preserved.localFileName);
     },
   );
 
@@ -218,6 +221,123 @@ void main() {
       isTrue,
     );
   });
+
+  test(
+    'valid receipt recovery remains listable when an unrelated journal is malformed',
+    () async {
+      final sourceFile = File(path.join(root.path, 'receipt-valid.png'));
+      await sourceFile.writeAsBytes([2, 4, 8], flush: true);
+      final store = services<LocalEvidenceStore>();
+      final source = await store.preserve(
+        XFile(sourceFile.path, name: 'receipt-valid.png'),
+        captureKind: 'receipt',
+      );
+      await store.preparePendingReceiptCapture(
+        transactionId: 'receipt-valid-capture',
+        source: source,
+      );
+      final pending = Directory('${evidenceDirectory.path}.pending');
+      final malformed = File(path.join(pending.path, 'receipt-malformed.json'));
+      await malformed.writeAsString('{not-json', flush: true);
+
+      final captures = await store.listPendingReceiptCaptures();
+      expect(captures, hasLength(1));
+      expect(captures.single.captureId, 'receipt-valid-capture');
+      expect(await store.hasUnresolvedPendingCaptureJournals(), isTrue);
+      expect(await malformed.exists(), isTrue);
+    },
+  );
+
+  test(
+    'valid statement recovery proceeds while malformed statement journal remains',
+    () async {
+      final sourceFile = File(path.join(root.path, 'statement-valid.pdf'));
+      await sourceFile.writeAsBytes([3, 5, 7], flush: true);
+      final store = services<LocalEvidenceStore>();
+      final source = await store.preserve(
+        XFile(sourceFile.path, name: 'statement-valid.pdf'),
+        captureKind: 'statement',
+      );
+      await store.preparePendingStatementCapture(
+        statementId: 'statement-valid-capture',
+        source: source,
+        originalFilename: source.originalName,
+        createdAt: DateTime.utc(2026, 8, 9, 20),
+      );
+      final pending = Directory('${evidenceDirectory.path}.pending');
+      final malformed = File(
+        path.join(pending.path, 'statement-malformed.json'),
+      );
+      await malformed.writeAsString('{not-json', flush: true);
+
+      await expectLater(
+        store.recoverPendingStatementCaptures(),
+        throwsA(isA<FormatException>()),
+      );
+      final statements = await services<FinanceServices>().statementServices!
+          .list(includeArchived: true);
+      expect(
+        statements,
+        isA<ApplicationSuccess<List<FinancialStatement>>>().having(
+          (value) => value.value.map((item) => item.id).toList(),
+          'statement ids',
+          contains('statement-valid-capture'),
+        ),
+      );
+      expect(await malformed.exists(), isTrue);
+      expect(await store.hasUnresolvedPendingCaptureJournals(), isTrue);
+    },
+  );
+
+  test(
+    'generic capture fallback survives restart and explicit discard',
+    () async {
+      final sourceFile = File(path.join(root.path, 'generic-statement.pdf'));
+      await sourceFile.writeAsBytes([1, 3, 5, 7], flush: true);
+      final store = services<LocalEvidenceStore>();
+      final source = await store.preserve(
+        XFile(sourceFile.path, name: 'generic-statement.pdf'),
+        captureKind: 'statement',
+      );
+      final pending = Directory('${evidenceDirectory.path}.pending');
+      final pendingFile = File(path.join(pending.path, source.localFileName));
+      final genericJournal = File(
+        path.join(pending.path, 'capture-${source.localFileName}.json'),
+      );
+      expect(await pendingFile.exists(), isTrue);
+      expect(await genericJournal.exists(), isTrue);
+
+      await database.close();
+      await services.reset();
+      await database.initialize();
+      configureDependencies(
+        configuration: const AppConfiguration(),
+        database: database,
+        logger: AppLogger(),
+        documentsDirectory: Directory(path.join(root.path, 'documents')),
+        localEvidenceDirectory: evidenceDirectory,
+      );
+
+      final afterRestart = services<LocalEvidenceStore>();
+      final recovered = await afterRestart.listPendingGenericCaptures(
+        captureKind: 'statement',
+      );
+      expect(recovered, hasLength(1));
+      expect(recovered.single.source.localFileName, source.localFileName);
+      expect(recovered.single.source.sourceFingerprint, isNotNull);
+      expect(recovered.single.captureKind, 'statement');
+      expect(await afterRestart.hasUnresolvedPendingCaptureJournals(), isFalse);
+
+      expect(
+        await afterRestart.discardPendingGenericCapture(
+          recovered.single.source,
+        ),
+        isTrue,
+      );
+      expect(await pendingFile.exists(), isFalse);
+      expect(await genericJournal.exists(), isFalse);
+    },
+  );
 
   test(
     'receipt publication works inside an already-owned evidence boundary',
@@ -565,6 +685,80 @@ void main() {
   );
 
   test(
+    'post-commit receipt attachment failure retains recovery across restart',
+    () async {
+      final now = DateTime.utc(2026, 8, 9, 20);
+      final transaction = _transaction('transaction-post-commit', now);
+      final transactions = SqliteTransactionRepository(
+        database.persistenceDatabase,
+      );
+      await transactions.save(transaction);
+      final sourceFile = File(path.join(root.path, 'receipt-post-commit.png'));
+      await sourceFile.writeAsBytes([4, 6, 8], flush: true);
+      final store = services<LocalEvidenceStore>();
+      final source = await store.preserve(
+        XFile(sourceFile.path, name: sourceFile.uri.pathSegments.last),
+        captureKind: 'receipt',
+      );
+      const captureId = 'receipt-post-commit-capture';
+      await store.preparePendingReceiptCapture(
+        transactionId: captureId,
+        source: source,
+      );
+      expect(
+        await store.markPendingReceiptCaptureTransactionCommitted(
+          captureId: captureId,
+          transactionId: transaction.id.value,
+        ),
+        isTrue,
+      );
+
+      await database.close();
+      await services.reset();
+      await database.initialize();
+      configureDependencies(
+        configuration: const AppConfiguration(),
+        database: database,
+        logger: AppLogger(),
+        documentsDirectory: Directory(path.join(root.path, 'documents')),
+        localEvidenceDirectory: evidenceDirectory,
+      );
+      await database.persistenceDatabase.connection.execute(
+        '''CREATE TRIGGER fail_post_commit_receipt_attach
+           BEFORE INSERT ON evidence_items
+           BEGIN SELECT RAISE(ABORT, 'injected receipt attach failure'); END;''',
+      );
+
+      final afterRestart = services<LocalEvidenceStore>();
+      await expectLater(
+        afterRestart.recoverPendingReceiptCaptures(),
+        throwsA(isA<StateError>()),
+      );
+      final pending = Directory('${evidenceDirectory.path}.pending');
+      final manifest = File(path.join(pending.path, 'receipt-$captureId.json'));
+      expect(await manifest.exists(), isTrue);
+      final pendingCapture =
+          (await afterRestart.listPendingReceiptCaptures()).single;
+      expect(
+        await afterRestart.fileForPreserved(pendingCapture.source),
+        isNotNull,
+      );
+
+      await database.persistenceDatabase.connection.execute(
+        'DROP TRIGGER fail_post_commit_receipt_attach',
+      );
+      expect(await afterRestart.recoverPendingReceiptCaptures(), 1);
+      expect(await manifest.exists(), isFalse);
+      expect(
+        await SqliteEvidenceRepository(
+          database.persistenceDatabase,
+        ).listForTransaction(transaction.id),
+        hasLength(1),
+      );
+    },
+  );
+
+  test(
     'statement capture journal is recoverable before evidence publication',
     () async {
       final store = services<LocalEvidenceStore>();
@@ -754,6 +948,35 @@ void main() {
       expect(
         await File(path.join(pending.path, source.localFileName)).exists(),
         isTrue,
+      );
+    },
+  );
+
+  test(
+    'statement fingerprint lookup failure blocks a duplicate import',
+    () async {
+      final now = DateTime.utc(2026, 8, 9, 20);
+      final item = _evidence('evidence-fingerprint-failure', now);
+      await SqliteEvidenceRepository(database.persistenceDatabase).save(item);
+      await SqliteStatementRepository(
+        database.persistenceDatabase,
+      ).saveStatement(
+        FinancialStatement(
+          id: 'statement-fingerprint-failure',
+          evidenceId: item.id.value,
+          status: StatementStatus.needsSource,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+      final store = LocalEvidenceStore(
+        LocalDataManager(database, localEvidenceDirectory: evidenceDirectory),
+        _financeWithFailingEvidenceLookup(database),
+      );
+
+      await expectLater(
+        store.findStatementBySourceFingerprint('fingerprint-to-check'),
+        throwsA(isA<StateError>()),
       );
     },
   );

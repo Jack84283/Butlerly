@@ -144,6 +144,8 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
   PreservedEvidenceSource? _preserved;
   String? _pendingStatementId;
   PreservedEvidenceSource? _retrySourceOverride;
+  PendingGenericCapture? _pendingGenericRecovery;
+  bool _pendingRecoveryWarning = false;
   StatementServices get statement =>
       services<FinanceServices>().statementServices!;
 
@@ -199,6 +201,40 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
         _sources = v.paymentSources;
       }
     });
+    await _loadPendingGenericRecovery();
+  }
+
+  Future<void> _loadPendingGenericRecovery() async {
+    try {
+      final store = services<LocalEvidenceStore>();
+      final pending = await store.listPendingGenericCaptures(
+        captureKind: 'statement',
+      );
+      final warning = await store.hasUnresolvedPendingCaptureJournals();
+      if (!mounted) return;
+      setState(() {
+        _pendingGenericRecovery = pending.firstOrNull;
+        _pendingRecoveryWarning = warning;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _pendingRecoveryWarning = true);
+    }
+  }
+
+  Future<void> _discardPendingGenericRecovery() async {
+    final pending = _pendingGenericRecovery;
+    if (pending == null) return;
+    try {
+      if (await services<LocalEvidenceStore>().discardPendingGenericCapture(
+            pending.source,
+          ) &&
+          mounted) {
+        setState(() => _pendingGenericRecovery = null);
+        _message(context.l10n.text('statementRecoveryDiscarded'));
+      }
+    } catch (_) {
+      _message(context.l10n.text('statementProcessingFailed'));
+    }
   }
 
   Future<void> _captureImage(ImageSource source) async {
@@ -278,7 +314,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     String? publishedStatementId;
     try {
       final store = services<LocalEvidenceStore>();
-      preserved = await store.preserve(file);
+      preserved = await store.preserve(file, captureKind: 'statement');
       // Keep the source reference even if the route is disposed while the
       // asynchronous capture is between filesystem operations. The pending
       // statement journal below is the durable recovery boundary.
@@ -295,18 +331,6 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
         );
         return false;
       }
-      final fingerprint = preserved.sourceFingerprint;
-      if (fingerprint != null) {
-        final existing = await store.findStatementBySourceFingerprint(
-          fingerprint,
-        );
-        if (existing != null) {
-          await store.discardPreserved(preserved);
-          _preserved = null;
-          _message(l10n.text('statementAlreadyImported'));
-          return false;
-        }
-      }
       final now = DateTime.now().toUtc();
       final id = 'statement-${now.microsecondsSinceEpoch}';
       _pendingStatementId = id;
@@ -316,6 +340,21 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
         originalFilename: file.name,
         createdAt: now,
       );
+      final fingerprint = preserved.sourceFingerprint;
+      if (fingerprint != null) {
+        final existing = await store.findStatementBySourceFingerprint(
+          fingerprint,
+        );
+        if (existing != null) {
+          await store.discardPreserved(preserved);
+          _preserved = null;
+          if (await store.completePendingStatementCapture(id)) {
+            _pendingStatementId = null;
+          }
+          _message(l10n.text('statementAlreadyImported'));
+          return false;
+        }
+      }
       StatementExtraction? extraction;
       try {
         final localFile = await store.fileForPreserved(preserved);
@@ -911,6 +950,72 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
           ? _desktopStatementsTable(context)
           : _mobileStatementsList(context),
     );
+    final recoveryBody = Column(
+      children: [
+        if (_pendingRecoveryWarning)
+          Card(
+            margin: const EdgeInsets.fromLTRB(
+              ButlerlySpacing.pagePadding,
+              ButlerlySpacing.pagePadding,
+              ButlerlySpacing.pagePadding,
+              0,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(ButlerlySpacing.standard),
+              child: Text(context.l10n.text('statementRecoveryWarning')),
+            ),
+          ),
+        if (_pendingGenericRecovery != null)
+          Card(
+            margin: const EdgeInsets.fromLTRB(
+              ButlerlySpacing.pagePadding,
+              ButlerlySpacing.pagePadding,
+              ButlerlySpacing.pagePadding,
+              0,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(ButlerlySpacing.standard),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    context.l10n.text('statementRecoveryTitle'),
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: ButlerlySpacing.compact),
+                  Text(context.l10n.text('statementRecoveryBody')),
+                  const SizedBox(height: ButlerlySpacing.compact),
+                  Wrap(
+                    spacing: ButlerlySpacing.compact,
+                    children: [
+                      FilledButton(
+                        onPressed: _busy
+                            ? null
+                            : () async {
+                                await _retryPreserved(
+                                  _pendingGenericRecovery!.source,
+                                );
+                                await _loadPendingGenericRecovery();
+                              },
+                        child: Text(
+                          context.l10n.text('statementRecoveryResume'),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: _discardPendingGenericRecovery,
+                        child: Text(
+                          context.l10n.text('statementRecoveryCancel'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        Expanded(child: list),
+      ],
+    );
     final appBar = AppBar(
       title: Text(context.l10n.text('statements')),
       actions: [
@@ -938,13 +1043,13 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
       child: desktop
           ? Scaffold(
               body: DesktopTransactionDetailSplitView(
-                results: Scaffold(appBar: appBar, body: list),
+                results: Scaffold(appBar: appBar, body: recoveryBody),
                 detail: _panelData == null
                     ? null
                     : _statementRightPanel(_panelData!),
               ),
             )
-          : Scaffold(appBar: appBar, body: list),
+          : Scaffold(appBar: appBar, body: recoveryBody),
     );
   }
 

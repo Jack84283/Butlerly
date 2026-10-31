@@ -237,8 +237,7 @@ void main() {
           ),
         ),
       );
-      await tester.pump();
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       expect(find.text('Receipt capture needs review'), findsOneWidget);
       expect(find.text('Resume receipt'), findsOneWidget);

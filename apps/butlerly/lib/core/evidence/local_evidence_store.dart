@@ -40,6 +40,16 @@ final class PendingReceiptCapture {
   final EvidenceItem plannedEvidence;
 }
 
+final class PendingGenericCapture {
+  const PendingGenericCapture({
+    required this.source,
+    required this.captureKind,
+  });
+
+  final PreservedEvidenceSource source;
+  final String? captureKind;
+}
+
 const _receiptCaptureStateKey = 'captureState';
 const _receiptCapturePrepared = 'prepared';
 const _receiptCaptureAwaitingTransaction = 'awaitingTransaction';
@@ -67,10 +77,17 @@ final class LocalEvidenceStore {
   /// pending file therefore must not live in the root that restore may replace.
   /// Publication later moves the immutable binary into the live root and writes
   /// its SQLite evidence record under one [EvidenceMutationLock] boundary.
-  Future<PreservedEvidenceSource> preserve(XFile source) =>
-      _runFinancialEvidenceMutation(() => _preservePending(source));
+  Future<PreservedEvidenceSource> preserve(
+    XFile source, {
+    String? captureKind,
+  }) => _runFinancialEvidenceMutation(
+    () => _preservePending(source, captureKind: captureKind),
+  );
 
-  Future<PreservedEvidenceSource> _preservePending(XFile source) async {
+  Future<PreservedEvidenceSource> _preservePending(
+    XFile source, {
+    String? captureKind,
+  }) async {
     final directory = await _pendingEvidenceDirectory();
     await rejectEvidenceRoot(
       directory,
@@ -88,6 +105,7 @@ final class LocalEvidenceStore {
       localFileName: localFileName,
       originalName: source.name,
       mediaType: source.mimeType ?? _mediaType(extension),
+      captureKind: captureKind,
     );
     final destination = File(path.join(directory.path, localFileName));
 
@@ -485,6 +503,7 @@ final class LocalEvidenceStore {
     required String localFileName,
     required String originalName,
     required String mediaType,
+    String? captureKind,
   }) async {
     final directory = await _pendingEvidenceDirectory();
     await rejectEvidenceRoot(
@@ -498,6 +517,7 @@ final class LocalEvidenceStore {
         'localFileName': localFileName,
         'originalName': originalName,
         'mediaType': mediaType,
+        ...?captureKind == null ? null : {'captureKind': captureKind},
       }),
       flush: true,
     );
@@ -509,8 +529,9 @@ final class LocalEvidenceStore {
   }
 
   Future<Set<String>> _specificPendingJournalLocalFileNames(
-    Directory directory,
-  ) async {
+    Directory directory, {
+    bool failOnMalformed = true,
+  }) async {
     final localFileNames = <String>{};
     await for (final entity in directory.list(followLinks: false)) {
       if (entity is! File || !entity.path.endsWith('.json')) continue;
@@ -524,12 +545,19 @@ final class LocalEvidenceStore {
             decoded['localFileName'] is! String) {
           throw FormatException('Malformed pending capture journal: $name');
         }
-        localFileNames.add(decoded['localFileName'] as String);
+        final localFileName = await validateEvidencePath(
+          directory,
+          decoded['localFileName'] as String,
+          message: 'Unsafe pending capture source path.',
+        );
+        localFileNames.add(localFileName);
       } on Object {
         // A malformed specific journal cannot safely be attributed to this
         // generic capture. Fail closed and surface the corruption instead of
         // treating every pending binary as referenced by the same journal.
-        throw FormatException('Unresolved pending capture journal: $name');
+        if (failOnMalformed) {
+          throw FormatException('Unresolved pending capture journal: $name');
+        }
       }
     }
     return localFileNames;
@@ -1421,49 +1449,180 @@ final class LocalEvidenceStore {
             !name.startsWith('receipt-')) {
           continue;
         }
-        final decoded = jsonDecode(await entity.readAsString());
-        if (decoded is! Map<String, dynamic>) {
-          throw const FormatException('Invalid pending receipt manifest.');
-        }
-        _validatePendingReceiptManifest(decoded);
-        final state = decoded[_receiptCaptureStateKey] as String?;
-        if (state == _receiptCaptureCancelled ||
-            state == _receiptCaptureCompleted) {
-          continue;
-        }
-        final transactionId = decoded['transactionId'] as String;
-        final localFileName = decoded['localFileName'] as String;
-        await validateEvidencePath(
-          directory,
-          localFileName,
-          message: 'Unsafe pending receipt source path.',
-        );
-        final evidence = _evidenceFromPendingStatementManifest(decoded);
-        if (evidence == null) {
-          throw const FormatException('Invalid pending receipt evidence.');
-        }
-        final captureId = name.substring(
-          'receipt-'.length,
-          name.length - '.json'.length,
-        );
-        captures.add(
-          PendingReceiptCapture(
-            captureId: captureId,
-            transactionId: transactionId,
-            source: PreservedEvidenceSource(
-              originalName: decoded['evidenceOriginalName'] as String,
-              localFileName: localFileName,
-              mediaType: decoded['evidenceMediaType'] as String,
-              sourceFingerprint: decoded['sourceFingerprint'] as String?,
+        try {
+          final decoded = jsonDecode(await entity.readAsString());
+          if (decoded is! Map<String, dynamic>) {
+            throw const FormatException('Invalid pending receipt manifest.');
+          }
+          _validatePendingReceiptManifest(decoded);
+          final state = decoded[_receiptCaptureStateKey] as String?;
+          if (state == _receiptCaptureCancelled ||
+              state == _receiptCaptureCompleted) {
+            continue;
+          }
+          final transactionId = decoded['transactionId'] as String;
+          final localFileName = decoded['localFileName'] as String;
+          await validateEvidencePath(
+            directory,
+            localFileName,
+            message: 'Unsafe pending receipt source path.',
+          );
+          final evidence = _evidenceFromPendingStatementManifest(decoded);
+          if (evidence == null) {
+            throw const FormatException('Invalid pending receipt evidence.');
+          }
+          final captureId = name.substring(
+            'receipt-'.length,
+            name.length - '.json'.length,
+          );
+          captures.add(
+            PendingReceiptCapture(
+              captureId: captureId,
+              transactionId: transactionId,
+              source: PreservedEvidenceSource(
+                originalName: decoded['evidenceOriginalName'] as String,
+                localFileName: localFileName,
+                mediaType: decoded['evidenceMediaType'] as String,
+                sourceFingerprint: decoded['sourceFingerprint'] as String?,
+              ),
+              plannedEvidence: evidence,
             ),
-            plannedEvidence: evidence,
-          ),
-        );
+          );
+        } on Object {
+          // Keep malformed journals for startup diagnostics and allow valid
+          // captures in the same directory to remain recoverable.
+        }
       }
       return captures;
     });
     return result;
   }
+
+  Future<List<PendingGenericCapture>> listPendingGenericCaptures({
+    String? captureKind,
+  }) async {
+    final result = await _runFinancialEvidenceMutation(() async {
+      final directory = await _pendingEvidenceDirectory();
+      if (!await directory.exists()) return const <PendingGenericCapture>[];
+      final specific = await _specificPendingJournalLocalFileNames(
+        directory,
+        failOnMalformed: false,
+      );
+      final captures = <PendingGenericCapture>[];
+      await for (final entity in directory.list(followLinks: false)) {
+        final name = path.basename(entity.path);
+        if (entity is! File ||
+            !name.endsWith('.json') ||
+            !name.startsWith('capture-')) {
+          continue;
+        }
+        try {
+          final decoded = jsonDecode(await entity.readAsString());
+          if (decoded is! Map<String, dynamic>) {
+            throw const FormatException('Invalid pending capture manifest.');
+          }
+          final localFileName = decoded['localFileName'];
+          final originalName = decoded['originalName'];
+          final mediaType = decoded['mediaType'];
+          final kind = decoded['captureKind'];
+          if (localFileName is! String ||
+              originalName is! String ||
+              mediaType is! String ||
+              (kind != null && kind is! String) ||
+              specific.contains(localFileName)) {
+            continue;
+          }
+          if (captureKind != null && kind != captureKind) continue;
+          await validateEvidencePath(
+            directory,
+            localFileName,
+            message: 'Unsafe pending capture source path.',
+          );
+          final pendingFile = File(path.join(directory.path, localFileName));
+          if (!await pendingFile.exists()) {
+            throw StateError('Pending capture source is unavailable.');
+          }
+          captures.add(
+            PendingGenericCapture(
+              source: PreservedEvidenceSource(
+                originalName: originalName,
+                localFileName: localFileName,
+                mediaType: mediaType,
+                sourceFingerprint: await sha256FileRange(pendingFile),
+              ),
+              captureKind: kind as String?,
+            ),
+          );
+        } on Object {
+          // Preserve malformed generic manifests for explicit startup
+          // diagnostics; valid captures remain listable.
+        }
+      }
+      return captures;
+    });
+    return result;
+  }
+
+  Future<bool> hasUnresolvedPendingCaptureJournals() async {
+    final result = await _runFinancialEvidenceMutation(() async {
+      final directory = await _pendingEvidenceDirectory();
+      if (!await directory.exists()) return false;
+      var unresolved = false;
+      await for (final entity in directory.list(followLinks: false)) {
+        if (entity is! File || !entity.path.endsWith('.json')) continue;
+        try {
+          final decoded = jsonDecode(await entity.readAsString());
+          if (decoded is! Map<String, dynamic>) {
+            unresolved = true;
+            continue;
+          }
+          final name = path.basename(entity.path);
+          if (name.startsWith('capture-')) {
+            final localFileName = decoded['localFileName'];
+            if (localFileName is! String ||
+                (decoded['captureKind'] != null &&
+                    decoded['captureKind'] is! String)) {
+              unresolved = true;
+            } else {
+              await validateEvidencePath(
+                directory,
+                localFileName,
+                message: 'Unsafe pending capture source path.',
+              );
+              if (!await File(
+                path.join(directory.path, localFileName),
+              ).exists()) {
+                unresolved = true;
+              }
+            }
+          } else if (name.startsWith('receipt-')) {
+            _validatePendingReceiptManifest(decoded);
+            await validateEvidencePath(
+              directory,
+              decoded['localFileName'] as String,
+              message: 'Unsafe pending receipt source path.',
+            );
+          } else if (name.startsWith('statement-')) {
+            _validatePendingStatementManifest(decoded);
+            await validateEvidencePath(
+              directory,
+              decoded['localFileName'] as String,
+              message: 'Unsafe pending statement source path.',
+            );
+          }
+        } on Object {
+          unresolved = true;
+        }
+      }
+      return unresolved;
+    });
+    return result;
+  }
+
+  Future<bool> discardPendingGenericCapture(PreservedEvidenceSource source) =>
+      _runFinancialEvidenceMutation(
+        () => _discardPreservedUnlocked(source).then((_) => true),
+      );
 
   Future<File> _pendingReceiptManifestFor(String captureId) async {
     final directory = await _pendingEvidenceDirectory();
@@ -1544,6 +1703,8 @@ final class LocalEvidenceStore {
       }
       final existing = [...listed.value];
       var recovered = 0;
+      Object? firstFailure;
+      StackTrace? firstFailureStack;
       await for (final entity in directory.list(followLinks: false)) {
         final name = path.basename(entity.path);
         if (entity is! File ||
@@ -1684,8 +1845,14 @@ final class LocalEvidenceStore {
         } on Object catch (error, stackTrace) {
           // Do not let orphan cleanup run after an unresolved journal failure.
           // The manifest and any source evidence remain for the next recovery.
-          Error.throwWithStackTrace(error, stackTrace);
+          if (firstFailure == null) {
+            firstFailure = error;
+            firstFailureStack = stackTrace;
+          }
         }
+      }
+      if (firstFailure != null) {
+        Error.throwWithStackTrace(firstFailure, firstFailureStack!);
       }
       return recovered;
     });
@@ -1823,24 +1990,30 @@ final class LocalEvidenceStore {
     final statements = finance.statementServices;
     if (statements == null) return null;
     final indexed = await statements.findBySourceFingerprint(fingerprint);
+    if (indexed is ApplicationFailure<FinancialStatement?>) {
+      throw StateError('Statement fingerprint lookup failed.');
+    }
     if (indexed case ApplicationSuccess<FinancialStatement?>(
       value: final item,
     ) when item != null) {
       return item;
     }
     final listed = await statements.list(includeArchived: true);
-    if (listed is! ApplicationSuccess<List<FinancialStatement>>) return null;
+    if (listed is! ApplicationSuccess<List<FinancialStatement>>) {
+      throw StateError('Statement fingerprint listing failed.');
+    }
     for (final item in listed.value) {
       final evidenceResult = await finance.getEvidence(item.evidenceId);
       if (evidenceResult is! ApplicationSuccess<EvidenceItem?> ||
-          evidenceResult.value == null ||
-          evidenceResult.value!.provenance.sourceId != null) {
-        continue;
+          evidenceResult.value == null) {
+        throw StateError('Statement fingerprint evidence lookup failed.');
       }
+      if (evidenceResult.value!.provenance.sourceId != null) continue;
       final file = await fileFor(evidenceResult.value!);
-      if (file != null && await file.exists()) {
-        if (await sha256FileRange(file) == fingerprint) return item;
+      if (file == null || !await file.exists()) {
+        throw StateError('Statement fingerprint source is unavailable.');
       }
+      if (await sha256FileRange(file) == fingerprint) return item;
     }
     return null;
   }
