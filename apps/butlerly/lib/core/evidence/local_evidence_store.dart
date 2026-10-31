@@ -560,6 +560,11 @@ final class LocalEvidenceStore {
             decoded['localFileName'] is! String) {
           throw FormatException('Malformed pending capture journal: $name');
         }
+        if (name.startsWith('receipt-')) {
+          _validatePendingReceiptManifest(decoded);
+        } else {
+          _validatePendingStatementManifest(decoded);
+        }
         final localFileName = await validateEvidencePath(
           directory,
           decoded['localFileName'] as String,
@@ -652,9 +657,16 @@ final class LocalEvidenceStore {
   ) => finance.removeEvidenceFromTransaction(transactionId, evidenceId);
 
   Future<int> recoverUnreferencedEvidence() async {
-    final result = await _runFinancialEvidenceMutation(
-      () => finance.recoverUnreferencedEvidence(),
-    );
+    final result = await _runFinancialEvidenceMutation(() async {
+      // An unresolved typed journal can own an evidence row before its
+      // transaction/statement reference is durable. Never let orphan
+      // cleanup delete that row or its live binary while recovery still has
+      // a source to resume.
+      if (await _hasUnresolvedSpecificCaptureJournalUnlocked()) {
+        return const ApplicationSuccess<int>(0);
+      }
+      return finance.recoverUnreferencedEvidence();
+    });
     if (result is ApplicationSuccess<int>) return result.value;
     if (result is ApplicationFailure<int>) {
       throw StateError(
@@ -663,6 +675,43 @@ final class LocalEvidenceStore {
       );
     }
     throw StateError('Evidence recovery returned an invalid result.');
+  }
+
+  Future<bool> _hasUnresolvedSpecificCaptureJournalUnlocked() async {
+    final directory = await _pendingEvidenceDirectory();
+    if (!await directory.exists()) return false;
+    await for (final entity in directory.list(followLinks: false)) {
+      if (entity is! File || !entity.path.endsWith('.json')) continue;
+      final name = path.basename(entity.path);
+      if (!name.startsWith('receipt-') && !name.startsWith('statement-')) {
+        continue;
+      }
+      try {
+        final decoded = jsonDecode(await entity.readAsString());
+        if (decoded is! Map<String, dynamic>) return true;
+        if (name.startsWith('receipt-')) {
+          _validatePendingReceiptManifest(decoded);
+        } else {
+          _validatePendingStatementManifest(decoded);
+        }
+        await validateEvidencePath(
+          directory,
+          decoded['localFileName'] as String,
+          message: 'Unsafe pending capture source path.',
+        );
+        final state = decoded[_receiptCaptureStateKey];
+        if (state == _receiptCaptureCompleted ||
+            state == _receiptCaptureCancelled) {
+          continue;
+        }
+        return true;
+      } on Object {
+        // Uncertainty is itself a reason to retain all evidence until the
+        // journal is repaired or explicitly cancelled.
+        return true;
+      }
+    }
+    return false;
   }
 
   /// Called by the finance use cases before SQLite metadata cleanup. The

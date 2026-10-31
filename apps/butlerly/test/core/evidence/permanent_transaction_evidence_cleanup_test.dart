@@ -164,6 +164,13 @@ void main() {
       final pending = Directory('${evidenceDirectory.path}.pending');
       final malformed = File(path.join(pending.path, 'receipt-unrelated.json'));
       await malformed.writeAsString('{not-json', flush: true);
+      final malformedWithSource = File(
+        path.join(pending.path, 'receipt-partial.json'),
+      );
+      await malformedWithSource.writeAsString(
+        jsonEncode({'localFileName': preserved.localFileName}),
+        flush: true,
+      );
 
       await expectLater(
         store.recoverUnclaimedPendingCaptures(),
@@ -171,7 +178,7 @@ void main() {
           isA<FormatException>().having(
             (error) => error.message,
             'message',
-            contains('receipt-unrelated.json'),
+            contains('receipt-'),
           ),
         ),
       );
@@ -186,13 +193,17 @@ void main() {
         isTrue,
       );
       expect(await malformed.exists(), isTrue);
+      expect(await malformedWithSource.exists(), isTrue);
       final visible = await store.listPendingGenericCaptures();
       expect(visible, hasLength(1));
       expect(visible.single.source.localFileName, preserved.localFileName);
       final issues = await store.listPendingCaptureJournalIssues();
-      expect(issues, hasLength(1));
-      expect(issues.single.fileName, 'receipt-unrelated.json');
-      expect(issues.single.message, isNotEmpty);
+      expect(issues, hasLength(2));
+      expect(
+        issues.map((issue) => issue.fileName),
+        containsAll(['receipt-partial.json', 'receipt-unrelated.json']),
+      );
+      expect(issues.every((issue) => issue.message.isNotEmpty), isTrue);
     },
   );
 
@@ -758,6 +769,54 @@ void main() {
           database.persistenceDatabase,
         ).listForTransaction(transaction.id),
         hasLength(1),
+      );
+    },
+  );
+
+  test(
+    'unresolved receipt journal protects orphan evidence across restart',
+    () async {
+      final sourceFile = File(path.join(root.path, 'receipt-orphan.png'));
+      await sourceFile.writeAsBytes([6, 5, 4], flush: true);
+      final store = services<LocalEvidenceStore>();
+      final source = await store.preserve(
+        XFile(sourceFile.path, name: 'receipt-orphan.png'),
+        captureKind: 'receipt',
+      );
+      const captureId = 'receipt-orphan-capture';
+      final planned = await store.preparePendingReceiptCapture(
+        transactionId: captureId,
+        source: source,
+      );
+      final liveFile = File(
+        path.join(evidenceDirectory.path, source.localFileName),
+      );
+      await evidenceDirectory.create(recursive: true);
+      await liveFile.writeAsBytes([6, 5, 4], flush: true);
+      await SqliteEvidenceRepository(
+        database.persistenceDatabase,
+      ).save(planned);
+
+      await database.close();
+      await services.reset();
+      await database.initialize();
+      configureDependencies(
+        configuration: const AppConfiguration(),
+        database: database,
+        logger: AppLogger(),
+        documentsDirectory: Directory(path.join(root.path, 'documents')),
+        localEvidenceDirectory: evidenceDirectory,
+      );
+
+      final afterRestart = services<LocalEvidenceStore>();
+      expect(await afterRestart.recoverPendingReceiptCaptures(), 0);
+      expect(await afterRestart.recoverUnreferencedEvidence(), 0);
+      expect(await liveFile.exists(), isTrue);
+      expect(
+        await SqliteEvidenceRepository(
+          database.persistenceDatabase,
+        ).findById(planned.id),
+        isNotNull,
       );
     },
   );

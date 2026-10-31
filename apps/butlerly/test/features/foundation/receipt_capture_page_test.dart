@@ -158,6 +158,7 @@ void main() {
     final finance = _finance(transactions);
     final fixturePath = _fixturePath();
     final source = XFile(fixturePath, name: 'receipt.png');
+    var cancelled = false;
 
     _resetView(tester);
 
@@ -171,6 +172,10 @@ void main() {
           fileForPreserved: (_) async => File(fixturePath),
           discardPreserved: (_) async {},
           attachPreserved: (_, _) async => null,
+          cancelPendingReceiptCapture: (_) async {
+            cancelled = true;
+            return true;
+          },
           ocr: (_) async => _recognizedReceipt(),
           preparePendingReceipt: (_, _) async {},
           completePendingReceipt: (_) async => true,
@@ -189,6 +194,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(transactions.values, isEmpty);
+    expect(cancelled, isFalse);
     expect(find.byType(ReceiptCapturePage), findsOneWidget);
     expect(find.text('Evidence could not be stored.'), findsOneWidget);
     expect(find.text('Save receipt transaction'), findsOneWidget);

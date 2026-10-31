@@ -1127,12 +1127,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
             );
           }
           final rolledBack = await _rollbackCreatedTransaction(result.value.id);
-          if (rolledBack) {
-            // A confirmed rollback is an explicit deletion. Only this path,
-            // or an explicit recovery cancellation, may discard the
-            // never-published receipt source.
-            await _cancelPendingReceipt(transactionId);
-          }
+          // Keep the capture journal even after a confirmed automatic
+          // rollback. The source is still recoverable user data; only the
+          // explicit recovery discard path may retire it.
           return (
             result: result,
             evidence: null,
