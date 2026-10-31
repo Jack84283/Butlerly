@@ -227,6 +227,88 @@ void main() {
   );
 
   test(
+    'encrypted backup preserves historical findings after transaction deletion',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final rules = SqliteAnalysisRuleRepository(
+        fixture.database.persistenceDatabase,
+      );
+      final installation = await installBundledAnalysisRules(
+        InstallBuiltInRules(rules),
+      );
+      expect(installation.diagnostics, isEmpty);
+      final definition = (await fixture.database.database.query(
+        'analysis_rule_definitions',
+        where: 'rule_id = ?',
+        whereArgs: ['ANL-R001'],
+        limit: 1,
+      )).single;
+      await fixture.insertTransaction('tx-deleted-for-finding-351');
+      await _insertFinding(
+        fixture,
+        id: 'finding-historical-351',
+        lifecycle: 'dismissed',
+        definitionHash: definition['definition_hash']! as String,
+        ruleVersion: definition['rule_version']! as String,
+        payload: jsonEncode({
+          'evidence': [
+            {'transactionId': 'tx-deleted-for-finding-351'},
+          ],
+        }),
+      );
+      await SqliteTransactionRepository(
+        fixture.database.persistenceDatabase,
+      ).removePermanently(TransactionId('tx-deleted-for-finding-351'));
+
+      final plain = File(
+        path.join(fixture.root.path, 'historical-finding.butlerlybackup'),
+      );
+      final encrypted = File(
+        path.join(fixture.root.path, 'historical-finding.butlerly'),
+      );
+      await fixture.manager.createBackup(plain);
+      const password = 'correct horse battery staple';
+      await const BackupEncryption().encrypt(
+        plain,
+        encrypted,
+        password: password,
+      );
+      await fixture.database.database.delete(
+        'analysis_findings',
+        where: 'id = ?',
+        whereArgs: ['finding-historical-351'],
+      );
+
+      await fixture.manager.restore(
+        encrypted,
+        mode: LocalRestoreMode.replace,
+        password: password,
+      );
+
+      final restored = (await fixture.database.database.query(
+        'analysis_findings',
+        where: 'id = ?',
+        whereArgs: ['finding-historical-351'],
+      )).single;
+      expect(restored['lifecycle'], 'dismissed');
+      expect(jsonDecode(restored['payload']! as String), {
+        'evidence': [
+          {'transactionId': 'tx-deleted-for-finding-351'},
+        ],
+      });
+      expect(
+        await fixture.database.database.query(
+          'transactions',
+          where: 'id = ?',
+          whereArgs: ['tx-deleted-for-finding-351'],
+        ),
+        isEmpty,
+      );
+    },
+  );
+
+  test(
     'restore rejects malformed analysis definitions and findings before mutation',
     () async {
       final fixture = await _Fixture.create();
@@ -2641,6 +2723,7 @@ Future<void> _insertFinding(
   required String lifecycle,
   String definitionHash = 'test-hash',
   String ruleVersion = '1.0.0',
+  String payload = '{}',
 }) async {
   final now = DateTime.utc(2026, 10, 30).toIso8601String();
   await fixture.database.database.insert('analysis_findings', {
@@ -2651,7 +2734,7 @@ Future<void> _insertFinding(
     'period_start': '2026-10-01',
     'period_end': '2026-10-30',
     'time_zone_id': 'UTC',
-    'payload': '{}',
+    'payload': payload,
     'lifecycle': lifecycle,
     'generated_at': now,
     'updated_at': now,

@@ -2435,6 +2435,7 @@ final class LocalBackupManager {
         sourceSchema,
         index,
         payload,
+        allowMissingReferences: lifecycle != FindingLifecycle.active.name,
         transactionIds: transactionIds,
         evidenceIds: evidenceIds,
         attachmentPairs: attachmentPairs,
@@ -2482,6 +2483,7 @@ final class LocalBackupManager {
     int sourceSchema,
     int index,
     Map<String, dynamic> payload, {
+    required bool allowMissingReferences,
     required Set<String> transactionIds,
     required Set<String> evidenceIds,
     required Set<String> attachmentPairs,
@@ -2570,6 +2572,7 @@ final class LocalBackupManager {
       attachmentPairs: attachmentPairs,
       field: 'evidence',
       requireTransaction: true,
+      allowMissingReferences: allowMissingReferences,
     );
     _validateFindingEvidence(
       sourceSchema,
@@ -2580,6 +2583,7 @@ final class LocalBackupManager {
       attachmentPairs: attachmentPairs,
       field: 'qualityIssues',
       requireTransaction: false,
+      allowMissingReferences: allowMissingReferences,
     );
   }
 
@@ -2592,6 +2596,7 @@ final class LocalBackupManager {
     required Set<String> attachmentPairs,
     required String field,
     required bool requireTransaction,
+    required bool allowMissingReferences,
   }) {
     if (raw == null) return;
     if (raw is! List) {
@@ -2608,9 +2613,7 @@ final class LocalBackupManager {
         );
       }
       final transactionId = item['transactionId'];
-      if (requireTransaction &&
-          (transactionId is! String ||
-              !transactionIds.contains(transactionId))) {
+      if (requireTransaction && transactionId is! String) {
         throw FormatException(
           'Backup schema $sourceSchema table "analysis_findings" row $index '
           'references a missing transaction from $field.',
@@ -2618,28 +2621,52 @@ final class LocalBackupManager {
       }
       if (!requireTransaction &&
           transactionId != null &&
-          (transactionId is! String ||
-              !transactionIds.contains(transactionId))) {
+          transactionId is! String) {
+        throw FormatException(
+          'Backup schema $sourceSchema table "analysis_findings" row $index '
+          'references a missing transaction from $field.',
+        );
+      }
+      if (transactionId is String &&
+          !allowMissingReferences &&
+          !transactionIds.contains(transactionId)) {
         throw FormatException(
           'Backup schema $sourceSchema table "analysis_findings" row $index '
           'references a missing transaction from $field.',
         );
       }
       final evidenceId = item['evidenceId'];
-      if (evidenceId != null &&
-          (evidenceId is! String || !evidenceIds.contains(evidenceId))) {
+      if (evidenceId != null && evidenceId is! String) {
         throw FormatException(
           'Backup schema $sourceSchema table "analysis_findings" row $index '
           'references missing evidence from $field.',
         );
       }
-      if (evidenceId != null &&
-          (transactionId is! String ||
-              !attachmentPairs.contains('$transactionId:$evidenceId'))) {
+      if (evidenceId is String &&
+          !allowMissingReferences &&
+          !evidenceIds.contains(evidenceId)) {
+        throw FormatException(
+          'Backup schema $sourceSchema table "analysis_findings" row $index '
+          'references missing evidence from $field.',
+        );
+      }
+      if (evidenceId is String && transactionId is! String) {
         throw FormatException(
           'Backup schema $sourceSchema table "analysis_findings" row $index '
           'references an unlinked evidence item from $field.',
         );
+      }
+      if (evidenceId is String) {
+        final referencesMissingEntity =
+            !transactionIds.contains(transactionId) ||
+            !evidenceIds.contains(evidenceId);
+        if ((!allowMissingReferences || !referencesMissingEntity) &&
+            !attachmentPairs.contains('$transactionId:$evidenceId')) {
+          throw FormatException(
+            'Backup schema $sourceSchema table "analysis_findings" row $index '
+            'references an unlinked evidence item from $field.',
+          );
+        }
       }
       if (field == 'qualityIssues' &&
           (item['code'] is! String || item['detail'] is! String)) {
