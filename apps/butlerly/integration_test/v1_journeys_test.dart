@@ -1661,6 +1661,138 @@ void main() {
     },
   );
 
+  testWidgets(
+    'production statement capture correction, duplicate review, and restart stay durable',
+    (tester) async {
+      final source = paymentSource(
+        'statement-ui-duplicate-source-e2e',
+        'Statement UI duplicate',
+      );
+      expect(
+        await harness.finance.savePaymentSource(source),
+        isA<ApplicationSuccess<PaymentSource>>(),
+      );
+      expect(
+        await harness.finance.createTransaction(
+          manualCommand(
+            id: 'statement-ui-existing-e2e',
+            description: 'Imported UI Market',
+            date: '2026-09-20',
+            amount: '42.10',
+            paymentSourceId: source.id.value,
+          ),
+        ),
+        isA<ApplicationSuccess<TransactionDto>>(),
+      );
+      final statementFile = File(
+        path.join(harness.root.path, 'statement-ui-duplicate.png'),
+      )..writeAsBytesSync([7, 8, 9]);
+      await harness.finance.saveUserPreference(
+        UserPreference(
+          locale: 'en',
+          formattingLocale: 'en-US',
+          regionCode: 'US',
+          baseCurrency: CurrencyCode('USD'),
+          timeZoneId: 'UTC',
+          firstUseCompleted: true,
+        ),
+      );
+      await services.unregister<OcrRecognizer>();
+      services.registerSingleton<OcrRecognizer>(
+        _FixtureStatementOcrRecognizer(),
+      );
+
+      final originalSelector = FileSelectorPlatform.instance;
+      FileSelectorPlatform.instance = _FixtureFileSelector(
+        XFile(statementFile.path),
+      );
+      addTearDown(() => FileSelectorPlatform.instance = originalSelector);
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      appRouter.go('/statements');
+      await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Import data').first);
+      for (var attempt = 0; attempt < 100; attempt++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 20)),
+        );
+        await tester.pump();
+        if (find.byType(ListTile).evaluate().isNotEmpty) break;
+      }
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(ListTile));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Imported UI Market'), findsOneWidget);
+
+      await tester.tap(find.text('Edit').first);
+      await tester.pumpAndSettle();
+      final descriptionField = find.byWidgetPredicate(
+        (widget) =>
+            widget is TextField &&
+            widget.decoration?.labelText == 'Description',
+      );
+      expect(descriptionField, findsOneWidget);
+      await tester.enterText(descriptionField, 'Corrected UI Market');
+      await tester.tap(find.text('Save corrections'));
+      await tester.pumpAndSettle();
+      expect(find.text('Corrected UI Market'), findsOneWidget);
+
+      await tester.tap(find.text('Import data').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Import data').last);
+      await tester.pumpAndSettle();
+      expect(find.text('Review').last, findsOneWidget);
+      await tester.tap(find.text('Review').last);
+      await tester.pumpAndSettle();
+      expect(
+        appRouter.routeInformationProvider.value.uri.toString(),
+        '/review?view=duplicates',
+      );
+      expect(
+        find.byKey(const ValueKey('butlerly-bottom-sheet-surface')),
+        findsNothing,
+      );
+      expect(find.text('Possible duplicate group'), findsOneWidget);
+
+      await tester.tap(find.byType(Radio<TransactionId>));
+      await tester.pump();
+      await tester.tap(find.text('Link'));
+      await tester.pumpAndSettle();
+      expect(find.text('No possible duplicates found'), findsOneWidget);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+      await harness.restart();
+      final statements =
+          (await harness.finance.statementServices!.list()
+                  as ApplicationSuccess<List<FinancialStatement>>)
+              .value;
+      final rows =
+          (await harness.finance.statementServices!.rows(statements.single.id)
+                  as ApplicationSuccess<List<StatementRow>>)
+              .value;
+      expect(rows.single.status, StatementRowStatus.linked);
+      expect(rows.single.transactionId, 'statement-ui-existing-e2e');
+      expect(
+        (await harness.finance.listDuplicateCandidateGroups!()
+                as ApplicationSuccess<List<DuplicateCandidateGroup>>)
+            .value,
+        isEmpty,
+      );
+      final transactions =
+          (await harness.finance.listTransactions(
+                    const ListTransactionsQuery(text: 'Imported UI Market'),
+                  )
+                  as ApplicationSuccess<List<TransactionDto>>)
+              .value;
+      expect(transactions, hasLength(1));
+    },
+  );
+
   test(
     'unsupported native OCR is an explicit recoverable platform failure',
     () async {

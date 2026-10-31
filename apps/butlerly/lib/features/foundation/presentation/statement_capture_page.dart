@@ -1714,7 +1714,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
       value: final summary,
     )) {
       notifyTransactionChanged();
-      await showButlerlyBottomSheet<void>(
+      final reviewRequested = await showButlerlyBottomSheet<bool>(
         context: context,
         builder: (context) => ButlerlySheet(
           title: Text(context.l10n.text('importSummary')),
@@ -1731,11 +1731,10 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                     summary.failed > 0 ||
                     summary.needsReview > 0 ||
                     summary.possibleDuplicates > 0;
-                if (hasReviewItems) {
-                  context.go(statementImportReviewRoute(summary));
-                } else {
-                  Navigator.pop(context);
-                }
+                // Close the summary sheet before changing routes. Returning
+                // the intent lets the caller navigate after the modal route
+                // has fully completed instead of leaving a sheet above Review.
+                Navigator.pop(context, hasReviewItems);
               },
               child: Text(
                 context.l10n.text(
@@ -1754,7 +1753,12 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
           ],
         ),
       );
-      if (mounted) context.pop();
+      if (!mounted) return;
+      if (reviewRequested == true) {
+        context.go(statementImportReviewRoute(summary));
+      } else {
+        context.pop();
+      }
     }
   }
 
