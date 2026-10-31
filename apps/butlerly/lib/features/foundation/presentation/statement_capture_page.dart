@@ -144,8 +144,8 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
   PreservedEvidenceSource? _preserved;
   String? _pendingStatementId;
   PreservedEvidenceSource? _retrySourceOverride;
-  PendingGenericCapture? _pendingGenericRecovery;
-  bool _pendingRecoveryWarning = false;
+  List<PendingGenericCapture> _pendingGenericRecoveries = const [];
+  List<PendingCaptureJournalIssue> _pendingRecoveryIssues = const [];
   StatementServices get statement =>
       services<FinanceServices>().statementServices!;
 
@@ -210,30 +210,41 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
       final pending = await store.listPendingGenericCaptures(
         captureKind: 'statement',
       );
-      final warning = await store.hasUnresolvedPendingCaptureJournals();
+      final issues = await store.listPendingCaptureJournalIssues();
       if (!mounted) return;
       setState(() {
-        _pendingGenericRecovery = pending.firstOrNull;
-        _pendingRecoveryWarning = warning;
+        _pendingGenericRecoveries = pending;
+        _pendingRecoveryIssues = issues;
       });
     } catch (_) {
-      if (mounted) setState(() => _pendingRecoveryWarning = true);
+      if (mounted) {
+        setState(
+          () => _pendingRecoveryIssues = const [
+            PendingCaptureJournalIssue(
+              fileName: 'pending-capture-scan',
+              message: 'Pending capture records could not be inspected.',
+            ),
+          ],
+        );
+      }
     }
   }
 
-  Future<void> _discardPendingGenericRecovery() async {
-    final pending = _pendingGenericRecovery;
-    if (pending == null) return;
+  Future<void> _discardPendingGenericRecovery(
+    PendingGenericCapture pending,
+  ) async {
     try {
       if (await services<LocalEvidenceStore>().discardPendingGenericCapture(
             pending.source,
           ) &&
           mounted) {
-        setState(() => _pendingGenericRecovery = null);
         _message(context.l10n.text('statementRecoveryDiscarded'));
+        await _loadPendingGenericRecovery();
       }
     } catch (_) {
-      _message(context.l10n.text('statementProcessingFailed'));
+      if (mounted) {
+        _message(context.l10n.text('statementProcessingFailed'));
+      }
     }
   }
 
@@ -558,6 +569,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
         l10n.text('statementProcessingFailed'),
         retrySource: _retrySourceOverride ?? preserved,
       );
+      await _loadPendingGenericRecovery();
       return false;
     }
   }
@@ -952,7 +964,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     );
     final recoveryBody = Column(
       children: [
-        if (_pendingRecoveryWarning)
+        if (_pendingRecoveryIssues.isNotEmpty)
           Card(
             margin: const EdgeInsets.fromLTRB(
               ButlerlySpacing.pagePadding,
@@ -962,10 +974,33 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
             ),
             child: Padding(
               padding: const EdgeInsets.all(ButlerlySpacing.standard),
-              child: Text(context.l10n.text('statementRecoveryWarning')),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(context.l10n.text('statementRecoveryWarning')),
+                  for (final issue in _pendingRecoveryIssues)
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        top: ButlerlySpacing.compact,
+                      ),
+                      child: Text(
+                        '${issue.fileName}: ${issue.message}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                  const SizedBox(height: ButlerlySpacing.compact),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: TextButton(
+                      onPressed: _loadPendingGenericRecovery,
+                      child: Text(context.l10n.text('retry')),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        if (_pendingGenericRecovery != null)
+        for (final pending in _pendingGenericRecoveries)
           Card(
             margin: const EdgeInsets.fromLTRB(
               ButlerlySpacing.pagePadding,
@@ -992,9 +1027,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                         onPressed: _busy
                             ? null
                             : () async {
-                                await _retryPreserved(
-                                  _pendingGenericRecovery!.source,
-                                );
+                                await _retryPreserved(pending.source);
                                 await _loadPendingGenericRecovery();
                               },
                         child: Text(
@@ -1002,7 +1035,8 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                         ),
                       ),
                       TextButton(
-                        onPressed: _discardPendingGenericRecovery,
+                        onPressed: () =>
+                            _discardPendingGenericRecovery(pending),
                         child: Text(
                           context.l10n.text('statementRecoveryCancel'),
                         ),

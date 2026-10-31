@@ -189,6 +189,10 @@ void main() {
       final visible = await store.listPendingGenericCaptures();
       expect(visible, hasLength(1));
       expect(visible.single.source.localFileName, preserved.localFileName);
+      final issues = await store.listPendingCaptureJournalIssues();
+      expect(issues, hasLength(1));
+      expect(issues.single.fileName, 'receipt-unrelated.json');
+      expect(issues.single.message, isNotEmpty);
     },
   );
 

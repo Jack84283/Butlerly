@@ -50,6 +50,21 @@ final class PendingGenericCapture {
   final String? captureKind;
 }
 
+/// A pending-capture journal that could not be trusted during recovery.
+///
+/// The source files remain untouched when an issue is reported. This is
+/// intentionally diagnostic rather than a cleanup instruction: an uncertain
+/// journal must never authorize destructive deletion of a user's evidence.
+final class PendingCaptureJournalIssue {
+  const PendingCaptureJournalIssue({
+    required this.fileName,
+    required this.message,
+  });
+
+  final String fileName;
+  final String message;
+}
+
 const _receiptCaptureStateKey = 'captureState';
 const _receiptCapturePrepared = 'prepared';
 const _receiptCaptureAwaitingTransaction = 'awaitingTransaction';
@@ -1564,59 +1579,98 @@ final class LocalEvidenceStore {
   }
 
   Future<bool> hasUnresolvedPendingCaptureJournals() async {
-    final result = await _runFinancialEvidenceMutation(() async {
+    return (await listPendingCaptureJournalIssues()).isNotEmpty;
+  }
+
+  /// Returns actionable, non-destructive diagnostics for journals that could
+  /// not be parsed or safely associated with a pending source.
+  ///
+  /// The directory is scanned under the same evidence mutation lock as all
+  /// other pending-capture operations. A malformed journal is reported by its
+  /// own filename, so it cannot make every other pending source appear
+  /// referenced or silently hide unrelated orphan files.
+  Future<List<PendingCaptureJournalIssue>>
+  listPendingCaptureJournalIssues() async {
+    return _runFinancialEvidenceMutation(() async {
       final directory = await _pendingEvidenceDirectory();
-      if (!await directory.exists()) return false;
-      var unresolved = false;
-      await for (final entity in directory.list(followLinks: false)) {
-        if (entity is! File || !entity.path.endsWith('.json')) continue;
+      if (!await directory.exists()) {
+        return const <PendingCaptureJournalIssue>[];
+      }
+      final files = await directory
+          .list(followLinks: false)
+          .where((entity) => entity is File && entity.path.endsWith('.json'))
+          .toList();
+      files.sort(
+        (a, b) => path.basename(a.path).compareTo(path.basename(b.path)),
+      );
+      final issues = <PendingCaptureJournalIssue>[];
+      for (final entity in files) {
+        final file = entity as File;
+        final fileName = path.basename(file.path);
         try {
-          final decoded = jsonDecode(await entity.readAsString());
+          final decoded = jsonDecode(await file.readAsString());
           if (decoded is! Map<String, dynamic>) {
-            unresolved = true;
-            continue;
+            throw const FormatException('Journal is not a JSON object.');
           }
-          final name = path.basename(entity.path);
-          if (name.startsWith('capture-')) {
+          if (fileName.startsWith('capture-')) {
             final localFileName = decoded['localFileName'];
             if (localFileName is! String ||
                 (decoded['captureKind'] != null &&
                     decoded['captureKind'] is! String)) {
-              unresolved = true;
-            } else {
-              await validateEvidencePath(
-                directory,
-                localFileName,
-                message: 'Unsafe pending capture source path.',
+              throw const FormatException(
+                'Generic capture fields are invalid.',
               );
-              if (!await File(
-                path.join(directory.path, localFileName),
-              ).exists()) {
-                unresolved = true;
-              }
             }
-          } else if (name.startsWith('receipt-')) {
-            _validatePendingReceiptManifest(decoded);
             await validateEvidencePath(
               directory,
-              decoded['localFileName'] as String,
+              localFileName,
+              message: 'Unsafe pending capture source path.',
+            );
+            if (!await File(
+              path.join(directory.path, localFileName),
+            ).exists()) {
+              throw StateError('Pending capture source is missing.');
+            }
+          } else if (fileName.startsWith('receipt-')) {
+            _validatePendingReceiptManifest(decoded);
+            final localFileName = decoded['localFileName'] as String;
+            await validateEvidencePath(
+              directory,
+              localFileName,
               message: 'Unsafe pending receipt source path.',
             );
-          } else if (name.startsWith('statement-')) {
+            if (!await File(
+              path.join(directory.path, localFileName),
+            ).exists()) {
+              throw StateError('Pending receipt source is missing.');
+            }
+          } else if (fileName.startsWith('statement-')) {
             _validatePendingStatementManifest(decoded);
+            final localFileName = decoded['localFileName'] as String;
             await validateEvidencePath(
               directory,
-              decoded['localFileName'] as String,
+              localFileName,
               message: 'Unsafe pending statement source path.',
             );
+            if (!await File(
+              path.join(directory.path, localFileName),
+            ).exists()) {
+              throw StateError('Pending statement source is missing.');
+            }
+          } else {
+            throw const FormatException('Unrecognized pending journal name.');
           }
-        } on Object {
-          unresolved = true;
+        } on Object catch (error) {
+          final message = error is FormatException
+              ? error.message.toString()
+              : error.toString().replaceFirst('StateError: ', '');
+          issues.add(
+            PendingCaptureJournalIssue(fileName: fileName, message: message),
+          );
         }
       }
-      return unresolved;
+      return issues;
     });
-    return result;
   }
 
   Future<bool> discardPendingGenericCapture(PreservedEvidenceSource source) =>

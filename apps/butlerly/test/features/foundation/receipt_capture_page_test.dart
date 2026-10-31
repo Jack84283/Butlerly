@@ -196,6 +196,87 @@ void main() {
   });
 
   testWidgets(
+    'failed replacement keeps the existing review values when cancellation fails',
+    (tester) async {
+      final finance = _finance(_ReceiptTransactionRepository());
+      final fixturePath = _fixturePath();
+      final source = XFile(fixturePath, name: 'receipt.png');
+      var ocrCount = 0;
+      var cancelCount = 0;
+      final pendingCapture = PendingReceiptCapture(
+        captureId: 'receipt-replacement-recovery',
+        transactionId: 'receipt-replacement-transaction',
+        source: _preservedReceipt,
+        plannedEvidence: _receiptEvidence('receipt-replacement-evidence'),
+      );
+      final pending = <PendingReceiptCapture>[pendingCapture];
+
+      _resetView(tester);
+      tester.view.physicalSize = const Size(800, 1200);
+      tester.view.devicePixelRatio = 1;
+      await tester.pumpWidget(
+        _localizedApp(
+          ReceiptCapturePage(
+            finance: finance,
+            evidenceStore: _evidenceStore(finance),
+            pickImage: (_) async => source,
+            preserveEvidence: (_) async => _preservedReceipt,
+            fileForPreserved: (_) async => File(fixturePath),
+            discardPreserved: (_) async {},
+            preparePendingReceipt: (_, _) async {},
+            cancelPendingReceiptCapture: (_) async {
+              cancelCount++;
+              return false;
+            },
+            completePendingReceipt: (_) async => true,
+            listPendingReceiptCaptures: () async => pending,
+            ocr: (_) async {
+              ocrCount++;
+              return _recognizedReceipt();
+            },
+            loadInitialData: _emptyInitialData,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Resume receipt'));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
+      for (var index = 0; index < 10; index++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+
+      final replace = find.widgetWithText(TextButton, 'Replace');
+      expect(replace, findsOneWidget);
+      await tester.ensureVisible(replace);
+      await tester.tap(replace);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      final useReceipt = find.widgetWithText(FilledButton, 'Use receipt');
+      await tester.ensureVisible(useReceipt);
+      await tester.pump();
+      await tester.tap(useReceipt);
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
+      for (var index = 0; index < 10; index++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+
+      expect(cancelCount, 1);
+      expect(ocrCount, 1);
+      expect(pending, hasLength(1));
+      expect(find.text('12.34'), findsOneWidget);
+      expect(
+        find.text('Receipt could not be stored locally. Please retry.'),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'surfaces an interrupted receipt capture and allows explicit discard',
     (tester) async {
       final finance = _finance(_ReceiptTransactionRepository());
@@ -218,7 +299,16 @@ void main() {
           createdAt: DateTime.utc(2026, 9, 15),
         ),
       );
-      var pending = <PendingReceiptCapture>[pendingCapture];
+      final secondPendingCapture = PendingReceiptCapture(
+        captureId: 'receipt-recovery-ui-second',
+        transactionId: 'receipt-recovery-transaction-second',
+        source: _preservedReceipt,
+        plannedEvidence: _receiptEvidence('evidence-recovery-ui-second'),
+      );
+      var pending = <PendingReceiptCapture>[
+        pendingCapture,
+        secondPendingCapture,
+      ];
       var cancelled = false;
 
       _resetView(tester);
@@ -230,7 +320,7 @@ void main() {
             listPendingReceiptCaptures: () async => pending,
             cancelPendingReceiptCapture: (captureId) async {
               cancelled = captureId == pendingCapture.captureId;
-              pending = [];
+              pending = pending.skip(1).toList(growable: false);
               return cancelled;
             },
             loadInitialData: _emptyInitialData,
@@ -239,17 +329,18 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      expect(find.text('Receipt capture needs review'), findsNWidgets(2));
+      expect(find.text('Resume receipt'), findsNWidgets(2));
+      expect(find.text('Discard capture'), findsNWidgets(2));
+
+      await tester.tap(find.text('Discard capture').first);
+      await tester.pump();
+      await tester.pump();
+
       expect(find.text('Receipt capture needs review'), findsOneWidget);
       expect(find.text('Resume receipt'), findsOneWidget);
-      expect(find.text('Discard capture'), findsOneWidget);
-
-      await tester.tap(find.text('Discard capture'));
-      await tester.pump();
-      await tester.pump();
-
-      expect(find.text('Receipt capture needs review'), findsNothing);
       expect(cancelled, isTrue);
-      expect(pending, isEmpty);
+      expect(pending, hasLength(1));
       expect(tester.takeException(), isNull);
     },
   );

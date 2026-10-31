@@ -133,8 +133,6 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   bool _processing = false;
   bool _captureInFlight = false;
   bool _saving = false;
-  bool _committed = false;
-  bool _retainPreservedForRecovery = false;
   String? _pendingReceiptCaptureId;
   EvidenceItem? _plannedPendingEvidence;
   String? _merchantId;
@@ -149,9 +147,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   List<Tag> _tags = const [];
   List<PaymentSource> _sources = const [];
   TransactionMasterDataSnapshot? _masterDataSnapshot;
-  PendingReceiptCapture? _pendingReceiptRecovery;
-  PendingGenericCapture? _pendingGenericRecovery;
-  bool _pendingRecoveryWarning = false;
+  List<PendingReceiptCapture> _pendingReceiptRecoveries = const [];
+  List<PendingGenericCapture> _pendingGenericRecoveries = const [];
+  List<PendingCaptureJournalIssue> _pendingRecoveryIssues = const [];
   TransactionMasterData get _masterData =>
       _masterDataSnapshot?.presentation ?? const TransactionMasterData();
 
@@ -168,18 +166,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
 
   @override
   void dispose() {
-    final preserveForRecovery =
-        _retainPreservedForRecovery ||
-        _saving ||
-        _processing ||
-        _captureInFlight;
-    final pendingCaptureId = _pendingReceiptCaptureId;
-    if (pendingCaptureId != null && !preserveForRecovery) {
-      unawaited(_cancelPendingReceipt(pendingCaptureId));
-    }
-    if (!_committed && !preserveForRecovery && _preserved != null) {
-      unawaited(_discard(_preserved!));
-    }
+    // A source with no committed transaction remains recoverable after route
+    // disposal. Only the explicit recovery discard or a completed save may
+    // retire its journal and pending binary.
     _amount.dispose();
     _currency.dispose();
     _merchantRaw.removeListener(_handleDescriptionChanged);
@@ -258,18 +247,26 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
           : await evidenceStore.listPendingGenericCaptures(
               captureKind: 'receipt',
             );
-      final warning = widget.listPendingReceiptCaptures != null
-          ? false
-          : await evidenceStore.hasUnresolvedPendingCaptureJournals();
+      final issues = widget.listPendingReceiptCaptures != null
+          ? const <PendingCaptureJournalIssue>[]
+          : await evidenceStore.listPendingCaptureJournalIssues();
       if (!mounted) return;
-      if (pending.isEmpty && generic.isEmpty && !warning) return;
       setState(() {
-        _pendingReceiptRecovery = pending.firstOrNull;
-        _pendingGenericRecovery = generic.firstOrNull;
-        _pendingRecoveryWarning = warning;
+        _pendingReceiptRecoveries = pending;
+        _pendingGenericRecoveries = generic;
+        _pendingRecoveryIssues = issues;
       });
     } catch (_) {
-      if (mounted) setState(() => _pendingRecoveryWarning = true);
+      if (mounted) {
+        setState(
+          () => _pendingRecoveryIssues = const [
+            PendingCaptureJournalIssue(
+              fileName: 'pending-capture-scan',
+              message: 'Pending capture records could not be inspected.',
+            ),
+          ],
+        );
+      }
     }
   }
 
@@ -380,11 +377,8 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
           ? await evidenceStore.preserve(source, captureKind: 'receipt')
           : await widget.preserveEvidence!(source);
       final captured = preserved;
-      _preserved = captured;
       captureId = 'transaction-${DateTime.now().microsecondsSinceEpoch}';
       final planned = await _preparePendingReceipt(captureId, captured);
-      _pendingReceiptCaptureId = captureId;
-      _plannedPendingEvidence = planned;
       stableFile = widget.fileForPreserved == null
           ? await evidenceStore.fileForPreserved(captured)
           : await widget.fileForPreserved!(captured);
@@ -392,22 +386,30 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         throw const FileSystemException('Preserved receipt is unavailable.');
       }
       if (previousCaptureId != null) {
-        await _cancelPendingReceipt(previousCaptureId);
-        _pendingReceiptCaptureId = captureId;
-        _plannedPendingEvidence = planned;
+        if (!await _cancelPendingReceipt(previousCaptureId)) {
+          throw StateError('Previous receipt capture could not be replaced.');
+        }
+        // Test and embedded callers may own a private journal whose cancel
+        // callback does not remove its preserved file. The production store
+        // removes both the typed journal and its generic source together.
+        if (previous != null && widget.preparePendingReceipt != null) {
+          await _discard(previous);
+        }
       }
-      if (previous != null) await _discard(previous);
+      _preserved = captured;
+      _pendingReceiptCaptureId = captureId;
+      _plannedPendingEvidence = planned;
     } catch (_) {
       // The generic pre-capture manifest is the only durable recovery record
       // until the typed receipt journal is prepared. Keep it when any later
       // preparation or source lookup step fails; navigation is not explicit
       // cancellation.
-      _retainPreservedForRecovery = preserved != null;
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.text('receiptStoreFailed'))),
       );
       if (mounted) setState(() => _processing = false);
+      await _loadPendingReceiptRecovery();
       return;
     }
     final captured = preserved;
@@ -455,7 +457,6 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       });
       await _refreshClassification();
     } catch (_) {
-      _retainPreservedForRecovery = true;
       if (!mounted) return;
       setState(() => _processing = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -474,7 +475,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       return;
     }
     setState(() {
-      _pendingReceiptRecovery = null;
+      _pendingReceiptRecoveries = _pendingReceiptRecoveries
+          .where((value) => value.captureId != pending.captureId)
+          .toList(growable: false);
       _pendingReceiptCaptureId = pending.captureId;
       _plannedPendingEvidence = pending.plannedEvidence;
       _preserved = pending.source;
@@ -483,16 +486,16 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     await _reviewPreservedReceipt(pending.source, file);
   }
 
-  Future<void> _discardPendingReceiptRecovery() async {
-    final pending = _pendingReceiptRecovery;
-    if (pending == null) return;
+  Future<void> _discardPendingReceiptRecovery(
+    PendingReceiptCapture pending,
+  ) async {
     try {
       final cancelled = widget.cancelPendingReceiptCapture == null
           ? await evidenceStore.cancelPendingReceiptCapture(pending.captureId)
           : await widget.cancelPendingReceiptCapture!(pending.captureId);
       if (cancelled && mounted) {
-        setState(() => _pendingReceiptRecovery = null);
         _showSaveMessage('receiptRecoveryDiscarded');
+        await _loadPendingReceiptRecovery();
       }
     } catch (_) {
       _showSaveMessage('receiptStoreFailed');
@@ -519,7 +522,12 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       return;
     }
     setState(() {
-      _pendingGenericRecovery = null;
+      _pendingGenericRecoveries = _pendingGenericRecoveries
+          .where(
+            (value) =>
+                value.source.localFileName != pending.source.localFileName,
+          )
+          .toList(growable: false);
       _pendingReceiptCaptureId = captureId;
       _plannedPendingEvidence = planned;
       _preserved = pending.source;
@@ -528,14 +536,14 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     await _reviewPreservedReceipt(pending.source, file);
   }
 
-  Future<void> _discardPendingGenericReceipt() async {
-    final pending = _pendingGenericRecovery;
-    if (pending == null) return;
+  Future<void> _discardPendingGenericReceipt(
+    PendingGenericCapture pending,
+  ) async {
     try {
       if (await evidenceStore.discardPendingGenericCapture(pending.source) &&
           mounted) {
-        setState(() => _pendingGenericRecovery = null);
         _showSaveMessage('receiptRecoveryDiscarded');
+        await _loadPendingReceiptRecovery();
       }
     } catch (_) {
       _showSaveMessage('receiptStoreFailed');
@@ -765,7 +773,6 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     required String extractionToken,
     required _ReceiptSaveSnapshot snapshot,
   }) {
-    _committed = true;
     notifyTransactionChanged();
     try {
       final extraction = _buildExtraction(
@@ -835,7 +842,6 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     }
     final committedEvidence = evidence;
     if (committedEvidence == null) {
-      _retainPreservedForRecovery = true;
       if (mounted) {
         setState(() => _saving = false);
         _showSaveMessage('evidenceAttachFailed');
@@ -1123,8 +1129,8 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
           final rolledBack = await _rollbackCreatedTransaction(result.value.id);
           if (rolledBack) {
             // A confirmed rollback is an explicit deletion. Only this path,
-            // or an explicit user cancellation during disposal, may discard
-            // the never-published receipt source.
+            // or an explicit recovery cancellation, may discard the
+            // never-published receipt source.
             await _cancelPendingReceipt(transactionId);
           }
           return (
@@ -1163,7 +1169,6 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
           // The durable receipt intent remains in the pending area. Keep its
           // source binary when rollback cannot complete so startup recovery
           // can attach it to the already-created transaction.
-          _retainPreservedForRecovery = true;
           notifyTransactionChanged();
           if (mounted) Navigator.pop(context, true);
         }
@@ -1181,7 +1186,6 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       );
       return;
     } catch (_) {
-      _retainPreservedForRecovery = true;
       if (!mounted) return;
       setState(() => _saving = false);
       _showSaveMessage('dataPreserved');
@@ -1387,15 +1391,38 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
               padding: const EdgeInsets.all(ButlerlySpacing.standard),
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               children: [
-                if (_pendingRecoveryWarning)
+                if (_pendingRecoveryIssues.isNotEmpty)
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(ButlerlySpacing.standard),
-                      child: Text(context.l10n.text('receiptRecoveryWarning')),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(context.l10n.text('receiptRecoveryWarning')),
+                          for (final issue in _pendingRecoveryIssues)
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                top: ButlerlySpacing.compact,
+                              ),
+                              child: Text(
+                                '${issue.fileName}: ${issue.message}',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ),
+                          const SizedBox(height: ButlerlySpacing.compact),
+                          Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: TextButton(
+                              onPressed: _loadPendingReceiptRecovery,
+                              child: Text(context.l10n.text('retry')),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 if (_source == null) ...[
-                  if (_pendingReceiptRecovery != null) ...[
+                  for (final pending in _pendingReceiptRecoveries) ...[
                     Card(
                       child: Padding(
                         padding: const EdgeInsets.all(ButlerlySpacing.standard),
@@ -1413,15 +1440,15 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                               spacing: ButlerlySpacing.compact,
                               children: [
                                 FilledButton(
-                                  onPressed: () => _resumePendingReceipt(
-                                    _pendingReceiptRecovery!,
-                                  ),
+                                  onPressed: () =>
+                                      _resumePendingReceipt(pending),
                                   child: Text(
                                     context.l10n.text('receiptRecoveryResume'),
                                   ),
                                 ),
                                 TextButton(
-                                  onPressed: _discardPendingReceiptRecovery,
+                                  onPressed: () =>
+                                      _discardPendingReceiptRecovery(pending),
                                   child: Text(
                                     context.l10n.text('receiptRecoveryCancel'),
                                   ),
@@ -1434,7 +1461,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                     ),
                     const SizedBox(height: ButlerlySpacing.standard),
                   ],
-                  if (_pendingGenericRecovery != null) ...[
+                  for (final pending in _pendingGenericRecoveries) ...[
                     Card(
                       child: Padding(
                         padding: const EdgeInsets.all(ButlerlySpacing.standard),
@@ -1452,15 +1479,15 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                               spacing: ButlerlySpacing.compact,
                               children: [
                                 FilledButton(
-                                  onPressed: () => _resumePendingGenericReceipt(
-                                    _pendingGenericRecovery!,
-                                  ),
+                                  onPressed: () =>
+                                      _resumePendingGenericReceipt(pending),
                                   child: Text(
                                     context.l10n.text('receiptRecoveryResume'),
                                   ),
                                 ),
                                 TextButton(
-                                  onPressed: _discardPendingGenericReceipt,
+                                  onPressed: () =>
+                                      _discardPendingGenericReceipt(pending),
                                   child: Text(
                                     context.l10n.text('receiptRecoveryCancel'),
                                   ),
