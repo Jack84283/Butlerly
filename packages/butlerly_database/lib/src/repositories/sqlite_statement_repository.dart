@@ -226,6 +226,12 @@ final class SqliteStatementRepository
           whereArgs: [evidenceId],
           limit: 1,
         );
+        final extractionProvenances = await tx.query(
+          'extractions',
+          columns: ['provenance_id'],
+          where: 'evidence_id = ?',
+          whereArgs: [evidenceId],
+        );
         await tx.delete(
           'financial_statements',
           where: 'id = ?',
@@ -236,8 +242,13 @@ final class SqliteStatementRepository
           where: 'id = ?',
           whereArgs: [evidenceId],
         );
-        if (evidence.isNotEmpty) {
-          final provenanceId = evidence.single['provenance_id']! as String;
+        final provenanceIds = <String>{
+          ...evidence.map((row) => row['provenance_id']! as String),
+          ...extractionProvenances.map(
+            (row) => row['provenance_id']! as String,
+          ),
+        };
+        for (final provenanceId in provenanceIds) {
           final remaining = await tx.rawQuery(
             '''SELECT 1 FROM evidence_items WHERE provenance_id = ?
                UNION ALL SELECT 1 FROM extractions WHERE provenance_id = ?

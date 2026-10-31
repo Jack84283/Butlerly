@@ -506,6 +506,80 @@ void main() {
     },
   );
 
+  test(
+    'merge tombstones retire the deleted evidence binary without orphaning it',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      const createdAt = '2026-01-01T00:00:00.000Z';
+      const deletedAt = '2026-01-02T00:00:00.000Z';
+      final evidenceFile = File(
+        path.join(fixture.evidence.path, 'receipt.bin'),
+      );
+      await evidenceFile.writeAsBytes([1, 2, 3, 4], flush: true);
+      await fixture.database.database.insert('provenances', {
+        'id': 'provenance-deleted-evidence',
+        'source_type': 'userEntry',
+        'captured_at': createdAt,
+      });
+      await fixture.database.database.insert('evidence_items', {
+        'id': 'evidence-deleted-by-merge',
+        'type': 'receiptImage',
+        'original_name': 'receipt.bin',
+        'media_type': 'image/png',
+        'provenance_id': 'provenance-deleted-evidence',
+        'created_at': createdAt,
+        'local_file_name': 'receipt.bin',
+      });
+      await fixture.database.database.delete(
+        'evidence_items',
+        where: 'id = ?',
+        whereArgs: ['evidence-deleted-by-merge'],
+      );
+      await fixture.database.database.update(
+        'entity_tombstones',
+        {'deleted_at': deletedAt},
+        where: 'entity_type = ? AND entity_id = ?',
+        whereArgs: ['evidence_items', 'evidence-deleted-by-merge'],
+      );
+      final backup = File(
+        path.join(fixture.root.path, 'evidence-tombstone.butlerlybackup'),
+      );
+      await fixture.backups.createBackup(backup);
+
+      await fixture.database.database.insert('evidence_items', {
+        'id': 'evidence-deleted-by-merge',
+        'type': 'receiptImage',
+        'original_name': 'receipt.bin',
+        'media_type': 'image/png',
+        'provenance_id': 'provenance-deleted-evidence',
+        'created_at': createdAt,
+        'local_file_name': 'receipt.bin',
+      });
+      await fixture.database.database.delete(
+        'entity_tombstones',
+        where: 'entity_type = ? AND entity_id = ?',
+        whereArgs: ['evidence_items', 'evidence-deleted-by-merge'],
+      );
+
+      await fixture.backups.restore(backup, mode: LocalRestoreMode.merge);
+
+      expect(
+        await fixture.database.database.query(
+          'evidence_items',
+          where: 'id = ?',
+          whereArgs: ['evidence-deleted-by-merge'],
+        ),
+        isEmpty,
+      );
+      expect(await evidenceFile.exists(), isFalse);
+
+      await fixture.database.close();
+      await fixture.database.initialize();
+      expect(await evidenceFile.exists(), isFalse);
+    },
+  );
+
   test('backup restores checksum-protected evidence in merge mode', () async {
     final fixture = await _Fixture.create();
     addTearDown(fixture.dispose);

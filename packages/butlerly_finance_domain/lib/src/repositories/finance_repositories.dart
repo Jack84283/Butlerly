@@ -281,9 +281,33 @@ abstract interface class EvidenceRepository {
   Future<void> save(EvidenceItem evidence);
   Future<void> saveExtraction(Extraction extraction);
   Future<void> link(AttachmentLink link);
+  Future<void> unlinkFromTransaction(
+    TransactionId transactionId,
+    EvidenceId evidenceId,
+  );
   Future<EvidenceItem?> findById(EvidenceId id);
   Future<List<EvidenceItem>> listForTransaction(TransactionId id);
   Future<void> remove(EvidenceId id);
+}
+
+/// Optional capability for destructive workflows that must preserve evidence
+/// still referenced by another durable record.
+abstract interface class ReferenceAwareEvidenceRepository {
+  /// Removes [id] only when no transaction attachment or statement references
+  /// it. When [beforeRemove] is supplied, it must complete successfully before
+  /// the evidence metadata is removed. Returns whether the evidence row was
+  /// removed.
+  Future<bool> removeIfUnreferenced(
+    EvidenceId id, {
+    Future<bool> Function()? beforeRemove,
+  });
+
+  /// Reports whether [id] still has a durable attachment or statement owner.
+  Future<bool> hasReferences(EvidenceId id);
+}
+
+abstract interface class EvidenceListingRepository {
+  Future<List<EvidenceItem>> listAll();
 }
 
 abstract interface class StatementRepository {

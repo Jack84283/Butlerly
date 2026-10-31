@@ -105,6 +105,121 @@ void main() {
       }
     },
   );
+
+  test(
+    'SQLite retry preserves corrections on an unresolved duplicate row',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'butlerly-statement-retry-',
+      );
+      final path = '${directory.path}/butlerly.db';
+      final schema = await File(
+        '../butlerly_database/database/schema/v1.sql',
+      ).readAsString();
+      final now = DateTime.utc(2026, 9, 1);
+      try {
+        var database = ButlerlyDatabase(
+          factory: databaseFactoryFfi,
+          path: path,
+          schemaSql: schema,
+        );
+        await database.open();
+        final evidence = SqliteEvidenceRepository(database);
+        await evidence.save(
+          EvidenceItem(
+            id: EvidenceId('statement-evidence'),
+            type: EvidenceType.document,
+            originalName: 'statement.pdf',
+            mediaType: 'application/pdf',
+            provenance: Provenance(
+              id: ProvenanceId('statement-retry-provenance'),
+              sourceType: ProvenanceSourceType.scan,
+              capturedAt: now,
+              originalRepresentation: 'statement.pdf',
+            ),
+            createdAt: now,
+          ),
+        );
+        final transactions = SqliteTransactionRepository(database);
+        await transactions.save(_transaction('retry-existing'));
+        final statements = SqliteStatementRepository(database);
+        final groups = SqliteDuplicateCandidateGroupRepository(database);
+        final statement = _statement();
+        final row = _row();
+        await statements.saveStatementWithRows(statement, [row]);
+        final services = StatementServices(
+          statements,
+          transactions,
+          statements,
+          _Clock(now),
+          duplicateGroups: groups,
+          duplicateChecker: DuplicateTransactionChecker(transactions),
+        );
+
+        final first = await services.importBatch(statement, [row], 'source');
+        expect(
+          (first as ApplicationSuccess<StatementImportSummary>)
+              .value
+              .possibleDuplicates,
+          1,
+        );
+        final pending = (await statements.listRows(statement.id)).single;
+        final corrected = StatementRow(
+          id: pending.id,
+          statementId: pending.statementId,
+          position: pending.position,
+          originalText: pending.originalText,
+          transactionDate: pending.transactionDate,
+          description: 'Corrected persisted merchant',
+          amount: pending.amount,
+          currency: pending.currency,
+          direction: pending.direction,
+          confidence: pending.confidence,
+          sourceContext: 'User correction survives retry',
+          status: StatementRowStatus.unresolved,
+          createdAt: pending.createdAt,
+          updatedAt: pending.updatedAt.add(const Duration(seconds: 1)),
+        );
+        expect(
+          await services.correct(corrected),
+          isA<ApplicationSuccess<void>>(),
+        );
+
+        final retry = await services.importBatch(statement, [row], 'source');
+        expect(
+          (retry as ApplicationSuccess<StatementImportSummary>)
+              .value
+              .possibleDuplicates,
+          1,
+        );
+        final persisted = (await statements.listRows(statement.id)).single;
+        expect(persisted.description, 'Corrected persisted merchant');
+        expect(persisted.sourceContext, 'User correction survives retry');
+
+        await database.close();
+        database = ButlerlyDatabase(
+          factory: databaseFactoryFfi,
+          path: path,
+          schemaSql: schema,
+        );
+        await database.open();
+        addTearDown(database.close);
+        final restartedRows = await SqliteStatementRepository(
+          database,
+        ).listRows(statement.id);
+        expect(
+          restartedRows.single.description,
+          'Corrected persisted merchant',
+        );
+        expect(
+          restartedRows.single.sourceContext,
+          'User correction survives retry',
+        );
+      } finally {
+        await Directory(directory.path).delete(recursive: true);
+      }
+    },
+  );
 }
 
 FinancialStatement _statement() => FinancialStatement(

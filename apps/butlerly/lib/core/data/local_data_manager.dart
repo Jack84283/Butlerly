@@ -387,6 +387,7 @@ final class LocalDataManager {
       // closed while all financial data is still intact.
       final evidence = await evidenceDirectory();
       final pendingEvidence = await pendingEvidenceDirectory();
+      final deletingEvidence = Directory('${evidence.path}.deleting');
       final evidenceParent = evidence.parent;
       final databaseDirectory = Directory(
         path.dirname(database.persistenceDatabase.path),
@@ -399,6 +400,10 @@ final class LocalDataManager {
       await rejectEvidenceTree(
         pendingEvidence,
         message: 'Unsafe pending evidence tree.',
+      );
+      await rejectEvidenceTree(
+        deletingEvidence,
+        message: 'Unsafe deleting evidence tree.',
       );
       await rejectEvidenceTree(recovery, message: 'Unsafe recovery tree.');
       await rejectEvidenceRoot(
@@ -447,6 +452,7 @@ final class LocalDataManager {
           final name = path.basename(entity.path);
           final removable =
               name.startsWith('Butlerly Export ') ||
+              name.startsWith('Butlerly Evidence Recovery ') ||
               name == 'Butlerly Safety Backups';
           if (!removable) continue;
           if (entity is Link) {
@@ -496,6 +502,9 @@ final class LocalDataManager {
       }
       if (await pendingEvidence.exists()) {
         await pendingEvidence.delete(recursive: true);
+      }
+      if (await deletingEvidence.exists()) {
+        await deletingEvidence.delete(recursive: true);
       }
 
       // Restore staging workspaces contain private SQLite and evidence copies.
@@ -555,6 +564,9 @@ final class LocalDataManager {
         await for (final entity in documents.list()) {
           if (entity is Directory &&
               (path.basename(entity.path).startsWith('Butlerly Export ') ||
+                  path
+                      .basename(entity.path)
+                      .startsWith('Butlerly Evidence Recovery ') ||
                   // Remove legacy safety-backup directories created by builds
                   // before recovery data moved to application-private storage.
                   path.basename(entity.path) == 'Butlerly Safety Backups')) {

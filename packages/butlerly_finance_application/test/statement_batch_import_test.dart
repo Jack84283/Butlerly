@@ -500,6 +500,63 @@ void main() {
     );
   });
 
+  test('retry preserves corrections on an unresolved duplicate row', () async {
+    transactions.values['existing'] = _transaction('existing', amount: '12');
+    final sourceRow = _row('retry-correction', amount: '12');
+    await service.create(_statement(), [sourceRow]);
+
+    final first = await service.importBatch(_statement(), [
+      sourceRow,
+    ], 'source');
+    expect(
+      (first as ApplicationSuccess<StatementImportSummary>)
+          .value
+          .possibleDuplicates,
+      1,
+    );
+    final pending = statements.rows.single;
+
+    final corrected = StatementRow(
+      id: sourceRow.id,
+      statementId: sourceRow.statementId,
+      position: sourceRow.position,
+      originalText: sourceRow.originalText,
+      transactionDate: sourceRow.transactionDate,
+      description: 'Corrected merchant',
+      amount: '13',
+      currency: sourceRow.currency,
+      direction: sourceRow.direction,
+      confidence: sourceRow.confidence,
+      sourceContext: 'User corrected before retry',
+      categoryId: 'category.corrected',
+      status: StatementRowStatus.unresolved,
+      reviewReason: pending.reviewReason,
+      createdAt: sourceRow.createdAt,
+      updatedAt: sourceRow.updatedAt.add(const Duration(seconds: 1)),
+    );
+    expect(await service.correct(corrected), isA<ApplicationSuccess<void>>());
+
+    final retry = await service.importBatch(_statement(), [
+      sourceRow,
+    ], 'source');
+    expect(
+      (retry as ApplicationSuccess<StatementImportSummary>)
+          .value
+          .possibleDuplicates,
+      0,
+    );
+    final persisted = statements.rows.single;
+    expect(persisted.description, 'Corrected merchant');
+    expect(persisted.sourceContext, 'User corrected before retry');
+    expect(persisted.categoryId, 'category.corrected');
+    expect(persisted.status, StatementRowStatus.saved);
+    expect(persisted.transactionId, 'statement-statement-row-retry-correction');
+    expect(
+      transactions.values[persisted.transactionId]!.money.amount,
+      DecimalValue.parse('13'),
+    );
+  });
+
   test('duplicate-check failure keeps the row pending', () async {
     transactions.failQueries = true;
 
@@ -875,6 +932,12 @@ final class _FailingEvidence implements EvidenceRepository {
       );
     }
   }
+
+  @override
+  Future<void> unlinkFromTransaction(
+    TransactionId transactionId,
+    EvidenceId evidenceId,
+  ) async {}
 
   @override
   Future<EvidenceItem?> findById(EvidenceId id) async => null;

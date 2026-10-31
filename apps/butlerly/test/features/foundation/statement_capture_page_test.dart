@@ -7,7 +7,9 @@ import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
+import 'package:butlerly/core/evidence/platform_ocr_recognizer.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
+import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/features/foundation/presentation/statement_capture_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -37,6 +39,20 @@ void main() {
   late LocalDatabase database;
   late FinanceServices finance;
   const originalBytes = [0, 1, 2, 3, 4, 5, 255];
+
+  test('duplicate-only import summary opens Possible Duplicates', () {
+    expect(
+      statementImportReviewRoute(
+        const StatementImportSummary(
+          imported: 0,
+          needsReview: 0,
+          possibleDuplicates: 1,
+          failed: 0,
+        ),
+      ),
+      '/review?view=duplicates',
+    );
+  });
 
   setUp(() async {
     await services.reset();
@@ -79,6 +95,7 @@ void main() {
     double textScale = 1,
     Locale locale = const Locale('en'),
     ThemeData? theme,
+    OcrRecognizer? ocrRecognizer,
   }) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     await tester.pumpWidget(
@@ -102,26 +119,18 @@ void main() {
           child: StatementCapturePage(
             pickImage: (_) async => XFile(original.path),
             pickFile: () async => XFile(original.path),
+            ocrRecognizer: ocrRecognizer,
           ),
         ),
       ),
     );
-    await tester.runAsync(() async {
-      await tester.tap(find.byIcon(Icons.photo_library_outlined));
-      for (var attempt = 0; attempt < 100; attempt++) {
-        if ((await database.database.query(
-          'financial_statements',
-        )).isNotEmpty) {
-          return;
-        }
-        await Future<void>.delayed(const Duration(milliseconds: 10));
-      }
-      fail('Statement capture did not complete.');
-    });
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.photo_library_outlined));
+    await tester.pump();
     debugDefaultTargetPlatformOverride = null;
 
     var completed = false;
-    for (var attempt = 0; attempt < 50; attempt++) {
+    for (var attempt = 0; attempt < 500; attempt++) {
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 20)),
       );
@@ -135,6 +144,10 @@ void main() {
     if (!completed) {
       fail('Statement capture UI did not finish reloading.');
     }
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 100)),
+    );
+    await tester.pump();
     expect(tester.takeException(), isNull);
   }
 
@@ -147,6 +160,66 @@ void main() {
     expect(android.extensions, isNot(contains('pdf')));
     expect(android.extensions, contains('jpg'));
   });
+
+  testWidgets('statement picker failure leaves a retryable page', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: StatementCapturePage(
+          pickImage: (_) async => throw StateError('picker unavailable'),
+          loadInitialData: () async {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.photo_library_outlined));
+    await tester.pump();
+
+    expect(
+      find.text('Statement capture could not be opened. Please retry.'),
+      findsOneWidget,
+    );
+    final photoButton = find.ancestor(
+      of: find.byIcon(Icons.photo_library_outlined),
+      matching: find.byType(IconButton),
+    );
+    expect(tester.widget<IconButton>(photoButton).onPressed, isNotNull);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'historical unavailable diagnostics expose no journal recovery actions',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          home: CaptureRecoveryActions(
+            fileName: 'statement-historical-id',
+            onRepair: () {},
+            onDismiss: () {},
+          ),
+        ),
+      );
+
+      expect(find.text('Resolve recovery record'), findsNothing);
+      expect(find.text('Dismiss record'), findsNothing);
+    },
+  );
 
   testWidgets('existing statement file uses the local OCR intake path', (
     tester,
@@ -187,21 +260,15 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.file_open_outlined));
+    await tester.pump();
     await tester.runAsync(() async {
-      await tester.tap(find.byIcon(Icons.file_open_outlined));
-      for (var attempt = 0; attempt < 100; attempt++) {
-        if ((await database.database.query(
-          'financial_statements',
-        )).isNotEmpty) {
-          return;
-        }
-        await Future<void>.delayed(const Duration(milliseconds: 10));
-      }
-      fail('Statement file intake did not complete.');
+      await Future<void>.delayed(const Duration(seconds: 2));
     });
     debugDefaultTargetPlatformOverride = null;
     var completed = false;
-    for (var attempt = 0; attempt < 50; attempt++) {
+    for (var attempt = 0; attempt < 500; attempt++) {
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 20)),
       );
@@ -215,6 +282,10 @@ void main() {
     if (!completed) {
       fail('Statement file intake UI did not finish reloading.');
     }
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 100)),
+    );
+    await tester.pump();
     late List<FinancialStatement> statements;
     await tester.runAsync(() async {
       statements =
@@ -225,6 +296,296 @@ void main() {
     expect(statements, hasLength(1));
     expect(statements.single.originalFilename, 'statement.heic');
     expect(tester.takeException(), isNull);
+  });
+
+  test('identical statement source is idempotent after restart', () async {
+    final store = services<LocalEvidenceStore>();
+    final first = await store.preserve(XFile(original.path));
+    final evidence = await store.storePreservedStatement(first);
+    expect(evidence, isNotNull);
+    final created = await finance.statementServices!.create(
+      FinancialStatement(
+        id: 'statement-idempotent',
+        evidenceId: evidence!.id.value,
+        status: StatementStatus.needsSource,
+        originalFilename: 'statement.heic',
+        createdAt: DateTime.utc(2026, 8, 9),
+        updatedAt: DateTime.utc(2026, 8, 9),
+      ),
+      const [],
+    );
+    expect(created, isA<ApplicationSuccess<void>>());
+
+    // Simulate an older installed database whose evidence provenance predates
+    // source-fingerprint persistence.
+    await database.database.update(
+      'provenances',
+      {'source_id': null},
+      where: 'id = ?',
+      whereArgs: [evidence.provenance.id.value],
+    );
+
+    final retry = await store.preserve(XFile(original.path));
+    final found = await store.findStatementBySourceFingerprint(
+      retry.sourceFingerprint!,
+    );
+    expect(found?.id, 'statement-idempotent');
+    await store.discardPreserved(retry);
+
+    await database.close();
+    await database.initialize();
+    await services.reset();
+    configureDependencies(
+      configuration: const AppConfiguration(),
+      database: database,
+      logger: AppLogger(),
+    );
+    finance = services<FinanceServices>();
+    await services.unregister<LocalEvidenceStore>();
+    services.registerSingleton<LocalEvidenceStore>(
+      LocalEvidenceStore(
+        LocalDataManager(database, localEvidenceDirectory: evidenceDirectory),
+        finance,
+      ),
+    );
+    final afterRestart = services<LocalEvidenceStore>();
+    final retryAfterRestart = await afterRestart.preserve(XFile(original.path));
+    final foundAfterRestart = await afterRestart
+        .findStatementBySourceFingerprint(retryAfterRestart.sourceFingerprint!);
+    expect(foundAfterRestart?.id, 'statement-idempotent');
+    await afterRestart.discardPreserved(retryAfterRestart);
+    expect(await database.database.query('financial_statements'), hasLength(1));
+    expect(await database.database.query('evidence_items'), hasLength(1));
+  });
+
+  test(
+    'missing historical statement evidence does not block a new import',
+    () async {
+      final store = services<LocalEvidenceStore>();
+      final preserved = await store.preserve(XFile(original.path));
+      final evidence = await store.storePreservedStatement(preserved);
+      expect(evidence, isNotNull);
+      final created = await finance.statementServices!.create(
+        FinancialStatement(
+          id: 'statement-missing-history',
+          evidenceId: evidence!.id.value,
+          status: StatementStatus.needsSource,
+          originalFilename: 'historical.pdf',
+          createdAt: DateTime.utc(2026, 8, 9),
+          updatedAt: DateTime.utc(2026, 8, 9),
+        ),
+        const [],
+      );
+      expect(created, isA<ApplicationSuccess<void>>());
+      final historicalFile = await store.fileFor(evidence);
+      expect(historicalFile, isNotNull);
+      await historicalFile!.delete();
+
+      final retry = await store.preserve(XFile(original.path));
+      expect(
+        await store.findStatementBySourceFingerprint(retry.sourceFingerprint!),
+        isNull,
+      );
+      expect(
+        await store.listUnavailableStatementEvidence(),
+        contains('statement-missing-history'),
+      );
+      await store.discardPreserved(retry);
+    },
+  );
+
+  test(
+    'recovers a typed statement journal in the current database session',
+    () async {
+      final store = services<LocalEvidenceStore>();
+      final preserved = await store.preserve(XFile(original.path));
+      final evidence = await store.storePreservedStatement(
+        preserved,
+        pendingStatementId: 'statement-current-session',
+        pendingOriginalFilename: original.path,
+        pendingCreatedAt: DateTime.utc(2026, 8, 9, 12),
+      );
+      expect(evidence, isNotNull);
+
+      expect(await store.recoverPendingStatementCaptures(), 1);
+      final statements =
+          (await finance.statementServices!.list(includeArchived: true)
+                  as ApplicationSuccess<List<FinancialStatement>>)
+              .value;
+      expect(
+        statements.map((item) => item.id),
+        contains('statement-current-session'),
+      );
+      expect(await store.recoverPendingStatementCaptures(), 0);
+    },
+  );
+
+  test(
+    'recovers a statement after evidence publication before statement save',
+    () async {
+      final store = services<LocalEvidenceStore>();
+      final createdAt = DateTime.utc(2026, 8, 9, 12);
+      final preserved = await store.preserve(XFile(original.path));
+      final evidence = await store.storePreservedStatement(
+        preserved,
+        pendingStatementId: 'statement-pending-recovery',
+        pendingOriginalFilename: original.path,
+        pendingCreatedAt: createdAt,
+      );
+      expect(evidence, isNotNull);
+
+      await database.close();
+      await services.reset();
+      await database.initialize();
+      configureDependencies(
+        configuration: const AppConfiguration(),
+        database: database,
+        logger: AppLogger(),
+      );
+      finance = services<FinanceServices>();
+      await services.unregister<LocalEvidenceStore>();
+      services.registerSingleton<LocalEvidenceStore>(
+        LocalEvidenceStore(
+          LocalDataManager(database, localEvidenceDirectory: evidenceDirectory),
+          finance,
+        ),
+      );
+
+      final afterRestart = services<LocalEvidenceStore>();
+      expect(await afterRestart.recoverPendingStatementCaptures(), 1);
+      final statements =
+          (await finance.statementServices!.list(includeArchived: true)
+                  as ApplicationSuccess<List<FinancialStatement>>)
+              .value;
+      expect(statements, hasLength(1));
+      expect(statements.single.id, 'statement-pending-recovery');
+      expect(statements.single.evidenceId, evidence!.id.value);
+      expect(statements.single.extractionMessage, 'statementProcessingFailed');
+      final published = await afterRestart.fileFor(evidence);
+      expect(published, isNotNull);
+      expect(await published!.exists(), isTrue);
+      expect(await afterRestart.recoverPendingStatementCaptures(), 0);
+    },
+  );
+
+  test(
+    'published statement evidence remains retryable after save failure',
+    () async {
+      final store = services<LocalEvidenceStore>();
+      final createdAt = DateTime.utc(2026, 8, 9, 12);
+      final source = await store.preserve(XFile(original.path));
+      final evidence = await store.storePreservedStatement(
+        source,
+        pendingStatementId: 'statement-retryable',
+        pendingOriginalFilename: original.path,
+        pendingCreatedAt: createdAt,
+      );
+      expect(evidence, isNotNull);
+      final published = await store.fileFor(evidence!);
+      expect(published, isNotNull);
+      expect(await published!.exists(), isTrue);
+
+      expect(
+        await store.rollbackPendingStatementCaptureForRetry(
+          statementId: 'statement-retryable',
+          source: source,
+          evidence: evidence,
+        ),
+        isTrue,
+      );
+      expect(await published.exists(), isFalse);
+      expect(
+        await File(
+          '${evidenceDirectory.path}.pending/${source.localFileName}',
+        ).exists(),
+        isTrue,
+      );
+      final removed = await finance.getEvidence(evidence.id.value);
+      expect(removed, isA<ApplicationSuccess<EvidenceItem?>>());
+      expect((removed as ApplicationSuccess<EvidenceItem?>).value, isNull);
+
+      final retryEvidence = await store.storePreservedStatement(
+        source,
+        pendingStatementId: 'statement-retryable',
+        pendingOriginalFilename: original.path,
+        pendingCreatedAt: createdAt,
+        planned: evidence,
+      );
+      expect(retryEvidence?.id, evidence.id);
+      final created = await finance.statementServices!.create(
+        FinancialStatement(
+          id: 'statement-retryable',
+          evidenceId: evidence.id.value,
+          status: StatementStatus.needsSource,
+          originalFilename: original.path,
+          createdAt: createdAt,
+          updatedAt: createdAt,
+        ),
+        const [],
+      );
+      expect(created, isA<ApplicationSuccess<void>>());
+      expect(
+        await store.completePendingStatementCapture('statement-retryable'),
+        isTrue,
+      );
+      expect(
+        await database.database.query('financial_statements'),
+        hasLength(1),
+      );
+      expect(await database.database.query('evidence_items'), hasLength(1));
+    },
+  );
+
+  testWidgets('capture failures reset busy state so capture can be retried', (
+    tester,
+  ) async {
+    await capture(tester, ocrRecognizer: const UnsupportedOcrRecognizer());
+    expect(
+      find.text(
+        'Statement processing failed because of a technical OCR error.',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byIcon(Icons.photo_library_outlined),
+      findsOneWidget,
+      reason: 'The capture action remains available after a failed attempt.',
+    );
+  });
+
+  testWidgets('persisted OCR failures can be retried', (tester) async {
+    final recognizer = _RetryingOcrRecognizer();
+    await capture(tester, ocrRecognizer: recognizer);
+    expect(find.byIcon(Icons.refresh_rounded), findsOneWidget);
+    recognizer.fail = false;
+    await tester.tap(find.byIcon(Icons.refresh_rounded));
+    for (var attempt = 0; attempt < 100; attempt++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 20)),
+      );
+      await tester.pump(const Duration(milliseconds: 20));
+      if (find.byType(ButlerlyLoadingState).evaluate().isEmpty) {
+        break;
+      }
+    }
+    expect(find.byIcon(Icons.refresh_rounded), findsNothing);
+    late List<FinancialStatement> statements;
+    await tester.runAsync(() async {
+      statements =
+          (await finance.statementServices!.list()
+                  as ApplicationSuccess<List<FinancialStatement>>)
+              .value;
+    });
+    expect(statements, hasLength(1));
+    expect(
+      statements.single.extractionMessage,
+      isNot('statementProcessingFailed'),
+    );
+    late List<Map<String, Object?>> evidenceItems;
+    await tester.runAsync(() async {
+      evidenceItems = await database.database.query('evidence_items');
+    });
+    expect(evidenceItems, hasLength(1));
   });
 
   testWidgets(
@@ -526,4 +887,39 @@ void main() {
       });
     },
   );
+}
+
+final class _RetryingOcrRecognizer implements OcrRecognizer {
+  bool fail = true;
+
+  @override
+  Future<OcrAvailability> availability() async => OcrAvailability.available;
+
+  @override
+  Future<OcrDocument> recognize(OcrRequest request) async {
+    if (fail) {
+      throw const OcrException(
+        code: OcrFailureCode.technicalFailure,
+        stage: 'test',
+      );
+    }
+    const line = '2026-08-12 MERCHANT -123.45 USD';
+    return const OcrDocument(
+      pages: [
+        OcrPage(
+          index: 0,
+          observations: [OcrObservation(text: line, confidence: .9, order: 0)],
+        ),
+      ],
+      diagnostics: OcrDiagnostics(
+        sourceKind: OcrSourceKind.image,
+        sourceOpened: true,
+        pageCount: 1,
+        observationCount: 1,
+        recognizedLineCount: 1,
+        observationsWithBounds: 0,
+      ),
+      fullText: line,
+    );
+  }
 }

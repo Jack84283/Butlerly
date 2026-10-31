@@ -1,10 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:butlerly/core/data/local_backup_engine.dart' as engine;
 import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
+import 'package:butlerly/core/data/staged_evidence_restore_reconciliation.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
+import 'package:butlerly_database/butlerly_database.dart' show sha256FileRange;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -99,6 +102,374 @@ void main() {
         fixture.manager.recoveryState.incident?.safetyBackupPath,
         safety.path,
       );
+    },
+  );
+
+  test(
+    'restore reconciles an interrupted staged deletion across restart',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+
+      await File(
+        path.join(fixture.evidence.path, 'live.bin'),
+      ).writeAsString('live source');
+      final backup = File(
+        path.join(fixture.root.path, 'restore-after-deletion.butlerlybackup'),
+      );
+      await fixture.manager.createBackup(backup);
+
+      final deleting = Directory('${fixture.evidence.path}.deleting')
+        ..createSync(recursive: true);
+      final staged = File(path.join(deleting.path, 'delete-interrupted.bin'));
+      await staged.writeAsString('recoverable source');
+      await File('${staged.path}.json').writeAsString(
+        jsonEncode({
+          'evidenceId': 'evidence-already-deleted',
+          'localFileName': 'delete-interrupted.bin',
+          'stagedFileName': path.basename(staged.path),
+          'deletionState': 'committed',
+          'byteLength': await staged.length(),
+          'sourceFingerprint': await sha256FileRange(staged),
+        }),
+        flush: true,
+      );
+
+      await fixture.manager.restore(backup, mode: LocalRestoreMode.replace);
+
+      expect(await deleting.exists(), isFalse);
+      expect(
+        await fixture.evidence.parent
+            .list(followLinks: false)
+            .where(
+              (entity) =>
+                  entity is Directory &&
+                  path
+                      .basename(entity.path)
+                      .startsWith(
+                        '${path.basename(fixture.evidence.path)}.restore-deleting-',
+                      ),
+            )
+            .toList(),
+        isEmpty,
+      );
+
+      await fixture.database.close();
+      await fixture.database.initialize();
+      final reopenedData = LocalDataManager(
+        fixture.database,
+        documentsDirectory: Directory(
+          path.join(fixture.root.path, 'documents'),
+        ),
+        localEvidenceDirectory: fixture.evidence,
+      );
+      final reopenedManager = LocalBackupManager(
+        fixture.database,
+        reopenedData,
+      );
+      await reopenedManager.recoverInterruptedRestore();
+
+      expect(await deleting.exists(), isFalse);
+      expect(await fixture.database.database.query('restore_commits'), isEmpty);
+    },
+  );
+
+  test(
+    'controlled recovery cannot clear its gate before staged evidence recovery',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final safetyDirectory = await fixture.manager.localDataManager
+          .safetyBackupDirectory();
+      final backup = File(
+        path.join(
+          safetyDirectory.path,
+          'recovery-evidence-gate.butlerlybackup',
+        ),
+      );
+      await fixture.manager.createBackup(backup);
+
+      var attempts = 0;
+      var evidenceRecoverySucceeds = false;
+      final manager = LocalBackupManager(
+        fixture.database,
+        LocalDataManager(
+          fixture.database,
+          documentsDirectory: Directory(
+            path.join(fixture.root.path, 'documents'),
+          ),
+          localEvidenceDirectory: fixture.evidence,
+        ),
+        recoveryState: fixture.manager.recoveryState,
+        recoverStagedEvidenceDeletions: () async {
+          attempts++;
+          if (!evidenceRecoverySucceeds) {
+            throw StateError('staged evidence remains unresolved');
+          }
+        },
+      );
+      await fixture.manager.recoveryState.markRequired(
+        operationId: 'recovery-evidence-gate',
+        safetyBackup: backup,
+        reason: 'post-activation-validation-or-refresh-failed',
+        retryCurrentState: true,
+      );
+
+      await expectLater(
+        manager.recoverControlledState(),
+        throwsA(isA<StateError>()),
+      );
+      expect(attempts, 1);
+      expect(manager.recoveryState.isRecoveryRequired, isTrue);
+
+      evidenceRecoverySucceeds = true;
+      await manager.recoverControlledState();
+      expect(attempts, 2);
+      expect(manager.recoveryState.isRecoveryRequired, isFalse);
+    },
+  );
+
+  test(
+    'restore reconciliation retains cross-referenced staged artifacts',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final deleting = Directory('${fixture.evidence.path}.deleting')
+        ..createSync(recursive: true);
+      final first = File(path.join(deleting.path, 'delete-first.bin'));
+      final second = File(path.join(deleting.path, 'delete-second.bin'));
+      await first.writeAsString('first source');
+      await second.writeAsString('second source');
+      final firstManifest = File('${first.path}.json');
+      final secondManifest = File('${second.path}.json');
+      await firstManifest.writeAsString(
+        jsonEncode({
+          'evidenceId': 'missing-first',
+          'localFileName': 'first.bin',
+          'stagedFileName': path.basename(second.path),
+          'deletionState': 'committed',
+          'byteLength': await first.length(),
+          'sourceFingerprint': await sha256FileRange(first),
+        }),
+        flush: true,
+      );
+      await secondManifest.writeAsString(
+        jsonEncode({
+          'evidenceId': 'missing-second',
+          'localFileName': 'second.bin',
+          'stagedFileName': path.basename(first.path),
+          'deletionState': 'committed',
+          'byteLength': await second.length(),
+          'sourceFingerprint': await sha256FileRange(second),
+        }),
+        flush: true,
+      );
+
+      expect(
+        await reconcileStagedEvidenceAfterRestore(
+          fixture.database.database,
+          fixture.evidence,
+          deleting,
+        ),
+        isTrue,
+      );
+      expect(await first.exists(), isTrue);
+      expect(await second.exists(), isTrue);
+      expect(await firstManifest.exists(), isTrue);
+      expect(await secondManifest.exists(), isTrue);
+    },
+  );
+
+  test(
+    'restart recovery reconciles a committed restore deletion quarantine',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      const operation = 'restore-committed-deletion';
+      final previousDeleting = Directory(
+        '${fixture.evidence.path}.restore-deleting-$operation',
+      )..createSync(recursive: true);
+      final staged = File(path.join(previousDeleting.path, 'delete-old.bin'));
+      await staged.writeAsString('old source');
+      await File('${staged.path}.json').writeAsString(
+        jsonEncode({
+          'evidenceId': 'evidence-no-longer-restored',
+          'localFileName': 'old.bin',
+          'stagedFileName': path.basename(staged.path),
+          'deletionState': 'committed',
+          'byteLength': await staged.length(),
+          'sourceFingerprint': await sha256FileRange(staged),
+        }),
+        flush: true,
+      );
+      await fixture.database.database.insert('restore_commits', {
+        'operation_id': operation,
+        'committed_at': DateTime.now().toUtc().toIso8601String(),
+      });
+      await File('${fixture.evidence.path}.restore-journal.json').writeAsString(
+        jsonEncode({
+          'operationId': operation,
+          'previousPath':
+              '${fixture.evidence.path}.restore-previous-$operation',
+          'stagingPath': '${fixture.evidence.path}.restore-$operation',
+          'previousDeletingPath': previousDeleting.path,
+          'mode': 'replace',
+          'phase': 'dbCommitted',
+        }),
+        flush: true,
+      );
+
+      await fixture.database.close();
+      await fixture.database.initialize();
+      final reopenedManager = LocalBackupManager(
+        fixture.database,
+        LocalDataManager(
+          fixture.database,
+          documentsDirectory: Directory(
+            path.join(fixture.root.path, 'documents'),
+          ),
+          localEvidenceDirectory: fixture.evidence,
+        ),
+      );
+      await reopenedManager.recoverInterruptedRestore();
+
+      expect(await previousDeleting.exists(), isFalse);
+      expect(await fixture.database.database.query('restore_commits'), isEmpty);
+      expect(
+        await File('${fixture.evidence.path}.restore-journal.json').exists(),
+        isFalse,
+      );
+    },
+  );
+
+  test(
+    'merge restore returns staged evidence still owned by the database',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final backup = File(
+        path.join(fixture.root.path, 'merge-staged-evidence.butlerlybackup'),
+      );
+      await fixture.manager.createBackup(backup);
+
+      final now = DateTime.utc(2026, 9, 1).toIso8601String();
+      await fixture.database.database.insert('provenances', {
+        'id': 'provenance-staged-restore',
+        'source_type': 'manual',
+        'captured_at': now,
+      });
+      await fixture.database.database.insert('evidence_items', {
+        'id': 'evidence-staged-restore',
+        'type': 'receipt',
+        'original_name': 'still-owned.bin',
+        'media_type': 'application/octet-stream',
+        'provenance_id': 'provenance-staged-restore',
+        'created_at': now,
+        'local_file_name': 'still-owned.bin',
+      });
+      final live = File(path.join(fixture.evidence.path, 'still-owned.bin'));
+      await live.writeAsString('still owned');
+
+      final deleting = Directory('${fixture.evidence.path}.deleting')
+        ..createSync(recursive: true);
+      final staged = File(path.join(deleting.path, 'delete-still-owned.bin'));
+      await live.rename(staged.path);
+      await File('${staged.path}.json').writeAsString(
+        jsonEncode({
+          'evidenceId': 'evidence-staged-restore',
+          'localFileName': 'still-owned.bin',
+          'stagedFileName': path.basename(staged.path),
+          'deletionState': 'prepared',
+          'byteLength': await staged.length(),
+          'sourceFingerprint': await sha256FileRange(staged),
+        }),
+        flush: true,
+      );
+
+      final directEngine = engine.LocalBackupManager(
+        fixture.database,
+        LocalDataManager(
+          fixture.database,
+          localEvidenceDirectory: fixture.evidence,
+        ),
+      );
+      await directEngine.restore(backup, mode: LocalRestoreMode.merge);
+
+      expect(await live.readAsString(), 'still owned');
+      expect(await deleting.exists(), isFalse);
+
+      await fixture.database.close();
+      await fixture.database.initialize();
+      final reopenedData = LocalDataManager(
+        fixture.database,
+        documentsDirectory: Directory(
+          path.join(fixture.root.path, 'documents'),
+        ),
+        localEvidenceDirectory: fixture.evidence,
+      );
+      await recoverInterruptedLocalRestore(fixture.database, reopenedData);
+      expect(await live.readAsString(), 'still owned');
+    },
+  );
+
+  test(
+    'replace restore retains a prepared deletion without durable ownership',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final backup = File(
+        path.join(fixture.root.path, 'replace-prepared-delete.butlerlybackup'),
+      );
+      await fixture.manager.createBackup(backup);
+
+      final deleting = Directory('${fixture.evidence.path}.deleting')
+        ..createSync(recursive: true);
+      final staged = File(path.join(deleting.path, 'delete-prepared.bin'));
+      await staged.writeAsString('prepared source');
+      final manifest = File('${staged.path}.json');
+      await manifest.writeAsString(
+        jsonEncode({
+          'evidenceId': 'evidence-never-committed',
+          'localFileName': 'prepared.bin',
+          'stagedFileName': path.basename(staged.path),
+          'deletionState': 'prepared',
+          'byteLength': await staged.length(),
+          'sourceFingerprint': await sha256FileRange(staged),
+        }),
+        flush: true,
+      );
+
+      final directEngine = engine.LocalBackupManager(
+        fixture.database,
+        LocalDataManager(
+          fixture.database,
+          localEvidenceDirectory: fixture.evidence,
+        ),
+      );
+      await directEngine.restore(backup, mode: LocalRestoreMode.replace);
+
+      final retained = File(
+        path.join(
+          '${fixture.evidence.path}.deleting',
+          staged.uri.pathSegments.last,
+        ),
+      );
+      expect(await retained.readAsString(), 'prepared source');
+      expect(await File('${retained.path}.json').exists(), isTrue);
+
+      await fixture.database.close();
+      await fixture.database.initialize();
+      final reopenedData = LocalDataManager(
+        fixture.database,
+        documentsDirectory: Directory(
+          path.join(fixture.root.path, 'documents'),
+        ),
+        localEvidenceDirectory: fixture.evidence,
+      );
+      await recoverInterruptedLocalRestore(fixture.database, reopenedData);
+
+      expect(await retained.readAsString(), 'prepared source');
+      expect(await File('${retained.path}.json').exists(), isTrue);
     },
   );
 

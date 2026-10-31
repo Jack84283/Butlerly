@@ -11,6 +11,8 @@ import 'statement_intake_policy.dart';
 import 'transaction_use_cases.dart';
 import 'transaction_rule_use_cases.dart';
 
+const statementSourceFingerprintPrefix = 'statement-sha256:';
+
 final class StatementImportSummary {
   const StatementImportSummary({
     required this.imported,
@@ -193,21 +195,26 @@ final class StatementServices {
       };
       final prepared = <StatementRowTransaction>[];
       for (final row in rows) {
-        if (row.amount == null ||
-            row.currency == null ||
-            row.transactionDate == null ||
-            row.direction == null) {
+        final persisted = persistedRows[row.id];
+        final effectiveRow =
+            persisted?.status == StatementRowStatus.unresolved &&
+                persisted?.reviewReason == 'statementDuplicateCandidate'
+            ? persisted!
+            : row;
+        if (effectiveRow.amount == null ||
+            effectiveRow.currency == null ||
+            effectiveRow.transactionDate == null ||
+            effectiveRow.direction == null) {
           failed++;
           exceptionReasons[row.id] = 'statementInvalidRow';
           continue;
         }
-        final transactionId = _transactionIdForRow(row);
-        final persisted = persistedRows[row.id];
+        final transactionId = _transactionIdForRow(effectiveRow);
         final committed =
             persisted?.status == StatementRowStatus.saved ||
             persisted?.status == StatementRowStatus.linked ||
-            row.status == StatementRowStatus.saved ||
-            row.status == StatementRowStatus.linked;
+            effectiveRow.status == StatementRowStatus.saved ||
+            effectiveRow.status == StatementRowStatus.linked;
         if (persisted?.status == StatementRowStatus.deferred ||
             persisted?.status == StatementRowStatus.skipped) {
           // A retry must not reopen an explicit review decision. The metadata
@@ -219,7 +226,9 @@ final class StatementServices {
         if (!committed &&
             persisted?.status == StatementRowStatus.unresolved &&
             persisted?.reviewReason == 'statementDuplicateCandidate') {
-          final candidateIds = await _candidateTransactionIdsForRow(row);
+          final candidateIds = await _candidateTransactionIdsForRow(
+            effectiveRow,
+          );
           if (candidateIds.isNotEmpty) {
             // A pending statement duplicate may retain the existing candidate ID
             // as evidence, but it is not linked until the user explicitly chooses
@@ -254,7 +263,7 @@ final class StatementServices {
           continue;
         }
         final duplicateResult = await duplicates(
-          row,
+          effectiveRow,
           excludeTransactionId: transactionId,
         );
         if (duplicateResult
@@ -279,7 +288,7 @@ final class StatementServices {
           continue;
         }
         final transaction = await _prepareTransaction(
-          row,
+          effectiveRow,
           paymentSourceId,
           allowCreateNew: true,
         );
@@ -287,7 +296,7 @@ final class StatementServices {
         prepared.add(
           StatementRowTransaction(
             row: _copy(
-              row,
+              effectiveRow,
               status: StatementRowStatus.saved,
               transactionId: transaction.value.id.value,
               dispositionReason: 'createNew',
@@ -297,8 +306,8 @@ final class StatementServices {
           ),
         );
         imported++;
-        if (intakePolicy.needsConfidenceReview(row.confidence) ||
-            row.status == StatementRowStatus.unresolved) {
+        if (intakePolicy.needsConfidenceReview(effectiveRow.confidence) ||
+            effectiveRow.status == StatementRowStatus.unresolved) {
           needsReview++;
         }
       }
@@ -308,7 +317,13 @@ final class StatementServices {
         final row = rows.where((value) => value.id == entry.key).firstOrNull;
         if (row == null) continue;
         try {
-          await _markStatementException(row, entry.value);
+          // Retrying a persisted unresolved row may receive the original
+          // parser output again. Preserve any corrections already written to
+          // SQLite and update only the review lifecycle fields.
+          await _markStatementException(
+            persistedRows[entry.key] ?? row,
+            entry.value,
+          );
         } on Object {
           // Keep the committed summary, but surface that the exception marker
           // itself could not be persisted for a later retry.
@@ -321,11 +336,13 @@ final class StatementServices {
           continue;
         }
         try {
-          final repairRow = duplicateMetadataRowIds.contains(row.id)
-              ? persistedRows[row.id] ?? row
-              : row;
+          final repairRow = persistedRows[row.id] ?? row;
           final pendingRows = duplicateRowIds
-              .map((id) => rows.where((value) => value.id == id).firstOrNull)
+              .map(
+                (id) =>
+                    persistedRows[id] ??
+                    rows.where((value) => value.id == id).firstOrNull,
+              )
               .whereType<StatementRow>()
               .where(
                 (value) =>
@@ -405,13 +422,79 @@ final class StatementServices {
   Future<ApplicationResult<void>> create(
     FinancialStatement statement,
     List<StatementRow> rows,
-  ) => runApplication(
-    'create statement',
-    () => statements.saveStatementWithRows(statement, rows),
+  ) => _runExclusive(
+    () => runApplication(
+      'create statement',
+      () => statements.saveStatementWithRows(statement, rows),
+    ),
   );
 
-  Future<ApplicationResult<List<FinancialStatement>>> list() => _runExclusive(
-    () => runApplication('list statements', () => statements.listStatements()),
+  /// Replaces a technical OCR failure only when the persisted statement still
+  /// has the same revision and no user-authored rows. This keeps retry from
+  /// overwriting corrections made while OCR was running.
+  Future<ApplicationResult<void>> retryTechnicalFailure({
+    required FinancialStatement expected,
+    required FinancialStatement updated,
+    required List<StatementRow> rows,
+    Extraction? extraction,
+  }) => _runExclusive(
+    () => runApplication('retry statement OCR', () async {
+      final current = await statements.findStatement(expected.id);
+      if (current == null || current.updatedAt != expected.updatedAt) {
+        throw const RepositoryException(
+          RepositoryFailureCode.constraint,
+          'retry statement OCR: statement changed',
+        );
+      }
+      final existingRows = await statements.listRows(expected.id);
+      if (existingRows.isNotEmpty) {
+        throw const RepositoryException(
+          RepositoryFailureCode.constraint,
+          'retry statement OCR: statement rows changed',
+        );
+      }
+      if (extraction != null) {
+        final evidenceRepository = evidence;
+        if (evidenceRepository == null) {
+          throw const RepositoryException(
+            RepositoryFailureCode.unavailable,
+            'retry statement OCR: evidence repository',
+          );
+        }
+        await evidenceRepository.saveExtraction(extraction);
+      }
+      await statements.saveStatementWithRows(updated, rows);
+    }),
+  );
+
+  Future<ApplicationResult<List<FinancialStatement>>> list({
+    bool includeArchived = false,
+  }) => _runExclusive(
+    () => runApplication(
+      'list statements',
+      () => statements.listStatements(includeArchived: includeArchived),
+    ),
+  );
+
+  /// Finds a previously captured statement by immutable source bytes.
+  ///
+  /// The fingerprint is stored in evidence provenance, so this remains stable
+  /// across process restarts without adding a schema migration.
+  Future<ApplicationResult<FinancialStatement?>> findBySourceFingerprint(
+    String fingerprint,
+  ) => _runExclusive(
+    () => runApplication('find statement source', () async {
+      final sourceId = statementSourceFingerprintPrefix + fingerprint;
+      for (final item in await statements.listStatements(
+        includeArchived: true,
+      )) {
+        final evidenceItem = evidence == null
+            ? null
+            : await evidence!.findById(EvidenceId(item.evidenceId));
+        if (evidenceItem?.provenance.sourceId == sourceId) return item;
+      }
+      return null;
+    }),
   );
 
   Future<ApplicationResult<List<StatementReviewException>>>

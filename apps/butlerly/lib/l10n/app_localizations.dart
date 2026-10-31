@@ -539,6 +539,10 @@ class AppLocalizations {
       'evidenceAttachFailed': 'Evidence could not be stored.',
       'evidenceCleanupFailed':
           'The transaction was not deleted because linked evidence could not be removed safely.',
+      'transactionDeletedEvidenceCleanupPending':
+          'The transaction was deleted, but linked evidence cleanup needs recovery.',
+      'evidenceCleanupCompleted': 'Linked evidence cleanup completed.',
+      'evidenceRemoveFailed': 'The evidence could not be removed safely.',
       'evidencePreview': 'Evidence preview',
       'viewImage': 'View image',
       'evidenceFileMissing': 'The local evidence file could not be found.',
@@ -625,6 +629,8 @@ class AppLocalizations {
       'fourDigitsOrEmpty':
           'Enter exactly four digits, or leave the field empty.',
       'statementCouldNotBeStored': 'The statement could not be stored.',
+      'statementAlreadyImported': 'This statement file was already imported.',
+      'retry': 'Retry',
       'statementCouldNotBeCreated': 'The statement could not be created.',
       'paymentSourceCouldNotBeCreated':
           'The payment source could not be created.',
@@ -714,6 +720,10 @@ class AppLocalizations {
       'selectPaymentSource':
           'Select the payment source ending in these last four digits.',
       'existingTransactionFound': 'Existing transaction found',
+      'duplicateReviewRequired':
+          'A matching transaction appeared while saving. Review it before trying again.',
+      'duplicateCheckUnavailable':
+          'Duplicate checking is temporarily unavailable. Nothing was saved; try again.',
       'notThisTransaction': 'Not this transaction',
       'matchConfidence': 'match confidence',
       'receipt': 'Receipt',
@@ -1078,6 +1088,42 @@ class AppLocalizations {
       'receiptUse': 'Use receipt',
       'receiptStoreFailed':
           'Receipt could not be stored locally. Please retry.',
+      'receiptCaptureFailed':
+          'Receipt capture could not be opened. Please retry.',
+      'receiptRecoveryTitle': 'Receipt capture needs review',
+      'receiptRecoveryBody':
+          'A receipt captured before its transaction was saved is still on this device.',
+      'genericCaptureRecoveryTitle': 'Unclassified capture needs review',
+      'genericCaptureRecoveryBody':
+          'A legacy capture was recovered without a capture type. Open it from the statement or receipt workflow to choose how to continue.',
+      'receiptRecoveryResume': 'Resume receipt',
+      'receiptRecoveryCancel': 'Discard capture',
+      'receiptRecoverySourceUnavailable':
+          'The saved receipt source is unavailable. The recovery record was kept.',
+      'receiptRecoveryDiscarded': 'The saved receipt capture was discarded.',
+      'receiptRecoveryWarning':
+          'Some receipt recovery records need attention. Their source files were kept.',
+      'captureRecoveryJournalIssue':
+          'A recovery record could not be read. Its source was kept safely; retry recovery.',
+      'captureRecoverySourceUnavailable':
+          'A recovery record source is unavailable. The record was kept safely for recovery.',
+      'captureRecoveryRepair': 'Resolve recovery record',
+      'captureRecoveryDismiss': 'Dismiss record',
+      'captureRecoveryDismissTitle': 'Dismiss recovery record?',
+      'captureRecoveryDismissBody':
+          'The recovery record will be removed, but uncertain source files will remain on this device.',
+      'captureRecoveryRepaired':
+          'The source was preserved as a retryable capture.',
+      'captureRecoveryDismissed':
+          'The recovery record was dismissed; uncertain files were kept safely.',
+      'captureRecoveryRepairUnavailable':
+          'The recovery record could not be repaired. Its files were kept safely.',
+      'evidenceDeletionRecoveryTitle': 'Evidence deletion needs review',
+      'evidenceDeletionRecoveryBody':
+          'Butlerly could not safely finish removing an evidence file after a previous deletion. Your source data was kept.',
+      'evidenceDeletionRecoveryRetry': 'Retry secure cleanup',
+      'evidenceDeletionRecoveryKept':
+          'Retry only removes a file after its database ownership and integrity are verified.',
       'captureReceipt': 'Capture receipt',
       'addReceipt': 'Add a receipt',
       'takePhoto': 'Take photo',
@@ -1122,6 +1168,19 @@ class AppLocalizations {
           'Some transaction-like rows were found but need review.',
       'statementProcessingFailed':
           'Statement processing failed because of a technical OCR error.',
+      'statementCaptureFailed':
+          'Statement capture could not be opened. Please retry.',
+      'statementRecoveryTitle': 'Statement import needs review',
+      'statementRecoveryBody':
+          'A statement source is still retained on this device after an interrupted import.',
+      'statementRecoveryResume': 'Resume import',
+      'statementRecoveryCancel': 'Discard source',
+      'statementRecoveryWarning':
+          'Some capture recovery records need attention. Their source files were kept.',
+      'statementHistoricalEvidenceUnavailable':
+          'A historical statement source is unavailable and needs recovery.',
+      'statementChangedDuringRetry':
+          'This statement changed while retrying. Open it again and retry from the latest saved version.',
       'abandonStatementImport': 'Abandon import',
       'abandonStatementImportTitle': 'Abandon this import?',
       'abandonStatementImportBody':
@@ -1574,6 +1633,9 @@ class AppLocalizations {
       'evidenceAttached': '凭证已存储在本地。',
       'evidenceAttachFailed': '无法存储凭证。',
       'evidenceCleanupFailed': '无法安全删除关联凭证，因此未删除该交易。',
+      'transactionDeletedEvidenceCleanupPending': '交易已删除，但关联凭证清理需要恢复处理。',
+      'evidenceCleanupCompleted': '关联凭证清理已完成。',
+      'evidenceRemoveFailed': '无法安全移除凭证。',
       'evidencePreview': '凭证预览',
       'viewImage': '查看图片',
       'evidenceFileMissing': '找不到本地凭证文件。',
@@ -1653,6 +1715,8 @@ class AppLocalizations {
       'createAndUse': '创建并使用',
       'fourDigitsOrEmpty': '请输入四位数字，或留空。',
       'statementCouldNotBeStored': '无法存储账单。',
+      'statementAlreadyImported': '此账单文件已经导入。',
+      'retry': '重试',
       'statementCouldNotBeCreated': '无法创建账单。',
       'paymentSourceCouldNotBeCreated': '无法创建付款来源。',
       'sourceCreatedCouldNotBeLinked': '来源已创建，但无法关联。请选择它后重试。',
@@ -1731,6 +1795,8 @@ class AppLocalizations {
       'multiplePaymentSourcesMatch': '多个付款来源匹配',
       'selectPaymentSource': '请选择末四位匹配的付款来源。',
       'existingTransactionFound': '找到现有交易',
+      'duplicateReviewRequired': '保存时出现了匹配交易。请先审核，再重试。',
+      'duplicateCheckUnavailable': '暂时无法检查重复交易。未保存任何内容，请重试。',
       'notThisTransaction': '不是这笔交易',
       'matchConfidence': '匹配置信度',
       'receipt': '收据',
@@ -2037,6 +2103,29 @@ class AppLocalizations {
       'receiptRetakeReplace': '重新拍摄 / 替换',
       'receiptUse': '使用收据',
       'receiptStoreFailed': '无法在本地保存收据，请重试。',
+      'receiptCaptureFailed': '无法打开收据捕获，请重试。',
+      'receiptRecoveryTitle': '收据捕获需要处理',
+      'receiptRecoveryBody': '交易保存前捕获的收据仍保留在此设备上。',
+      'genericCaptureRecoveryTitle': '未分类捕获需要处理',
+      'genericCaptureRecoveryBody': '已恢复一个没有捕获类型的旧文件。请从账单或收据流程打开它，以选择继续方式。',
+      'receiptRecoveryResume': '继续处理收据',
+      'receiptRecoveryCancel': '放弃捕获',
+      'receiptRecoverySourceUnavailable': '已保存的收据来源不可用，恢复记录已保留。',
+      'receiptRecoveryDiscarded': '已放弃保存的收据捕获。',
+      'receiptRecoveryWarning': '部分收据恢复记录需要处理，来源文件已保留。',
+      'captureRecoveryJournalIssue': '恢复记录无法读取。来源已安全保留，请重试恢复。',
+      'captureRecoverySourceUnavailable': '恢复记录的来源不可用。记录已安全保留以便恢复。',
+      'captureRecoveryRepair': '处理恢复记录',
+      'captureRecoveryDismiss': '关闭记录',
+      'captureRecoveryDismissTitle': '关闭恢复记录？',
+      'captureRecoveryDismissBody': '恢复记录将被移除，但不确定的来源文件会保留在此设备上。',
+      'captureRecoveryRepaired': '来源已保留为可重试的捕获记录。',
+      'captureRecoveryDismissed': '已关闭恢复记录；不确定的文件已安全保留。',
+      'captureRecoveryRepairUnavailable': '恢复记录无法修复，其文件已安全保留。',
+      'evidenceDeletionRecoveryTitle': '证据删除需要处理',
+      'evidenceDeletionRecoveryBody': 'Butlerly 无法安全完成之前的证据文件删除。您的源数据已保留。',
+      'evidenceDeletionRecoveryRetry': '重试安全清理',
+      'evidenceDeletionRecoveryKept': '只有在验证数据库归属和文件完整性后，重试才会删除文件。',
       'captureReceipt': '拍摄收据',
       'addReceipt': '添加收据',
       'takePhoto': '拍照',
@@ -2071,6 +2160,14 @@ class AppLocalizations {
       'statementNoRows': '已识别文字，但未找到交易行。',
       'statementUnresolvedEvidence': '发现疑似交易内容，需要审核。',
       'statementProcessingFailed': '由于本地文字识别技术错误，账单处理失败。',
+      'statementCaptureFailed': '无法打开账单捕获，请重试。',
+      'statementRecoveryTitle': '账单导入需要处理',
+      'statementRecoveryBody': '中断的账单来源仍保留在此设备上。',
+      'statementRecoveryResume': '继续导入',
+      'statementRecoveryCancel': '放弃来源',
+      'statementRecoveryWarning': '部分捕获恢复记录需要处理，来源文件已保留。',
+      'statementHistoricalEvidenceUnavailable': '历史账单来源不可用，需要恢复。',
+      'statementChangedDuringRetry': '重试期间账单发生了变化。请重新打开账单，并从最新保存的版本重试。',
       'abandonStatementImport': '放弃导入',
       'abandonStatementImportTitle': '放弃此次导入？',
       'abandonStatementImportBody': '扫描的账单及其提取数据将被删除。不会更改您的原始文件。',
@@ -2601,6 +2698,12 @@ class AppLocalizations {
       'evidenceAttachFailed': 'No se pudo guardar la evidencia.',
       'evidenceCleanupFailed':
           'La transacción no se eliminó porque la evidencia vinculada no pudo borrarse de forma segura.',
+      'transactionDeletedEvidenceCleanupPending':
+          'La transacción se eliminó, pero la limpieza de la evidencia vinculada requiere recuperación.',
+      'evidenceCleanupCompleted':
+          'Se completó la limpieza de la evidencia vinculada.',
+      'evidenceRemoveFailed':
+          'No se pudo eliminar la evidencia de forma segura.',
       'evidencePreview': 'Vista previa de evidencia',
       'viewImage': 'Ver imagen',
       'evidenceFileMissing':
@@ -2693,6 +2796,8 @@ class AppLocalizations {
       'fourDigitsOrEmpty':
           'Introduce exactamente cuatro dígitos o deja el campo vacío.',
       'statementCouldNotBeStored': 'No se pudo guardar el extracto.',
+      'statementAlreadyImported': 'Este archivo de extracto ya se importó.',
+      'retry': 'Reintentar',
       'statementCouldNotBeCreated': 'No se pudo crear el extracto.',
       'paymentSourceCouldNotBeCreated': 'No se pudo crear la fuente de pago.',
       'sourceCreatedCouldNotBeLinked':
@@ -2781,6 +2886,10 @@ class AppLocalizations {
       'selectPaymentSource':
           'Selecciona la fuente de pago que termina en estos cuatro dígitos.',
       'existingTransactionFound': 'Se encontró una transacción existente',
+      'duplicateReviewRequired':
+          'Apareció una transacción coincidente mientras se guardaba. Revísala antes de volver a intentarlo.',
+      'duplicateCheckUnavailable':
+          'La comprobación de duplicados no está disponible temporalmente. No se guardó nada; inténtalo de nuevo.',
       'notThisTransaction': 'No es esta transacción',
       'matchConfidence': 'confianza de coincidencia',
       'receipt': 'Recibo',
@@ -3155,6 +3264,44 @@ class AppLocalizations {
       'receiptUse': 'Usar recibo',
       'receiptStoreFailed':
           'No se pudo guardar el recibo localmente. Inténtalo de nuevo.',
+      'receiptCaptureFailed':
+          'No se pudo abrir la captura del recibo. Inténtalo de nuevo.',
+      'receiptRecoveryTitle': 'La captura del recibo necesita revisión',
+      'receiptRecoveryBody':
+          'Un recibo capturado antes de guardar su transacción aún está en este dispositivo.',
+      'genericCaptureRecoveryTitle':
+          'Una captura sin clasificar necesita revisión',
+      'genericCaptureRecoveryBody':
+          'Se recuperó una captura antigua sin tipo. Ábrela desde el flujo de extractos o recibos para elegir cómo continuar.',
+      'receiptRecoveryResume': 'Reanudar recibo',
+      'receiptRecoveryCancel': 'Descartar captura',
+      'receiptRecoverySourceUnavailable':
+          'La fuente guardada del recibo no está disponible. Se conservó el registro de recuperación.',
+      'receiptRecoveryDiscarded': 'Se descartó la captura de recibo guardada.',
+      'receiptRecoveryWarning':
+          'Algunos registros de recuperación de recibos necesitan atención. Sus archivos de origen se conservaron.',
+      'captureRecoveryJournalIssue':
+          'No se pudo leer un registro de recuperación. El origen se conservó de forma segura; reintenta la recuperación.',
+      'captureRecoverySourceUnavailable':
+          'El origen de un registro de recuperación no está disponible. El registro se conservó de forma segura para recuperarlo.',
+      'captureRecoveryRepair': 'Resolver registro de recuperación',
+      'captureRecoveryDismiss': 'Descartar registro',
+      'captureRecoveryDismissTitle': '¿Descartar el registro de recuperación?',
+      'captureRecoveryDismissBody':
+          'Se quitará el registro de recuperación, pero los archivos de origen inciertos permanecerán en este dispositivo.',
+      'captureRecoveryRepaired':
+          'El origen se conservó como una captura que se puede reintentar.',
+      'captureRecoveryDismissed':
+          'Se descartó el registro de recuperación; los archivos inciertos se conservaron de forma segura.',
+      'captureRecoveryRepairUnavailable':
+          'No se pudo reparar el registro de recuperación. Sus archivos se conservaron de forma segura.',
+      'evidenceDeletionRecoveryTitle':
+          'La eliminación de evidencia necesita revisión',
+      'evidenceDeletionRecoveryBody':
+          'Butlerly no pudo terminar de forma segura la eliminación de un archivo de evidencia. Sus datos de origen se conservaron.',
+      'evidenceDeletionRecoveryRetry': 'Reintentar limpieza segura',
+      'evidenceDeletionRecoveryKept':
+          'El reintento solo elimina un archivo después de verificar su relación con la base de datos y su integridad.',
       'captureReceipt': 'Capturar recibo',
       'addReceipt': 'Añadir un recibo',
       'takePhoto': 'Tomar foto',
@@ -3199,6 +3346,19 @@ class AppLocalizations {
           'Hay evidencia similar a una transacción que requiere revisión.',
       'statementProcessingFailed':
           'El procesamiento del extracto falló por un error técnico de OCR.',
+      'statementCaptureFailed':
+          'No se pudo abrir la captura del extracto. Inténtalo de nuevo.',
+      'statementRecoveryTitle': 'La importación del extracto necesita revisión',
+      'statementRecoveryBody':
+          'El origen de un extracto interrumpido aún se conserva en este dispositivo.',
+      'statementRecoveryResume': 'Reanudar importación',
+      'statementRecoveryCancel': 'Descartar origen',
+      'statementRecoveryWarning':
+          'Algunos registros de recuperación necesitan atención. Sus archivos de origen se conservaron.',
+      'statementHistoricalEvidenceUnavailable':
+          'El origen de un extracto histórico no está disponible y necesita recuperación.',
+      'statementChangedDuringRetry':
+          'El extracto cambió durante el reintento. Ábrelo de nuevo y reintenta desde la última versión guardada.',
       'abandonStatementImport': 'Abandonar importación',
       'abandonStatementImportTitle': '¿Abandonar esta importación?',
       'abandonStatementImportBody':

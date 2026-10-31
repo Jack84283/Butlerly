@@ -8,6 +8,8 @@ import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/data/restore_recovery_state.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/di/finance_services.dart';
+import 'package:butlerly/core/evidence/evidence_deletion_recovery_state.dart';
+import 'package:butlerly/core/evidence/evidence_mutation_lock.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/core/evidence/platform_ocr_recognizer.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
@@ -39,12 +41,16 @@ void configureDependencies({
   );
   final restoreRecoveryState = RestoreRecoveryState(localDataManager);
   final publicationRecoveryState = BackupPublicationRecoveryState();
+  final evidenceDeletionRecoveryState = EvidenceDeletionRecoveryState();
   services
     ..registerSingleton<LocalDataManager>(localDataManager)
     ..registerSingleton<AnalysisConsistencyGate>(consistencyGate)
     ..registerSingleton<RestoreRecoveryState>(restoreRecoveryState)
     ..registerSingleton<BackupPublicationRecoveryState>(
       publicationRecoveryState,
+    )
+    ..registerSingleton<EvidenceDeletionRecoveryState>(
+      evidenceDeletionRecoveryState,
     )
     ..registerSingleton<LocalBackupManager>(
       LocalBackupManager(
@@ -53,6 +59,8 @@ void configureDependencies({
         recoveryState: restoreRecoveryState,
         publicationRecoveryState: publicationRecoveryState,
         consistencyGate: consistencyGate,
+        recoverStagedEvidenceDeletions: () => services<LocalEvidenceStore>()
+            .recoverStagedEvidenceDeletionsWhileLocked(),
       ),
     );
 
@@ -124,13 +132,17 @@ void configureDependencies({
       consistencyGate: consistencyGate,
     );
     final statements = SqliteStatementRepository(database.persistenceDatabase);
+    final evidenceRepository = SqliteEvidenceRepository(
+      database.persistenceDatabase,
+    );
+    late LocalEvidenceStore localEvidenceStore;
     final finance = FinanceServices(
       transactions,
       SqlitePaymentSourceRepository(database.persistenceDatabase),
       SqliteMerchantRepository(database.persistenceDatabase),
       SqliteCategoryRepository(database.persistenceDatabase),
       SqliteTagRepository(database.persistenceDatabase),
-      SqliteEvidenceRepository(database.persistenceDatabase),
+      evidenceRepository,
       SqliteUserPreferenceRepository(database.persistenceDatabase),
       masterTranslations: SqliteMasterTranslationRepository(
         database.persistenceDatabase,
@@ -174,6 +186,11 @@ void configureDependencies({
       ),
       analysisInvalidation: invalidateAnalysis,
       consistencyGate: consistencyGate,
+      deleteEvidenceFile: (evidence) =>
+          localEvidenceStore.deletePublishedFile(evidence),
+      finalizeDeletedEvidenceFile: (evidence) =>
+          localEvidenceStore.finalizeDeletedEvidenceFile(evidence),
+      withEvidenceMutationLock: EvidenceMutationLock.runExclusive,
       canonicalTransactionIds: () async {
         final selected = selectCanonicalTransactions(
           source: await rawTransactions.listAll(),
@@ -187,7 +204,10 @@ void configureDependencies({
     services
       ..registerSingleton<FinanceServices>(finance)
       ..registerSingleton<LocalEvidenceStore>(
-        LocalEvidenceStore(services<LocalDataManager>(), finance),
+        localEvidenceStore = LocalEvidenceStore(
+          services<LocalDataManager>(),
+          finance,
+        ),
       );
   }
 }

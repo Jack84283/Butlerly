@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/data/restore_recovery_state.dart';
+import 'package:butlerly/core/data/staged_evidence_restore_reconciliation.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:path/path.dart' as path;
 
@@ -106,6 +107,7 @@ Future<void> recoverInterruptedLocalRestore(
 
   final journalPrevious = data?['previousPath'] as String?;
   final journalStaging = data?['stagingPath'] as String?;
+  final journalPreviousDeleting = data?['previousDeletingPath'] as String?;
   final journalPhase = data?['phase'] as String?;
   if (!await _validJournalDirectoryPath(
         root,
@@ -118,6 +120,13 @@ Future<void> recoverInterruptedLocalRestore(
         journalStaging,
         operationId: journalOperationId,
         previous: false,
+      ) ||
+      !await _validJournalDirectoryPath(
+        root,
+        journalPreviousDeleting,
+        operationId: journalOperationId,
+        previous: false,
+        deleting: true,
       )) {
     await _markFromOriginOrUnknown(
       state,
@@ -128,7 +137,8 @@ Future<void> recoverInterruptedLocalRestore(
     return;
   }
   if (await _isJournalLink(journalPrevious) ||
-      await _isJournalLink(journalStaging)) {
+      await _isJournalLink(journalStaging) ||
+      await _isJournalLink(journalPreviousDeleting)) {
     await _markFromOriginOrUnknown(
       state,
       originState,
@@ -149,8 +159,47 @@ Future<void> recoverInterruptedLocalRestore(
     operationId: journalOperationId,
     previous: false,
   );
+  final journalPreviousDeletingDirectory = _canonicalJournalDirectory(
+    root,
+    journalPreviousDeleting,
+    operationId: journalOperationId,
+    previous: false,
+    deleting: true,
+  );
 
   if (committed) {
+    final stagedDeletionDirectories = <Directory>{
+      ?journalPreviousDeletingDirectory,
+      ...recovery.deleting.where(
+        (directory) => directory.path.endsWith('-$committedOperationId'),
+      ),
+    };
+    final unresolvedStagedDeletionDirectories = <Directory>{};
+    for (final directory in stagedDeletionDirectories) {
+      if (!await directory.exists()) continue;
+      final unresolved = await reconcileStagedEvidenceAfterRestore(
+        database.database,
+        root,
+        directory,
+      );
+      if (unresolved) unresolvedStagedDeletionDirectories.add(directory);
+    }
+    if (unresolvedStagedDeletionDirectories.isNotEmpty) {
+      final liveDeleting = Directory('${root.path}.deleting');
+      if (await liveDeleting.exists() ||
+          unresolvedStagedDeletionDirectories.length != 1) {
+        await _markFromOriginOrUnknown(
+          state,
+          originState,
+          operationId: committedOperationId,
+          reason: 'ambiguous-staged-deletion-recovery',
+        );
+        return;
+      }
+      await unresolvedStagedDeletionDirectories.single.rename(
+        liveDeleting.path,
+      );
+    }
     // DB commit is authoritative: keep the live evidence tree. Cleanup is
     // scoped to the committed operation so stale artifacts from another crash
     // cannot be destroyed accidentally.
@@ -162,6 +211,9 @@ Future<void> recoverInterruptedLocalRestore(
           : null,
       journalOperationId == committedOperationId
           ? journalStagingDirectory
+          : null,
+      journalOperationId == committedOperationId
+          ? journalPreviousDeletingDirectory
           : null,
     );
     for (final directory in cleanup) {
@@ -220,6 +272,20 @@ Future<void> recoverInterruptedLocalRestore(
   }
 
   final previous = selection.directory;
+  final liveDeleting = Directory('${root.path}.deleting');
+  if (journalPreviousDeletingDirectory != null &&
+      await journalPreviousDeletingDirectory.exists()) {
+    if (await liveDeleting.exists()) {
+      await _markFromOriginOrUnknown(
+        state,
+        originState,
+        operationId: journalOperationId ?? 'unknown',
+        reason: 'ambiguous-staged-deletion-recovery',
+      );
+      return;
+    }
+    await journalPreviousDeletingDirectory.rename(liveDeleting.path);
+  }
   if (previous != null) {
     // An original evidence tree is identified unambiguously and the DB did not
     // commit. Restore exactly that tree.
@@ -276,6 +342,9 @@ Future<void> recoverInterruptedLocalRestore(
       recovery,
       journalOperationId == operationId ? journalPreviousDirectory : null,
       journalOperationId == operationId ? journalStagingDirectory : null,
+      journalOperationId == operationId
+          ? journalPreviousDeletingDirectory
+          : null,
     );
     for (final directory in cleanup) {
       if (directory.path == previous?.path) continue;
@@ -308,6 +377,7 @@ String? _committedOperationId({
     final matchesRecoveryDirectory = <Directory>[
       ...recovery.previous,
       ...recovery.staging,
+      ...recovery.deleting,
     ].any((directory) => directory.path.endsWith(suffix));
     if (matchesRecoveryDirectory) matches.add(operationId);
   }
@@ -460,13 +530,16 @@ Set<Directory> _directoriesForOperation(
   _RecoveryDirectories recovery,
   Directory? journalPrevious,
   Directory? journalStaging,
+  Directory? journalPreviousDeleting,
 ) {
   final suffix = '-$operationId';
   return <Directory>{
     ?journalPrevious,
     ?journalStaging,
+    ?journalPreviousDeleting,
     ...recovery.previous.where((directory) => directory.path.endsWith(suffix)),
     ...recovery.staging.where((directory) => directory.path.endsWith(suffix)),
+    ...recovery.deleting.where((directory) => directory.path.endsWith(suffix)),
   };
 }
 
@@ -510,6 +583,7 @@ Future<bool> _validJournalDirectoryPath(
   String? candidate, {
   required String? operationId,
   required bool previous,
+  bool deleting = false,
 }) async {
   if (candidate == null) return true;
   if (!path.isAbsolute(candidate)) return false;
@@ -520,7 +594,11 @@ Future<bool> _validJournalDirectoryPath(
   }
   final base = path.basename(normalizedRoot);
   final candidateName = path.basename(normalizedCandidate);
-  final prefix = previous ? '$base.restore-previous-' : '$base.restore-';
+  final prefix = previous
+      ? '$base.restore-previous-'
+      : deleting
+      ? '$base.restore-deleting-'
+      : '$base.restore-';
   final genericPrefix = '$base.';
   if (!candidateName.startsWith(genericPrefix) ||
       candidateName.length == genericPrefix.length) {
@@ -531,7 +609,11 @@ Future<bool> _validJournalDirectoryPath(
   final suffix = canonical
       ? candidateName.substring(prefix.length)
       : candidateName.substring(genericPrefix.length);
-  if (!_validRestoreOperationId(suffix.replaceFirst('restore-previous-', '')) &&
+  if (!_validRestoreOperationId(
+        suffix
+            .replaceFirst('restore-previous-', '')
+            .replaceFirst('restore-deleting-', ''),
+      ) &&
       !_validRestoreOperationId(suffix.replaceFirst('restore-', ''))) {
     return false;
   }
@@ -559,12 +641,17 @@ Directory? _canonicalJournalDirectory(
   String? candidate, {
   required String? operationId,
   required bool previous,
+  bool deleting = false,
 }) {
   if (candidate == null) return null;
   final normalizedRoot = path.normalize(path.absolute(root.path));
   final normalizedCandidate = path.normalize(path.absolute(candidate));
   final base = path.basename(normalizedRoot);
-  final prefix = previous ? '$base.restore-previous-' : '$base.restore-';
+  final prefix = previous
+      ? '$base.restore-previous-'
+      : deleting
+      ? '$base.restore-deleting-'
+      : '$base.restore-';
   if (path.dirname(normalizedCandidate) != path.dirname(normalizedRoot) ||
       !path.basename(normalizedCandidate).startsWith(prefix)) {
     return null;
@@ -582,19 +669,24 @@ Future<_RecoveryDirectories> _discoverRecoveryDirectories(
 ) async {
   final previous = <Directory>[];
   final staging = <Directory>[];
+  final deleting = <Directory>[];
   final parent = root.parent;
-  if (!await parent.exists()) return _RecoveryDirectories(previous, staging);
+  if (!await parent.exists()) {
+    return _RecoveryDirectories(previous, staging, deleting);
+  }
   final base = path.basename(root.path);
   await for (final entity in parent.list(followLinks: false)) {
     if (entity is! Directory) continue;
     final name = path.basename(entity.path);
     if (name.startsWith('$base.restore-previous-')) {
       previous.add(entity);
+    } else if (name.startsWith('$base.restore-deleting-')) {
+      deleting.add(entity);
     } else if (name.startsWith('$base.restore-')) {
       staging.add(entity);
     }
   }
-  return _RecoveryDirectories(previous, staging);
+  return _RecoveryDirectories(previous, staging, deleting);
 }
 
 final class _OriginState {
@@ -639,8 +731,9 @@ final class _PreviousSelection {
 }
 
 final class _RecoveryDirectories {
-  const _RecoveryDirectories(this.previous, this.staging);
+  const _RecoveryDirectories(this.previous, this.staging, this.deleting);
 
   final List<Directory> previous;
   final List<Directory> staging;
+  final List<Directory> deleting;
 }

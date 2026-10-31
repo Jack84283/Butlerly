@@ -1655,26 +1655,78 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       destructive: true,
     );
     if (confirmed != true || !context.mounted) return;
-    final evidenceResult = await finance.listEvidenceForTransaction(
-      transaction.id,
-    );
-    if (evidenceResult is! ApplicationSuccess<List<EvidenceItem>>) {
-      if (context.mounted) _showEvidenceCleanupFailure(context);
-      return;
+    final result = await finance.deleteTransactionPermanently(transaction.id);
+    if (!context.mounted) return;
+    if (result is ApplicationSuccess<void>) {
+      _close(changed: true);
+    } else if (result is ApplicationFailure<void> &&
+        result.failure.detail != null &&
+        result.failure.detail!.startsWith(evidenceCleanupRecoveryPrefix)) {
+      final pendingIds = result.failure.detail!
+          .substring(evidenceCleanupRecoveryPrefix.length)
+          .split(',')
+          .where((value) => value.isNotEmpty)
+          .toList(growable: false);
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            context.l10n.text('transactionDeletedEvidenceCleanupPending'),
+          ),
+          action: pendingIds.isEmpty
+              ? null
+              : SnackBarAction(
+                  label: context.l10n.text('retry'),
+                  onPressed: () => unawaited(
+                    _retryEvidenceCleanupAfterTransaction(
+                      pendingIds,
+                      messenger,
+                    ),
+                  ),
+                ),
+        ),
+      );
+      _close(changed: true);
+    } else {
+      _showEvidenceCleanupFailure(context);
     }
-    for (final evidence in evidenceResult.value) {
-      if (!await services<LocalEvidenceStore>().remove(evidence)) {
-        if (context.mounted) _showEvidenceCleanupFailure(context);
-        return;
-      }
-    }
-    await finance.deleteTransactionPermanently(transaction.id);
-    if (context.mounted) _close(changed: true);
   }
 
   void _showEvidenceCleanupFailure(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(context.l10n.text('evidenceCleanupFailed'))),
+    );
+  }
+
+  Future<void> _retryEvidenceCleanupAfterTransaction(
+    List<String> evidenceIds,
+    ScaffoldMessengerState messenger,
+  ) async {
+    final store = services<LocalEvidenceStore>();
+    var allCleaned = true;
+    for (final evidenceId in evidenceIds) {
+      final cleaned = await store.retryEvidenceCleanup(evidenceId);
+      allCleaned = allCleaned && cleaned;
+    }
+    if (!messenger.mounted) return;
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          AppLocalizations.of(messenger.context).text(
+            allCleaned
+                ? 'evidenceCleanupCompleted'
+                : 'transactionDeletedEvidenceCleanupPending',
+          ),
+        ),
+        action: allCleaned
+            ? null
+            : SnackBarAction(
+                label: AppLocalizations.of(messenger.context).text('retry'),
+                onPressed: () => unawaited(
+                  _retryEvidenceCleanupAfterTransaction(evidenceIds, messenger),
+                ),
+              ),
+      ),
     );
   }
 
@@ -2141,8 +2193,49 @@ class _EvidenceSectionState extends State<_EvidenceSection> {
       ),
     );
     if (confirmed != true) return;
-    final removed = await services<LocalEvidenceStore>().remove(evidence);
-    if (mounted && removed) setState(() => _evidence = _load());
+    final result = await services<LocalEvidenceStore>()
+        .removeEvidenceFromTransaction(widget.transactionId, evidence.id.value);
+    if (!mounted) return;
+    if (result is ApplicationSuccess<bool>) {
+      setState(() => _evidence = _load());
+    } else if (result is ApplicationFailure<bool> &&
+        result.failure.detail != null &&
+        result.failure.detail!.startsWith(evidenceCleanupRecoveryPrefix)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            context.l10n.text('transactionDeletedEvidenceCleanupPending'),
+          ),
+          action: SnackBarAction(
+            label: context.l10n.text('retry'),
+            onPressed: () => unawaited(_retryEvidenceRemoval(evidence)),
+          ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.text('evidenceRemoveFailed'))),
+      );
+    }
+  }
+
+  Future<void> _retryEvidenceRemoval(EvidenceItem evidence) async {
+    final result = await services<LocalEvidenceStore>()
+        .removeEvidenceFromTransaction(widget.transactionId, evidence.id.value);
+    if (!mounted) return;
+    if (result is ApplicationSuccess<bool>) {
+      setState(() => _evidence = _load());
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(context.l10n.text('evidenceRemoveFailed')),
+        action: SnackBarAction(
+          label: context.l10n.text('retry'),
+          onPressed: () => unawaited(_retryEvidenceRemoval(evidence)),
+        ),
+      ),
+    );
   }
 
   Future<void> _preview(EvidenceItem evidence) async {

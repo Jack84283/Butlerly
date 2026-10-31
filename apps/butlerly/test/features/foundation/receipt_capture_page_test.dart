@@ -9,6 +9,7 @@ import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly/features/foundation/presentation/receipt_capture_page.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -57,6 +58,8 @@ void main() {
           },
           discardPreserved: (_) async {},
           ocrRecognizer: _FakeOcrRecognizer(events),
+          preparePendingReceipt: (_, _) async {},
+          completePendingReceipt: (_) async => true,
           loadInitialData: _emptyInitialData,
         ),
       ),
@@ -91,7 +94,80 @@ void main() {
     expect(find.byType(CalendarDatePicker), findsOneWidget);
     expect(find.byType(DatePickerDialog), findsNothing);
     expect(tester.takeException(), isNull);
+
+    // Leave the test with no modal route open so the next widget test starts
+    // from the same navigation state as a real user flow.
+    await tester.tap(find.text('Cancel').last);
+    await tester.pumpAndSettle();
   });
+
+  testWidgets('receipt picker failure leaves a retryable page', (tester) async {
+    final finance = _finance(_ReceiptTransactionRepository());
+
+    _resetView(tester);
+    await tester.pumpWidget(
+      _localizedApp(
+        ReceiptCapturePage(
+          finance: finance,
+          evidenceStore: _evidenceStore(finance),
+          pickImage: (_) async => throw StateError('picker unavailable'),
+          loadInitialData: _emptyInitialData,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Choose from Photos'));
+    await tester.pump();
+
+    expect(
+      find.text('Receipt capture could not be opened. Please retry.'),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+  });
+
+  testWidgets(
+    'preserves a receipt before confirmation and cleans up explicit replacement',
+    (tester) async {
+      final events = <String>[];
+      final fixturePath = _fixturePath();
+      final source = XFile(fixturePath, name: 'receipt.png');
+      final finance = _finance(_ReceiptTransactionRepository());
+
+      _resetView(tester);
+      await tester.pumpWidget(
+        _localizedApp(
+          ReceiptCapturePage(
+            finance: finance,
+            evidenceStore: _evidenceStore(finance),
+            pickImage: (_) async => source,
+            preserveEvidence: (_) async {
+              events.add('preserve');
+              return _preservedReceipt;
+            },
+            discardPreserved: (_) async => events.add('discard'),
+            loadInitialData: _emptyInitialData,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.text('Choose from Photos'));
+      await tester.pump();
+
+      expect(events, contains('preserve'));
+      expect(find.text('Use receipt'), findsOneWidget);
+      final replace = find.text('Retake / replace');
+      await tester.ensureVisible(replace);
+      await tester.pumpAndSettle();
+      await tester.tap(replace);
+      await tester.pumpAndSettle();
+      expect(events, contains('discard'));
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets(
     'saves recognized receipt after transaction and evidence commit',
@@ -119,6 +195,8 @@ void main() {
             return _receiptEvidence('evidence-success');
           },
           ocr: (_) async => _recognizedReceipt(),
+          preparePendingReceipt: (_, _) async {},
+          completePendingReceipt: (_) async => true,
           loadInitialData: _emptyInitialData,
         ),
         onResult: (value) => routeResult = value,
@@ -148,6 +226,7 @@ void main() {
     final finance = _finance(transactions);
     final fixturePath = _fixturePath();
     final source = XFile(fixturePath, name: 'receipt.png');
+    var cancelled = false;
 
     _resetView(tester);
 
@@ -161,7 +240,13 @@ void main() {
           fileForPreserved: (_) async => File(fixturePath),
           discardPreserved: (_) async {},
           attachPreserved: (_, _) async => null,
+          cancelPendingReceiptCapture: (_) async {
+            cancelled = true;
+            return true;
+          },
           ocr: (_) async => _recognizedReceipt(),
+          preparePendingReceipt: (_, _) async {},
+          completePendingReceipt: (_) async => true,
           loadInitialData: _emptyInitialData,
         ),
       ),
@@ -177,11 +262,233 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(transactions.values, isEmpty);
+    expect(cancelled, isFalse);
     expect(find.byType(ReceiptCapturePage), findsOneWidget);
     expect(find.text('Evidence could not be stored.'), findsOneWidget);
     expect(find.text('Save receipt transaction'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'failed replacement keeps the existing review values when cancellation fails',
+    (tester) async {
+      final finance = _finance(_ReceiptTransactionRepository());
+      final fixturePath = _fixturePath();
+      final source = XFile(fixturePath, name: 'receipt.png');
+      var ocrCount = 0;
+      var cancelCount = 0;
+      final pendingCapture = PendingReceiptCapture(
+        captureId: 'receipt-replacement-recovery',
+        transactionId: 'receipt-replacement-transaction',
+        source: _preservedReceipt,
+        plannedEvidence: _receiptEvidence('receipt-replacement-evidence'),
+      );
+      final pending = <PendingReceiptCapture>[pendingCapture];
+
+      _resetView(tester);
+      tester.view.physicalSize = const Size(800, 1200);
+      tester.view.devicePixelRatio = 1;
+      await tester.pumpWidget(
+        _localizedApp(
+          ReceiptCapturePage(
+            finance: finance,
+            evidenceStore: _evidenceStore(finance),
+            pickImage: (_) async => source,
+            preserveEvidence: (_) async => _preservedReceipt,
+            fileForPreserved: (_) async => File(fixturePath),
+            discardPreserved: (_) async {},
+            preparePendingReceipt: (_, _) async {},
+            cancelPendingReceiptCapture: (_) async {
+              cancelCount++;
+              return false;
+            },
+            completePendingReceipt: (_) async => true,
+            listPendingReceiptCaptures: () async => pending,
+            ocr: (_) async {
+              ocrCount++;
+              return _recognizedReceipt();
+            },
+            loadInitialData: _emptyInitialData,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Resume receipt'));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
+      for (var index = 0; index < 10; index++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+
+      final replace = find.widgetWithText(TextButton, 'Replace');
+      expect(replace, findsOneWidget);
+      await tester.ensureVisible(replace);
+      await tester.tap(replace);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      final useReceipt = find.widgetWithText(FilledButton, 'Use receipt');
+      await tester.ensureVisible(useReceipt);
+      await tester.pump();
+      await tester.tap(useReceipt);
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
+      for (var index = 0; index < 10; index++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+
+      expect(cancelCount, 1);
+      expect(ocrCount, 1);
+      expect(pending, hasLength(1));
+      expect(find.text('12.34'), findsOneWidget);
+      expect(
+        find.text('Receipt could not be stored locally. Please retry.'),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'resumes a rebound receipt against its persisted target transaction',
+    (tester) async {
+      final transactions = _ReceiptTransactionRepository();
+      final target = _receiptTransaction('rebound-target');
+      await transactions.save(target);
+      final finance = _finance(transactions);
+      final fixturePath = _fixturePath();
+      final pending = <PendingReceiptCapture>[
+        PendingReceiptCapture(
+          captureId: 'rebound-capture',
+          transactionId: target.id.value,
+          source: _preservedReceipt,
+          plannedEvidence: _receiptEvidence('rebound-evidence'),
+        ),
+      ];
+      final source = XFile(fixturePath, name: 'receipt.png');
+      String? attachedTransactionId;
+      bool? routeResult;
+
+      _resetView(tester);
+      tester.view.physicalSize = const Size(800, 1200);
+      tester.view.devicePixelRatio = 1;
+      await _openReceiptRoute(
+        tester,
+        ReceiptCapturePage(
+          finance: finance,
+          evidenceStore: _evidenceStore(finance),
+          pickImage: (_) async => source,
+          preserveEvidence: (_) async => _preservedReceipt,
+          fileForPreserved: (_) async => File(fixturePath),
+          discardPreserved: (_) async {},
+          attachPreserved: (transactionId, _) async {
+            attachedTransactionId = transactionId;
+            return _receiptEvidence('rebound-attached-evidence');
+          },
+          rebindPendingReceipt: (_, _) async {},
+          markPendingReceiptCommitted: (_, _) async => true,
+          completePendingReceipt: (_) async => true,
+          listPendingReceiptCaptures: () async => pending,
+          ocr: (_) async => _recognizedReceipt(),
+          loadInitialData: _emptyInitialData,
+        ),
+        onResult: (value) => routeResult = value,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Resume receipt'));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
+      for (var index = 0; index < 10; index++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      final save = find.widgetWithText(
+        FilledButton,
+        'Save receipt transaction',
+      );
+      expect(save, findsOneWidget);
+      await tester.tap(save);
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(routeResult, isTrue);
+      expect(transactions.values, hasLength(1));
+      expect(attachedTransactionId, target.id.value);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'surfaces an interrupted receipt capture and allows explicit discard',
+    (tester) async {
+      final finance = _finance(_ReceiptTransactionRepository());
+      final pendingCapture = PendingReceiptCapture(
+        captureId: 'receipt-recovery-ui',
+        transactionId: 'receipt-recovery-transaction',
+        source: _preservedReceipt,
+        plannedEvidence: EvidenceItem(
+          id: EvidenceId('evidence-recovery-ui'),
+          type: EvidenceType.receiptImage,
+          originalName: 'receipt.png',
+          mediaType: 'image/png',
+          localFileName: 'receipt.png',
+          provenance: Provenance(
+            id: ProvenanceId('provenance-recovery-ui'),
+            sourceType: ProvenanceSourceType.scan,
+            capturedAt: DateTime.utc(2026, 9, 15),
+            originalRepresentation: 'receipt.png',
+          ),
+          createdAt: DateTime.utc(2026, 9, 15),
+        ),
+      );
+      final secondPendingCapture = PendingReceiptCapture(
+        captureId: 'receipt-recovery-ui-second',
+        transactionId: 'receipt-recovery-transaction-second',
+        source: _preservedReceipt,
+        plannedEvidence: _receiptEvidence('evidence-recovery-ui-second'),
+      );
+      var pending = <PendingReceiptCapture>[
+        pendingCapture,
+        secondPendingCapture,
+      ];
+      var cancelled = false;
+
+      _resetView(tester);
+      await tester.pumpWidget(
+        _localizedApp(
+          ReceiptCapturePage(
+            finance: finance,
+            evidenceStore: _evidenceStore(finance),
+            listPendingReceiptCaptures: () async => pending,
+            cancelPendingReceiptCapture: (captureId) async {
+              cancelled = captureId == pendingCapture.captureId;
+              pending = pending.skip(1).toList(growable: false);
+              return cancelled;
+            },
+            loadInitialData: _emptyInitialData,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Receipt capture needs review'), findsNWidgets(2));
+      expect(find.text('Resume receipt'), findsNWidgets(2));
+      expect(find.text('Discard capture'), findsNWidgets(2));
+
+      await tester.tap(find.text('Discard capture').first);
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Receipt capture needs review'), findsOneWidget);
+      expect(find.text('Resume receipt'), findsOneWidget);
+      expect(cancelled, isTrue);
+      expect(pending, hasLength(1));
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets(
     'rollback failure exits saved transaction instead of allowing duplicate retry',
@@ -190,6 +497,7 @@ void main() {
       final finance = _finance(transactions);
       final fixturePath = _fixturePath();
       final source = XFile(fixturePath, name: 'receipt.png');
+      var discarded = false;
       bool? routeResult;
 
       _resetView(tester);
@@ -202,9 +510,13 @@ void main() {
           pickImage: (_) async => source,
           preserveEvidence: (_) async => _preservedReceipt,
           fileForPreserved: (_) async => File(fixturePath),
-          discardPreserved: (_) async {},
+          discardPreserved: (_) async {
+            discarded = true;
+          },
           attachPreserved: (_, _) async => null,
           ocr: (_) async => _recognizedReceipt(),
+          preparePendingReceipt: (_, _) async {},
+          completePendingReceipt: (_) async => true,
           loadInitialData: _emptyInitialData,
         ),
         onResult: (value) => routeResult = value,
@@ -220,8 +532,63 @@ void main() {
 
       expect(routeResult, isTrue);
       expect(transactions.values, hasLength(1));
+      expect(discarded, isFalse);
       expect(find.byType(ReceiptCapturePage), findsNothing);
       expect(find.text('Evidence could not be stored.'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'rechecks a concurrent duplicate before creating a receipt transaction',
+    (tester) async {
+      final transactions = _ReceiptTransactionRepository();
+      final concurrent = _receiptTransaction('concurrent-receipt');
+      transactions.afterFirstQuery = () async {
+        await transactions.save(concurrent);
+        transactions.hideFromListAll.add(concurrent.id.value);
+      };
+      final finance = _finance(
+        transactions,
+        consistencyGate: AnalysisConsistencyGate(),
+      );
+      final fixturePath = _fixturePath();
+      final source = XFile(fixturePath, name: 'receipt.png');
+
+      _resetView(tester);
+      await tester.pumpWidget(
+        _localizedApp(
+          ReceiptCapturePage(
+            finance: finance,
+            evidenceStore: _evidenceStore(finance),
+            pickImage: (_) async => source,
+            preserveEvidence: (_) async => _preservedReceipt,
+            fileForPreserved: (_) async => File(fixturePath),
+            discardPreserved: (_) async {},
+            attachPreserved: (_, _) async => _receiptEvidence('evidence-race'),
+            ocr: (_) async => _recognizedReceipt(),
+            preparePendingReceipt: (_, _) async {},
+            completePendingReceipt: (_) async => true,
+            loadInitialData: _emptyInitialData,
+          ),
+        ),
+      );
+      await tester.pump();
+      await _captureAndAcceptReceipt(tester);
+      await _scrollToAndTap(
+        tester,
+        find.widgetWithText(FilledButton, 'Save receipt transaction'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(transactions.values.keys, contains(concurrent.id.value));
+      expect(transactions.values, hasLength(1));
+      expect(
+        find.text(
+          'A matching transaction appeared while saving. Review it before trying again.',
+        ),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
     },
   );
@@ -251,6 +618,8 @@ void main() {
           discardPreserved: (_) async {},
           attachPreserved: (_, _) async => _receiptEvidence('evidence-throw'),
           ocr: (_) async => _recognizedReceipt(),
+          preparePendingReceipt: (_, _) async {},
+          completePendingReceipt: (_) async => true,
           loadInitialData: _emptyInitialData,
         ),
         onResult: (value) => routeResult = value,
@@ -292,6 +661,7 @@ ReceiptOcrResult _recognizedReceipt() => ReceiptOcrResult(
 FinanceServices _finance(
   TransactionRepository transactions, {
   EvidenceRepository? evidence,
+  AnalysisConsistencyGate? consistencyGate,
 }) => FinanceServices(
   transactions,
   MemoryPaymentSources(),
@@ -300,13 +670,16 @@ FinanceServices _finance(
   MemoryTags(),
   evidence ?? MemoryEvidence(),
   MemoryUserPreferences(),
+  consistencyGate: consistencyGate,
 );
 
 LocalEvidenceStore _evidenceStore(FinanceServices finance) =>
     LocalEvidenceStore(
       LocalDataManager(
         LocalDatabase(logger: AppLogger()),
-        localEvidenceDirectory: Directory.systemTemp,
+        localEvidenceDirectory: Directory(
+          '${Directory.current.path}/.test-evidence',
+        ),
       ),
       finance,
     );
@@ -394,6 +767,10 @@ Future<void> _scrollToAndTap(WidgetTester tester, Finder target) async {
   await tester.scrollUntilVisible(target, 400, scrollable: scrollable.first);
   await tester.pumpAndSettle();
   await tester.tap(target);
+  await tester.runAsync(
+    () => Future<void>.delayed(const Duration(milliseconds: 100)),
+  );
+  await tester.pumpAndSettle();
 }
 
 EvidenceItem _receiptEvidence(String id) {
@@ -419,36 +796,45 @@ final class _ReceiptTransactionRepository implements TransactionRepository {
 
   final bool failDelete;
   final values = <String, Transaction>{};
+  final hideFromListAll = <String>{};
+  Future<void> Function()? afterFirstQuery;
+  var _queryCount = 0;
 
   @override
   Future<Transaction?> findById(TransactionId id) async => values[id.value];
 
   @override
-  Future<List<Transaction>> listAll() async => values.values.toList();
+  Future<List<Transaction>> listAll() async => values.values
+      .where((transaction) => !hideFromListAll.contains(transaction.id.value))
+      .toList();
 
   @override
-  Future<List<Transaction>> query(TransactionRepositoryQuery query) async =>
-      values.values.where((transaction) {
-        if (query.status != null && transaction.status != query.status) {
-          return false;
-        }
-        if (query.direction != null &&
-            transaction.direction != query.direction) {
-          return false;
-        }
-        if (query.currency != null &&
-            transaction.money.currency.value != query.currency) {
-          return false;
-        }
-        if (query.from != null || query.to != null) {
-          final dateText = transaction.transactionDate;
-          final date = dateText == null ? null : DateTime.tryParse(dateText);
-          if (date == null) return false;
-          if (query.from != null && date.isBefore(query.from!)) return false;
-          if (query.to != null && date.isAfter(query.to!)) return false;
-        }
-        return true;
-      }).toList();
+  Future<List<Transaction>> query(TransactionRepositoryQuery query) async {
+    final result = values.values.where((transaction) {
+      if (query.status != null && transaction.status != query.status) {
+        return false;
+      }
+      if (query.direction != null && transaction.direction != query.direction) {
+        return false;
+      }
+      if (query.currency != null &&
+          transaction.money.currency.value != query.currency) {
+        return false;
+      }
+      if (query.from != null || query.to != null) {
+        final dateText = transaction.transactionDate;
+        final date = dateText == null ? null : DateTime.tryParse(dateText);
+        if (date == null) return false;
+        if (query.from != null && date.isBefore(query.from!)) return false;
+        if (query.to != null && date.isAfter(query.to!)) return false;
+      }
+      return true;
+    }).toList();
+    if (_queryCount++ == 0 && afterFirstQuery != null) {
+      await afterFirstQuery!();
+    }
+    return result;
+  }
 
   @override
   Future<void> removePermanently(TransactionId id) async {
@@ -467,12 +853,41 @@ final class _ReceiptTransactionRepository implements TransactionRepository {
   }
 }
 
+Transaction _receiptTransaction(String id) {
+  final now = DateTime.utc(2026, 9, 15, 12);
+  return Transaction(
+    id: TransactionId(id),
+    timing: KnownTransactionTime(now),
+    money: Money(
+      amount: DecimalValue.parse('12.34'),
+      currency: CurrencyCode('USD'),
+    ),
+    direction: TransactionDirection.expense,
+    sourceType: TransactionSourceType.manual,
+    transactionDate: '2026-09-15',
+    provenance: [
+      Provenance(
+        id: ProvenanceId('$id-provenance'),
+        sourceType: ProvenanceSourceType.userEntry,
+        capturedAt: now,
+      ),
+    ],
+    createdAt: now,
+    updatedAt: now,
+  );
+}
+
 final class _ThrowingExtractionEvidence implements EvidenceRepository {
   @override
   Future<EvidenceItem?> findById(EvidenceId id) async => null;
 
   @override
   Future<void> link(AttachmentLink link) async {}
+  @override
+  Future<void> unlinkFromTransaction(
+    TransactionId transactionId,
+    EvidenceId evidenceId,
+  ) async {}
 
   @override
   Future<List<EvidenceItem>> listForTransaction(TransactionId id) async =>

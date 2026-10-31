@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/core/evidence/evidence_mutation_lock.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/core/evidence/platform_ocr_recognizer.dart';
 import 'package:butlerly/core/evidence/statement_extractor.dart';
@@ -61,12 +64,52 @@ XTypeGroup statementFileTypeGroupForPlatform(TargetPlatform platform) {
   );
 }
 
+@visibleForTesting
+String statementImportReviewRoute(StatementImportSummary summary) {
+  if (summary.possibleDuplicates > 0) {
+    return '/review?view=duplicates';
+  }
+  return '/review?view=needsReview';
+}
+
+class CaptureRecoveryActions extends StatelessWidget {
+  const CaptureRecoveryActions({
+    required this.fileName,
+    required this.onRepair,
+    required this.onDismiss,
+    super.key,
+  });
+
+  final String fileName;
+  final VoidCallback onRepair;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!fileName.endsWith('.json')) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextButton(
+          onPressed: onRepair,
+          child: Text(context.l10n.text('captureRecoveryRepair')),
+        ),
+        TextButton(
+          onPressed: onDismiss,
+          child: Text(context.l10n.text('captureRecoveryDismiss')),
+        ),
+      ],
+    );
+  }
+}
+
 class StatementCapturePage extends StatefulWidget {
   const StatementCapturePage({
     this.pickImage,
     this.pickFile,
     this.ocrRecognizer,
     this.initialStatementId,
+    this.loadInitialData,
     super.key,
   });
 
@@ -74,6 +117,7 @@ class StatementCapturePage extends StatefulWidget {
   final Future<XFile?> Function()? pickFile;
   final OcrRecognizer? ocrRecognizer;
   final String? initialStatementId;
+  final Future<void> Function()? loadInitialData;
   @override
   State<StatementCapturePage> createState() => _StatementCapturePageState();
 }
@@ -138,13 +182,19 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
   _StatementPanelData? _panelData;
   final _imagePicker = ImagePicker();
   final _debugDiagnostics = <String, String>{};
+  PreservedEvidenceSource? _preserved;
+  String? _pendingStatementId;
+  PreservedEvidenceSource? _retrySourceOverride;
+  List<PendingGenericCapture> _pendingGenericRecoveries = const [];
+  List<PendingCaptureJournalIssue> _pendingRecoveryIssues = const [];
   StatementServices get statement =>
       services<FinanceServices>().statementServices!;
 
   @override
   void initState() {
     super.initState();
-    _reload().then((_) {
+    final initialLoad = widget.loadInitialData?.call() ?? _reload();
+    initialLoad.then((_) {
       final statementId = widget.initialStatementId;
       if (!mounted || statementId == null) return;
       final item = _statements
@@ -156,11 +206,36 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
 
   @override
   void dispose() {
+    // A failed capture remains owned by the pending journal after the page is
+    // no longer busy. Navigation or process termination must not turn a
+    // recoverable source into an unclaimed orphan; successful completion or
+    // the explicit statement-delete flow is responsible for cleanup.
+    final preserveForRecovery =
+        _busy || _pendingStatementId != null || _preserved != null;
+    if (_preserved != null && !preserveForRecovery) {
+      unawaited(services<LocalEvidenceStore>().discardPreserved(_preserved!));
+    }
+    final pendingStatementId = _pendingStatementId;
+    if (pendingStatementId != null && !preserveForRecovery) {
+      unawaited(
+        services<LocalEvidenceStore>().completePendingStatementCapture(
+          pendingStatementId,
+        ),
+      );
+    }
     _rowsText.dispose();
     super.dispose();
   }
 
   Future<void> _reload() async {
+    // Recover typed statement journals before reloading the visible list.
+    // This keeps a source interrupted by a disposed route recoverable in the
+    // current session instead of waiting for a full process restart.
+    try {
+      await services<LocalEvidenceStore>().recoverPendingStatementCaptures();
+    } catch (_) {
+      // The journal remains available to the diagnostics card below.
+    }
     final results = await Future.wait([
       statement.list(),
       TransactionMasterDataProvider(services<FinanceServices>()).load(),
@@ -176,153 +251,458 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
         _sources = v.paymentSources;
       }
     });
+    await _loadPendingGenericRecovery();
+  }
+
+  Future<void> _loadPendingGenericRecovery() async {
+    try {
+      final store = services<LocalEvidenceStore>();
+      final pending = (await store.listPendingGenericCaptures())
+          .where(
+            (capture) =>
+                capture.captureKind == null ||
+                capture.captureKind == 'statement',
+          )
+          .toList(growable: false);
+      final issues = await store.listPendingCaptureJournalIssues();
+      final unavailable = await store.listUnavailableStatementEvidence();
+      if (!mounted) return;
+      final historicalIssues = unavailable
+          .map(
+            (id) => PendingCaptureJournalIssue(
+              fileName: 'statement-$id',
+              messageKey: 'statementHistoricalEvidenceUnavailable',
+            ),
+          )
+          .toList(growable: false);
+      setState(() {
+        _pendingGenericRecoveries = pending;
+        _pendingRecoveryIssues = [...issues, ...historicalIssues];
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _pendingRecoveryIssues = const [
+            PendingCaptureJournalIssue(
+              fileName: 'pending-capture-scan',
+              messageKey: 'captureRecoveryJournalIssue',
+            ),
+          ],
+        );
+      }
+    }
+  }
+
+  Future<void> _discardPendingGenericRecovery(
+    PendingGenericCapture pending,
+  ) async {
+    try {
+      final discarded = await services<LocalEvidenceStore>()
+          .discardPendingGenericCapture(pending.source);
+      if (discarded && mounted) {
+        _message(context.l10n.text('statementRecoveryDiscarded'));
+        await _loadPendingGenericRecovery();
+      } else if (mounted) {
+        _message(context.l10n.text('statementRecoveryWarning'));
+        await _loadPendingGenericRecovery();
+      }
+    } catch (_) {
+      if (mounted) {
+        _message(context.l10n.text('statementProcessingFailed'));
+      }
+    }
+  }
+
+  Future<void> _repairPendingRecoveryIssue(String fileName) async {
+    try {
+      final resolution = await services<LocalEvidenceStore>()
+          .resolvePendingCaptureJournalIssue(
+            fileName,
+            captureKind: 'statement',
+          );
+      if (!mounted) return;
+      _message(
+        context.l10n.text(switch (resolution) {
+          PendingCaptureJournalResolution.repaired => 'captureRecoveryRepaired',
+          PendingCaptureJournalResolution.dismissed =>
+            'captureRecoveryDismissed',
+          PendingCaptureJournalResolution.unavailable =>
+            'captureRecoveryRepairUnavailable',
+        }),
+      );
+      await _loadPendingGenericRecovery();
+    } catch (_) {
+      if (mounted) {
+        _message(context.l10n.text('captureRecoveryRepairUnavailable'));
+      }
+    }
+  }
+
+  Future<void> _dismissPendingRecoveryIssue(String fileName) async {
+    final l10n = context.l10n;
+    final confirmed = await showButlerlyConfirmationSheet(
+      context: context,
+      title: l10n.text('captureRecoveryDismissTitle'),
+      message: l10n.text('captureRecoveryDismissBody'),
+      cancelLabel: l10n.text('cancel'),
+      confirmLabel: l10n.text('captureRecoveryDismiss'),
+      destructive: true,
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      final resolution = await services<LocalEvidenceStore>()
+          .dismissPendingCaptureJournalIssue(
+            fileName,
+            captureKind: 'statement',
+          );
+      if (!mounted) return;
+      _message(
+        context.l10n.text(switch (resolution) {
+          PendingCaptureJournalResolution.dismissed =>
+            'captureRecoveryDismissed',
+          _ => 'captureRecoveryRepairUnavailable',
+        }),
+      );
+      await _loadPendingGenericRecovery();
+    } catch (_) {
+      if (mounted) {
+        _message(context.l10n.text('captureRecoveryRepairUnavailable'));
+      }
+    }
   }
 
   Future<void> _captureImage(ImageSource source) async {
-    final file =
-        await (widget.pickImage?.call(source) ??
-            _imagePicker.pickImage(
-              source: source,
-              imageQuality: 100,
-              requestFullMetadata: false,
-            ));
-    if (file == null || !mounted) return;
-    await _ingest(file);
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final file =
+          await (widget.pickImage?.call(source) ??
+              _imagePicker.pickImage(
+                source: source,
+                imageQuality: 100,
+                requestFullMetadata: false,
+              ));
+      if (file == null || !mounted) return;
+      await _ingest(file);
+    } catch (_) {
+      if (mounted) {
+        _message(context.l10n.text('statementCaptureFailed'));
+      }
+    } finally {
+      if (mounted && _busy) setState(() => _busy = false);
+    }
   }
 
   Future<void> _selectExistingFile() async {
-    final group = statementFileTypeGroupForPlatform(defaultTargetPlatform);
-    final file =
-        await (widget.pickFile?.call() ??
-            openFile(acceptedTypeGroups: [group]));
-    if (file == null || !mounted) return;
-    await _ingest(file);
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final group = statementFileTypeGroupForPlatform(defaultTargetPlatform);
+      final file =
+          await (widget.pickFile?.call() ??
+              openFile(acceptedTypeGroups: [group]));
+      if (file == null || !mounted) return;
+      await _ingest(file);
+    } catch (_) {
+      if (mounted) {
+        _message(context.l10n.text('statementCaptureFailed'));
+      }
+    } finally {
+      if (mounted && _busy) setState(() => _busy = false);
+    }
   }
 
-  Future<void> _ingest(XFile file) async {
+  Future<bool> _ingest(XFile file) async {
+    try {
+      final created = await _ingestUnlocked(file);
+      if (created && mounted) {
+        _rowsText.clear();
+        // Refresh after releasing the source-mutation gate. This keeps the
+        // capture transaction serialized with financial calculations without
+        // making unrelated read callers wait for UI reload work.
+        await _reload();
+      }
+      return created;
+    } catch (error, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('Butlerly statement capture failed: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      }
+      if (mounted) {
+        _message(context.l10n.text('statementProcessingFailed'));
+      }
+      return false;
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<T> _runCaptureExclusive<T>(Future<T> Function() operation) {
+    final gate = services<FinanceServices>().consistencyGate;
+    return gate == null ? operation() : gate.runExclusive(operation);
+  }
+
+  Future<T> _runFinancialEvidenceMutation<T>(Future<T> Function() operation) {
+    final gate = services<FinanceServices>().consistencyGate;
+    Future<T> locked() => EvidenceMutationLock.runExclusive(operation);
+    return gate == null ? locked() : gate.runExclusive(locked);
+  }
+
+  Future<bool> _ingestUnlocked(XFile file) async {
     final l10n = context.l10n;
     setState(() => _busy = true);
-    final store = services<LocalEvidenceStore>();
-    final preserved = await store.preserve(file);
-    StatementExtraction? extraction;
+    PreservedEvidenceSource? preserved;
+    EvidenceItem? publishedEvidence;
+    String? publishedStatementId;
     try {
-      final localFile = await store.fileForPreserved(preserved);
-      if (localFile != null) {
-        extraction = await LocalStatementExtractor(
-          recognizer:
-              widget.ocrRecognizer ??
-              (services.isRegistered<OcrRecognizer>()
-                  ? services<OcrRecognizer>()
-                  : platformOcrRecognizer()),
-        ).extract(localFile.path);
-      }
-    } on Object {
-      // The original is still retained so unreadable statements can be fixed.
-      if (kDebugMode) {
-        debugPrint(
-          'Butlerly statement OCR: Outcome: technicalOcrFailure; '
-          'Failure stage: capturePipeline',
-        );
-      }
-    }
-    final evidence = await store.storePreservedStatement(preserved);
-    if (evidence == null) {
-      await store.discardPreserved(preserved);
-      _message(l10n.text('statementCouldNotBeStored'));
-      return;
-    }
-    final now = DateTime.now().toUtc();
-    final id = 'statement-${now.microsecondsSinceEpoch}';
-    if (kDebugMode) {
-      final summary =
-          extraction?.debugSummary ??
-          'Outcome: technicalOcrFailure\nFailure stage: capturePipeline';
-      _debugDiagnostics[id] = summary;
-      debugPrint('Butlerly statement OCR\n$summary');
-    }
-    String? rawTextReference;
-    if (extraction != null && extraction.rawText.isNotEmpty) {
-      final storedText = await services<FinanceServices>().saveExtraction(
-        Extraction(
-          id: ExtractionId('$id-ocr'),
-          evidenceId: evidence.id,
-          values: {'rawText': extraction.rawText},
-          provenance: Provenance(
-            id: ProvenanceId('$id-ocr-provenance'),
-            sourceType: ProvenanceSourceType.scan,
-            capturedAt: now,
-            sourceId: evidence.id.value,
-            originalRepresentation: 'On-device statement OCR',
-          ),
+      final store = services<LocalEvidenceStore>();
+      preserved = await store.preserve(file, captureKind: 'statement');
+      // Keep the source reference even if the route is disposed while the
+      // asynchronous capture is between filesystem operations. The pending
+      // statement journal below is the durable recovery boundary.
+      _preserved = preserved;
+      if (!mounted) {
+        final now = DateTime.now().toUtc();
+        final id = 'statement-${now.microsecondsSinceEpoch}';
+        _pendingStatementId = id;
+        await store.preparePendingStatementCapture(
+          statementId: id,
+          source: preserved,
+          originalFilename: file.name,
           createdAt: now,
-        ),
-      );
-      if (storedText is ApplicationSuccess<Extraction>) {
-        rawTextReference = evidence.id.value;
-      }
-    }
-    final matchedSource = extraction == null
-        ? null
-        : confidentlyMatchStatementSource(
-            maskedAccountIdentifier: extraction.maskedAccountIdentifier,
-            institution: extraction.institution,
-            sources: _sources,
-          );
-    final rows = extraction == null
-        ? <StatementRow>[]
-        : _extractedRows(id, extraction.rows, now, matchedSource?.id.value);
-    final result = await statement.create(
-      FinancialStatement(
-        id: id,
-        evidenceId: evidence.id.value,
-        paymentSourceId: matchedSource?.id.value,
-        status: matchedSource == null
-            ? StatementStatus.needsSource
-            : StatementStatus.ready,
-        institution: extraction?.institution,
-        maskedAccountIdentifier: extraction?.maskedAccountIdentifier,
-        periodStart: extraction?.context.periodStart,
-        periodEnd: extraction?.context.periodEnd,
-        currency: extraction?.context.defaultCurrency,
-        originalFilename: file.name,
-        rawTextReference: rawTextReference,
-        createdAt: now,
-        updatedAt: now,
-        extractionMessage: rows.isNotEmpty
-            ? extraction!.rows.any((row) => row.isUnresolved)
-                  ? 'statementUnresolvedEvidence'
-                  : null
-            : extraction == null
-            ? 'statementProcessingFailed'
-            : switch (extraction.outcome) {
-                StatementExtractionOutcome.noText => 'statementNoText',
-                StatementExtractionOutcome.textWithoutCandidates =>
-                  'statementNoRows',
-                StatementExtractionOutcome.unresolvedEvidence =>
-                  'statementUnresolvedEvidence',
-                StatementExtractionOutcome.reconstructedCandidates =>
-                  'statementNoRows',
-                StatementExtractionOutcome.technicalOcrFailure =>
-                  'statementProcessingFailed',
-              },
-      ),
-      rows,
-    );
-    if (result is! ApplicationSuccess<void>) {
-      await store.remove(evidence);
-      if (kDebugMode && result is ApplicationFailure<void>) {
-        debugPrint(
-          'Butlerly statement create failed: operation='
-          '${result.failure.operation}; code=${result.failure.code}; '
-          'detail=${result.failure.detail ?? 'none'}; rows=${rows.length}',
         );
+        return false;
       }
-      _message(l10n.text('statementCouldNotBeCreated'));
-      return;
+      final now = DateTime.now().toUtc();
+      final id = 'statement-${now.microsecondsSinceEpoch}';
+      _pendingStatementId = id;
+      final plannedEvidence = await store.preparePendingStatementCapture(
+        statementId: id,
+        source: preserved,
+        originalFilename: file.name,
+        createdAt: now,
+      );
+      final fingerprint = preserved.sourceFingerprint;
+      if (fingerprint != null) {
+        final existing = await store.findStatementBySourceFingerprint(
+          fingerprint,
+        );
+        if (existing != null) {
+          await store.discardPreserved(preserved);
+          _preserved = null;
+          if (await store.completePendingStatementCapture(id)) {
+            _pendingStatementId = null;
+          }
+          _message(l10n.text('statementAlreadyImported'));
+          return false;
+        }
+      }
+      StatementExtraction? extraction;
+      try {
+        final localFile = await store.fileForPreserved(preserved);
+        if (localFile != null) {
+          extraction = await LocalStatementExtractor(
+            recognizer:
+                widget.ocrRecognizer ??
+                (services.isRegistered<OcrRecognizer>()
+                    ? services<OcrRecognizer>()
+                    : platformOcrRecognizer()),
+          ).extract(localFile.path);
+        }
+      } on Object {
+        // The original is still retained so unreadable statements can be fixed.
+        if (kDebugMode) {
+          debugPrint(
+            'Butlerly statement OCR: Outcome: technicalOcrFailure; '
+            'Failure stage: capturePipeline',
+          );
+        }
+      }
+      final matchedSource = extraction == null
+          ? null
+          : confidentlyMatchStatementSource(
+              maskedAccountIdentifier: extraction.maskedAccountIdentifier,
+              institution: extraction.institution,
+              sources: _sources,
+            );
+      final rows = extraction == null
+          ? <StatementRow>[]
+          : _extractedRows(id, extraction.rows, now, matchedSource?.id.value);
+      if (!mounted) return false;
+      return await _runCaptureExclusive(() async {
+        if (!mounted) return false;
+        // The initial check avoids unnecessary OCR work, but only this final
+        // check is authoritative: another capture may have committed the same
+        // source while this one was recognizing it.
+        if (fingerprint != null) {
+          final existingAtCommit = await store.findStatementBySourceFingerprint(
+            fingerprint,
+          );
+          if (existingAtCommit != null) {
+            await store.discardPreserved(preserved!);
+            _preserved = null;
+            if (await store.completePendingStatementCapture(id)) {
+              _pendingStatementId = null;
+            }
+            _message(l10n.text('statementAlreadyImported'));
+            return false;
+          }
+        }
+        final evidence = await store.storePreservedStatement(
+          preserved!,
+          pendingStatementId: id,
+          pendingOriginalFilename: file.name,
+          pendingCreatedAt: now,
+          planned: plannedEvidence,
+        );
+        if (evidence == null) {
+          _message(
+            l10n.text('statementCouldNotBeStored'),
+            retrySource: preserved,
+          );
+          return false;
+        }
+        publishedEvidence = evidence;
+        publishedStatementId = id;
+        if (kDebugMode) {
+          final summary =
+              extraction?.debugSummary ??
+              'Outcome: technicalOcrFailure\nFailure stage: capturePipeline';
+          _debugDiagnostics[id] = summary;
+          debugPrint('Butlerly statement OCR\n$summary');
+        }
+        String? rawTextReference;
+        if (extraction != null && extraction.rawText.isNotEmpty) {
+          final storedText = await services<FinanceServices>().saveExtraction(
+            Extraction(
+              id: ExtractionId('$id-ocr'),
+              evidenceId: evidence.id,
+              values: {'rawText': extraction.rawText},
+              provenance: Provenance(
+                id: ProvenanceId('$id-ocr-provenance'),
+                sourceType: ProvenanceSourceType.scan,
+                capturedAt: now,
+                sourceId: evidence.id.value,
+                originalRepresentation: 'On-device statement OCR',
+              ),
+              createdAt: now,
+            ),
+          );
+          if (storedText is ApplicationSuccess<Extraction>) {
+            rawTextReference = evidence.id.value;
+          }
+        }
+        final result = await statement.create(
+          FinancialStatement(
+            id: id,
+            evidenceId: evidence.id.value,
+            paymentSourceId: matchedSource?.id.value,
+            status: matchedSource == null
+                ? StatementStatus.needsSource
+                : StatementStatus.ready,
+            institution: extraction?.institution,
+            maskedAccountIdentifier: extraction?.maskedAccountIdentifier,
+            periodStart: extraction?.context.periodStart,
+            periodEnd: extraction?.context.periodEnd,
+            currency: extraction?.context.defaultCurrency,
+            originalFilename: file.name,
+            rawTextReference: rawTextReference,
+            createdAt: now,
+            updatedAt: now,
+            extractionMessage: rows.isNotEmpty
+                ? extraction!.rows.any((row) => row.isUnresolved)
+                      ? 'statementUnresolvedEvidence'
+                      : null
+                : extraction == null
+                ? 'statementProcessingFailed'
+                : switch (extraction.outcome) {
+                    StatementExtractionOutcome.noText => 'statementNoText',
+                    StatementExtractionOutcome.textWithoutCandidates =>
+                      'statementNoRows',
+                    StatementExtractionOutcome.unresolvedEvidence =>
+                      'statementUnresolvedEvidence',
+                    StatementExtractionOutcome.reconstructedCandidates =>
+                      'statementNoRows',
+                    StatementExtractionOutcome.technicalOcrFailure =>
+                      'statementProcessingFailed',
+                  },
+          ),
+          rows,
+        );
+        if (result is! ApplicationSuccess<void>) {
+          var retainedForRetry = false;
+          try {
+            retainedForRetry = await store
+                .rollbackPendingStatementCaptureForRetry(
+                  statementId: id,
+                  source: preserved!,
+                  evidence: evidence,
+                );
+          } catch (_) {
+            // Leave the durable statement journal for startup recovery when
+            // the rollback itself cannot complete.
+          }
+          if (retainedForRetry) {
+            _preserved = preserved;
+            _pendingStatementId = id;
+            _message(
+              l10n.text('statementCouldNotBeCreated'),
+              retrySource: preserved,
+            );
+            return false;
+          }
+          final recovered = await store.recoverPendingStatementCaptures();
+          if (kDebugMode && result is ApplicationFailure<void>) {
+            debugPrint(
+              'Butlerly statement create failed: operation='
+              '${result.failure.operation}; code=${result.failure.code}; '
+              'detail=${result.failure.detail ?? 'none'}; rows=${rows.length}',
+            );
+          }
+          _message(
+            l10n.text('statementCouldNotBeCreated'),
+            retrySource: recovered > 0 ? null : preserved,
+          );
+          return recovered > 0;
+        }
+        _preserved = null;
+        publishedEvidence = null;
+        publishedStatementId = null;
+        if (await store.completePendingStatementCapture(id)) {
+          _pendingStatementId = null;
+        }
+        return true;
+      });
+    } catch (error, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('Butlerly statement capture failed: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      }
+      if (publishedEvidence != null &&
+          publishedStatementId != null &&
+          preserved != null) {
+        try {
+          final retained = await services<LocalEvidenceStore>()
+              .rollbackPendingStatementCaptureForRetry(
+                statementId: publishedStatementId!,
+                source: preserved,
+                evidence: publishedEvidence!,
+              );
+          if (retained) {
+            _preserved = preserved;
+            _pendingStatementId = publishedStatementId;
+          }
+        } catch (_) {
+          // Keep the durable journal for startup recovery when rollback fails.
+        }
+      }
+      _message(
+        l10n.text('statementProcessingFailed'),
+        retrySource: _retrySourceOverride ?? preserved,
+      );
+      await _loadPendingGenericRecovery();
+      return false;
     }
-    _rowsText.clear();
-    await _reload();
-    if (mounted) setState(() => _busy = false);
   }
 
   List<StatementRow> _extractedRows(
@@ -436,6 +816,13 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
       ),
     );
     if (confirmed != true || !mounted) return;
+    await _finishUnprocessedDeletion(item, l10n);
+  }
+
+  Future<void> _finishUnprocessedDeletion(
+    FinancialStatement item,
+    AppLocalizations l10n,
+  ) async {
     final success = await services<LocalEvidenceStore>()
         .removeUnprocessedStatement(item.id);
     if (!mounted) return;
@@ -444,16 +831,222 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
       await _reload();
       _message(l10n.text('statementDeleted'));
     } else {
-      _message(l10n.text('statementDeleteFailed'));
+      _message(
+        l10n.text('statementDeleteFailed'),
+        retryAction: () => _finishUnprocessedDeletion(item, l10n),
+      );
     }
   }
 
-  void _message(String value) {
+  void _message(
+    String value, {
+    PreservedEvidenceSource? retrySource,
+    Future<void> Function()? retryAction,
+  }) {
     if (mounted) {
       setState(() => _busy = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(value)));
+      final retry =
+          retryAction ??
+          (retrySource == null ? null : () => _retryPreserved(retrySource));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(value),
+          action: retry == null
+              ? null
+              : SnackBarAction(
+                  label: context.l10n.text('retry'),
+                  onPressed: () => unawaited(retry()),
+                ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _retryPreserved(PreservedEvidenceSource source) async {
+    if (!mounted || _busy) return;
+    final failedMessage = context.l10n.text('statementProcessingFailed');
+    final store = services<LocalEvidenceStore>();
+    final file = await store.fileForPreserved(source);
+    if (file == null || !await file.exists()) {
+      _message(failedMessage);
+      return;
+    }
+    final supersededStatementId = _pendingStatementId;
+    var committed = false;
+    _retrySourceOverride = source;
+    try {
+      committed = await _ingest(
+        XFile(file.path, name: source.originalName, mimeType: source.mediaType),
+      );
+    } finally {
+      _retrySourceOverride = null;
+      if (committed) {
+        if (supersededStatementId != null) {
+          await store.completePendingStatementCapture(supersededStatementId);
+        }
+        if (_preserved?.localFileName != source.localFileName) {
+          try {
+            await store.discardPreserved(source);
+          } catch (_) {
+            // Keep the old source if its explicit cleanup is interrupted.
+          }
+        }
+      } else {
+        // A failed retry is not an explicit cancellation. Retain the original
+        // failed capture and discard only a replacement copy created by the
+        // retry, including the window before its replacement journal exists.
+        final replacement = _preserved;
+        final replacementId = _pendingStatementId;
+        if (replacement != null &&
+            replacement.localFileName != source.localFileName) {
+          if (replacementId != null && replacementId != supersededStatementId) {
+            await store.completePendingStatementCapture(replacementId);
+          }
+          try {
+            await store.discardPreserved(replacement);
+          } catch (_) {}
+          _preserved = source;
+          _pendingStatementId = supersededStatementId;
+        }
+      }
+    }
+    if (!committed) return;
+    final fingerprint = source.sourceFingerprint;
+    if (fingerprint != null) {
+      final imported = await store.findStatementBySourceFingerprint(
+        fingerprint,
+      );
+      if (imported != null) await store.discardPreserved(source);
+    }
+  }
+
+  Future<void> _retryStatement(FinancialStatement item) async {
+    if (!mounted || _busy) return;
+    final l10n = context.l10n;
+    setState(() => _busy = true);
+    try {
+      final finance = services<FinanceServices>();
+      final retryItem = item;
+      final evidenceResult = await finance.getEvidence(retryItem.evidenceId);
+      if (evidenceResult is ApplicationFailure<EvidenceItem?>) {
+        _message(l10n.text('statementProcessingFailed'));
+        return;
+      }
+      final evidence =
+          (evidenceResult as ApplicationSuccess<EvidenceItem?>).value;
+      final file = evidence == null
+          ? null
+          : await services<LocalEvidenceStore>().fileFor(evidence);
+      final fileExists = file != null && file.existsSync();
+      if (!fileExists) {
+        _message(l10n.text('statementProcessingFailed'));
+        return;
+      }
+
+      final extraction = await LocalStatementExtractor(
+        recognizer:
+            widget.ocrRecognizer ??
+            (services.isRegistered<OcrRecognizer>()
+                ? services<OcrRecognizer>()
+                : platformOcrRecognizer()),
+      ).extract(file.path);
+      final now = DateTime.now().toUtc();
+      final matchedSource = confidentlyMatchStatementSource(
+        maskedAccountIdentifier: extraction.maskedAccountIdentifier,
+        institution: extraction.institution,
+        sources: _sources,
+      );
+      // A source selected by the user is durable correction data. OCR retry
+      // may improve the match, but an uncertain retry must not erase it.
+      final paymentSourceId =
+          retryItem.paymentSourceId ?? matchedSource?.id.value;
+      final rows = _extractedRows(
+        retryItem.id,
+        extraction.rows,
+        now,
+        paymentSourceId,
+      );
+      final retryExtraction = extraction.rawText.isEmpty
+          ? null
+          : Extraction(
+              id: ExtractionId('${retryItem.id}-ocr'),
+              evidenceId: EvidenceId(retryItem.evidenceId),
+              values: {'rawText': extraction.rawText},
+              provenance: Provenance(
+                id: ProvenanceId('${retryItem.id}-ocr-provenance'),
+                sourceType: ProvenanceSourceType.scan,
+                capturedAt: now,
+                sourceId: retryItem.evidenceId,
+                originalRepresentation: 'On-device statement OCR',
+              ),
+              createdAt: now,
+            );
+      final message = rows.isNotEmpty
+          ? extraction.rows.any((row) => row.isUnresolved)
+                ? 'statementUnresolvedEvidence'
+                : null
+          : switch (extraction.outcome) {
+              StatementExtractionOutcome.noText => 'statementNoText',
+              StatementExtractionOutcome.textWithoutCandidates =>
+                'statementNoRows',
+              StatementExtractionOutcome.unresolvedEvidence =>
+                'statementUnresolvedEvidence',
+              StatementExtractionOutcome.reconstructedCandidates =>
+                'statementNoRows',
+              StatementExtractionOutcome.technicalOcrFailure =>
+                'statementProcessingFailed',
+            };
+      final updated = FinancialStatement(
+        id: retryItem.id,
+        evidenceId: retryItem.evidenceId,
+        paymentSourceId: paymentSourceId,
+        status: paymentSourceId == null
+            ? StatementStatus.needsSource
+            : StatementStatus.ready,
+        institution: extraction.institution,
+        maskedAccountIdentifier: extraction.maskedAccountIdentifier,
+        periodStart: extraction.context.periodStart,
+        periodEnd: extraction.context.periodEnd,
+        currency: extraction.context.defaultCurrency,
+        originalFilename: retryItem.originalFilename,
+        rawTextReference: retryExtraction == null ? null : retryItem.evidenceId,
+        createdAt: retryItem.createdAt,
+        updatedAt: now,
+        extractionMessage: message,
+      );
+      final result = await _runFinancialEvidenceMutation(
+        () => statement.retryTechnicalFailure(
+          expected: retryItem,
+          updated: updated,
+          rows: rows,
+          extraction: retryExtraction,
+        ),
+      );
+      if (result is ApplicationFailure<void> &&
+          result.failure.code == ApplicationFailureCode.conflict) {
+        _message(l10n.text('statementChangedDuringRetry'));
+        return;
+      }
+      if (result is! ApplicationSuccess<void>) {
+        _message(l10n.text('statementCouldNotBeCreated'));
+        return;
+      }
+      if (mounted) {
+        setState(() {
+          _statements = [
+            for (final current in _statements)
+              if (current.id == updated.id) updated else current,
+          ];
+        });
+      }
+    } catch (error, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('Butlerly statement retry failed: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      }
+      if (mounted) _message(l10n.text('statementProcessingFailed'));
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -499,6 +1092,116 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
           ? _desktopStatementsTable(context)
           : _mobileStatementsList(context),
     );
+    final recoveryBody = Column(
+      children: [
+        if (_pendingRecoveryIssues.isNotEmpty)
+          Card(
+            margin: const EdgeInsets.fromLTRB(
+              ButlerlySpacing.pagePadding,
+              ButlerlySpacing.pagePadding,
+              ButlerlySpacing.pagePadding,
+              0,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(ButlerlySpacing.standard),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(context.l10n.text('statementRecoveryWarning')),
+                  for (final issue in _pendingRecoveryIssues)
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        top: ButlerlySpacing.compact,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${issue.fileName}: ${context.l10n.text(issue.messageKey)}',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          CaptureRecoveryActions(
+                            fileName: issue.fileName,
+                            onRepair: () =>
+                                _repairPendingRecoveryIssue(issue.fileName),
+                            onDismiss: () =>
+                                _dismissPendingRecoveryIssue(issue.fileName),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: ButlerlySpacing.compact),
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: TextButton(
+                      onPressed: _loadPendingGenericRecovery,
+                      child: Text(context.l10n.text('retry')),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        for (final pending in _pendingGenericRecoveries)
+          Card(
+            margin: const EdgeInsets.fromLTRB(
+              ButlerlySpacing.pagePadding,
+              ButlerlySpacing.pagePadding,
+              ButlerlySpacing.pagePadding,
+              0,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(ButlerlySpacing.standard),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    context.l10n.text(
+                      pending.captureKind == null
+                          ? 'genericCaptureRecoveryTitle'
+                          : 'statementRecoveryTitle',
+                    ),
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: ButlerlySpacing.compact),
+                  Text(
+                    context.l10n.text(
+                      pending.captureKind == null
+                          ? 'genericCaptureRecoveryBody'
+                          : 'statementRecoveryBody',
+                    ),
+                  ),
+                  const SizedBox(height: ButlerlySpacing.compact),
+                  Wrap(
+                    spacing: ButlerlySpacing.compact,
+                    children: [
+                      FilledButton(
+                        onPressed: _busy
+                            ? null
+                            : () async {
+                                await _retryPreserved(pending.source);
+                                await _loadPendingGenericRecovery();
+                              },
+                        child: Text(
+                          context.l10n.text('statementRecoveryResume'),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () =>
+                            _discardPendingGenericRecovery(pending),
+                        child: Text(
+                          context.l10n.text('statementRecoveryCancel'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        Expanded(child: list),
+      ],
+    );
     final appBar = AppBar(
       title: Text(context.l10n.text('statements')),
       actions: [
@@ -521,16 +1224,19 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     );
     // Keep the page header in the results pane so the right detail pane
     // occupies the entire available height, like Search Transactions.
-    return desktop
-        ? Scaffold(
-            body: DesktopTransactionDetailSplitView(
-              results: Scaffold(appBar: appBar, body: list),
-              detail: _panelData == null
-                  ? null
-                  : _statementRightPanel(_panelData!),
-            ),
-          )
-        : Scaffold(appBar: appBar, body: list);
+    return PopScope(
+      canPop: !_busy,
+      child: desktop
+          ? Scaffold(
+              body: DesktopTransactionDetailSplitView(
+                results: Scaffold(appBar: appBar, body: recoveryBody),
+                detail: _panelData == null
+                    ? null
+                    : _statementRightPanel(_panelData!),
+              ),
+            )
+          : Scaffold(appBar: appBar, body: recoveryBody),
+    );
   }
 
   Widget _mobileStatementsList(BuildContext context) => ListView.builder(
@@ -556,6 +1262,12 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                if (item.extractionMessage == 'statementProcessingFailed')
+                  IconButton(
+                    tooltip: context.l10n.text('retry'),
+                    onPressed: _busy ? null : () => _retryStatement(item),
+                    icon: const Icon(Icons.refresh_rounded),
+                  ),
                 if (kDebugMode && _debugDiagnostics.containsKey(item.id))
                   IconButton(
                     tooltip: context.l10n.text('extractionDiagnostics'),
@@ -668,18 +1380,31 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                               ),
                               SizedBox(
                                 width: 180,
-                                child: Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: ButlerlyDesktopTableIconAction(
-                                    buttonKey: ValueKey(
-                                      'desktop-statement-delete-${item.id}',
+                                child: Row(
+                                  children: [
+                                    if (item.extractionMessage ==
+                                        'statementProcessingFailed')
+                                      ButlerlyDesktopTableIconAction(
+                                        buttonKey: ValueKey(
+                                          'desktop-statement-retry-${item.id}',
+                                        ),
+                                        icon: Icons.refresh_rounded,
+                                        tooltip: context.l10n.text('retry'),
+                                        onPressed: _busy
+                                            ? null
+                                            : () => _retryStatement(item),
+                                      ),
+                                    ButlerlyDesktopTableIconAction(
+                                      buttonKey: ValueKey(
+                                        'desktop-statement-delete-${item.id}',
+                                      ),
+                                      icon: Icons.delete_outline_rounded,
+                                      tooltip: context.l10n.text(
+                                        'deleteStatement',
+                                      ),
+                                      onPressed: () => _deleteUnprocessed(item),
                                     ),
-                                    icon: Icons.delete_outline_rounded,
-                                    tooltip: context.l10n.text(
-                                      'deleteStatement',
-                                    ),
-                                    onPressed: () => _deleteUnprocessed(item),
-                                  ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -902,13 +1627,41 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
     if (removed) {
       Navigator.pop(context);
     } else {
-      _message(l10n.text('statementDeleteFailed'));
+      _message(
+        l10n.text('statementDeleteFailed'),
+        retryAction: _retryAbandonImport,
+      );
     }
   }
 
-  void _message(String text) {
+  Future<void> _retryAbandonImport() async {
+    final removed = await services<LocalEvidenceStore>().abandonStatementImport(
+      widget.statement.id,
+    );
+    if (!mounted) return;
+    if (removed) {
+      Navigator.pop(context);
+    } else {
+      _message(
+        context.l10n.text('statementDeleteFailed'),
+        retryAction: _retryAbandonImport,
+      );
+    }
+  }
+
+  void _message(String text, {Future<void> Function()? retryAction}) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(text),
+          action: retryAction == null
+              ? null
+              : SnackBarAction(
+                  label: context.l10n.text('retry'),
+                  onPressed: () => unawaited(retryAction()),
+                ),
+        ),
+      );
     }
   }
 
@@ -975,7 +1728,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
       value: final summary,
     )) {
       notifyTransactionChanged();
-      await showButlerlyBottomSheet<void>(
+      final reviewRequested = await showButlerlyBottomSheet<bool>(
         context: context,
         builder: (context) => ButlerlySheet(
           title: Text(context.l10n.text('importSummary')),
@@ -992,11 +1745,10 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                     summary.failed > 0 ||
                     summary.needsReview > 0 ||
                     summary.possibleDuplicates > 0;
-                if (hasReviewItems) {
-                  context.go('/review?view=needsReview');
-                } else {
-                  Navigator.pop(context);
-                }
+                // Close the summary sheet before changing routes. Returning
+                // the intent lets the caller navigate after the modal route
+                // has fully completed instead of leaving a sheet above Review.
+                Navigator.pop(context, hasReviewItems);
               },
               child: Text(
                 context.l10n.text(
@@ -1015,7 +1767,12 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
           ],
         ),
       );
-      if (mounted) context.pop();
+      if (!mounted) return;
+      if (reviewRequested == true) {
+        context.go(statementImportReviewRoute(summary));
+      } else {
+        context.pop();
+      }
     }
   }
 

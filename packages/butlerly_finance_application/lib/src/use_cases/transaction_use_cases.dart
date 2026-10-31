@@ -10,6 +10,8 @@ import 'classification_use_cases.dart';
 import 'merchant_review_use_cases.dart';
 import 'transaction_rule_use_cases.dart';
 
+const evidenceCleanupRecoveryPrefix = 'Evidence cleanup requires recovery:';
+
 abstract interface class ApplicationClock {
   DateTime now();
 }
@@ -449,23 +451,109 @@ final class RestoreTransaction {
 }
 
 final class DeleteTransactionPermanently {
-  const DeleteTransactionPermanently(this.repository, {this.consistencyGate});
+  const DeleteTransactionPermanently(
+    this.repository, {
+    this.evidence,
+    this.deleteEvidenceFile,
+    this.finalizeDeletedEvidenceFile,
+    this.withEvidenceMutationLock,
+    this.consistencyGate,
+  });
 
   final TransactionRepository repository;
+  final EvidenceRepository? evidence;
+  final Future<void> Function(EvidenceItem evidence)? deleteEvidenceFile;
+  final Future<void> Function(EvidenceItem evidence)?
+  finalizeDeletedEvidenceFile;
+  final Future<T> Function<T>(Future<T> Function() action)?
+  withEvidenceMutationLock;
   final AnalysisConsistencyGate? consistencyGate;
 
   Future<ApplicationResult<void>> call(String id) =>
-      _runExclusive(consistencyGate, () async {
-        final operation = 'delete transaction permanently';
-        final existing = await _find(repository, id, operation);
-        if (existing is ApplicationFailure<Transaction>) {
-          return ApplicationFailure(existing.failure);
-        }
-        return runApplication(
-          operation,
-          () => repository.removePermanently(TransactionId(id)),
-        );
+      _runExclusive(consistencyGate, () {
+        final lock = withEvidenceMutationLock;
+        return lock == null ? _delete(id) : lock(() => _delete(id));
       });
+
+  /// Deletes a transaction when the caller already owns both the analysis
+  /// consistency gate and the evidence mutation lock.
+  ///
+  /// Receipt capture uses this for rollback after creating a transaction and
+  /// before publishing its evidence. Re-entering either lock here would wait
+  /// on the current operation forever.
+  Future<ApplicationResult<void>> callWithinEvidenceMutation(String id) =>
+      _delete(id);
+
+  Future<ApplicationResult<void>> _delete(String id) async {
+    final operation = 'delete transaction permanently';
+    final existing = await _find(repository, id, operation);
+    if (existing is ApplicationFailure<Transaction>) {
+      return ApplicationFailure(existing.failure);
+    }
+    var attachedItems = const <EvidenceItem>[];
+    if (evidence != null) {
+      final listed = await runApplication<List<EvidenceItem>>(
+        operation,
+        () => evidence!.listForTransaction(TransactionId(id)),
+      );
+      if (listed is ApplicationFailure<List<EvidenceItem>>) {
+        return ApplicationFailure(listed.failure);
+      }
+      attachedItems = (listed as ApplicationSuccess<List<EvidenceItem>>).value;
+    }
+    final result = await runApplication(
+      operation,
+      () => repository.removePermanently(TransactionId(id)),
+    );
+    if (result is ApplicationFailure<void>) return result;
+    if (evidence case final ReferenceAwareEvidenceRepository referenceAware) {
+      final cleanupResult = await runApplication<void>(operation, () async {
+        final cleanupFailureIds = <String>[];
+        for (final item in attachedItems) {
+          try {
+            final removed = await referenceAware.removeIfUnreferenced(
+              item.id,
+              beforeRemove: deleteEvidenceFile == null
+                  ? null
+                  : () async {
+                      try {
+                        await deleteEvidenceFile!(item);
+                        return true;
+                      } on Object {
+                        // Keep the metadata when the binary cannot be
+                        // removed so a later recovery pass still has an
+                        // ownership record.
+                        return false;
+                      }
+                    },
+            );
+            if (removed) {
+              try {
+                await finalizeDeletedEvidenceFile?.call(item);
+              } on Object {
+                cleanupFailureIds.add(item.id.value);
+              }
+            } else if (!await referenceAware.hasReferences(item.id)) {
+              cleanupFailureIds.add(item.id.value);
+            }
+          } on Object {
+            // The transaction row is already committed. Normalize every
+            // later evidence failure into the recoverable cleanup result so
+            // the UI closes the deleted view and exposes retry/recovery.
+            cleanupFailureIds.add(item.id.value);
+          }
+        }
+        if (cleanupFailureIds.isNotEmpty) {
+          throw RepositoryException(
+            RepositoryFailureCode.unavailable,
+            '$evidenceCleanupRecoveryPrefix${cleanupFailureIds.join(',')}',
+          );
+        }
+      });
+      if (cleanupResult is ApplicationFailure<void>) return cleanupResult;
+    }
+    return result;
+  }
 }
 
 final class AssignMerchant {

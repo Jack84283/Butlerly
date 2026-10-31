@@ -41,7 +41,12 @@ final class FinanceServices {
     HomeCanonicalTransactionIdsLoader? canonicalTransactionIds,
     InvalidateAnalysis? analysisInvalidation,
     AnalysisConsistencyGate? consistencyGate,
-  }) : manageBudgets = budgetRepository == null
+    Future<void> Function(EvidenceItem evidence)? deleteEvidenceFile,
+    Future<void> Function(EvidenceItem evidence)? finalizeDeletedEvidenceFile,
+    Future<T> Function<T>(Future<T> Function() action)?
+    withEvidenceMutationLock,
+  }) : consistencyGate = consistencyGate,
+       manageBudgets = budgetRepository == null
            ? null
            : ManageBudgets(budgetRepository),
        listTransactions = ListTransactions(
@@ -170,6 +175,10 @@ final class FinanceServices {
        ),
        deleteTransactionPermanently = DeleteTransactionPermanently(
          transactions,
+         evidence: evidence,
+         deleteEvidenceFile: deleteEvidenceFile,
+         finalizeDeletedEvidenceFile: finalizeDeletedEvidenceFile,
+         withEvidenceMutationLock: withEvidenceMutationLock,
          consistencyGate: consistencyGate,
        ),
        listPaymentSources = ListPaymentSources(paymentSources),
@@ -244,10 +253,31 @@ final class FinanceServices {
          consistencyGate: consistencyGate,
        ),
        listEvidenceForTransaction = ListEvidenceForTransaction(evidence),
+       listAllEvidence = ListAllEvidence(evidence),
+       getEvidence = GetEvidence(evidence),
        getExtractionForEvidence = GetExtractionForEvidence(
          evidence is ExtractionLookupRepository
              ? evidence as ExtractionLookupRepository
              : const _NoExtractionLookupRepository(),
+       ),
+       cleanupUnreferencedEvidence = CleanupUnreferencedEvidence(
+         evidence,
+         deleteEvidenceFile: deleteEvidenceFile,
+         finalizeDeletedEvidenceFile: finalizeDeletedEvidenceFile,
+         consistencyGate: consistencyGate,
+       ),
+       removeEvidenceFromTransaction = RemoveEvidenceFromTransaction(
+         evidence,
+         deleteEvidenceFile: deleteEvidenceFile,
+         finalizeDeletedEvidenceFile: finalizeDeletedEvidenceFile,
+         withEvidenceMutationLock: withEvidenceMutationLock,
+         consistencyGate: consistencyGate,
+       ),
+       recoverUnreferencedEvidence = RecoverUnreferencedEvidence(
+         evidence,
+         deleteEvidenceFile: deleteEvidenceFile,
+         finalizeDeletedEvidenceFile: finalizeDeletedEvidenceFile,
+         consistencyGate: consistencyGate,
        ),
        loadUserPreference = LoadUserPreference(preferences),
        saveUserPreference = SaveUserPreference(
@@ -665,7 +695,12 @@ final class FinanceServices {
   final ResolveReviewIssue resolveReviewIssue;
   final DismissReviewIssue dismissReviewIssue;
   final ListEvidenceForTransaction listEvidenceForTransaction;
+  final ListAllEvidence listAllEvidence;
+  final GetEvidence getEvidence;
   final GetExtractionForEvidence getExtractionForEvidence;
+  final CleanupUnreferencedEvidence cleanupUnreferencedEvidence;
+  final RemoveEvidenceFromTransaction removeEvidenceFromTransaction;
+  final RecoverUnreferencedEvidence recoverUnreferencedEvidence;
   final LoadUserPreference loadUserPreference;
   final SaveUserPreference saveUserPreference;
   final LoadFinancialProfile? loadFinancialProfile;
@@ -710,6 +745,7 @@ final class FinanceServices {
   final QueryTransactionsForFinancialDate queryTransactionsForFinancialDate;
   final UpdateFindingLifecycle? updateAnalysisFindingLifecycle;
   final InvalidateAnalysis? invalidateAnalysis;
+  final AnalysisConsistencyGate? consistencyGate;
   final StatementServices? statementServices;
   final SavePaymentSettlement? savePaymentSettlement;
   final ListPaymentSettlements? listPaymentSettlements;

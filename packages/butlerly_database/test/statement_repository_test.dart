@@ -636,6 +636,20 @@ void main() {
           updatedAt: now,
         ),
       );
+      await SqliteEvidenceRepository(database).saveExtraction(
+        Extraction(
+          id: ExtractionId('statement-extraction'),
+          evidenceId: EvidenceId('evidence'),
+          values: const {'rawText': 'sensitive OCR text'},
+          provenance: Provenance(
+            id: ProvenanceId('statement-extraction-p'),
+            sourceType: ProvenanceSourceType.evidenceExtraction,
+            capturedAt: now,
+            originalRepresentation: 'sensitive OCR text',
+          ),
+          createdAt: now,
+        ),
+      );
       expect(await statements.canDeleteStatement('statement'), isTrue);
       await statements.removeStatement('statement');
       expect(await statements.findStatement('statement'), isNull);
@@ -644,6 +658,14 @@ void main() {
           'statement_rows',
           where: 'statement_id = ?',
           whereArgs: ['statement'],
+        )),
+        isEmpty,
+      );
+      expect(
+        (await database.connection.query(
+          'provenances',
+          where: 'id = ?',
+          whereArgs: ['statement-extraction-p'],
         )),
         isEmpty,
       );
