@@ -450,6 +450,63 @@ void main() {
   );
 
   test(
+    'receipt recovery rejects traversal paths and preserves the journal',
+    () async {
+      final now = DateTime.utc(2026, 8, 9, 20);
+      final transaction = _transaction('transaction-receipt-traversal', now);
+      await SqliteTransactionRepository(
+        database.persistenceDatabase,
+      ).save(transaction);
+      final store = services<LocalEvidenceStore>();
+      final source = const PreservedEvidenceSource(
+        originalName: 'receipt-traversal.png',
+        localFileName: 'receipt-traversal.png',
+        mediaType: 'image/png',
+        sourceFingerprint: 'fingerprint-traversal',
+      );
+      final pending = Directory('${evidenceDirectory.path}.pending');
+      await pending.create(recursive: true);
+      await File(
+        path.join(pending.path, source.localFileName),
+      ).writeAsBytes([5, 4, 3], flush: true);
+      await store.preparePendingReceiptCapture(
+        transactionId: transaction.id.value,
+        source: source,
+      );
+      final manifest = File(
+        path.join(pending.path, 'receipt-${transaction.id.value}.json'),
+      );
+      final prepared =
+          jsonDecode(
+                await File(
+                  path.join(
+                    pending.path,
+                    'receipt-${transaction.id.value}.json',
+                  ),
+                ).readAsString(),
+              )
+              as Map<String, dynamic>;
+      prepared['localFileName'] = '../outside-receipt.png';
+      await manifest.writeAsString(jsonEncode(prepared), flush: true);
+      final outside = File(path.join(root.path, 'outside-receipt.png'));
+      await outside.writeAsBytes([9, 9, 9], flush: true);
+
+      await expectLater(
+        store.recoverPendingReceiptCaptures(),
+        throwsA(isA<FormatException>()),
+      );
+      expect(await outside.readAsBytes(), [9, 9, 9]);
+      expect(await manifest.exists(), isTrue);
+      expect(
+        await SqliteEvidenceRepository(
+          database.persistenceDatabase,
+        ).listForTransaction(transaction.id),
+        isEmpty,
+      );
+    },
+  );
+
+  test(
     'receipt recovery retains an uncommitted source across SQLite restart',
     () async {
       final store = services<LocalEvidenceStore>();

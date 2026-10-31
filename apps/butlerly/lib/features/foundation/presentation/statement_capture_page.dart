@@ -274,6 +274,8 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     final l10n = context.l10n;
     setState(() => _busy = true);
     PreservedEvidenceSource? preserved;
+    EvidenceItem? publishedEvidence;
+    String? publishedStatementId;
     try {
       final store = services<LocalEvidenceStore>();
       preserved = await store.preserve(file);
@@ -379,7 +381,8 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
           );
           return false;
         }
-        _preserved = null;
+        publishedEvidence = evidence;
+        publishedStatementId = id;
         if (kDebugMode) {
           final summary =
               extraction?.debugSummary ??
@@ -446,6 +449,27 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
           rows,
         );
         if (result is! ApplicationSuccess<void>) {
+          var retainedForRetry = false;
+          try {
+            retainedForRetry = await store
+                .rollbackPendingStatementCaptureForRetry(
+                  statementId: id,
+                  source: preserved!,
+                  evidence: evidence,
+                );
+          } catch (_) {
+            // Leave the durable statement journal for startup recovery when
+            // the rollback itself cannot complete.
+          }
+          if (retainedForRetry) {
+            _preserved = preserved;
+            _pendingStatementId = id;
+            _message(
+              l10n.text('statementCouldNotBeCreated'),
+              retrySource: preserved,
+            );
+            return false;
+          }
           final recovered = await store.recoverPendingStatementCaptures();
           if (kDebugMode && result is ApplicationFailure<void>) {
             debugPrint(
@@ -454,9 +478,15 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
               'detail=${result.failure.detail ?? 'none'}; rows=${rows.length}',
             );
           }
-          _message(l10n.text('statementCouldNotBeCreated'));
+          _message(
+            l10n.text('statementCouldNotBeCreated'),
+            retrySource: recovered > 0 ? null : preserved,
+          );
           return recovered > 0;
         }
+        _preserved = null;
+        publishedEvidence = null;
+        publishedStatementId = null;
         if (await store.completePendingStatementCapture(id)) {
           _pendingStatementId = null;
         }
@@ -466,6 +496,24 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
       if (kDebugMode) {
         debugPrint('Butlerly statement capture failed: $error');
         debugPrintStack(stackTrace: stackTrace);
+      }
+      if (publishedEvidence != null &&
+          publishedStatementId != null &&
+          preserved != null) {
+        try {
+          final retained = await services<LocalEvidenceStore>()
+              .rollbackPendingStatementCaptureForRetry(
+                statementId: publishedStatementId!,
+                source: preserved,
+                evidence: publishedEvidence!,
+              );
+          if (retained) {
+            _preserved = preserved;
+            _pendingStatementId = publishedStatementId;
+          }
+        } catch (_) {
+          // Keep the durable journal for startup recovery when rollback fails.
+        }
       }
       _message(
         l10n.text('statementProcessingFailed'),

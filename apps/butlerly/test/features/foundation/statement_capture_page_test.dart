@@ -335,6 +335,74 @@ void main() {
     },
   );
 
+  test(
+    'published statement evidence remains retryable after save failure',
+    () async {
+      final store = services<LocalEvidenceStore>();
+      final createdAt = DateTime.utc(2026, 8, 9, 12);
+      final source = await store.preserve(XFile(original.path));
+      final evidence = await store.storePreservedStatement(
+        source,
+        pendingStatementId: 'statement-retryable',
+        pendingOriginalFilename: original.path,
+        pendingCreatedAt: createdAt,
+      );
+      expect(evidence, isNotNull);
+      final published = await store.fileFor(evidence!);
+      expect(published, isNotNull);
+      expect(await published!.exists(), isTrue);
+
+      expect(
+        await store.rollbackPendingStatementCaptureForRetry(
+          statementId: 'statement-retryable',
+          source: source,
+          evidence: evidence,
+        ),
+        isTrue,
+      );
+      expect(await published.exists(), isFalse);
+      expect(
+        await File(
+          '${evidenceDirectory.path}.pending/${source.localFileName}',
+        ).exists(),
+        isTrue,
+      );
+      final removed = await finance.getEvidence(evidence.id.value);
+      expect(removed, isA<ApplicationSuccess<EvidenceItem?>>());
+      expect((removed as ApplicationSuccess<EvidenceItem?>).value, isNull);
+
+      final retryEvidence = await store.storePreservedStatement(
+        source,
+        pendingStatementId: 'statement-retryable',
+        pendingOriginalFilename: original.path,
+        pendingCreatedAt: createdAt,
+        planned: evidence,
+      );
+      expect(retryEvidence?.id, evidence.id);
+      final created = await finance.statementServices!.create(
+        FinancialStatement(
+          id: 'statement-retryable',
+          evidenceId: evidence.id.value,
+          status: StatementStatus.needsSource,
+          originalFilename: original.path,
+          createdAt: createdAt,
+          updatedAt: createdAt,
+        ),
+        const [],
+      );
+      expect(created, isA<ApplicationSuccess<void>>());
+      expect(
+        await store.completePendingStatementCapture('statement-retryable'),
+        isTrue,
+      );
+      expect(
+        await database.database.query('financial_statements'),
+        hasLength(1),
+      );
+      expect(await database.database.query('evidence_items'), hasLength(1));
+    },
+  );
+
   testWidgets('capture failures reset busy state so capture can be retried', (
     tester,
   ) async {

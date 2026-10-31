@@ -961,13 +961,47 @@ final class LocalEvidenceStore {
           final localFileName = decoded['localFileName'] as String;
           decoded[_receiptCaptureStateKey] = _receiptCaptureCompleted;
           await manifest.writeAsString(jsonEncode(decoded), flush: true);
-          await manifest.delete();
-          await _removePreCaptureManifest(localFileName);
+          await _discardPendingStatementJournal(manifest, localFileName);
           return true;
         } on Object {
           return false;
         }
       });
+
+  /// Returns a published statement capture to the pending area when statement
+  /// creation fails after evidence publication. The source and journal then
+  /// remain directly retryable without leaving an orphan evidence row behind.
+  Future<bool> rollbackPendingStatementCaptureForRetry({
+    required String statementId,
+    required PreservedEvidenceSource source,
+    required EvidenceItem evidence,
+  }) => _runFinancialEvidenceMutation(() async {
+    final manifest = await _pendingStatementManifestFor(statementId);
+    if (!await manifest.exists()) return false;
+    final decoded = jsonDecode(await manifest.readAsString());
+    if (decoded is! Map<String, dynamic>) {
+      throw const FormatException('Invalid pending statement manifest.');
+    }
+    _validatePendingStatementManifest(decoded);
+    final localFileName = decoded['localFileName'] as String;
+    if (localFileName != source.localFileName ||
+        evidence.localFileName != localFileName) {
+      throw const FormatException(
+        'Pending statement source does not match its evidence.',
+      );
+    }
+    final liveRoot = await data.evidenceDirectory();
+    final liveName = await validateEvidenceReferencePath(
+      liveRoot,
+      localFileName,
+      message: 'Unsafe live statement source path.',
+    );
+    final removed = await finance.removeEvidence(evidence.id.value);
+    if (removed is! ApplicationSuccess<void>) return false;
+    final live = File(path.join(liveRoot.path, liveName));
+    if (await live.exists()) await _returnToPendingUnlocked(source, live);
+    return true;
+  });
 
   Future<bool> _markPendingStatementCaptureCancelledWithinMutation(
     String statementId,
@@ -1313,8 +1347,18 @@ final class LocalEvidenceStore {
             liveRoot,
             message: 'Unsafe live evidence tree.',
           );
+          await validateEvidencePath(
+            directory,
+            localFileName,
+            message: 'Unsafe pending receipt source path.',
+          );
+          final liveName = await validateEvidenceReferencePath(
+            liveRoot,
+            localFileName,
+            message: 'Unsafe live receipt source path.',
+          );
           await liveRoot.create(recursive: true);
-          final live = File(path.join(liveRoot.path, localFileName));
+          final live = File(path.join(liveRoot.path, liveName));
           if (!await live.exists()) {
             await _promotePreservedUnlocked(source);
           }
@@ -1673,8 +1717,22 @@ final class LocalEvidenceStore {
     }
   }
 
-  Future<File?> fileForPreserved(PreservedEvidenceSource source) =>
-      _pendingFileFor(source);
+  Future<File?> fileForPreserved(PreservedEvidenceSource source) async {
+    final pending = await _pendingFileFor(source);
+    if (pending != null && await pending.exists()) return pending;
+    final liveRoot = await data.evidenceDirectory();
+    try {
+      final normalized = await validateEvidenceReferencePath(
+        liveRoot,
+        source.localFileName,
+        message: 'Unsafe local evidence path.',
+      );
+      final live = File(path.join(liveRoot.path, normalized));
+      return await live.exists() ? live : null;
+    } on FormatException {
+      return null;
+    }
+  }
 
   /// Finds a statement by immutable source bytes, including statements
   /// created before source fingerprints were persisted in provenance.
