@@ -585,6 +585,60 @@ void main() {
   );
 
   test(
+    'receipt attachment retries a source already promoted to live storage',
+    () async {
+      final now = DateTime.utc(2026, 8, 9, 20);
+      final transaction = _transaction('transaction-live-retry', now);
+      await SqliteTransactionRepository(
+        database.persistenceDatabase,
+      ).save(transaction);
+      final sourceFile = File(path.join(root.path, 'receipt-live-retry.png'));
+      await sourceFile.writeAsBytes([1, 7, 4], flush: true);
+      final store = services<LocalEvidenceStore>();
+      final source = await store.preserve(
+        XFile(sourceFile.path, name: 'receipt-live-retry.png'),
+        captureKind: 'receipt',
+      );
+      const captureId = 'receipt-live-retry-capture';
+      final planned = await store.preparePendingReceiptCapture(
+        transactionId: captureId,
+        source: source,
+      );
+      expect(
+        await store.rebindPendingReceiptCapture(
+          captureId: captureId,
+          transactionId: transaction.id.value,
+        ),
+        isTrue,
+      );
+      final pending = Directory('${evidenceDirectory.path}.pending');
+      final pendingFile = File(path.join(pending.path, source.localFileName));
+      final liveFile = File(
+        path.join(evidenceDirectory.path, source.localFileName),
+      );
+      await evidenceDirectory.create(recursive: true);
+      await pendingFile.rename(liveFile.path);
+
+      final attached = await store.runFinancialEvidenceMutation(
+        () => store.attachPreservedAndReturnWithinMutation(
+          transactionId: transaction.id.value,
+          source: source,
+          planned: planned,
+        ),
+      );
+      expect(attached, isNotNull);
+      expect(await liveFile.exists(), isTrue);
+      expect(await store.completePendingReceiptCapture(captureId), isTrue);
+      expect(
+        await SqliteEvidenceRepository(
+          database.persistenceDatabase,
+        ).listForTransaction(transaction.id),
+        hasLength(1),
+      );
+    },
+  );
+
+  test(
     'receipt recovery rejects traversal paths and preserves the journal',
     () async {
       final now = DateTime.utc(2026, 8, 9, 20);
@@ -888,6 +942,52 @@ void main() {
       expect(
         await File(
           path.join(pending.path, 'receipt-transaction-mixed-recovery.json'),
+        ).exists(),
+        isTrue,
+      );
+    },
+  );
+
+  test(
+    'statement recovery retains its journal when the evidence source is missing',
+    () async {
+      final store = services<LocalEvidenceStore>();
+      const source = PreservedEvidenceSource(
+        originalName: 'statement-missing-source.pdf',
+        localFileName: 'statement-missing-source.pdf',
+        mediaType: 'application/pdf',
+        sourceFingerprint: 'fingerprint-missing-source',
+      );
+      final planned = await store.preparePendingStatementCapture(
+        statementId: 'statement-missing-source',
+        source: source,
+        originalFilename: source.originalName,
+        createdAt: DateTime.utc(2026, 8, 9, 20),
+      );
+      await SqliteEvidenceRepository(
+        database.persistenceDatabase,
+      ).save(planned);
+
+      await expectLater(
+        store.recoverPendingStatementCaptures(),
+        throwsA(isA<StateError>()),
+      );
+      final statements = await services<FinanceServices>().statementServices!
+          .list(includeArchived: true);
+      expect(
+        statements,
+        isA<ApplicationSuccess<List<FinancialStatement>>>().having(
+          (value) => value.value,
+          'statements',
+          isEmpty,
+        ),
+      );
+      expect(
+        await File(
+          path.join(
+            '${evidenceDirectory.path}.pending',
+            'statement-statement-missing-source.json',
+          ),
         ).exists(),
         isTrue,
       );

@@ -283,6 +283,77 @@ void main() {
   );
 
   testWidgets(
+    'resumes a rebound receipt against its persisted target transaction',
+    (tester) async {
+      final transactions = _ReceiptTransactionRepository();
+      final target = _receiptTransaction('rebound-target');
+      await transactions.save(target);
+      final finance = _finance(transactions);
+      final fixturePath = _fixturePath();
+      final pending = <PendingReceiptCapture>[
+        PendingReceiptCapture(
+          captureId: 'rebound-capture',
+          transactionId: target.id.value,
+          source: _preservedReceipt,
+          plannedEvidence: _receiptEvidence('rebound-evidence'),
+        ),
+      ];
+      final source = XFile(fixturePath, name: 'receipt.png');
+      String? attachedTransactionId;
+      bool? routeResult;
+
+      _resetView(tester);
+      tester.view.physicalSize = const Size(800, 1200);
+      tester.view.devicePixelRatio = 1;
+      await _openReceiptRoute(
+        tester,
+        ReceiptCapturePage(
+          finance: finance,
+          evidenceStore: _evidenceStore(finance),
+          pickImage: (_) async => source,
+          preserveEvidence: (_) async => _preservedReceipt,
+          fileForPreserved: (_) async => File(fixturePath),
+          discardPreserved: (_) async {},
+          attachPreserved: (transactionId, _) async {
+            attachedTransactionId = transactionId;
+            return _receiptEvidence('rebound-attached-evidence');
+          },
+          rebindPendingReceipt: (_, _) async {},
+          markPendingReceiptCommitted: (_, _) async => true,
+          completePendingReceipt: (_) async => true,
+          listPendingReceiptCaptures: () async => pending,
+          ocr: (_) async => _recognizedReceipt(),
+          loadInitialData: _emptyInitialData,
+        ),
+        onResult: (value) => routeResult = value,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Resume receipt'));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
+      for (var index = 0; index < 10; index++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      final save = find.widgetWithText(
+        FilledButton,
+        'Save receipt transaction',
+      );
+      expect(save, findsOneWidget);
+      await tester.tap(save);
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(routeResult, isTrue);
+      expect(transactions.values, hasLength(1));
+      expect(attachedTransactionId, target.id.value);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'surfaces an interrupted receipt capture and allows explicit discard',
     (tester) async {
       final finance = _finance(_ReceiptTransactionRepository());

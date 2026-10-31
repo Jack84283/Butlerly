@@ -440,7 +440,6 @@ final class LocalEvidenceStore {
       message: 'Unsafe live evidence tree.',
     );
     final pending = await _pendingFileFor(source);
-    if (pending == null || !await pending.exists()) return null;
     await liveDirectory.create(recursive: true);
     await validateEvidencePath(
       liveDirectory,
@@ -448,6 +447,12 @@ final class LocalEvidenceStore {
       message: 'Unsafe live evidence path.',
     );
     final live = File(path.join(liveDirectory.path, source.localFileName));
+    if (pending == null || !await pending.exists()) {
+      // Recovery may have stopped after pending evidence was promoted but
+      // before its SQLite publication completed. A validated live artifact is
+      // still the user's immutable source and can be retried in place.
+      return await live.exists() ? live : null;
+    }
     if (await live.exists()) {
       // Random immutable names make this effectively impossible, but never
       // truncate an existing published binary if a collision is observed.
@@ -1924,6 +1929,9 @@ final class LocalEvidenceStore {
           if (!await live.exists() && await pending.exists()) {
             await liveRoot.create(recursive: true);
             await pending.rename(live.path);
+          }
+          if (!await live.exists()) {
+            throw StateError('Pending statement source is unavailable.');
           }
           final statement = FinancialStatement(
             id: statementId,

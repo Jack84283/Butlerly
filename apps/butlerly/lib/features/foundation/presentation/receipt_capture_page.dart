@@ -134,6 +134,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   bool _captureInFlight = false;
   bool _saving = false;
   String? _pendingReceiptCaptureId;
+  String? _pendingReceiptTargetTransactionId;
   EvidenceItem? _plannedPendingEvidence;
   String? _merchantId;
   String? _categoryId;
@@ -398,6 +399,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       }
       _preserved = captured;
       _pendingReceiptCaptureId = captureId;
+      _pendingReceiptTargetTransactionId = null;
       _plannedPendingEvidence = planned;
     } catch (_) {
       // The generic pre-capture manifest is the only durable recovery record
@@ -479,6 +481,10 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
           .where((value) => value.captureId != pending.captureId)
           .toList(growable: false);
       _pendingReceiptCaptureId = pending.captureId;
+      _pendingReceiptTargetTransactionId =
+          pending.transactionId == pending.captureId
+          ? null
+          : pending.transactionId;
       _plannedPendingEvidence = pending.plannedEvidence;
       _preserved = pending.source;
       _processing = true;
@@ -529,6 +535,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
           )
           .toList(growable: false);
       _pendingReceiptCaptureId = captureId;
+      _pendingReceiptTargetTransactionId = null;
       _plannedPendingEvidence = planned;
       _preserved = pending.source;
       _processing = true;
@@ -850,6 +857,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     }
     if (await _completePendingReceipt(captureId)) {
       _pendingReceiptCaptureId = null;
+      _pendingReceiptTargetTransactionId = null;
       _plannedPendingEvidence = null;
     }
     _finishCommittedSave(
@@ -905,7 +913,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       _showSaveMessage('receiptStoreFailed');
       return;
     }
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
     if (_date == null) {
       setState(() => _dateNeedsReview = true);
       _showSaveMessage('dateNeedsReview');
@@ -929,6 +939,17 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     setState(() => _saving = true);
 
     try {
+      final pendingTargetId = _pendingReceiptTargetTransactionId;
+      if (pendingTargetId != null) {
+        final target = await finance.getTransaction.call(pendingTargetId);
+        if (target is ApplicationSuccess<TransactionDto>) {
+          await _attachReceiptToExisting(target.value, snapshot: snapshot);
+        } else if (mounted) {
+          setState(() => _saving = false);
+          _showSaveMessage('dataPreserved');
+        }
+        return;
+      }
       // Check strict duplicates immediately before creating anything so the
       // final decision uses the values the user actually approved.
       final proposed = TransactionDto(
