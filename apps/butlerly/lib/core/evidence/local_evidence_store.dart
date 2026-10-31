@@ -144,13 +144,17 @@ final class LocalEvidenceStore {
     await temporary.create(exclusive: true);
     try {
       final bytes = await source.readAsBytes();
-      await temporary.writeAsBytes(bytes, flush: true);
       final fingerprint = sha256Bytes(bytes);
-      await _markPreCaptureManifestReady(
+      // Persist the expected integrity before copying into the temporary
+      // file. Repair may promote a temporary source only after these values
+      // match its complete contents.
+      await _markPreCaptureManifestIntegrity(
         localFileName: localFileName,
         byteLength: bytes.length,
         sourceFingerprint: fingerprint,
       );
+      await temporary.writeAsBytes(bytes, flush: true);
+      await _markPreCaptureManifestReady(localFileName: localFileName);
       // The manifest is ready before this atomic rename. If the process stops
       // between those operations, recovery can verify and finish this rename;
       // it can never import a partially written destination file.
@@ -630,6 +634,20 @@ final class LocalEvidenceStore {
     return localFileName.isEmpty ? null : localFileName;
   }
 
+  Future<void> _writePendingCaptureManifestAtomically(
+    File manifest,
+    Map<String, dynamic> decoded,
+  ) async {
+    final temporary = File('${manifest.path}.tmp');
+    await validateEvidencePath(
+      manifest.parent,
+      path.basename(temporary.path),
+      message: 'Unsafe pending capture manifest path.',
+    );
+    await temporary.writeAsString(jsonEncode(decoded), flush: true);
+    await temporary.rename(manifest.path);
+  }
+
   Future<void> _writePreCaptureManifest({
     required String localFileName,
     required String originalName,
@@ -643,19 +661,16 @@ final class LocalEvidenceStore {
     );
     await directory.create(recursive: true);
     final manifest = await _preCaptureManifestFor(localFileName);
-    await manifest.writeAsString(
-      jsonEncode({
-        'localFileName': localFileName,
-        'originalName': originalName,
-        'mediaType': mediaType,
-        _receiptCaptureStateKey: _pendingCaptureCopying,
-        ...?captureKind == null ? null : {'captureKind': captureKind},
-      }),
-      flush: true,
-    );
+    await _writePendingCaptureManifestAtomically(manifest, {
+      'localFileName': localFileName,
+      'originalName': originalName,
+      'mediaType': mediaType,
+      _receiptCaptureStateKey: _pendingCaptureCopying,
+      ...?captureKind == null ? null : {'captureKind': captureKind},
+    });
   }
 
-  Future<void> _markPreCaptureManifestReady({
+  Future<void> _markPreCaptureManifestIntegrity({
     required String localFileName,
     required int byteLength,
     required String sourceFingerprint,
@@ -665,10 +680,21 @@ final class LocalEvidenceStore {
     if (decoded is! Map<String, dynamic>) {
       throw const FormatException('Invalid pending capture manifest.');
     }
-    decoded[_receiptCaptureStateKey] = _pendingCaptureReady;
     decoded['byteLength'] = byteLength;
     decoded['sourceFingerprint'] = sourceFingerprint;
-    await manifest.writeAsString(jsonEncode(decoded), flush: true);
+    await _writePendingCaptureManifestAtomically(manifest, decoded);
+  }
+
+  Future<void> _markPreCaptureManifestReady({
+    required String localFileName,
+  }) async {
+    final manifest = await _preCaptureManifestFor(localFileName);
+    final decoded = jsonDecode(await manifest.readAsString());
+    if (decoded is! Map<String, dynamic>) {
+      throw const FormatException('Invalid pending capture manifest.');
+    }
+    decoded[_receiptCaptureStateKey] = _pendingCaptureReady;
+    await _writePendingCaptureManifestAtomically(manifest, decoded);
   }
 
   Future<void> _removePreCaptureManifest(String localFileName) async {
@@ -907,6 +933,11 @@ final class LocalEvidenceStore {
         }
         if (stagedFileName is! String) {
           throw const FormatException('Invalid staged evidence identity.');
+        }
+        if (path.basename(entity.path) != '$stagedFileName.json') {
+          throw const FormatException(
+            'Staged evidence manifest is mismatched.',
+          );
         }
         final deletionState = decoded['deletionState'];
         if (deletionState != null &&
@@ -1159,6 +1190,7 @@ final class LocalEvidenceStore {
             if (evidenceId is! String ||
                 localFileName is! String ||
                 stagedFileName is! String ||
+                path.basename(manifest.path) != '$stagedFileName.json' ||
                 (deletionState != null &&
                     deletionState != _deletionPrepared &&
                     deletionState != _deletionCommitted) ||
@@ -2037,10 +2069,22 @@ final class LocalEvidenceStore {
       files.sort(
         (a, b) => path.basename(a.path).compareTo(path.basename(b.path)),
       );
+      final fileNames = files
+          .map((entity) => path.basename(entity.path))
+          .toSet();
       final issues = <PendingCaptureJournalIssue>[];
       for (final entity in files) {
         final file = entity as File;
         final fileName = path.basename(file.path);
+        // A preserved source may itself be JSON. Its generic manifest is the
+        // sibling with an additional `capture-` prefix; never diagnose or
+        // dismiss the source as an unrelated journal.
+        final hasGenericManifest = fileNames.contains('capture-$fileName.json');
+        final isRecognizedJournal =
+            fileName.startsWith('capture-') ||
+            fileName.startsWith('receipt-') ||
+            fileName.startsWith('statement-');
+        if (hasGenericManifest && !isRecognizedJournal) continue;
         try {
           final decoded = jsonDecode(await file.readAsString());
           if (decoded is! Map<String, dynamic>) {
@@ -2210,6 +2254,18 @@ final class LocalEvidenceStore {
     if (sourceForRepair == null) {
       return PendingCaptureJournalResolution.unavailable;
     }
+    final sourceIsTemporary = sourceForRepair.path == temporary.path;
+    final expectedLength = decoded['byteLength'];
+    final expectedFingerprint = decoded['sourceFingerprint'];
+    if (sourceIsTemporary &&
+        (expectedLength is! int ||
+            expectedLength < 0 ||
+            expectedFingerprint is! String ||
+            expectedFingerprint.isEmpty ||
+            await sourceForRepair.length() != expectedLength ||
+            await sha256FileRange(sourceForRepair) != expectedFingerprint)) {
+      return PendingCaptureJournalResolution.unavailable;
+    }
     final byteLength = await sourceForRepair.length();
     final sourceFingerprint = await sha256FileRange(sourceForRepair);
     final originalName = decoded['originalName'] is String
@@ -2222,21 +2278,25 @@ final class LocalEvidenceStore {
         : decoded['evidenceMediaType'] is String
         ? decoded['evidenceMediaType'] as String
         : 'application/octet-stream';
+    final repairedCaptureKind =
+        captureKind ??
+        (decoded['captureKind'] is String
+            ? decoded['captureKind'] as String
+            : null);
     final genericManifest = await _preCaptureManifestFor(localFileName);
-    await genericManifest.writeAsString(
-      jsonEncode({
-        'localFileName': localFileName,
-        'originalName': originalName,
-        'mediaType': mediaType,
-        ...?captureKind == null ? null : {'captureKind': captureKind},
-        if (isStatement) 'captureKind': 'statement',
-        if (isReceipt) 'captureKind': 'receipt',
-        _receiptCaptureStateKey: _pendingCaptureReady,
-        'byteLength': byteLength,
-        'sourceFingerprint': sourceFingerprint,
-      }),
-      flush: true,
-    );
+    await _writePendingCaptureManifestAtomically(genericManifest, {
+      'localFileName': localFileName,
+      'originalName': originalName,
+      'mediaType': mediaType,
+      ...?repairedCaptureKind == null
+          ? null
+          : {'captureKind': repairedCaptureKind},
+      if (isStatement) 'captureKind': 'statement',
+      if (isReceipt) 'captureKind': 'receipt',
+      _receiptCaptureStateKey: _pendingCaptureReady,
+      'byteLength': byteLength,
+      'sourceFingerprint': sourceFingerprint,
+    });
     // A malformed generic journal is itself the generic manifest path. Keep
     // the repaired ready-state record so the source remains listable and
     // recoverable after restart; typed journals are retired once converted.
@@ -2255,6 +2315,13 @@ final class LocalEvidenceStore {
   }) {
     return _runFinancialEvidenceMutation(() async {
       if (path.basename(fileName) != fileName || !fileName.endsWith('.json')) {
+        return PendingCaptureJournalResolution.unavailable;
+      }
+      final isRecognizedJournal =
+          fileName.startsWith('capture-') ||
+          fileName.startsWith('receipt-') ||
+          fileName.startsWith('statement-');
+      if (!isRecognizedJournal) {
         return PendingCaptureJournalResolution.unavailable;
       }
       final directory = await _pendingEvidenceDirectory();

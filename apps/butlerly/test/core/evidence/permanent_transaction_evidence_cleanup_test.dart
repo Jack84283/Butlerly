@@ -352,11 +352,14 @@ void main() {
       final pending = Directory('${evidenceDirectory.path}.pending');
       final finalSource = File(path.join(pending.path, source.localFileName));
       final temporary = File('${finalSource.path}.tmp');
-      await finalSource.rename(temporary.path);
       final journal = File(
         path.join(pending.path, 'capture-${source.localFileName}.json'),
       );
-      await journal.writeAsString('{not-json', flush: true);
+      final decoded =
+          jsonDecode(await journal.readAsString()) as Map<String, dynamic>;
+      decoded['captureState'] = 'copying';
+      await journal.writeAsString(jsonEncode(decoded), flush: true);
+      await finalSource.rename(temporary.path);
 
       expect(
         await store.resolvePendingCaptureJournalIssue(
@@ -372,6 +375,104 @@ void main() {
           captureKind: 'statement',
         )).single.source.localFileName,
         source.localFileName,
+      );
+    },
+  );
+
+  test(
+    'partial temporary capture is retained until persisted integrity matches',
+    () async {
+      final sourceFile = File(path.join(root.path, 'partial-repair.pdf'));
+      await sourceFile.writeAsBytes([1, 2, 3, 4], flush: true);
+      final store = services<LocalEvidenceStore>();
+      final source = await store.preserve(
+        XFile(sourceFile.path, name: 'partial-repair.pdf'),
+        captureKind: 'statement',
+      );
+      final pending = Directory('${evidenceDirectory.path}.pending');
+      final finalSource = File(path.join(pending.path, source.localFileName));
+      final temporary = File('${finalSource.path}.tmp');
+      final journal = File(
+        path.join(pending.path, 'capture-${source.localFileName}.json'),
+      );
+      final decoded =
+          jsonDecode(await journal.readAsString()) as Map<String, dynamic>;
+      decoded['captureState'] = 'copying';
+      await journal.writeAsString(jsonEncode(decoded), flush: true);
+      await finalSource.rename(temporary.path);
+      await temporary.writeAsBytes([1], flush: true);
+
+      expect(
+        await store.resolvePendingCaptureJournalIssue(
+          path.basename(journal.path),
+          captureKind: 'statement',
+        ),
+        PendingCaptureJournalResolution.unavailable,
+      );
+      expect(await temporary.exists(), isTrue);
+      expect(await finalSource.exists(), isFalse);
+      expect(
+        await store.listPendingGenericCaptures(captureKind: 'statement'),
+        isEmpty,
+      );
+      expect(
+        (await store.listPendingCaptureJournalIssues()).map(
+          (issue) => issue.fileName,
+        ),
+        contains(path.basename(journal.path)),
+      );
+    },
+  );
+
+  test(
+    'JSON capture sources are diagnosed and dismissed only through their journal',
+    () async {
+      final sourceFile = File(path.join(root.path, 'pending.json'));
+      await sourceFile.writeAsBytes([5, 8, 13], flush: true);
+      final store = services<LocalEvidenceStore>();
+      final source = await store.preserve(
+        XFile(sourceFile.path, name: 'pending.json'),
+        captureKind: 'statement',
+      );
+      final pending = Directory('${evidenceDirectory.path}.pending');
+      final journal = File(
+        path.join(pending.path, 'capture-${source.localFileName}.json'),
+      );
+      await journal.writeAsString('{not-json', flush: true);
+
+      final issues = await store.listPendingCaptureJournalIssues();
+      expect(
+        issues.map((issue) => issue.fileName),
+        contains(path.basename(journal.path)),
+      );
+      expect(
+        issues.map((issue) => issue.fileName),
+        isNot(contains(source.localFileName)),
+      );
+      expect(
+        await store.dismissPendingCaptureJournalIssue(
+          path.basename(journal.path),
+          captureKind: 'statement',
+        ),
+        PendingCaptureJournalResolution.dismissed,
+      );
+      expect(
+        await File(path.join(pending.path, source.localFileName)).exists(),
+        isTrue,
+      );
+      expect(
+        (await store.listPendingGenericCaptures(
+          captureKind: 'statement',
+        )).single.source.localFileName,
+        source.localFileName,
+      );
+      expect(
+        await store.dismissPendingCaptureJournalIssue(source.localFileName),
+        PendingCaptureJournalResolution.unavailable,
+      );
+      expect(
+        await File(path.join(pending.path, source.localFileName)).exists(),
+        isTrue,
       );
     },
   );
@@ -1797,6 +1898,75 @@ void main() {
 
       expect(await outside.readAsBytes(), [1, 2, 3]);
       expect(await manifest.exists(), isTrue);
+    },
+  );
+
+  test(
+    'staged deletion recovery rejects cross-referenced manifests without deleting either artifact',
+    () async {
+      final now = DateTime.utc(2026, 8, 9, 20);
+      final first = _evidence('evidence-cross-reference-first', now);
+      final second = _evidence('evidence-cross-reference-second', now);
+      final evidence = SqliteEvidenceRepository(database.persistenceDatabase);
+      await evidence.save(first);
+      await evidence.save(second);
+      final store = services<LocalEvidenceStore>();
+      final liveRoot = evidenceDirectory;
+      await liveRoot.create(recursive: true);
+      await File(
+        path.join(liveRoot.path, first.localFileName!),
+      ).writeAsBytes([1, 2, 3], flush: true);
+      await File(
+        path.join(liveRoot.path, second.localFileName!),
+      ).writeAsBytes([4, 5, 6, 7], flush: true);
+
+      await store.deletePublishedFile(first);
+      await store.deletePublishedFile(second);
+      final deleting = Directory('${evidenceDirectory.path}.deleting');
+      final manifests = await deleting
+          .list(followLinks: false)
+          .where((entity) => entity is File && entity.path.endsWith('.json'))
+          .cast<File>()
+          .toList();
+      expect(manifests, hasLength(2));
+      final decoded = <File, Map<String, dynamic>>{
+        for (final manifest in manifests)
+          manifest:
+              jsonDecode(await manifest.readAsString()) as Map<String, dynamic>,
+      };
+      final firstManifest = decoded.entries
+          .singleWhere((entry) => entry.value['evidenceId'] == first.id.value)
+          .key;
+      final secondManifest = decoded.entries
+          .singleWhere((entry) => entry.value['evidenceId'] == second.id.value)
+          .key;
+      final firstDecoded = decoded[firstManifest]!;
+      final secondDecoded = decoded[secondManifest]!;
+      final firstStagedFileName = firstDecoded['stagedFileName'];
+      final secondStagedFileName = secondDecoded['stagedFileName'];
+      firstDecoded['stagedFileName'] = secondStagedFileName;
+      secondDecoded['stagedFileName'] = firstStagedFileName;
+      await firstManifest.writeAsString(jsonEncode(firstDecoded), flush: true);
+      await secondManifest.writeAsString(
+        jsonEncode(secondDecoded),
+        flush: true,
+      );
+
+      await expectLater(
+        store.recoverStagedEvidenceDeletions(),
+        throwsA(isA<FormatException>()),
+      );
+      for (final manifest in manifests) {
+        expect(await manifest.exists(), isTrue);
+        final value =
+            jsonDecode(await manifest.readAsString()) as Map<String, dynamic>;
+        expect(
+          await File(
+            path.join(deleting.path, value['stagedFileName'] as String),
+          ).exists(),
+          isTrue,
+        );
+      }
     },
   );
 

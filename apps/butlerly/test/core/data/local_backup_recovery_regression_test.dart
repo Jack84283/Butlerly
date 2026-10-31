@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:butlerly/core/data/local_backup_engine.dart' as engine;
 import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
+import 'package:butlerly/core/data/staged_evidence_restore_reconciliation.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly_database/butlerly_database.dart' show sha256FileRange;
@@ -170,6 +171,57 @@ void main() {
 
       expect(await deleting.exists(), isFalse);
       expect(await fixture.database.database.query('restore_commits'), isEmpty);
+    },
+  );
+
+  test(
+    'restore reconciliation retains cross-referenced staged artifacts',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final deleting = Directory('${fixture.evidence.path}.deleting')
+        ..createSync(recursive: true);
+      final first = File(path.join(deleting.path, 'delete-first.bin'));
+      final second = File(path.join(deleting.path, 'delete-second.bin'));
+      await first.writeAsString('first source');
+      await second.writeAsString('second source');
+      final firstManifest = File('${first.path}.json');
+      final secondManifest = File('${second.path}.json');
+      await firstManifest.writeAsString(
+        jsonEncode({
+          'evidenceId': 'missing-first',
+          'localFileName': 'first.bin',
+          'stagedFileName': path.basename(second.path),
+          'deletionState': 'committed',
+          'byteLength': await first.length(),
+          'sourceFingerprint': await sha256FileRange(first),
+        }),
+        flush: true,
+      );
+      await secondManifest.writeAsString(
+        jsonEncode({
+          'evidenceId': 'missing-second',
+          'localFileName': 'second.bin',
+          'stagedFileName': path.basename(first.path),
+          'deletionState': 'committed',
+          'byteLength': await second.length(),
+          'sourceFingerprint': await sha256FileRange(second),
+        }),
+        flush: true,
+      );
+
+      expect(
+        await reconcileStagedEvidenceAfterRestore(
+          fixture.database.database,
+          fixture.evidence,
+          deleting,
+        ),
+        isTrue,
+      );
+      expect(await first.exists(), isTrue);
+      expect(await second.exists(), isTrue);
+      expect(await firstManifest.exists(), isTrue);
+      expect(await secondManifest.exists(), isTrue);
     },
   );
 

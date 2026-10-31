@@ -43,6 +43,7 @@ Future<bool> reconcileStagedEvidenceAfterRestore(
       if (evidenceId is! String ||
           localFileName is! String ||
           stagedFileName is! String ||
+          path.basename(entity.path) != '$stagedFileName.json' ||
           byteLength is! int ||
           byteLength < 0 ||
           fingerprint is! String ||
