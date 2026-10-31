@@ -1139,7 +1139,17 @@ void main() {
     'encrypted portable backup restores budgets, preferences and evidence',
     () async {
       const password = 'correct horse battery staple';
-      final backup = File(path.join(harness.root.path, 'workspace.butlerly'));
+      final backupDirectory = await Directory.systemTemp.createTemp(
+        'butlerly-backup-e2e-',
+      );
+      addTearDown(() async {
+        if (await backupDirectory.exists()) {
+          await backupDirectory.delete(recursive: true);
+        }
+      });
+      final backup = File(
+        path.join(backupDirectory.path, 'workspace.butlerly'),
+      );
       final workspace = _workspaceDataService(harness);
       final preference = UserPreference(
         locale: 'en',
@@ -1406,7 +1416,17 @@ void main() {
     'production backup restore page completes an encrypted replacement',
     (tester) async {
       const password = 'correct horse battery staple';
-      final backup = File(path.join(harness.root.path, 'ui-restore.butlerly'));
+      final backupDirectory = await Directory.systemTemp.createTemp(
+        'butlerly-restore-e2e-',
+      );
+      addTearDown(() async {
+        if (await backupDirectory.exists()) {
+          await backupDirectory.delete(recursive: true);
+        }
+      });
+      final backup = File(
+        path.join(backupDirectory.path, 'ui-restore.butlerly'),
+      );
       final workspace = _workspaceDataService(harness);
       await harness.finance.saveUserPreference(
         UserPreference(
@@ -1455,6 +1475,7 @@ void main() {
       await tester.tap(find.text('Unlock').last);
       await tester.pumpAndSettle();
       expect(find.text('Replace'), findsOneWidget);
+      expect(find.text('Merge'), findsNothing);
       await tester.tap(find.text('Replace').first);
       await tester.pumpAndSettle();
       expect(find.text('Replace'), findsOneWidget);
@@ -1482,8 +1503,16 @@ void main() {
     'production backup page creates an encrypted backup through file selection',
     (tester) async {
       const password = 'correct horse battery staple';
+      final destinationDirectory = await Directory.systemTemp.createTemp(
+        'butlerly-destination-e2e-',
+      );
+      addTearDown(() async {
+        if (await destinationDirectory.exists()) {
+          await destinationDirectory.delete(recursive: true);
+        }
+      });
       final destination = File(
-        path.join(harness.root.path, 'ui-created.butlerly'),
+        path.join(destinationDirectory.path, 'ui-created.butlerly'),
       );
       await harness.finance.saveUserPreference(
         UserPreference(
