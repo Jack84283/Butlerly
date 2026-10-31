@@ -559,8 +559,13 @@ final class LocalEvidenceStore {
       if (!name.startsWith('statement-') && !name.startsWith('receipt-')) {
         continue;
       }
+      String? candidateLocalFileName;
       try {
         final decoded = jsonDecode(await entity.readAsString());
+        if (decoded is Map<String, dynamic>) {
+          final candidate = decoded['localFileName'];
+          if (candidate is String) candidateLocalFileName = candidate;
+        }
         if (decoded is! Map<String, dynamic> ||
             decoded['localFileName'] is! String) {
           throw FormatException('Malformed pending capture journal: $name');
@@ -577,6 +582,23 @@ final class LocalEvidenceStore {
         );
         localFileNames.add(localFileName);
       } on Object {
+        // A partially written journal can still identify its source even when
+        // the rest of the manifest is invalid. Keep that source protected so
+        // generic-capture cleanup cannot delete evidence that may belong to
+        // the interrupted specific capture.
+        if (candidateLocalFileName != null) {
+          try {
+            localFileNames.add(
+              await validateEvidencePath(
+                directory,
+                candidateLocalFileName,
+                message: 'Unsafe pending capture source path.',
+              ),
+            );
+          } catch (_) {
+            // An unsafe candidate cannot authorize a filesystem deletion.
+          }
+        }
         // A malformed specific journal cannot safely be attributed to this
         // generic capture. Fail closed and surface the corruption instead of
         // treating every pending binary as referenced by the same journal.
@@ -1728,9 +1750,24 @@ final class LocalEvidenceStore {
   }
 
   Future<bool> discardPendingGenericCapture(PreservedEvidenceSource source) =>
-      _runFinancialEvidenceMutation(
-        () => _discardPreservedUnlocked(source).then((_) => true),
-      );
+      _runFinancialEvidenceMutation(() async {
+        final directory = await _pendingEvidenceDirectory();
+        if (await directory.exists()) {
+          try {
+            final specific = await _specificPendingJournalLocalFileNames(
+              directory,
+            );
+            if (specific.contains(source.localFileName)) return false;
+          } on Object {
+            // Any unresolved specific journal makes generic cancellation
+            // unsafe. Leave all sources in place until recovery can classify
+            // the journal explicitly.
+            return false;
+          }
+        }
+        await _discardPreservedUnlocked(source);
+        return true;
+      });
 
   Future<File> _pendingReceiptManifestFor(String captureId) async {
     final directory = await _pendingEvidenceDirectory();

@@ -161,6 +161,13 @@ void main() {
       final preserved = await store.preserve(
         XFile(sourceFile.path, name: 'uncertain-capture.pdf'),
       );
+      final unrelatedSourceFile = File(
+        path.join(root.path, 'unrelated-capture.pdf'),
+      );
+      await unrelatedSourceFile.writeAsBytes([9, 9, 9], flush: true);
+      final unrelated = await store.preserve(
+        XFile(unrelatedSourceFile.path, name: 'unrelated-capture.pdf'),
+      );
       final pending = Directory('${evidenceDirectory.path}.pending');
       final malformed = File(path.join(pending.path, 'receipt-unrelated.json'));
       await malformed.writeAsString('{not-json', flush: true);
@@ -194,9 +201,20 @@ void main() {
       );
       expect(await malformed.exists(), isTrue);
       expect(await malformedWithSource.exists(), isTrue);
+      expect(await store.discardPendingGenericCapture(preserved), isFalse);
+      expect(
+        await File(path.join(pending.path, preserved.localFileName)).exists(),
+        isTrue,
+      );
+      expect(
+        await File(
+          path.join(pending.path, 'capture-${preserved.localFileName}.json'),
+        ).exists(),
+        isTrue,
+      );
       final visible = await store.listPendingGenericCaptures();
       expect(visible, hasLength(1));
-      expect(visible.single.source.localFileName, preserved.localFileName);
+      expect(visible.single.source.localFileName, unrelated.localFileName);
       final issues = await store.listPendingCaptureJournalIssues();
       expect(issues, hasLength(2));
       expect(
