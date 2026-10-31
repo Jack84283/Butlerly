@@ -12,6 +12,7 @@ import 'package:butlerly/core/data/restore_recovery_state.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/core/evidence/evidence_deletion_recovery_state.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
@@ -526,8 +527,10 @@ Future<void> initializeButlerly(AppLogger logger) async {
         var repaired = 0;
         try {
           await evidenceStore.recoverStagedEvidenceDeletions();
+          services<EvidenceDeletionRecoveryState>().clear();
         } catch (error, stackTrace) {
           recoveryFailure = true;
+          services<EvidenceDeletionRecoveryState>().markRequired(error);
           logger.severe(
             'Staged evidence deletion recovery failed; retaining artifacts',
             error,

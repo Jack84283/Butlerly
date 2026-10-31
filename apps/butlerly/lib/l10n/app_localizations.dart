@@ -1115,6 +1115,12 @@ class AppLocalizations {
           'The recovery record was dismissed; uncertain files were kept safely.',
       'captureRecoveryRepairUnavailable':
           'The recovery record could not be repaired. Its files were kept safely.',
+      'evidenceDeletionRecoveryTitle': 'Evidence deletion needs review',
+      'evidenceDeletionRecoveryBody':
+          'Butlerly could not safely finish removing an evidence file after a previous deletion. Your source data was kept.',
+      'evidenceDeletionRecoveryRetry': 'Retry secure cleanup',
+      'evidenceDeletionRecoveryKept':
+          'Retry only removes a file after its database ownership and integrity are verified.',
       'captureReceipt': 'Capture receipt',
       'addReceipt': 'Add a receipt',
       'takePhoto': 'Take photo',
@@ -2111,6 +2117,10 @@ class AppLocalizations {
       'captureRecoveryRepaired': '来源已保留为可重试的捕获记录。',
       'captureRecoveryDismissed': '已关闭恢复记录；不确定的文件已安全保留。',
       'captureRecoveryRepairUnavailable': '恢复记录无法修复，其文件已安全保留。',
+      'evidenceDeletionRecoveryTitle': '证据删除需要处理',
+      'evidenceDeletionRecoveryBody': 'Butlerly 无法安全完成之前的证据文件删除。您的源数据已保留。',
+      'evidenceDeletionRecoveryRetry': '重试安全清理',
+      'evidenceDeletionRecoveryKept': '只有在验证数据库归属和文件完整性后，重试才会删除文件。',
       'captureReceipt': '拍摄收据',
       'addReceipt': '添加收据',
       'takePhoto': '拍照',
@@ -3276,6 +3286,13 @@ class AppLocalizations {
           'Se descartó el registro de recuperación; los archivos inciertos se conservaron de forma segura.',
       'captureRecoveryRepairUnavailable':
           'No se pudo reparar el registro de recuperación. Sus archivos se conservaron de forma segura.',
+      'evidenceDeletionRecoveryTitle':
+          'La eliminación de evidencia necesita revisión',
+      'evidenceDeletionRecoveryBody':
+          'Butlerly no pudo terminar de forma segura la eliminación de un archivo de evidencia. Sus datos de origen se conservaron.',
+      'evidenceDeletionRecoveryRetry': 'Reintentar limpieza segura',
+      'evidenceDeletionRecoveryKept':
+          'El reintento solo elimina un archivo después de verificar su relación con la base de datos y su integridad.',
       'captureReceipt': 'Capturar recibo',
       'addReceipt': 'Añadir un recibo',
       'takePhoto': 'Tomar foto',

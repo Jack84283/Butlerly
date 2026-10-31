@@ -6,8 +6,10 @@ import 'package:butlerly/app/theme/theme_mode_provider.dart';
 import 'package:butlerly/core/data/backup_publication_recovery_state.dart';
 import 'package:butlerly/core/data/restore_recovery_state.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/core/evidence/evidence_deletion_recovery_state.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/features/foundation/presentation/evidence_deletion_recovery_required_page.dart';
 import 'package:butlerly/features/foundation/presentation/first_use_preferences_page.dart';
 import 'package:butlerly/features/foundation/presentation/portable_backup_recovery_required_page.dart';
 import 'package:butlerly/features/foundation/presentation/restore_recovery_required_page.dart';
@@ -34,6 +36,10 @@ class ButlerlyApp extends ConsumerWidget {
     final portableRecoveryState =
         services.isRegistered<BackupPublicationRecoveryState>()
         ? services<BackupPublicationRecoveryState>()
+        : null;
+    final evidenceDeletionRecoveryState =
+        services.isRegistered<EvidenceDeletionRecoveryState>()
+        ? services<EvidenceDeletionRecoveryState>()
         : null;
 
     final firstUse = preference.value?.firstUseCompleted == false;
@@ -80,14 +86,29 @@ class ButlerlyApp extends ConsumerWidget {
             }
 
             Widget contentWithPortableRecovery() {
-              if (portableRecoveryState == null) return normalContent();
+              Widget contentWithEvidenceDeletionRecovery() {
+                if (evidenceDeletionRecoveryState == null) {
+                  return normalContent();
+                }
+                return ListenableBuilder(
+                  listenable: evidenceDeletionRecoveryState,
+                  builder: (context, _) =>
+                      evidenceDeletionRecoveryState.isRecoveryRequired
+                      ? const EvidenceDeletionRecoveryRequiredPage()
+                      : normalContent(),
+                );
+              }
+
+              if (portableRecoveryState == null) {
+                return contentWithEvidenceDeletionRecovery();
+              }
               return ListenableBuilder(
                 listenable: portableRecoveryState,
                 builder: (context, _) {
                   if (portableRecoveryState.isRecoveryRequired) {
                     return const PortableBackupRecoveryRequiredPage();
                   }
-                  return normalContent();
+                  return contentWithEvidenceDeletionRecovery();
                 },
               );
             }

@@ -8,6 +8,7 @@ import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/data/restore_recovery_state.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/di/finance_services.dart';
+import 'package:butlerly/core/evidence/evidence_deletion_recovery_state.dart';
 import 'package:butlerly/core/evidence/evidence_mutation_lock.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/core/evidence/platform_ocr_recognizer.dart';
@@ -40,12 +41,16 @@ void configureDependencies({
   );
   final restoreRecoveryState = RestoreRecoveryState(localDataManager);
   final publicationRecoveryState = BackupPublicationRecoveryState();
+  final evidenceDeletionRecoveryState = EvidenceDeletionRecoveryState();
   services
     ..registerSingleton<LocalDataManager>(localDataManager)
     ..registerSingleton<AnalysisConsistencyGate>(consistencyGate)
     ..registerSingleton<RestoreRecoveryState>(restoreRecoveryState)
     ..registerSingleton<BackupPublicationRecoveryState>(
       publicationRecoveryState,
+    )
+    ..registerSingleton<EvidenceDeletionRecoveryState>(
+      evidenceDeletionRecoveryState,
     )
     ..registerSingleton<LocalBackupManager>(
       LocalBackupManager(

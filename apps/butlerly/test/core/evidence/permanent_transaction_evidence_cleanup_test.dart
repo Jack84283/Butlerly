@@ -1861,6 +1861,53 @@ void main() {
   );
 
   test(
+    'restart recovery handles evidence whose source extension is json',
+    () async {
+      final now = DateTime.utc(2026, 8, 9, 20);
+      final item = _evidence(
+        'evidence-staged-json',
+        now,
+        localFileName: 'evidence-staged-json.json',
+        originalName: 'evidence-staged-json.json',
+        mediaType: 'application/json',
+      );
+      final evidence = SqliteEvidenceRepository(database.persistenceDatabase);
+      await evidence.save(item);
+      final live = File(path.join(evidenceDirectory.path, item.localFileName!));
+      await live.parent.create(recursive: true);
+      await live.writeAsString('{"amount":12.50}', flush: true);
+      final store = services<LocalEvidenceStore>();
+
+      await store.deletePublishedFile(item);
+      await evidence.remove(item.id);
+      await database.close();
+      await services.reset();
+      await database.initialize();
+      configureDependencies(
+        configuration: const AppConfiguration(),
+        database: database,
+        logger: AppLogger(),
+        documentsDirectory: Directory(path.join(root.path, 'documents')),
+        localEvidenceDirectory: evidenceDirectory,
+      );
+
+      await services<LocalEvidenceStore>().recoverStagedEvidenceDeletions();
+
+      expect(await live.exists(), isFalse);
+      expect(
+        await Directory('${evidenceDirectory.path}.deleting').list().toList(),
+        isEmpty,
+      );
+      expect(
+        await SqliteEvidenceRepository(
+          database.persistenceDatabase,
+        ).findById(item.id),
+        isNull,
+      );
+    },
+  );
+
+  test(
     'evidence finalization retains a staged artifact with invalid identity',
     () async {
       final now = DateTime.utc(2026, 8, 9, 20);
@@ -2071,17 +2118,23 @@ Transaction _transaction(String id, DateTime now) => Transaction(
   updatedAt: now,
 );
 
-EvidenceItem _evidence(String id, DateTime now) => EvidenceItem(
+EvidenceItem _evidence(
+  String id,
+  DateTime now, {
+  String? localFileName,
+  String? originalName,
+  String? mediaType,
+}) => EvidenceItem(
   id: EvidenceId(id),
   type: EvidenceType.receiptImage,
-  originalName: '$id.png',
-  mediaType: 'image/png',
-  localFileName: '$id.png',
+  originalName: originalName ?? '$id.png',
+  mediaType: mediaType ?? 'image/png',
+  localFileName: localFileName ?? '$id.png',
   provenance: Provenance(
     id: ProvenanceId('$id-provenance'),
     sourceType: ProvenanceSourceType.scan,
     capturedAt: now,
-    originalRepresentation: '$id.png',
+    originalRepresentation: originalName ?? '$id.png',
   ),
   createdAt: now,
 );

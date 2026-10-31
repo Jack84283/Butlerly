@@ -1109,8 +1109,18 @@ final class LocalEvidenceStore {
         );
         if (!await deleting.exists()) return;
         Object? firstFailure;
-        await for (final entity in deleting.list(followLinks: false)) {
-          if (entity is! File || !entity.path.endsWith('.json')) continue;
+        final entities = await deleting
+            .list(followLinks: false)
+            .where((entity) => entity is File)
+            .cast<File>()
+            .where((entity) => entity.path.endsWith('.json'))
+            .toList();
+        final entityPaths = entities.map((entity) => entity.path).toSet();
+        for (final entity in entities) {
+          // A JSON source is named `delete-<token>.json`, while its manifest
+          // is `delete-<token>.json.json`. Do not try to decode the source as
+          // a second manifest during recovery.
+          if (entityPaths.contains('${entity.path}.json')) continue;
           final manifest = entity;
           try {
             final decoded = jsonDecode(await manifest.readAsString());
