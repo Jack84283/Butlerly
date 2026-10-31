@@ -175,6 +175,61 @@ void main() {
   );
 
   test(
+    'controlled recovery cannot clear its gate before staged evidence recovery',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final safetyDirectory = await fixture.manager.localDataManager
+          .safetyBackupDirectory();
+      final backup = File(
+        path.join(
+          safetyDirectory.path,
+          'recovery-evidence-gate.butlerlybackup',
+        ),
+      );
+      await fixture.manager.createBackup(backup);
+
+      var attempts = 0;
+      var evidenceRecoverySucceeds = false;
+      final manager = LocalBackupManager(
+        fixture.database,
+        LocalDataManager(
+          fixture.database,
+          documentsDirectory: Directory(
+            path.join(fixture.root.path, 'documents'),
+          ),
+          localEvidenceDirectory: fixture.evidence,
+        ),
+        recoveryState: fixture.manager.recoveryState,
+        recoverStagedEvidenceDeletions: () async {
+          attempts++;
+          if (!evidenceRecoverySucceeds) {
+            throw StateError('staged evidence remains unresolved');
+          }
+        },
+      );
+      await fixture.manager.recoveryState.markRequired(
+        operationId: 'recovery-evidence-gate',
+        safetyBackup: backup,
+        reason: 'post-activation-validation-or-refresh-failed',
+        retryCurrentState: true,
+      );
+
+      await expectLater(
+        manager.recoverControlledState(),
+        throwsA(isA<StateError>()),
+      );
+      expect(attempts, 1);
+      expect(manager.recoveryState.isRecoveryRequired, isTrue);
+
+      evidenceRecoverySucceeds = true;
+      await manager.recoverControlledState();
+      expect(attempts, 2);
+      expect(manager.recoveryState.isRecoveryRequired, isFalse);
+    },
+  );
+
+  test(
     'restore reconciliation retains cross-referenced staged artifacts',
     () async {
       final fixture = await _Fixture.create();

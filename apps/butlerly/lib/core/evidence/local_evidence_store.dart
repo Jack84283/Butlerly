@@ -1199,153 +1199,159 @@ final class LocalEvidenceStore {
   }
 
   Future<void> recoverStagedEvidenceDeletions() =>
-      _runFinancialEvidenceMutation(() async {
-        final root = await data.evidenceDirectory();
-        final deleting = Directory('${root.path}.deleting');
-        await rejectEvidenceRoot(root, message: 'Unsafe live evidence root.');
-        await rejectEvidenceRoot(
+      _runFinancialEvidenceMutation(_recoverStagedEvidenceDeletionsUnlocked);
+
+  /// Recovers staged deletions while the caller already owns the shared
+  /// evidence mutation lock. Restore recovery uses this entry point so it can
+  /// prove database and evidence state together without deadlocking on a
+  /// nested lock acquisition.
+  Future<void> recoverStagedEvidenceDeletionsWhileLocked() =>
+      _recoverStagedEvidenceDeletionsUnlocked();
+
+  Future<void> _recoverStagedEvidenceDeletionsUnlocked() async {
+    final root = await data.evidenceDirectory();
+    final deleting = Directory('${root.path}.deleting');
+    await rejectEvidenceRoot(root, message: 'Unsafe live evidence root.');
+    await rejectEvidenceRoot(
+      deleting,
+      message: 'Unsafe deleting evidence root.',
+    );
+    if (!await deleting.exists()) return;
+    Object? firstFailure;
+    final entities = await deleting
+        .list(followLinks: false)
+        .where((entity) => entity is File)
+        .cast<File>()
+        .where((entity) => entity.path.endsWith('.json'))
+        .toList();
+    final entityPaths = entities.map((entity) => entity.path).toSet();
+    final referencedStagedPaths = <String>{};
+    for (final entity in entities) {
+      // A JSON source is named `delete-<token>.json`, while its manifest
+      // is `delete-<token>.json.json`. Do not try to decode the source as
+      // a second manifest during recovery.
+      if (entityPaths.contains('${entity.path}.json')) continue;
+      final manifest = entity;
+      try {
+        final decoded = jsonDecode(await manifest.readAsString());
+        if (decoded is! Map<String, dynamic>) {
+          throw const FormatException('Invalid evidence manifest.');
+        }
+        final evidenceId = decoded['evidenceId'];
+        final localFileName = decoded['localFileName'];
+        final stagedFileName = decoded['stagedFileName'];
+        final deletionState = decoded['deletionState'];
+        final byteLength = decoded['byteLength'];
+        final sourceFingerprint = decoded['sourceFingerprint'];
+        if (evidenceId is! String ||
+            localFileName is! String ||
+            stagedFileName is! String ||
+            path.basename(manifest.path) != '$stagedFileName.json' ||
+            (deletionState != null &&
+                deletionState != _deletionPrepared &&
+                deletionState != _deletionCommitted) ||
+            byteLength is! int ||
+            byteLength < 0 ||
+            sourceFingerprint is! String ||
+            sourceFingerprint.isEmpty) {
+          throw const FormatException('Invalid evidence manifest fields.');
+        }
+        final normalizedStagedFileName = await validateEvidencePath(
           deleting,
-          message: 'Unsafe deleting evidence root.',
+          stagedFileName,
+          message: 'Unsafe staged evidence recovery path.',
         );
-        if (!await deleting.exists()) return;
-        Object? firstFailure;
-        final entities = await deleting
-            .list(followLinks: false)
-            .where((entity) => entity is File)
-            .cast<File>()
-            .where((entity) => entity.path.endsWith('.json'))
-            .toList();
-        final entityPaths = entities.map((entity) => entity.path).toSet();
-        final referencedStagedPaths = <String>{};
-        for (final entity in entities) {
-          // A JSON source is named `delete-<token>.json`, while its manifest
-          // is `delete-<token>.json.json`. Do not try to decode the source as
-          // a second manifest during recovery.
-          if (entityPaths.contains('${entity.path}.json')) continue;
-          final manifest = entity;
-          try {
-            final decoded = jsonDecode(await manifest.readAsString());
-            if (decoded is! Map<String, dynamic>) {
-              throw const FormatException('Invalid evidence manifest.');
-            }
-            final evidenceId = decoded['evidenceId'];
-            final localFileName = decoded['localFileName'];
-            final stagedFileName = decoded['stagedFileName'];
-            final deletionState = decoded['deletionState'];
-            final byteLength = decoded['byteLength'];
-            final sourceFingerprint = decoded['sourceFingerprint'];
-            if (evidenceId is! String ||
-                localFileName is! String ||
-                stagedFileName is! String ||
-                path.basename(manifest.path) != '$stagedFileName.json' ||
-                (deletionState != null &&
-                    deletionState != _deletionPrepared &&
-                    deletionState != _deletionCommitted) ||
-                byteLength is! int ||
-                byteLength < 0 ||
-                sourceFingerprint is! String ||
-                sourceFingerprint.isEmpty) {
-              throw const FormatException('Invalid evidence manifest fields.');
-            }
-            final normalizedStagedFileName = await validateEvidencePath(
-              deleting,
-              stagedFileName,
-              message: 'Unsafe staged evidence recovery path.',
-            );
-            referencedStagedPaths.add(normalizedStagedFileName);
-            final staged = File(
-              path.join(deleting.path, normalizedStagedFileName),
-            );
-            final evidenceResult = await finance.getEvidence(evidenceId);
-            if (evidenceResult is! ApplicationSuccess<EvidenceItem?>) {
-              throw StateError('Evidence metadata is unavailable.');
-            }
-            final evidence = evidenceResult.value;
-            if (evidence != null && evidence.localFileName == localFileName) {
-              final live = File(path.join(root.path, localFileName));
-              await validateEvidenceReferencePath(
-                root,
-                localFileName,
-                message: 'Unsafe staged evidence recovery path.',
-              );
-              await root.create(recursive: true);
-              final stagedValid = await _matchesIntegrity(
-                staged,
-                byteLength: byteLength,
-                sourceFingerprint: sourceFingerprint,
-              );
-              final liveValid = await _matchesIntegrity(
-                live,
-                byteLength: byteLength,
-                sourceFingerprint: sourceFingerprint,
-              );
-              if (stagedValid && !await live.exists()) {
-                await staged.rename(live.path);
-              } else if (stagedValid && liveValid) {
-                await staged.delete();
-              } else if (!liveValid) {
-                throw StateError('Staged evidence source is unavailable.');
-              }
-            } else if (evidence == null &&
-                deletionState == _deletionCommitted) {
-              // The committed marker is the durable reference-aware delete
-              // decision. If the staged bytes were already removed before a
-              // crash, only the now-obsolete journal remains and can be
-              // finalized idempotently.
-              if (await staged.exists()) {
-                final stagedValid = await _matchesIntegrity(
-                  staged,
-                  byteLength: byteLength,
-                  sourceFingerprint: sourceFingerprint,
-                );
-                if (!stagedValid) {
-                  throw StateError('Staged evidence source is corrupted.');
-                }
-                await staged.delete();
-              }
-            } else if (evidence == null && deletionState == _deletionPrepared) {
-              // A missing evidence row is the durable reference-aware delete
-              // decision. A prepared journal means the process stopped after
-              // that SQLite commit but before the finalization marker; the
-              // source is still safe to retire only after integrity checking.
-              final stagedValid = await _matchesIntegrity(
-                staged,
-                byteLength: byteLength,
-                sourceFingerprint: sourceFingerprint,
-              );
-              if (!stagedValid) {
-                throw StateError('Staged evidence source is corrupted.');
-              }
-              if (await staged.exists()) await staged.delete();
-            } else {
-              throw StateError('Staged evidence ownership is unresolved.');
-            }
-            if (await manifest.exists()) await manifest.delete();
-          } on Object catch (error) {
-            // Retain malformed or unavailable recovery artifacts for the next
-            // startup rather than deleting user evidence blindly.
-            firstFailure ??= error;
-          }
+        referencedStagedPaths.add(normalizedStagedFileName);
+        final staged = File(path.join(deleting.path, normalizedStagedFileName));
+        final evidenceResult = await finance.getEvidence(evidenceId);
+        if (evidenceResult is! ApplicationSuccess<EvidenceItem?>) {
+          throw StateError('Evidence metadata is unavailable.');
         }
-        await for (final entity in deleting.list(
-          recursive: true,
-          followLinks: false,
-        )) {
-          if (entity is! File) continue;
-          final relative = path.relative(entity.path, from: deleting.path);
-          final isJsonSource =
-              entity.path.endsWith('.json') &&
-              entityPaths.contains('${entity.path}.json');
-          if (entity.path.endsWith('.json') && !isJsonSource) continue;
-          if (!referencedStagedPaths.contains(path.normalize(relative))) {
-            firstFailure ??= StateError(
-              'Unjournaled staged evidence source requires recovery.',
-            );
+        final evidence = evidenceResult.value;
+        if (evidence != null && evidence.localFileName == localFileName) {
+          final live = File(path.join(root.path, localFileName));
+          await validateEvidenceReferencePath(
+            root,
+            localFileName,
+            message: 'Unsafe staged evidence recovery path.',
+          );
+          await root.create(recursive: true);
+          final stagedValid = await _matchesIntegrity(
+            staged,
+            byteLength: byteLength,
+            sourceFingerprint: sourceFingerprint,
+          );
+          final liveValid = await _matchesIntegrity(
+            live,
+            byteLength: byteLength,
+            sourceFingerprint: sourceFingerprint,
+          );
+          if (stagedValid && !await live.exists()) {
+            await staged.rename(live.path);
+          } else if (stagedValid && liveValid) {
+            await staged.delete();
+          } else if (!liveValid) {
+            throw StateError('Staged evidence source is unavailable.');
           }
+        } else if (evidence == null && deletionState == _deletionCommitted) {
+          // The committed marker is the durable reference-aware delete
+          // decision. If the staged bytes were already removed before a
+          // crash, only the now-obsolete journal remains and can be
+          // finalized idempotently.
+          if (await staged.exists()) {
+            final stagedValid = await _matchesIntegrity(
+              staged,
+              byteLength: byteLength,
+              sourceFingerprint: sourceFingerprint,
+            );
+            if (!stagedValid) {
+              throw StateError('Staged evidence source is corrupted.');
+            }
+            await staged.delete();
+          }
+        } else if (evidence == null && deletionState == _deletionPrepared) {
+          // A missing evidence row is the durable reference-aware delete
+          // decision. A prepared journal means the process stopped after
+          // that SQLite commit but before the finalization marker; the
+          // source is still safe to retire only after integrity checking.
+          final stagedValid = await _matchesIntegrity(
+            staged,
+            byteLength: byteLength,
+            sourceFingerprint: sourceFingerprint,
+          );
+          if (!stagedValid) {
+            throw StateError('Staged evidence source is corrupted.');
+          }
+          if (await staged.exists()) await staged.delete();
+        } else {
+          throw StateError('Staged evidence ownership is unresolved.');
         }
-        final failure = firstFailure;
-        if (failure != null) throw failure;
-      });
+        if (await manifest.exists()) await manifest.delete();
+      } on Object catch (error) {
+        // Retain malformed or unavailable recovery artifacts for the next
+        // startup rather than deleting user evidence blindly.
+        firstFailure ??= error;
+      }
+    }
+    await for (final entity in deleting.list(
+      recursive: true,
+      followLinks: false,
+    )) {
+      if (entity is! File) continue;
+      final relative = path.relative(entity.path, from: deleting.path);
+      final isJsonSource =
+          entity.path.endsWith('.json') &&
+          entityPaths.contains('${entity.path}.json');
+      if (entity.path.endsWith('.json') && !isJsonSource) continue;
+      if (!referencedStagedPaths.contains(path.normalize(relative))) {
+        firstFailure ??= StateError(
+          'Unjournaled staged evidence source requires recovery.',
+        );
+      }
+    }
+    final failure = firstFailure;
+    if (failure != null) throw failure;
+  }
 
   Future<void> _writePendingStatementManifest({
     required String statementId,

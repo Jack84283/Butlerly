@@ -46,6 +46,7 @@ final class LocalBackupManager {
     BackupPublicationRecoveryStore? publicationRecoveryStore,
     BackupPublicationRecoveryState? publicationRecoveryState,
     AnalysisConsistencyGate? consistencyGate,
+    Future<void> Function()? recoverStagedEvidenceDeletions,
     @visibleForTesting
     Future<void> Function(Directory root)? afterStagingRootCreated,
   }) : recoveryState = recoveryState ?? RestoreRecoveryState(localDataManager),
@@ -55,6 +56,7 @@ final class LocalBackupManager {
        _consistencyGate = consistencyGate,
        _engine = engine.LocalBackupManager(database, localDataManager),
        _snapshotWriter = LocalBackupSnapshotWriter(localDataManager),
+       _recoverStagedEvidenceDeletions = recoverStagedEvidenceDeletions,
        _publicationRecovery = BackupPublicationRecoveryManager(
          store: publicationRecoveryStore,
        ),
@@ -73,6 +75,7 @@ final class LocalBackupManager {
   final BackupPublicationRecoveryManager _publicationRecovery;
   final BackupDestinationWriter _destinationWriter;
   final Future<void> Function(Directory root)? _afterStagingRootCreated;
+  final Future<void> Function()? _recoverStagedEvidenceDeletions;
   final AnalysisConsistencyGate? _consistencyGate;
   final BackupEncryption _encryption = const BackupEncryption();
 
@@ -547,6 +550,7 @@ final class LocalBackupManager {
         }
 
         if (currentStateValid) {
+          await _recoverStagedEvidenceBeforeClearing();
           if (postActivationRefresh != null) {
             await postActivationRefresh();
           }
@@ -574,6 +578,7 @@ final class LocalBackupManager {
       );
       await _validateDatabase(database.database);
       await _validateLiveEvidenceReferences();
+      await _recoverStagedEvidenceBeforeClearing();
       if (postActivationRefresh != null) {
         await postActivationRefresh();
       }
@@ -582,6 +587,11 @@ final class LocalBackupManager {
       await _pruneSafetyBackupsBestEffort();
     });
   });
+
+  Future<void> _recoverStagedEvidenceBeforeClearing() async {
+    final recover = _recoverStagedEvidenceDeletions;
+    if (recover != null) await recover();
+  }
 
   Future<void> resetControlledRecovery({
     Future<void> Function()? postResetRefresh,

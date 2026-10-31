@@ -9,12 +9,14 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   late EvidenceDeletionRecoveryState recoveryState;
   late int retries;
+  late int resets;
 
   setUp(() async {
     await services.reset();
     recoveryState = EvidenceDeletionRecoveryState();
     recoveryState.markRequired(StateError('staged evidence is unresolved'));
     retries = 0;
+    resets = 0;
     services.registerSingleton<EvidenceDeletionRecoveryState>(recoveryState);
   });
 
@@ -33,6 +35,9 @@ void main() {
         retries++;
         throw StateError('still unresolved');
       },
+      resetRecovery: () async {
+        resets++;
+      },
     ),
   );
 
@@ -46,5 +51,26 @@ void main() {
     expect(retries, 1);
     expect(find.text('Evidence deletion needs review'), findsOneWidget);
     expect(recoveryState.isRecoveryRequired, isTrue);
+  });
+
+  testWidgets('offers an explicit destructive reset after recovery fails', (
+    tester,
+  ) async {
+    await tester.pumpWidget(app());
+    await tester.tap(find.text('Erase local data and start over'));
+    await tester.pumpAndSettle();
+    expect(find.text('Erase local Butlerly data?'), findsOneWidget);
+
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(resets, 0);
+    expect(recoveryState.isRecoveryRequired, isTrue);
+
+    await tester.tap(find.text('Erase local data and start over'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Erase and restart'));
+    await tester.pumpAndSettle();
+    expect(resets, 1);
+    expect(recoveryState.isRecoveryRequired, isFalse);
   });
 }

@@ -59,6 +59,8 @@ void configureDependencies({
         recoveryState: restoreRecoveryState,
         publicationRecoveryState: publicationRecoveryState,
         consistencyGate: consistencyGate,
+        recoverStagedEvidenceDeletions: () => services<LocalEvidenceStore>()
+            .recoverStagedEvidenceDeletionsWhileLocked(),
       ),
     );
 

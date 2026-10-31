@@ -4,6 +4,7 @@ import 'package:butlerly/app/session/butlerly_session_guard.dart';
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/app/theme/theme_mode_provider.dart';
 import 'package:butlerly/core/data/backup_publication_recovery_state.dart';
+import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/data/restore_recovery_state.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/evidence_deletion_recovery_state.dart';
@@ -94,7 +95,10 @@ class ButlerlyApp extends ConsumerWidget {
                   listenable: evidenceDeletionRecoveryState,
                   builder: (context, _) =>
                       evidenceDeletionRecoveryState.isRecoveryRequired
-                      ? const EvidenceDeletionRecoveryRequiredPage()
+                      ? EvidenceDeletionRecoveryRequiredPage(
+                          resetRecovery: () =>
+                              services<LocalDataManager>().eraseAll(),
+                        )
                       : normalContent(),
                 );
               }
