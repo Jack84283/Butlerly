@@ -113,9 +113,6 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.photo_library_outlined));
     await tester.pump();
-    await tester.runAsync(() async {
-      await Future<void>.delayed(const Duration(seconds: 2));
-    });
     debugDefaultTargetPlatformOverride = null;
 
     var completed = false;
@@ -286,6 +283,74 @@ void main() {
     expect(await database.database.query('financial_statements'), hasLength(1));
     expect(await database.database.query('evidence_items'), hasLength(1));
   });
+
+  test(
+    'missing historical statement evidence does not block a new import',
+    () async {
+      final store = services<LocalEvidenceStore>();
+      final preserved = await store.preserve(XFile(original.path));
+      final evidence = await store.storePreservedStatement(preserved);
+      expect(evidence, isNotNull);
+      final created = await finance.statementServices!.create(
+        FinancialStatement(
+          id: 'statement-missing-history',
+          evidenceId: evidence!.id.value,
+          status: StatementStatus.needsSource,
+          originalFilename: 'historical.pdf',
+          createdAt: DateTime.utc(2026, 8, 9),
+          updatedAt: DateTime.utc(2026, 8, 9),
+        ),
+        const [],
+      );
+      expect(created, isA<ApplicationSuccess<void>>());
+      await database.database.update(
+        'provenances',
+        {'source_id': null},
+        where: 'id = ?',
+        whereArgs: [evidence.provenance.id.value],
+      );
+      final historicalFile = await store.fileFor(evidence);
+      expect(historicalFile, isNotNull);
+      await historicalFile!.delete();
+
+      final retry = await store.preserve(XFile(original.path));
+      expect(
+        await store.findStatementBySourceFingerprint(retry.sourceFingerprint!),
+        isNull,
+      );
+      expect(
+        await store.listUnavailableStatementEvidence(),
+        contains('statement-missing-history'),
+      );
+      await store.discardPreserved(retry);
+    },
+  );
+
+  test(
+    'recovers a typed statement journal in the current database session',
+    () async {
+      final store = services<LocalEvidenceStore>();
+      final preserved = await store.preserve(XFile(original.path));
+      final evidence = await store.storePreservedStatement(
+        preserved,
+        pendingStatementId: 'statement-current-session',
+        pendingOriginalFilename: original.path,
+        pendingCreatedAt: DateTime.utc(2026, 8, 9, 12),
+      );
+      expect(evidence, isNotNull);
+
+      expect(await store.recoverPendingStatementCaptures(), 1);
+      final statements =
+          (await finance.statementServices!.list(includeArchived: true)
+                  as ApplicationSuccess<List<FinancialStatement>>)
+              .value;
+      expect(
+        statements.map((item) => item.id),
+        contains('statement-current-session'),
+      );
+      expect(await store.recoverPendingStatementCaptures(), 0);
+    },
+  );
 
   test(
     'recovers a statement after evidence publication before statement save',

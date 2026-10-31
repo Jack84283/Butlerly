@@ -589,6 +589,20 @@ void main() {
         database.persistenceDatabase,
       ).listForTransaction(transaction.id);
       expect(existing.single.id, planned.id);
+      final retried = await store.runFinancialEvidenceMutation(
+        () => store.attachPreservedAndReturnWithinMutation(
+          transactionId: transaction.id.value,
+          source: source,
+          planned: planned,
+        ),
+      );
+      expect(retried?.id, planned.id);
+      expect(
+        await SqliteEvidenceRepository(
+          database.persistenceDatabase,
+        ).listForTransaction(transaction.id),
+        hasLength(1),
+      );
       final recovered = await store.recoverPendingReceiptCaptures();
       expect(recovered, 1);
       final after = await SqliteEvidenceRepository(
@@ -647,6 +661,67 @@ void main() {
       expect(attached, isNotNull);
       expect(await liveFile.exists(), isTrue);
       expect(await store.completePendingReceiptCapture(captureId), isTrue);
+      expect(
+        await SqliteEvidenceRepository(
+          database.persistenceDatabase,
+        ).listForTransaction(transaction.id),
+        hasLength(1),
+      );
+    },
+  );
+
+  test(
+    'committed receipt recovery retains its journal when the source is missing',
+    () async {
+      final now = DateTime.utc(2026, 8, 9, 20);
+      final transaction = _transaction('transaction-receipt-missing', now);
+      await SqliteTransactionRepository(
+        database.persistenceDatabase,
+      ).save(transaction);
+      final store = services<LocalEvidenceStore>();
+      final source = const PreservedEvidenceSource(
+        originalName: 'receipt-missing.png',
+        localFileName: 'receipt-missing.png',
+        mediaType: 'image/png',
+        sourceFingerprint: 'fingerprint-receipt-missing',
+      );
+      final pending = Directory('${evidenceDirectory.path}.pending');
+      await pending.create(recursive: true);
+      await File(
+        path.join(pending.path, source.localFileName),
+      ).writeAsBytes([6, 6, 6], flush: true);
+      const captureId = 'receipt-missing-capture';
+      final planned = await store.preparePendingReceiptCapture(
+        transactionId: captureId,
+        source: source,
+      );
+      expect(
+        await store.rebindPendingReceiptCapture(
+          captureId: captureId,
+          transactionId: transaction.id.value,
+        ),
+        isTrue,
+      );
+      final attached = await store.runFinancialEvidenceMutation(
+        () => store.attachPreservedAndReturnWithinMutation(
+          transactionId: transaction.id.value,
+          source: source,
+          planned: planned,
+        ),
+      );
+      expect(attached, isNotNull);
+      final live = await store.fileFor(attached!);
+      expect(live, isNotNull);
+      await live!.delete();
+
+      await expectLater(
+        store.recoverPendingReceiptCaptures(),
+        throwsA(isA<StateError>()),
+      );
+      expect(
+        await File(path.join(pending.path, 'receipt-$captureId.json')).exists(),
+        isTrue,
+      );
       expect(
         await SqliteEvidenceRepository(
           database.persistenceDatabase,

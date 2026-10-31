@@ -547,9 +547,14 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     PendingGenericCapture pending,
   ) async {
     try {
-      if (await evidenceStore.discardPendingGenericCapture(pending.source) &&
-          mounted) {
+      final discarded = await evidenceStore.discardPendingGenericCapture(
+        pending.source,
+      );
+      if (discarded && mounted) {
         _showSaveMessage('receiptRecoveryDiscarded');
+        await _loadPendingReceiptRecovery();
+      } else if (mounted) {
+        _showSaveMessage('receiptRecoveryWarning');
         await _loadPendingReceiptRecovery();
       }
     } catch (_) {

@@ -186,6 +186,14 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
   }
 
   Future<void> _reload() async {
+    // Recover typed statement journals before reloading the visible list.
+    // This keeps a source interrupted by a disposed route recoverable in the
+    // current session instead of waiting for a full process restart.
+    try {
+      await services<LocalEvidenceStore>().recoverPendingStatementCaptures();
+    } catch (_) {
+      // The journal remains available to the diagnostics card below.
+    }
     final results = await Future.wait([
       statement.list(),
       TransactionMasterDataProvider(services<FinanceServices>()).load(),
@@ -211,10 +219,21 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
         captureKind: 'statement',
       );
       final issues = await store.listPendingCaptureJournalIssues();
+      final unavailable = await store.listUnavailableStatementEvidence();
       if (!mounted) return;
+      final historicalIssues = unavailable
+          .map(
+            (id) => PendingCaptureJournalIssue(
+              fileName: 'statement-$id',
+              message: context.l10n.text(
+                'statementHistoricalEvidenceUnavailable',
+              ),
+            ),
+          )
+          .toList(growable: false);
       setState(() {
         _pendingGenericRecoveries = pending;
-        _pendingRecoveryIssues = issues;
+        _pendingRecoveryIssues = [...issues, ...historicalIssues];
       });
     } catch (_) {
       if (mounted) {
@@ -234,11 +253,13 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     PendingGenericCapture pending,
   ) async {
     try {
-      if (await services<LocalEvidenceStore>().discardPendingGenericCapture(
-            pending.source,
-          ) &&
-          mounted) {
+      final discarded = await services<LocalEvidenceStore>()
+          .discardPendingGenericCapture(pending.source);
+      if (discarded && mounted) {
         _message(context.l10n.text('statementRecoveryDiscarded'));
+        await _loadPendingGenericRecovery();
+      } else if (mounted) {
+        _message(context.l10n.text('statementRecoveryWarning'));
         await _loadPendingGenericRecovery();
       }
     } catch (_) {

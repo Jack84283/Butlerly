@@ -194,6 +194,29 @@ final class LocalEvidenceStore {
     ProvenanceSourceType sourceType = ProvenanceSourceType.scan,
     EvidenceItem? planned,
   }) async {
+    if (planned != null) {
+      final existing = await finance.listEvidenceForTransaction.call(
+        transactionId,
+      );
+      if (existing is! ApplicationSuccess<List<EvidenceItem>>) return null;
+      final alreadyAttached = existing.value
+          .where((item) => item.id == planned.id)
+          .firstOrNull;
+      if (alreadyAttached != null) {
+        if (alreadyAttached.localFileName != source.localFileName) {
+          // A corrupt or mismatched journal must not be allowed to retire
+          // recovery state for a different immutable source.
+          return null;
+        }
+        // A retry may resume after SQLite committed the attachment but before
+        // the capture journal was completed. Reuse the existing link and
+        // verify the source before retiring recovery state.
+        final liveFile = await _promotePreservedUnlocked(source);
+        if (liveFile == null || !await liveFile.exists()) return null;
+        await _removePreCaptureManifest(source.localFileName);
+        return alreadyAttached;
+      }
+    }
     final liveFile = await _promotePreservedUnlocked(source);
     if (liveFile == null) return null;
     try {
@@ -1455,26 +1478,58 @@ final class LocalEvidenceStore {
             }
             throw StateError('Receipt transaction lookup failed.');
           }
-          final existingEvidence = await finance.listEvidenceForTransaction
-              .call(transactionId);
-          if (existingEvidence is! ApplicationSuccess<List<EvidenceItem>>) {
-            throw StateError('Receipt evidence lookup failed.');
-          }
-          if (existingEvidence.value.any(
-            (item) => item.id.value == evidenceId,
-          )) {
-            await _discardPendingReceiptJournal(entity, localFileName);
-            recovered++;
-            continue;
-          }
           final evidence = _evidenceFromPendingStatementManifest(decoded);
-          if (evidence == null) continue;
+          if (evidence == null) {
+            throw const FormatException(
+              'Pending receipt evidence cannot be reconstructed.',
+            );
+          }
           final source = PreservedEvidenceSource(
             originalName: originalName,
             localFileName: localFileName,
             mediaType: mediaType,
             sourceFingerprint: sourceFingerprint as String?,
           );
+          final existingEvidence = await finance.listEvidenceForTransaction
+              .call(transactionId);
+          if (existingEvidence is! ApplicationSuccess<List<EvidenceItem>>) {
+            throw StateError('Receipt evidence lookup failed.');
+          }
+          final existing = existingEvidence.value
+              .where((item) => item.id.value == evidenceId)
+              .firstOrNull;
+          if (existing != null) {
+            if (existing.localFileName != source.localFileName) {
+              throw const FormatException(
+                'Committed receipt evidence does not match its journal.',
+              );
+            }
+            // The evidence row may have been committed immediately before a
+            // process stop. Never retire the journal solely because the row
+            // exists: first prove that its immutable source is still
+            // available in live storage, promoting the pending copy when
+            // necessary. Otherwise SQLite would retain a dangling reference.
+            final liveRoot = await data.evidenceDirectory();
+            await rejectEvidenceRoot(
+              liveRoot,
+              message: 'Unsafe live receipt source tree.',
+            );
+            final liveName = await validateEvidenceReferencePath(
+              liveRoot,
+              source.localFileName,
+              message: 'Unsafe live receipt source path.',
+            );
+            var live = File(path.join(liveRoot.path, liveName));
+            if (!await live.exists()) {
+              live = await _promotePreservedUnlocked(source) ?? live;
+            }
+            if (!await live.exists()) {
+              throw StateError('Committed receipt source is unavailable.');
+            }
+            await _discardPendingReceiptJournal(entity, localFileName);
+            recovered++;
+            continue;
+          }
           final liveRoot = await data.evidenceDirectory();
           await rejectEvidenceRoot(
             liveRoot,
@@ -2152,18 +2207,65 @@ final class LocalEvidenceStore {
     }
     for (final item in listed.value) {
       final evidenceResult = await finance.getEvidence(item.evidenceId);
+      if (evidenceResult case ApplicationFailure<EvidenceItem?>(
+        :final failure,
+      )) {
+        if (failure.code != ApplicationFailureCode.notFound) {
+          throw StateError('Statement fingerprint evidence lookup failed.');
+        }
+        // A missing historical evidence row must not make an otherwise valid
+        // new import impossible. The unavailable record is reported by
+        // [listUnavailableStatementEvidence] for recovery diagnostics.
+        continue;
+      }
       if (evidenceResult is! ApplicationSuccess<EvidenceItem?> ||
           evidenceResult.value == null) {
-        throw StateError('Statement fingerprint evidence lookup failed.');
+        // A missing historical evidence row must not make an otherwise valid
+        // new import impossible. The unavailable record is reported by
+        // [listUnavailableStatementEvidence] for recovery diagnostics.
+        continue;
       }
       if (evidenceResult.value!.provenance.sourceId != null) continue;
       final file = await fileFor(evidenceResult.value!);
-      if (file == null || !await file.exists()) {
-        throw StateError('Statement fingerprint source is unavailable.');
-      }
+      if (file == null || !await file.exists()) continue;
       if (await sha256FileRange(file) == fingerprint) return item;
     }
     return null;
+  }
+
+  /// Returns IDs for historical statements whose durable source evidence is
+  /// unavailable. This is diagnostic only: missing historical evidence must
+  /// not block a new statement import or authorize destructive cleanup.
+  Future<List<String>> listUnavailableStatementEvidence() async {
+    return _runFinancialEvidenceMutation(() async {
+      final statements = finance.statementServices;
+      if (statements == null) return const <String>[];
+      final listed = await statements.list(includeArchived: true);
+      if (listed is! ApplicationSuccess<List<FinancialStatement>>) {
+        return const <String>[];
+      }
+      final unavailable = <String>[];
+      for (final statement in listed.value) {
+        final evidence = await finance.getEvidence(statement.evidenceId);
+        if (evidence case ApplicationFailure<EvidenceItem?>(:final failure)) {
+          if (failure.code != ApplicationFailureCode.notFound) {
+            throw StateError('Statement evidence lookup failed.');
+          }
+          unavailable.add(statement.id);
+          continue;
+        }
+        if (evidence is! ApplicationSuccess<EvidenceItem?> ||
+            evidence.value == null) {
+          unavailable.add(statement.id);
+          continue;
+        }
+        final file = await fileFor(evidence.value!);
+        if (file == null || !await file.exists()) {
+          unavailable.add(statement.id);
+        }
+      }
+      return unavailable;
+    });
   }
 
   static String _newImmutableFileName(String extension) {

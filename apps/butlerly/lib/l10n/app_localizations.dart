@@ -1149,6 +1149,8 @@ class AppLocalizations {
       'statementRecoveryCancel': 'Discard source',
       'statementRecoveryWarning':
           'Some capture recovery records need attention. Their source files were kept.',
+      'statementHistoricalEvidenceUnavailable':
+          'A historical statement source is unavailable and needs recovery.',
       'statementChangedDuringRetry':
           'This statement changed while retrying. Open it again and retry from the latest saved version.',
       'abandonStatementImport': 'Abandon import',
@@ -2119,6 +2121,7 @@ class AppLocalizations {
       'statementRecoveryResume': '继续导入',
       'statementRecoveryCancel': '放弃来源',
       'statementRecoveryWarning': '部分捕获恢复记录需要处理，来源文件已保留。',
+      'statementHistoricalEvidenceUnavailable': '历史账单来源不可用，需要恢复。',
       'statementChangedDuringRetry': '重试期间账单发生了变化。请重新打开账单，并从最新保存的版本重试。',
       'abandonStatementImport': '放弃导入',
       'abandonStatementImportTitle': '放弃此次导入？',
@@ -3277,6 +3280,8 @@ class AppLocalizations {
       'statementRecoveryCancel': 'Descartar origen',
       'statementRecoveryWarning':
           'Algunos registros de recuperación necesitan atención. Sus archivos de origen se conservaron.',
+      'statementHistoricalEvidenceUnavailable':
+          'El origen de un extracto histórico no está disponible y necesita recuperación.',
       'statementChangedDuringRetry':
           'El extracto cambió durante el reintento. Ábrelo de nuevo y reintenta desde la última versión guardada.',
       'abandonStatementImport': 'Abandonar importación',
