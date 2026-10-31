@@ -597,6 +597,50 @@ void main() {
   );
 
   test(
+    'receipt recovery retains a journal when its source checksum is corrupted',
+    () async {
+      final now = DateTime.utc(2026, 8, 9, 20);
+      final transaction = _transaction('transaction-receipt-corrupt', now);
+      await SqliteTransactionRepository(
+        database.persistenceDatabase,
+      ).save(transaction);
+      final store = services<LocalEvidenceStore>();
+      const source = PreservedEvidenceSource(
+        originalName: 'receipt-corrupt.png',
+        localFileName: 'receipt-corrupt.png',
+        mediaType: 'image/png',
+      );
+      final pending = Directory('${evidenceDirectory.path}.pending');
+      await pending.create(recursive: true);
+      final pendingFile = File(path.join(pending.path, source.localFileName));
+      await pendingFile.writeAsBytes([7, 8, 9], flush: true);
+      await store.preparePendingReceiptCapture(
+        transactionId: transaction.id.value,
+        source: source,
+      );
+      await pendingFile.writeAsBytes([0], flush: true);
+
+      await expectLater(
+        store.recoverPendingReceiptCaptures(),
+        throwsA(isA<StateError>()),
+      );
+      expect(await pendingFile.readAsBytes(), [0]);
+      expect(
+        await File(
+          path.join(pending.path, 'receipt-${transaction.id.value}.json'),
+        ).exists(),
+        isTrue,
+      );
+      expect(
+        await SqliteEvidenceRepository(
+          database.persistenceDatabase,
+        ).listForTransaction(transaction.id),
+        isEmpty,
+      );
+    },
+  );
+
+  test(
     'receipt recovery does not duplicate an attachment committed before cleanup',
     () async {
       final now = DateTime.utc(2026, 8, 9, 20);
@@ -1106,12 +1150,17 @@ void main() {
         mediaType: 'application/pdf',
         sourceFingerprint: 'fingerprint-missing-source',
       );
+      final pending = Directory('${evidenceDirectory.path}.pending');
+      await pending.create(recursive: true);
+      final pendingFile = File(path.join(pending.path, source.localFileName));
+      await pendingFile.writeAsBytes([4, 5, 6], flush: true);
       final planned = await store.preparePendingStatementCapture(
         statementId: 'statement-missing-source',
         source: source,
         originalFilename: source.originalName,
         createdAt: DateTime.utc(2026, 8, 9, 20),
       );
+      await pendingFile.delete();
       await SqliteEvidenceRepository(
         database.persistenceDatabase,
       ).save(planned);
@@ -1138,6 +1187,47 @@ void main() {
           ),
         ).exists(),
         isTrue,
+      );
+    },
+  );
+
+  test(
+    'statement recovery retains a journal when its source checksum is corrupted',
+    () async {
+      final store = services<LocalEvidenceStore>();
+      const source = PreservedEvidenceSource(
+        originalName: 'statement-corrupt-source.pdf',
+        localFileName: 'statement-corrupt-source.pdf',
+        mediaType: 'application/pdf',
+      );
+      final pending = Directory('${evidenceDirectory.path}.pending');
+      await pending.create(recursive: true);
+      final pendingFile = File(path.join(pending.path, source.localFileName));
+      await pendingFile.writeAsBytes([1, 2, 3, 4], flush: true);
+      final planned = await store.preparePendingStatementCapture(
+        statementId: 'statement-corrupt-source',
+        source: source,
+        originalFilename: source.originalName,
+        createdAt: DateTime.utc(2026, 8, 9, 20),
+      );
+      await pendingFile.writeAsBytes([4], flush: true);
+
+      await expectLater(
+        store.recoverPendingStatementCaptures(),
+        throwsA(isA<StateError>()),
+      );
+      expect(await pendingFile.readAsBytes(), [4]);
+      expect(
+        await File(
+          path.join(pending.path, 'statement-statement-corrupt-source.json'),
+        ).exists(),
+        isTrue,
+      );
+      expect(
+        await SqliteEvidenceRepository(
+          database.persistenceDatabase,
+        ).findById(planned.id),
+        isNull,
       );
     },
   );
@@ -1435,6 +1525,9 @@ void main() {
           'evidenceId': item.id.value,
           'localFileName': item.localFileName,
           'stagedFileName': path.basename(staged.path),
+          'byteLength': 3,
+          'sourceFingerprint':
+              'da4932954f3027acbbf40518b867d1fdb5a3ed2238d3c806adf1be3c11ef080f',
         }),
         flush: true,
       );
@@ -1482,6 +1575,47 @@ void main() {
 
       expect(await outside.readAsBytes(), [1, 2, 3]);
       expect(await manifest.exists(), isTrue);
+    },
+  );
+
+  test(
+    'staged deletion recovery retains metadata when its artifact is missing',
+    () async {
+      final now = DateTime.utc(2026, 8, 9, 20);
+      final item = _evidence('evidence-missing-staged-artifact', now);
+      await SqliteEvidenceRepository(database.persistenceDatabase).save(item);
+      final live = File(path.join(evidenceDirectory.path, item.localFileName!));
+      await live.parent.create(recursive: true);
+      await live.writeAsBytes([9, 8, 7], flush: true);
+      final store = services<LocalEvidenceStore>();
+
+      await store.deletePublishedFile(item);
+      final deleting = Directory('${evidenceDirectory.path}.deleting');
+      final manifests = await deleting
+          .list()
+          .where((entity) => entity is File && entity.path.endsWith('.json'))
+          .cast<File>()
+          .toList();
+      expect(manifests, hasLength(1));
+      final manifest = manifests.single;
+      final decoded = jsonDecode(await manifest.readAsString()) as Map;
+      final staged = File(
+        path.join(deleting.path, decoded['stagedFileName'] as String),
+      );
+      await staged.delete();
+
+      await expectLater(
+        store.recoverStagedEvidenceDeletions(),
+        throwsA(isA<StateError>()),
+      );
+      expect(await manifest.exists(), isTrue);
+      expect(await live.exists(), isFalse);
+      expect(
+        await SqliteEvidenceRepository(
+          database.persistenceDatabase,
+        ).findById(item.id),
+        isNotNull,
+      );
     },
   );
 

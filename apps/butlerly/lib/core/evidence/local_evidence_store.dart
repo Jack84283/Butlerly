@@ -409,14 +409,30 @@ final class LocalEvidenceStore {
     String? paymentSourceId,
   }) async {
     final evidence = _newStatementEvidence(source);
+    final integrity = await _captureIntegrity(source);
     await _writePendingStatementManifest(
       statementId: statementId,
       evidence: evidence,
       originalFilename: originalFilename,
       createdAt: createdAt,
       paymentSourceId: paymentSourceId,
+      byteLength: integrity.byteLength,
+      sourceFingerprint: integrity.sourceFingerprint,
     );
     return evidence;
+  }
+
+  Future<({int byteLength, String sourceFingerprint})> _captureIntegrity(
+    PreservedEvidenceSource source,
+  ) async {
+    final file = await fileForPreserved(source);
+    if (file == null || !await file.exists()) {
+      throw StateError('Preserved capture source is unavailable.');
+    }
+    return (
+      byteLength: await file.length(),
+      sourceFingerprint: await sha256FileRange(file),
+    );
   }
 
   /// Creates and publishes a receipt as one lock-protected logical mutation.
@@ -473,8 +489,10 @@ final class LocalEvidenceStore {
       });
 
   Future<File?> _promotePreservedUnlocked(
-    PreservedEvidenceSource source,
-  ) async {
+    PreservedEvidenceSource source, {
+    int? expectedByteLength,
+    String? expectedSourceFingerprint,
+  }) async {
     final pendingDirectory = await _pendingEvidenceDirectory();
     await rejectEvidenceTree(
       pendingDirectory,
@@ -493,19 +511,42 @@ final class LocalEvidenceStore {
       message: 'Unsafe live evidence path.',
     );
     final live = File(path.join(liveDirectory.path, source.localFileName));
+    final expectedFingerprint = expectedSourceFingerprint;
+    Future<bool> isValid(File file) async {
+      if (expectedByteLength != null &&
+          await file.length() != expectedByteLength) {
+        return false;
+      }
+      if (expectedFingerprint != null &&
+          await sha256FileRange(file) != expectedFingerprint) {
+        return false;
+      }
+      return true;
+    }
+
     if (pending == null || !await pending.exists()) {
       // Recovery may have stopped after pending evidence was promoted but
       // before its SQLite publication completed. A validated live artifact is
       // still the user's immutable source and can be retried in place.
-      return await live.exists() ? live : null;
+      return await live.exists() && await isValid(live) ? live : null;
     }
     if (await live.exists()) {
       // Random immutable names make this effectively impossible, but never
       // truncate an existing published binary if a collision is observed.
-      return null;
+      return await isValid(live) ? live : null;
     }
+    if (!await isValid(pending)) return null;
     return pending.rename(live.path);
   }
+
+  Future<bool> _matchesIntegrity(
+    File file, {
+    required int byteLength,
+    required String sourceFingerprint,
+  }) async =>
+      await file.exists() &&
+      await file.length() == byteLength &&
+      await sha256FileRange(file) == sourceFingerprint;
 
   Future<void> _returnToPendingUnlocked(
     PreservedEvidenceSource source,
@@ -995,11 +1036,15 @@ final class LocalEvidenceStore {
     );
     final staged = File(path.join(deleting.path, stagedName));
     final manifest = File(path.join(deleting.path, manifestName));
+    final byteLength = await original.length();
+    final sourceFingerprint = await sha256FileRange(original);
     await manifest.writeAsString(
       jsonEncode({
         'evidenceId': evidence.id.value,
         'localFileName': evidence.localFileName,
         'stagedFileName': stagedName,
+        'byteLength': byteLength,
+        'sourceFingerprint': sourceFingerprint,
       }),
       flush: true,
     );
@@ -1016,12 +1061,14 @@ final class LocalEvidenceStore {
     ({File original, File staged, File manifest}) staged,
   ) async {
     if (!await staged.staged.exists()) {
-      if (await staged.manifest.exists()) await staged.manifest.delete();
+      // Do not retire an unresolved deletion journal merely because the
+      // staged artifact is missing. The database row may still reference the
+      // evidence, so startup recovery must retain and diagnose this state.
       return;
     }
     if (await staged.original.exists()) {
-      await staged.staged.delete();
-      if (await staged.manifest.exists()) await staged.manifest.delete();
+      // A collision means the filesystem state is ambiguous. Preserve both
+      // artifacts and the journal for integrity-checked startup recovery.
       return;
     }
     await staged.staged.rename(staged.original.path);
@@ -1050,9 +1097,15 @@ final class LocalEvidenceStore {
             final evidenceId = decoded['evidenceId'];
             final localFileName = decoded['localFileName'];
             final stagedFileName = decoded['stagedFileName'];
+            final byteLength = decoded['byteLength'];
+            final sourceFingerprint = decoded['sourceFingerprint'];
             if (evidenceId is! String ||
                 localFileName is! String ||
-                stagedFileName is! String) {
+                stagedFileName is! String ||
+                byteLength is! int ||
+                byteLength < 0 ||
+                sourceFingerprint is! String ||
+                sourceFingerprint.isEmpty) {
               throw const FormatException('Invalid evidence manifest fields.');
             }
             final normalizedStagedFileName = await validateEvidencePath(
@@ -1076,12 +1129,22 @@ final class LocalEvidenceStore {
                 message: 'Unsafe staged evidence recovery path.',
               );
               await root.create(recursive: true);
-              if (await staged.exists()) {
-                if (await live.exists()) {
-                  await staged.delete();
-                } else {
-                  await staged.rename(live.path);
-                }
+              final stagedValid = await _matchesIntegrity(
+                staged,
+                byteLength: byteLength,
+                sourceFingerprint: sourceFingerprint,
+              );
+              final liveValid = await _matchesIntegrity(
+                live,
+                byteLength: byteLength,
+                sourceFingerprint: sourceFingerprint,
+              );
+              if (stagedValid && !await live.exists()) {
+                await staged.rename(live.path);
+              } else if (stagedValid && liveValid) {
+                await staged.delete();
+              } else if (!liveValid) {
+                throw StateError('Staged evidence source is unavailable.');
               }
             } else if (await staged.exists()) {
               await staged.delete();
@@ -1102,6 +1165,8 @@ final class LocalEvidenceStore {
     required EvidenceItem evidence,
     required String originalFilename,
     required DateTime createdAt,
+    required int byteLength,
+    required String sourceFingerprint,
     String? paymentSourceId,
   }) async {
     final directory = await _pendingEvidenceDirectory();
@@ -1131,6 +1196,8 @@ final class LocalEvidenceStore {
       'evidenceCreatedAt': evidence.createdAt.toUtc().toIso8601String(),
       'originalFilename': originalFilename,
       'createdAt': createdAt.toUtc().toIso8601String(),
+      'byteLength': byteLength,
+      'sourceFingerprint': sourceFingerprint,
       _receiptCaptureStateKey: _receiptCapturePrepared,
     };
     if (evidence.provenance.sourceId != null) {
@@ -1292,6 +1359,7 @@ final class LocalEvidenceStore {
     required PreservedEvidenceSource source,
   }) async {
     final evidence = _newReceiptEvidence(source);
+    final integrity = await _captureIntegrity(source);
     final directory = await _pendingEvidenceDirectory();
     await rejectEvidenceRoot(
       directory,
@@ -1318,7 +1386,8 @@ final class LocalEvidenceStore {
             .toIso8601String(),
         'evidenceCreatedAt': evidence.createdAt.toUtc().toIso8601String(),
         'provenanceSourceId': source.sourceFingerprint,
-        'sourceFingerprint': source.sourceFingerprint,
+        'sourceFingerprint': integrity.sourceFingerprint,
+        'byteLength': integrity.byteLength,
         _receiptCaptureStateKey: _receiptCapturePrepared,
       }),
       flush: true,
@@ -1491,6 +1560,9 @@ final class LocalEvidenceStore {
             throw const FormatException('Invalid pending receipt fields.');
           }
           _validatePendingReceiptManifest(decoded);
+          final expectedByteLength = decoded['byteLength'] as int;
+          final expectedSourceFingerprint =
+              decoded['sourceFingerprint'] as String;
           if (captureState == _receiptCaptureCancelled ||
               captureState == _receiptCaptureCompleted) {
             await _discardPendingReceiptJournal(entity, localFileName);
@@ -1532,7 +1604,7 @@ final class LocalEvidenceStore {
             originalName: originalName,
             localFileName: localFileName,
             mediaType: mediaType,
-            sourceFingerprint: sourceFingerprint as String?,
+            sourceFingerprint: sourceFingerprint as String,
           );
           final existingEvidence = await finance.listEvidenceForTransaction
               .call(transactionId);
@@ -1564,10 +1636,24 @@ final class LocalEvidenceStore {
               message: 'Unsafe live receipt source path.',
             );
             var live = File(path.join(liveRoot.path, liveName));
-            if (!await live.exists()) {
-              live = await _promotePreservedUnlocked(source) ?? live;
+            if (!await _matchesIntegrity(
+              live,
+              byteLength: expectedByteLength,
+              sourceFingerprint: expectedSourceFingerprint,
+            )) {
+              live =
+                  await _promotePreservedUnlocked(
+                    source,
+                    expectedByteLength: expectedByteLength,
+                    expectedSourceFingerprint: expectedSourceFingerprint,
+                  ) ??
+                  live;
             }
-            if (!await live.exists()) {
+            if (!await _matchesIntegrity(
+              live,
+              byteLength: expectedByteLength,
+              sourceFingerprint: expectedSourceFingerprint,
+            )) {
               throw StateError('Committed receipt source is unavailable.');
             }
             await _discardPendingReceiptJournal(entity, localFileName);
@@ -1584,17 +1670,25 @@ final class LocalEvidenceStore {
             localFileName,
             message: 'Unsafe pending receipt source path.',
           );
-          final liveName = await validateEvidenceReferencePath(
+          await validateEvidenceReferencePath(
             liveRoot,
             localFileName,
             message: 'Unsafe live receipt source path.',
           );
           await liveRoot.create(recursive: true);
-          final live = File(path.join(liveRoot.path, liveName));
-          if (!await live.exists()) {
-            await _promotePreservedUnlocked(source);
+          final promoted = await _promotePreservedUnlocked(
+            source,
+            expectedByteLength: expectedByteLength,
+            expectedSourceFingerprint: expectedSourceFingerprint,
+          );
+          if (promoted == null ||
+              !await _matchesIntegrity(
+                promoted,
+                byteLength: expectedByteLength,
+                sourceFingerprint: expectedSourceFingerprint,
+              )) {
+            throw StateError('Pending receipt source is unavailable.');
           }
-          if (!await live.exists()) continue;
           final now = evidence.createdAt;
           final attached = await finance.storeAndAttachEvidence(
             evidence,
@@ -2019,13 +2113,17 @@ final class LocalEvidenceStore {
     final originalName = decoded['evidenceOriginalName'];
     final mediaType = decoded['evidenceMediaType'];
     final sourceFingerprint = decoded['sourceFingerprint'];
+    final byteLength = decoded['byteLength'];
     final captureState = decoded[_receiptCaptureStateKey];
     if (transactionId is! String ||
         evidenceId is! String ||
         localFileName is! String ||
         originalName is! String ||
         mediaType is! String ||
-        (sourceFingerprint != null && sourceFingerprint is! String) ||
+        sourceFingerprint is! String ||
+        sourceFingerprint.isEmpty ||
+        byteLength is! int ||
+        byteLength < 0 ||
         (captureState != null && captureState is! String) ||
         _evidenceFromPendingStatementManifest(decoded) == null) {
       throw const FormatException('Invalid pending receipt fields.');
@@ -2103,6 +2201,8 @@ final class LocalEvidenceStore {
           final createdAtValue = decoded['createdAt'];
           final paymentSourceId = decoded['paymentSourceId'];
           final manifestLocalFileName = decoded['localFileName'];
+          final byteLength = decoded['byteLength'] as int;
+          final sourceFingerprint = decoded['sourceFingerprint'] as String;
           final createdAt = DateTime.tryParse(createdAtValue)?.toUtc();
           if (createdAt == null) {
             throw const FormatException('Invalid pending statement timestamp.');
@@ -2111,6 +2211,7 @@ final class LocalEvidenceStore {
             originalName: decoded['evidenceOriginalName'] as String,
             localFileName: manifestLocalFileName as String,
             mediaType: decoded['evidenceMediaType'] as String,
+            sourceFingerprint: sourceFingerprint,
           );
           final captureState = decoded[_receiptCaptureStateKey] as String?;
           final existingStatement = existing
@@ -2154,10 +2255,24 @@ final class LocalEvidenceStore {
                 );
               }
               var live = await fileFor(existingEvidence);
-              if (live == null || !await live.exists()) {
-                live = await _promotePreservedUnlocked(manifestSource);
+              if (live == null ||
+                  !await _matchesIntegrity(
+                    live,
+                    byteLength: byteLength,
+                    sourceFingerprint: sourceFingerprint,
+                  )) {
+                live = await _promotePreservedUnlocked(
+                  manifestSource,
+                  expectedByteLength: byteLength,
+                  expectedSourceFingerprint: sourceFingerprint,
+                );
               }
-              if (live == null || !await live.exists()) {
+              if (live == null ||
+                  !await _matchesIntegrity(
+                    live,
+                    byteLength: byteLength,
+                    sourceFingerprint: sourceFingerprint,
+                  )) {
                 throw StateError('Existing statement source is unavailable.');
               }
             } else {
@@ -2203,28 +2318,17 @@ final class LocalEvidenceStore {
                 'Pending statement evidence cannot be reconstructed.',
               );
             }
-            final liveRoot = await data.evidenceDirectory();
-            await rejectEvidenceRoot(
-              liveRoot,
-              message: 'Unsafe live evidence tree.',
+            final promoted = await _promotePreservedUnlocked(
+              manifestSource,
+              expectedByteLength: byteLength,
+              expectedSourceFingerprint: sourceFingerprint,
             );
-            final liveName = await validateEvidenceReferencePath(
-              liveRoot,
-              reconstructed.localFileName!,
-              message: 'Unsafe pending statement evidence path.',
-            );
-            final pendingName = await validateEvidencePath(
-              directory,
-              reconstructed.localFileName!,
-              message: 'Unsafe pending statement evidence path.',
-            );
-            await liveRoot.create(recursive: true);
-            final live = File(path.join(liveRoot.path, liveName));
-            final pending = File(path.join(directory.path, pendingName));
-            if (!await live.exists() && await pending.exists()) {
-              await pending.rename(live.path);
-            }
-            if (!await live.exists()) {
+            if (promoted == null ||
+                !await _matchesIntegrity(
+                  promoted,
+                  byteLength: byteLength,
+                  sourceFingerprint: sourceFingerprint,
+                )) {
               throw StateError('Pending statement source is unavailable.');
             }
             final stored = await finance.storeEvidence(reconstructed);
@@ -2237,24 +2341,17 @@ final class LocalEvidenceStore {
           if (localFileName == null) {
             throw StateError('Pending statement has no local evidence file.');
           }
-          final liveRoot = await data.evidenceDirectory();
-          final liveName = await validateEvidenceReferencePath(
-            liveRoot,
-            localFileName,
-            message: 'Unsafe pending statement evidence path.',
+          final promoted = await _promotePreservedUnlocked(
+            manifestSource,
+            expectedByteLength: byteLength,
+            expectedSourceFingerprint: sourceFingerprint,
           );
-          final pendingName = await validateEvidencePath(
-            directory,
-            localFileName,
-            message: 'Unsafe pending statement evidence path.',
-          );
-          final live = File(path.join(liveRoot.path, liveName));
-          final pending = File(path.join(directory.path, pendingName));
-          if (!await live.exists() && await pending.exists()) {
-            await liveRoot.create(recursive: true);
-            await pending.rename(live.path);
-          }
-          if (!await live.exists()) {
+          if (promoted == null ||
+              !await _matchesIntegrity(
+                promoted,
+                byteLength: byteLength,
+                sourceFingerprint: sourceFingerprint,
+              )) {
             throw StateError('Pending statement source is unavailable.');
           }
           final statement = FinancialStatement(
@@ -2351,6 +2448,8 @@ final class LocalEvidenceStore {
     final createdAt = decoded['createdAt'];
     final localFileName = decoded['localFileName'];
     final paymentSourceId = decoded['paymentSourceId'];
+    final sourceFingerprint = decoded['sourceFingerprint'];
+    final byteLength = decoded['byteLength'];
     final captureState = decoded[_receiptCaptureStateKey];
     if (statementId is! String ||
         evidenceId is! String ||
@@ -2359,6 +2458,10 @@ final class LocalEvidenceStore {
         DateTime.tryParse(createdAt) == null ||
         localFileName is! String ||
         (paymentSourceId != null && paymentSourceId is! String) ||
+        sourceFingerprint is! String ||
+        sourceFingerprint.isEmpty ||
+        byteLength is! int ||
+        byteLength < 0 ||
         (captureState != null && captureState is! String) ||
         _evidenceFromPendingStatementManifest(decoded) == null) {
       throw const FormatException('Invalid pending statement fields.');

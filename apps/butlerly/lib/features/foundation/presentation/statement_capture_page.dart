@@ -820,14 +820,13 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
         }
       }
     }
+    if (!committed) return;
     final fingerprint = source.sourceFingerprint;
     if (fingerprint != null) {
-      final imported = await statement.findBySourceFingerprint(fingerprint);
-      if (imported case ApplicationSuccess<FinancialStatement?>(
-        value: final item,
-      ) when item != null) {
-        await store.discardPreserved(source);
-      }
+      final imported = await store.findStatementBySourceFingerprint(
+        fingerprint,
+      );
+      if (imported != null) await store.discardPreserved(source);
     }
   }
 
