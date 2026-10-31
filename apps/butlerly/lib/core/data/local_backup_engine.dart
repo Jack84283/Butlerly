@@ -5,6 +5,7 @@ import 'package:butlerly/core/data/backup_container_format.dart';
 import 'package:butlerly/core/data/duplicate_group_backup_policy.dart';
 import 'package:butlerly/core/data/evidence_path_safety.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
+import 'package:butlerly/core/data/staged_evidence_restore_reconciliation.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly_database/butlerly_database.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -431,8 +432,12 @@ final class LocalBackupManager {
           transactions: _tableRows(tablePayload, 'transactions'),
         );
     final root = await localDataManager.evidenceDirectory();
+    final deleting = Directory('${root.path}.deleting');
     final operationId = 'restore-${DateTime.now().microsecondsSinceEpoch}';
     final previous = Directory('${root.path}.restore-previous-$operationId');
+    final previousDeleting = Directory(
+      '${root.path}.restore-deleting-$operationId',
+    );
     final journal = File('${root.path}.restore-journal.json');
     _PreparedEvidence? prepared;
     try {
@@ -449,6 +454,8 @@ final class LocalBackupManager {
         previous.path,
         prepared.directory.path,
         'prepared',
+        previousDeleting: previousDeleting.path,
+        mode: mode,
       );
     } catch (_) {
       // No live state has been activated yet. A validation or journal
@@ -464,8 +471,18 @@ final class LocalBackupManager {
     var restoredRows = 0;
     var keptNewer = 0;
     var evidenceActivated = false;
+    var deletingActivated = false;
+    var stagedDeletionUnresolved = false;
     var databaseCommitted = false;
     try {
+      await rejectEvidenceRoot(
+        deleting,
+        message: 'Unsafe staged deletion root.',
+      );
+      if (await deleting.exists()) {
+        await deleting.rename(previousDeleting.path);
+        deletingActivated = true;
+      }
       if (await root.exists()) await root.rename(previous.path);
       await preparedEvidence.directory.rename(root.path);
       evidenceActivated = true;
@@ -475,6 +492,8 @@ final class LocalBackupManager {
         previous.path,
         preparedEvidence.directory.path,
         'evidenceActivated',
+        previousDeleting: previousDeleting.path,
+        mode: mode,
       );
       await database.database.transaction((tx) async {
         final durableGroupIdsToPreserve = mode == LocalRestoreMode.merge
@@ -489,6 +508,8 @@ final class LocalBackupManager {
           previous.path,
           preparedEvidence.directory.path,
           'dbWriting',
+          previousDeleting: previousDeleting.path,
+          mode: mode,
         );
 
         Set<String> protectedTransactions = const <String>{};
@@ -615,6 +636,17 @@ final class LocalBackupManager {
         });
       });
       databaseCommitted = true;
+      if (await previousDeleting.exists()) {
+        stagedDeletionUnresolved = await reconcileStagedEvidenceAfterRestore(
+          database.database,
+          root,
+          previousDeleting,
+          replaceRestore: mode == LocalRestoreMode.replace,
+        );
+        if (stagedDeletionUnresolved && !await deleting.exists()) {
+          await previousDeleting.rename(deleting.path);
+        }
+      }
 
       // The durable DB marker, not this advisory journal phase, is the source
       // of truth after commit. If this write fails, keep the new evidence tree
@@ -627,6 +659,8 @@ final class LocalBackupManager {
           previous.path,
           preparedEvidence.directory.path,
           'dbCommitted',
+          previousDeleting: previousDeleting.path,
+          mode: mode,
         );
       } on Exception {
         return LocalRestoreResult(
@@ -644,7 +678,15 @@ final class LocalBackupManager {
         } else if (await preparedEvidence.directory.exists()) {
           await preparedEvidence.directory.delete(recursive: true);
         }
-        if (await journal.exists()) await journal.delete();
+        if (deletingActivated && await previousDeleting.exists()) {
+          if (!await deleting.exists()) {
+            await previousDeleting.rename(deleting.path);
+          }
+        }
+        if (await journal.exists() &&
+            (!await previousDeleting.exists() || !deletingActivated)) {
+          await journal.delete();
+        }
       }
       rethrow;
     }
@@ -655,6 +697,9 @@ final class LocalBackupManager {
     // cleanup.
     try {
       if (await previous.exists()) await previous.delete(recursive: true);
+      if (!stagedDeletionUnresolved && await previousDeleting.exists()) {
+        await previousDeleting.delete(recursive: true);
+      }
       if (await journal.exists()) await journal.delete();
       await database.database.delete(
         'restore_commits',
@@ -679,16 +724,25 @@ final class LocalBackupManager {
     String operationId,
     String previous,
     String staging,
-    String phase,
-  ) async {
+    String phase, {
+    String? previousDeleting,
+    LocalRestoreMode? mode,
+  }) async {
     await rejectSymlinkedPath(journal.path);
     await rejectSymlinkedPath(previous);
     await rejectSymlinkedPath(staging);
+    if (previousDeleting != null) {
+      await rejectSymlinkedPath(previousDeleting);
+    }
     await journal.writeAsString(
       jsonEncode({
         'operationId': operationId,
         'previousPath': previous,
         'stagingPath': staging,
+        ...?previousDeleting == null
+            ? null
+            : {'previousDeletingPath': previousDeleting},
+        ...?mode == null ? null : {'mode': mode.name},
         'phase': phase,
       }),
       flush: true,

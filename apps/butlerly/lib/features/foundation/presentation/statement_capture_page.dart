@@ -64,6 +64,37 @@ XTypeGroup statementFileTypeGroupForPlatform(TargetPlatform platform) {
   );
 }
 
+class CaptureRecoveryActions extends StatelessWidget {
+  const CaptureRecoveryActions({
+    required this.fileName,
+    required this.onRepair,
+    required this.onDismiss,
+    super.key,
+  });
+
+  final String fileName;
+  final VoidCallback onRepair;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!fileName.endsWith('.json')) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextButton(
+          onPressed: onRepair,
+          child: Text(context.l10n.text('captureRecoveryRepair')),
+        ),
+        TextButton(
+          onPressed: onDismiss,
+          child: Text(context.l10n.text('captureRecoveryDismiss')),
+        ),
+      ],
+    );
+  }
+}
+
 class StatementCapturePage extends StatefulWidget {
   const StatementCapturePage({
     this.pickImage,
@@ -1060,20 +1091,12 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                             '${issue.fileName}: ${context.l10n.text(issue.messageKey)}',
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
-                          if (issue.fileName.endsWith('.json'))
-                            TextButton(
-                              onPressed: () =>
-                                  _repairPendingRecoveryIssue(issue.fileName),
-                              child: Text(
-                                context.l10n.text('captureRecoveryRepair'),
-                              ),
-                            ),
-                          TextButton(
-                            onPressed: () =>
+                          CaptureRecoveryActions(
+                            fileName: issue.fileName,
+                            onRepair: () =>
+                                _repairPendingRecoveryIssue(issue.fileName),
+                            onDismiss: () =>
                                 _dismissPendingRecoveryIssue(issue.fileName),
-                            child: Text(
-                              context.l10n.text('captureRecoveryDismiss'),
-                            ),
                           ),
                         ],
                       ),

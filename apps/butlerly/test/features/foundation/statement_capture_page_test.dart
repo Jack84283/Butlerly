@@ -147,6 +147,31 @@ void main() {
     expect(android.extensions, contains('jpg'));
   });
 
+  testWidgets(
+    'historical unavailable diagnostics expose no journal recovery actions',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          home: CaptureRecoveryActions(
+            fileName: 'statement-historical-id',
+            onRepair: () {},
+            onDismiss: () {},
+          ),
+        ),
+      );
+
+      expect(find.text('Resolve recovery record'), findsNothing);
+      expect(find.text('Dismiss record'), findsNothing);
+    },
+  );
+
   testWidgets('existing statement file uses the local OCR intake path', (
     tester,
   ) async {
