@@ -200,6 +200,11 @@ void main() {
       final recovered = await store.listPendingGenericCaptures();
       expect(recovered, hasLength(1));
       expect(recovered.single.source.localFileName, localFileName);
+      expect(recovered.single.captureKind, isNull);
+      expect(
+        await store.listPendingGenericCaptures(captureKind: 'statement'),
+        isEmpty,
+      );
       final manifest = File(
         path.join(pending.path, 'capture-$localFileName.json'),
       );
@@ -228,6 +233,37 @@ void main() {
       expect(await manifest.exists(), isFalse);
     },
   );
+
+  test('staged evidence recovery export preserves source bytes', () async {
+    final deleting = Directory('${evidenceDirectory.path}.deleting');
+    await deleting.create(recursive: true);
+    final staged = File(path.join(deleting.path, 'delete-orphan.bin'));
+    await staged.writeAsBytes([9, 8, 7, 6], flush: true);
+    final manifest = File('${staged.path}.json');
+    await manifest.writeAsString(
+      jsonEncode({'evidenceId': 'missing', 'stagedFileName': staged.path}),
+      flush: true,
+    );
+
+    final exported = await services<LocalEvidenceStore>()
+        .exportStagedEvidenceRecovery();
+    expect(await staged.readAsBytes(), [9, 8, 7, 6]);
+    expect(
+      await File(
+        path.join(exported.path, 'staged', 'delete-orphan.bin'),
+      ).readAsBytes(),
+      [9, 8, 7, 6],
+    );
+    final exportedManifest =
+        jsonDecode(
+              await File(
+                path.join(exported.path, 'recovery-manifest.json'),
+              ).readAsString(),
+            )
+            as Map<String, dynamic>;
+    expect(exportedManifest['format'], 'butlerly-staged-evidence-recovery');
+    expect(exportedManifest['files'], hasLength(2));
+  });
 
   test(
     'partial preserved integrity metadata fails closed before publication',

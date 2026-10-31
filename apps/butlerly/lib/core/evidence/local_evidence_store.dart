@@ -177,6 +177,86 @@ final class LocalEvidenceStore {
   Future<void> discardPreserved(PreservedEvidenceSource source) =>
       _runFinancialEvidenceMutation(() => _discardPreservedUnlocked(source));
 
+  /// Copies unresolved staged-deletion artifacts to a user-visible recovery
+  /// directory without changing the source tree. This gives the user a
+  /// durable safety copy before an optional destructive reset while preserving
+  /// the original bytes for a later validated retry.
+  Future<Directory> exportStagedEvidenceRecovery() {
+    return _runFinancialEvidenceMutation(() async {
+      final deleting = Directory(
+        '${(await data.evidenceDirectory()).path}.deleting',
+      );
+      await rejectEvidenceTree(
+        deleting,
+        message: 'Unsafe staged evidence tree.',
+      );
+      if (!await deleting.exists()) {
+        throw StateError(
+          'No staged evidence recovery artifacts are available.',
+        );
+      }
+
+      final documents = await data.documentsDirectory();
+      await rejectEvidenceRoot(documents, message: 'Unsafe documents root.');
+      await documents.create(recursive: true);
+      final timestamp = DateTime.now().toUtc().toIso8601String().replaceAll(
+        ':',
+        '-',
+      );
+      final destination = Directory(
+        path.join(documents.path, 'Butlerly Evidence Recovery $timestamp'),
+      );
+      final staging = Directory(
+        path.join(documents.path, '.butlerly-evidence-recovery-$timestamp'),
+      );
+      await staging.create(recursive: true);
+      try {
+        final files = <Map<String, Object?>>[];
+        await for (final entity in deleting.list(
+          recursive: true,
+          followLinks: false,
+        )) {
+          await rejectEvidenceLink(entity);
+          if (entity is! File) continue;
+          final relative = await validateEvidencePath(
+            deleting,
+            path.relative(entity.path, from: deleting.path),
+            message: 'Unsafe staged evidence path.',
+          );
+          final target = File(path.join(staging.path, 'staged', relative));
+          await target.parent.create(recursive: true);
+          await entity.copy(target.path);
+          files.add({
+            'path': relative,
+            'byteLength': await target.length(),
+            'sha256': await sha256FileRange(target),
+          });
+        }
+        if (files.isEmpty) {
+          throw StateError(
+            'No staged evidence recovery artifacts are available.',
+          );
+        }
+        final manifest = <String, Object?>{
+          'format': 'butlerly-staged-evidence-recovery',
+          'version': 1,
+          'files': files,
+        };
+        await File(
+          path.join(staging.path, 'recovery-manifest.json'),
+        ).writeAsString(
+          const JsonEncoder.withIndent('  ').convert(manifest),
+          flush: true,
+        );
+        await staging.rename(destination.path);
+        return destination;
+      } catch (_) {
+        if (await staging.exists()) await staging.delete(recursive: true);
+        rethrow;
+      }
+    });
+  }
+
   Future<void> _discardPreservedUnlocked(PreservedEvidenceSource source) async {
     final file = await _pendingFileFor(source);
     if (file != null && await file.exists()) await file.delete();

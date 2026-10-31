@@ -1133,6 +1133,73 @@ void main() {
     },
   );
 
+  test(
+    'merge keeps a shared evidence file owned by a surviving local record',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final backup = File(
+        path.join(
+          fixture.root.path,
+          'shared-evidence-tombstone.butlerlybackup',
+        ),
+      );
+      // Create a backup with no evidence rows. The later metadata edit models
+      // a backup containing a tombstone for A without carrying A's file.
+      await fixture.manager.createBackup(backup);
+
+      const createdAt = '2025-01-01T00:00:00.000Z';
+      for (final id in ['evidence-shared-a', 'evidence-shared-b']) {
+        await fixture.database.database.insert('provenances', {
+          'id': '$id-provenance',
+          'source_type': 'manual',
+          'captured_at': createdAt,
+        });
+        await fixture.database.database.insert('evidence_items', {
+          'id': id,
+          'type': 'receipt',
+          'original_name': 'shared.bin',
+          'media_type': 'application/octet-stream',
+          'provenance_id': '$id-provenance',
+          'created_at': createdAt,
+          'local_file_name': 'shared.bin',
+        });
+      }
+      final shared = File(path.join(fixture.evidence.path, 'shared.bin'));
+      await shared.writeAsString('owned by A and B', flush: true);
+
+      await _rewriteBackupMetadata(backup, (metadata) {
+        final tables = (metadata['tables']! as Map).cast<String, Object?>();
+        final tombstones = (tables['entity_tombstones']! as List).cast<Map>();
+        tombstones.add(<String, Object?>{
+          'entity_type': 'evidence_items',
+          'entity_id': 'evidence-shared-a',
+          'deleted_at': '2026-09-01T00:00:00.000Z',
+        });
+      });
+
+      await fixture.manager.restore(backup, mode: LocalRestoreMode.merge);
+
+      expect(
+        await fixture.database.database.query(
+          'evidence_items',
+          where: 'id = ?',
+          whereArgs: ['evidence-shared-a'],
+        ),
+        isEmpty,
+      );
+      expect(
+        await fixture.database.database.query(
+          'evidence_items',
+          where: 'id = ?',
+          whereArgs: ['evidence-shared-b'],
+        ),
+        hasLength(1),
+      );
+      expect(await shared.readAsString(), 'owned by A and B');
+    },
+  );
+
   test('backup rejects symbolic links in the evidence tree', () async {
     final fixture = await _Fixture.create();
     addTearDown(fixture.dispose);

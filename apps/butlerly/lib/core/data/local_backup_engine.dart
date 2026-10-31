@@ -1166,6 +1166,9 @@ final class LocalBackupManager {
     final tombstones =
         (tablePayload['entity_tombstones'] as List? ?? const <Object?>[])
             .cast<Map>();
+    final deletions =
+        <({String evidenceId, String localFileName, String key})>[];
+    final effectivelyDeletedEvidenceIds = <String>{};
     for (final raw in tombstones) {
       final tombstone = raw.cast<String, Object?>();
       if (tombstone['entity_type'] != 'evidence_items' ||
@@ -1202,9 +1205,36 @@ final class LocalBackupManager {
         message: 'Unsafe tombstoned evidence path.',
       );
       final key = evidencePathKey(normalized);
+      effectivelyDeletedEvidenceIds.add(evidenceId);
+      deletions.add((
+        evidenceId: evidenceId,
+        localFileName: normalized,
+        key: key,
+      ));
+    }
+
+    for (final deletion in deletions) {
+      // The database permits legacy or imported rows to share a stored path.
+      // A backup tombstone for one owner must not remove bytes still owned by
+      // another local evidence row that survives this merge.
+      final owners = await database.database.query(
+        'evidence_items',
+        columns: ['id'],
+        where: 'local_file_name = ?',
+        whereArgs: [deletion.localFileName],
+      );
+      final hasSurvivingOwner = owners.any((owner) {
+        final ownerId = owner['id'];
+        return ownerId is String &&
+            ownerId != deletion.evidenceId &&
+            !effectivelyDeletedEvidenceIds.contains(ownerId);
+      });
+      if (hasSurvivingOwner) continue;
+
+      final key = deletion.key;
       if (backupEvidencePaths.contains(key)) {
         final descriptorHash = backupEvidenceHashes[key];
-        final live = File(path.join(liveRoot.path, normalized));
+        final live = File(path.join(liveRoot.path, deletion.localFileName));
         if (descriptorHash == null ||
             !await live.exists() ||
             descriptorHash == await sha256FileRange(live)) {
@@ -1213,7 +1243,7 @@ final class LocalBackupManager {
       } else {
         excluded.add(key);
       }
-      final staged = File(path.join(staging.path, normalized));
+      final staged = File(path.join(staging.path, deletion.localFileName));
       if (await staged.exists()) await staged.delete();
     }
     return excluded;

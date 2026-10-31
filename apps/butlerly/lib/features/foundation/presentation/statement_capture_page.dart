@@ -257,9 +257,13 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
   Future<void> _loadPendingGenericRecovery() async {
     try {
       final store = services<LocalEvidenceStore>();
-      final pending = await store.listPendingGenericCaptures(
-        captureKind: 'statement',
-      );
+      final pending = (await store.listPendingGenericCaptures())
+          .where(
+            (capture) =>
+                capture.captureKind == null ||
+                capture.captureKind == 'statement',
+          )
+          .toList(growable: false);
       final issues = await store.listPendingCaptureJournalIssues();
       final unavailable = await store.listUnavailableStatementEvidence();
       if (!mounted) return;
@@ -1152,11 +1156,21 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    context.l10n.text('statementRecoveryTitle'),
+                    context.l10n.text(
+                      pending.captureKind == null
+                          ? 'genericCaptureRecoveryTitle'
+                          : 'statementRecoveryTitle',
+                    ),
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: ButlerlySpacing.compact),
-                  Text(context.l10n.text('statementRecoveryBody')),
+                  Text(
+                    context.l10n.text(
+                      pending.captureKind == null
+                          ? 'genericCaptureRecoveryBody'
+                          : 'statementRecoveryBody',
+                    ),
+                  ),
                   const SizedBox(height: ButlerlySpacing.compact),
                   Wrap(
                     spacing: ButlerlySpacing.compact,

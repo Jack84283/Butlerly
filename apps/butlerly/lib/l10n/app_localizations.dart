@@ -1093,6 +1093,9 @@ class AppLocalizations {
       'receiptRecoveryTitle': 'Receipt capture needs review',
       'receiptRecoveryBody':
           'A receipt captured before its transaction was saved is still on this device.',
+      'genericCaptureRecoveryTitle': 'Unclassified capture needs review',
+      'genericCaptureRecoveryBody':
+          'A legacy capture was recovered without a capture type. Open it from the statement or receipt workflow to choose how to continue.',
       'receiptRecoveryResume': 'Resume receipt',
       'receiptRecoveryCancel': 'Discard capture',
       'receiptRecoverySourceUnavailable':
@@ -2103,6 +2106,8 @@ class AppLocalizations {
       'receiptCaptureFailed': '无法打开收据捕获，请重试。',
       'receiptRecoveryTitle': '收据捕获需要处理',
       'receiptRecoveryBody': '交易保存前捕获的收据仍保留在此设备上。',
+      'genericCaptureRecoveryTitle': '未分类捕获需要处理',
+      'genericCaptureRecoveryBody': '已恢复一个没有捕获类型的旧文件。请从账单或收据流程打开它，以选择继续方式。',
       'receiptRecoveryResume': '继续处理收据',
       'receiptRecoveryCancel': '放弃捕获',
       'receiptRecoverySourceUnavailable': '已保存的收据来源不可用，恢复记录已保留。',
@@ -3264,6 +3269,10 @@ class AppLocalizations {
       'receiptRecoveryTitle': 'La captura del recibo necesita revisión',
       'receiptRecoveryBody':
           'Un recibo capturado antes de guardar su transacción aún está en este dispositivo.',
+      'genericCaptureRecoveryTitle':
+          'Una captura sin clasificar necesita revisión',
+      'genericCaptureRecoveryBody':
+          'Se recuperó una captura antigua sin tipo. Ábrela desde el flujo de extractos o recibos para elegir cómo continuar.',
       'receiptRecoveryResume': 'Reanudar recibo',
       'receiptRecoveryCancel': 'Descartar captura',
       'receiptRecoverySourceUnavailable':

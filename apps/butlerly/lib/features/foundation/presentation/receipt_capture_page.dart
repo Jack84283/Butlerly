@@ -245,9 +245,13 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
           : await widget.listPendingReceiptCaptures!();
       final generic = widget.listPendingReceiptCaptures != null
           ? const <PendingGenericCapture>[]
-          : await evidenceStore.listPendingGenericCaptures(
-              captureKind: 'receipt',
-            );
+          : (await evidenceStore.listPendingGenericCaptures())
+                .where(
+                  (capture) =>
+                      capture.captureKind == null ||
+                      capture.captureKind == 'receipt',
+                )
+                .toList(growable: false);
       final issues = widget.listPendingReceiptCaptures != null
           ? const <PendingCaptureJournalIssue>[]
           : await evidenceStore.listPendingCaptureJournalIssues();
@@ -1612,11 +1616,21 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Text(
-                              context.l10n.text('receiptRecoveryTitle'),
+                              context.l10n.text(
+                                pending.captureKind == null
+                                    ? 'genericCaptureRecoveryTitle'
+                                    : 'receiptRecoveryTitle',
+                              ),
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
                             const SizedBox(height: ButlerlySpacing.compact),
-                            Text(context.l10n.text('receiptRecoveryBody')),
+                            Text(
+                              context.l10n.text(
+                                pending.captureKind == null
+                                    ? 'genericCaptureRecoveryBody'
+                                    : 'receiptRecoveryBody',
+                              ),
+                            ),
                             const SizedBox(height: ButlerlySpacing.compact),
                             Wrap(
                               spacing: ButlerlySpacing.compact,

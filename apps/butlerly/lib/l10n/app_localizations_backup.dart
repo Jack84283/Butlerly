@@ -75,6 +75,10 @@ const _backupStrings = <String, Map<String, String>>{
     'recoveryResetConfirm': 'Erase and restart',
     'recoveryStillRequired':
         'Recovery is still required. Normal editing remains disabled and available recovery material has been preserved.',
+    'recoveryEvidenceExport': 'Export preserved evidence',
+    'recoveryEvidenceExported': 'Evidence recovery copy created',
+    'recoveryEvidenceExportedBody':
+        'The unresolved staged evidence was copied without changing the original recovery files. You can use this copy before choosing a destructive reset.',
     'portableRecoveryTitle': 'Backup recovery required',
     'portableRecoveryBody':
         'A backup replacement was interrupted. Butlerly preserved the previous valid backup, but needs access to the original backup location to finish recovery.',
@@ -136,6 +140,11 @@ const _backupStrings = <String, Map<String, String>>{
     'recoveryResetConfirm': 'Borrar y reiniciar',
     'recoveryStillRequired':
         'La recuperación sigue siendo necesaria. La edición normal continúa deshabilitada y se ha conservado el material de recuperación disponible.',
+    'recoveryEvidenceExport': 'Exportar la evidencia conservada',
+    'recoveryEvidenceExported':
+        'Se creó una copia de recuperación de evidencia',
+    'recoveryEvidenceExportedBody':
+        'La evidencia pendiente se copió sin cambiar los archivos originales de recuperación. Puede usar esta copia antes de elegir un reinicio destructivo.',
     'portableRecoveryTitle': 'Se requiere recuperar la copia',
     'portableRecoveryBody':
         'Se interrumpió el reemplazo de una copia. Butlerly conservó la copia válida anterior, pero necesita acceso a la ubicación original para completar la recuperación.',
@@ -189,6 +198,9 @@ const _backupStrings = <String, Map<String, String>>{
     'recoveryResetBody': '这将永久删除此设备上的 Butlerly 本地财务数据、凭证和恢复副本。仅在无法完成恢复时使用此操作。',
     'recoveryResetConfirm': '清除并重新开始',
     'recoveryStillRequired': '仍需要执行恢复。正常编辑仍未启用，可用的恢复材料已保留。',
+    'recoveryEvidenceExport': '导出已保留的凭证',
+    'recoveryEvidenceExported': '已创建凭证恢复副本',
+    'recoveryEvidenceExportedBody': '未解决的暂存凭证已复制，原始恢复文件未被更改。您可以在选择清除数据前使用此副本。',
     'portableRecoveryTitle': '需要恢复备份',
     'portableRecoveryBody': '备份替换过程中断。Butlerly 已保留之前的有效备份，但需要访问原备份位置才能完成恢复。',
     'selectBackupLocation': '选择备份位置',

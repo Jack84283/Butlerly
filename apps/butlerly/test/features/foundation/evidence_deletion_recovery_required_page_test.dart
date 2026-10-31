@@ -51,6 +51,7 @@ void main() {
   ) async {
     await tester.pumpWidget(app());
     expect(find.text('Evidence deletion needs review'), findsOneWidget);
+    expect(find.text('Export preserved evidence'), findsOneWidget);
     await tester.tap(find.text('Retry secure cleanup'));
     await tester.pumpAndSettle();
     expect(retries, 1);

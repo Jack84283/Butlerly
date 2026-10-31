@@ -452,6 +452,7 @@ final class LocalDataManager {
           final name = path.basename(entity.path);
           final removable =
               name.startsWith('Butlerly Export ') ||
+              name.startsWith('Butlerly Evidence Recovery ') ||
               name == 'Butlerly Safety Backups';
           if (!removable) continue;
           if (entity is Link) {
@@ -563,6 +564,9 @@ final class LocalDataManager {
         await for (final entity in documents.list()) {
           if (entity is Directory &&
               (path.basename(entity.path).startsWith('Butlerly Export ') ||
+                  path
+                      .basename(entity.path)
+                      .startsWith('Butlerly Evidence Recovery ') ||
                   // Remove legacy safety-backup directories created by builds
                   // before recovery data moved to application-private storage.
                   path.basename(entity.path) == 'Butlerly Safety Backups')) {
