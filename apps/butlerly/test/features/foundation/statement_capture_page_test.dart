@@ -303,12 +303,6 @@ void main() {
         const [],
       );
       expect(created, isA<ApplicationSuccess<void>>());
-      await database.database.update(
-        'provenances',
-        {'source_id': null},
-        where: 'id = ?',
-        whereArgs: [evidence.provenance.id.value],
-      );
       final historicalFile = await store.fileFor(evidence);
       expect(historicalFile, isNotNull);
       await historicalFile!.delete();

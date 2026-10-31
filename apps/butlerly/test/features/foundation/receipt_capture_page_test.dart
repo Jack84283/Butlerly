@@ -102,6 +102,46 @@ void main() {
   });
 
   testWidgets(
+    'preserves a receipt before confirmation and cleans up explicit replacement',
+    (tester) async {
+      final events = <String>[];
+      final fixturePath = _fixturePath();
+      final source = XFile(fixturePath, name: 'receipt.png');
+      final finance = _finance(_ReceiptTransactionRepository());
+
+      _resetView(tester);
+      await tester.pumpWidget(
+        _localizedApp(
+          ReceiptCapturePage(
+            finance: finance,
+            evidenceStore: _evidenceStore(finance),
+            pickImage: (_) async => source,
+            preserveEvidence: (_) async {
+              events.add('preserve');
+              return _preservedReceipt;
+            },
+            discardPreserved: (_) async => events.add('discard'),
+            loadInitialData: _emptyInitialData,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.text('Choose from Photos'));
+      await tester.pump();
+
+      expect(events, contains('preserve'));
+      expect(find.text('Use receipt'), findsOneWidget);
+      final replace = find.text('Retake / replace');
+      await tester.ensureVisible(replace);
+      await tester.pumpAndSettle();
+      await tester.tap(replace);
+      await tester.pumpAndSettle();
+      expect(events, contains('discard'));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'saves recognized receipt after transaction and evidence commit',
     (tester) async {
       final transactions = _ReceiptTransactionRepository();

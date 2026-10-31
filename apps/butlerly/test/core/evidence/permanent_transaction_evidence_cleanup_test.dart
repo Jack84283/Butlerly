@@ -221,7 +221,7 @@ void main() {
         issues.map((issue) => issue.fileName),
         containsAll(['receipt-partial.json', 'receipt-unrelated.json']),
       );
-      expect(issues.every((issue) => issue.message.isNotEmpty), isTrue);
+      expect(issues.every((issue) => issue.messageKey.isNotEmpty), isTrue);
     },
   );
 
@@ -1082,6 +1082,63 @@ void main() {
             'statement-statement-missing-source.json',
           ),
         ).exists(),
+        isTrue,
+      );
+    },
+  );
+
+  test(
+    'statement recovery retains an inconsistent journal and source',
+    () async {
+      final now = DateTime.utc(2026, 8, 9, 20);
+      final store = services<LocalEvidenceStore>();
+      const source = PreservedEvidenceSource(
+        originalName: 'statement-inconsistent-source.pdf',
+        localFileName: 'statement-inconsistent-source.pdf',
+        mediaType: 'application/pdf',
+      );
+      final pending = Directory('${evidenceDirectory.path}.pending');
+      await pending.create(recursive: true);
+      await File(
+        path.join(pending.path, source.localFileName),
+      ).writeAsBytes([8, 8, 8], flush: true);
+      final planned = await store.preparePendingStatementCapture(
+        statementId: 'statement-inconsistent-journal',
+        source: source,
+        originalFilename: source.originalName,
+        createdAt: now,
+      );
+      final existingEvidence = _evidence('evidence-existing-statement', now);
+      await SqliteEvidenceRepository(
+        database.persistenceDatabase,
+      ).save(existingEvidence);
+      await SqliteStatementRepository(
+        database.persistenceDatabase,
+      ).saveStatement(
+        FinancialStatement(
+          id: 'statement-inconsistent-journal',
+          evidenceId: existingEvidence.id.value,
+          status: StatementStatus.needsSource,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      await expectLater(
+        store.recoverPendingStatementCaptures(),
+        throwsA(isA<FormatException>()),
+      );
+      expect(
+        await File(
+          path.join(
+            pending.path,
+            'statement-statement-inconsistent-journal.json',
+          ),
+        ).exists(),
+        isTrue,
+      );
+      expect(
+        await File(path.join(pending.path, planned.localFileName!)).exists(),
         isTrue,
       );
     },

@@ -225,9 +225,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
           .map(
             (id) => PendingCaptureJournalIssue(
               fileName: 'statement-$id',
-              message: context.l10n.text(
-                'statementHistoricalEvidenceUnavailable',
-              ),
+              messageKey: 'statementHistoricalEvidenceUnavailable',
             ),
           )
           .toList(growable: false);
@@ -241,7 +239,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
           () => _pendingRecoveryIssues = const [
             PendingCaptureJournalIssue(
               fileName: 'pending-capture-scan',
-              message: 'Pending capture records could not be inspected.',
+              messageKey: 'captureRecoveryJournalIssue',
             ),
           ],
         );
@@ -1005,7 +1003,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                         top: ButlerlySpacing.compact,
                       ),
                       child: Text(
-                        '${issue.fileName}: ${issue.message}',
+                        '${issue.fileName}: ${context.l10n.text(issue.messageKey)}',
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ),

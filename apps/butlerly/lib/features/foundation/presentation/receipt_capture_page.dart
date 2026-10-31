@@ -263,7 +263,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
           () => _pendingRecoveryIssues = const [
             PendingCaptureJournalIssue(
               fileName: 'pending-capture-scan',
-              message: 'Pending capture records could not be inspected.',
+              messageKey: 'captureRecoveryJournalIssue',
             ),
           ],
         );
@@ -339,44 +339,82 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
 
   Future<void> _process(XFile source) async {
     if (_saving || _processing) return;
-    // Claim the capture before opening the confirmation sheet. The first
-    // await otherwise lets a second picker operation overwrite the pending
-    // source and journal while this one is still being confirmed.
+    final l10n = context.l10n;
     setState(() => _processing = true);
-    final confirmed = await showButlerlyBottomSheet<bool>(
-      context: context,
-      builder: (dialogContext) => ButlerlySheet(
-        title: Text(context.l10n.text('receiptUseTitle')),
-        content: ConstrainedBox(
-          constraints: const BoxConstraints(maxHeight: 520, maxWidth: 520),
-          child: Image.file(File(source.path), fit: BoxFit.contain),
+    // Preserve the selected source before opening confirmation. A process
+    // stop or route interruption while the sheet is open must not discard the
+    // only app-owned recovery copy.
+    PreservedEvidenceSource preserved;
+    try {
+      preserved = widget.preserveEvidence == null
+          ? await evidenceStore.preserve(source, captureKind: 'receipt')
+          : await widget.preserveEvidence!(source);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _processing = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(l10n.text('receiptStoreFailed'))));
+      await _loadPendingReceiptRecovery();
+      return;
+    }
+    if (!mounted) return;
+
+    bool? confirmed;
+    try {
+      confirmed = await showButlerlyBottomSheet<bool>(
+        context: context,
+        builder: (dialogContext) => ButlerlySheet(
+          title: Text(l10n.text('receiptUseTitle')),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 520, maxWidth: 520),
+            child: Image.file(File(source.path), fit: BoxFit.contain),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text(l10n.text('receiptRetakeReplace')),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: Text(l10n.text('receiptUse')),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text(context.l10n.text('receiptRetakeReplace')),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text(context.l10n.text('receiptUse')),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) {
+      );
+    } catch (_) {
+      // Keep the generic recovery record when confirmation itself fails. The
+      // source is not explicitly cancelled and remains available to retry.
+      if (mounted) {
+        setState(() => _processing = false);
+        _showSaveMessage('receiptStoreFailed');
+        await _loadPendingReceiptRecovery();
+      }
+      return;
+    }
+    if (confirmed != true) {
+      // A visible negative confirmation is the one point at which it is safe
+      // to retire the generic recovery copy. If the route disappeared, retain
+      // it because disposal is not explicit cancellation.
+      if (!mounted) return;
+      try {
+        await _discard(preserved);
+      } catch (_) {
+        _showSaveMessage('receiptRecoveryWarning');
+        await _loadPendingReceiptRecovery();
+        if (mounted) setState(() => _processing = false);
+        return;
+      }
       if (mounted) setState(() => _processing = false);
       return;
     }
+    if (!mounted) return;
 
-    PreservedEvidenceSource? preserved;
     File? stableFile;
     String? captureId;
     final previous = _preserved;
     final previousCaptureId = _pendingReceiptCaptureId;
     try {
-      preserved = widget.preserveEvidence == null
-          ? await evidenceStore.preserve(source, captureKind: 'receipt')
-          : await widget.preserveEvidence!(source);
       final captured = preserved;
       captureId = 'transaction-${DateTime.now().microsecondsSinceEpoch}';
       final planned = await _preparePendingReceipt(captureId, captured);
@@ -1428,7 +1466,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                                 top: ButlerlySpacing.compact,
                               ),
                               child: Text(
-                                '${issue.fileName}: ${issue.message}',
+                                '${issue.fileName}: ${context.l10n.text(issue.messageKey)}',
                                 style: Theme.of(context).textTheme.bodySmall,
                               ),
                             ),

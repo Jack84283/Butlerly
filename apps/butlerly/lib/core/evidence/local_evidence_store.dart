@@ -58,11 +58,11 @@ final class PendingGenericCapture {
 final class PendingCaptureJournalIssue {
   const PendingCaptureJournalIssue({
     required this.fileName,
-    required this.message,
+    required this.messageKey,
   });
 
   final String fileName;
-  final String message;
+  final String messageKey;
 }
 
 const _receiptCaptureStateKey = 'captureState';
@@ -1792,16 +1792,24 @@ final class LocalEvidenceStore {
             throw const FormatException('Unrecognized pending journal name.');
           }
         } on Object catch (error) {
-          final message = error is FormatException
-              ? error.message.toString()
-              : error.toString().replaceFirst('StateError: ', '');
           issues.add(
-            PendingCaptureJournalIssue(fileName: fileName, message: message),
+            PendingCaptureJournalIssue(
+              fileName: fileName,
+              messageKey: _pendingCaptureJournalIssueKey(error),
+            ),
           );
         }
       }
       return issues;
     });
+  }
+
+  String _pendingCaptureJournalIssueKey(Object error) {
+    final detail = error.toString().toLowerCase();
+    if (detail.contains('source')) {
+      return 'captureRecoverySourceUnavailable';
+    }
+    return 'captureRecoveryJournalIssue';
   }
 
   Future<bool> discardPendingGenericCapture(PreservedEvidenceSource source) =>
@@ -1929,22 +1937,66 @@ final class LocalEvidenceStore {
           if (createdAt == null) {
             throw const FormatException('Invalid pending statement timestamp.');
           }
+          final manifestSource = PreservedEvidenceSource(
+            originalName: decoded['evidenceOriginalName'] as String,
+            localFileName: manifestLocalFileName as String,
+            mediaType: decoded['evidenceMediaType'] as String,
+          );
           final captureState = decoded[_receiptCaptureStateKey] as String?;
           if (captureState == _receiptCaptureCancelled ||
               captureState == _receiptCaptureCompleted) {
             await _discardPendingStatementJournal(
               manifest,
-              manifestLocalFileName as String,
+              manifestSource.localFileName,
             );
             continue;
           }
-          final alreadyReferenced = existing.any(
-            (item) => item.id == statementId || item.evidenceId == evidenceId,
-          );
-          if (alreadyReferenced) {
+          final existingStatement = existing
+              .where((item) => item.id == statementId)
+              .firstOrNull;
+          final existingEvidenceOwner = existing
+              .where((item) => item.evidenceId == evidenceId)
+              .firstOrNull;
+          if (existingStatement != null || existingEvidenceOwner != null) {
+            if (existingStatement != null &&
+                existingStatement.evidenceId != evidenceId) {
+              throw const FormatException(
+                'Pending statement does not match its existing evidence.',
+              );
+            }
+            final existingEvidenceResult = await finance.getEvidence(
+              evidenceId,
+            );
+            if (existingEvidenceResult case ApplicationFailure<EvidenceItem?>(
+              :final failure,
+            )) {
+              if (failure.code == ApplicationFailureCode.notFound) {
+                throw StateError('Existing statement evidence is unavailable.');
+              }
+              throw StateError('Existing statement evidence lookup failed.');
+            }
+            if (existingEvidenceResult case ApplicationSuccess<EvidenceItem?>(
+              value: final existingEvidence,
+            ) when existingEvidence != null) {
+              if (existingEvidence.localFileName !=
+                  manifestSource.localFileName) {
+                throw const FormatException(
+                  'Pending statement source does not match its evidence.',
+                );
+              }
+              var live = await fileFor(existingEvidence);
+              if (live == null || !await live.exists()) {
+                live = await _promotePreservedUnlocked(manifestSource);
+              }
+              if (live == null || !await live.exists()) {
+                throw StateError('Existing statement source is unavailable.');
+              }
+            } else {
+              throw StateError('Existing statement evidence is unavailable.');
+            }
             await _discardPendingStatementJournal(
               manifest,
-              manifestLocalFileName as String,
+              manifestSource.localFileName,
             );
             continue;
           }
@@ -2199,7 +2251,24 @@ final class LocalEvidenceStore {
     if (indexed case ApplicationSuccess<FinancialStatement?>(
       value: final item,
     ) when item != null) {
-      return item;
+      final evidenceResult = await finance.getEvidence(item.evidenceId);
+      if (evidenceResult case ApplicationFailure<EvidenceItem?>(
+        :final failure,
+      )) {
+        if (failure.code != ApplicationFailureCode.notFound) {
+          throw StateError('Statement fingerprint evidence lookup failed.');
+        }
+      } else if (evidenceResult case ApplicationSuccess<EvidenceItem?>(
+        value: final evidence,
+      ) when evidence != null) {
+        final expectedSourceId = statementSourceFingerprintPrefix + fingerprint;
+        final file = await fileFor(evidence);
+        if (evidence.provenance.sourceId == expectedSourceId &&
+            file != null &&
+            await file.exists()) {
+          return item;
+        }
+      }
     }
     final listed = await statements.list(includeArchived: true);
     if (listed is! ApplicationSuccess<List<FinancialStatement>>) {

@@ -1098,6 +1098,10 @@ class AppLocalizations {
       'receiptRecoveryDiscarded': 'The saved receipt capture was discarded.',
       'receiptRecoveryWarning':
           'Some receipt recovery records need attention. Their source files were kept.',
+      'captureRecoveryJournalIssue':
+          'A recovery record could not be read. Its source was kept safely; retry recovery.',
+      'captureRecoverySourceUnavailable':
+          'A recovery record source is unavailable. The record was kept safely for recovery.',
       'captureReceipt': 'Capture receipt',
       'addReceipt': 'Add a receipt',
       'takePhoto': 'Take photo',
@@ -2082,6 +2086,8 @@ class AppLocalizations {
       'receiptRecoverySourceUnavailable': '已保存的收据来源不可用，恢复记录已保留。',
       'receiptRecoveryDiscarded': '已放弃保存的收据捕获。',
       'receiptRecoveryWarning': '部分收据恢复记录需要处理，来源文件已保留。',
+      'captureRecoveryJournalIssue': '恢复记录无法读取。来源已安全保留，请重试恢复。',
+      'captureRecoverySourceUnavailable': '恢复记录的来源不可用。记录已安全保留以便恢复。',
       'captureReceipt': '拍摄收据',
       'addReceipt': '添加收据',
       'takePhoto': '拍照',
@@ -3229,6 +3235,10 @@ class AppLocalizations {
       'receiptRecoveryDiscarded': 'Se descartó la captura de recibo guardada.',
       'receiptRecoveryWarning':
           'Algunos registros de recuperación de recibos necesitan atención. Sus archivos de origen se conservaron.',
+      'captureRecoveryJournalIssue':
+          'No se pudo leer un registro de recuperación. El origen se conservó de forma segura; reintenta la recuperación.',
+      'captureRecoverySourceUnavailable':
+          'El origen de un registro de recuperación no está disponible. El registro se conservó de forma segura para recuperarlo.',
       'captureReceipt': 'Capturar recibo',
       'addReceipt': 'Añadir un recibo',
       'takePhoto': 'Tomar foto',
