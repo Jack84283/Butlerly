@@ -1174,11 +1174,12 @@ final class LocalEvidenceStore {
                 throw StateError('Staged evidence source is unavailable.');
               }
             } else if (evidence == null &&
-                deletionState == _deletionCommitted) {
-              // The SQLite deletion has an explicit durable commit marker.
-              // Only this state authorizes removal when the source row is no
-              // longer present; a prepared or mismatched journal is retained
-              // for repair instead of destroying the last evidence copy.
+                (deletionState == _deletionPrepared ||
+                    deletionState == _deletionCommitted)) {
+              // A missing evidence row is the durable reference-aware delete
+              // decision. A prepared journal means the process stopped after
+              // that SQLite commit but before the finalization marker; the
+              // source is still safe to retire only after integrity checking.
               final stagedValid = await _matchesIntegrity(
                 staged,
                 byteLength: byteLength,
@@ -2072,8 +2073,9 @@ final class LocalEvidenceStore {
   /// recovery record. When no source identity can be recovered, an explicit
   /// user dismissal removes only the journal and leaves every binary intact.
   Future<PendingCaptureJournalResolution> resolvePendingCaptureJournalIssue(
-    String fileName,
-  ) {
+    String fileName, {
+    String? captureKind,
+  }) {
     return _runFinancialEvidenceMutation(() async {
       if (path.basename(fileName) != fileName || !fileName.endsWith('.json')) {
         return PendingCaptureJournalResolution.unavailable;
@@ -2149,6 +2151,7 @@ final class LocalEvidenceStore {
           'localFileName': localFileName,
           'originalName': originalName,
           'mediaType': mediaType,
+          ...?captureKind == null ? null : {'captureKind': captureKind},
           if (isStatement) 'captureKind': 'statement',
           if (isReceipt) 'captureKind': 'receipt',
           _receiptCaptureStateKey: _pendingCaptureReady,
@@ -2157,7 +2160,12 @@ final class LocalEvidenceStore {
         }),
         flush: true,
       );
-      await journal.delete();
+      // A malformed generic journal is itself the generic manifest path. Keep
+      // the repaired ready-state record so the source remains listable and
+      // recoverable after restart; typed journals are retired once converted.
+      if (journal.path != genericManifest.path && await journal.exists()) {
+        await journal.delete();
+      }
       return PendingCaptureJournalResolution.repaired;
     });
   }

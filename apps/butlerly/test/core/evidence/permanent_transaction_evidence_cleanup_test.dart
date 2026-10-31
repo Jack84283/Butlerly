@@ -283,6 +283,62 @@ void main() {
     },
   );
 
+  test(
+    'repairing a malformed generic journal keeps the source listable',
+    () async {
+      final sourceFile = File(path.join(root.path, 'generic-repair.pdf'));
+      await sourceFile.writeAsBytes([2, 4, 6, 8], flush: true);
+      final store = services<LocalEvidenceStore>();
+      final source = await store.preserve(
+        XFile(sourceFile.path, name: 'generic-repair.pdf'),
+        captureKind: 'statement',
+      );
+      final pending = Directory('${evidenceDirectory.path}.pending');
+      final journal = File(
+        path.join(pending.path, 'capture-${source.localFileName}.json'),
+      );
+      await journal.writeAsString('{not-json', flush: true);
+
+      expect(
+        (await store.listPendingCaptureJournalIssues()).map(
+          (issue) => issue.fileName,
+        ),
+        contains(path.basename(journal.path)),
+      );
+      expect(
+        await store.resolvePendingCaptureJournalIssue(
+          path.basename(journal.path),
+          captureKind: 'statement',
+        ),
+        PendingCaptureJournalResolution.repaired,
+      );
+      expect(await journal.exists(), isTrue);
+      expect(
+        (await store.listPendingGenericCaptures(
+          captureKind: 'statement',
+        )).single.source.localFileName,
+        source.localFileName,
+      );
+
+      await database.close();
+      await services.reset();
+      await database.initialize();
+      configureDependencies(
+        configuration: const AppConfiguration(),
+        database: database,
+        logger: AppLogger(),
+        documentsDirectory: Directory(path.join(root.path, 'documents')),
+        localEvidenceDirectory: evidenceDirectory,
+      );
+      expect(
+        (await services<LocalEvidenceStore>().listPendingGenericCaptures(
+          captureKind: 'statement',
+        )).single.source.localFileName,
+        source.localFileName,
+      );
+    },
+  );
+
   test('malformed receipt completion retains its journal and source', () async {
     final sourceFile = File(path.join(root.path, 'receipt-corrupt.png'));
     await sourceFile.writeAsBytes([7, 8, 9], flush: true);
@@ -1710,7 +1766,7 @@ void main() {
   );
 
   test(
-    'staged deletion recovery retains prepared artifacts when the row is missing',
+    'restart recovery finalizes prepared deletion when the row is missing',
     () async {
       final now = DateTime.utc(2026, 8, 9, 20);
       final item = _evidence('evidence-staged-missing-row', now);
@@ -1739,13 +1795,26 @@ void main() {
       );
       await evidence.remove(item.id);
 
-      await expectLater(
-        store.recoverStagedEvidenceDeletions(),
-        throwsA(isA<StateError>()),
+      await database.close();
+      await services.reset();
+      await database.initialize();
+      configureDependencies(
+        configuration: const AppConfiguration(),
+        database: database,
+        logger: AppLogger(),
+        documentsDirectory: Directory(path.join(root.path, 'documents')),
+        localEvidenceDirectory: evidenceDirectory,
       );
-      expect(await staged.exists(), isTrue);
-      expect(await manifest.exists(), isTrue);
-      expect(await evidence.findById(item.id), isNull);
+      await services<LocalEvidenceStore>().recoverStagedEvidenceDeletions();
+
+      expect(await staged.exists(), isFalse);
+      expect(await manifest.exists(), isFalse);
+      expect(
+        await SqliteEvidenceRepository(
+          database.persistenceDatabase,
+        ).findById(item.id),
+        isNull,
+      );
     },
   );
 

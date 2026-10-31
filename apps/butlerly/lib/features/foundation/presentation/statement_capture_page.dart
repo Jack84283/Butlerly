@@ -304,7 +304,10 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
   Future<void> _repairPendingRecoveryIssue(String fileName) async {
     try {
       final resolution = await services<LocalEvidenceStore>()
-          .resolvePendingCaptureJournalIssue(fileName);
+          .resolvePendingCaptureJournalIssue(
+            fileName,
+            captureKind: 'statement',
+          );
       if (!mounted) return;
       _message(
         context.l10n.text(switch (resolution) {
