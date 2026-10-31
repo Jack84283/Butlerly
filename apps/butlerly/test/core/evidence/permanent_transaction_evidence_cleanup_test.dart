@@ -127,7 +127,7 @@ void main() {
   );
 
   test(
-    'startup cleanup removes a capture abandoned before specific journaling',
+    'startup cleanup retains a capture interrupted before specific journaling',
     () async {
       final sourceFile = File(path.join(root.path, 'abandoned-capture.pdf'));
       await sourceFile.writeAsBytes([8, 6, 7, 5], flush: true);
@@ -146,9 +146,9 @@ void main() {
       expect(await pendingFile.exists(), isTrue);
       expect(await genericJournal.exists(), isTrue);
 
-      expect(await store.recoverUnclaimedPendingCaptures(), 1);
-      expect(await pendingFile.exists(), isFalse);
-      expect(await genericJournal.exists(), isFalse);
+      expect(await store.recoverUnclaimedPendingCaptures(), 0);
+      expect(await pendingFile.exists(), isTrue);
+      expect(await genericJournal.exists(), isTrue);
     },
   );
 
@@ -188,6 +188,36 @@ void main() {
       expect(await malformed.exists(), isTrue);
     },
   );
+
+  test('malformed receipt completion retains its journal and source', () async {
+    final sourceFile = File(path.join(root.path, 'receipt-corrupt.png'));
+    await sourceFile.writeAsBytes([7, 8, 9], flush: true);
+    final store = services<LocalEvidenceStore>();
+    final source = await store.preserve(
+      XFile(sourceFile.path, name: 'receipt-corrupt.png'),
+    );
+    final captureId = 'receipt-corrupt-capture';
+    await store.preparePendingReceiptCapture(
+      transactionId: captureId,
+      source: source,
+    );
+    final pending = Directory('${evidenceDirectory.path}.pending');
+    final manifest = File(path.join(pending.path, 'receipt-$captureId.json'));
+    await manifest.writeAsString('{not-json', flush: true);
+
+    expect(await store.completePendingReceiptCapture(captureId), isFalse);
+    expect(await manifest.exists(), isTrue);
+    expect(
+      await File(path.join(pending.path, source.localFileName)).exists(),
+      isTrue,
+    );
+    expect(
+      await File(
+        path.join(pending.path, 'capture-${source.localFileName}.json'),
+      ).exists(),
+      isTrue,
+    );
+  });
 
   test(
     'receipt publication works inside an already-owned evidence boundary',

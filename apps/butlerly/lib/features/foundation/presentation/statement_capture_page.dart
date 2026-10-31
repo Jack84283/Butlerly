@@ -143,6 +143,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
   final _debugDiagnostics = <String, String>{};
   PreservedEvidenceSource? _preserved;
   String? _pendingStatementId;
+  PreservedEvidenceSource? _retrySourceOverride;
   StatementServices get statement =>
       services<FinanceServices>().statementServices!;
 
@@ -466,7 +467,10 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
         debugPrint('Butlerly statement capture failed: $error');
         debugPrintStack(stackTrace: stackTrace);
       }
-      _message(l10n.text('statementProcessingFailed'), retrySource: preserved);
+      _message(
+        l10n.text('statementProcessingFailed'),
+        retrySource: _retrySourceOverride ?? preserved,
+      );
       return false;
     }
   }
@@ -639,11 +643,13 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     }
     final supersededStatementId = _pendingStatementId;
     var committed = false;
+    _retrySourceOverride = source;
     try {
       committed = await _ingest(
         XFile(file.path, name: source.originalName, mimeType: source.mediaType),
       );
     } finally {
+      _retrySourceOverride = null;
       if (committed) {
         if (supersededStatementId != null) {
           await store.completePendingStatementCapture(supersededStatementId);

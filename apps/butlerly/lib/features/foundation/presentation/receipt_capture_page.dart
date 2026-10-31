@@ -333,21 +333,32 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
 
     PreservedEvidenceSource? preserved;
     File? stableFile;
+    String? captureId;
+    final previous = _preserved;
+    final previousCaptureId = _pendingReceiptCaptureId;
     try {
       preserved = widget.preserveEvidence == null
           ? await evidenceStore.preserve(source)
           : await widget.preserveEvidence!(source);
+      final captured = preserved;
+      _preserved = captured;
+      captureId = 'transaction-${DateTime.now().microsecondsSinceEpoch}';
+      final planned = await _preparePendingReceipt(captureId, captured);
+      _pendingReceiptCaptureId = captureId;
+      _plannedPendingEvidence = planned;
       stableFile = widget.fileForPreserved == null
-          ? await evidenceStore.fileForPreserved(preserved)
-          : await widget.fileForPreserved!(preserved);
+          ? await evidenceStore.fileForPreserved(captured)
+          : await widget.fileForPreserved!(captured);
       if (stableFile == null || !await stableFile.exists()) {
         throw const FileSystemException('Preserved receipt is unavailable.');
       }
-    } catch (_) {
-      final failedPreserved = preserved;
-      if (failedPreserved != null) {
-        await _discard(failedPreserved);
+      if (previousCaptureId != null) {
+        await _cancelPendingReceipt(previousCaptureId);
+        _pendingReceiptCaptureId = captureId;
+        _plannedPendingEvidence = planned;
       }
+      if (previous != null) await _discard(previous);
+    } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.text('receiptStoreFailed'))),
@@ -357,31 +368,6 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     }
     final captured = preserved;
     final capturedFile = stableFile;
-
-    final previous = _preserved;
-    final previousCaptureId = _pendingReceiptCaptureId;
-    String? captureId;
-    try {
-      if (previousCaptureId != null) {
-        await _cancelPendingReceipt(previousCaptureId);
-        _pendingReceiptCaptureId = null;
-        _plannedPendingEvidence = null;
-      }
-      if (previous != null) await _discard(previous);
-      captureId = 'transaction-${DateTime.now().microsecondsSinceEpoch}';
-      final planned = await _preparePendingReceipt(captureId, captured);
-      _pendingReceiptCaptureId = captureId;
-      _plannedPendingEvidence = planned;
-    } catch (_) {
-      if (captureId != null) await _cancelPendingReceipt(captureId);
-      await _discard(captured);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.text('receiptStoreFailed'))),
-      );
-      if (mounted) setState(() => _processing = false);
-      return;
-    }
     if (!mounted) {
       // The specific receipt journal now owns the preserved source. The
       // transaction may not exist yet, so startup must retain this source and
