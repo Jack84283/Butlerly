@@ -434,7 +434,12 @@ final class LocalEvidenceStore {
   Future<({int byteLength, String sourceFingerprint})> _captureIntegrity(
     PreservedEvidenceSource source,
   ) async {
-    final file = await fileForPreserved(source);
+    // Journal preparation derives the authoritative integrity pair from the
+    // bytes that are actually present. Publication still requires a complete
+    // pair through [_promotePreservedUnlocked]; this fallback only supports
+    // legacy callers that supplied no or partial metadata while creating a
+    // typed recovery journal.
+    final file = await _unverifiedPreservedFile(source);
     if (file == null || !await file.exists()) {
       throw StateError('Preserved capture source is unavailable.');
     }
@@ -522,14 +527,19 @@ final class LocalEvidenceStore {
     final live = File(path.join(liveDirectory.path, source.localFileName));
     final expectedLength = expectedByteLength ?? source.byteLength;
     final expectedFingerprint =
-        expectedSourceFingerprint ??
-        (source.byteLength == null ? null : source.sourceFingerprint);
+        expectedSourceFingerprint ?? source.sourceFingerprint;
+    final hasExpectedLength = expectedLength != null;
+    final hasExpectedFingerprint =
+        expectedFingerprint != null && expectedFingerprint.isNotEmpty;
+    if (hasExpectedLength != hasExpectedFingerprint) {
+      return null;
+    }
     Future<bool> isValid(File file) async {
-      if (expectedLength != null && await file.length() != expectedLength) {
+      if (!hasExpectedLength) return true;
+      if (await file.length() != expectedLength) {
         return false;
       }
-      if (expectedFingerprint != null &&
-          await sha256FileRange(file) != expectedFingerprint) {
+      if (await sha256FileRange(file) != expectedFingerprint) {
         return false;
       }
       return true;
@@ -632,6 +642,41 @@ final class LocalEvidenceStore {
       fileName.length - '.json'.length,
     );
     return localFileName.isEmpty ? null : localFileName;
+  }
+
+  bool _looksLikeLegacyPendingEvidence(String fileName) => RegExp(
+    r'^evidence-[0-9a-f]{32}(?:\.[A-Za-z0-9_-]+)?$',
+  ).hasMatch(fileName);
+
+  Future<void> _materializeLegacyPendingCaptureManifests(
+    Directory directory,
+  ) async {
+    if (!await directory.exists()) return;
+    final entities = await directory.list(followLinks: false).toList();
+    for (final entity in entities) {
+      if (entity is! File) continue;
+      final localFileName = path.basename(entity.path);
+      if (!_looksLikeLegacyPendingEvidence(localFileName)) continue;
+      final manifest = File(
+        path.join(directory.path, 'capture-$localFileName.json'),
+      );
+      if (await manifest.exists()) continue;
+      await validateEvidencePath(
+        directory,
+        localFileName,
+        message: 'Unsafe legacy pending evidence path.',
+      );
+      final byteLength = await entity.length();
+      final sourceFingerprint = await sha256FileRange(entity);
+      await _writePendingCaptureManifestAtomically(manifest, {
+        'localFileName': localFileName,
+        'originalName': localFileName,
+        'mediaType': _mediaType(path.extension(localFileName).toLowerCase()),
+        _receiptCaptureStateKey: _pendingCaptureReady,
+        'byteLength': byteLength,
+        'sourceFingerprint': sourceFingerprint,
+      });
+    }
   }
 
   Future<void> _writePendingCaptureManifestAtomically(
@@ -749,6 +794,7 @@ final class LocalEvidenceStore {
       _runFinancialEvidenceMutation(() async {
         final directory = await _pendingEvidenceDirectory();
         if (!await directory.exists()) return 0;
+        await _materializeLegacyPendingCaptureManifests(directory);
         // Read and validate every journal and generic manifest before making
         // any deletion. Generic capture manifests are durable recovery
         // sources until a specific statement/receipt journal or an explicit
@@ -1170,6 +1216,7 @@ final class LocalEvidenceStore {
             .where((entity) => entity.path.endsWith('.json'))
             .toList();
         final entityPaths = entities.map((entity) => entity.path).toSet();
+        final referencedStagedPaths = <String>{};
         for (final entity in entities) {
           // A JSON source is named `delete-<token>.json`, while its manifest
           // is `delete-<token>.json.json`. Do not try to decode the source as
@@ -1205,6 +1252,7 @@ final class LocalEvidenceStore {
               stagedFileName,
               message: 'Unsafe staged evidence recovery path.',
             );
+            referencedStagedPaths.add(normalizedStagedFileName);
             final staged = File(
               path.join(deleting.path, normalizedStagedFileName),
             );
@@ -1277,6 +1325,22 @@ final class LocalEvidenceStore {
             // Retain malformed or unavailable recovery artifacts for the next
             // startup rather than deleting user evidence blindly.
             firstFailure ??= error;
+          }
+        }
+        await for (final entity in deleting.list(
+          recursive: true,
+          followLinks: false,
+        )) {
+          if (entity is! File) continue;
+          final relative = path.relative(entity.path, from: deleting.path);
+          final isJsonSource =
+              entity.path.endsWith('.json') &&
+              entityPaths.contains('${entity.path}.json');
+          if (entity.path.endsWith('.json') && !isJsonSource) continue;
+          if (!referencedStagedPaths.contains(path.normalize(relative))) {
+            firstFailure ??= StateError(
+              'Unjournaled staged evidence source requires recovery.',
+            );
           }
         }
         final failure = firstFailure;
@@ -1935,6 +1999,7 @@ final class LocalEvidenceStore {
     final result = await _runFinancialEvidenceMutation(() async {
       final directory = await _pendingEvidenceDirectory();
       if (!await directory.exists()) return const <PendingGenericCapture>[];
+      await _materializeLegacyPendingCaptureManifests(directory);
       final specific = await _specificPendingJournalLocalFileNames(
         directory,
         failOnMalformed: false,
@@ -2062,6 +2127,7 @@ final class LocalEvidenceStore {
       if (!await directory.exists()) {
         return const <PendingCaptureJournalIssue>[];
       }
+      await _materializeLegacyPendingCaptureManifests(directory);
       final files = await directory
           .list(followLinks: false)
           .where((entity) => entity is File && entity.path.endsWith('.json'))
@@ -2352,6 +2418,7 @@ final class LocalEvidenceStore {
       _runFinancialEvidenceMutation(() async {
         final directory = await _pendingEvidenceDirectory();
         if (await directory.exists()) {
+          await _materializeLegacyPendingCaptureManifests(directory);
           try {
             final specific = await _specificPendingJournalLocalFileNames(
               directory,
@@ -2787,7 +2854,7 @@ final class LocalEvidenceStore {
   }
 
   Future<File?> fileForPreserved(PreservedEvidenceSource source) async {
-    final pending = await _pendingFileFor(source);
+    final pending = await _unverifiedPreservedFile(source);
     if (pending != null && await _matchesPreservedIntegrity(pending, source)) {
       return pending;
     }
@@ -2805,17 +2872,37 @@ final class LocalEvidenceStore {
     }
   }
 
+  Future<File?> _unverifiedPreservedFile(PreservedEvidenceSource source) async {
+    final pending = await _pendingFileFor(source);
+    if (pending != null && await pending.exists()) return pending;
+    final liveRoot = await data.evidenceDirectory();
+    try {
+      final normalized = await validateEvidenceReferencePath(
+        liveRoot,
+        source.localFileName,
+        message: 'Unsafe local evidence path.',
+      );
+      final live = File(path.join(liveRoot.path, normalized));
+      return await live.exists() ? live : null;
+    } on FormatException {
+      return null;
+    }
+  }
+
   Future<bool> _matchesPreservedIntegrity(
     File file,
     PreservedEvidenceSource source,
   ) async {
     if (!await file.exists()) return false;
     final expectedLength = source.byteLength;
-    if (expectedLength == null) return true;
     final expectedFingerprint = source.sourceFingerprint;
-    if (expectedFingerprint == null || expectedFingerprint.isEmpty) {
+    final hasExpectedLength = expectedLength != null;
+    final hasExpectedFingerprint =
+        expectedFingerprint != null && expectedFingerprint.isNotEmpty;
+    if (hasExpectedLength != hasExpectedFingerprint) {
       return false;
     }
+    if (!hasExpectedLength) return true;
     return await file.length() == expectedLength &&
         await sha256FileRange(file) == expectedFingerprint;
   }

@@ -188,6 +188,87 @@ void main() {
   });
 
   test(
+    'legacy unjournaled pending evidence is materialized and survives restart',
+    () async {
+      final pending = Directory('${evidenceDirectory.path}.pending');
+      await pending.create(recursive: true);
+      const localFileName = 'evidence-0123456789abcdef0123456789abcdef.pdf';
+      final pendingFile = File(path.join(pending.path, localFileName));
+      await pendingFile.writeAsBytes([3, 1, 4, 1, 5], flush: true);
+      final store = services<LocalEvidenceStore>();
+
+      final recovered = await store.listPendingGenericCaptures();
+      expect(recovered, hasLength(1));
+      expect(recovered.single.source.localFileName, localFileName);
+      final manifest = File(
+        path.join(pending.path, 'capture-$localFileName.json'),
+      );
+      expect(await manifest.exists(), isTrue);
+
+      await database.close();
+      await services.reset();
+      await database.initialize();
+      configureDependencies(
+        configuration: const AppConfiguration(),
+        database: database,
+        logger: AppLogger(),
+        documentsDirectory: Directory(path.join(root.path, 'documents')),
+        localEvidenceDirectory: evidenceDirectory,
+      );
+      final afterRestart = services<LocalEvidenceStore>();
+      final persisted = await afterRestart.listPendingGenericCaptures();
+      expect(persisted, hasLength(1));
+      expect(
+        await afterRestart.discardPendingGenericCapture(
+          persisted.single.source,
+        ),
+        isTrue,
+      );
+      expect(await pendingFile.exists(), isFalse);
+      expect(await manifest.exists(), isFalse);
+    },
+  );
+
+  test(
+    'partial preserved integrity metadata fails closed before publication',
+    () async {
+      final now = DateTime.utc(2026, 8, 9, 20);
+      final transaction = _transaction('transaction-partial-integrity', now);
+      await SqliteTransactionRepository(
+        database.persistenceDatabase,
+      ).save(transaction);
+      final pending = Directory('${evidenceDirectory.path}.pending');
+      await pending.create(recursive: true);
+      const localFileName = 'partial-integrity.pdf';
+      final pendingFile = File(path.join(pending.path, localFileName));
+      await pendingFile.writeAsBytes([2, 7, 1, 8], flush: true);
+      final fingerprint = await sha256FileRange(pendingFile);
+      final source = PreservedEvidenceSource(
+        originalName: localFileName,
+        localFileName: localFileName,
+        mediaType: 'application/pdf',
+        byteLength: null,
+        sourceFingerprint: fingerprint,
+      );
+      final store = services<LocalEvidenceStore>();
+
+      expect(await store.fileForPreserved(source), isNull);
+      expect(
+        await store.attachPreservedAndReturn(
+          transactionId: transaction.id.value,
+          source: source,
+        ),
+        isNull,
+      );
+      expect(await pendingFile.exists(), isTrue);
+      expect(
+        await File(path.join(evidenceDirectory.path, localFileName)).exists(),
+        isFalse,
+      );
+    },
+  );
+
+  test(
     'malformed unrelated capture journal blocks cleanup explicitly',
     () async {
       final sourceFile = File(path.join(root.path, 'uncertain-capture.pdf'));
@@ -792,6 +873,20 @@ void main() {
     },
   );
 
+  test('staged deletion recovery surfaces an unjournaled binary', () async {
+    final deleting = Directory('${evidenceDirectory.path}.deleting');
+    await deleting.create(recursive: true);
+    final orphan = File(path.join(deleting.path, 'delete-no-manifest.bin'));
+    await orphan.writeAsBytes([1, 2, 3], flush: true);
+
+    final store = services<LocalEvidenceStore>();
+    await expectLater(
+      store.recoverStagedEvidenceDeletions(),
+      throwsA(isA<StateError>()),
+    );
+    expect(await orphan.exists(), isTrue);
+  });
+
   test('database cleanup failure leaves staged evidence recoverable', () async {
     final now = DateTime.utc(2026, 8, 9, 20);
     final transaction = _transaction('transaction-db-cleanup-failure', now);
@@ -967,17 +1062,17 @@ void main() {
       );
       await transactions.save(transaction);
       final store = services<LocalEvidenceStore>();
-      final source = const PreservedEvidenceSource(
+      final pending = Directory('${evidenceDirectory.path}.pending');
+      await pending.create(recursive: true);
+      final sourceFile = File(path.join(pending.path, 'receipt-duplicate.png'));
+      await sourceFile.writeAsBytes([3, 3, 3], flush: true);
+      final source = PreservedEvidenceSource(
         originalName: 'receipt-duplicate.png',
         localFileName: 'receipt-duplicate.png',
         mediaType: 'image/png',
-        sourceFingerprint: 'fingerprint-duplicate',
+        byteLength: await sourceFile.length(),
+        sourceFingerprint: await sha256FileRange(sourceFile),
       );
-      final pending = Directory('${evidenceDirectory.path}.pending');
-      await pending.create(recursive: true);
-      await File(
-        path.join(pending.path, source.localFileName),
-      ).writeAsBytes([3, 3, 3], flush: true);
       const captureId = 'transaction-receipt-capture';
       final planned = await store.preparePendingReceiptCapture(
         transactionId: captureId,
@@ -1095,17 +1190,17 @@ void main() {
         database.persistenceDatabase,
       ).save(transaction);
       final store = services<LocalEvidenceStore>();
-      final source = const PreservedEvidenceSource(
+      final pending = Directory('${evidenceDirectory.path}.pending');
+      await pending.create(recursive: true);
+      final sourceFile = File(path.join(pending.path, 'receipt-missing.png'));
+      await sourceFile.writeAsBytes([6, 6, 6], flush: true);
+      final source = PreservedEvidenceSource(
         originalName: 'receipt-missing.png',
         localFileName: 'receipt-missing.png',
         mediaType: 'image/png',
-        sourceFingerprint: 'fingerprint-receipt-missing',
+        byteLength: await sourceFile.length(),
+        sourceFingerprint: await sha256FileRange(sourceFile),
       );
-      final pending = Directory('${evidenceDirectory.path}.pending');
-      await pending.create(recursive: true);
-      await File(
-        path.join(pending.path, source.localFileName),
-      ).writeAsBytes([6, 6, 6], flush: true);
       const captureId = 'receipt-missing-capture';
       final planned = await store.preparePendingReceiptCapture(
         transactionId: captureId,
