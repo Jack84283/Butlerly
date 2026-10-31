@@ -1088,6 +1088,14 @@ class AppLocalizations {
       'receiptUse': 'Use receipt',
       'receiptStoreFailed':
           'Receipt could not be stored locally. Please retry.',
+      'receiptRecoveryTitle': 'Receipt capture needs review',
+      'receiptRecoveryBody':
+          'A receipt captured before its transaction was saved is still on this device.',
+      'receiptRecoveryResume': 'Resume receipt',
+      'receiptRecoveryCancel': 'Discard capture',
+      'receiptRecoverySourceUnavailable':
+          'The saved receipt source is unavailable. The recovery record was kept.',
+      'receiptRecoveryDiscarded': 'The saved receipt capture was discarded.',
       'captureReceipt': 'Capture receipt',
       'addReceipt': 'Add a receipt',
       'takePhoto': 'Take photo',
@@ -2056,6 +2064,12 @@ class AppLocalizations {
       'receiptRetakeReplace': '重新拍摄 / 替换',
       'receiptUse': '使用收据',
       'receiptStoreFailed': '无法在本地保存收据，请重试。',
+      'receiptRecoveryTitle': '收据捕获需要处理',
+      'receiptRecoveryBody': '交易保存前捕获的收据仍保留在此设备上。',
+      'receiptRecoveryResume': '继续处理收据',
+      'receiptRecoveryCancel': '放弃捕获',
+      'receiptRecoverySourceUnavailable': '已保存的收据来源不可用，恢复记录已保留。',
+      'receiptRecoveryDiscarded': '已放弃保存的收据捕获。',
       'captureReceipt': '拍摄收据',
       'addReceipt': '添加收据',
       'takePhoto': '拍照',
@@ -3187,6 +3201,14 @@ class AppLocalizations {
       'receiptUse': 'Usar recibo',
       'receiptStoreFailed':
           'No se pudo guardar el recibo localmente. Inténtalo de nuevo.',
+      'receiptRecoveryTitle': 'La captura del recibo necesita revisión',
+      'receiptRecoveryBody':
+          'Un recibo capturado antes de guardar su transacción aún está en este dispositivo.',
+      'receiptRecoveryResume': 'Reanudar recibo',
+      'receiptRecoveryCancel': 'Descartar captura',
+      'receiptRecoverySourceUnavailable':
+          'La fuente guardada del recibo no está disponible. Se conservó el registro de recuperación.',
+      'receiptRecoveryDiscarded': 'Se descartó la captura de recibo guardada.',
       'captureReceipt': 'Capturar recibo',
       'addReceipt': 'Añadir un recibo',
       'takePhoto': 'Tomar foto',

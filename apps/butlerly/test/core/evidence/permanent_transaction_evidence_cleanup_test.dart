@@ -544,6 +544,10 @@ void main() {
         ).readAsString().then((value) => jsonDecode(value)['captureState']),
         'awaitingTransaction',
       );
+      final pendingCaptures = await afterRestart.listPendingReceiptCaptures();
+      expect(pendingCaptures, hasLength(1));
+      expect(pendingCaptures.single.captureId, 'transaction-already-deleted');
+      expect(pendingCaptures.single.source.localFileName, source.localFileName);
       expect(
         await afterRestart.cancelPendingReceiptCapture(
           'transaction-already-deleted',
@@ -705,6 +709,51 @@ void main() {
           'statement id',
           'statement-publication-failure',
         ),
+      );
+    },
+  );
+
+  test(
+    'statement recovery preserves its journal when evidence lookup fails',
+    () async {
+      final source = const PreservedEvidenceSource(
+        originalName: 'statement-transient-evidence-failure.pdf',
+        localFileName: 'statement-transient-evidence-failure.pdf',
+        mediaType: 'application/pdf',
+      );
+      final pending = Directory('${evidenceDirectory.path}.pending');
+      await pending.create(recursive: true);
+      await File(
+        path.join(pending.path, source.localFileName),
+      ).writeAsBytes([3, 1, 4], flush: true);
+
+      final store = LocalEvidenceStore(
+        LocalDataManager(database, localEvidenceDirectory: evidenceDirectory),
+        _financeWithFailingEvidenceLookup(database),
+      );
+      await store.preparePendingStatementCapture(
+        statementId: 'statement-transient-evidence-failure',
+        source: source,
+        originalFilename: source.originalName,
+        createdAt: DateTime.utc(2026, 8, 9, 20),
+      );
+
+      await expectLater(
+        store.recoverPendingStatementCaptures(),
+        throwsA(isA<StateError>()),
+      );
+      expect(
+        await File(
+          path.join(
+            pending.path,
+            'statement-statement-transient-evidence-failure.json',
+          ),
+        ).exists(),
+        isTrue,
+      );
+      expect(
+        await File(path.join(pending.path, source.localFileName)).exists(),
+        isTrue,
       );
     },
   );
@@ -963,3 +1012,52 @@ EvidenceItem _evidence(String id, DateTime now) => EvidenceItem(
   ),
   createdAt: now,
 );
+
+FinanceServices _financeWithFailingEvidenceLookup(LocalDatabase database) {
+  final persistence = database.persistenceDatabase;
+  return FinanceServices(
+    SqliteTransactionRepository(persistence),
+    SqlitePaymentSourceRepository(persistence),
+    SqliteMerchantRepository(persistence),
+    SqliteCategoryRepository(persistence),
+    SqliteTagRepository(persistence),
+    _FailingEvidenceRepository(SqliteEvidenceRepository(persistence)),
+    SqliteUserPreferenceRepository(persistence),
+    statements: SqliteStatementRepository(persistence),
+    duplicateGroups: SqliteDuplicateCandidateGroupRepository(persistence),
+  );
+}
+
+final class _FailingEvidenceRepository implements EvidenceRepository {
+  _FailingEvidenceRepository(this.delegate);
+
+  final EvidenceRepository delegate;
+
+  @override
+  Future<void> save(EvidenceItem evidence) => delegate.save(evidence);
+
+  @override
+  Future<void> saveExtraction(Extraction extraction) =>
+      delegate.saveExtraction(extraction);
+
+  @override
+  Future<void> link(AttachmentLink link) => delegate.link(link);
+
+  @override
+  Future<void> unlinkFromTransaction(
+    TransactionId transactionId,
+    EvidenceId evidenceId,
+  ) => delegate.unlinkFromTransaction(transactionId, evidenceId);
+
+  @override
+  Future<EvidenceItem?> findById(EvidenceId id) => Future<EvidenceItem?>.error(
+    StateError('injected transient evidence lookup failure'),
+  );
+
+  @override
+  Future<List<EvidenceItem>> listForTransaction(TransactionId id) =>
+      delegate.listForTransaction(id);
+
+  @override
+  Future<void> remove(EvidenceId id) => delegate.remove(id);
+}

@@ -73,6 +73,8 @@ class ReceiptCapturePage extends StatefulWidget {
     this.markPendingReceiptCommitted,
     this.rebindPendingReceipt,
     this.completePendingReceipt,
+    this.listPendingReceiptCaptures,
+    this.cancelPendingReceiptCapture,
     this.loadInitialData,
     super.key,
   });
@@ -103,6 +105,9 @@ class ReceiptCapturePage extends StatefulWidget {
   final Future<void> Function(String captureId, String transactionId)?
   rebindPendingReceipt;
   final Future<bool> Function(String transactionId)? completePendingReceipt;
+  final Future<List<PendingReceiptCapture>> Function()?
+  listPendingReceiptCaptures;
+  final Future<bool> Function(String captureId)? cancelPendingReceiptCapture;
   final Future<ReceiptCaptureInitialData> Function()? loadInitialData;
 
   @override
@@ -144,6 +149,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   List<Tag> _tags = const [];
   List<PaymentSource> _sources = const [];
   TransactionMasterDataSnapshot? _masterDataSnapshot;
+  PendingReceiptCapture? _pendingReceiptRecovery;
   TransactionMasterData get _masterData =>
       _masterDataSnapshot?.presentation ?? const TransactionMasterData();
 
@@ -219,6 +225,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       final initial = await widget.loadInitialData!();
       if (!mounted) return;
       _applyInitialData(initial);
+      await _loadPendingReceiptRecovery();
       return;
     }
     final preferenceResult = await finance.loadUserPreference();
@@ -232,6 +239,21 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     _applyInitialData(
       ReceiptCaptureInitialData(preference: preference, snapshot: snapshot),
     );
+    await _loadPendingReceiptRecovery();
+  }
+
+  Future<void> _loadPendingReceiptRecovery() async {
+    try {
+      final pending = widget.listPendingReceiptCaptures == null
+          ? await evidenceStore.listPendingReceiptCaptures()
+          : await widget.listPendingReceiptCaptures!();
+      if (!mounted || pending.isEmpty) return;
+      setState(() => _pendingReceiptRecovery = pending.first);
+    } catch (_) {
+      // Startup already records malformed or unavailable recovery state. The
+      // capture page remains usable for a new receipt while the source stays
+      // preserved for the next recovery attempt.
+    }
   }
 
   void _applyInitialData(ReceiptCaptureInitialData initial) {
@@ -375,6 +397,13 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       return;
     }
 
+    await _reviewPreservedReceipt(captured, capturedFile);
+  }
+
+  Future<void> _reviewPreservedReceipt(
+    PreservedEvidenceSource captured,
+    File capturedFile,
+  ) async {
     final stableSource = XFile(
       capturedFile.path,
       name: captured.originalName,
@@ -409,6 +438,41 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.text('receiptTextReadFailed'))),
       );
+    }
+  }
+
+  Future<void> _resumePendingReceipt(PendingReceiptCapture pending) async {
+    if (_saving || _processing) return;
+    final file = widget.fileForPreserved == null
+        ? await evidenceStore.fileForPreserved(pending.source)
+        : await widget.fileForPreserved!(pending.source);
+    if (file == null || !await file.exists()) {
+      _showSaveMessage('receiptRecoverySourceUnavailable');
+      return;
+    }
+    setState(() {
+      _pendingReceiptRecovery = null;
+      _pendingReceiptCaptureId = pending.captureId;
+      _plannedPendingEvidence = pending.plannedEvidence;
+      _preserved = pending.source;
+      _processing = true;
+    });
+    await _reviewPreservedReceipt(pending.source, file);
+  }
+
+  Future<void> _discardPendingReceiptRecovery() async {
+    final pending = _pendingReceiptRecovery;
+    if (pending == null) return;
+    try {
+      final cancelled = widget.cancelPendingReceiptCapture == null
+          ? await evidenceStore.cancelPendingReceiptCapture(pending.captureId)
+          : await widget.cancelPendingReceiptCapture!(pending.captureId);
+      if (cancelled && mounted) {
+        setState(() => _pendingReceiptRecovery = null);
+        _showSaveMessage('receiptRecoveryDiscarded');
+      }
+    } catch (_) {
+      _showSaveMessage('receiptStoreFailed');
     }
   }
 
@@ -1250,6 +1314,45 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               children: [
                 if (_source == null) ...[
+                  if (_pendingReceiptRecovery != null) ...[
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(ButlerlySpacing.standard),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              context.l10n.text('receiptRecoveryTitle'),
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: ButlerlySpacing.compact),
+                            Text(context.l10n.text('receiptRecoveryBody')),
+                            const SizedBox(height: ButlerlySpacing.compact),
+                            Wrap(
+                              spacing: ButlerlySpacing.compact,
+                              children: [
+                                FilledButton(
+                                  onPressed: () => _resumePendingReceipt(
+                                    _pendingReceiptRecovery!,
+                                  ),
+                                  child: Text(
+                                    context.l10n.text('receiptRecoveryResume'),
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: _discardPendingReceiptRecovery,
+                                  child: Text(
+                                    context.l10n.text('receiptRecoveryCancel'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: ButlerlySpacing.standard),
+                  ],
                   Text(
                     context.l10n.text('addReceipt'),
                     style: Theme.of(context).textTheme.headlineMedium,

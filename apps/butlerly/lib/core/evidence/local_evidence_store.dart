@@ -26,6 +26,20 @@ final class PreservedEvidenceSource {
   final String? sourceFingerprint;
 }
 
+final class PendingReceiptCapture {
+  const PendingReceiptCapture({
+    required this.captureId,
+    required this.transactionId,
+    required this.source,
+    required this.plannedEvidence,
+  });
+
+  final String captureId;
+  final String transactionId;
+  final PreservedEvidenceSource source;
+  final EvidenceItem plannedEvidence;
+}
+
 const _receiptCaptureStateKey = 'captureState';
 const _receiptCapturePrepared = 'prepared';
 const _receiptCaptureAwaitingTransaction = 'awaitingTransaction';
@@ -1391,6 +1405,66 @@ final class LocalEvidenceStore {
     return result;
   }
 
+  /// Lists receipt captures retained after the transaction commit window.
+  /// These are intentionally exposed to the receipt UI: a missing transaction
+  /// is not proof of cancellation, so the source must remain resumable or
+  /// explicitly cancellable by the user.
+  Future<List<PendingReceiptCapture>> listPendingReceiptCaptures() async {
+    final result = await _runFinancialEvidenceMutation(() async {
+      final directory = await _pendingEvidenceDirectory();
+      if (!await directory.exists()) return const <PendingReceiptCapture>[];
+      final captures = <PendingReceiptCapture>[];
+      await for (final entity in directory.list(followLinks: false)) {
+        final name = path.basename(entity.path);
+        if (entity is! File ||
+            !name.endsWith('.json') ||
+            !name.startsWith('receipt-')) {
+          continue;
+        }
+        final decoded = jsonDecode(await entity.readAsString());
+        if (decoded is! Map<String, dynamic>) {
+          throw const FormatException('Invalid pending receipt manifest.');
+        }
+        _validatePendingReceiptManifest(decoded);
+        final state = decoded[_receiptCaptureStateKey] as String?;
+        if (state == _receiptCaptureCancelled ||
+            state == _receiptCaptureCompleted) {
+          continue;
+        }
+        final transactionId = decoded['transactionId'] as String;
+        final localFileName = decoded['localFileName'] as String;
+        await validateEvidencePath(
+          directory,
+          localFileName,
+          message: 'Unsafe pending receipt source path.',
+        );
+        final evidence = _evidenceFromPendingStatementManifest(decoded);
+        if (evidence == null) {
+          throw const FormatException('Invalid pending receipt evidence.');
+        }
+        final captureId = name.substring(
+          'receipt-'.length,
+          name.length - '.json'.length,
+        );
+        captures.add(
+          PendingReceiptCapture(
+            captureId: captureId,
+            transactionId: transactionId,
+            source: PreservedEvidenceSource(
+              originalName: decoded['evidenceOriginalName'] as String,
+              localFileName: localFileName,
+              mediaType: decoded['evidenceMediaType'] as String,
+              sourceFingerprint: decoded['sourceFingerprint'] as String?,
+            ),
+            plannedEvidence: evidence,
+          ),
+        );
+      }
+      return captures;
+    });
+    return result;
+  }
+
   Future<File> _pendingReceiptManifestFor(String captureId) async {
     final directory = await _pendingEvidenceDirectory();
     final name = await validateEvidencePath(
@@ -1514,9 +1588,16 @@ final class LocalEvidenceStore {
             continue;
           }
           final evidenceResult = await finance.getEvidence(evidenceId);
-          var evidence = evidenceResult is ApplicationSuccess<EvidenceItem?>
-              ? evidenceResult.value
-              : null;
+          EvidenceItem? evidence;
+          if (evidenceResult is ApplicationSuccess<EvidenceItem?>) {
+            evidence = evidenceResult.value;
+          } else if (evidenceResult case ApplicationFailure<EvidenceItem?>(
+            :final failure,
+          ) when failure.code == ApplicationFailureCode.notFound) {
+            evidence = null;
+          } else {
+            throw StateError('Pending statement evidence lookup failed.');
+          }
           if (evidence == null) {
             // The manifest is written before SQLite publication. If the
             // process stopped between those operations, rebuild the evidence

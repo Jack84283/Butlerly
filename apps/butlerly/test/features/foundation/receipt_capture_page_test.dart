@@ -196,6 +196,66 @@ void main() {
   });
 
   testWidgets(
+    'surfaces an interrupted receipt capture and allows explicit discard',
+    (tester) async {
+      final finance = _finance(_ReceiptTransactionRepository());
+      final pendingCapture = PendingReceiptCapture(
+        captureId: 'receipt-recovery-ui',
+        transactionId: 'receipt-recovery-transaction',
+        source: _preservedReceipt,
+        plannedEvidence: EvidenceItem(
+          id: EvidenceId('evidence-recovery-ui'),
+          type: EvidenceType.receiptImage,
+          originalName: 'receipt.png',
+          mediaType: 'image/png',
+          localFileName: 'receipt.png',
+          provenance: Provenance(
+            id: ProvenanceId('provenance-recovery-ui'),
+            sourceType: ProvenanceSourceType.scan,
+            capturedAt: DateTime.utc(2026, 9, 15),
+            originalRepresentation: 'receipt.png',
+          ),
+          createdAt: DateTime.utc(2026, 9, 15),
+        ),
+      );
+      var pending = <PendingReceiptCapture>[pendingCapture];
+      var cancelled = false;
+
+      _resetView(tester);
+      await tester.pumpWidget(
+        _localizedApp(
+          ReceiptCapturePage(
+            finance: finance,
+            evidenceStore: _evidenceStore(finance),
+            listPendingReceiptCaptures: () async => pending,
+            cancelPendingReceiptCapture: (captureId) async {
+              cancelled = captureId == pendingCapture.captureId;
+              pending = [];
+              return cancelled;
+            },
+            loadInitialData: _emptyInitialData,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Receipt capture needs review'), findsOneWidget);
+      expect(find.text('Resume receipt'), findsOneWidget);
+      expect(find.text('Discard capture'), findsOneWidget);
+
+      await tester.tap(find.text('Discard capture'));
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Receipt capture needs review'), findsNothing);
+      expect(cancelled, isTrue);
+      expect(pending, isEmpty);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'rollback failure exits saved transaction instead of allowing duplicate retry',
     (tester) async {
       final transactions = _ReceiptTransactionRepository(failDelete: true);
