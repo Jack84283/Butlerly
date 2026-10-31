@@ -358,7 +358,10 @@ void main() {
   test(
     'current-month materialized summaries recompute after invalidation',
     () async {
-      final now = DateTime.now();
+      // Keep the fixture inside the configured financial timezone's month.
+      // Using the host's local calendar date makes this test cross a month
+      // boundary whenever the host timezone and Asia/Shanghai differ.
+      final now = DateTime.utc(2026, 9, 15, 12);
       final date =
           '${now.year.toString().padLeft(4, '0')}-${now.month.toString().padLeft(2, '0')}-01';
       final transactions = _Transactions([
