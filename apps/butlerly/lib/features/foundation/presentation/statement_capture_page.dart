@@ -64,6 +64,14 @@ XTypeGroup statementFileTypeGroupForPlatform(TargetPlatform platform) {
   );
 }
 
+@visibleForTesting
+String statementImportReviewRoute(StatementImportSummary summary) {
+  if (summary.possibleDuplicates > 0) {
+    return '/review?view=duplicates';
+  }
+  return '/review?view=needsReview';
+}
+
 class CaptureRecoveryActions extends StatelessWidget {
   const CaptureRecoveryActions({
     required this.fileName,
@@ -1724,7 +1732,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                     summary.needsReview > 0 ||
                     summary.possibleDuplicates > 0;
                 if (hasReviewItems) {
-                  context.go('/review?view=needsReview');
+                  context.go(statementImportReviewRoute(summary));
                 } else {
                   Navigator.pop(context);
                 }

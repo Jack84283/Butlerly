@@ -83,6 +83,18 @@ final class _PreparedEvidence {
   final Map<String, String> expectedHashes;
 }
 
+final class _PreparedTombstoneEvidence {
+  const _PreparedTombstoneEvidence({
+    required this.evidenceId,
+    required this.localFileName,
+    required this.stagedFileName,
+  });
+
+  final String evidenceId;
+  final String localFileName;
+  final String stagedFileName;
+}
+
 final class LocalBackupManager {
   const LocalBackupManager(this.database, this.localDataManager);
 
@@ -440,8 +452,14 @@ final class LocalBackupManager {
     );
     final journal = File('${root.path}.restore-journal.json');
     _PreparedEvidence? prepared;
+    var preparedTombstoneEvidence = const <_PreparedTombstoneEvidence>[];
     try {
-      prepared = await _prepareEvidence(package, mode: mode);
+      prepared = await _prepareEvidence(
+        package,
+        mode: mode,
+        backupTime: backupTime,
+        tablePayload: tablePayload,
+      );
       _applyEvidenceRemaps(tablePayload, prepared.pathRemaps);
       await _validateEvidenceReferences(
         tablePayload,
@@ -457,6 +475,14 @@ final class LocalBackupManager {
         previousDeleting: previousDeleting.path,
         mode: mode,
       );
+      if (mode == LocalRestoreMode.merge) {
+        preparedTombstoneEvidence = await _stageTombstoneEvidence(
+          tablePayload,
+          root: root,
+          deleting: deleting,
+          operationId: operationId,
+        );
+      }
     } catch (_) {
       // No live state has been activated yet. A validation or journal
       // initialization failure must not leave a private evidence copy behind.
@@ -636,6 +662,13 @@ final class LocalBackupManager {
         });
       });
       databaseCommitted = true;
+      if (preparedTombstoneEvidence.isNotEmpty &&
+          await previousDeleting.exists()) {
+        await _markTombstoneEvidenceCommitted(
+          previousDeleting,
+          preparedTombstoneEvidence,
+        );
+      }
       if (await previousDeleting.exists()) {
         stagedDeletionUnresolved = await reconcileStagedEvidenceAfterRestore(
           database.database,
@@ -682,6 +715,13 @@ final class LocalBackupManager {
             await previousDeleting.rename(deleting.path);
           }
         }
+        if (preparedTombstoneEvidence.isNotEmpty) {
+          await _restoreTombstoneEvidence(
+            root,
+            deleting,
+            preparedTombstoneEvidence,
+          );
+        }
         if (await journal.exists() &&
             (!await previousDeleting.exists() || !deletingActivated)) {
           await journal.delete();
@@ -716,6 +756,156 @@ final class LocalBackupManager {
       keptNewerLocalRows: keptNewer,
       restoredEvidence: preparedEvidence.addedCount,
     );
+  }
+
+  Future<List<_PreparedTombstoneEvidence>> _stageTombstoneEvidence(
+    Map<String, Object?> tablePayload, {
+    required Directory root,
+    required Directory deleting,
+    required String operationId,
+  }) async {
+    final staged = <_PreparedTombstoneEvidence>[];
+    try {
+      await rejectEvidenceRoot(root, message: 'Unsafe live evidence root.');
+      await rejectEvidenceRoot(
+        deleting,
+        message: 'Unsafe staged deletion root.',
+      );
+      await deleting.create(recursive: true);
+      final tombstones =
+          (tablePayload['entity_tombstones'] as List? ?? const <Object?>[])
+              .cast<Map>();
+      var index = 0;
+      for (final raw in tombstones) {
+        final tombstone = raw.cast<String, Object?>();
+        if (tombstone['entity_type'] != 'evidence_items' ||
+            tombstone['entity_id'] is! String) {
+          continue;
+        }
+        final evidenceId = tombstone['entity_id']! as String;
+        final rows = await database.database.query(
+          'evidence_items',
+          columns: ['id', 'local_file_name'],
+          where: 'id = ?',
+          whereArgs: [evidenceId],
+          limit: 1,
+        );
+        if (rows.isEmpty) continue;
+        final localFileName = rows.single['local_file_name'];
+        if (localFileName is! String || localFileName.trim().isEmpty) {
+          continue;
+        }
+        final owners = await database.database.query(
+          'evidence_items',
+          columns: ['id'],
+          where: 'local_file_name = ?',
+          whereArgs: [localFileName],
+        );
+        if (owners.length != 1) continue;
+
+        final normalized = await validateEvidenceReferencePath(
+          root,
+          localFileName,
+          message: 'Unsafe tombstoned evidence path.',
+        );
+        final original = File(path.join(root.path, normalized));
+        if (!await original.exists()) continue;
+
+        final extension = path.extension(normalized);
+        final stagedFileName = 'delete-restore-$operationId-$index$extension';
+        index++;
+        await validateEvidencePath(
+          deleting,
+          stagedFileName,
+          message: 'Unsafe tombstoned evidence path.',
+        );
+        final manifest = File(path.join(deleting.path, '$stagedFileName.json'));
+        await validateEvidencePath(
+          deleting,
+          '$stagedFileName.json',
+          message: 'Unsafe tombstoned evidence manifest path.',
+        );
+        final byteLength = await original.length();
+        final sourceFingerprint = await sha256FileRange(original);
+        await manifest.writeAsString(
+          jsonEncode({
+            'evidenceId': evidenceId,
+            'localFileName': localFileName,
+            'stagedFileName': stagedFileName,
+            'deletionState': 'prepared',
+            'byteLength': byteLength,
+            'sourceFingerprint': sourceFingerprint,
+          }),
+          flush: true,
+        );
+        try {
+          await original.rename(path.join(deleting.path, stagedFileName));
+        } catch (_) {
+          if (await manifest.exists()) await manifest.delete();
+          rethrow;
+        }
+        staged.add(
+          _PreparedTombstoneEvidence(
+            evidenceId: evidenceId,
+            localFileName: localFileName,
+            stagedFileName: stagedFileName,
+          ),
+        );
+      }
+      return staged;
+    } catch (_) {
+      await _restoreTombstoneEvidence(root, deleting, staged);
+      rethrow;
+    }
+  }
+
+  Future<void> _markTombstoneEvidenceCommitted(
+    Directory deleting,
+    List<_PreparedTombstoneEvidence> staged,
+  ) async {
+    for (final item in staged) {
+      final manifest = File(
+        path.join(deleting.path, '${item.stagedFileName}.json'),
+      );
+      if (!await manifest.exists()) continue;
+      final decoded = jsonDecode(await manifest.readAsString());
+      if (decoded is! Map<String, dynamic> ||
+          decoded['evidenceId'] != item.evidenceId ||
+          decoded['localFileName'] != item.localFileName ||
+          decoded['stagedFileName'] != item.stagedFileName) {
+        throw const FormatException(
+          'Tombstoned evidence deletion identity changed.',
+        );
+      }
+      decoded['deletionState'] = 'committed';
+      await manifest.writeAsString(jsonEncode(decoded), flush: true);
+    }
+  }
+
+  Future<void> _restoreTombstoneEvidence(
+    Directory root,
+    Directory deleting,
+    List<_PreparedTombstoneEvidence> staged,
+  ) async {
+    for (final item in staged) {
+      final stagedFile = File(path.join(deleting.path, item.stagedFileName));
+      final manifest = File(
+        path.join(deleting.path, '${item.stagedFileName}.json'),
+      );
+      if (await stagedFile.exists()) {
+        final normalized = await validateEvidenceReferencePath(
+          root,
+          item.localFileName,
+          message: 'Unsafe tombstoned evidence restore path.',
+        );
+        final original = File(path.join(root.path, normalized));
+        if (!await original.exists()) {
+          await original.parent.create(recursive: true);
+          await stagedFile.rename(original.path);
+        }
+      }
+      if (await manifest.exists()) await manifest.delete();
+    }
   }
 
   Future<void> _writeJournal(
@@ -849,6 +1039,8 @@ final class LocalBackupManager {
   Future<_PreparedEvidence> _prepareEvidence(
     _BackupPackage package, {
     required LocalRestoreMode mode,
+    required DateTime backupTime,
+    required Map<String, Object?> tablePayload,
   }) async {
     final root = await localDataManager.evidenceDirectory();
     final staging = Directory(
@@ -857,12 +1049,22 @@ final class LocalBackupManager {
     var added = 0;
     final remaps = <String, String>{};
     final expectedHashes = <String, String>{};
+    final excludedEvidencePaths = <String>{};
     try {
       if (await staging.exists()) await staging.delete(recursive: true);
       await staging.create(recursive: true);
       await rejectEvidenceRoot(root);
       if (mode == LocalRestoreMode.merge && await root.exists()) {
         await _copyDirectory(root, staging);
+        excludedEvidencePaths.addAll(
+          await _removeDeletedEvidenceFromStaging(
+            staging,
+            root,
+            tablePayload,
+            backupTime,
+            package.evidence,
+          ),
+        );
       }
       for (final item in package.evidence) {
         final normalized = normalizeEvidencePath(item.relativePath);
@@ -873,6 +1075,9 @@ final class LocalBackupManager {
         );
         if (actualHash != item.sha256) {
           throw const FormatException('Evidence integrity validation failed.');
+        }
+        if (excludedEvidencePaths.contains(evidencePathKey(normalized))) {
+          continue;
         }
         var relative = normalized;
         var destination = File(path.join(staging.path, relative));
@@ -929,6 +1134,89 @@ final class LocalBackupManager {
       if (await staging.exists()) await staging.delete(recursive: true);
       rethrow;
     }
+  }
+
+  Future<Set<String>> _removeDeletedEvidenceFromStaging(
+    Directory staging,
+    Directory liveRoot,
+    Map<String, Object?> tablePayload,
+    DateTime backupTime,
+    List<_EvidenceDescriptor> evidenceDescriptors,
+  ) async {
+    final backupEvidencePaths = <String>{};
+    final backupEvidenceHashes = <String, String>{};
+    for (final descriptor in evidenceDescriptors) {
+      backupEvidenceHashes[evidencePathKey(
+            normalizeEvidencePath(descriptor.relativePath),
+          )] =
+          descriptor.sha256;
+    }
+    final excluded = <String>{};
+    for (final row in _tableRows(tablePayload, 'evidence_items')) {
+      final localFileName = row['local_file_name'];
+      if (localFileName is! String || localFileName.trim().isEmpty) continue;
+      final normalized = await validateEvidenceReferencePath(
+        liveRoot,
+        localFileName,
+        message: 'Unsafe backup evidence path.',
+      );
+      backupEvidencePaths.add(evidencePathKey(normalized));
+    }
+
+    final tombstones =
+        (tablePayload['entity_tombstones'] as List? ?? const <Object?>[])
+            .cast<Map>();
+    for (final raw in tombstones) {
+      final tombstone = raw.cast<String, Object?>();
+      if (tombstone['entity_type'] != 'evidence_items' ||
+          tombstone['entity_id'] is! String) {
+        continue;
+      }
+      final evidenceId = tombstone['entity_id']! as String;
+      final localRows = await database.database.query(
+        'evidence_items',
+        columns: ['id', 'local_file_name'],
+        where: 'id = ?',
+        whereArgs: [evidenceId],
+        limit: 1,
+      );
+      if (localRows.isEmpty) continue;
+      final localRow = localRows.single;
+      final spec = _specByName['evidence_items']!;
+      if (_rowChangedAfter(localRow, spec, backupTime)) continue;
+      final localTombstone = await _findTombstone(
+        database.database,
+        spec.name,
+        evidenceId,
+      );
+      if (localTombstone != null &&
+          _tombstoneTime(localTombstone).compareTo(_tombstoneTime(tombstone)) >=
+              0) {
+        continue;
+      }
+      final localFileName = localRow['local_file_name'];
+      if (localFileName is! String || localFileName.trim().isEmpty) continue;
+      final normalized = await validateEvidenceReferencePath(
+        liveRoot,
+        localFileName,
+        message: 'Unsafe tombstoned evidence path.',
+      );
+      final key = evidencePathKey(normalized);
+      if (backupEvidencePaths.contains(key)) {
+        final descriptorHash = backupEvidenceHashes[key];
+        final live = File(path.join(liveRoot.path, normalized));
+        if (descriptorHash == null ||
+            !await live.exists() ||
+            descriptorHash == await sha256FileRange(live)) {
+          continue;
+        }
+      } else {
+        excluded.add(key);
+      }
+      final staged = File(path.join(staging.path, normalized));
+      if (await staged.exists()) await staged.delete();
+    }
+    return excluded;
   }
 
   void _migratePaymentSettlementBackupPayload(

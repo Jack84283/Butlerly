@@ -40,6 +40,20 @@ void main() {
   late FinanceServices finance;
   const originalBytes = [0, 1, 2, 3, 4, 5, 255];
 
+  test('duplicate-only import summary opens Possible Duplicates', () {
+    expect(
+      statementImportReviewRoute(
+        const StatementImportSummary(
+          imported: 0,
+          needsReview: 0,
+          possibleDuplicates: 1,
+          failed: 0,
+        ),
+      ),
+      '/review?view=duplicates',
+    );
+  });
+
   setUp(() async {
     await services.reset();
     root = await Directory.systemTemp.createTemp('butlerly-statement-capture-');
