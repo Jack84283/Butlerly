@@ -147,6 +147,41 @@ void main() {
     expect(android.extensions, contains('jpg'));
   });
 
+  testWidgets('statement picker failure leaves a retryable page', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: StatementCapturePage(
+          pickImage: (_) async => throw StateError('picker unavailable'),
+          loadInitialData: () async {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.photo_library_outlined));
+    await tester.pump();
+
+    expect(
+      find.text('Statement capture could not be opened. Please retry.'),
+      findsOneWidget,
+    );
+    final photoButton = find.ancestor(
+      of: find.byIcon(Icons.photo_library_outlined),
+      matching: find.byType(IconButton),
+    );
+    expect(tester.widget<IconButton>(photoButton).onPressed, isNotNull);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'historical unavailable diagnostics expose no journal recovery actions',
     (tester) async {

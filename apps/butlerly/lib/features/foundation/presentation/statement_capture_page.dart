@@ -101,6 +101,7 @@ class StatementCapturePage extends StatefulWidget {
     this.pickFile,
     this.ocrRecognizer,
     this.initialStatementId,
+    this.loadInitialData,
     super.key,
   });
 
@@ -108,6 +109,7 @@ class StatementCapturePage extends StatefulWidget {
   final Future<XFile?> Function()? pickFile;
   final OcrRecognizer? ocrRecognizer;
   final String? initialStatementId;
+  final Future<void> Function()? loadInitialData;
   @override
   State<StatementCapturePage> createState() => _StatementCapturePageState();
 }
@@ -183,7 +185,8 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
   @override
   void initState() {
     super.initState();
-    _reload().then((_) {
+    final initialLoad = widget.loadInitialData?.call() ?? _reload();
+    initialLoad.then((_) {
       final statementId = widget.initialStatementId;
       if (!mounted || statementId == null) return;
       final item = _statements
@@ -363,6 +366,10 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
               ));
       if (file == null || !mounted) return;
       await _ingest(file);
+    } catch (_) {
+      if (mounted) {
+        _message(context.l10n.text('statementCaptureFailed'));
+      }
     } finally {
       if (mounted && _busy) setState(() => _busy = false);
     }
@@ -378,6 +385,10 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
               openFile(acceptedTypeGroups: [group]));
       if (file == null || !mounted) return;
       await _ingest(file);
+    } catch (_) {
+      if (mounted) {
+        _message(context.l10n.text('statementCaptureFailed'));
+      }
     } finally {
       if (mounted && _busy) setState(() => _busy = false);
     }

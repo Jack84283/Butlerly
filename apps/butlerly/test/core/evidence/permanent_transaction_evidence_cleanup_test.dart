@@ -1749,6 +1749,97 @@ void main() {
     },
   );
 
+  test(
+    'staged deletion recovery retains a corrupted committed artifact',
+    () async {
+      final now = DateTime.utc(2026, 8, 9, 20);
+      final item = _evidence('evidence-staged-corrupt-committed', now);
+      final evidence = SqliteEvidenceRepository(database.persistenceDatabase);
+      await evidence.save(item);
+      final live = File(path.join(evidenceDirectory.path, item.localFileName!));
+      await live.parent.create(recursive: true);
+      await live.writeAsBytes([3, 2, 1], flush: true);
+      final store = services<LocalEvidenceStore>();
+
+      await store.deletePublishedFile(item);
+      final deleting = Directory('${evidenceDirectory.path}.deleting');
+      final manifest =
+          (await deleting
+                  .list()
+                  .where(
+                    (entity) => entity is File && entity.path.endsWith('.json'),
+                  )
+                  .cast<File>()
+                  .toList())
+              .single;
+      final decoded =
+          jsonDecode(await manifest.readAsString()) as Map<String, dynamic>;
+      decoded['deletionState'] = 'committed';
+      await manifest.writeAsString(jsonEncode(decoded), flush: true);
+      final staged = File(
+        path.join(deleting.path, decoded['stagedFileName'] as String),
+      );
+      await staged.writeAsBytes([0], flush: true);
+      await evidence.remove(item.id);
+
+      await expectLater(
+        store.recoverStagedEvidenceDeletions(),
+        throwsA(isA<StateError>()),
+      );
+      expect(await staged.exists(), isTrue);
+      expect(await manifest.exists(), isTrue);
+    },
+  );
+
+  test(
+    'evidence finalization retains a staged artifact with invalid identity',
+    () async {
+      final now = DateTime.utc(2026, 8, 9, 20);
+      final item = _evidence('evidence-finalize-invalid', now);
+      await SqliteEvidenceRepository(database.persistenceDatabase).save(item);
+      final live = File(path.join(evidenceDirectory.path, item.localFileName!));
+      await live.parent.create(recursive: true);
+      await live.writeAsBytes([8, 7, 6], flush: true);
+      final store = services<LocalEvidenceStore>();
+
+      await store.deletePublishedFile(item);
+      final deleting = Directory('${evidenceDirectory.path}.deleting');
+      final manifest =
+          (await deleting
+                  .list()
+                  .where(
+                    (entity) => entity is File && entity.path.endsWith('.json'),
+                  )
+                  .cast<File>()
+                  .toList())
+              .single;
+      final decoded =
+          jsonDecode(await manifest.readAsString()) as Map<String, dynamic>;
+      decoded['localFileName'] = 'different-source.png';
+      await manifest.writeAsString(jsonEncode(decoded), flush: true);
+      final staged = File(
+        path.join(deleting.path, decoded['stagedFileName'] as String),
+      );
+
+      await expectLater(
+        store.finalizeDeletedEvidenceFile(item),
+        throwsA(isA<FormatException>()),
+      );
+      expect(await staged.exists(), isTrue);
+      expect(await manifest.exists(), isTrue);
+
+      decoded['localFileName'] = item.localFileName;
+      decoded['sourceFingerprint'] = 'not-the-staged-file';
+      await manifest.writeAsString(jsonEncode(decoded), flush: true);
+      await expectLater(
+        store.finalizeDeletedEvidenceFile(item),
+        throwsA(isA<StateError>()),
+      );
+      expect(await staged.exists(), isTrue);
+      expect(await manifest.exists(), isTrue);
+    },
+  );
+
   test('erase all removes the staged evidence deletion tree', () async {
     final deleting = Directory('${evidenceDirectory.path}.deleting');
     await deleting.create(recursive: true);

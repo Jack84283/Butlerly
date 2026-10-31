@@ -101,6 +101,34 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets('receipt picker failure leaves a retryable page', (tester) async {
+    final finance = _finance(_ReceiptTransactionRepository());
+
+    _resetView(tester);
+    await tester.pumpWidget(
+      _localizedApp(
+        ReceiptCapturePage(
+          finance: finance,
+          evidenceStore: _evidenceStore(finance),
+          pickImage: (_) async => throw StateError('picker unavailable'),
+          loadInitialData: _emptyInitialData,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Choose from Photos'));
+    await tester.pump();
+
+    expect(
+      find.text('Receipt capture could not be opened. Please retry.'),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump();
+  });
+
   testWidgets(
     'preserves a receipt before confirmation and cleans up explicit replacement',
     (tester) async {

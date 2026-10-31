@@ -12,9 +12,8 @@ import 'package:sqflite_common/sqlite_api.dart';
 Future<bool> reconcileStagedEvidenceAfterRestore(
   DatabaseExecutor database,
   Directory liveRoot,
-  Directory stagedRoot, {
-  required bool replaceRestore,
-}) async {
+  Directory stagedRoot,
+) async {
   await rejectEvidenceRoot(liveRoot, message: 'Unsafe live evidence root.');
   await rejectEvidenceTree(stagedRoot, message: 'Unsafe staged deletion tree.');
   if (!await stagedRoot.exists()) return false;
@@ -80,9 +79,18 @@ Future<bool> reconcileStagedEvidenceAfterRestore(
       );
       final owner = rows.isEmpty ? null : rows.first['local_file_name'];
       final ownsSource = owner == localFileName;
+      final stagedValid = await _matchesIntegrity(
+        staged,
+        byteLength: byteLength,
+        fingerprint: fingerprint,
+      );
 
       if (!ownsSource) {
-        if (replaceRestore || deletionState == 'committed') {
+        // A replace restore changes the database view, but it does not prove
+        // that a prepared deletion was ever committed. Keep the last source
+        // copy until the deletion journal itself authorizes removal and the
+        // staged bytes still match its recorded identity.
+        if (deletionState == 'committed' && stagedValid) {
           if (await staged.exists()) await staged.delete();
           if (await entity.exists()) await entity.delete();
         } else {
@@ -91,11 +99,6 @@ Future<bool> reconcileStagedEvidenceAfterRestore(
         continue;
       }
 
-      final stagedValid = await _matchesIntegrity(
-        staged,
-        byteLength: byteLength,
-        fingerprint: fingerprint,
-      );
       final liveValid = await _matchesIntegrity(
         live,
         byteLength: byteLength,

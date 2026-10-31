@@ -1088,6 +1088,8 @@ class AppLocalizations {
       'receiptUse': 'Use receipt',
       'receiptStoreFailed':
           'Receipt could not be stored locally. Please retry.',
+      'receiptCaptureFailed':
+          'Receipt capture could not be opened. Please retry.',
       'receiptRecoveryTitle': 'Receipt capture needs review',
       'receiptRecoveryBody':
           'A receipt captured before its transaction was saved is still on this device.',
@@ -1157,6 +1159,8 @@ class AppLocalizations {
           'Some transaction-like rows were found but need review.',
       'statementProcessingFailed':
           'Statement processing failed because of a technical OCR error.',
+      'statementCaptureFailed':
+          'Statement capture could not be opened. Please retry.',
       'statementRecoveryTitle': 'Statement import needs review',
       'statementRecoveryBody':
           'A statement source is still retained on this device after an interrupted import.',
@@ -2090,6 +2094,7 @@ class AppLocalizations {
       'receiptRetakeReplace': '重新拍摄 / 替换',
       'receiptUse': '使用收据',
       'receiptStoreFailed': '无法在本地保存收据，请重试。',
+      'receiptCaptureFailed': '无法打开收据捕获，请重试。',
       'receiptRecoveryTitle': '收据捕获需要处理',
       'receiptRecoveryBody': '交易保存前捕获的收据仍保留在此设备上。',
       'receiptRecoveryResume': '继续处理收据',
@@ -2140,6 +2145,7 @@ class AppLocalizations {
       'statementNoRows': '已识别文字，但未找到交易行。',
       'statementUnresolvedEvidence': '发现疑似交易内容，需要审核。',
       'statementProcessingFailed': '由于本地文字识别技术错误，账单处理失败。',
+      'statementCaptureFailed': '无法打开账单捕获，请重试。',
       'statementRecoveryTitle': '账单导入需要处理',
       'statementRecoveryBody': '中断的账单来源仍保留在此设备上。',
       'statementRecoveryResume': '继续导入',
@@ -3243,6 +3249,8 @@ class AppLocalizations {
       'receiptUse': 'Usar recibo',
       'receiptStoreFailed':
           'No se pudo guardar el recibo localmente. Inténtalo de nuevo.',
+      'receiptCaptureFailed':
+          'No se pudo abrir la captura del recibo. Inténtalo de nuevo.',
       'receiptRecoveryTitle': 'La captura del recibo necesita revisión',
       'receiptRecoveryBody':
           'Un recibo capturado antes de guardar su transacción aún está en este dispositivo.',
@@ -3312,6 +3320,8 @@ class AppLocalizations {
           'Hay evidencia similar a una transacción que requiere revisión.',
       'statementProcessingFailed':
           'El procesamiento del extracto falló por un error técnico de OCR.',
+      'statementCaptureFailed':
+          'No se pudo abrir la captura del extracto. Inténtalo de nuevo.',
       'statementRecoveryTitle': 'La importación del extracto necesita revisión',
       'statementRecoveryBody':
           'El origen de un extracto interrumpido aún se conserva en este dispositivo.',

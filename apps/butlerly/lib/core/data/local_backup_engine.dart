@@ -641,7 +641,6 @@ final class LocalBackupManager {
           database.database,
           root,
           previousDeleting,
-          replaceRestore: mode == LocalRestoreMode.replace,
         );
         if (stagedDeletionUnresolved && !await deleting.exists()) {
           await previousDeleting.rename(deleting.path);

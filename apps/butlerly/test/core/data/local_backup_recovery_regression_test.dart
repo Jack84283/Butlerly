@@ -305,6 +305,67 @@ void main() {
     },
   );
 
+  test(
+    'replace restore retains a prepared deletion without durable ownership',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final backup = File(
+        path.join(fixture.root.path, 'replace-prepared-delete.butlerlybackup'),
+      );
+      await fixture.manager.createBackup(backup);
+
+      final deleting = Directory('${fixture.evidence.path}.deleting')
+        ..createSync(recursive: true);
+      final staged = File(path.join(deleting.path, 'delete-prepared.bin'));
+      await staged.writeAsString('prepared source');
+      final manifest = File('${staged.path}.json');
+      await manifest.writeAsString(
+        jsonEncode({
+          'evidenceId': 'evidence-never-committed',
+          'localFileName': 'prepared.bin',
+          'stagedFileName': path.basename(staged.path),
+          'deletionState': 'prepared',
+          'byteLength': await staged.length(),
+          'sourceFingerprint': await sha256FileRange(staged),
+        }),
+        flush: true,
+      );
+
+      final directEngine = engine.LocalBackupManager(
+        fixture.database,
+        LocalDataManager(
+          fixture.database,
+          localEvidenceDirectory: fixture.evidence,
+        ),
+      );
+      await directEngine.restore(backup, mode: LocalRestoreMode.replace);
+
+      final retained = File(
+        path.join(
+          '${fixture.evidence.path}.deleting',
+          staged.uri.pathSegments.last,
+        ),
+      );
+      expect(await retained.readAsString(), 'prepared source');
+      expect(await File('${retained.path}.json').exists(), isTrue);
+
+      await fixture.database.close();
+      await fixture.database.initialize();
+      final reopenedData = LocalDataManager(
+        fixture.database,
+        documentsDirectory: Directory(
+          path.join(fixture.root.path, 'documents'),
+        ),
+        localEvidenceDirectory: fixture.evidence,
+      );
+      await recoverInterruptedLocalRestore(fixture.database, reopenedData);
+
+      expect(await retained.readAsString(), 'prepared source');
+      expect(await File('${retained.path}.json').exists(), isTrue);
+    },
+  );
+
   test('valid restore journal ignores unrelated stale previous tree', () async {
     final fixture = await _Fixture.create();
     addTearDown(fixture.dispose);

@@ -296,6 +296,8 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
               requestFullMetadata: false,
             );
       if (source != null) await _process(source);
+    } catch (_) {
+      _showSaveMessage('receiptCaptureFailed');
     } finally {
       _captureInFlight = false;
     }
@@ -313,6 +315,8 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
               requestFullMetadata: false,
             );
       if (source != null) await _process(source);
+    } catch (_) {
+      _showSaveMessage('receiptCaptureFailed');
     } finally {
       _captureInFlight = false;
     }
@@ -332,6 +336,8 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       if (source != null) {
         await _process(XFile(source.path, name: source.name));
       }
+    } catch (_) {
+      _showSaveMessage('receiptCaptureFailed');
     } finally {
       _captureInFlight = false;
     }

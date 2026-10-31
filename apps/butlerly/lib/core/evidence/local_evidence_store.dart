@@ -845,10 +845,16 @@ final class LocalEvidenceStore {
   /// process stops before this runs, startup recovery sees the missing
   /// evidence row and removes the staged binary safely.
   Future<void> finalizeDeletedEvidenceFile(EvidenceItem evidence) async {
-    await _finalizeDeletedEvidenceForId(evidence.id.value);
+    await _finalizeDeletedEvidenceForId(
+      evidence.id.value,
+      expectedLocalFileName: evidence.localFileName,
+    );
   }
 
-  Future<void> _finalizeDeletedEvidenceForId(String evidenceId) async {
+  Future<void> _finalizeDeletedEvidenceForId(
+    String evidenceId, {
+    String? expectedLocalFileName,
+  }) async {
     final root = await data.evidenceDirectory();
     final deleting = Directory('${root.path}.deleting');
     await rejectEvidenceRoot(
@@ -865,7 +871,21 @@ final class LocalEvidenceStore {
           continue;
         }
         final stagedFileName = decoded['stagedFileName'];
-        if (stagedFileName is! String) continue;
+        final localFileName = decoded['localFileName'];
+        final byteLength = decoded['byteLength'];
+        final sourceFingerprint = decoded['sourceFingerprint'];
+        if (localFileName is! String ||
+            byteLength is! int ||
+            byteLength < 0 ||
+            sourceFingerprint is! String ||
+            sourceFingerprint.isEmpty ||
+            (expectedLocalFileName != null &&
+                localFileName != expectedLocalFileName)) {
+          throw const FormatException('Invalid evidence deletion identity.');
+        }
+        if (stagedFileName is! String) {
+          throw const FormatException('Invalid staged evidence identity.');
+        }
         final deletionState = decoded['deletionState'];
         if (deletionState != null &&
             deletionState != _deletionPrepared &&
@@ -878,6 +898,13 @@ final class LocalEvidenceStore {
           message: 'Unsafe staged evidence finalization path.',
         );
         final staged = File(path.join(deleting.path, normalized));
+        if (!await _matchesIntegrity(
+          staged,
+          byteLength: byteLength,
+          sourceFingerprint: sourceFingerprint,
+        )) {
+          throw StateError('Staged evidence integrity could not be verified.');
+        }
         decoded['deletionState'] = _deletionCommitted;
         await entity.writeAsString(jsonEncode(decoded), flush: true);
         if (await staged.exists()) await staged.delete();
@@ -991,7 +1018,10 @@ final class LocalEvidenceStore {
     }
     if (staged != null) {
       try {
-        await _finalizeDeletedEvidenceForId(evidence.id.value);
+        await _finalizeDeletedEvidenceForId(
+          evidence.id.value,
+          expectedLocalFileName: evidence.localFileName,
+        );
       } on Object {
         // The database record is gone; retain the manifest for startup
         // recovery if filesystem cleanup was interrupted. The logical delete
@@ -1149,6 +1179,14 @@ final class LocalEvidenceStore {
               // Only this state authorizes removal when the source row is no
               // longer present; a prepared or mismatched journal is retained
               // for repair instead of destroying the last evidence copy.
+              final stagedValid = await _matchesIntegrity(
+                staged,
+                byteLength: byteLength,
+                sourceFingerprint: sourceFingerprint,
+              );
+              if (!stagedValid) {
+                throw StateError('Staged evidence source is corrupted.');
+              }
               if (await staged.exists()) await staged.delete();
             } else {
               throw StateError('Staged evidence ownership is unresolved.');

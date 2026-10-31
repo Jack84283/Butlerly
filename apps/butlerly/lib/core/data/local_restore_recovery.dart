@@ -108,7 +108,6 @@ Future<void> recoverInterruptedLocalRestore(
   final journalPrevious = data?['previousPath'] as String?;
   final journalStaging = data?['stagingPath'] as String?;
   final journalPreviousDeleting = data?['previousDeletingPath'] as String?;
-  final restoreMode = data?['mode'] as String?;
   final journalPhase = data?['phase'] as String?;
   if (!await _validJournalDirectoryPath(
         root,
@@ -182,7 +181,6 @@ Future<void> recoverInterruptedLocalRestore(
         database.database,
         root,
         directory,
-        replaceRestore: restoreMode == 'replace',
       );
       if (unresolved) unresolvedStagedDeletionDirectories.add(directory);
     }
