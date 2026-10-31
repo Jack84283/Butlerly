@@ -4,7 +4,6 @@ import 'package:butlerly/app/session/butlerly_session_guard.dart';
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/app/theme/theme_mode_provider.dart';
 import 'package:butlerly/core/data/backup_publication_recovery_state.dart';
-import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/data/restore_recovery_state.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/evidence_deletion_recovery_state.dart';
@@ -15,6 +14,7 @@ import 'package:butlerly/features/foundation/presentation/first_use_preferences_
 import 'package:butlerly/features/foundation/presentation/portable_backup_recovery_required_page.dart';
 import 'package:butlerly/features/foundation/presentation/restore_recovery_required_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -97,7 +97,7 @@ class ButlerlyApp extends ConsumerWidget {
                       evidenceDeletionRecoveryState.isRecoveryRequired
                       ? EvidenceDeletionRecoveryRequiredPage(
                           resetRecovery: () =>
-                              services<LocalDataManager>().eraseAll(),
+                              services<WorkspaceDataService>().eraseAll(),
                         )
                       : normalContent(),
                 );

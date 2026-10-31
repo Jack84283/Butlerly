@@ -2,6 +2,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/evidence_deletion_recovery_state.dart';
 import 'package:butlerly/features/foundation/presentation/evidence_deletion_recovery_required_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,15 +10,21 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   late EvidenceDeletionRecoveryState recoveryState;
   late int retries;
-  late int resets;
+  late _RecoveryGateway gateway;
 
   setUp(() async {
     await services.reset();
     recoveryState = EvidenceDeletionRecoveryState();
     recoveryState.markRequired(StateError('staged evidence is unresolved'));
     retries = 0;
-    resets = 0;
+    gateway = _RecoveryGateway();
     services.registerSingleton<EvidenceDeletionRecoveryState>(recoveryState);
+    services.registerSingleton<WorkspaceDataService>(
+      WorkspaceDataService(
+        gateway,
+        refreshSystemData: () async => gateway.events.add('system-data'),
+      ),
+    );
   });
 
   tearDown(() => services.reset());
@@ -35,9 +42,7 @@ void main() {
         retries++;
         throw StateError('still unresolved');
       },
-      resetRecovery: () async {
-        resets++;
-      },
+      resetRecovery: () => services<WorkspaceDataService>().eraseAll(),
     ),
   );
 
@@ -63,14 +68,32 @@ void main() {
 
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
-    expect(resets, 0);
+    expect(gateway.eraseCalls, 0);
     expect(recoveryState.isRecoveryRequired, isTrue);
 
     await tester.tap(find.text('Erase local data and start over'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Erase and restart'));
     await tester.pumpAndSettle();
-    expect(resets, 1);
+    expect(gateway.eraseCalls, 1);
+    expect(gateway.events, ['erase', 'system-data']);
     expect(recoveryState.isRecoveryRequired, isFalse);
   });
+}
+
+final class _RecoveryGateway implements LocalDataGateway {
+  final events = <String>[];
+  int eraseCalls = 0;
+
+  @override
+  bool get hasRecoverySafetyCopy => false;
+
+  @override
+  Future<void> eraseAll() async {
+    eraseCalls++;
+    events.add('erase');
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
