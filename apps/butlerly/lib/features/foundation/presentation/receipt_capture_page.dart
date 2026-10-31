@@ -70,6 +70,7 @@ class ReceiptCapturePage extends StatefulWidget {
     this.discardPreserved,
     this.attachPreserved,
     this.preparePendingReceipt,
+    this.markPendingReceiptCommitted,
     this.rebindPendingReceipt,
     this.completePendingReceipt,
     this.loadInitialData,
@@ -97,6 +98,8 @@ class ReceiptCapturePage extends StatefulWidget {
     PreservedEvidenceSource source,
   )?
   preparePendingReceipt;
+  final Future<bool> Function(String captureId, String transactionId)?
+  markPendingReceiptCommitted;
   final Future<void> Function(String captureId, String transactionId)?
   rebindPendingReceipt;
   final Future<bool> Function(String transactionId)? completePendingReceipt;
@@ -164,7 +167,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         _captureInFlight;
     final pendingCaptureId = _pendingReceiptCaptureId;
     if (pendingCaptureId != null && !preserveForRecovery) {
-      unawaited(_completePendingReceipt(pendingCaptureId));
+      unawaited(_cancelPendingReceipt(pendingCaptureId));
     }
     if (!_committed && !preserveForRecovery && _preserved != null) {
       unawaited(_discard(_preserved!));
@@ -357,18 +360,20 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
 
     final previous = _preserved;
     final previousCaptureId = _pendingReceiptCaptureId;
+    String? captureId;
     try {
       if (previousCaptureId != null) {
-        await _completePendingReceipt(previousCaptureId);
+        await _cancelPendingReceipt(previousCaptureId);
         _pendingReceiptCaptureId = null;
         _plannedPendingEvidence = null;
       }
       if (previous != null) await _discard(previous);
-      final captureId = 'transaction-${DateTime.now().microsecondsSinceEpoch}';
+      captureId = 'transaction-${DateTime.now().microsecondsSinceEpoch}';
       final planned = await _preparePendingReceipt(captureId, captured);
       _pendingReceiptCaptureId = captureId;
       _plannedPendingEvidence = planned;
     } catch (_) {
+      if (captureId != null) await _cancelPendingReceipt(captureId);
       await _discard(captured);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -378,7 +383,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       return;
     }
     if (!mounted) {
-      await _discard(captured);
+      // The specific receipt journal now owns the preserved source. The
+      // transaction may not exist yet, so startup must retain this source and
+      // offer recovery instead of treating route disposal as cancellation.
       return;
     }
 
@@ -473,6 +480,28 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       widget.completePendingReceipt == null
       ? evidenceStore.completePendingReceiptCaptureWithinMutation(transactionId)
       : widget.completePendingReceipt!(transactionId);
+
+  Future<bool> _cancelPendingReceipt(String captureId) =>
+      widget.completePendingReceipt == null
+      ? evidenceStore.cancelPendingReceiptCaptureWithinMutation(captureId)
+      : widget.completePendingReceipt!(captureId);
+
+  Future<bool> _markPendingReceiptCommitted(
+    String captureId,
+    String transactionId,
+  ) {
+    if (widget.markPendingReceiptCommitted != null) {
+      return widget.markPendingReceiptCommitted!(captureId, transactionId);
+    }
+    // Embedded callers that provide their own preparation callback own the
+    // corresponding journal lifecycle as well.
+    if (widget.preparePendingReceipt != null) return Future.value(true);
+    return evidenceStore
+        .markPendingReceiptCaptureTransactionCommittedWithinMutation(
+          captureId: captureId,
+          transactionId: transactionId,
+        );
+  }
 
   Future<void> _rebindPendingReceipt(
     String captureId,
@@ -670,6 +699,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     try {
       await evidenceStore.runFinancialEvidenceMutation(() async {
         await _rebindPendingReceipt(captureId, transaction.id);
+        if (!await _markPendingReceiptCommitted(captureId, transaction.id)) {
+          throw StateError('Receipt capture journal is unavailable.');
+        }
         evidence = await _attachWithinMutation(
           transaction.id,
           preserved,
@@ -941,6 +973,12 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
               duplicateUnavailable: false,
             );
           }
+          if (!await _markPendingReceiptCommitted(
+            transactionId,
+            result.value.id,
+          )) {
+            throw StateError('Receipt capture journal is unavailable.');
+          }
           final attached = await _attachWithinMutation(
             result.value.id,
             preserved,
@@ -960,9 +998,12 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
             );
           }
           final rolledBack = await _rollbackCreatedTransaction(result.value.id);
-          // Keep the journal and pending source after rollback. The page can
-          // retry the same capture, and a process stop before disposal still
-          // leaves startup with a deterministic not-found cleanup path.
+          if (rolledBack) {
+            // A confirmed rollback is an explicit deletion. Only this path,
+            // or an explicit user cancellation during disposal, may discard
+            // the never-published receipt source.
+            await _cancelPendingReceipt(transactionId);
+          }
           return (
             result: result,
             evidence: null,

@@ -153,6 +153,43 @@ void main() {
   );
 
   test(
+    'malformed unrelated capture journal blocks cleanup explicitly',
+    () async {
+      final sourceFile = File(path.join(root.path, 'uncertain-capture.pdf'));
+      await sourceFile.writeAsBytes([4, 5, 6], flush: true);
+      final store = services<LocalEvidenceStore>();
+      final preserved = await store.preserve(
+        XFile(sourceFile.path, name: 'uncertain-capture.pdf'),
+      );
+      final pending = Directory('${evidenceDirectory.path}.pending');
+      final malformed = File(path.join(pending.path, 'receipt-unrelated.json'));
+      await malformed.writeAsString('{not-json', flush: true);
+
+      await expectLater(
+        store.recoverUnclaimedPendingCaptures(),
+        throwsA(
+          isA<FormatException>().having(
+            (error) => error.message,
+            'message',
+            contains('receipt-unrelated.json'),
+          ),
+        ),
+      );
+      expect(
+        await File(path.join(pending.path, preserved.localFileName)).exists(),
+        isTrue,
+      );
+      expect(
+        await File(
+          path.join(pending.path, 'capture-${preserved.localFileName}.json'),
+        ).exists(),
+        isTrue,
+      );
+      expect(await malformed.exists(), isTrue);
+    },
+  );
+
+  test(
     'receipt publication works inside an already-owned evidence boundary',
     () async {
       final now = DateTime.utc(2026, 8, 9, 20);
@@ -382,31 +419,59 @@ void main() {
     },
   );
 
-  test('receipt recovery clears a journal for a deleted transaction', () async {
-    final store = services<LocalEvidenceStore>();
-    final source = const PreservedEvidenceSource(
-      originalName: 'receipt-deleted.png',
-      localFileName: 'receipt-deleted.png',
-      mediaType: 'image/png',
-    );
-    final pending = Directory('${evidenceDirectory.path}.pending');
-    await pending.create(recursive: true);
-    final pendingFile = File(path.join(pending.path, source.localFileName));
-    await pendingFile.writeAsBytes([1, 1, 1], flush: true);
-    await store.preparePendingReceiptCapture(
-      transactionId: 'transaction-already-deleted',
-      source: source,
-    );
+  test(
+    'receipt recovery retains an uncommitted source across SQLite restart',
+    () async {
+      final store = services<LocalEvidenceStore>();
+      final source = const PreservedEvidenceSource(
+        originalName: 'receipt-deleted.png',
+        localFileName: 'receipt-deleted.png',
+        mediaType: 'image/png',
+      );
+      final pending = Directory('${evidenceDirectory.path}.pending');
+      await pending.create(recursive: true);
+      final pendingFile = File(path.join(pending.path, source.localFileName));
+      await pendingFile.writeAsBytes([1, 1, 1], flush: true);
+      await store.preparePendingReceiptCapture(
+        transactionId: 'transaction-already-deleted',
+        source: source,
+      );
 
-    expect(await store.recoverPendingReceiptCaptures(), 0);
-    expect(await pendingFile.exists(), isFalse);
-    expect(
-      await File(
-        path.join(pending.path, 'receipt-transaction-already-deleted.json'),
-      ).exists(),
-      isFalse,
-    );
-  });
+      await database.close();
+      await services.reset();
+      await database.initialize();
+      configureDependencies(
+        configuration: const AppConfiguration(),
+        database: database,
+        logger: AppLogger(),
+        documentsDirectory: Directory(path.join(root.path, 'documents')),
+        localEvidenceDirectory: evidenceDirectory,
+      );
+
+      final afterRestart = services<LocalEvidenceStore>();
+      expect(await afterRestart.recoverPendingReceiptCaptures(), 0);
+      expect(await pendingFile.exists(), isTrue);
+      expect(
+        await File(
+          path.join(pending.path, 'receipt-transaction-already-deleted.json'),
+        ).readAsString().then((value) => jsonDecode(value)['captureState']),
+        'awaitingTransaction',
+      );
+      expect(
+        await afterRestart.cancelPendingReceiptCapture(
+          'transaction-already-deleted',
+        ),
+        isTrue,
+      );
+      expect(await pendingFile.exists(), isFalse);
+      expect(
+        await File(
+          path.join(pending.path, 'receipt-transaction-already-deleted.json'),
+        ).exists(),
+        isFalse,
+      );
+    },
+  );
 
   test(
     'statement capture journal is recoverable before evidence publication',
@@ -531,7 +596,29 @@ void main() {
         'DROP TRIGGER fail_statement_evidence_insert',
       );
 
-      expect(await store.recoverPendingStatementCaptures(), 1);
+      await database.close();
+      await services.reset();
+      await database.initialize();
+      configureDependencies(
+        configuration: const AppConfiguration(),
+        database: database,
+        logger: AppLogger(),
+        documentsDirectory: Directory(path.join(root.path, 'documents')),
+        localEvidenceDirectory: evidenceDirectory,
+      );
+
+      final afterRestart = services<LocalEvidenceStore>();
+      expect(await afterRestart.recoverPendingStatementCaptures(), 1);
+      final statements = await services<FinanceServices>().statementServices!
+          .list(includeArchived: true);
+      expect(
+        statements,
+        isA<ApplicationSuccess<List<FinancialStatement>>>().having(
+          (value) => value.value.single.id,
+          'statement id',
+          'statement-publication-failure',
+        ),
+      );
     },
   );
 

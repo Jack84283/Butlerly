@@ -161,7 +161,12 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
 
   @override
   void dispose() {
-    final preserveForRecovery = _busy;
+    // A failed capture remains owned by the pending journal after the page is
+    // no longer busy. Navigation or process termination must not turn a
+    // recoverable source into an unclaimed orphan; successful completion or
+    // the explicit statement-delete flow is responsible for cleanup.
+    final preserveForRecovery =
+        _busy || _pendingStatementId != null || _preserved != null;
     if (_preserved != null && !preserveForRecovery) {
       unawaited(services<LocalEvidenceStore>().discardPreserved(_preserved!));
     }
@@ -228,7 +233,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     }
   }
 
-  Future<void> _ingest(XFile file) async {
+  Future<bool> _ingest(XFile file) async {
     try {
       final created = await _ingestUnlocked(file);
       if (created && mounted) {
@@ -238,6 +243,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
         // making unrelated read callers wait for UI reload work.
         await _reload();
       }
+      return created;
     } catch (error, stackTrace) {
       if (kDebugMode) {
         debugPrint('Butlerly statement capture failed: $error');
@@ -246,6 +252,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
       if (mounted) {
         _message(context.l10n.text('statementProcessingFailed'));
       }
+      return false;
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -269,11 +276,22 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     try {
       final store = services<LocalEvidenceStore>();
       preserved = await store.preserve(file);
+      // Keep the source reference even if the route is disposed while the
+      // asynchronous capture is between filesystem operations. The pending
+      // statement journal below is the durable recovery boundary.
+      _preserved = preserved;
       if (!mounted) {
-        await store.discardPreserved(preserved);
+        final now = DateTime.now().toUtc();
+        final id = 'statement-${now.microsecondsSinceEpoch}';
+        _pendingStatementId = id;
+        await store.preparePendingStatementCapture(
+          statementId: id,
+          source: preserved,
+          originalFilename: file.name,
+          createdAt: now,
+        );
         return false;
       }
-      _preserved = preserved;
       final fingerprint = preserved.sourceFingerprint;
       if (fingerprint != null) {
         final existing = await store.findStatementBySourceFingerprint(
@@ -620,23 +638,39 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
       return;
     }
     final supersededStatementId = _pendingStatementId;
+    var committed = false;
     try {
-      await _ingest(
+      committed = await _ingest(
         XFile(file.path, name: source.originalName, mimeType: source.mediaType),
       );
     } finally {
-      if (supersededStatementId != null) {
-        // The retry has either committed its replacement journal or left a
-        // new pending source tracked by the page. The old journal must not
-        // survive after the original pending binary is discarded.
-        await store.completePendingStatementCapture(supersededStatementId);
-      }
-      if (_preserved?.localFileName != source.localFileName) {
-        try {
-          await store.discardPreserved(source);
-        } catch (_) {
-          // Keep any replacement pending source tracked by the page for a
-          // later retry or disposal cleanup.
+      if (committed) {
+        if (supersededStatementId != null) {
+          await store.completePendingStatementCapture(supersededStatementId);
+        }
+        if (_preserved?.localFileName != source.localFileName) {
+          try {
+            await store.discardPreserved(source);
+          } catch (_) {
+            // Keep the old source if its explicit cleanup is interrupted.
+          }
+        }
+      } else {
+        // A failed retry is not an explicit cancellation. Retain the original
+        // failed capture and discard only a replacement copy created by the
+        // retry, including the window before its replacement journal exists.
+        final replacement = _preserved;
+        final replacementId = _pendingStatementId;
+        if (replacement != null &&
+            replacement.localFileName != source.localFileName) {
+          if (replacementId != null && replacementId != supersededStatementId) {
+            await store.completePendingStatementCapture(replacementId);
+          }
+          try {
+            await store.discardPreserved(replacement);
+          } catch (_) {}
+          _preserved = source;
+          _pendingStatementId = supersededStatementId;
         }
       }
     }

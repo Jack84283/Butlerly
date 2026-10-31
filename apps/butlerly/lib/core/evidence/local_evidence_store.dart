@@ -26,6 +26,13 @@ final class PreservedEvidenceSource {
   final String? sourceFingerprint;
 }
 
+const _receiptCaptureStateKey = 'captureState';
+const _receiptCapturePrepared = 'prepared';
+const _receiptCaptureAwaitingTransaction = 'awaitingTransaction';
+const _receiptCaptureTransactionCommitted = 'transactionCommitted';
+const _receiptCaptureCompleted = 'completed';
+const _receiptCaptureCancelled = 'cancelled';
+
 final class LocalEvidenceStore {
   const LocalEvidenceStore(this.data, this.finance);
 
@@ -487,10 +494,10 @@ final class LocalEvidenceStore {
     if (await manifest.exists()) await manifest.delete();
   }
 
-  Future<bool> _hasSpecificPendingJournal(
+  Future<Set<String>> _specificPendingJournalLocalFileNames(
     Directory directory,
-    String localFileName,
   ) async {
+    final localFileNames = <String>{};
     await for (final entity in directory.list(followLinks: false)) {
       if (entity is! File || !entity.path.endsWith('.json')) continue;
       final name = path.basename(entity.path);
@@ -499,16 +506,19 @@ final class LocalEvidenceStore {
       }
       try {
         final decoded = jsonDecode(await entity.readAsString());
-        if (decoded is Map<String, dynamic> &&
-            decoded['localFileName'] == localFileName) {
-          return true;
+        if (decoded is! Map<String, dynamic> ||
+            decoded['localFileName'] is! String) {
+          throw FormatException('Malformed pending capture journal: $name');
         }
+        localFileNames.add(decoded['localFileName'] as String);
       } on Object {
-        // Keep the generic journal when a specific journal is malformed.
-        return true;
+        // A malformed specific journal cannot safely be attributed to this
+        // generic capture. Fail closed and surface the corruption instead of
+        // treating every pending binary as referenced by the same journal.
+        throw FormatException('Unresolved pending capture journal: $name');
       }
     }
-    return false;
+    return localFileNames;
   }
 
   /// Removes pending binaries whose process stopped before a statement or
@@ -518,7 +528,12 @@ final class LocalEvidenceStore {
       _runFinancialEvidenceMutation(() async {
         final directory = await _pendingEvidenceDirectory();
         if (!await directory.exists()) return 0;
-        var cleaned = 0;
+        // Read and validate every journal and generic manifest before making
+        // any deletion. If one journal is corrupt, all uncertain files remain
+        // available for recovery and the caller receives an explicit error.
+        final referencedLocalFileNames =
+            await _specificPendingJournalLocalFileNames(directory);
+        final genericManifests = <File, String>{};
         await for (final entity in directory.list(followLinks: false)) {
           final name = path.basename(entity.path);
           if (entity is! File ||
@@ -529,10 +544,15 @@ final class LocalEvidenceStore {
           final decoded = jsonDecode(await entity.readAsString());
           if (decoded is! Map<String, dynamic> ||
               decoded['localFileName'] is! String) {
-            throw const FormatException('Invalid pending capture manifest.');
+            throw FormatException('Invalid pending capture manifest: $name');
           }
-          final localFileName = decoded['localFileName'] as String;
-          if (await _hasSpecificPendingJournal(directory, localFileName)) {
+          genericManifests[entity] = decoded['localFileName'] as String;
+        }
+        var cleaned = 0;
+        for (final entry in genericManifests.entries) {
+          final entity = entry.key;
+          final localFileName = entry.value;
+          if (referencedLocalFileNames.contains(localFileName)) {
             continue;
           }
           final normalized = await validateEvidencePath(
@@ -977,10 +997,41 @@ final class LocalEvidenceStore {
         'evidenceCreatedAt': evidence.createdAt.toUtc().toIso8601String(),
         'provenanceSourceId': source.sourceFingerprint,
         'sourceFingerprint': source.sourceFingerprint,
+        _receiptCaptureStateKey: _receiptCapturePrepared,
       }),
       flush: true,
     );
     return evidence;
+  }
+
+  Future<bool> markPendingReceiptCaptureTransactionCommitted({
+    required String captureId,
+    required String transactionId,
+  }) => _runFinancialEvidenceMutation(
+    () => markPendingReceiptCaptureTransactionCommittedWithinMutation(
+      captureId: captureId,
+      transactionId: transactionId,
+    ),
+  );
+
+  /// Records the transaction commit before evidence attachment starts. A
+  /// prepared receipt remains recoverable when the process stops before this
+  /// marker is written; the marker makes the lifecycle explicit for restart
+  /// recovery and for confirmed rollback/cancellation.
+  Future<bool> markPendingReceiptCaptureTransactionCommittedWithinMutation({
+    required String captureId,
+    required String transactionId,
+  }) async {
+    final manifest = await _pendingReceiptManifestFor(captureId);
+    if (!await manifest.exists()) return false;
+    final decoded = jsonDecode(await manifest.readAsString());
+    if (decoded is! Map<String, dynamic>) {
+      throw const FormatException('Invalid pending receipt manifest.');
+    }
+    decoded['transactionId'] = transactionId;
+    decoded[_receiptCaptureStateKey] = _receiptCaptureTransactionCommitted;
+    await manifest.writeAsString(jsonEncode(decoded), flush: true);
+    return true;
   }
 
   Future<bool> completePendingReceiptCapture(String transactionId) =>
@@ -991,13 +1042,7 @@ final class LocalEvidenceStore {
   Future<bool> completePendingReceiptCaptureWithinMutation(
     String transactionId,
   ) async {
-    final directory = await _pendingEvidenceDirectory();
-    final name = await validateEvidencePath(
-      directory,
-      'receipt-$transactionId.json',
-      message: 'Unsafe pending receipt manifest path.',
-    );
-    final manifest = File(path.join(directory.path, name));
+    final manifest = await _pendingReceiptManifestFor(transactionId);
     if (!await manifest.exists()) return true;
     String? localFileName;
     try {
@@ -1005,6 +1050,8 @@ final class LocalEvidenceStore {
       if (decoded is Map<String, dynamic> &&
           decoded['localFileName'] is String) {
         localFileName = decoded['localFileName'] as String;
+        decoded[_receiptCaptureStateKey] = _receiptCaptureCompleted;
+        await manifest.writeAsString(jsonEncode(decoded), flush: true);
       }
     } on Object {
       // The specific journal can still be completed; generic cleanup remains
@@ -1014,6 +1061,33 @@ final class LocalEvidenceStore {
     if (localFileName != null) {
       await _removePreCaptureManifest(localFileName);
     }
+    return true;
+  }
+
+  Future<bool> cancelPendingReceiptCapture(String captureId) =>
+      _runFinancialEvidenceMutation(
+        () => cancelPendingReceiptCaptureWithinMutation(captureId),
+      );
+
+  /// Explicitly cancels a receipt review. The cancellation marker is durable
+  /// before cleanup so a stop during deletion cannot be mistaken for an
+  /// uncommitted capture that still needs recovery.
+  Future<bool> cancelPendingReceiptCaptureWithinMutation(
+    String captureId,
+  ) async {
+    final manifest = await _pendingReceiptManifestFor(captureId);
+    if (!await manifest.exists()) return true;
+    final decoded = jsonDecode(await manifest.readAsString());
+    if (decoded is! Map<String, dynamic>) {
+      throw const FormatException('Invalid pending receipt manifest.');
+    }
+    final localFileName = decoded['localFileName'];
+    if (localFileName is! String) {
+      throw const FormatException('Invalid pending receipt fields.');
+    }
+    decoded[_receiptCaptureStateKey] = _receiptCaptureCancelled;
+    await manifest.writeAsString(jsonEncode(decoded), flush: true);
+    await _discardPendingReceiptJournal(manifest, localFileName);
     return true;
   }
 
@@ -1035,13 +1109,7 @@ final class LocalEvidenceStore {
     required String captureId,
     required String transactionId,
   }) async {
-    final directory = await _pendingEvidenceDirectory();
-    final name = await validateEvidencePath(
-      directory,
-      'receipt-$captureId.json',
-      message: 'Unsafe pending receipt manifest path.',
-    );
-    final manifest = File(path.join(directory.path, name));
+    final manifest = await _pendingReceiptManifestFor(captureId);
     if (!await manifest.exists()) return false;
     final decoded = jsonDecode(await manifest.readAsString());
     if (decoded is! Map<String, dynamic>) {
@@ -1092,19 +1160,43 @@ final class LocalEvidenceStore {
           final originalName = decoded['evidenceOriginalName'];
           final mediaType = decoded['evidenceMediaType'];
           final sourceFingerprint = decoded['sourceFingerprint'];
+          final captureState = decoded[_receiptCaptureStateKey];
           if (transactionId is! String ||
               evidenceId is! String ||
               localFileName is! String ||
               originalName is! String ||
               mediaType is! String ||
-              (sourceFingerprint != null && sourceFingerprint is! String)) {
+              (sourceFingerprint != null && sourceFingerprint is! String) ||
+              (captureState != null && captureState is! String)) {
             throw const FormatException('Invalid pending receipt fields.');
+          }
+          if (captureState == _receiptCaptureCancelled ||
+              captureState == _receiptCaptureCompleted) {
+            await _discardPendingReceiptJournal(entity, localFileName);
+            continue;
+          }
+          if (captureState != null &&
+              captureState != _receiptCapturePrepared &&
+              captureState != _receiptCaptureAwaitingTransaction &&
+              captureState != _receiptCaptureTransactionCommitted) {
+            throw FormatException(
+              'Unsupported pending receipt state: $captureState',
+            );
           }
           final transaction = await finance.getTransaction.call(transactionId);
           if (transaction is! ApplicationSuccess<TransactionDto>) {
             if (transaction is ApplicationFailure<TransactionDto> &&
                 transaction.failure.code == ApplicationFailureCode.notFound) {
-              await _discardPendingReceiptJournal(entity, localFileName);
+              // Not-found is not proof that the user cancelled or permanently
+              // deleted the transaction. It may be the crash window between
+              // preserving the source and committing the new transaction.
+              // Keep the source and make that lifecycle state explicit.
+              if (captureState == null ||
+                  captureState == _receiptCapturePrepared) {
+                decoded[_receiptCaptureStateKey] =
+                    _receiptCaptureAwaitingTransaction;
+                await entity.writeAsString(jsonEncode(decoded), flush: true);
+              }
               continue;
             }
             throw StateError('Receipt transaction lookup failed.');
@@ -1168,6 +1260,16 @@ final class LocalEvidenceStore {
       return recovered;
     });
     return result;
+  }
+
+  Future<File> _pendingReceiptManifestFor(String captureId) async {
+    final directory = await _pendingEvidenceDirectory();
+    final name = await validateEvidencePath(
+      directory,
+      'receipt-$captureId.json',
+      message: 'Unsafe pending receipt manifest path.',
+    );
+    return File(path.join(directory.path, name));
   }
 
   EvidenceItem _newReceiptEvidence(PreservedEvidenceSource source) {
