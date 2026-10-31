@@ -339,6 +339,123 @@ void main() {
     },
   );
 
+  test(
+    'repairing a torn generic journal promotes its complete temporary source',
+    () async {
+      final sourceFile = File(path.join(root.path, 'torn-repair.pdf'));
+      await sourceFile.writeAsBytes([9, 7, 5, 3], flush: true);
+      final store = services<LocalEvidenceStore>();
+      final source = await store.preserve(
+        XFile(sourceFile.path, name: 'torn-repair.pdf'),
+        captureKind: 'statement',
+      );
+      final pending = Directory('${evidenceDirectory.path}.pending');
+      final finalSource = File(path.join(pending.path, source.localFileName));
+      final temporary = File('${finalSource.path}.tmp');
+      await finalSource.rename(temporary.path);
+      final journal = File(
+        path.join(pending.path, 'capture-${source.localFileName}.json'),
+      );
+      await journal.writeAsString('{not-json', flush: true);
+
+      expect(
+        await store.resolvePendingCaptureJournalIssue(
+          path.basename(journal.path),
+          captureKind: 'statement',
+        ),
+        PendingCaptureJournalResolution.repaired,
+      );
+      expect(await finalSource.exists(), isTrue);
+      expect(await temporary.exists(), isFalse);
+      expect(
+        (await store.listPendingGenericCaptures(
+          captureKind: 'statement',
+        )).single.source.localFileName,
+        source.localFileName,
+      );
+    },
+  );
+
+  test(
+    'generic journal identity mismatch is reported without re-homing a source',
+    () async {
+      final firstFile = File(path.join(root.path, 'mismatch-first.pdf'));
+      final secondFile = File(path.join(root.path, 'mismatch-second.pdf'));
+      await firstFile.writeAsBytes([1, 1, 1], flush: true);
+      await secondFile.writeAsBytes([2, 2, 2], flush: true);
+      final store = services<LocalEvidenceStore>();
+      final first = await store.preserve(
+        XFile(firstFile.path, name: 'mismatch-first.pdf'),
+        captureKind: 'statement',
+      );
+      final second = await store.preserve(
+        XFile(secondFile.path, name: 'mismatch-second.pdf'),
+        captureKind: 'statement',
+      );
+      final pending = Directory('${evidenceDirectory.path}.pending');
+      final journal = File(
+        path.join(pending.path, 'capture-${first.localFileName}.json'),
+      );
+      final decoded =
+          jsonDecode(await journal.readAsString()) as Map<String, dynamic>;
+      decoded['localFileName'] = second.localFileName;
+      await journal.writeAsString(jsonEncode(decoded), flush: true);
+
+      expect(
+        (await store.listPendingCaptureJournalIssues()).map(
+          (issue) => issue.fileName,
+        ),
+        contains(path.basename(journal.path)),
+      );
+      expect(
+        await store.resolvePendingCaptureJournalIssue(
+          path.basename(journal.path),
+          captureKind: 'statement',
+        ),
+        PendingCaptureJournalResolution.repaired,
+      );
+      expect(
+        (await store.listPendingGenericCaptures(
+          captureKind: 'statement',
+        )).map((capture) => capture.source.localFileName),
+        containsAll([first.localFileName, second.localFileName]),
+      );
+    },
+  );
+
+  test(
+    'dismissing a malformed generic journal keeps its source listable',
+    () async {
+      final sourceFile = File(path.join(root.path, 'dismiss-repair.pdf'));
+      await sourceFile.writeAsBytes([4, 4, 4], flush: true);
+      final store = services<LocalEvidenceStore>();
+      final source = await store.preserve(
+        XFile(sourceFile.path, name: 'dismiss-repair.pdf'),
+        captureKind: 'statement',
+      );
+      final pending = Directory('${evidenceDirectory.path}.pending');
+      final journal = File(
+        path.join(pending.path, 'capture-${source.localFileName}.json'),
+      );
+      await journal.writeAsString('{not-json', flush: true);
+
+      expect(
+        await store.dismissPendingCaptureJournalIssue(
+          path.basename(journal.path),
+          captureKind: 'statement',
+        ),
+        PendingCaptureJournalResolution.dismissed,
+      );
+      expect(await journal.exists(), isTrue);
+      expect(
+        (await store.listPendingGenericCaptures(
+          captureKind: 'statement',
+        )).single.source.localFileName,
+        source.localFileName,
+      );
+    },
+  );
+
   test('malformed receipt completion retains its journal and source', () async {
     final sourceFile = File(path.join(root.path, 'receipt-corrupt.png'));
     await sourceFile.writeAsBytes([7, 8, 9], flush: true);
@@ -1875,7 +1992,10 @@ void main() {
       await evidence.save(item);
       final live = File(path.join(evidenceDirectory.path, item.localFileName!));
       await live.parent.create(recursive: true);
-      await live.writeAsString('{"amount":12.50}', flush: true);
+      await live.writeAsString(
+        jsonEncode({'evidenceId': item.id.value}),
+        flush: true,
+      );
       final store = services<LocalEvidenceStore>();
 
       await store.deletePublishedFile(item);
@@ -1904,6 +2024,54 @@ void main() {
         ).findById(item.id),
         isNull,
       );
+    },
+  );
+
+  test(
+    'restart recovery retires a committed deletion journal without its artifact',
+    () async {
+      final now = DateTime.utc(2026, 8, 9, 20);
+      final item = _evidence('evidence-staged-committed-missing', now);
+      final evidence = SqliteEvidenceRepository(database.persistenceDatabase);
+      await evidence.save(item);
+      final live = File(path.join(evidenceDirectory.path, item.localFileName!));
+      await live.parent.create(recursive: true);
+      await live.writeAsBytes([6, 5, 4], flush: true);
+      final store = services<LocalEvidenceStore>();
+
+      await store.deletePublishedFile(item);
+      final deleting = Directory('${evidenceDirectory.path}.deleting');
+      final manifest =
+          (await deleting
+                  .list()
+                  .where(
+                    (entity) => entity is File && entity.path.endsWith('.json'),
+                  )
+                  .cast<File>()
+                  .toList())
+              .single;
+      final decoded =
+          jsonDecode(await manifest.readAsString()) as Map<String, dynamic>;
+      decoded['deletionState'] = 'committed';
+      await manifest.writeAsString(jsonEncode(decoded), flush: true);
+      await File(
+        path.join(deleting.path, decoded['stagedFileName'] as String),
+      ).delete();
+      await evidence.remove(item.id);
+
+      await database.close();
+      await services.reset();
+      await database.initialize();
+      configureDependencies(
+        configuration: const AppConfiguration(),
+        database: database,
+        logger: AppLogger(),
+        documentsDirectory: Directory(path.join(root.path, 'documents')),
+        localEvidenceDirectory: evidenceDirectory,
+      );
+      await services<LocalEvidenceStore>().recoverStagedEvidenceDeletions();
+
+      expect(await manifest.exists(), isFalse);
     },
   );
 

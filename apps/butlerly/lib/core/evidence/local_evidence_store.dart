@@ -617,6 +617,19 @@ final class LocalEvidenceStore {
     return File(path.join(directory.path, name));
   }
 
+  String? _genericCaptureLocalFileName(String fileName) {
+    if (!fileName.startsWith('capture-') ||
+        !fileName.endsWith('.json') ||
+        fileName.length <= 'capture-.json'.length) {
+      return null;
+    }
+    final localFileName = fileName.substring(
+      'capture-'.length,
+      fileName.length - '.json'.length,
+    );
+    return localFileName.isEmpty ? null : localFileName;
+  }
+
   Future<void> _writePreCaptureManifest({
     required String localFileName,
     required String originalName,
@@ -862,8 +875,17 @@ final class LocalEvidenceStore {
       message: 'Unsafe deleting evidence root.',
     );
     if (!await deleting.exists()) return;
-    await for (final entity in deleting.list(followLinks: false)) {
-      if (entity is! File || !entity.path.endsWith('.json')) continue;
+    final entities = await deleting
+        .list(followLinks: false)
+        .where((entity) => entity is File)
+        .cast<File>()
+        .where((entity) => entity.path.endsWith('.json'))
+        .toList();
+    final entityPaths = entities.map((entity) => entity.path).toSet();
+    for (final entity in entities) {
+      // A JSON source is named `delete-<token>.json`, while its manifest is
+      // `delete-<token>.json.json`. Do not parse the source as a manifest.
+      if (entityPaths.contains('${entity.path}.json')) continue;
       try {
         final decoded = jsonDecode(await entity.readAsString());
         if (decoded is! Map<String, dynamic> ||
@@ -898,11 +920,12 @@ final class LocalEvidenceStore {
           message: 'Unsafe staged evidence finalization path.',
         );
         final staged = File(path.join(deleting.path, normalized));
-        if (!await _matchesIntegrity(
-          staged,
-          byteLength: byteLength,
-          sourceFingerprint: sourceFingerprint,
-        )) {
+        if (await staged.exists() &&
+            !await _matchesIntegrity(
+              staged,
+              byteLength: byteLength,
+              sourceFingerprint: sourceFingerprint,
+            )) {
           throw StateError('Staged evidence integrity could not be verified.');
         }
         decoded['deletionState'] = _deletionCommitted;
@@ -1184,8 +1207,23 @@ final class LocalEvidenceStore {
                 throw StateError('Staged evidence source is unavailable.');
               }
             } else if (evidence == null &&
-                (deletionState == _deletionPrepared ||
-                    deletionState == _deletionCommitted)) {
+                deletionState == _deletionCommitted) {
+              // The committed marker is the durable reference-aware delete
+              // decision. If the staged bytes were already removed before a
+              // crash, only the now-obsolete journal remains and can be
+              // finalized idempotently.
+              if (await staged.exists()) {
+                final stagedValid = await _matchesIntegrity(
+                  staged,
+                  byteLength: byteLength,
+                  sourceFingerprint: sourceFingerprint,
+                );
+                if (!stagedValid) {
+                  throw StateError('Staged evidence source is corrupted.');
+                }
+                await staged.delete();
+              }
+            } else if (evidence == null && deletionState == _deletionPrepared) {
               // A missing evidence row is the durable reference-aware delete
               // decision. A prepared journal means the process stopped after
               // that SQLite commit but before the finalization marker; the
@@ -1882,11 +1920,14 @@ final class LocalEvidenceStore {
           if (decoded is! Map<String, dynamic>) {
             throw const FormatException('Invalid pending capture manifest.');
           }
+          final expectedLocalFileName = _genericCaptureLocalFileName(name);
           final localFileName = decoded['localFileName'];
           final originalName = decoded['originalName'];
           final mediaType = decoded['mediaType'];
           final kind = decoded['captureKind'];
           if (localFileName is! String ||
+              expectedLocalFileName == null ||
+              localFileName != expectedLocalFileName ||
               originalName is! String ||
               mediaType is! String ||
               (kind != null && kind is! String) ||
@@ -2006,8 +2047,13 @@ final class LocalEvidenceStore {
             throw const FormatException('Journal is not a JSON object.');
           }
           if (fileName.startsWith('capture-')) {
+            final expectedLocalFileName = _genericCaptureLocalFileName(
+              fileName,
+            );
             final localFileName = decoded['localFileName'];
-            if (localFileName is! String ||
+            if (expectedLocalFileName == null ||
+                localFileName is! String ||
+                localFileName != expectedLocalFileName ||
                 (decoded['captureKind'] != null &&
                     decoded['captureKind'] is! String)) {
               throw const FormatException(
@@ -2085,17 +2131,132 @@ final class LocalEvidenceStore {
   Future<PendingCaptureJournalResolution> resolvePendingCaptureJournalIssue(
     String fileName, {
     String? captureKind,
+  }) => _runFinancialEvidenceMutation(
+    () => _resolvePendingCaptureJournalIssueUnlocked(
+      fileName,
+      captureKind: captureKind,
+    ),
+  );
+
+  Future<PendingCaptureJournalResolution>
+  _resolvePendingCaptureJournalIssueUnlocked(
+    String fileName, {
+    String? captureKind,
+  }) async {
+    if (path.basename(fileName) != fileName || !fileName.endsWith('.json')) {
+      return PendingCaptureJournalResolution.unavailable;
+    }
+    final isStatement = fileName.startsWith('statement-');
+    final isReceipt = fileName.startsWith('receipt-');
+    final isGeneric = fileName.startsWith('capture-');
+    if (!isStatement && !isReceipt && !isGeneric) {
+      return PendingCaptureJournalResolution.unavailable;
+    }
+    final directory = await _pendingEvidenceDirectory();
+    final normalized = await validateEvidencePath(
+      directory,
+      fileName,
+      message: 'Unsafe pending capture manifest path.',
+    );
+    final journal = File(path.join(directory.path, normalized));
+    if (!await journal.exists()) {
+      return PendingCaptureJournalResolution.unavailable;
+    }
+    Map<String, dynamic> decoded;
+    try {
+      final value = jsonDecode(await journal.readAsString());
+      if (value is! Map<String, dynamic>) {
+        if (!isGeneric) return PendingCaptureJournalResolution.unavailable;
+        decoded = <String, dynamic>{};
+      } else {
+        decoded = value;
+      }
+    } on Object {
+      if (!isGeneric) return PendingCaptureJournalResolution.unavailable;
+      decoded = <String, dynamic>{};
+    }
+    final expectedGenericLocalFileName = isGeneric
+        ? _genericCaptureLocalFileName(fileName)
+        : null;
+    var localFileName = decoded['localFileName'];
+    if (isGeneric) {
+      if (expectedGenericLocalFileName == null) {
+        return PendingCaptureJournalResolution.unavailable;
+      }
+      // The immutable journal filename is authoritative. A malformed
+      // payload may point at another source; repair it against the source
+      // named by the journal instead of re-homing that source.
+      localFileName = expectedGenericLocalFileName;
+    }
+    if (localFileName is! String) {
+      return PendingCaptureJournalResolution.unavailable;
+    }
+    try {
+      await validateEvidencePath(
+        directory,
+        localFileName,
+        message: 'Unsafe pending capture source path.',
+      );
+    } on FormatException {
+      return PendingCaptureJournalResolution.unavailable;
+    }
+    final source = File(path.join(directory.path, localFileName));
+    final temporary = File(path.join(directory.path, '$localFileName.tmp'));
+    final sourceForRepair = await source.exists()
+        ? source
+        : isGeneric && await temporary.exists()
+        ? temporary
+        : null;
+    if (sourceForRepair == null) {
+      return PendingCaptureJournalResolution.unavailable;
+    }
+    final byteLength = await sourceForRepair.length();
+    final sourceFingerprint = await sha256FileRange(sourceForRepair);
+    final originalName = decoded['originalName'] is String
+        ? decoded['originalName'] as String
+        : decoded['evidenceOriginalName'] is String
+        ? decoded['evidenceOriginalName'] as String
+        : localFileName;
+    final mediaType = decoded['mediaType'] is String
+        ? decoded['mediaType'] as String
+        : decoded['evidenceMediaType'] is String
+        ? decoded['evidenceMediaType'] as String
+        : 'application/octet-stream';
+    final genericManifest = await _preCaptureManifestFor(localFileName);
+    await genericManifest.writeAsString(
+      jsonEncode({
+        'localFileName': localFileName,
+        'originalName': originalName,
+        'mediaType': mediaType,
+        ...?captureKind == null ? null : {'captureKind': captureKind},
+        if (isStatement) 'captureKind': 'statement',
+        if (isReceipt) 'captureKind': 'receipt',
+        _receiptCaptureStateKey: _pendingCaptureReady,
+        'byteLength': byteLength,
+        'sourceFingerprint': sourceFingerprint,
+      }),
+      flush: true,
+    );
+    // A malformed generic journal is itself the generic manifest path. Keep
+    // the repaired ready-state record so the source remains listable and
+    // recoverable after restart; typed journals are retired once converted.
+    if (journal.path != genericManifest.path && await journal.exists()) {
+      await journal.delete();
+    }
+    if (sourceForRepair.path == temporary.path && await temporary.exists()) {
+      await temporary.rename(source.path);
+    }
+    return PendingCaptureJournalResolution.repaired;
+  }
+
+  Future<PendingCaptureJournalResolution> dismissPendingCaptureJournalIssue(
+    String fileName, {
+    String? captureKind,
   }) {
     return _runFinancialEvidenceMutation(() async {
       if (path.basename(fileName) != fileName || !fileName.endsWith('.json')) {
         return PendingCaptureJournalResolution.unavailable;
       }
-      final isStatement = fileName.startsWith('statement-');
-      final isReceipt = fileName.startsWith('receipt-');
-      final isGeneric = fileName.startsWith('capture-');
-      if (!isStatement && !isReceipt && !isGeneric) {
-        return PendingCaptureJournalResolution.unavailable;
-      }
       final directory = await _pendingEvidenceDirectory();
       final normalized = await validateEvidencePath(
         directory,
@@ -2106,96 +2267,14 @@ final class LocalEvidenceStore {
       if (!await journal.exists()) {
         return PendingCaptureJournalResolution.unavailable;
       }
-      Map<String, dynamic> decoded;
-      try {
-        final value = jsonDecode(await journal.readAsString());
-        if (value is! Map<String, dynamic>) {
-          if (!isGeneric) return PendingCaptureJournalResolution.unavailable;
-          decoded = <String, dynamic>{};
-        } else {
-          decoded = value;
+      if (fileName.startsWith('capture-')) {
+        final repaired = await _resolvePendingCaptureJournalIssueUnlocked(
+          fileName,
+          captureKind: captureKind,
+        );
+        if (repaired == PendingCaptureJournalResolution.repaired) {
+          return PendingCaptureJournalResolution.dismissed;
         }
-      } on Object {
-        if (!isGeneric) return PendingCaptureJournalResolution.unavailable;
-        decoded = <String, dynamic>{};
-      }
-      var localFileName = decoded['localFileName'];
-      if (localFileName is! String && isGeneric) {
-        final derived = fileName.substring(
-          'capture-'.length,
-          fileName.length - '.json'.length,
-        );
-        if (derived.isNotEmpty) localFileName = derived;
-      }
-      if (localFileName is! String) {
-        return PendingCaptureJournalResolution.unavailable;
-      }
-      try {
-        await validateEvidencePath(
-          directory,
-          localFileName,
-          message: 'Unsafe pending capture source path.',
-        );
-      } on FormatException {
-        return PendingCaptureJournalResolution.unavailable;
-      }
-      final source = File(path.join(directory.path, localFileName));
-      if (!await source.exists()) {
-        return PendingCaptureJournalResolution.unavailable;
-      }
-      final byteLength = await source.length();
-      final sourceFingerprint = await sha256FileRange(source);
-      final originalName = decoded['originalName'] is String
-          ? decoded['originalName'] as String
-          : decoded['evidenceOriginalName'] is String
-          ? decoded['evidenceOriginalName'] as String
-          : localFileName;
-      final mediaType = decoded['mediaType'] is String
-          ? decoded['mediaType'] as String
-          : decoded['evidenceMediaType'] is String
-          ? decoded['evidenceMediaType'] as String
-          : 'application/octet-stream';
-      final genericManifest = await _preCaptureManifestFor(localFileName);
-      await genericManifest.writeAsString(
-        jsonEncode({
-          'localFileName': localFileName,
-          'originalName': originalName,
-          'mediaType': mediaType,
-          ...?captureKind == null ? null : {'captureKind': captureKind},
-          if (isStatement) 'captureKind': 'statement',
-          if (isReceipt) 'captureKind': 'receipt',
-          _receiptCaptureStateKey: _pendingCaptureReady,
-          'byteLength': byteLength,
-          'sourceFingerprint': sourceFingerprint,
-        }),
-        flush: true,
-      );
-      // A malformed generic journal is itself the generic manifest path. Keep
-      // the repaired ready-state record so the source remains listable and
-      // recoverable after restart; typed journals are retired once converted.
-      if (journal.path != genericManifest.path && await journal.exists()) {
-        await journal.delete();
-      }
-      return PendingCaptureJournalResolution.repaired;
-    });
-  }
-
-  Future<PendingCaptureJournalResolution> dismissPendingCaptureJournalIssue(
-    String fileName,
-  ) {
-    return _runFinancialEvidenceMutation(() async {
-      if (path.basename(fileName) != fileName || !fileName.endsWith('.json')) {
-        return PendingCaptureJournalResolution.unavailable;
-      }
-      final directory = await _pendingEvidenceDirectory();
-      final normalized = await validateEvidencePath(
-        directory,
-        fileName,
-        message: 'Unsafe pending capture manifest path.',
-      );
-      final journal = File(path.join(directory.path, normalized));
-      if (!await journal.exists()) {
-        return PendingCaptureJournalResolution.unavailable;
       }
       await journal.delete();
       return PendingCaptureJournalResolution.dismissed;

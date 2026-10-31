@@ -339,7 +339,10 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     if (confirmed != true || !mounted) return;
     try {
       final resolution = await services<LocalEvidenceStore>()
-          .dismissPendingCaptureJournalIssue(fileName);
+          .dismissPendingCaptureJournalIssue(
+            fileName,
+            captureKind: 'statement',
+          );
       if (!mounted) return;
       _message(
         context.l10n.text(switch (resolution) {

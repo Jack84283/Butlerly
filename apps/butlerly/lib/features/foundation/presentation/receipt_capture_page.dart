@@ -639,6 +639,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     try {
       final resolution = await evidenceStore.dismissPendingCaptureJournalIssue(
         fileName,
+        captureKind: 'receipt',
       );
       if (!mounted) return;
       _showSaveMessage(switch (resolution) {
