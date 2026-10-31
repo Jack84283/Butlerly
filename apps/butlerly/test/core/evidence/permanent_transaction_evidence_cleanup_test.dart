@@ -152,6 +152,41 @@ void main() {
     },
   );
 
+  test('incomplete generic capture is never offered for import', () async {
+    final pending = Directory('${evidenceDirectory.path}.pending');
+    await pending.create(recursive: true);
+    const localFileName = 'interrupted-source.pdf';
+    await File(
+      path.join(pending.path, localFileName),
+    ).writeAsBytes([1], flush: true);
+    final journal = File(
+      path.join(pending.path, 'capture-$localFileName.json'),
+    );
+    await journal.writeAsString(
+      jsonEncode({
+        'localFileName': localFileName,
+        'originalName': localFileName,
+        'mediaType': 'application/pdf',
+        'captureKind': 'statement',
+        'captureState': 'copying',
+      }),
+      flush: true,
+    );
+
+    final store = services<LocalEvidenceStore>();
+    expect(
+      await store.listPendingGenericCaptures(captureKind: 'statement'),
+      isEmpty,
+    );
+    final issues = await store.listPendingCaptureJournalIssues();
+    expect(
+      issues.map((issue) => issue.fileName),
+      contains(path.basename(journal.path)),
+    );
+    expect(issues.single.messageKey, 'captureRecoverySourceUnavailable');
+    expect(await File(path.join(pending.path, localFileName)).exists(), isTrue);
+  });
+
   test(
     'malformed unrelated capture journal blocks cleanup explicitly',
     () async {
@@ -222,6 +257,26 @@ void main() {
         containsAll(['receipt-partial.json', 'receipt-unrelated.json']),
       );
       expect(issues.every((issue) => issue.messageKey.isNotEmpty), isTrue);
+      expect(
+        await store.resolvePendingCaptureJournalIssue('receipt-partial.json'),
+        PendingCaptureJournalResolution.repaired,
+      );
+      expect(await malformedWithSource.exists(), isFalse);
+      expect(
+        (await store.listPendingGenericCaptures(
+          captureKind: 'receipt',
+        )).map((capture) => capture.source.localFileName),
+        contains(preserved.localFileName),
+      );
+      expect(
+        await store.resolvePendingCaptureJournalIssue('receipt-unrelated.json'),
+        PendingCaptureJournalResolution.dismissed,
+      );
+      expect(await malformed.exists(), isFalse);
+      expect(
+        await File(path.join(pending.path, unrelated.localFileName)).exists(),
+        isTrue,
+      );
     },
   );
 
@@ -1141,6 +1196,64 @@ void main() {
         await File(path.join(pending.path, planned.localFileName!)).exists(),
         isTrue,
       );
+    },
+  );
+
+  test(
+    'cancelled statement journal reconciles an existing statement on restart',
+    () async {
+      final now = DateTime.utc(2026, 8, 9, 21);
+      final store = services<LocalEvidenceStore>();
+      const source = PreservedEvidenceSource(
+        originalName: 'statement-cancelled-source.pdf',
+        localFileName: 'statement-cancelled-source.pdf',
+        mediaType: 'application/pdf',
+      );
+      final pending = Directory('${evidenceDirectory.path}.pending');
+      await pending.create(recursive: true);
+      await File(
+        path.join(pending.path, source.localFileName),
+      ).writeAsBytes([4, 2, 4], flush: true);
+      final planned = await store.preparePendingStatementCapture(
+        statementId: 'statement-cancelled-restart',
+        source: source,
+        originalFilename: source.originalName,
+        createdAt: now,
+      );
+      final manifest = File(
+        path.join(pending.path, 'statement-statement-cancelled-restart.json'),
+      );
+      final decoded =
+          jsonDecode(await manifest.readAsString()) as Map<String, dynamic>;
+      decoded['captureState'] = 'cancelled';
+      await manifest.writeAsString(jsonEncode(decoded), flush: true);
+      await SqliteEvidenceRepository(
+        database.persistenceDatabase,
+      ).save(planned);
+      await SqliteStatementRepository(
+        database.persistenceDatabase,
+      ).saveStatement(
+        FinancialStatement(
+          id: 'statement-cancelled-restart',
+          evidenceId: planned.id.value,
+          status: StatementStatus.needsSource,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      expect(await store.recoverPendingStatementCaptures(), 0);
+      expect(
+        (await store.finance.statementServices!.list(includeArchived: true)
+                as ApplicationSuccess<List<FinancialStatement>>)
+            .value
+            .map((item) => item.id),
+        contains('statement-cancelled-restart'),
+      );
+      final live = await store.fileFor(planned);
+      expect(live, isNotNull);
+      expect(await live!.exists(), isTrue);
+      expect(await manifest.exists(), isFalse);
     },
   );
 

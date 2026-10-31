@@ -1102,6 +1102,13 @@ class AppLocalizations {
           'A recovery record could not be read. Its source was kept safely; retry recovery.',
       'captureRecoverySourceUnavailable':
           'A recovery record source is unavailable. The record was kept safely for recovery.',
+      'captureRecoveryRepair': 'Resolve recovery record',
+      'captureRecoveryRepaired':
+          'The source was preserved as a retryable capture.',
+      'captureRecoveryDismissed':
+          'The recovery record was dismissed; uncertain files were kept safely.',
+      'captureRecoveryRepairUnavailable':
+          'The recovery record could not be repaired. Its files were kept safely.',
       'captureReceipt': 'Capture receipt',
       'addReceipt': 'Add a receipt',
       'takePhoto': 'Take photo',
@@ -2088,6 +2095,10 @@ class AppLocalizations {
       'receiptRecoveryWarning': '部分收据恢复记录需要处理，来源文件已保留。',
       'captureRecoveryJournalIssue': '恢复记录无法读取。来源已安全保留，请重试恢复。',
       'captureRecoverySourceUnavailable': '恢复记录的来源不可用。记录已安全保留以便恢复。',
+      'captureRecoveryRepair': '处理恢复记录',
+      'captureRecoveryRepaired': '来源已保留为可重试的捕获记录。',
+      'captureRecoveryDismissed': '已关闭恢复记录；不确定的文件已安全保留。',
+      'captureRecoveryRepairUnavailable': '恢复记录无法修复，其文件已安全保留。',
       'captureReceipt': '拍摄收据',
       'addReceipt': '添加收据',
       'takePhoto': '拍照',
@@ -3239,6 +3250,13 @@ class AppLocalizations {
           'No se pudo leer un registro de recuperación. El origen se conservó de forma segura; reintenta la recuperación.',
       'captureRecoverySourceUnavailable':
           'El origen de un registro de recuperación no está disponible. El registro se conservó de forma segura para recuperarlo.',
+      'captureRecoveryRepair': 'Resolver registro de recuperación',
+      'captureRecoveryRepaired':
+          'El origen se conservó como una captura que se puede reintentar.',
+      'captureRecoveryDismissed':
+          'Se descartó el registro de recuperación; los archivos inciertos se conservaron de forma segura.',
+      'captureRecoveryRepairUnavailable':
+          'No se pudo reparar el registro de recuperación. Sus archivos se conservaron de forma segura.',
       'captureReceipt': 'Capturar recibo',
       'addReceipt': 'Añadir un recibo',
       'takePhoto': 'Tomar foto',

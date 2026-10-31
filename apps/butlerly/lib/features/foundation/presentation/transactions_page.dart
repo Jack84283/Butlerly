@@ -1667,7 +1667,8 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
           .split(',')
           .where((value) => value.isNotEmpty)
           .toList(growable: false);
-      ScaffoldMessenger.of(context).showSnackBar(
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.showSnackBar(
         SnackBar(
           content: Text(
             context.l10n.text('transactionDeletedEvidenceCleanupPending'),
@@ -1677,7 +1678,10 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               : SnackBarAction(
                   label: context.l10n.text('retry'),
                   onPressed: () => unawaited(
-                    _retryEvidenceCleanupAfterTransaction(pendingIds),
+                    _retryEvidenceCleanupAfterTransaction(
+                      pendingIds,
+                      messenger,
+                    ),
                   ),
                 ),
         ),
@@ -1696,6 +1700,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
 
   Future<void> _retryEvidenceCleanupAfterTransaction(
     List<String> evidenceIds,
+    ScaffoldMessengerState messenger,
   ) async {
     final store = services<LocalEvidenceStore>();
     var allCleaned = true;
@@ -1703,11 +1708,11 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       final cleaned = await store.retryEvidenceCleanup(evidenceId);
       allCleaned = allCleaned && cleaned;
     }
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
+    if (!messenger.mounted) return;
+    messenger.showSnackBar(
       SnackBar(
         content: Text(
-          context.l10n.text(
+          AppLocalizations.of(messenger.context).text(
             allCleaned
                 ? 'evidenceCleanupCompleted'
                 : 'transactionDeletedEvidenceCleanupPending',
@@ -1716,9 +1721,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
         action: allCleaned
             ? null
             : SnackBarAction(
-                label: context.l10n.text('retry'),
+                label: AppLocalizations.of(messenger.context).text('retry'),
                 onPressed: () => unawaited(
-                  _retryEvidenceCleanupAfterTransaction(evidenceIds),
+                  _retryEvidenceCleanupAfterTransaction(evidenceIds, messenger),
                 ),
               ),
       ),

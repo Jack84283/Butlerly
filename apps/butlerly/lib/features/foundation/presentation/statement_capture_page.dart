@@ -267,6 +267,28 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     }
   }
 
+  Future<void> _repairPendingRecoveryIssue(String fileName) async {
+    try {
+      final resolution = await services<LocalEvidenceStore>()
+          .resolvePendingCaptureJournalIssue(fileName);
+      if (!mounted) return;
+      _message(
+        context.l10n.text(switch (resolution) {
+          PendingCaptureJournalResolution.repaired => 'captureRecoveryRepaired',
+          PendingCaptureJournalResolution.dismissed =>
+            'captureRecoveryDismissed',
+          PendingCaptureJournalResolution.unavailable =>
+            'captureRecoveryRepairUnavailable',
+        }),
+      );
+      await _loadPendingGenericRecovery();
+    } catch (_) {
+      if (mounted) {
+        _message(context.l10n.text('captureRecoveryRepairUnavailable'));
+      }
+    }
+  }
+
   Future<void> _captureImage(ImageSource source) async {
     if (_busy) return;
     setState(() => _busy = true);
@@ -1002,9 +1024,22 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
                       padding: const EdgeInsets.only(
                         top: ButlerlySpacing.compact,
                       ),
-                      child: Text(
-                        '${issue.fileName}: ${context.l10n.text(issue.messageKey)}',
-                        style: Theme.of(context).textTheme.bodySmall,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${issue.fileName}: ${context.l10n.text(issue.messageKey)}',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          if (issue.fileName.endsWith('.json'))
+                            TextButton(
+                              onPressed: () =>
+                                  _repairPendingRecoveryIssue(issue.fileName),
+                              child: Text(
+                                context.l10n.text('captureRecoveryRepair'),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   const SizedBox(height: ButlerlySpacing.compact),

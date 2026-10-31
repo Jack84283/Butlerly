@@ -65,7 +65,11 @@ final class PendingCaptureJournalIssue {
   final String messageKey;
 }
 
+enum PendingCaptureJournalResolution { repaired, dismissed, unavailable }
+
 const _receiptCaptureStateKey = 'captureState';
+const _pendingCaptureCopying = 'copying';
+const _pendingCaptureReady = 'ready';
 const _receiptCapturePrepared = 'prepared';
 const _receiptCaptureAwaitingTransaction = 'awaitingTransaction';
 const _receiptCaptureTransactionCommitted = 'transactionCommitted';
@@ -123,21 +127,38 @@ final class LocalEvidenceStore {
       captureKind: captureKind,
     );
     final destination = File(path.join(directory.path, localFileName));
+    final temporary = File(path.join(directory.path, '$localFileName.tmp'));
+    await validateEvidencePath(
+      directory,
+      '$localFileName.tmp',
+      message: 'Unsafe pending evidence path.',
+    );
 
     // Exclusive creation turns the immutable-path rule into a filesystem
     // invariant as well as a naming convention. It must never truncate an
     // existing pending or published evidence binary.
-    await destination.create(exclusive: true);
+    await temporary.create(exclusive: true);
     try {
       final bytes = await source.readAsBytes();
-      await destination.writeAsBytes(bytes, flush: true);
+      await temporary.writeAsBytes(bytes, flush: true);
+      final fingerprint = sha256Bytes(bytes);
+      await _markPreCaptureManifestReady(
+        localFileName: localFileName,
+        byteLength: bytes.length,
+        sourceFingerprint: fingerprint,
+      );
+      // The manifest is ready before this atomic rename. If the process stops
+      // between those operations, recovery can verify and finish this rename;
+      // it can never import a partially written destination file.
+      await temporary.rename(destination.path);
       return PreservedEvidenceSource(
         originalName: source.name,
         localFileName: localFileName,
         mediaType: source.mimeType ?? _mediaType(extension),
-        sourceFingerprint: sha256Bytes(bytes),
+        sourceFingerprint: fingerprint,
       );
     } catch (_) {
+      if (await temporary.exists()) await temporary.delete();
       if (await destination.exists()) await destination.delete();
       await _removePreCaptureManifest(localFileName);
       rethrow;
@@ -150,6 +171,8 @@ final class LocalEvidenceStore {
   Future<void> _discardPreservedUnlocked(PreservedEvidenceSource source) async {
     final file = await _pendingFileFor(source);
     if (file != null && await file.exists()) await file.delete();
+    final temporary = await _pendingFileForName('${source.localFileName}.tmp');
+    if (temporary != null && await temporary.exists()) await temporary.delete();
     await _removePreCaptureManifest(source.localFileName);
   }
 
@@ -519,11 +542,15 @@ final class LocalEvidenceStore {
   }
 
   Future<File?> _pendingFileFor(PreservedEvidenceSource source) async {
+    return _pendingFileForName(source.localFileName);
+  }
+
+  Future<File?> _pendingFileForName(String localFileName) async {
     final directory = await _pendingEvidenceDirectory();
     try {
       final normalized = await validateEvidencePath(
         directory,
-        source.localFileName,
+        localFileName,
         message: 'Unsafe pending evidence path.',
       );
       return File(path.join(directory.path, normalized));
@@ -560,10 +587,27 @@ final class LocalEvidenceStore {
         'localFileName': localFileName,
         'originalName': originalName,
         'mediaType': mediaType,
+        _receiptCaptureStateKey: _pendingCaptureCopying,
         ...?captureKind == null ? null : {'captureKind': captureKind},
       }),
       flush: true,
     );
+  }
+
+  Future<void> _markPreCaptureManifestReady({
+    required String localFileName,
+    required int byteLength,
+    required String sourceFingerprint,
+  }) async {
+    final manifest = await _preCaptureManifestFor(localFileName);
+    final decoded = jsonDecode(await manifest.readAsString());
+    if (decoded is! Map<String, dynamic>) {
+      throw const FormatException('Invalid pending capture manifest.');
+    }
+    decoded[_receiptCaptureStateKey] = _pendingCaptureReady;
+    decoded['byteLength'] = byteLength;
+    decoded['sourceFingerprint'] = sourceFingerprint;
+    await manifest.writeAsString(jsonEncode(decoded), flush: true);
   }
 
   Future<void> _removePreCaptureManifest(String localFileName) async {
@@ -1679,22 +1723,20 @@ final class LocalEvidenceStore {
             continue;
           }
           if (captureKind != null && kind != captureKind) continue;
-          await validateEvidencePath(
+          final pendingFile = await _validatedReadyPendingCaptureFile(
             directory,
-            localFileName,
-            message: 'Unsafe pending capture source path.',
+            decoded,
           );
-          final pendingFile = File(path.join(directory.path, localFileName));
-          if (!await pendingFile.exists()) {
-            throw StateError('Pending capture source is unavailable.');
-          }
+          final sourceFingerprint =
+              decoded['sourceFingerprint'] as String? ??
+              await sha256FileRange(pendingFile);
           captures.add(
             PendingGenericCapture(
               source: PreservedEvidenceSource(
                 originalName: originalName,
                 localFileName: localFileName,
                 mediaType: mediaType,
-                sourceFingerprint: await sha256FileRange(pendingFile),
+                sourceFingerprint: sourceFingerprint,
               ),
               captureKind: kind as String?,
             ),
@@ -1707,6 +1749,54 @@ final class LocalEvidenceStore {
       return captures;
     });
     return result;
+  }
+
+  Future<File> _validatedReadyPendingCaptureFile(
+    Directory directory,
+    Map<String, dynamic> decoded,
+  ) async {
+    final localFileName = decoded['localFileName'];
+    if (localFileName is! String) {
+      throw const FormatException('Pending capture source is invalid.');
+    }
+    await validateEvidencePath(
+      directory,
+      localFileName,
+      message: 'Unsafe pending capture source path.',
+    );
+    final state = decoded[_receiptCaptureStateKey];
+    if (state != null && state != _pendingCaptureReady) {
+      throw StateError('Pending capture source is incomplete.');
+    }
+    final expectedLength = decoded['byteLength'];
+    final expectedFingerprint = decoded['sourceFingerprint'];
+    if (state == _pendingCaptureReady &&
+        (expectedLength is! int ||
+            expectedLength < 0 ||
+            expectedFingerprint is! String ||
+            expectedFingerprint.isEmpty)) {
+      throw const FormatException('Pending capture readiness is invalid.');
+    }
+    final pending = File(path.join(directory.path, localFileName));
+    if (!await pending.exists() && state == _pendingCaptureReady) {
+      final temporary = await _pendingFileForName('$localFileName.tmp');
+      if (temporary != null && await temporary.exists()) {
+        if (await temporary.length() != expectedLength ||
+            await sha256FileRange(temporary) != expectedFingerprint) {
+          throw StateError('Pending capture source is incomplete.');
+        }
+        await temporary.rename(pending.path);
+      }
+    }
+    if (!await pending.exists()) {
+      throw StateError('Pending capture source is unavailable.');
+    }
+    if (state == _pendingCaptureReady &&
+        (await pending.length() != expectedLength ||
+            await sha256FileRange(pending) != expectedFingerprint)) {
+      throw StateError('Pending capture source does not match its journal.');
+    }
+    return pending;
   }
 
   Future<bool> hasUnresolvedPendingCaptureJournals() async {
@@ -1752,16 +1842,7 @@ final class LocalEvidenceStore {
                 'Generic capture fields are invalid.',
               );
             }
-            await validateEvidencePath(
-              directory,
-              localFileName,
-              message: 'Unsafe pending capture source path.',
-            );
-            if (!await File(
-              path.join(directory.path, localFileName),
-            ).exists()) {
-              throw StateError('Pending capture source is missing.');
-            }
+            await _validatedReadyPendingCaptureFile(directory, decoded);
           } else if (fileName.startsWith('receipt-')) {
             _validatePendingReceiptManifest(decoded);
             final localFileName = decoded['localFileName'] as String;
@@ -1810,6 +1891,95 @@ final class LocalEvidenceStore {
       return 'captureRecoverySourceUnavailable';
     }
     return 'captureRecoveryJournalIssue';
+  }
+
+  /// Repairs a malformed typed journal into a generic, source-verified
+  /// recovery record. When no source identity can be recovered, an explicit
+  /// user dismissal removes only the journal and leaves every binary intact.
+  Future<PendingCaptureJournalResolution> resolvePendingCaptureJournalIssue(
+    String fileName,
+  ) {
+    return _runFinancialEvidenceMutation(() async {
+      if (path.basename(fileName) != fileName || !fileName.endsWith('.json')) {
+        return PendingCaptureJournalResolution.unavailable;
+      }
+      final isStatement = fileName.startsWith('statement-');
+      final isReceipt = fileName.startsWith('receipt-');
+      final isGeneric = fileName.startsWith('capture-');
+      if (!isStatement && !isReceipt && !isGeneric) {
+        return PendingCaptureJournalResolution.unavailable;
+      }
+      final directory = await _pendingEvidenceDirectory();
+      final normalized = await validateEvidencePath(
+        directory,
+        fileName,
+        message: 'Unsafe pending capture manifest path.',
+      );
+      final journal = File(path.join(directory.path, normalized));
+      if (!await journal.exists()) {
+        return PendingCaptureJournalResolution.unavailable;
+      }
+      Map<String, dynamic> decoded;
+      try {
+        final value = jsonDecode(await journal.readAsString());
+        if (value is! Map<String, dynamic>) {
+          await journal.delete();
+          return PendingCaptureJournalResolution.dismissed;
+        }
+        decoded = value;
+      } on Object {
+        await journal.delete();
+        return PendingCaptureJournalResolution.dismissed;
+      }
+      final localFileName = decoded['localFileName'];
+      if (localFileName is! String) {
+        await journal.delete();
+        return PendingCaptureJournalResolution.dismissed;
+      }
+      try {
+        await validateEvidencePath(
+          directory,
+          localFileName,
+          message: 'Unsafe pending capture source path.',
+        );
+      } on FormatException {
+        await journal.delete();
+        return PendingCaptureJournalResolution.dismissed;
+      }
+      final source = File(path.join(directory.path, localFileName));
+      if (!await source.exists()) {
+        await journal.delete();
+        return PendingCaptureJournalResolution.dismissed;
+      }
+      final byteLength = await source.length();
+      final sourceFingerprint = await sha256FileRange(source);
+      final originalName = decoded['originalName'] is String
+          ? decoded['originalName'] as String
+          : decoded['evidenceOriginalName'] is String
+          ? decoded['evidenceOriginalName'] as String
+          : localFileName;
+      final mediaType = decoded['mediaType'] is String
+          ? decoded['mediaType'] as String
+          : decoded['evidenceMediaType'] is String
+          ? decoded['evidenceMediaType'] as String
+          : 'application/octet-stream';
+      final genericManifest = await _preCaptureManifestFor(localFileName);
+      await genericManifest.writeAsString(
+        jsonEncode({
+          'localFileName': localFileName,
+          'originalName': originalName,
+          'mediaType': mediaType,
+          if (isStatement) 'captureKind': 'statement',
+          if (isReceipt) 'captureKind': 'receipt',
+          _receiptCaptureStateKey: _pendingCaptureReady,
+          'byteLength': byteLength,
+          'sourceFingerprint': sourceFingerprint,
+        }),
+        flush: true,
+      );
+      await journal.delete();
+      return PendingCaptureJournalResolution.repaired;
+    });
   }
 
   Future<bool> discardPendingGenericCapture(PreservedEvidenceSource source) =>
@@ -1943,20 +2113,19 @@ final class LocalEvidenceStore {
             mediaType: decoded['evidenceMediaType'] as String,
           );
           final captureState = decoded[_receiptCaptureStateKey] as String?;
-          if (captureState == _receiptCaptureCancelled ||
-              captureState == _receiptCaptureCompleted) {
-            await _discardPendingStatementJournal(
-              manifest,
-              manifestSource.localFileName,
-            );
-            continue;
-          }
           final existingStatement = existing
               .where((item) => item.id == statementId)
               .firstOrNull;
           final existingEvidenceOwner = existing
               .where((item) => item.evidenceId == evidenceId)
               .firstOrNull;
+          if (captureState == _receiptCaptureCompleted) {
+            await _discardPendingStatementJournal(
+              manifest,
+              manifestSource.localFileName,
+            );
+            continue;
+          }
           if (existingStatement != null || existingEvidenceOwner != null) {
             if (existingStatement != null &&
                 existingStatement.evidenceId != evidenceId) {
@@ -1994,6 +2163,17 @@ final class LocalEvidenceStore {
             } else {
               throw StateError('Existing statement evidence is unavailable.');
             }
+            await _discardPendingStatementJournal(
+              manifest,
+              manifestSource.localFileName,
+            );
+            continue;
+          }
+          if (captureState == _receiptCaptureCancelled) {
+            // A cancelled marker is only authoritative once the source row is
+            // gone. If deletion or the prepared-state rollback failed, retain
+            // the source and journal rather than deleting evidence still owned
+            // by a live statement on restart.
             await _discardPendingStatementJournal(
               manifest,
               manifestSource.localFileName,

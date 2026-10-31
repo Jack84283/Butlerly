@@ -600,6 +600,24 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     }
   }
 
+  Future<void> _repairPendingRecoveryIssue(String fileName) async {
+    try {
+      final resolution = await evidenceStore.resolvePendingCaptureJournalIssue(
+        fileName,
+      );
+      if (!mounted) return;
+      _showSaveMessage(switch (resolution) {
+        PendingCaptureJournalResolution.repaired => 'captureRecoveryRepaired',
+        PendingCaptureJournalResolution.dismissed => 'captureRecoveryDismissed',
+        PendingCaptureJournalResolution.unavailable =>
+          'captureRecoveryRepairUnavailable',
+      });
+      await _loadPendingReceiptRecovery();
+    } catch (_) {
+      _showSaveMessage('captureRecoveryRepairUnavailable');
+    }
+  }
+
   Future<ReceiptOcrResult> _recognizeReceipt(String path) async {
     if (widget.ocr != null) return widget.ocr!(path);
     final recognizer =
@@ -1465,9 +1483,28 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                               padding: const EdgeInsets.only(
                                 top: ButlerlySpacing.compact,
                               ),
-                              child: Text(
-                                '${issue.fileName}: ${context.l10n.text(issue.messageKey)}',
-                                style: Theme.of(context).textTheme.bodySmall,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${issue.fileName}: ${context.l10n.text(issue.messageKey)}',
+                                    style: Theme.of(
+                                      context,
+                                    ).textTheme.bodySmall,
+                                  ),
+                                  if (issue.fileName.endsWith('.json'))
+                                    TextButton(
+                                      onPressed: () =>
+                                          _repairPendingRecoveryIssue(
+                                            issue.fileName,
+                                          ),
+                                      child: Text(
+                                        context.l10n.text(
+                                          'captureRecoveryRepair',
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
                           const SizedBox(height: ButlerlySpacing.compact),
