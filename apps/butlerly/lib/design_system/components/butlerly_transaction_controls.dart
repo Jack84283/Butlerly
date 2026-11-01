@@ -13,6 +13,10 @@ import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 
+const _minimumFullSearchControlsWidth = 240.0;
+const _minimumCompactSearchRowWidth =
+    ButlerlySize.minimumTarget * 2 + ButlerlySpacing.compact;
+
 class ButlerlyTransactionSearchControls extends StatelessWidget {
   const ButlerlyTransactionSearchControls({
     required this.controller,
@@ -36,39 +40,10 @@ class ButlerlyTransactionSearchControls extends StatelessWidget {
   final Key? searchFieldKey;
 
   @override
-  Widget build(BuildContext context) => Row(
-    key: controlsKey,
-    children: [
-      Expanded(
-        child: SearchBar(
-          key: searchFieldKey,
-          controller: controller,
-          constraints: const BoxConstraints(
-            minHeight: ButlerlySize.minimumTarget,
-            maxHeight: ButlerlySize.minimumTarget,
-          ),
-          hintText: context.l10n.text('searchHint'),
-          leading: const Icon(Icons.search_rounded),
-          trailing: [
-            IconButton(
-              key: const ValueKey('search-submit'),
-              tooltip: context.l10n.text('search'),
-              onPressed: onSearch,
-              icon: const Icon(Icons.search_rounded),
-            ),
-            if (controller.text.isNotEmpty)
-              IconButton(
-                tooltip: context.l10n.text('clear'),
-                onPressed: onClear,
-                icon: const Icon(Icons.close_rounded),
-              ),
-          ],
-          onChanged: onChanged,
-          onSubmitted: (_) => onSearch(),
-        ),
-      ),
-      const SizedBox(width: ButlerlySpacing.compact),
-      SizedBox.square(
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final filter = SizedBox.square(
+        key: const ValueKey('transaction-search-filter'),
         dimension: ButlerlySize.minimumTarget,
         child: IconButton(
           constraints: const BoxConstraints.tightFor(
@@ -83,9 +58,165 @@ class ButlerlyTransactionSearchControls extends StatelessWidget {
           onPressed: onFilter,
           icon: const Icon(Icons.tune_rounded),
         ),
-      ),
-    ],
+      );
+      // SearchBar reserves space for its leading icon and trailing actions in
+      // addition to the filter target. Keep a conservative breakpoint so it
+      // never receives a width that is too small for those internal targets.
+      if (constraints.maxWidth < _minimumCompactSearchRowWidth) {
+        final compactActionsLabel = activeFilterCount > 0
+            ? '${context.l10n.text('search')} / '
+                  '${context.l10n.text('filters')} ($activeFilterCount)'
+            : '${context.l10n.text('search')} / '
+                  '${context.l10n.text('filters')}';
+        final compactActions = SizedBox.square(
+          key: const ValueKey('compact-search-button'),
+          dimension: ButlerlySize.minimumTarget,
+          child: IconButton(
+            tooltip: compactActionsLabel,
+            onPressed: () => _showCompactActions(context),
+            icon: const Icon(Icons.manage_search_rounded),
+          ),
+        );
+        return Align(
+          key: controlsKey,
+          alignment: AlignmentDirectional.centerEnd,
+          child: compactActions,
+        );
+      }
+      if (constraints.maxWidth < _minimumFullSearchControlsWidth) {
+        final compactSearch = SizedBox.square(
+          key: const ValueKey('compact-search-button'),
+          dimension: ButlerlySize.minimumTarget,
+          child: IconButton(
+            tooltip: context.l10n.text('search'),
+            onPressed: () => _showCompactSearch(context),
+            icon: const Icon(Icons.search_rounded),
+          ),
+        );
+        return Align(
+          key: controlsKey,
+          alignment: AlignmentDirectional.centerEnd,
+          child: Wrap(
+            alignment: WrapAlignment.end,
+            spacing: ButlerlySpacing.compact,
+            runSpacing: ButlerlySpacing.compact,
+            children: [compactSearch, filter],
+          ),
+        );
+      }
+      return Row(
+        key: controlsKey,
+        children: [
+          Expanded(
+            child: SearchBar(
+              key: searchFieldKey,
+              controller: controller,
+              constraints: const BoxConstraints(
+                minHeight: ButlerlySize.minimumTarget,
+                maxHeight: ButlerlySize.minimumTarget,
+              ),
+              hintText: context.l10n.text('searchHint'),
+              leading: const Icon(Icons.search_rounded),
+              trailing: [
+                IconButton(
+                  key: const ValueKey('search-submit'),
+                  tooltip: context.l10n.text('search'),
+                  onPressed: onSearch,
+                  icon: const Icon(Icons.search_rounded),
+                ),
+                if (controller.text.isNotEmpty)
+                  IconButton(
+                    tooltip: context.l10n.text('clear'),
+                    onPressed: onClear,
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+              ],
+              onChanged: onChanged,
+              onSubmitted: (_) => onSearch(),
+            ),
+          ),
+          const SizedBox(width: ButlerlySpacing.compact),
+          filter,
+        ],
+      );
+    },
   );
+
+  Future<void> _showCompactSearch(BuildContext context) =>
+      showButlerlyBottomSheet<void>(
+        context: context,
+        builder: (sheetContext) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: ButlerlySpacing.compact),
+            child: TextField(
+              key: const ValueKey('compact-search-field'),
+              controller: controller,
+              autofocus: true,
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                hintText: context.l10n.text('searchHint'),
+                labelText: context.l10n.text('search'),
+              ),
+              onChanged: onChanged,
+              onSubmitted: (_) {
+                onSearch();
+                Navigator.of(sheetContext).pop();
+              },
+            ),
+          );
+        },
+      );
+
+  Future<void> _showCompactActions(BuildContext context) =>
+      showButlerlyBottomSheet<void>(
+        context: context,
+        builder: (sheetContext) => ButlerlySheet(
+          title: Text(sheetContext.l10n.text('search')),
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextField(
+                key: const ValueKey('compact-search-field'),
+                controller: controller,
+                autofocus: true,
+                textInputAction: TextInputAction.search,
+                decoration: InputDecoration(
+                  hintText: sheetContext.l10n.text('searchHint'),
+                  labelText: sheetContext.l10n.text('search'),
+                ),
+                onChanged: onChanged,
+                onSubmitted: (_) {
+                  onSearch();
+                  Navigator.of(sheetContext).pop();
+                },
+              ),
+              const SizedBox(height: ButlerlySpacing.compact),
+              OutlinedButton(
+                key: const ValueKey('compact-filter-action'),
+                onPressed: () {
+                  Navigator.of(sheetContext).pop();
+                  onFilter();
+                },
+                child: Text(
+                  activeFilterCount > 0
+                      ? '${sheetContext.l10n.text('filters')} '
+                            '($activeFilterCount)'
+                      : sheetContext.l10n.text('filters'),
+                ),
+              ),
+              const SizedBox(height: ButlerlySpacing.compact),
+              FilledButton(
+                key: const ValueKey('compact-search-submit'),
+                onPressed: () {
+                  onSearch();
+                  Navigator.of(sheetContext).pop();
+                },
+                child: Text(sheetContext.l10n.text('search')),
+              ),
+            ],
+          ),
+        ),
+      );
 }
 
 class ButlerlyTransactionFilterValue {

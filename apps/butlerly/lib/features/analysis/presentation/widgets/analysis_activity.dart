@@ -185,27 +185,31 @@ class AnalysisActivity extends StatelessWidget {
                                 ButlerlyRadius.small,
                               ),
                             ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(day.financialDate.substring(8)),
-                                if (day.transactionCount > 0)
-                                  Icon(
-                                    Icons.circle,
-                                    size: 5,
-                                    semanticLabel: context.l10n.text(
-                                      'activity',
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(day.financialDate.substring(8)),
+                                  if (day.transactionCount > 0)
+                                    Icon(
+                                      Icons.circle,
+                                      size: 5,
+                                      semanticLabel: context.l10n.text(
+                                        'activity',
+                                      ),
+                                      color: context.colors.interactive,
                                     ),
-                                    color: context.colors.interactive,
-                                  ),
-                                if (isToday)
-                                  Text(
-                                    context.l10n.text('today'),
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.labelSmall,
-                                  ),
-                              ],
+                                  if (isToday)
+                                    Text(
+                                      context.l10n.text('today'),
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.labelSmall,
+                                    ),
+                                ],
+                              ),
                             ),
                           ),
                         ),

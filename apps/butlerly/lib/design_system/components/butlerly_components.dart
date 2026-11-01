@@ -328,7 +328,11 @@ class ButlerlyCardHeader extends StatelessWidget {
     builder: (context, constraints) {
       final stacked =
           MediaQuery.textScalerOf(context).scale(14) > 20 ||
-          (!keepActionInlineAtCompactWidth && constraints.maxWidth < 280);
+          (!keepActionInlineAtCompactWidth && constraints.maxWidth < 280) ||
+          // Inactive branches can briefly receive a very narrow layout while
+          // an adaptive route is being rebuilt. Keep the action reachable
+          // without allowing the inline row to report a RenderFlex overflow.
+          constraints.maxWidth < 160;
       final titleBlock = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1573,15 +1577,32 @@ class ButlerlyTransactionListItem extends StatelessWidget {
     textHeightBehavior: ButlerlyTransactionItemTokens.textHeightBehavior,
   );
 
-  Widget _paymentSourceLine(BuildContext context, String label) => Row(
-    key: const ValueKey('transaction-row-payment-source'),
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      ButlerlyPaymentMarkIcon(mark: paymentSourceMark ?? 'other', size: 18),
-      const SizedBox(width: ButlerlySpacing.micro),
-      Flexible(child: _metadataLabel(context, label)),
-    ],
-  );
+  Widget _paymentSourceLine(BuildContext context, String label) =>
+      LayoutBuilder(
+        builder: (context, constraints) {
+          final icon = ButlerlyPaymentMarkIcon(
+            mark: paymentSourceMark ?? 'other',
+            size: 18,
+          );
+          if (constraints.hasBoundedWidth && constraints.maxWidth <= 18) {
+            return SizedBox(
+              key: const ValueKey('transaction-row-payment-source'),
+              width: 18,
+              height: 18,
+              child: icon,
+            );
+          }
+          return Row(
+            key: const ValueKey('transaction-row-payment-source'),
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              icon,
+              const SizedBox(width: ButlerlySpacing.micro),
+              Flexible(child: _metadataLabel(context, label)),
+            ],
+          );
+        },
+      );
 
   Widget _signedAmount(BuildContext context) => Text(
     amountIncludesCurrency

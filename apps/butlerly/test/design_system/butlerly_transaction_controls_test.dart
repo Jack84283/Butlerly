@@ -42,6 +42,258 @@ void main() {
     );
   }
 
+  Future<void> pumpAtWidth(
+    WidgetTester tester,
+    double width,
+    Widget childWidget,
+  ) async {
+    tester.view.physicalSize = Size(width, 220);
+    tester.view.devicePixelRatio = 1;
+    await pump(tester, childWidget);
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets(
+    'compact search controls stay accessible without overflow at narrow widths',
+    (tester) async {
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final controller = TextEditingController();
+
+      for (final width in [80.0, 88.0, 100.0, 140.0]) {
+        controller.clear();
+        await pumpAtWidth(
+          tester,
+          width,
+          ButlerlyTransactionSearchControls(
+            controller: controller,
+            activeFilterCount: 0,
+            onSearch: () {},
+            onChanged: (_) {},
+            onClear: controller.clear,
+            onFilter: () {},
+          ),
+        );
+
+        expect(
+          tester.takeException(),
+          isNull,
+          reason: 'narrow search controls overflow at $width px',
+        );
+        expect(find.byType(SearchBar), findsNothing);
+        expect(
+          find.byKey(const ValueKey('compact-search-button')),
+          findsOneWidget,
+        );
+        final searchRect = tester.getRect(
+          find.byKey(const ValueKey('compact-search-button')),
+        );
+        expect(searchRect.width, ButlerlySize.minimumTarget);
+        expect(searchRect.height, ButlerlySize.minimumTarget);
+        if (width < 96) {
+          expect(
+            find.byKey(const ValueKey('transaction-search-filter')),
+            findsNothing,
+          );
+        } else {
+          expect(
+            find.byKey(const ValueKey('transaction-search-filter')),
+            findsOneWidget,
+          );
+          final filterRect = tester.getRect(
+            find.byKey(const ValueKey('transaction-search-filter')),
+          );
+          expect(filterRect.width, ButlerlySize.minimumTarget);
+          expect(filterRect.top, closeTo(searchRect.top, 0.1));
+        }
+      }
+    },
+  );
+
+  testWidgets(
+    'ultra-compact search keeps search and filter actions in one target',
+    (tester) async {
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final controller = TextEditingController();
+      var filterRequests = 0;
+
+      await pumpAtWidth(
+        tester,
+        88,
+        ButlerlyTransactionSearchControls(
+          controller: controller,
+          activeFilterCount: 2,
+          onSearch: () {},
+          onChanged: (_) {},
+          onClear: controller.clear,
+          onFilter: () => filterRequests++,
+        ),
+      );
+
+      await tester.tap(find.byKey(const ValueKey('compact-search-button')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('compact-search-field')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('compact-filter-action')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+
+      final compactFilterAction = find.byKey(
+        const ValueKey('compact-filter-action'),
+      );
+      await tester.ensureVisible(compactFilterAction);
+      await tester.drag(
+        find.byType(SingleChildScrollView).last,
+        const Offset(0, -40),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(compactFilterAction);
+      await tester.pumpAndSettle();
+      expect(filterRequests, 1);
+      expect(find.byKey(const ValueKey('compact-search-field')), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'pinned search header keeps ultra-narrow controls inside its fixed extent',
+    (tester) async {
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final controller = TextEditingController();
+
+      for (final width in [80.0, 88.0]) {
+        controller.clear();
+        await pumpAtWidth(
+          tester,
+          width,
+          ButlerlyPage(
+            title: 'Transactions',
+            pinnedSpacing: ButlerlyPinnedPageSpacing.tightHeader,
+            pinnedHeaderExtent: ButlerlySize.searchPinnedHeaderHeight,
+            pinnedHeader: ButlerlyTransactionSearchControls(
+              controller: controller,
+              activeFilterCount: 0,
+              onSearch: () {},
+              onChanged: (_) {},
+              onClear: controller.clear,
+              onFilter: () {},
+            ),
+            children: const [SizedBox(height: ButlerlySize.minimumTarget)],
+          ),
+        );
+
+        expect(
+          tester.takeException(),
+          isNull,
+          reason: 'pinned search header overflowed at $width px',
+        );
+        final controlsRect = tester.getRect(
+          find.byKey(const ValueKey('search-pinned-controls')),
+        );
+        expect(
+          controlsRect.height,
+          closeTo(ButlerlySize.searchPinnedHeaderHeight, 0.1),
+        );
+        expect(
+          find.byKey(const ValueKey('compact-search-button')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('transaction-search-filter')),
+          findsNothing,
+        );
+      }
+    },
+  );
+
+  testWidgets('compact search opens an accessible text-entry surface', (
+    tester,
+  ) async {
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final controller = TextEditingController();
+    var changed = '';
+    var searches = 0;
+
+    await pumpAtWidth(
+      tester,
+      140,
+      ButlerlyTransactionSearchControls(
+        controller: controller,
+        activeFilterCount: 0,
+        onSearch: () => searches++,
+        onChanged: (value) => changed = value,
+        onClear: controller.clear,
+        onFilter: () {},
+      ),
+    );
+    await tester.tap(find.byKey(const ValueKey('compact-search-button')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('compact-search-field')), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('compact-search-field')),
+      'coffee',
+    );
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+
+    expect(changed, 'coffee');
+    expect(searches, 1);
+    expect(find.byKey(const ValueKey('compact-search-field')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('full SearchBar remains usable at mobile and desktop widths', (
+    tester,
+  ) async {
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final controller = TextEditingController();
+
+    for (final width in [390.0, 1200.0]) {
+      controller.clear();
+      var changed = '';
+      var searches = 0;
+      await pumpAtWidth(
+        tester,
+        width,
+        ButlerlyTransactionSearchControls(
+          controller: controller,
+          activeFilterCount: 1,
+          searchFieldKey: const ValueKey('normal-search-field'),
+          onSearch: () => searches++,
+          onChanged: (value) => changed = value,
+          onClear: controller.clear,
+          onFilter: () {},
+        ),
+      );
+
+      expect(find.byType(SearchBar), findsOneWidget);
+      expect(find.byKey(const ValueKey('compact-search-button')), findsNothing);
+      await tester.enterText(
+        find.byKey(const ValueKey('normal-search-field')),
+        'coffee',
+      );
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
+
+      expect(changed, 'coffee');
+      expect(searches, 1);
+      expect(
+        find.byKey(const ValueKey('transaction-search-filter')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    }
+  });
+
   testWidgets('category and subcategory share localized hierarchy filtering', (
     tester,
   ) async {
