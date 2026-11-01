@@ -85,24 +85,129 @@ void main() {
           find.byKey(const ValueKey('compact-search-button')),
           findsOneWidget,
         );
-        expect(
-          find.byKey(const ValueKey('transaction-search-filter')),
-          findsOneWidget,
-        );
-
         final searchRect = tester.getRect(
           find.byKey(const ValueKey('compact-search-button')),
         );
-        final filterRect = tester.getRect(
-          find.byKey(const ValueKey('transaction-search-filter')),
-        );
         expect(searchRect.width, ButlerlySize.minimumTarget);
-        expect(filterRect.width, ButlerlySize.minimumTarget);
-        if (width <= 88) {
-          expect(filterRect.top, greaterThan(searchRect.bottom));
+        expect(searchRect.height, ButlerlySize.minimumTarget);
+        if (width < 96) {
+          expect(
+            find.byKey(const ValueKey('transaction-search-filter')),
+            findsNothing,
+          );
         } else {
+          expect(
+            find.byKey(const ValueKey('transaction-search-filter')),
+            findsOneWidget,
+          );
+          final filterRect = tester.getRect(
+            find.byKey(const ValueKey('transaction-search-filter')),
+          );
+          expect(filterRect.width, ButlerlySize.minimumTarget);
           expect(filterRect.top, closeTo(searchRect.top, 0.1));
         }
+      }
+    },
+  );
+
+  testWidgets(
+    'ultra-compact search keeps search and filter actions in one target',
+    (tester) async {
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final controller = TextEditingController();
+      var filterRequests = 0;
+
+      await pumpAtWidth(
+        tester,
+        88,
+        ButlerlyTransactionSearchControls(
+          controller: controller,
+          activeFilterCount: 2,
+          onSearch: () {},
+          onChanged: (_) {},
+          onClear: controller.clear,
+          onFilter: () => filterRequests++,
+        ),
+      );
+
+      await tester.tap(find.byKey(const ValueKey('compact-search-button')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('compact-search-field')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('compact-filter-action')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+
+      final compactFilterAction = find.byKey(
+        const ValueKey('compact-filter-action'),
+      );
+      await tester.ensureVisible(compactFilterAction);
+      await tester.drag(
+        find.byType(SingleChildScrollView).last,
+        const Offset(0, -40),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(compactFilterAction);
+      await tester.pumpAndSettle();
+      expect(filterRequests, 1);
+      expect(find.byKey(const ValueKey('compact-search-field')), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'pinned search header keeps ultra-narrow controls inside its fixed extent',
+    (tester) async {
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final controller = TextEditingController();
+
+      for (final width in [80.0, 88.0]) {
+        controller.clear();
+        await pumpAtWidth(
+          tester,
+          width,
+          ButlerlyPage(
+            title: 'Transactions',
+            pinnedSpacing: ButlerlyPinnedPageSpacing.tightHeader,
+            pinnedHeaderExtent: ButlerlySize.searchPinnedHeaderHeight,
+            pinnedHeader: ButlerlyTransactionSearchControls(
+              controller: controller,
+              activeFilterCount: 0,
+              onSearch: () {},
+              onChanged: (_) {},
+              onClear: controller.clear,
+              onFilter: () {},
+            ),
+            children: const [SizedBox(height: ButlerlySize.minimumTarget)],
+          ),
+        );
+
+        expect(
+          tester.takeException(),
+          isNull,
+          reason: 'pinned search header overflowed at $width px',
+        );
+        final controlsRect = tester.getRect(
+          find.byKey(const ValueKey('search-pinned-controls')),
+        );
+        expect(
+          controlsRect.height,
+          closeTo(ButlerlySize.searchPinnedHeaderHeight, 0.1),
+        );
+        expect(
+          find.byKey(const ValueKey('compact-search-button')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('transaction-search-filter')),
+          findsNothing,
+        );
       }
     },
   );

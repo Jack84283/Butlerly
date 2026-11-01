@@ -1535,6 +1535,38 @@ void main() {
     },
   );
 
+  testWidgets(
+    'Transactions and Search pinned headers stay within 44px at ultra-narrow widths',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(88, 400);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+
+      for (final width in [80.0, 88.0]) {
+        tester.view.physicalSize = Size(width, 400);
+        for (final page in const <Widget>[TransactionsPage(), SearchPage()]) {
+          await tester.pumpWidget(MaterialApp(home: page));
+          await tester.pumpAndSettle();
+
+          expect(
+            tester.takeException(),
+            isNull,
+            reason: '${page.runtimeType} pinned header overflowed at $width px',
+          );
+          final controlsKey = page is TransactionsPage
+              ? const ValueKey('transactions-pinned-controls')
+              : const ValueKey('search-pinned-controls');
+          final controlsRect = tester.getRect(find.byKey(controlsKey));
+          expect(
+            controlsRect.height,
+            closeTo(ButlerlySize.searchPinnedHeaderHeight, 0.1),
+          );
+        }
+      }
+    },
+  );
+
   testWidgets('primary pinned-page spacing renders all four requested gaps', (
     tester,
   ) async {
