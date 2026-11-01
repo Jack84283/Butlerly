@@ -13,6 +13,8 @@ import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 
+const _minimumFullSearchControlsWidth = 240.0;
+
 class ButlerlyTransactionSearchControls extends StatelessWidget {
   const ButlerlyTransactionSearchControls({
     required this.controller,
@@ -39,6 +41,7 @@ class ButlerlyTransactionSearchControls extends StatelessWidget {
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
       final filter = SizedBox.square(
+        key: const ValueKey('transaction-search-filter'),
         dimension: ButlerlySize.minimumTarget,
         child: IconButton(
           constraints: const BoxConstraints.tightFor(
@@ -54,16 +57,27 @@ class ButlerlyTransactionSearchControls extends StatelessWidget {
           icon: const Icon(Icons.tune_rounded),
         ),
       );
-      // A StatefulShell branch can be measured at a transiently tiny width
-      // while another branch becomes active. A full SearchBar cannot fit in
-      // that state, so keep one compact, useful control without overflowing.
-      if (constraints.maxWidth < ButlerlySize.minimumTarget * 2) {
-        return SizedBox(
+      // SearchBar reserves space for its leading icon and trailing actions in
+      // addition to the filter target. Keep a conservative breakpoint so it
+      // never receives a width that is too small for those internal targets.
+      if (constraints.maxWidth < _minimumFullSearchControlsWidth) {
+        final compactSearch = SizedBox.square(
+          key: const ValueKey('compact-search-button'),
+          dimension: ButlerlySize.minimumTarget,
+          child: IconButton(
+            tooltip: context.l10n.text('search'),
+            onPressed: () => _showCompactSearch(context),
+            icon: const Icon(Icons.search_rounded),
+          ),
+        );
+        return Align(
           key: controlsKey,
-          height: ButlerlySize.minimumTarget,
-          child: Align(
-            alignment: AlignmentDirectional.centerEnd,
-            child: filter,
+          alignment: AlignmentDirectional.centerEnd,
+          child: Wrap(
+            alignment: WrapAlignment.end,
+            spacing: ButlerlySpacing.compact,
+            runSpacing: ButlerlySpacing.compact,
+            children: [compactSearch, filter],
           ),
         );
       }
@@ -104,6 +118,31 @@ class ButlerlyTransactionSearchControls extends StatelessWidget {
       );
     },
   );
+
+  Future<void> _showCompactSearch(BuildContext context) =>
+      showButlerlyBottomSheet<void>(
+        context: context,
+        builder: (sheetContext) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: ButlerlySpacing.compact),
+            child: TextField(
+              key: const ValueKey('compact-search-field'),
+              controller: controller,
+              autofocus: true,
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                hintText: context.l10n.text('searchHint'),
+                labelText: context.l10n.text('search'),
+              ),
+              onChanged: onChanged,
+              onSubmitted: (_) {
+                onSearch();
+                Navigator.of(sheetContext).pop();
+              },
+            ),
+          );
+        },
+      );
 }
 
 class ButlerlyTransactionFilterValue {
