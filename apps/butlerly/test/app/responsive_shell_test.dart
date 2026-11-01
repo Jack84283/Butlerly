@@ -938,14 +938,306 @@ void main() {
       addTearDown(() => services.unregister<FinanceServices>());
 
       await _pumpAt(tester, const Size(1200, 800));
-      tester.view.platformDispatcher.textScaleFactorTestValue = 3;
+      tester.view.platformDispatcher.textScaleFactorTestValue = 5;
       addTearDown(tester.view.platformDispatcher.clearTextScaleFactorTestValue);
       await tester.pumpAndSettle();
 
       final chart = find.byKey(const ValueKey('desktop-home-trend-chart'));
       expect(chart, findsOneWidget);
       expect(tester.getSize(chart).height, greaterThan(220));
+      final axisText = [
+        for (var index = 0; index < 8; index++)
+          if (find
+              .byKey(ValueKey('desktop-home-trend-axis-label-$index'))
+              .evaluate()
+              .isNotEmpty)
+            tester
+                    .widget<Text>(
+                      find.byKey(
+                        ValueKey('desktop-home-trend-axis-label-$index'),
+                      ),
+                    )
+                    .data ??
+                '',
+      ];
+      expect(
+        axisText.any(
+          (label) =>
+              label.contains(r'$') || label.toUpperCase().contains('USD'),
+        ),
+        isTrue,
+      );
       expect(find.text('No spending trend data'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'Desktop Home shows all monthly summary metrics for the selected period',
+    (tester) async {
+      final finance = await _desktopHomeFinance(
+        analysisRules: _DesktopAnalysisRules([
+          _desktopExpenseRule(),
+          _desktopIncomeRule(),
+          _desktopNetCashFlowRule(),
+          _desktopTransactionCountRule(),
+        ]),
+      );
+      final now = DateTime.now().toUtc();
+      for (final entry in [
+        ('desktop-summary-expense-a', '25.00', TransactionDirection.expense),
+        ('desktop-summary-expense-b', '75.00', TransactionDirection.expense),
+        ('desktop-summary-income', '120.00', TransactionDirection.income),
+      ]) {
+        final created = await finance.createTransaction(
+          CreateTransactionCommand(
+            id: entry.$1,
+            provenanceId: '${entry.$1}-provenance',
+            timing: KnownTransactionTime(now),
+            transactionDate: _dateOnly(now),
+            money: Money(
+              amount: DecimalValue.parse(entry.$2),
+              currency: CurrencyCode('USD'),
+            ),
+            direction: entry.$3,
+            description: entry.$1,
+          ),
+        );
+        expect(created, isA<ApplicationSuccess<TransactionDto>>());
+      }
+      services.registerSingleton<FinanceServices>(finance);
+      addTearDown(() => services.unregister<FinanceServices>());
+
+      await _pumpAt(tester, const Size(1200, 800));
+
+      final summary = find.byKey(const ValueKey('desktop-home-summary-card'));
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('desktop-home-summary-expenses')),
+          matching: find.text(r'$100.00'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('desktop-home-summary-transactions')),
+          matching: find.text('3'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('desktop-home-summary-income')),
+          matching: find.text(r'$120.00'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('desktop-home-summary-net')),
+          matching: find.text(r'$20.00'),
+        ),
+        findsOneWidget,
+      );
+      expect(summary, findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'Desktop spending trend keeps a bounded magnitude-aware JPY scale',
+    (tester) async {
+      final transactions = MemoryTransactionRepository();
+      final finance = await _desktopHomeFinance(
+        transactions: transactions,
+        analysisRules: _DesktopAnalysisRules([_desktopExpenseRule()]),
+      );
+      await finance.saveUserPreference(
+        UserPreference(
+          locale: 'en',
+          formattingLocale: 'en-US',
+          regionCode: 'JP',
+          baseCurrency: CurrencyCode('JPY'),
+          timeZoneId: 'UTC',
+          firstUseCompleted: true,
+        ),
+      );
+      final now = DateTime.now().toUtc();
+      final created = await finance.createTransaction(
+        CreateTransactionCommand(
+          id: 'desktop-home-jpy-trend',
+          provenanceId: 'desktop-home-jpy-trend-provenance',
+          timing: KnownTransactionTime(now),
+          transactionDate: _dateOnly(now),
+          money: Money(
+            amount: DecimalValue.parse('100000000'),
+            currency: CurrencyCode('JPY'),
+          ),
+          direction: TransactionDirection.expense,
+          description: 'Large JPY trend transaction',
+        ),
+      );
+      expect(created, isA<ApplicationSuccess<TransactionDto>>());
+      services.registerSingleton<FinanceServices>(finance);
+      addTearDown(() => services.unregister<FinanceServices>());
+
+      await _pumpAt(tester, const Size(1200, 800));
+
+      final chart = find.byKey(const ValueKey('desktop-home-trend-chart'));
+      expect(chart, findsOneWidget);
+      expect(tester.getSize(chart).height, lessThanOrEqualTo(320));
+      final axisLabels = [
+        for (var index = 0; index < 8; index++)
+          find.byKey(ValueKey('desktop-home-trend-axis-label-$index')),
+      ];
+      final axisCount = axisLabels
+          .where((finder) => finder.evaluate().isNotEmpty)
+          .length;
+      expect(axisCount, inInclusiveRange(4, 6));
+      final axisText = axisLabels
+          .where((finder) => finder.evaluate().isNotEmpty)
+          .map((finder) => tester.widget<Text>(finder).data ?? '')
+          .toList();
+      expect(
+        axisText.any(
+          (label) => label.contains('¥') || label.toUpperCase().contains('JPY'),
+        ),
+        isTrue,
+      );
+      expect(find.text('1000'), findsNothing);
+      final tooltips = find.descendant(
+        of: chart,
+        matching: find.byType(Tooltip),
+      );
+      expect(
+        tester
+            .widgetList<Tooltip>(tooltips)
+            .any(
+              (tooltip) =>
+                  (tooltip.message ?? '').contains('¥') ||
+                  (tooltip.message ?? '').toUpperCase().contains('JPY'),
+            ),
+        isTrue,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('Desktop spending trend axis retains the EUR unit', (
+    tester,
+  ) async {
+    final transactions = MemoryTransactionRepository();
+    final finance = await _desktopHomeFinance(
+      transactions: transactions,
+      analysisRules: _DesktopAnalysisRules([_desktopExpenseRule()]),
+    );
+    await finance.saveUserPreference(
+      UserPreference(
+        locale: 'en',
+        formattingLocale: 'en-US',
+        regionCode: 'DE',
+        baseCurrency: CurrencyCode('EUR'),
+        timeZoneId: 'UTC',
+        firstUseCompleted: true,
+      ),
+    );
+    final now = DateTime.now().toUtc();
+    final created = await finance.createTransaction(
+      CreateTransactionCommand(
+        id: 'desktop-home-eur-trend',
+        provenanceId: 'desktop-home-eur-trend-provenance',
+        timing: KnownTransactionTime(now),
+        transactionDate: _dateOnly(now),
+        money: Money(
+          amount: DecimalValue.parse('1234.56'),
+          currency: CurrencyCode('EUR'),
+        ),
+        direction: TransactionDirection.expense,
+        description: 'EUR trend transaction',
+      ),
+    );
+    expect(created, isA<ApplicationSuccess<TransactionDto>>());
+    services.registerSingleton<FinanceServices>(finance);
+    addTearDown(() => services.unregister<FinanceServices>());
+
+    await _pumpAt(tester, const Size(1200, 800));
+
+    final chart = find.byKey(const ValueKey('desktop-home-trend-chart'));
+    expect(chart, findsOneWidget);
+    final axisLabels = [
+      for (var index = 0; index < 8; index++)
+        find.byKey(ValueKey('desktop-home-trend-axis-label-$index')),
+    ];
+    final axisText = axisLabels
+        .where((finder) => finder.evaluate().isNotEmpty)
+        .map((finder) => tester.widget<Text>(finder).data ?? '')
+        .toList();
+    expect(
+      axisText.any(
+        (label) => label.contains('€') || label.toUpperCase().contains('EUR'),
+      ),
+      isTrue,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'Desktop Home shows normalized category amounts and percentages together',
+    (tester) async {
+      final transactions = MemoryTransactionRepository();
+      final finance = await _desktopHomeFinance(
+        transactions: transactions,
+        analysisRules: _DesktopAnalysisRules([
+          _desktopExpenseRule(),
+          _desktopCategoryRule(),
+        ]),
+      );
+      final now = DateTime.now().toUtc();
+      for (final entry in [
+        ('desktop-category-groceries', '25.00', 'groceries'),
+        ('desktop-category-transport', '75.00', 'transport'),
+      ]) {
+        final created = await finance.createTransaction(
+          CreateTransactionCommand(
+            id: entry.$1,
+            provenanceId: '${entry.$1}-provenance',
+            timing: KnownTransactionTime(now),
+            transactionDate: _dateOnly(now),
+            money: Money(
+              amount: DecimalValue.parse(entry.$2),
+              currency: CurrencyCode('USD'),
+            ),
+            direction: TransactionDirection.expense,
+            categoryId: entry.$3,
+            description: entry.$3,
+          ),
+        );
+        expect(created, isA<ApplicationSuccess<TransactionDto>>());
+      }
+      services.registerSingleton<FinanceServices>(finance);
+      addTearDown(() => services.unregister<FinanceServices>());
+
+      await _pumpAt(tester, const Size(1200, 800));
+
+      final categories = find.byKey(
+        const ValueKey('desktop-home-category-card'),
+      );
+      expect(
+        find.descendant(of: categories, matching: find.text(r'$25.00')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: categories, matching: find.text(r'$75.00')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: categories, matching: find.text('25%')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: categories, matching: find.text('75%')),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
     },
   );
@@ -1022,6 +1314,68 @@ void main() {
     );
     expect(find.text('Not available'), findsOneWidget);
     expect(find.text('No category data for this period'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Desktop spending trend gives unavailable months a usable marker', (
+    tester,
+  ) async {
+    final transactions = MemoryTransactionRepository();
+    final finance = await _desktopHomeFinance(
+      transactions: transactions,
+      analysisRules: _DesktopAnalysisRules([_desktopExpenseRule()]),
+    );
+    final now = DateTime.now().toUtc();
+    final unavailableDate = DateTime.utc(now.year, now.month - 1, 15);
+    final availableDate = DateTime.utc(now.year, now.month - 2, 15);
+    for (final entry in [
+      ('desktop-home-mixed-eur', unavailableDate, 'EUR', '25.00'),
+      ('desktop-home-mixed-usd', availableDate, 'USD', '40.00'),
+    ]) {
+      final created = await finance.createTransaction(
+        CreateTransactionCommand(
+          id: entry.$1,
+          provenanceId: '${entry.$1}-provenance',
+          timing: KnownTransactionTime(entry.$2),
+          transactionDate: _dateOnly(entry.$2),
+          money: Money(
+            amount: DecimalValue.parse(entry.$4),
+            currency: CurrencyCode(entry.$3),
+          ),
+          direction: TransactionDirection.expense,
+          description: entry.$1,
+        ),
+      );
+      expect(created, isA<ApplicationSuccess<TransactionDto>>());
+    }
+    services.registerSingleton<FinanceServices>(finance);
+    addTearDown(() => services.unregister<FinanceServices>());
+
+    await _pumpAt(tester, const Size(1200, 800));
+    await tester.tap(find.byIcon(Icons.chevron_left));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('desktop-home-trend-card')),
+        matching: find.text(
+          'Some spending trend values are unavailable because currency normalization is missing.',
+        ),
+      ),
+      findsOneWidget,
+    );
+    final unavailableBar = find.byKey(
+      ValueKey(
+        'desktop-home-trend-bar-${unavailableDate.year}-${unavailableDate.month}',
+      ),
+    );
+    expect(unavailableBar, findsOneWidget);
+    expect(tester.getSize(unavailableBar).height, greaterThan(0));
+    final tooltip = find.ancestor(
+      of: unavailableBar,
+      matching: find.byType(Tooltip),
+    );
+    expect(tester.widget<Tooltip>(tooltip).message, contains('Not available'));
     expect(tester.takeException(), isNull);
   });
 
@@ -1998,6 +2352,84 @@ AnalysisRuleDefinition _desktopExpenseRule() => AnalysisRuleDefinition(
     AnalysisFilter(kind: AnalysisFilterKind.direction, values: ['expense']),
   ],
   definitionHash: RuleDefinitionHash('e' * 64),
+);
+
+AnalysisRuleDefinition _desktopIncomeRule() => AnalysisRuleDefinition(
+  identity: RuleIdentity('ANL-R003'),
+  version: RuleVersion('1.0.0'),
+  schemaVersion: '1.0.0',
+  type: AnalysisRuleType.metric,
+  nameKey: 'ANL-R003',
+  descriptionKey: 'ANL-R003',
+  enabled: true,
+  status: AnalysisRuleStatus.active,
+  period: 'selected_period',
+  measure: const RuleMeasure(
+    operation: RuleOperation.sum,
+    field: 'amount',
+    currencyBasis: CurrencyBasis.baseCurrency,
+  ),
+  grouping: RuleGrouping.none,
+  baseline: RuleBaseline.none,
+  condition: const RuleCondition(operator: 'none'),
+  severity: RuleSeverity.info,
+  surface: AnalysisSurface.overview,
+  role: 'incomeTotal',
+  filters: const [
+    AnalysisFilter(kind: AnalysisFilterKind.direction, values: ['income']),
+  ],
+  definitionHash: RuleDefinitionHash('a' * 64),
+);
+
+AnalysisRuleDefinition _desktopNetCashFlowRule() => AnalysisRuleDefinition(
+  identity: RuleIdentity('ANL-R004'),
+  version: RuleVersion('1.0.0'),
+  schemaVersion: '1.0.0',
+  type: AnalysisRuleType.metric,
+  nameKey: 'ANL-R004',
+  descriptionKey: 'ANL-R004',
+  enabled: true,
+  status: AnalysisRuleStatus.active,
+  period: 'selected_period',
+  measure: const RuleMeasure(
+    operation: RuleOperation.difference,
+    field: 'amount',
+    currencyBasis: CurrencyBasis.baseCurrency,
+  ),
+  grouping: RuleGrouping.none,
+  baseline: RuleBaseline.none,
+  condition: const RuleCondition(operator: 'none'),
+  severity: RuleSeverity.info,
+  surface: AnalysisSurface.overview,
+  role: 'netCashFlow',
+  dependencies: [
+    RuleDependency(ruleId: RuleIdentity('ANL-R001')),
+    RuleDependency(ruleId: RuleIdentity('ANL-R003')),
+  ],
+  definitionHash: RuleDefinitionHash('b' * 64),
+);
+
+AnalysisRuleDefinition _desktopTransactionCountRule() => AnalysisRuleDefinition(
+  identity: RuleIdentity('ANL-R005'),
+  version: RuleVersion('1.0.0'),
+  schemaVersion: '1.0.0',
+  type: AnalysisRuleType.metric,
+  nameKey: 'ANL-R005',
+  descriptionKey: 'ANL-R005',
+  enabled: true,
+  status: AnalysisRuleStatus.active,
+  period: 'selected_period',
+  measure: const RuleMeasure(
+    operation: RuleOperation.count,
+    field: 'transaction',
+  ),
+  grouping: RuleGrouping.none,
+  baseline: RuleBaseline.none,
+  condition: const RuleCondition(operator: 'none'),
+  severity: RuleSeverity.info,
+  surface: AnalysisSurface.overview,
+  role: 'eligibleTransactionCount',
+  definitionHash: RuleDefinitionHash('c' * 64),
 );
 
 AnalysisRuleDefinition _desktopCategoryRule() => AnalysisRuleDefinition(

@@ -872,13 +872,11 @@ class _HomeHeader extends StatelessWidget {
 }
 
 bool _allKnownSummaryValuesEmpty(AnalysisModel model) {
-  final availabilities = [
-    model.spending?.availability,
-    model.income?.availability,
-    model.net?.availability,
-  ].whereType<AnalysisDataAvailability>().toList();
-  return availabilities.isNotEmpty &&
-      availabilities.every((value) => value == AnalysisDataAvailability.empty);
+  final monetaryMetrics = [model.spending, model.income, model.net];
+  return monetaryMetrics.every(
+    (metric) =>
+        metric != null && metric.availability == AnalysisDataAvailability.empty,
+  );
 }
 
 String _homeTransactionCount(BuildContext context, AnalysisMetric? metric) {
@@ -984,19 +982,15 @@ class _HomeSummaryCard extends StatelessWidget {
                             metric.value!.availability ==
                                 AnalysisDataAvailability.insufficient
                       ? showMissingValuesAsZero
-                            ? localizedCompactMoney(
+                            ? _homeZeroMoney(
                                 context,
-                                '0',
-                                baseCurrency?.value ?? 'USD',
+                                metric.value,
+                                baseCurrency,
                               )
                             : '—'
                       : metric.value!.availability ==
                             AnalysisDataAvailability.empty
-                      ? localizedCompactMoney(
-                          context,
-                          '0',
-                          baseCurrency?.value ?? 'USD',
-                        )
+                      ? _homeZeroMoney(context, metric.value, baseCurrency)
                       : _homeMoney(context, metric.value!),
                   comparison: metric.comparison,
                   icon: metric.icon,
@@ -1203,26 +1197,40 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
 Widget homeSpendingTrendForTest(
   List<({DateTime month, double value, bool selected})> points, {
   bool unavailable = false,
+  Iterable<DateTime> unavailableMonths = const [],
+  Iterable<DateTime> missingMonths = const [],
   AnalysisComparison? comparison,
   AnalysisMetric? selectedMetric,
   int rangeCount = 6,
   ValueChanged<int>? onRangeChanged,
-}) => _SpendingTrend(
-  unavailable: unavailable,
-  comparison: comparison,
-  rangeCount: rangeCount,
-  onRangeChanged: onRangeChanged,
-  points: [
+}) {
+  final testPoints = [
     for (final point in points)
       _HomeTrendPoint(
         month: point.month,
         value: point.value,
-        metric: point.selected ? selectedMetric : null,
-        unavailable: false,
+        metric:
+            point.selected &&
+                !unavailableMonths.any(
+                  (month) => _sameMonth(month, point.month),
+                ) &&
+                !missingMonths.any((month) => _sameMonth(month, point.month))
+            ? selectedMetric
+            : null,
+        unavailable:
+            unavailableMonths.any((month) => _sameMonth(month, point.month)) ||
+            missingMonths.any((month) => _sameMonth(month, point.month)),
         selected: point.selected,
       ),
-  ],
-);
+  ];
+  return _SpendingTrend(
+    unavailable: unavailable,
+    comparison: comparison,
+    rangeCount: rangeCount,
+    onRangeChanged: onRangeChanged,
+    points: testPoints,
+  );
+}
 
 @visibleForTesting
 Widget homeCategorySummaryItemForTest({
@@ -1266,7 +1274,9 @@ class _SpendingTrend extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final meaningful = points.any((point) => point.value > 0);
+    final meaningful = points.any(
+      (point) => !point.unavailable && point.value > 0,
+    );
     final hasUnavailablePoint = points.any((point) => point.unavailable);
     final locale = Localizations.localeOf(context).toLanguageTag();
     final selectedPoint = points.where((point) => point.selected).firstOrNull;
@@ -1318,17 +1328,14 @@ class _SpendingTrend extends StatelessWidget {
                       keepActionInlineAtCompactWidth: true,
                     ),
                   ),
-                  if (unavailable ||
-                      hasUnavailablePoint ||
-                      points.isEmpty ||
-                      !meaningful) ...[
+                  if (unavailable || points.isEmpty || !meaningful) ...[
                     const SizedBox(height: ButlerlySpacing.small),
                     Text(
                       context.l10n.text(
-                        hasUnavailablePoint
-                            ? 'spendingTrendPartial'
-                            : unavailable
+                        unavailable
                             ? unavailableMessage ?? 'analysisUnavailableBody'
+                            : hasUnavailablePoint
+                            ? 'spendingTrendPartial'
                             : 'insufficientTrendData',
                       ),
                       style: context.designTokens.homeTypography.subtitle(
@@ -1337,6 +1344,19 @@ class _SpendingTrend extends StatelessWidget {
                       ),
                     ),
                   ] else ...[
+                    if (hasUnavailablePoint)
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          top: ButlerlySpacing.small,
+                        ),
+                        child: Text(
+                          context.l10n.text('spendingTrendPartial'),
+                          style: context.designTokens.homeTypography.subtitle(
+                            Theme.of(context).textTheme.bodySmall ??
+                                const TextStyle(),
+                          ),
+                        ),
+                      ),
                     if (selectedPoint?.metric case final metric?) ...[
                       const SizedBox(height: ButlerlySpacing.small),
                       Wrap(
@@ -1363,6 +1383,15 @@ class _SpendingTrend extends StatelessWidget {
                                   .copyWith(color: context.colors.interactive),
                             ),
                         ],
+                      ),
+                    ] else if (selectedPoint?.unavailable == true) ...[
+                      const SizedBox(height: ButlerlySpacing.small),
+                      Text(
+                        context.l10n.text('notAvailable'),
+                        style: context.designTokens.homeTypography.trendValue(
+                          Theme.of(context).textTheme.titleLarge ??
+                              const TextStyle(),
+                        ),
                       ),
                     ],
                     const SizedBox(height: ButlerlySpacing.small),
@@ -1399,7 +1428,7 @@ class _HomeTrendPlot extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final maxValue = points
-        .map((point) => point.value)
+        .map((point) => point.unavailable ? 0.0 : point.value)
         .fold<double>(0, (left, right) => left > right ? left : right);
     final scaleMax = _trendScaleMax(maxValue);
     final textScaler = MediaQuery.textScalerOf(context);
@@ -1454,35 +1483,73 @@ class _HomeTrendPlot extends StatelessWidget {
                             Expanded(
                               child: Semantics(
                                 label:
-                                    '${DateFormat.yMMMM(locale).format(point.month)}, ${point.metric == null ? context.l10n.text('noSpendingInPeriod') : _homeMetricMoney(context, point.metric!)}',
+                                    '${DateFormat.yMMMM(locale).format(point.month)}, ${point.unavailable
+                                        ? context.l10n.text('notAvailable')
+                                        : point.metric == null
+                                        ? context.l10n.text('noSpendingInPeriod')
+                                        : _homeMetricMoney(context, point.metric!)}',
                                 child: Align(
                                   alignment: Alignment.bottomCenter,
-                                  child: FractionallySizedBox(
-                                    heightFactor:
-                                        scaleMax <= 0 || point.value <= 0
-                                        ? 0
-                                        : (point.value / scaleMax)
-                                              .clamp(0.04, 1.0)
-                                              .toDouble(),
-                                    widthFactor: 0.42,
-                                    child: DecoratedBox(
-                                      key: ValueKey(
-                                        'home-spending-trend-bar-${point.month.year}-${point.month.month}',
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: context.colors.interactive
-                                            .withValues(
-                                              alpha: point.selected ? 1 : 0.35,
-                                            ),
-                                        borderRadius:
-                                            const BorderRadius.vertical(
-                                              top: Radius.circular(
-                                                ButlerlyRadius.small,
+                                  child: point.unavailable
+                                      ? Tooltip(
+                                          message: _homeTrendUnavailableLabel(
+                                            context,
+                                            point,
+                                            locale,
+                                          ),
+                                          child: SizedBox(
+                                            width: 24,
+                                            height: 24,
+                                            child: DecoratedBox(
+                                              key: ValueKey(
+                                                'home-spending-trend-bar-${point.month.year}-${point.month.month}',
+                                              ),
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                border: Border.all(
+                                                  color: context
+                                                      .colors
+                                                      .secondaryText,
+                                                ),
+                                              ),
+                                              child: Icon(
+                                                Icons.help_outline,
+                                                size: 16,
+                                                color: context
+                                                    .colors
+                                                    .secondaryText,
                                               ),
                                             ),
-                                      ),
-                                    ),
-                                  ),
+                                          ),
+                                        )
+                                      : FractionallySizedBox(
+                                          heightFactor:
+                                              scaleMax <= 0 || point.value <= 0
+                                              ? 0
+                                              : (point.value / scaleMax)
+                                                    .clamp(0.04, 1.0)
+                                                    .toDouble(),
+                                          widthFactor: 0.42,
+                                          child: DecoratedBox(
+                                            key: ValueKey(
+                                              'home-spending-trend-bar-${point.month.year}-${point.month.month}',
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: context.colors.interactive
+                                                  .withValues(
+                                                    alpha: point.selected
+                                                        ? 1
+                                                        : 0.35,
+                                                  ),
+                                              borderRadius:
+                                                  const BorderRadius.vertical(
+                                                    top: Radius.circular(
+                                                      ButlerlyRadius.small,
+                                                    ),
+                                                  ),
+                                            ),
+                                          ),
+                                        ),
                                 ),
                               ),
                             ),
@@ -2853,7 +2920,8 @@ List<_HomeTrendPoint> _homeTrendPoints(
           ? null
           : point.spending,
       unavailable:
-          point.spending?.availability == AnalysisDataAvailability.insufficient,
+          point.spending == null ||
+          point.spending!.availability == AnalysisDataAvailability.insufficient,
       selected: _sameMonth(point.month, selectedMonth),
     ),
 ];
@@ -2875,6 +2943,27 @@ String _homeMetricMoney(BuildContext context, AnalysisMetric metric) {
   return currency == null
       ? localizedDecimal(context, metric.value.toString())
       : localizedCompactMoney(context, metric.value.toString(), currency);
+}
+
+String _homeTrendUnavailableLabel(
+  BuildContext context,
+  _HomeTrendPoint point,
+  String locale,
+) =>
+    '${DateFormat.yMMMM(locale).format(point.month)}, ${context.l10n.text('notAvailable')}';
+
+String _homeZeroMoney(
+  BuildContext context,
+  AnalysisMetric? metric,
+  CurrencyCode? baseCurrency,
+) {
+  final currency =
+      metric?.currency?.value ??
+      metric?.context.baseCurrency?.value ??
+      baseCurrency?.value;
+  return currency == null
+      ? localizedDecimal(context, '0')
+      : localizedCompactMoney(context, '0', currency);
 }
 
 IconData _homeIcon(

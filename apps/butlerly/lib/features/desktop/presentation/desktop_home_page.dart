@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:butlerly/app/locale/home_greeting.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
@@ -19,6 +21,7 @@ import 'package:butlerly/features/foundation/presentation/transaction_change_not
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/insights/presentation/insight_grouped_list.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
@@ -1280,6 +1283,8 @@ const double _desktopHomeBreakdownCardHeight = 280;
 // A 280px panel leaves 220px for content after header and outer padding.
 const double _desktopHomeBreakdownContentHeight = 220;
 const double _desktopHomeTrendMaxBarHeight = 180;
+const double _desktopHomeTrendMaxAccessibleHeight = 320;
+const double _desktopHomeTrendAxisLabelWidth = 72;
 
 double _desktopTrendChartHeight(BuildContext context, int gridLevels) {
   final bodySmall = Theme.of(context).textTheme.bodySmall ?? const TextStyle();
@@ -1290,9 +1295,84 @@ double _desktopTrendChartHeight(BuildContext context, int gridLevels) {
   final labelHeight = textScale * fontSize * lineHeight;
   final requiredHeight =
       gridLevels * labelHeight + (gridLevels - 1) * ButlerlySpacing.micro;
-  return requiredHeight > _desktopHomeTrendMaxBarHeight
-      ? requiredHeight
-      : _desktopHomeTrendMaxBarHeight;
+  // Keep ordinary charts bounded while allowing accessibility text to reserve
+  // the space its labels actually need. This prevents a capped label column
+  // from overflowing at extreme text scales.
+  if (requiredHeight > _desktopHomeTrendMaxAccessibleHeight) {
+    return requiredHeight;
+  }
+  return requiredHeight
+      .clamp(
+        _desktopHomeTrendMaxBarHeight,
+        _desktopHomeTrendMaxAccessibleHeight,
+      )
+      .toDouble();
+}
+
+final class _DesktopTrendScale {
+  const _DesktopTrendScale({
+    required this.interval,
+    required this.maximum,
+    required this.tickCount,
+  });
+
+  final double interval;
+  final double maximum;
+  final int tickCount;
+}
+
+_DesktopTrendScale _desktopTrendScale(double maximum) {
+  if (!maximum.isFinite || maximum <= 0) {
+    return const _DesktopTrendScale(interval: 1, maximum: 4, tickCount: 5);
+  }
+
+  var interval = _niceCeiling(maximum / 5);
+  for (var attempt = 0; attempt < 12; attempt++) {
+    final tickCount = (maximum / interval).ceil() + 1;
+    if (tickCount > 6) {
+      interval = _niceCeiling(interval * 2);
+      continue;
+    }
+    if (tickCount < 4) {
+      interval /= 2;
+      continue;
+    }
+    break;
+  }
+
+  var chartMaximum = (maximum / interval).ceil() * interval;
+  var tickCount = (chartMaximum / interval).round() + 1;
+  while (tickCount < 4) {
+    interval /= 2;
+    chartMaximum = (maximum / interval).ceil() * interval;
+    tickCount = (chartMaximum / interval).round() + 1;
+  }
+  while (tickCount > 6) {
+    interval = _niceCeiling(interval * 2);
+    chartMaximum = (maximum / interval).ceil() * interval;
+    tickCount = (chartMaximum / interval).round() + 1;
+  }
+  return _DesktopTrendScale(
+    interval: interval,
+    maximum: chartMaximum,
+    tickCount: tickCount,
+  );
+}
+
+double _niceCeiling(double value) {
+  if (!value.isFinite || value <= 0) return 1;
+  final exponent = math
+      .pow(10, (math.log(value) / math.ln10).floor())
+      .toDouble();
+  final normalized = value / exponent;
+  final factor = normalized <= 1
+      ? 1
+      : normalized <= 2
+      ? 2
+      : normalized <= 5
+      ? 5
+      : 10;
+  return factor * exponent;
 }
 
 class _DesktopUnavailableContent extends StatelessWidget {
@@ -1500,9 +1580,15 @@ class _DesktopMetric extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: _desktopHomeCardTitleStyle.copyWith(color: foreground),
+                FittedBox(
+                  alignment: Alignment.centerLeft,
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    title,
+                    style: _desktopHomeCardTitleStyle.copyWith(
+                      color: foreground,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 4),
                 FittedBox(
@@ -1644,128 +1730,201 @@ class _DesktopTrend extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (points.any(
-      (point) =>
-          point.spending?.availability == AnalysisDataAvailability.insufficient,
-    )) {
-      return Center(child: Text(context.l10n.text('spendingTrendPartial')));
-    }
-    final values = points
-        .map(
-          (point) =>
-              double.tryParse(point.spending?.value.toString() ?? '') ?? 0.0,
-        )
-        .toList();
+    final values = points.map((point) {
+      if (point.spending?.availability != AnalysisDataAvailability.sufficient) {
+        return 0.0;
+      }
+      final value = double.tryParse(point.spending!.value.toString());
+      if (value == null || !value.isFinite) return 0.0;
+      return value;
+    }).toList();
     final max = values.fold<double>(0, (a, b) => a > b ? a : b);
-    if (points.isEmpty || max <= 0) {
+    final hasUnavailablePoint = points.any(
+      (point) => _desktopTrendPointUnavailable(point.spending),
+    );
+    final hasUsablePoint = values.any((value) => value > 0);
+    if (points.isEmpty || (!hasUsablePoint && !hasUnavailablePoint)) {
       return Center(child: Text(context.l10n.text('desktopNoSpendingTrend')));
     }
+    if (!hasUsablePoint) {
+      return Center(child: Text(context.l10n.text('spendingTrendPartial')));
+    }
 
-    const gridInterval = 1000.0;
-    final roundedMaximum = (max / gridInterval).ceil();
-    final chartMaximum =
-        (roundedMaximum < 4 ? 4 : roundedMaximum) * gridInterval;
-    final gridLevels = (chartMaximum / gridInterval).toInt() + 1;
+    final scale = _desktopTrendScale(max);
+    final gridLevels = scale.tickCount;
+    final chartMaximum = scale.maximum;
+    final gridInterval = scale.interval;
     final gridColor = context.colors.cardDivider;
     final locale = Localizations.localeOf(context).toLanguageTag();
-    final formatter = NumberFormat.compact(locale: locale);
     final chartHeight = _desktopTrendChartHeight(context, gridLevels);
-    return InkWell(
-      key: const ValueKey('desktop-home-trend-chart'),
-      onTap: onTap,
-      child: Row(
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 20),
-            child: SizedBox(
-              height: chartHeight,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (var i = 0; i < gridLevels; i++)
-                    Text(
-                      formatter.format(chartMaximum - i * gridInterval),
-                      style: ButlerlyTypography.badgeLabel(
-                        Theme.of(context).textTheme.bodySmall ??
-                            const TextStyle(),
-                      ).copyWith(color: context.colors.secondaryText),
-                    ),
-                ],
-              ),
-            ),
+    final axisStyle = ButlerlyTypography.badgeLabel(
+      Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
+    ).copyWith(color: context.colors.secondaryText);
+    final monthStyle = ButlerlyTypography.badgeLabel(
+      Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (hasUnavailablePoint) ...[
+          Text(
+            context.l10n.text('spendingTrendPartial'),
+            style: Theme.of(context).textTheme.bodySmall,
           ),
-          const SizedBox(width: ButlerlySpacing.compact),
-          Expanded(
-            child: Stack(
-              children: [
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 20,
+          const SizedBox(height: ButlerlySpacing.small),
+        ],
+        InkWell(
+          key: const ValueKey('desktop-home-trend-chart'),
+          onTap: onTap,
+          child: Row(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 20),
+                child: SizedBox(
+                  width: _desktopHomeTrendAxisLabelWidth,
                   height: chartHeight,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       for (var i = 0; i < gridLevels; i++)
-                        Container(height: 1, color: gridColor),
+                        SizedBox(
+                          width: _desktopHomeTrendAxisLabelWidth,
+                          child: FittedBox(
+                            alignment: Alignment.centerLeft,
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              _desktopTrendAxisLabel(
+                                context,
+                                chartMaximum - i * gridInterval,
+                                currency,
+                              ),
+                              key: ValueKey('desktop-home-trend-axis-label-$i'),
+                              style: axisStyle,
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+              ),
+              const SizedBox(width: ButlerlySpacing.compact),
+              Expanded(
+                child: Stack(
                   children: [
-                    for (var i = 0; i < points.length; i++)
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 3),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Tooltip(
-                                message: NumberFormat.simpleCurrency(
-                                  name: currency,
-                                ).format(values[i]),
-                                child: Align(
-                                  alignment: Alignment.bottomCenter,
-                                  child: FractionallySizedBox(
-                                    widthFactor: 0.6,
-                                    child: Container(
-                                      height:
-                                          chartHeight *
-                                          values[i] /
-                                          chartMaximum,
-                                      decoration: BoxDecoration(
-                                        color: context.colors.interactive
-                                            .withValues(
-                                              alpha:
-                                                  points[i].month.year ==
-                                                          selectedMonth.year &&
-                                                      points[i].month.month ==
-                                                          selectedMonth.month
-                                                  ? 1.0
-                                                  : 0.72,
-                                            ),
-                                        borderRadius:
-                                            const BorderRadius.vertical(
-                                              top: Radius.circular(5),
-                                            ),
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 20,
+                      height: chartHeight,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          for (var i = 0; i < gridLevels; i++)
+                            Container(height: 1, color: gridColor),
+                        ],
+                      ),
+                    ),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        for (var i = 0; i < points.length; i++)
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 3,
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  Semantics(
+                                    label:
+                                        '${DateFormat.yMMMM(locale).format(points[i].month)}, ${_desktopTrendPointLabel(context, points[i].spending, currency)}',
+                                    child: Tooltip(
+                                      message: _desktopTrendPointTooltip(
+                                        context,
+                                        points[i],
+                                        currency,
+                                        locale,
+                                      ),
+                                      child: Align(
+                                        alignment: Alignment.bottomCenter,
+                                        child:
+                                            _desktopTrendPointUnavailable(
+                                              points[i].spending,
+                                            )
+                                            ? SizedBox(
+                                                width: 24,
+                                                height: 24,
+                                                child: DecoratedBox(
+                                                  key: ValueKey(
+                                                    'desktop-home-trend-bar-${points[i].month.year}-${points[i].month.month}',
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    border: Border.all(
+                                                      color: context
+                                                          .colors
+                                                          .secondaryText,
+                                                    ),
+                                                  ),
+                                                  child: Icon(
+                                                    Icons.help_outline,
+                                                    size: 16,
+                                                    color: context
+                                                        .colors
+                                                        .secondaryText,
+                                                  ),
+                                                ),
+                                              )
+                                            : FractionallySizedBox(
+                                                widthFactor: 0.6,
+                                                child: Container(
+                                                  key: ValueKey(
+                                                    'desktop-home-trend-bar-${points[i].month.year}-${points[i].month.month}',
+                                                  ),
+                                                  height:
+                                                      chartHeight *
+                                                      values[i] /
+                                                      chartMaximum,
+                                                  decoration: BoxDecoration(
+                                                    color: context
+                                                        .colors
+                                                        .interactive
+                                                        .withValues(
+                                                          alpha:
+                                                              points[i]
+                                                                          .month
+                                                                          .year ==
+                                                                      selectedMonth
+                                                                          .year &&
+                                                                  points[i]
+                                                                          .month
+                                                                          .month ==
+                                                                      selectedMonth
+                                                                          .month
+                                                              ? 1.0
+                                                              : 0.72,
+                                                        ),
+                                                    borderRadius:
+                                                        const BorderRadius.vertical(
+                                                          top: Radius.circular(
+                                                            5,
+                                                          ),
+                                                        ),
+                                                  ),
+                                                ),
+                                              ),
                                       ),
                                     ),
                                   ),
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                DateFormat.MMM(
-                                  locale,
-                                ).format(points[i].month).toUpperCase(),
-                                textAlign: TextAlign.center,
-                                style:
-                                    ButlerlyTypography.badgeLabel(
-                                      Theme.of(context).textTheme.bodySmall ??
-                                          const TextStyle(),
-                                    ).copyWith(
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    DateFormat.MMM(
+                                      locale,
+                                    ).format(points[i].month).toUpperCase(),
+                                    textAlign: TextAlign.center,
+                                    style: monthStyle.copyWith(
                                       color:
                                           points[i].month.year ==
                                                   selectedMonth.year &&
@@ -1774,20 +1933,74 @@ class _DesktopTrend extends StatelessWidget {
                                           ? context.colors.interactive
                                           : null,
                                     ),
+                                  ),
+                                ],
                               ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ),
+                      ],
+                    ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
+}
+
+String _desktopTrendAxisLabel(
+  BuildContext context,
+  double value,
+  String currency,
+) {
+  final code = currency.trim().toUpperCase();
+  if (code.isEmpty) {
+    return localizedCompactDecimal(context, value.toString());
+  }
+  final locale = Localizations.localeOf(context).toLanguageTag();
+  return NumberFormat.compactCurrency(
+    locale: locale,
+    name: code,
+    decimalDigits: 0,
+  ).format(value);
+}
+
+String _desktopTrendPointLabel(
+  BuildContext context,
+  AnalysisMetric? metric,
+  String currency,
+) {
+  if (metric == null ||
+      metric.availability == AnalysisDataAvailability.insufficient) {
+    return context.l10n.text('notAvailable');
+  }
+  if (metric.availability == AnalysisDataAvailability.empty) {
+    return context.l10n.text('noSpendingInPeriod');
+  }
+  final metricCurrency = metric.currency?.value ?? currency;
+  return localizedCompactMoney(
+    context,
+    metric.value.toString(),
+    metricCurrency,
+  );
+}
+
+bool _desktopTrendPointUnavailable(AnalysisMetric? metric) =>
+    metric == null ||
+    metric.availability == AnalysisDataAvailability.insufficient;
+
+String _desktopTrendPointTooltip(
+  BuildContext context,
+  MonthlySpendingTrendPoint point,
+  String currency,
+  String locale,
+) {
+  final label = _desktopTrendPointLabel(context, point.spending, currency);
+  if (!_desktopTrendPointUnavailable(point.spending)) return label;
+  return '${DateFormat.yMMMM(locale).format(point.month)}, $label';
 }
 
 /// Keep six standard Insights sections visible even with no findings.
