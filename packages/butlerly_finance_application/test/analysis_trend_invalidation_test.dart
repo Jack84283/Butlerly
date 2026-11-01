@@ -79,6 +79,33 @@ void main() {
   );
 
   test(
+    'CalculateInsights keeps the first current-month day available',
+    () async {
+      final calculate = CalculateAnalysisOverview(
+        _Rules([
+          _summaryRule('ANL-R001', TransactionDirection.expense),
+          _summaryRule('ANL-R002', TransactionDirection.income),
+          _netRule(),
+          _countRule(),
+          _insightRule(),
+        ]),
+        AnalysisDatasetBuilder(_Transactions(const []), _Preferences(), null),
+        const AnalysisRuleEngine(),
+      );
+
+      final result = await CalculateInsights(
+        calculate,
+      ).currentMonth(DateTime.utc(2026, 9, 1, 12));
+
+      expect(result, isA<ApplicationSuccess<InsightsEvaluation>>());
+      final evaluation =
+          (result as ApplicationSuccess<InsightsEvaluation>).value;
+      expect(evaluation.summary.expenseSpending, DecimalValue.parse('0'));
+      expect(evaluation.hasSufficientHistory, isTrue);
+    },
+  );
+
+  test(
     'ranks grouped insights by monetary impact before percentage change',
     () async {
       final calculate = CalculateAnalysisOverview(

@@ -135,6 +135,7 @@ void main() {
 
     expect(masterDataStarted.isCompleted, isTrue);
     expect(transactions.queries, isNotEmpty);
+    expect(find.text('Loading data…'), findsOneWidget);
 
     readGate.complete();
     transactions.readGate = null;
@@ -277,6 +278,21 @@ void main() {
     expect(find.text('Analysis is unavailable'), findsOneWidget);
     expect(find.text('Insights are unavailable'), findsOneWidget);
     expect(find.text('Nothing needs your attention'), findsNothing);
+    for (final key in const [
+      'home-category-view-all',
+      'home-insight-view-all',
+    ]) {
+      expect(tester.widget<TextButton>(find.byKey(Key(key))).onPressed, isNull);
+    }
+    for (final key in const [
+      'home-attention-view-all',
+      'home-recent-view-all',
+    ]) {
+      expect(
+        tester.widget<TextButton>(find.byKey(Key(key))).onPressed,
+        isNotNull,
+      );
+    }
     expect(
       find.byKey(const ValueKey('home-empty-transactions-card')),
       findsNothing,
@@ -335,6 +351,43 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('Home trend does not turn missing FX data into zero spending', (
+    tester,
+  ) async {
+    final foreign = await finance.createTransaction(
+      CreateTransactionCommand(
+        id: 'home-refresh-missing-fx',
+        provenanceId: 'home-refresh-missing-fx-provenance',
+        timing: KnownTransactionTime(DateTime.utc(2026, 8, 15, 12)),
+        transactionDate: '2026-08-15',
+        money: Money(
+          amount: DecimalValue.parse('25.00'),
+          currency: CurrencyCode('EUR'),
+        ),
+        direction: TransactionDirection.expense,
+        description: 'Unconverted trend spending',
+      ),
+    );
+    expect(foreign, isA<ApplicationSuccess<TransactionDto>>());
+
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const _TestApp());
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'Some spending trend values are unavailable because currency normalization is missing.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('More activity is needed to show a trend.'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('Home places attention and insight cards around recent activity', (
     tester,
@@ -1557,6 +1610,13 @@ void main() {
         find.byKey(const ValueKey('home-review-unavailable-content')),
         findsOneWidget,
       );
+      expect(find.text('Data is unavailable for now'), findsNWidgets(7));
+      expect(
+        find.text(
+          'Local calculations could not be completed. No records were changed.',
+        ),
+        findsNothing,
+      );
       expect(transactions.queries, isEmpty);
       expect(
         tester
@@ -1671,6 +1731,14 @@ void main() {
       find.byKey(const ValueKey('home-recent-unavailable-retry')),
       findsOneWidget,
     );
+    for (final key in const [
+      'home-category-view-all',
+      'home-attention-view-all',
+      'home-recent-view-all',
+      'home-insight-view-all',
+    ]) {
+      expect(tester.widget<TextButton>(find.byKey(Key(key))).onPressed, isNull);
+    }
     expect(
       tester
           .getSemantics(
@@ -1738,6 +1806,39 @@ void main() {
       );
     },
   );
+
+  testWidgets('Home preserves both review and duplicate failure states', (
+    tester,
+  ) async {
+    transactions.failReviewQueries = true;
+    duplicateGroups.fail = true;
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const _TestApp());
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('home-attention-card')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('home-review-unavailable-content')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('home-duplicate-unavailable-content')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('home-review-unavailable-retry')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('home-duplicate-unavailable-retry')),
+      findsNothing,
+    );
+    expect(tester.takeException(), isNull);
+  });
 }
 
 class _TestApp extends StatelessWidget {

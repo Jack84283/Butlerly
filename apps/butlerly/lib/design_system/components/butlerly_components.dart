@@ -1996,7 +1996,11 @@ class ButlerlyLoadingState extends StatelessWidget {
             const CircularProgressIndicator(),
             if (message != null) ...[
               const SizedBox(height: ButlerlySpacing.standard),
-              Text(message!, textAlign: TextAlign.center),
+              Text(
+                message!,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
             ],
           ],
         ),

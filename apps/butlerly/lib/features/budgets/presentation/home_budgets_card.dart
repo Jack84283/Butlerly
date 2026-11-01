@@ -42,6 +42,7 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
   late Future<List<_BudgetProgress>> _future;
   TransactionMasterData? _labels;
   String _languageCode = 'en';
+  bool _storageUnavailable = false;
 
   @override
   void initState() {
@@ -88,10 +89,17 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
   Future<List<_BudgetProgress>> _load() async {
     // Snapshot the selected month before awaiting storage or metadata.
     final month = widget.month;
-    if (!services.isRegistered<FinanceServices>()) return const [];
+    _storageUnavailable = false;
+    if (!services.isRegistered<FinanceServices>()) {
+      _storageUnavailable = true;
+      return const [];
+    }
     final finance = services<FinanceServices>();
     final management = finance.manageBudgets;
-    if (management == null) return const [];
+    if (management == null) {
+      _storageUnavailable = true;
+      return const [];
+    }
     final saved = await management.list();
     if (saved is ApplicationFailure<List<Budget>>) {
       debugPrint(
@@ -241,7 +249,7 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
     future: _future,
     builder: (context, snapshot) {
       if (snapshot.connectionState != ConnectionState.done) {
-        return const ButlerlyLoadingState();
+        return ButlerlyLoadingState(message: context.l10n.text('homeLoading'));
       }
       if (snapshot.hasError) {
         return Column(
@@ -258,6 +266,9 @@ class _HomeBudgetsCardState extends State<HomeBudgetsCard> {
       }
       final rows = snapshot.data ?? const <_BudgetProgress>[];
       if (rows.isEmpty) {
+        if (_storageUnavailable) {
+          return Text(context.l10n.text('localStorageUnavailable'));
+        }
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

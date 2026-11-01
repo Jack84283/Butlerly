@@ -121,6 +121,7 @@ class _SearchPageState extends State<SearchPage>
   bool _forceNoResults = false;
   DateTime? _from;
   DateTime? _to;
+  String? _timeZoneId;
   Future<List<TransactionDto>>? _results;
   late Future<TransactionMasterDataSnapshot> _masterData;
   late Future<List<String>> _currencies;
@@ -155,6 +156,7 @@ class _SearchPageState extends State<SearchPage>
     _includeUndated = query?.includeUndated ?? false;
     _from = query?.from ?? widget.initialFrom;
     _to = query?.to ?? widget.initialTo;
+    _timeZoneId = query?.timeZoneId;
     if (query != null || _from != null || _to != null) _results = _search();
   }
 
@@ -273,6 +275,7 @@ class _SearchPageState extends State<SearchPage>
         includeUndated: _includeUndated,
         from: exactEvidence ? null : _from,
         to: exactEvidence ? null : _to,
+        timeZoneId: exactEvidence ? null : _timeZoneId,
       ),
     );
     return switch (result) {
@@ -354,6 +357,7 @@ class _SearchPageState extends State<SearchPage>
       _forceNoResults = false;
       _from = null;
       _to = null;
+      _timeZoneId = null;
     });
     _submit();
   }

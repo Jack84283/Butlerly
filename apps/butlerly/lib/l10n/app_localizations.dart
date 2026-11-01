@@ -866,6 +866,8 @@ class AppLocalizations {
       'spendingDistribution': 'Spending distribution',
       'spendingDistributionPartial':
           'Some categories are unavailable because currency normalization is missing.',
+      'spendingTrendPartial':
+          'Some spending trend values are unavailable because currency normalization is missing.',
       'otherCategories': 'Other',
       'financialCalendar': 'Financial calendar',
       'previousMonth': 'Previous month',
@@ -874,9 +876,10 @@ class AppLocalizations {
       'analysisUnavailable': 'Analysis is unavailable',
       'analysisUnavailableBody':
           'Local calculations could not be completed. No records were changed.',
-      'homeUnavailable': 'Home is temporarily unavailable',
+      'homeUnavailable': 'Data is unavailable for now',
       'homeUnavailableBody':
           'The financial period could not be resolved. Your records were not changed.',
+      'homeLoading': 'Loading data…',
       'homeTransactionsUnavailable': 'Transactions are temporarily unavailable',
       'homeTransactionsUnavailableBody':
           'Transaction data could not be loaded. Your records were not changed.',
@@ -1929,6 +1932,7 @@ class AppLocalizations {
       'trendsDescription': '查看所选期间支出的变化情况。',
       'spendingDistribution': '支出分布',
       'spendingDistributionPartial': '部分类别因缺少货币换算而不可用。',
+      'spendingTrendPartial': '部分支出趋势数据因缺少货币换算而不可用。',
       'otherCategories': '其他',
       'financialCalendar': '财务日历',
       'previousMonth': '上个月',
@@ -1936,8 +1940,9 @@ class AppLocalizations {
       'dataQuality': '数据质量',
       'analysisUnavailable': '分析暂不可用',
       'analysisUnavailableBody': '无法完成本地计算。未更改任何记录。',
-      'homeUnavailable': '首页暂不可用',
+      'homeUnavailable': '数据暂时不可用',
       'homeUnavailableBody': '无法确定财务期间。您的记录未被更改。',
+      'homeLoading': '正在加载数据…',
       'homeTransactionsUnavailable': '交易暂不可用',
       'homeTransactionsUnavailableBody': '无法加载交易数据。您的记录未被更改。',
       'homeReviewUnavailable': '数据质量检查暂不可用',
@@ -3036,6 +3041,8 @@ class AppLocalizations {
       'spendingDistribution': 'Distribución de gastos',
       'spendingDistributionPartial':
           'Algunas categorías no están disponibles porque falta la conversión de moneda.',
+      'spendingTrendPartial':
+          'Algunos valores de la tendencia de gasto no están disponibles porque falta la conversión de moneda.',
       'otherCategories': 'Otros',
       'financialCalendar': 'Calendario financiero',
       'previousMonth': 'Mes anterior',
@@ -3044,9 +3051,10 @@ class AppLocalizations {
       'analysisUnavailable': 'El análisis no está disponible',
       'analysisUnavailableBody':
           'No se pudieron completar los cálculos locales. No se cambió ningún registro.',
-      'homeUnavailable': 'La pantalla de inicio no está disponible',
+      'homeUnavailable': 'Los datos no están disponibles por ahora',
       'homeUnavailableBody':
           'No se pudo resolver el período financiero. No se cambiaron tus registros.',
+      'homeLoading': 'Cargando datos…',
       'homeTransactionsUnavailable': 'Las transacciones no están disponibles',
       'homeTransactionsUnavailableBody':
           'No se pudieron cargar las transacciones. No se cambiaron tus registros.',

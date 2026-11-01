@@ -1450,6 +1450,7 @@ void main() {
             initialQuery: ListTransactionsQuery(
               from: DateTime(2026, 8, 1),
               to: DateTime(2026, 8, 31),
+              timeZoneId: 'America/Los_Angeles',
               includeUndated: true,
             ),
           ),
@@ -1468,6 +1469,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repository.lastQuery?.includeUndated, isFalse);
+    expect(repository.lastQuery?.occurredAtFrom, isNull);
+    expect(repository.lastQuery?.occurredAtToExclusive, isNull);
   });
 
   testWidgets('keyboard submission and clear text update Search immediately', (
@@ -1956,6 +1959,58 @@ void main() {
       expect(repository.lastQuery?.from, DateTime(2026, 10, 1));
       expect(repository.lastQuery?.to, DateTime(2026, 10, 31));
       expect(repository.lastQuery?.includeUndated, isTrue);
+    },
+  );
+
+  testWidgets(
+    'Search applies the scoped financial timezone to occurred-at boundaries',
+    (tester) async {
+      final finance = services<FinanceServices>();
+      repository.filterOccurredAtQueries = true;
+      await finance.saveUserPreference(
+        UserPreference(
+          locale: 'en',
+          formattingLocale: 'en-US',
+          regionCode: 'US',
+          baseCurrency: CurrencyCode('USD'),
+          // Deliberately differ from the scoped query timezone below.
+          timeZoneId: 'UTC',
+          firstUseCompleted: true,
+        ),
+      );
+      await finance.createTransaction(
+        CreateTransactionCommand(
+          id: 'search-timezone-boundary',
+          provenanceId: 'search-timezone-boundary-provenance',
+          timing: KnownTransactionTime(DateTime.utc(2026, 10, 1, 6, 30)),
+          money: Money(
+            amount: DecimalValue.parse('12.00'),
+            currency: CurrencyCode('USD'),
+          ),
+          direction: TransactionDirection.expense,
+          description: 'Pacific boundary expense',
+        ),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SearchPage(
+              initialQuery: ListTransactionsQuery(
+                from: DateTime(2026, 10, 1),
+                to: DateTime(2026, 10, 1),
+                timeZoneId: 'America/Los_Angeles',
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // 06:30Z is September 30 in Los Angeles, so the scoped October 1
+      // search must exclude it. Falling back to the configured UTC timezone
+      // would incorrectly include the transaction.
+      expect(find.text('Pacific boundary expense'), findsNothing);
     },
   );
 
@@ -3909,6 +3964,7 @@ final class MemoryTransactionRepository implements TransactionRepository {
   final values = <String, Transaction>{};
   TransactionRepositoryQuery? lastQuery;
   bool filterPeriodQueries = false;
+  bool filterOccurredAtQueries = false;
   Future<void>? saveGate;
 
   @override
@@ -3921,6 +3977,22 @@ final class MemoryTransactionRepository implements TransactionRepository {
   Future<List<Transaction>> query(TransactionRepositoryQuery query) async {
     lastQuery = query;
     return values.values.where((transaction) {
+      if (filterOccurredAtQueries &&
+          (query.occurredAtFrom != null ||
+              query.occurredAtToExclusive != null)) {
+        final occurredAt = transaction.timing is KnownTransactionTime
+            ? (transaction.timing as KnownTransactionTime).occurredAt
+            : null;
+        if (occurredAt == null) return false;
+        if (query.occurredAtFrom != null &&
+            occurredAt.isBefore(query.occurredAtFrom!)) {
+          return false;
+        }
+        if (query.occurredAtToExclusive != null &&
+            !occurredAt.isBefore(query.occurredAtToExclusive!)) {
+          return false;
+        }
+      }
       if (filterPeriodQueries && (query.from != null || query.to != null)) {
         final businessDate = transaction.transactionDate?.trim();
         final parsed = businessDate == null
