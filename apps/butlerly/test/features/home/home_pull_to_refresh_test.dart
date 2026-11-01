@@ -255,6 +255,108 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets(
+    'Home summary and categories follow the selected financial month',
+    (tester) async {
+      rules.values.addAll([
+        _incomeRule(),
+        _netCashFlowRule(),
+        _transactionCountRule(),
+        _categoryRule(),
+      ]);
+      for (final transaction in [
+        CreateTransactionCommand(
+          id: 'home-selected-expense-groceries',
+          provenanceId: 'home-selected-expense-groceries-provenance',
+          timing: KnownTransactionTime(DateTime.utc(2026, 8, 10, 12)),
+          transactionDate: '2026-08-10',
+          money: Money(
+            amount: DecimalValue.parse('25.00'),
+            currency: CurrencyCode('USD'),
+          ),
+          direction: TransactionDirection.expense,
+          categoryId: 'groceries',
+          description: 'Selected month groceries',
+        ),
+        CreateTransactionCommand(
+          id: 'home-selected-expense-transport',
+          provenanceId: 'home-selected-expense-transport-provenance',
+          timing: KnownTransactionTime(DateTime.utc(2026, 8, 11, 12)),
+          transactionDate: '2026-08-11',
+          money: Money(
+            amount: DecimalValue.parse('75.00'),
+            currency: CurrencyCode('USD'),
+          ),
+          direction: TransactionDirection.expense,
+          categoryId: 'transport',
+          description: 'Selected month transport',
+        ),
+        CreateTransactionCommand(
+          id: 'home-selected-income',
+          provenanceId: 'home-selected-income-provenance',
+          timing: KnownTransactionTime(DateTime.utc(2026, 8, 12, 12)),
+          transactionDate: '2026-08-12',
+          money: Money(
+            amount: DecimalValue.parse('120.00'),
+            currency: CurrencyCode('USD'),
+          ),
+          direction: TransactionDirection.income,
+          description: 'Selected month income',
+        ),
+      ]) {
+        final created = await finance.createTransaction(transaction);
+        expect(created, isA<ApplicationSuccess<TransactionDto>>());
+      }
+
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(const _TestApp());
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('home-month-selector')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('home-month-2026-8')));
+      await tester.pumpAndSettle();
+
+      final summary = find.byKey(const ValueKey('home-summary-card'));
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-summary-metric-spending')),
+          matching: find.text(r'$100.00'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-summary-metric-income')),
+          matching: find.text(r'$120.00'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-summary-metric-transactions')),
+          matching: find.text('3'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-summary-metric-net-position')),
+          matching: find.text(r'$20.00'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('25%'), findsOneWidget);
+      expect(find.text('75%'), findsOneWidget);
+      expect(summary, findsOneWidget);
+      expect(find.text(r'$0.00'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('Home keeps analysis-unavailable distinct from an empty period', (
     tester,
   ) async {
@@ -1072,6 +1174,61 @@ void main() {
     expect(find.text(r'$0.00'), findsNothing);
   });
 
+  testWidgets(
+    'Home Summary does not render a missing monetary metric as zero',
+    (tester) async {
+      final model = AnalysisOverview(
+        spending: _categoryMetric(
+          value: '0',
+          availability: AnalysisDataAvailability.empty,
+        ),
+        income: _categoryMetric(
+          value: '0',
+          availability: AnalysisDataAvailability.empty,
+        ),
+        insightUnavailable: false,
+        trend: const [],
+        categories: const [],
+        qualityCount: 0,
+        qualityEvaluated: true,
+        qualityLimited: true,
+      );
+
+      await tester.pumpWidget(_summaryTestApp(homeSummaryForTest(model)));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-summary-metric-spending')),
+          matching: find.text(r'$0.00'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-summary-metric-income')),
+          matching: find.text(r'$0.00'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-summary-metric-net-position')),
+          matching: find.text('—'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-summary-metric-net-position')),
+          matching: find.text(r'$0.00'),
+        ),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('Home Summary arranges four metrics in two rows on phones', (
     tester,
   ) async {
@@ -1636,6 +1793,11 @@ void main() {
   testWidgets('Home keeps a valid zero-transaction period distinct', (
     tester,
   ) async {
+    rules.values.addAll([
+      _incomeRule(),
+      _netCashFlowRule(),
+      _transactionCountRule(),
+    ]);
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -1902,6 +2064,72 @@ AnalysisRuleDefinition _expenseRule() => AnalysisRuleDefinition(
     AnalysisFilter(kind: AnalysisFilterKind.direction, values: ['expense']),
   ],
   definitionHash: RuleDefinitionHash('b' * 64),
+);
+
+AnalysisRuleDefinition _summaryRule({
+  required String id,
+  required String role,
+  required RuleOperation operation,
+  required String hashCharacter,
+  String? direction,
+  List<RuleDependency> dependencies = const [],
+}) => AnalysisRuleDefinition(
+  identity: RuleIdentity(id),
+  version: RuleVersion('1.0.0'),
+  schemaVersion: '1.0.0',
+  type: AnalysisRuleType.metric,
+  nameKey: id,
+  descriptionKey: id,
+  enabled: true,
+  status: AnalysisRuleStatus.active,
+  period: 'selected_period',
+  measure: RuleMeasure(
+    operation: operation,
+    field: operation == RuleOperation.count ? 'transaction' : 'amount',
+    currencyBasis: CurrencyBasis.baseCurrency,
+  ),
+  grouping: RuleGrouping.none,
+  baseline: RuleBaseline.none,
+  condition: const RuleCondition(operator: 'none'),
+  severity: RuleSeverity.info,
+  surface: AnalysisSurface.overview,
+  role: role,
+  dependencies: dependencies,
+  filters: direction == null
+      ? const []
+      : [
+          AnalysisFilter(
+            kind: AnalysisFilterKind.direction,
+            values: [direction],
+          ),
+        ],
+  definitionHash: RuleDefinitionHash(hashCharacter * 64),
+);
+
+AnalysisRuleDefinition _incomeRule() => _summaryRule(
+  id: 'ANL-R002',
+  role: AnalysisSemanticRole.incomeTotal,
+  operation: RuleOperation.sum,
+  direction: 'income',
+  hashCharacter: 'e',
+);
+
+AnalysisRuleDefinition _netCashFlowRule() => _summaryRule(
+  id: 'ANL-R003',
+  role: AnalysisSemanticRole.netCashFlow,
+  operation: RuleOperation.difference,
+  dependencies: [
+    RuleDependency(ruleId: RuleIdentity('ANL-R001')),
+    RuleDependency(ruleId: RuleIdentity('ANL-R002')),
+  ],
+  hashCharacter: 'f',
+);
+
+AnalysisRuleDefinition _transactionCountRule() => _summaryRule(
+  id: 'ANL-R004',
+  role: AnalysisSemanticRole.eligibleTransactionCount,
+  operation: RuleOperation.count,
+  hashCharacter: 'c',
 );
 
 final class _Transactions implements TransactionRepository {

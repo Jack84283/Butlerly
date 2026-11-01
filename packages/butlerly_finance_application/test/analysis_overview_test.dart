@@ -97,6 +97,134 @@ void main() {
     );
   });
 
+  test('derives a percentage for every available normalized category only', () {
+    final spending = _result(
+      'ANL-R701',
+      '100',
+      role: AnalysisSemanticRole.expenseTotal,
+    );
+    final groceries = _result(
+      'ANL-R703',
+      '25',
+      surface: AnalysisSurface.spending,
+      grouping: RuleGrouping.category,
+      dimension: 'category.groceries',
+    );
+    final transport = _result(
+      'ANL-R704',
+      '75',
+      surface: AnalysisSurface.spending,
+      grouping: RuleGrouping.category,
+      dimension: 'category.transport',
+    );
+    final unavailable = _result(
+      'ANL-R705',
+      '50',
+      surface: AnalysisSurface.spending,
+      grouping: RuleGrouping.category,
+      dimension: 'category.unavailable',
+      availability: AnalysisDataAvailability.insufficient,
+    );
+
+    final overview = AnalysisOverview.fromResults([
+      spending,
+      groceries,
+      transport,
+      unavailable,
+    ]);
+
+    expect(
+      overview.categoryShares['ANL-R703:category.groceries'],
+      DecimalValue.parse('0.25'),
+    );
+    expect(
+      overview.categoryShares['ANL-R704:category.transport'],
+      DecimalValue.parse('0.75'),
+    );
+    expect(
+      overview.categoryShares.containsKey('ANL-R705:category.unavailable'),
+      isFalse,
+    );
+  });
+
+  test('does not derive a share across different normalized currencies', () {
+    final spending = _result(
+      'ANL-R701',
+      '100',
+      role: AnalysisSemanticRole.expenseTotal,
+    );
+    final foreignCategory = _result(
+      'ANL-R706',
+      '25',
+      surface: AnalysisSurface.spending,
+      grouping: RuleGrouping.category,
+      dimension: 'category.foreign',
+      currency: 'EUR',
+    );
+
+    final overview = AnalysisOverview.fromResults([spending, foreignCategory]);
+
+    expect(
+      overview.categoryShares.containsKey('ANL-R706:category.foreign'),
+      isFalse,
+    );
+  });
+
+  test(
+    'does not derive a share when normalized currency metadata is missing',
+    () {
+      final spending = _result(
+        'ANL-R701',
+        '100',
+        role: AnalysisSemanticRole.expenseTotal,
+        currency: null,
+      );
+      final category = _result(
+        'ANL-R706',
+        '25',
+        surface: AnalysisSurface.spending,
+        grouping: RuleGrouping.category,
+        dimension: 'category.unknown-currency',
+        currency: null,
+      );
+
+      final overview = AnalysisOverview.fromResults([spending, category]);
+
+      expect(
+        overview.categoryShares.containsKey(
+          'ANL-R706:category.unknown-currency',
+        ),
+        isFalse,
+      );
+    },
+  );
+
+  test('does not derive a share from original-currency metrics', () {
+    final spending = _result(
+      'ANL-R701',
+      '100',
+      role: AnalysisSemanticRole.expenseTotal,
+      currencyBasis: CurrencyBasis.original,
+    );
+    final category = _result(
+      'ANL-R706',
+      '25',
+      surface: AnalysisSurface.spending,
+      grouping: RuleGrouping.category,
+      dimension: 'category.original-currency',
+      currencyBasis: CurrencyBasis.original,
+    );
+
+    final overview = AnalysisOverview.fromResults([spending, category]);
+
+    expect(
+      overview.categoryShares.containsKey(
+        'ANL-R706:category.original-currency',
+      ),
+      isFalse,
+    );
+  });
+
   test(
     'marks derived savings unavailable when source data is insufficient',
     () {
@@ -256,6 +384,8 @@ RuleExecutionResult _result(
   RuleGrouping grouping = RuleGrouping.none,
   String? dimension,
   AnalysisDataAvailability availability = AnalysisDataAvailability.sufficient,
+  String? currency = 'USD',
+  CurrencyBasis currencyBasis = CurrencyBasis.baseCurrency,
 }) {
   final rule = AnalysisRuleDefinition(
     identity: RuleIdentity(id),
@@ -267,7 +397,11 @@ RuleExecutionResult _result(
     enabled: true,
     status: AnalysisRuleStatus.active,
     period: 'selected_period',
-    measure: const RuleMeasure(operation: RuleOperation.sum, field: 'amount'),
+    measure: RuleMeasure(
+      operation: RuleOperation.sum,
+      field: 'amount',
+      currencyBasis: currencyBasis,
+    ),
     grouping: grouping,
     baseline: RuleBaseline.none,
     condition: const RuleCondition(operator: 'none'),
@@ -283,8 +417,8 @@ RuleExecutionResult _result(
       timeZoneId: 'UTC',
     ),
     datasetMode: DatasetMode.allEligible,
-    currencyBasis: CurrencyBasis.baseCurrency,
-    baseCurrency: CurrencyCode('USD'),
+    currencyBasis: currencyBasis,
+    baseCurrency: currency == null ? null : CurrencyCode(currency),
   );
   return RuleExecutionResult(
     rule: rule,

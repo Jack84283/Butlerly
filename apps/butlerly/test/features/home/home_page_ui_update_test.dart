@@ -6,12 +6,14 @@ import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 void main() {
   late GoRouter router;
@@ -763,6 +765,197 @@ void main() {
       expect((barCenter.dx - labelCenter.dx).abs(), lessThan(1.0));
     }
   });
+
+  testWidgets(
+    'Home keeps available spending amounts when one trend month lacks FX data',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.light,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: homeSpendingTrendForTest(
+              [
+                (month: DateTime(2026, 6), value: 20, selected: false),
+                (month: DateTime(2026, 7), value: 32, selected: false),
+                (month: DateTime(2026, 8), value: 42, selected: true),
+                (month: DateTime(2026, 9), value: 28, selected: false),
+              ],
+              unavailableMonths: [DateTime(2026, 7)],
+              selectedMetric: _trendMetric(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('home-spending-trend-chart')),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          'Some spending trend values are unavailable because currency normalization is missing.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text(r'$42.00'), findsOneWidget);
+      expect(find.text(r'$0.00'), findsNothing);
+      final unavailableBar = find.byKey(
+        const ValueKey('home-spending-trend-bar-2026-7'),
+      );
+      expect(unavailableBar, findsOneWidget);
+      expect(tester.getSize(unavailableBar).height, greaterThan(0));
+      expect(find.byTooltip('July 2026, Not available'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-spending-trend-chart')),
+          matching: find.byIcon(Icons.help_outline),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-spending-trend-chart')),
+          matching: find.byIcon(Icons.remove),
+        ),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('Home marks a missing trend result as unavailable', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: homeSpendingTrendForTest(
+            [
+              (month: DateTime(2026, 6), value: 20, selected: false),
+              (month: DateTime(2026, 7), value: 32, selected: false),
+              (month: DateTime(2026, 8), value: 42, selected: true),
+            ],
+            missingMonths: [DateTime(2026, 7)],
+            selectedMetric: _trendMetric(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'Some spending trend values are unavailable because currency normalization is missing.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text(r'$42.00'), findsOneWidget);
+    expect(find.text(r'$0.00'), findsNothing);
+    final missingBar = find.byKey(
+      const ValueKey('home-spending-trend-bar-2026-7'),
+    );
+    expect(missingBar, findsOneWidget);
+    expect(tester.getSize(missingBar).height, greaterThan(0));
+    expect(find.byTooltip('July 2026, Not available'), findsOneWidget);
+    expect(find.text('No spending in this period'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'Home trend unavailable values remain explicit across locales and themes',
+    (tester) async {
+      for (final locale in [
+        const Locale('en'),
+        const Locale('zh', 'CN'),
+        const Locale('es'),
+      ]) {
+        for (final theme in [AppTheme.light, AppTheme.dark]) {
+          await tester.pumpWidget(
+            MaterialApp(
+              locale: locale,
+              theme: theme,
+              localizationsDelegates: const [
+                AppLocalizations.delegate,
+                GlobalMaterialLocalizations.delegate,
+                GlobalWidgetsLocalizations.delegate,
+                GlobalCupertinoLocalizations.delegate,
+              ],
+              supportedLocales: AppLocalizations.supportedLocales,
+              home: Scaffold(
+                body: homeSpendingTrendForTest(
+                  [
+                    (month: DateTime(2026, 7), value: 12, selected: false),
+                    (month: DateTime(2026, 8), value: 42, selected: true),
+                  ],
+                  unavailableMonths: [DateTime(2026, 7)],
+                  selectedMetric: _trendMetric(),
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          final localized = AppLocalizations(locale);
+          expect(
+            find.text(localized.text('spendingTrendPartial')),
+            findsOneWidget,
+          );
+          expect(
+            find.byKey(const ValueKey('home-spending-trend-chart')),
+            findsOneWidget,
+          );
+          final chart = find.byKey(const ValueKey('home-spending-trend-chart'));
+          final chartContext = tester.element(chart);
+          expect(
+            find.text(localizedCompactMoney(chartContext, '42', 'USD')),
+            findsOneWidget,
+          );
+          expect(
+            find.text(localizedCompactMoney(chartContext, '0', 'USD')),
+            findsNothing,
+          );
+          expect(
+            find.byTooltip(
+              '${DateFormat.yMMMM(locale.toLanguageTag()).format(DateTime(2026, 7))}, ${localized.text('notAvailable')}',
+            ),
+            findsOneWidget,
+          );
+          expect(
+            find.descendant(
+              of: find.byKey(const ValueKey('home-spending-trend-chart')),
+              matching: find.byIcon(Icons.help_outline),
+            ),
+            findsNothing,
+          );
+          expect(
+            tester
+                .getSize(
+                  find.byKey(const ValueKey('home-spending-trend-bar-2026-7')),
+                )
+                .height,
+            greaterThan(0),
+          );
+          expect(tester.takeException(), isNull);
+        }
+      }
+    },
+  );
 
   testWidgets('Device spending trend shows thousands as lowercase k', (
     tester,
