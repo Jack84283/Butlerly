@@ -35,6 +35,7 @@ final class GetHomeOverview {
     this.merchants,
     this.canonicalTransactionIds,
     this.consistencyGate,
+    this.ensureAnalysisRules,
   });
 
   final ResolveHomePeriod resolveHomePeriod;
@@ -46,6 +47,12 @@ final class GetHomeOverview {
   final MerchantRepository? merchants;
   final HomeCanonicalTransactionIdsLoader? canonicalTransactionIds;
   final AnalysisConsistencyGate? consistencyGate;
+
+  /// Reinstalls the packaged analysis definitions when a restore, erase, or
+  /// interrupted startup left the active-rule projection empty. The callback
+  /// is supplied by the app composition root so this application use case
+  /// does not depend on Flutter assets.
+  final Future<void> Function()? ensureAnalysisRules;
 
   Future<ApplicationResult<HomeOverview>> call({
     required DateTime instant,
@@ -78,6 +85,7 @@ final class GetHomeOverview {
     bool forceAnalysisRefresh = false,
     int trendMonthCount = 6,
   }) async {
+    await _ensureAnalysisRulesReady();
     final CalculateAnalysisOverview? analysisUseCase = calculateAnalysis;
     final _HomeContextResolution homeResolution;
     if (analysisUseCase == null) {
@@ -288,6 +296,31 @@ final class GetHomeOverview {
         duplicateUnavailable: duplicateUnavailable,
       ),
     );
+  }
+
+  Future<void> _ensureAnalysisRulesReady() async {
+    final analysis = calculateAnalysis;
+    final ensure = ensureAnalysisRules;
+    if (analysis == null || ensure == null) return;
+    try {
+      final active = await analysis.rules.listActive();
+      const requiredRoles = [
+        AnalysisSemanticRole.expenseTotal,
+        AnalysisSemanticRole.incomeTotal,
+        AnalysisSemanticRole.netCashFlow,
+        AnalysisSemanticRole.eligibleTransactionCount,
+      ];
+      final homeRulesReady = requiredRoles.every(
+        (role) => active.any(
+          (rule) => rule.type == AnalysisRuleType.metric && rule.role == role,
+        ),
+      );
+      if (!homeRulesReady) await ensure();
+    } on Object {
+      // Let the normal analysis application result carry the failure. Home
+      // must remain usable for transactions/review and must not synthesize
+      // financial values when the retry cannot repair the rule projection.
+    }
   }
 
   Future<List<Merchant>> _listMerchantsSafely() async {

@@ -1513,7 +1513,7 @@ class _HomeTrendPlot extends StatelessWidget {
                                                 ),
                                               ),
                                               child: Icon(
-                                                Icons.help_outline,
+                                                Icons.remove,
                                                 size: 16,
                                                 color: context
                                                     .colors

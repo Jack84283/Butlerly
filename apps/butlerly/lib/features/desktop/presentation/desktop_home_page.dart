@@ -1798,6 +1798,7 @@ class _DesktopTrend extends StatelessWidget {
                                 context,
                                 chartMaximum - i * gridInterval,
                                 currency,
+                                interval: gridInterval,
                               ),
                               key: ValueKey('desktop-home-trend-axis-label-$i'),
                               style: axisStyle,
@@ -1869,7 +1870,7 @@ class _DesktopTrend extends StatelessWidget {
                                                     ),
                                                   ),
                                                   child: Icon(
-                                                    Icons.help_outline,
+                                                    Icons.remove,
                                                     size: 16,
                                                     color: context
                                                         .colors
@@ -1954,8 +1955,9 @@ class _DesktopTrend extends StatelessWidget {
 String _desktopTrendAxisLabel(
   BuildContext context,
   double value,
-  String currency,
-) {
+  String currency, {
+  required double interval,
+}) {
   final code = currency.trim().toUpperCase();
   if (code.isEmpty) {
     return localizedCompactDecimal(context, value.toString());
@@ -1964,8 +1966,14 @@ String _desktopTrendAxisLabel(
   return NumberFormat.compactCurrency(
     locale: locale,
     name: code,
-    decimalDigits: 0,
+    decimalDigits: _desktopTrendAxisDecimalDigits(interval),
   ).format(value);
+}
+
+int _desktopTrendAxisDecimalDigits(double interval) {
+  if (!interval.isFinite || interval >= 1) return 0;
+  final digits = (-math.log(interval) / math.ln10).ceil();
+  return digits.clamp(1, 2);
 }
 
 String _desktopTrendPointLabel(

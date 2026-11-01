@@ -4,7 +4,6 @@ import 'package:butlerly/app/butlerly_app.dart';
 import 'package:butlerly/app/router/app_router.dart';
 import 'package:butlerly/app/session/butlerly_session_guard.dart';
 import 'package:butlerly/app/theme/app_theme.dart';
-import 'package:butlerly/core/analysis/bundled_analysis_rules.dart';
 import 'package:butlerly/core/config/app_configuration.dart';
 import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
@@ -613,16 +612,8 @@ Future<void> initializeButlerly(AppLogger logger) async {
       phase = 'analysis rule installation';
       logger.info('Startup: installing bundled analysis rules');
       try {
-        final installer = services<FinanceServices>().installBuiltInRules;
-        final installation = installer == null
-            ? null
-            : await installBundledAnalysisRules(installer);
-        if (installation != null && installation.diagnostics.isNotEmpty) {
-          logger.warning(
-            'Some bundled analysis rules were rejected: '
-            '${installation.diagnostics.length}',
-          );
-        }
+        final ensure = services<FinanceServices>().ensureAnalysisRules;
+        if (ensure != null) await ensure();
         logger.info('Startup: bundled analysis rules ready');
       } catch (error, stackTrace) {
         logger.severe(

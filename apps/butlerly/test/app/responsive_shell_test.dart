@@ -1181,6 +1181,47 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Desktop spending trend keeps fractional tick labels visible', (
+    tester,
+  ) async {
+    final transactions = MemoryTransactionRepository();
+    final finance = await _desktopHomeFinance(
+      transactions: transactions,
+      analysisRules: _DesktopAnalysisRules([_desktopExpenseRule()]),
+    );
+    final now = DateTime.now().toUtc();
+    final created = await finance.createTransaction(
+      CreateTransactionCommand(
+        id: 'desktop-home-fractional-trend',
+        provenanceId: 'desktop-home-fractional-trend-provenance',
+        timing: KnownTransactionTime(now),
+        transactionDate: _dateOnly(now),
+        money: Money(
+          amount: DecimalValue.parse('0.40'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        description: 'Fractional trend transaction',
+      ),
+    );
+    expect(created, isA<ApplicationSuccess<TransactionDto>>());
+    services.registerSingleton<FinanceServices>(finance);
+    addTearDown(() => services.unregister<FinanceServices>());
+
+    await _pumpAt(tester, const Size(1200, 800));
+
+    final chart = find.byKey(const ValueKey('desktop-home-trend-chart'));
+    expect(chart, findsOneWidget);
+    final labels = find.descendant(of: chart, matching: find.byType(Text));
+    expect(
+      tester
+          .widgetList<Text>(labels)
+          .any((label) => (label.data ?? '').contains('0.4')),
+      isTrue,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'Desktop Home shows normalized category amounts and percentages together',
     (tester) async {
@@ -1376,6 +1417,20 @@ void main() {
       matching: find.byType(Tooltip),
     );
     expect(tester.widget<Tooltip>(tooltip).message, contains('Not available'));
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('desktop-home-trend-card')),
+        matching: find.byIcon(Icons.help_outline),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('desktop-home-trend-card')),
+        matching: find.byIcon(Icons.remove),
+      ),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 

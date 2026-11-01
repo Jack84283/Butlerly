@@ -204,6 +204,17 @@ final class CalculateAnalysisOverview {
     required int sourceRevision,
   }) async {
     final definitions = await rules.listActive();
+    // An empty active set is an installation/configuration failure, not an
+    // evaluated period with no activity. Treating it as a successful empty
+    // result makes every Home summary metric disappear and leaves the trend
+    // without an expense rule. The caller can then retry bundled rule
+    // installation or present an explicit unavailable state.
+    if (definitions.isEmpty) {
+      throw const RepositoryException(
+        RepositoryFailureCode.unavailable,
+        'active analysis rules are unavailable',
+      );
+    }
     final materializedRules = definitions
         .where(
           (rule) =>

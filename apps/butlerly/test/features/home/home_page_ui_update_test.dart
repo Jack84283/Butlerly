@@ -813,6 +813,20 @@ void main() {
       expect(unavailableBar, findsOneWidget);
       expect(tester.getSize(unavailableBar).height, greaterThan(0));
       expect(find.byTooltip('July 2026, Not available'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-spending-trend-chart')),
+          matching: find.byIcon(Icons.help_outline),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('home-spending-trend-chart')),
+          matching: find.byIcon(Icons.remove),
+        ),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
     },
   );
@@ -921,6 +935,13 @@ void main() {
               '${DateFormat.yMMMM(locale.toLanguageTag()).format(DateTime(2026, 7))}, ${localized.text('notAvailable')}',
             ),
             findsOneWidget,
+          );
+          expect(
+            find.descendant(
+              of: find.byKey(const ValueKey('home-spending-trend-chart')),
+              matching: find.byIcon(Icons.help_outline),
+            ),
+            findsNothing,
           );
           expect(
             tester
