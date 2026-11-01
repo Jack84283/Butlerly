@@ -879,7 +879,9 @@ class _DesktopMoreRow extends StatelessWidget {
     child: InkWell(
       onTap: onTap,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 43),
+        constraints: const BoxConstraints(
+          minHeight: ButlerlySize.minimumTarget,
+        ),
         child: Padding(
           padding: const EdgeInsets.symmetric(
             vertical: ButlerlySpacing.compact,

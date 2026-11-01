@@ -314,6 +314,13 @@ void main() {
     expect(find.text('Privacy & data'), findsOneWidget);
     expect(find.text('Budget Settings'), findsOneWidget);
     expect(find.text('Backup & Restore'), findsOneWidget);
+    for (final label in const ['Budget Settings', 'Backup & Restore']) {
+      final row = find.ancestor(
+        of: find.text(label),
+        matching: find.byType(InkWell),
+      );
+      expect(tester.getSize(row).height, ButlerlySize.minimumTarget);
+    }
     expect(find.text('Optional features'), findsOneWidget);
     expect(find.text('About Butlerly'), findsOneWidget);
     expect(find.text('Display name'), findsOneWidget);
