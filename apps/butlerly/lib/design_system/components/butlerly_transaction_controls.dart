@@ -36,39 +36,9 @@ class ButlerlyTransactionSearchControls extends StatelessWidget {
   final Key? searchFieldKey;
 
   @override
-  Widget build(BuildContext context) => Row(
-    key: controlsKey,
-    children: [
-      Expanded(
-        child: SearchBar(
-          key: searchFieldKey,
-          controller: controller,
-          constraints: const BoxConstraints(
-            minHeight: ButlerlySize.minimumTarget,
-            maxHeight: ButlerlySize.minimumTarget,
-          ),
-          hintText: context.l10n.text('searchHint'),
-          leading: const Icon(Icons.search_rounded),
-          trailing: [
-            IconButton(
-              key: const ValueKey('search-submit'),
-              tooltip: context.l10n.text('search'),
-              onPressed: onSearch,
-              icon: const Icon(Icons.search_rounded),
-            ),
-            if (controller.text.isNotEmpty)
-              IconButton(
-                tooltip: context.l10n.text('clear'),
-                onPressed: onClear,
-                icon: const Icon(Icons.close_rounded),
-              ),
-          ],
-          onChanged: onChanged,
-          onSubmitted: (_) => onSearch(),
-        ),
-      ),
-      const SizedBox(width: ButlerlySpacing.compact),
-      SizedBox.square(
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final filter = SizedBox.square(
         dimension: ButlerlySize.minimumTarget,
         child: IconButton(
           constraints: const BoxConstraints.tightFor(
@@ -83,8 +53,56 @@ class ButlerlyTransactionSearchControls extends StatelessWidget {
           onPressed: onFilter,
           icon: const Icon(Icons.tune_rounded),
         ),
-      ),
-    ],
+      );
+      // A StatefulShell branch can be measured at a transiently tiny width
+      // while another branch becomes active. A full SearchBar cannot fit in
+      // that state, so keep one compact, useful control without overflowing.
+      if (constraints.maxWidth < ButlerlySize.minimumTarget * 2) {
+        return SizedBox(
+          key: controlsKey,
+          height: ButlerlySize.minimumTarget,
+          child: Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: filter,
+          ),
+        );
+      }
+      return Row(
+        key: controlsKey,
+        children: [
+          Expanded(
+            child: SearchBar(
+              key: searchFieldKey,
+              controller: controller,
+              constraints: const BoxConstraints(
+                minHeight: ButlerlySize.minimumTarget,
+                maxHeight: ButlerlySize.minimumTarget,
+              ),
+              hintText: context.l10n.text('searchHint'),
+              leading: const Icon(Icons.search_rounded),
+              trailing: [
+                IconButton(
+                  key: const ValueKey('search-submit'),
+                  tooltip: context.l10n.text('search'),
+                  onPressed: onSearch,
+                  icon: const Icon(Icons.search_rounded),
+                ),
+                if (controller.text.isNotEmpty)
+                  IconButton(
+                    tooltip: context.l10n.text('clear'),
+                    onPressed: onClear,
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+              ],
+              onChanged: onChanged,
+              onSubmitted: (_) => onSearch(),
+            ),
+          ),
+          const SizedBox(width: ButlerlySpacing.compact),
+          filter,
+        ],
+      );
+    },
   );
 }
 

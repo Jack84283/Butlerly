@@ -16,6 +16,7 @@ import 'package:butlerly/features/foundation/presentation/first_use_preferences_
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/features/foundation/presentation/privacy_data_page.dart';
 import 'package:butlerly/features/foundation/presentation/settings_page.dart';
+import 'package:butlerly/features/foundation/presentation/statement_capture_page.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -83,13 +84,13 @@ void main() {
       ),
     );
 
-    tester.view.physicalSize = const Size(390, 844);
-    tester.view.devicePixelRatio = 1;
+    _setIntegrationView(tester, const Size(390, 844));
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
     appRouter.go('/launch');
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
     await tester.pump(ButlerlySessionConfig.launchDuration);
     await tester.pump();
     expect(appRouter.routeInformationProvider.value.uri.path, '/');
@@ -168,13 +169,13 @@ void main() {
       ),
     );
 
-    tester.view.physicalSize = const Size(390, 844);
-    tester.view.devicePixelRatio = 1;
+    _setIntegrationView(tester, const Size(390, 844));
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
     appRouter.go('/launch');
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
     await tester.pump(ButlerlySessionConfig.launchDuration);
     await tester.pump();
     expect(find.byType(FirstUsePreferencesPage), findsOneWidget);
@@ -258,6 +259,220 @@ void main() {
       hasLength(1),
     );
   });
+
+  testWidgets(
+    'transaction lifecycle and associations survive reload across adaptive layouts',
+    (tester) async {
+      await _saveIntegrationPreference(harness);
+      final firstSource = paymentSource(
+        'lifecycle-source-1',
+        'Lifecycle first card',
+      );
+      final secondSource = paymentSource(
+        'lifecycle-source-2',
+        'Lifecycle second card',
+      );
+      final firstMerchant = Merchant(
+        id: MerchantId('lifecycle-merchant-1'),
+        name: 'Lifecycle first merchant',
+      );
+      final secondMerchant = Merchant(
+        id: MerchantId('lifecycle-merchant-2'),
+        name: 'Lifecycle edited merchant',
+      );
+      final firstCategory = Category(
+        id: CategoryId('lifecycle-category-1'),
+        name: 'Lifecycle first category',
+        origin: CategoryOrigin.user,
+      );
+      final secondCategory = Category(
+        id: CategoryId('lifecycle-category-2'),
+        name: 'Lifecycle edited category',
+        origin: CategoryOrigin.user,
+      );
+      final firstTag = Tag(
+        id: TagId('lifecycle-tag-1'),
+        name: 'Lifecycle first tag',
+      );
+      final secondTag = Tag(
+        id: TagId('lifecycle-tag-2'),
+        name: 'Lifecycle edited tag',
+      );
+      for (final result in [
+        harness.finance.savePaymentSource(firstSource),
+        harness.finance.savePaymentSource(secondSource),
+        harness.finance.saveMerchant(firstMerchant),
+        harness.finance.saveMerchant(secondMerchant),
+        harness.finance.saveCategory(firstCategory),
+        harness.finance.saveCategory(secondCategory),
+        harness.finance.saveTag(firstTag),
+        harness.finance.saveTag(secondTag),
+      ]) {
+        expect(await result, isA<ApplicationSuccess>());
+      }
+
+      final created = await harness.finance.createTransaction(
+        CreateTransactionCommand(
+          id: 'lifecycle-transaction-e2e',
+          provenanceId: 'lifecycle-provenance-e2e',
+          timing: const UnknownTransactionTime(
+            UnknownTransactionTimeReason.unknown,
+          ),
+          money: money('18.75', 'USD'),
+          direction: TransactionDirection.expense,
+          transactionDate: '2026-09-20',
+          description: 'Lifecycle original merchant',
+          rawCounterparty: 'Lifecycle original merchant',
+          paymentSourceId: firstSource.id.value,
+          merchantId: firstMerchant.id.value,
+          categoryId: firstCategory.id.value,
+          tagIds: [firstTag.id.value],
+        ),
+      );
+      final createdTransaction =
+          (created as ApplicationSuccess<TransactionDto>).value;
+
+      expect(
+        await harness.finance.assignPaymentSource(
+          createdTransaction.id,
+          secondSource.id.value,
+        ),
+        isA<ApplicationSuccess<TransactionDto>>(),
+      );
+      expect(
+        await harness.finance.assignMerchant(
+          createdTransaction.id,
+          secondMerchant.id.value,
+        ),
+        isA<ApplicationSuccess<TransactionDto>>(),
+      );
+      expect(
+        await harness.finance.assignCategory(
+          createdTransaction.id,
+          secondCategory.id.value,
+        ),
+        isA<ApplicationSuccess<TransactionDto>>(),
+      );
+      expect(
+        await harness.finance.addTag(createdTransaction.id, secondTag.id.value),
+        isA<ApplicationSuccess<TransactionDto>>(),
+      );
+
+      final edited = await harness.finance.updateTransaction(
+        UpdateTransactionCommand(
+          id: createdTransaction.id,
+          timing: const UnknownTransactionTime(
+            UnknownTransactionTimeReason.unknown,
+          ),
+          money: money('18.75', 'USD'),
+          direction: TransactionDirection.expense,
+          transactionDate: '2026-09-20',
+          description: 'Lifecycle edited merchant',
+          rawCounterparty: 'Lifecycle edited merchant',
+        ),
+      );
+      expect(edited, isA<ApplicationSuccess<TransactionDto>>());
+
+      final archived = await harness.finance.archiveTransaction(
+        createdTransaction.id,
+      );
+      expect(
+        (archived as ApplicationSuccess<TransactionDto>).value.status,
+        TransactionStatus.archived.name,
+      );
+      expect(
+        await harness.finance.restoreTransaction(createdTransaction.id),
+        isA<ApplicationSuccess<TransactionDto>>(),
+      );
+
+      await harness.restart();
+      final reloaded =
+          (await harness.finance.getTransaction(createdTransaction.id)
+                  as ApplicationSuccess<TransactionDto>)
+              .value;
+      expect(reloaded.status, TransactionStatus.active.name);
+      expect(reloaded.description, 'Lifecycle edited merchant');
+      expect(reloaded.paymentSourceId, secondSource.id.value);
+      expect(reloaded.merchantId, secondMerchant.id.value);
+      expect(reloaded.categoryId, secondCategory.id.value);
+      expect(reloaded.tagIds, contains(secondTag.id.value));
+      expect(
+        await harness.database.database.query(
+          'transactions',
+          where: 'id = ?',
+          whereArgs: [createdTransaction.id],
+        ),
+        hasLength(1),
+      );
+      final persistedTransaction = (await harness.database.database.query(
+        'transactions',
+        where: 'id = ?',
+        whereArgs: [createdTransaction.id],
+      )).single;
+      expect(persistedTransaction['payment_source_id'], secondSource.id.value);
+      expect(persistedTransaction['merchant_id'], secondMerchant.id.value);
+      expect(persistedTransaction['category_id'], secondCategory.id.value);
+      final persistedTags = await harness.database.database.query(
+        'transaction_tags',
+        where: 'transaction_id = ?',
+        whereArgs: [createdTransaction.id],
+      );
+      expect(
+        persistedTags.map((row) => row['tag_id']),
+        contains(secondTag.id.value),
+      );
+
+      await harness.installBuiltInRules();
+      final overview = await harness.finance.calculateAnalysisOverview!
+          .currentMonth(DateTime.utc(2026, 9, 20));
+      final expense = _analysisMetric(
+        (overview as ApplicationSuccess<List<RuleExecutionResult>>).value,
+        AnalysisSemanticRole.expenseTotal,
+      );
+      expect(expense.value, DecimalValue.parse('18.75'));
+      expect(
+        expense.evidence.map((reference) => reference.transactionId.value),
+        contains(createdTransaction.id),
+      );
+
+      for (final size in [
+        const Size(390, 844),
+        const Size(900, 1100),
+        const Size(1200, 800),
+      ]) {
+        await _pumpProductionRouteApp(
+          tester,
+          size,
+          '/transactions?ids=${createdTransaction.id}',
+        );
+        expect(find.byType(TransactionsPage), findsOneWidget);
+        expect(find.text('Lifecycle edited merchant'), findsOneWidget);
+        if (size.width >= 1200) {
+          expect(
+            find.byKey(const ValueKey('desktop-transactions-table')),
+            findsOneWidget,
+          );
+          await tester.tap(find.text('Lifecycle edited merchant'));
+          await tester.pump();
+          expect(
+            find.byKey(
+              const ValueKey('desktop-panel-lifecycle-transaction-e2e'),
+            ),
+            findsOneWidget,
+          );
+        } else {
+          final search = find.byKey(
+            const ValueKey('transactions-search-field'),
+          );
+          await tester.enterText(search, 'edited');
+          await tester.pump();
+          expect(find.text('Lifecycle edited merchant'), findsOneWidget);
+        }
+        await tester.pumpWidget(const SizedBox.shrink());
+        await tester.pump();
+      }
+    },
+  );
 
   test(
     'payment source and transaction survive an application restart',
@@ -364,6 +579,27 @@ void main() {
         ),
       );
       expect(receipt, isA<ApplicationSuccess<TransactionDto>>());
+      final receiptTransaction =
+          (receipt as ApplicationSuccess<TransactionDto>).value;
+      expect(
+        await harness.finance.updateTransaction(
+          UpdateTransactionCommand(
+            id: receiptTransaction.id,
+            timing: const UnknownTransactionTime(
+              UnknownTransactionTimeReason.unknown,
+            ),
+            money: money(
+              receiptTransaction.amount,
+              receiptTransaction.currency,
+            ),
+            direction: TransactionDirection.expense,
+            transactionDate: receiptTransaction.transactionDate,
+            description: 'Corrected MARKET',
+            rawCounterparty: 'Corrected MARKET',
+          ),
+        ),
+        isA<ApplicationSuccess<TransactionDto>>(),
+      );
 
       final evidencePath = path.join(harness.evidence.path, 'receipt.txt');
       await File(evidencePath).writeAsString(ocr.rawText);
@@ -429,10 +665,31 @@ void main() {
       final storedEvidence = await harness.finance.listEvidenceForTransaction(
         'receipt-e2e',
       );
-      expect(
-        (storedEvidence as ApplicationSuccess<List<EvidenceItem>>).value,
-        hasLength(1),
+      final evidenceItems =
+          (storedEvidence as ApplicationSuccess<List<EvidenceItem>>).value;
+      expect(evidenceItems, hasLength(1));
+      final corrected =
+          (await harness.finance.getTransaction('receipt-e2e')
+                  as ApplicationSuccess<TransactionDto>)
+              .value;
+      expect(corrected.description, 'Corrected MARKET');
+
+      await _saveIntegrationPreference(harness);
+      await harness.installBuiltInRules();
+      final results = await harness.finance.calculateAnalysisOverview!
+          .currentMonth(DateTime.utc(2026, 8, 21));
+      final expense = _analysisMetric(
+        (results as ApplicationSuccess<List<RuleExecutionResult>>).value,
+        AnalysisSemanticRole.expenseTotal,
       );
+      expect(expense.value, DecimalValue.parse('12.34'));
+      expect(expense.transactionCount, 1);
+      final evidenceTransactionIds = expense.evidence
+          .map((reference) => reference.transactionId.value)
+          .toList();
+      expect(evidenceTransactionIds, contains('payment-e2e'));
+      expect(evidenceTransactionIds, isNot(contains('receipt-e2e')));
+      expect(evidenceItems.single.id.value, 'evidence-e2e');
     },
   );
 
@@ -647,6 +904,14 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
 
       const password = 'correct horse battery staple';
+      final destinationDirectory = await Directory.systemTemp.createTemp(
+        'butlerly-layout-backup-e2e-',
+      );
+      addTearDown(() async {
+        if (await destinationDirectory.exists()) {
+          await destinationDirectory.delete(recursive: true);
+        }
+      });
       final isMobile =
           defaultTargetPlatform == TargetPlatform.iOS ||
           defaultTargetPlatform == TargetPlatform.android;
@@ -680,7 +945,7 @@ void main() {
         if (!isMobile) {
           final destination = File(
             path.join(
-              harness.root.path,
+              destinationDirectory.path,
               'layout-backup-${size.width.toInt()}.butlerly',
             ),
           );
@@ -688,6 +953,8 @@ void main() {
             XFile(destination.path),
             savePath: destination.path,
           );
+          await tester.ensureVisible(find.text('Back up Butlerly'));
+          await tester.pump();
           await tester.tap(find.text('Back up Butlerly'));
           await tester.pumpAndSettle();
           final fields = find.byType(TextField);
@@ -796,6 +1063,262 @@ void main() {
       final transaction =
           (transactionResult as ApplicationSuccess<TransactionDto>).value;
       expect(transaction.categoryId, category.id.value);
+    },
+  );
+
+  test(
+    'duplicate decisions persist, stale groups require repair, and totals stay canonical',
+    () async {
+      await _saveIntegrationPreference(harness);
+      await harness.installBuiltInRules();
+      for (final command in [
+        manualCommand(
+          id: 'duplicate-decision-a-e2e',
+          description: 'Duplicate decision A',
+          date: '2026-09-22',
+          amount: '10.00',
+        ),
+        manualCommand(
+          id: 'duplicate-decision-b-e2e',
+          description: 'Duplicate decision B',
+          date: '2026-09-22',
+          amount: '10.00',
+        ),
+      ]) {
+        expect(
+          await harness.finance.createTransaction(command),
+          isA<ApplicationSuccess<TransactionDto>>(),
+        );
+      }
+
+      final scanned =
+          await harness.finance.scanExistingTransactionsForDuplicates!();
+      final group =
+          (scanned as ApplicationSuccess<List<DuplicateCandidateGroup>>)
+              .value
+              .single;
+      expect(group.status, DuplicateCandidateGroupStatus.unresolved);
+      final unresolved = await harness.finance.calculateAnalysisOverview!
+          .currentMonth(DateTime.utc(2026, 9, 22));
+      var expense = _analysisMetric(
+        (unresolved as ApplicationSuccess<List<RuleExecutionResult>>).value,
+        AnalysisSemanticRole.expenseTotal,
+      );
+      expect(expense.value, DecimalValue.parse('10.00'));
+      expect(expense.transactionCount, 1);
+      expect(expense.evidence, hasLength(1));
+
+      expect(
+        await harness.finance.resolveDuplicateCandidateGroup!(
+          group.id,
+          DuplicateCandidateGroupStatus.keepBoth,
+        ),
+        isA<ApplicationSuccess<void>>(),
+      );
+      await harness.restart();
+      final keepBoth = await harness.finance.calculateAnalysisOverview!
+          .currentMonth(DateTime.utc(2026, 9, 22));
+      expense = _analysisMetric(
+        (keepBoth as ApplicationSuccess<List<RuleExecutionResult>>).value,
+        AnalysisSemanticRole.expenseTotal,
+      );
+      expect(expense.value, DecimalValue.parse('20.00'));
+      expect(expense.transactionCount, 2);
+      expect(
+        expense.evidence.map((reference) => reference.transactionId.value),
+        containsAll(['duplicate-decision-a-e2e', 'duplicate-decision-b-e2e']),
+      );
+
+      expect(
+        await harness.finance.resolveDuplicateCandidateGroup!(
+          group.id,
+          DuplicateCandidateGroupStatus.consolidated,
+          selectedTransactionId: TransactionId('duplicate-decision-a-e2e'),
+        ),
+        isA<ApplicationSuccess<void>>(),
+      );
+      await harness.restart();
+      final consolidated = await harness.finance.calculateAnalysisOverview!
+          .currentMonth(DateTime.utc(2026, 9, 22));
+      expense = _analysisMetric(
+        (consolidated as ApplicationSuccess<List<RuleExecutionResult>>).value,
+        AnalysisSemanticRole.expenseTotal,
+      );
+      expect(expense.value, DecimalValue.parse('10.00'));
+      expect(expense.transactionCount, 1);
+      expect(
+        expense.evidence.single.transactionId.value,
+        'duplicate-decision-a-e2e',
+      );
+      expect(
+        await harness.finance.getTransaction('duplicate-decision-b-e2e'),
+        isA<ApplicationSuccess<TransactionDto>>(),
+      );
+
+      final second =
+          (await harness.finance.getTransaction('duplicate-decision-b-e2e')
+                  as ApplicationSuccess<TransactionDto>)
+              .value;
+      expect(
+        await harness.finance.updateTransaction(
+          UpdateTransactionCommand(
+            id: second.id,
+            timing: const UnknownTransactionTime(
+              UnknownTransactionTimeReason.unknown,
+            ),
+            money: money('11.00', 'USD'),
+            direction: TransactionDirection.expense,
+            transactionDate: second.transactionDate,
+            description: second.description,
+            rawCounterparty: second.rawCounterparty,
+          ),
+        ),
+        isA<ApplicationSuccess<TransactionDto>>(),
+      );
+      await harness.restart();
+      final staleGroups =
+          (await harness.finance.listDuplicateCandidateGroups!()
+                  as ApplicationSuccess<List<DuplicateCandidateGroup>>)
+              .value;
+      expect(staleGroups, hasLength(1));
+      expect(staleGroups.single.integrityIssue?.code, 'staleDuplicateGroup');
+      expect(
+        await harness.finance.resolveDuplicateCandidateGroup!(
+          staleGroups.single.id,
+          DuplicateCandidateGroupStatus.keepBoth,
+        ),
+        isA<ApplicationFailure<void>>(),
+      );
+      final staleTotals = await harness.finance.calculateAnalysisOverview!
+          .currentMonth(DateTime.utc(2026, 9, 22));
+      expense = _analysisMetric(
+        (staleTotals as ApplicationSuccess<List<RuleExecutionResult>>).value,
+        AnalysisSemanticRole.expenseTotal,
+      );
+      expect(expense.value, DecimalValue.parse('21.00'));
+      expect(expense.transactionCount, 2);
+      expect(
+        expense.qualityIssues.any(
+          (issue) => issue.code == 'staleDuplicateGroup',
+        ),
+        isTrue,
+      );
+      expect(
+        await harness.finance.repairDuplicateCandidateGroup!(
+          staleGroups.single.id,
+        ),
+        isA<ApplicationSuccess<void>>(),
+      );
+      await harness.restart();
+      expect(
+        (await harness.finance.listDuplicateCandidateGroups!()
+                as ApplicationSuccess<List<DuplicateCandidateGroup>>)
+            .value,
+        isEmpty,
+      );
+      final repairedTotals = await harness.finance.calculateAnalysisOverview!
+          .currentMonth(DateTime.utc(2026, 9, 22));
+      expense = _analysisMetric(
+        (repairedTotals as ApplicationSuccess<List<RuleExecutionResult>>).value,
+        AnalysisSemanticRole.expenseTotal,
+      );
+      expect(expense.value, DecimalValue.parse('21.00'));
+      expect(expense.transactionCount, 2);
+    },
+  );
+
+  test(
+    'foreign currency, empty periods, and financial date boundaries are explicit',
+    () async {
+      await _saveIntegrationPreference(harness);
+      await harness.installBuiltInRules();
+      expect(
+        await harness.finance.createTransaction(
+          manualCommand(
+            id: 'period-usd-e2e',
+            description: 'September USD',
+            date: '2026-09-01',
+            amount: '5.00',
+          ),
+        ),
+        isA<ApplicationSuccess<TransactionDto>>(),
+      );
+      expect(
+        await harness.finance.createTransaction(
+          CreateTransactionCommand(
+            id: 'period-eur-e2e',
+            provenanceId: 'period-eur-provenance-e2e',
+            timing: const UnknownTransactionTime(
+              UnknownTransactionTimeReason.unknown,
+            ),
+            money: money('20.00', 'EUR'),
+            direction: TransactionDirection.expense,
+            transactionDate: '2026-09-30',
+            description: 'September EUR without FX',
+            rawCounterparty: 'September EUR without FX',
+          ),
+        ),
+        isA<ApplicationSuccess<TransactionDto>>(),
+      );
+      expect(
+        await harness.finance.createTransaction(
+          manualCommand(
+            id: 'period-august-e2e',
+            description: 'August boundary',
+            date: '2026-08-31',
+            amount: '100.00',
+          ),
+        ),
+        isA<ApplicationSuccess<TransactionDto>>(),
+      );
+
+      final septemberResults = await harness.finance.calculateAnalysisOverview!
+          .currentMonth(DateTime.utc(2026, 9, 30));
+      final expense = _analysisMetric(
+        (septemberResults as ApplicationSuccess<List<RuleExecutionResult>>)
+            .value,
+        AnalysisSemanticRole.expenseTotal,
+      );
+      expect(expense.value, DecimalValue.parse('5.00'));
+      expect(expense.transactionCount, 1);
+      expect(expense.availability, AnalysisDataAvailability.insufficient);
+      expect(
+        expense.qualityIssues.any((issue) => issue.code == 'missingFx'),
+        isTrue,
+      );
+      expect(
+        expense.evidence.map((reference) => reference.transactionId.value),
+        ['period-usd-e2e'],
+      );
+
+      final emptyResults = await harness.finance.calculateAnalysisOverview!
+          .currentMonth(DateTime.utc(2026, 11, 15));
+      final emptyExpense = _analysisMetric(
+        (emptyResults as ApplicationSuccess<List<RuleExecutionResult>>).value,
+        AnalysisSemanticRole.expenseTotal,
+      );
+      expect(emptyExpense.value, DecimalValue.parse('0'));
+      expect(emptyExpense.availability, AnalysisDataAvailability.empty);
+
+      await harness.restart();
+      final boundaryRows =
+          (await harness.finance.listTransactions(
+                    ListTransactionsQuery(
+                      from: DateTime.utc(2026, 9, 1),
+                      to: DateTime.utc(2026, 9, 30),
+                      timeZoneId: 'UTC',
+                    ),
+                  )
+                  as ApplicationSuccess<List<TransactionDto>>)
+              .value;
+      expect(
+        boundaryRows.map((transaction) => transaction.id),
+        containsAll(['period-usd-e2e', 'period-eur-e2e']),
+      );
+      expect(
+        boundaryRows.map((transaction) => transaction.id),
+        isNot(contains('period-august-e2e')),
+      );
     },
   );
 
@@ -915,6 +1438,140 @@ void main() {
       final rows = (rowsResult as ApplicationSuccess<List<StatementRow>>).value;
       expect(rows.single.status, StatementRowStatus.saved);
       expect(rows.single.transactionId, isNotNull);
+    },
+  );
+
+  test(
+    'statement partial confirmation keeps malformed rows and retries idempotently',
+    () async {
+      final source = paymentSource(
+        'statement-partial-source-e2e',
+        'Statement partial card',
+      );
+      expect(
+        await harness.finance.savePaymentSource(source),
+        isA<ApplicationSuccess<PaymentSource>>(),
+      );
+      final evidence = EvidenceItem(
+        id: EvidenceId('statement-partial-evidence-e2e'),
+        type: EvidenceType.document,
+        originalName: 'partial-statement.pdf',
+        mediaType: 'application/pdf',
+        provenance: Provenance(
+          id: ProvenanceId('statement-partial-provenance-e2e'),
+          sourceType: ProvenanceSourceType.scan,
+          capturedAt: DateTime.utc(2026, 9, 27),
+          originalRepresentation: 'partial-statement.pdf',
+        ),
+        createdAt: DateTime.utc(2026, 9, 27),
+      );
+      expect(
+        await harness.finance.storeEvidence(evidence),
+        isA<ApplicationSuccess<EvidenceItem>>(),
+      );
+      final statement = FinancialStatement(
+        id: 'statement-partial-e2e',
+        evidenceId: evidence.id.value,
+        paymentSourceId: source.id.value,
+        status: StatementStatus.partial,
+        periodStart: DateTime.utc(2026, 9, 1),
+        periodEnd: DateTime.utc(2026, 9, 30),
+        createdAt: DateTime.utc(2026, 9, 27),
+        updatedAt: DateTime.utc(2026, 9, 27),
+      );
+      final valid = StatementRow(
+        id: 'statement-partial-valid-e2e',
+        statementId: statement.id,
+        position: 0,
+        originalText: '2026-09-20 PARTIAL MARKET 42.10',
+        transactionDate: DateTime.utc(2026, 9, 20),
+        description: 'Partial Market',
+        amount: '42.10',
+        currency: 'USD',
+        direction: TransactionDirection.expense.name,
+        confidence: .99,
+        status: StatementRowStatus.pending,
+        createdAt: DateTime.utc(2026, 9, 27),
+        updatedAt: DateTime.utc(2026, 9, 27),
+      );
+      final malformed = StatementRow(
+        id: 'statement-partial-malformed-e2e',
+        statementId: statement.id,
+        position: 1,
+        originalText: 'BROKEN ROW WITHOUT AMOUNT',
+        description: 'Broken row',
+        currency: 'USD',
+        direction: TransactionDirection.expense.name,
+        confidence: .15,
+        status: StatementRowStatus.pending,
+        createdAt: DateTime.utc(2026, 9, 27),
+        updatedAt: DateTime.utc(2026, 9, 27),
+      );
+      final statementServices = harness.finance.statementServices!;
+      expect(
+        await statementServices.create(statement, [valid, malformed]),
+        isA<ApplicationSuccess<void>>(),
+      );
+      final assessment = await statementServices.assessBatch(statement, [
+        valid,
+        malformed,
+      ], source.id.value);
+      final assessed =
+          (assessment as ApplicationSuccess<StatementImportAssessment>).value;
+      expect(assessed.candidateCount, 2);
+      expect(assessed.invalidCount, 1);
+      expect(assessed.aggregateAmount, '42.1');
+
+      final partialImport = await statementServices.importBatch(statement, [
+        valid,
+      ], source.id.value);
+      final partialSummary =
+          (partialImport as ApplicationSuccess<StatementImportSummary>).value;
+      expect(partialSummary.imported, 1);
+      expect(partialSummary.failed, 0);
+      var rows =
+          (await statementServices.rows(statement.id)
+                  as ApplicationSuccess<List<StatementRow>>)
+              .value;
+      expect(
+        rows.singleWhere((row) => row.id == valid.id).status,
+        StatementRowStatus.saved,
+      );
+      expect(
+        rows.singleWhere((row) => row.id == malformed.id).status,
+        StatementRowStatus.pending,
+      );
+
+      await harness.restart();
+      final retried = await harness.finance.statementServices!.importBatch(
+        statement,
+        [valid],
+        source.id.value,
+      );
+      final retrySummary =
+          (retried as ApplicationSuccess<StatementImportSummary>).value;
+      expect(retrySummary.imported, 0);
+      expect(retrySummary.failed, 0);
+      rows =
+          (await harness.finance.statementServices!.rows(statement.id)
+                  as ApplicationSuccess<List<StatementRow>>)
+              .value;
+      expect(
+        rows.singleWhere((row) => row.id == valid.id).status,
+        StatementRowStatus.saved,
+      );
+      expect(
+        rows.singleWhere((row) => row.id == malformed.id).status,
+        StatementRowStatus.pending,
+      );
+      final transactions =
+          (await harness.finance.listTransactions(
+                    const ListTransactionsQuery(text: 'Partial Market'),
+                  )
+                  as ApplicationSuccess<List<TransactionDto>>)
+              .value;
+      expect(transactions, hasLength(1));
+      expect(transactions.single.id, isNotEmpty);
     },
   );
 
@@ -1057,8 +1714,7 @@ void main() {
           firstUseCompleted: true,
         ),
       );
-      tester.view.physicalSize = const Size(390, 844);
-      tester.view.devicePixelRatio = 1;
+      _setIntegrationView(tester, const Size(390, 844));
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       appRouter.go('/review?view=duplicates');
@@ -1259,6 +1915,16 @@ void main() {
 
       await workspace.createPortableBackup(backup.path, password: password);
       expect(await workspace.isEncryptedBackup(backup.path), isTrue);
+      final corruptBackup = File(
+        path.join(backupDirectory.path, 'workspace-corrupt.butlerly'),
+      );
+      final backupBytes = await backup.readAsBytes();
+      backupBytes[backupBytes.length - 1] ^= 1;
+      await corruptBackup.writeAsBytes(backupBytes);
+      await expectLater(
+        workspace.inspect(corruptBackup.path, password: password),
+        throwsA(isA<BackupPasswordOrIntegrityException>()),
+      );
       expect(
         await harness.finance.createTransaction(
           manualCommand(
@@ -1408,6 +2074,24 @@ void main() {
         ),
         isEmpty,
       );
+      await restoredHarness.installBuiltInRules();
+      final restoredAnalysis = await restoredHarness
+          .finance
+          .calculateAnalysisOverview!
+          .currentMonth(DateTime.utc(2026, 9, 29));
+      final restoredExpense = _analysisMetric(
+        (restoredAnalysis as ApplicationSuccess<List<RuleExecutionResult>>)
+            .value,
+        AnalysisSemanticRole.expenseTotal,
+      );
+      expect(restoredExpense.value, DecimalValue.parse('7.25'));
+      expect(restoredExpense.transactionCount, 1);
+      expect(
+        restoredExpense.evidence.map(
+          (reference) => reference.transactionId.value,
+        ),
+        contains('backup-receipt-e2e'),
+      );
     },
     timeout: const Timeout(Duration(minutes: 2)),
   );
@@ -1457,8 +2141,7 @@ void main() {
       final originalSelector = FileSelectorPlatform.instance;
       FileSelectorPlatform.instance = _FixtureFileSelector(XFile(backup.path));
       addTearDown(() => FileSelectorPlatform.instance = originalSelector);
-      tester.view.physicalSize = const Size(390, 844);
-      tester.view.devicePixelRatio = 1;
+      _setIntegrationView(tester, const Size(390, 844));
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       appRouter.go('/privacy-data');
@@ -1537,8 +2220,7 @@ void main() {
           defaultTargetPlatform == TargetPlatform.android;
       if (isMobile) {
         final sharePlatform = _FixtureSharePlatform();
-        tester.view.physicalSize = const Size(390, 844);
-        tester.view.devicePixelRatio = 1;
+        _setIntegrationView(tester, const Size(390, 844));
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
         await tester.pumpWidget(
@@ -1571,8 +2253,7 @@ void main() {
         savePath: destination.path,
       );
       addTearDown(() => FileSelectorPlatform.instance = originalSelector);
-      tester.view.physicalSize = const Size(390, 844);
-      tester.view.devicePixelRatio = 1;
+      _setIntegrationView(tester, const Size(390, 844));
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       appRouter.go('/privacy-data');
@@ -1632,8 +2313,7 @@ void main() {
         XFile(statementFile.path),
       );
       addTearDown(() => FileSelectorPlatform.instance = originalSelector);
-      tester.view.physicalSize = const Size(390, 844);
-      tester.view.devicePixelRatio = 1;
+      _setIntegrationView(tester, const Size(390, 844));
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       appRouter.go('/statements');
@@ -1736,8 +2416,7 @@ void main() {
         XFile(statementFile.path),
       );
       addTearDown(() => FileSelectorPlatform.instance = originalSelector);
-      tester.view.physicalSize = const Size(390, 844);
-      tester.view.devicePixelRatio = 1;
+      _setIntegrationView(tester, const Size(390, 844));
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
       appRouter.go('/statements');
@@ -1768,6 +2447,24 @@ void main() {
       await tester.enterText(descriptionField, 'Corrected UI Market');
       await tester.tap(find.text('Save corrections'));
       await tester.pumpAndSettle();
+      for (var attempt = 0; attempt < 100; attempt++) {
+        if (find.text('Corrected UI Market').evaluate().isNotEmpty) break;
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 20)),
+        );
+        await tester.pump();
+      }
+      final correctedStatements =
+          (await harness.finance.statementServices!.list()
+                  as ApplicationSuccess<List<FinancialStatement>>)
+              .value;
+      final correctedRows =
+          (await harness.finance.statementServices!.rows(
+                    correctedStatements.single.id,
+                  )
+                  as ApplicationSuccess<List<StatementRow>>)
+              .value;
+      expect(correctedRows.single.description, 'Corrected UI Market');
       expect(find.text('Corrected UI Market'), findsOneWidget);
 
       await tester.tap(find.text('Import data').last);
@@ -1822,6 +2519,57 @@ void main() {
     },
   );
 
+  testWidgets(
+    'localized empty states, adaptive navigation, and recoverable errors stay visible',
+    (tester) async {
+      await _saveIntegrationPreference(harness);
+      final semantics = tester.ensureSemantics();
+
+      for (final entry in const [
+        (locale: Locale('en'), title: 'No transactions yet'),
+        (locale: Locale('es'), title: 'Aún no hay transacciones'),
+        (locale: Locale('zh', 'CN'), title: '暂无交易'),
+      ]) {
+        await tester.pumpWidget(_localizedTransactionsPageApp(entry.locale));
+        await tester.pumpAndSettle();
+        expect(find.text(entry.title), findsOneWidget);
+        expect(
+          find.bySemanticsLabel(RegExp(RegExp.escape(entry.title))),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('transactions-pinned-controls')),
+          findsOneWidget,
+        );
+      }
+
+      await _pumpProductionRouteApp(tester, const Size(390, 844), '/missing');
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('router-error-content')),
+        findsOneWidget,
+      );
+      expect(find.text('Page unavailable'), findsOneWidget);
+      expect(find.text('Try again'), findsOneWidget);
+
+      await tester.pumpWidget(_statementPickerFailureApp());
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.photo_library_outlined));
+      await tester.pump();
+      expect(
+        find.text('Statement capture could not be opened. Please retry.'),
+        findsOneWidget,
+      );
+      final photoButton = find.ancestor(
+        of: find.byIcon(Icons.photo_library_outlined),
+        matching: find.byType(IconButton),
+      );
+      expect(tester.widget<IconButton>(photoButton).onPressed, isNotNull);
+      expect(tester.takeException(), isNull);
+      semantics.dispose();
+    },
+  );
+
   test(
     'unsupported native OCR is an explicit recoverable platform failure',
     () async {
@@ -1865,12 +2613,55 @@ final class _IntegrationTestLock {
 }
 
 Future<void> _pumpProductionLayoutApp(WidgetTester tester, Size size) async {
-  tester.view.physicalSize = size;
-  tester.view.devicePixelRatio = 1;
-  appRouter.go('/settings');
+  await _pumpProductionRouteApp(tester, size, '/settings');
+}
+
+Future<void> _pumpProductionRouteApp(
+  WidgetTester tester,
+  Size size,
+  String route,
+) async {
+  _setIntegrationView(tester, size);
+  appRouter.go(route);
   await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
   await tester.pump();
-  await tester.pump(const Duration(milliseconds: 100));
+  await tester.pumpAndSettle();
+}
+
+void _setIntegrationView(WidgetTester tester, Size size) {
+  tester.view.physicalSize = size;
+  tester.view.devicePixelRatio = 1;
+  // The native simulator can retain device-specific insets after a test
+  // overrides the viewport. Clear them so compact/medium/wide assertions use
+  // the requested deterministic viewport on every platform.
+  tester.view.viewInsets = FakeViewPadding.zero;
+  tester.view.padding = FakeViewPadding.zero;
+  tester.view.viewPadding = FakeViewPadding.zero;
+}
+
+Future<void> _saveIntegrationPreference(V1IntegrationHarness harness) async {
+  expect(
+    await harness.finance.saveUserPreference(
+      UserPreference(
+        locale: 'en',
+        formattingLocale: 'en-US',
+        regionCode: 'US',
+        baseCurrency: CurrencyCode('USD'),
+        timeZoneId: 'UTC',
+        firstUseCompleted: true,
+      ),
+    ),
+    isA<ApplicationSuccess<UserPreference>>(),
+  );
+}
+
+AnalysisMetric _analysisMetric(List<RuleExecutionResult> results, String role) {
+  for (final result in results) {
+    if (result.rule.role == role && result.metric != null) {
+      return result.metric!;
+    }
+  }
+  throw StateError('Analysis metric not found for role $role.');
 }
 
 Widget _productionPrivacyPageApp({share_plus.SharePlus? shareClient}) {
@@ -1888,6 +2679,32 @@ Widget _productionPrivacyPageApp({share_plus.SharePlus? shareClient}) {
     ),
   );
 }
+
+Widget _localizedTransactionsPageApp(Locale locale) => MaterialApp(
+  locale: locale,
+  supportedLocales: AppLocalizations.supportedLocales,
+  localizationsDelegates: const [
+    AppLocalizations.delegate,
+    GlobalMaterialLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+  ],
+  home: const TransactionsPage(),
+);
+
+Widget _statementPickerFailureApp() => MaterialApp(
+  supportedLocales: AppLocalizations.supportedLocales,
+  localizationsDelegates: const [
+    AppLocalizations.delegate,
+    GlobalMaterialLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
+  ],
+  home: StatementCapturePage(
+    pickImage: (_) async => throw StateError('picker unavailable'),
+    loadInitialData: () async {},
+  ),
+);
 
 final class _FixtureFileSelector extends FileSelectorPlatform {
   _FixtureFileSelector(this.file, {this.savePath});

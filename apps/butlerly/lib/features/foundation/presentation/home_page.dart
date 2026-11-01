@@ -655,13 +655,19 @@ double _homeHeaderExtent(
     availableWidth,
   );
   final introHeight = maxMeasured(introLabels, introStyle, availableWidth);
+  // The editorial brand paragraph uses a Flexible row and can resolve to a
+  // taller fallback line box than the preflight TextPainter measurement at
+  // accessibility scales. Reserve enough space for that resolved geometry so
+  // the pinned header never clips or overflows large text.
+  final accessibilityAllowance = largeText ? ButlerlySpacing.large : 0.0;
   return topRowHeight +
       ButlerlySpacing.small +
       greetingHeight +
       ButlerlySpacing.micro +
       introHeight +
       ButlerlySpacing.small +
-      ButlerlySpacing.micro;
+      ButlerlySpacing.micro +
+      accessibilityAllowance;
 }
 
 bool _homeHeaderShouldPin(
@@ -796,9 +802,13 @@ class _HomeHeader extends StatelessWidget {
                       child: monthButton,
                     )
                   else
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [monthButton],
+                    Align(
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: AlignmentDirectional.centerEnd,
+                        child: monthButton,
+                      ),
                     ),
                 ],
               )
@@ -2224,10 +2234,9 @@ class _HomeInsightCard extends StatelessWidget {
               onTap: onTap,
               child: Padding(
                 padding: const EdgeInsets.all(ButlerlySpacing.standard),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    DecoratedBox(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final icon = DecoratedBox(
                       key: const ValueKey('home-insight-icon'),
                       decoration: BoxDecoration(
                         color: insightColor.withValues(alpha: 0.16),
@@ -2237,44 +2246,68 @@ class _HomeInsightCard extends StatelessWidget {
                         padding: const EdgeInsets.all(ButlerlySpacing.small),
                         child: Icon(insightIcon, size: 20, color: insightColor),
                       ),
-                    ),
-                    const SizedBox(width: ButlerlySpacing.standard),
-                    Expanded(
-                      child: Column(
+                    );
+                    final text = Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          preview.title,
+                          style: context.designTokens.homeTypography
+                              .reviewTitle(
+                                Theme.of(context).textTheme.titleMedium ??
+                                    const TextStyle(),
+                              ),
+                        ),
+                        const SizedBox(height: ButlerlySpacing.micro),
+                        Text(
+                          preview.description,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: context.designTokens.homeTypography
+                              .reviewSubtitle(
+                                Theme.of(context).textTheme.bodySmall ??
+                                    const TextStyle(),
+                              ),
+                        ),
+                      ],
+                    );
+                    final trailing = onTap == null
+                        ? null
+                        : Icon(
+                            _homeIcon(
+                              context,
+                              material: Icons.chevron_right_rounded,
+                              cupertino: CupertinoIcons.chevron_right,
+                            ),
+                            color: context.colors.tertiaryText,
+                          );
+                    if (constraints.maxWidth < 160) {
+                      return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            preview.title,
-                            style: context.designTokens.homeTypography
-                                .reviewTitle(
-                                  Theme.of(context).textTheme.titleMedium ??
-                                      const TextStyle(),
-                                ),
-                          ),
-                          const SizedBox(height: ButlerlySpacing.micro),
-                          Text(
-                            preview.description,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: context.designTokens.homeTypography
-                                .reviewSubtitle(
-                                  Theme.of(context).textTheme.bodySmall ??
-                                      const TextStyle(),
-                                ),
-                          ),
+                          icon,
+                          const SizedBox(height: ButlerlySpacing.small),
+                          text,
+                          if (trailing != null) ...[
+                            const SizedBox(height: ButlerlySpacing.small),
+                            Align(
+                              alignment: AlignmentDirectional.centerEnd,
+                              child: trailing,
+                            ),
+                          ],
                         ],
-                      ),
-                    ),
-                    if (onTap != null)
-                      Icon(
-                        _homeIcon(
-                          context,
-                          material: Icons.chevron_right_rounded,
-                          cupertino: CupertinoIcons.chevron_right,
-                        ),
-                        color: context.colors.tertiaryText,
-                      ),
-                  ],
+                      );
+                    }
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        icon,
+                        const SizedBox(width: ButlerlySpacing.standard),
+                        Expanded(child: text),
+                        ?trailing,
+                      ],
+                    );
+                  },
                 ),
               ),
             ),
