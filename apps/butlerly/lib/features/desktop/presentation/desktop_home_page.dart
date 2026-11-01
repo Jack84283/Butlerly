@@ -2,7 +2,7 @@ import 'package:butlerly/app/locale/home_greeting.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
-import 'package:butlerly/design_system/components/butlerly_category_icon.dart';
+import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_desktop_transaction_table.dart';
 import 'package:butlerly/design_system/components/butlerly_month_picker.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
@@ -78,17 +78,23 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     if (mounted) setState(_reload);
   }
 
-  void _reload() {
-    _overview = _load();
+  void _reload({bool forceAnalysisRefresh = false}) {
+    _overview = _load(forceAnalysisRefresh: forceAnalysisRefresh);
   }
 
-  Future<HomeOverview?> _load() async {
+  void _retry() {
+    if (!mounted) return;
+    setState(() => _reload(forceAnalysisRefresh: true));
+  }
+
+  Future<HomeOverview?> _load({bool forceAnalysisRefresh = false}) async {
     final load = _finance?.loadHomeOverview;
     if (load == null) return null;
     try {
       final result = await load(
         instant: DateTime.now(),
         selectedMonth: _month,
+        forceAnalysisRefresh: forceAnalysisRefresh,
         trendMonthCount: _trendMonths,
       );
       if (result is ApplicationSuccess<HomeOverview>) return result.value;
@@ -98,19 +104,41 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     return null;
   }
 
-  void _moveMonth(int delta, DateTime current) {
+  void _moveMonth(int delta, DateTime current, DateTime currentFinancialMonth) {
+    final next = DateTime(current.year, current.month + delta);
+    if (delta > 0 && _isAfterMonth(next, currentFinancialMonth)) return;
     setState(() {
-      _month = DateTime(current.year, current.month + delta);
+      _month = next;
       _reload();
     });
   }
 
+  Future<void> _selectMonth(
+    DateTime current,
+    DateTime currentFinancialMonth,
+  ) async {
+    final picked = await showButlerlyMonthPicker(
+      context,
+      selectedMonth: current,
+      currentMonth: currentFinancialMonth,
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        _month = DateTime(picked.year, picked.month);
+        _reload();
+      });
+    }
+  }
+
   String _money(AnalysisMetric? metric, String currency) {
-    if (metric == null ||
-        metric.availability != AnalysisDataAvailability.sufficient) {
+    if (metric == null) {
       return '—';
     }
-    final value = double.tryParse(metric.value.toString());
+    final value = metric.availability == AnalysisDataAvailability.empty
+        ? 0
+        : metric.availability == AnalysisDataAvailability.sufficient
+        ? double.tryParse(metric.value.toString())
+        : null;
     if (value == null) return '—';
     return NumberFormat.simpleCurrency(
       name: metric.currency?.value ?? currency,
@@ -129,15 +157,53 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
     ).format(count);
   }
 
-  String _periodQuery(HomeOverview data) {
-    final month = data.displayMonth ?? DateTime.now();
-    final from = DateFormat(
-      'yyyy-MM-dd',
-    ).format(DateTime(month.year, month.month, 1));
-    final to = DateFormat(
-      'yyyy-MM-dd',
-    ).format(DateTime(month.year, month.month + 1, 0));
-    return 'from=$from&to=$to';
+  String _analysisRoute(HomeOverview data, {required String path}) {
+    final period = data.context?.period;
+    final displayMonth = data.displayMonth;
+    final currentFinancialMonth = data.currentFinancialMonth;
+    if (period == null ||
+        displayMonth == null ||
+        currentFinancialMonth == null ||
+        _sameMonth(displayMonth, currentFinancialMonth)) {
+      return path;
+    }
+    final start = DateTime.parse(period.startDate);
+    return Uri(
+      path: path,
+      queryParameters: {
+        'month':
+            '${start.year.toString().padLeft(4, '0')}-${start.month.toString().padLeft(2, '0')}',
+      },
+    ).toString();
+  }
+
+  String _searchRoute(HomeOverview data) {
+    final period = data.context?.period;
+    if (period == null) return '/search';
+    return Uri(
+      path: '/search',
+      queryParameters: {
+        'from': period.startDate,
+        'to': period.endDate,
+        'timeZoneId': period.timeZoneId,
+      },
+    ).toString();
+  }
+
+  String _reviewRoute(HomeOverview data, {required String view}) {
+    final period = data.context?.period;
+    if (period == null) {
+      return Uri(path: '/review', queryParameters: {'view': view}).toString();
+    }
+    return Uri(
+      path: '/review',
+      queryParameters: {
+        'view': view,
+        'from': period.startDate,
+        'to': period.endDate,
+        'timeZoneId': period.timeZoneId,
+      },
+    ).toString();
   }
 
   void _go(String path) => context.push(path);
@@ -149,12 +215,65 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
       future: _overview,
       builder: (context, snapshot) {
         final data = snapshot.data;
+        final loading = snapshot.connectionState != ConnectionState.done;
+        final displayData = data ?? const HomeOverview.periodUnavailable();
         final current = data?.displayMonth ?? _month ?? DateTime.now();
+        final currentFinancialMonth = _monthStart(
+          data?.currentFinancialMonth ?? DateTime.now(),
+        );
         final currency = data?.context?.baseCurrency?.value ?? 'USD';
-        final query = data == null ? '' : _periodQuery(data);
-        final analysis = data?.analysis;
-        final unavailable =
-            data == null || data.status != HomeOverviewStatus.available;
+        final analysis = displayData.analysis;
+        final overviewUnavailable =
+            !loading &&
+            (data == null || data.status != HomeOverviewStatus.available);
+        final analysisUnavailable =
+            !loading && data?.analysisUnavailable == true;
+        final cardUnavailable =
+            !loading && (overviewUnavailable || analysisUnavailable);
+        final trendUnavailable =
+            !loading &&
+            (cardUnavailable || data?.monthlyTrendUnavailable == true);
+        final duplicateUnavailable =
+            !loading && data?.duplicateUnavailable == true;
+        final reviewUnavailable = !loading && data?.reviewUnavailable == true;
+        final analysisUnavailableBody = context.l10n.text(
+          'analysisUnavailableBody',
+        );
+        final unavailableTitleKey =
+            data?.status == HomeOverviewStatus.transactionsUnavailable
+            ? 'homeTransactionsUnavailable'
+            : 'homeUnavailable';
+        final unavailableBodyKey =
+            data?.status == HomeOverviewStatus.transactionsUnavailable
+            ? 'homeTransactionsUnavailableBody'
+            : 'homeUnavailableBody';
+        final unavailableBody = data == null
+            ? context.l10n.text('desktopLocalDataUnavailable')
+            : context.l10n.text(unavailableBodyKey);
+        final cardUnavailableBody = overviewUnavailable
+            ? unavailableBody
+            : analysisUnavailableBody;
+        final canUsePeriodControls =
+            !loading &&
+            data?.context?.period != null &&
+            data?.displayMonth != null &&
+            data?.currentFinancialMonth != null;
+        final canOpenPeriod = canUsePeriodControls && !overviewUnavailable;
+        final analysisRoute = _analysisRoute(displayData, path: '/analysis');
+        final insightsRoute = _analysisRoute(displayData, path: '/insights');
+        final searchRoute = _searchRoute(displayData);
+        final canOpenAnalysis = canOpenPeriod && !analysisUnavailable;
+        final monthLabel = DateFormat.yMMMM(
+          Localizations.localeOf(context).toLanguageTag(),
+        ).format(current);
+        final canMoveNext =
+            canUsePeriodControls &&
+            !_isAfterMonth(
+              DateTime(current.year, current.month + 1),
+              currentFinancialMonth,
+            );
+        final largeTextToolbar =
+            MediaQuery.textScalerOf(context).scale(14) >= 21;
         return Column(
           children: [
             Container(
@@ -162,134 +281,166 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
               padding: const EdgeInsets.symmetric(
                 horizontal: ButlerlySize.contentGutter,
               ),
-              constraints: const BoxConstraints(
-                minHeight: ButlerlySize.pageToolbarHeight,
-                maxHeight: ButlerlySize.pageToolbarHeight,
-              ),
+              constraints: largeTextToolbar
+                  ? const BoxConstraints(
+                      minHeight: ButlerlySize.pageToolbarHeight,
+                    )
+                  : const BoxConstraints(
+                      minHeight: ButlerlySize.pageToolbarHeight,
+                      maxHeight: ButlerlySize.pageToolbarHeight,
+                    ),
               decoration: BoxDecoration(
                 color: context.colors.background,
                 border: Border(
                   bottom: BorderSide(color: context.colors.cardDivider),
                 ),
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: PersonalizedHomeGreeting(
-                      greetingKey: greetingKeyForTime(DateTime.now()),
-                      textKey: const ValueKey('desktop-home-greeting'),
-                      maxLines: 1,
-                      textAlign: TextAlign.start,
-                      style: theme.appBarTheme.titleTextStyle,
-                    ),
-                  ),
-                  IconButton(
-                    style: IconButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      minimumSize: const Size.square(
-                        ButlerlyButtonTokens.iconTouchTarget,
-                      ),
-                    ),
-                    tooltip: context.l10n.text('previousMonth'),
-                    onPressed: () => _moveMonth(-1, current),
-                    icon: const Icon(Icons.chevron_left),
-                  ),
-                  TextButton.icon(
-                    key: const ValueKey('desktop-home-month-selector'),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      minimumSize: const Size(
-                        ButlerlyButtonTokens.minimumWidth,
-                        ButlerlyButtonTokens.height,
-                      ),
-                      backgroundColor: Colors.transparent,
-                      surfaceTintColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                    ),
-                    onPressed: () async {
-                      final picked = await showButlerlyMonthPicker(
-                        context,
-                        selectedMonth: current,
-                        currentMonth: DateTime.now(),
-                      );
-                      if (picked != null && mounted) {
-                        setState(() {
-                          _month = DateTime(picked.year, picked.month);
-                          _reload();
-                        });
-                      }
-                    },
-                    icon: const Icon(Icons.calendar_month_outlined),
-                    label: Text(
-                      DateFormat.yMMMM(
-                        Localizations.localeOf(context).toLanguageTag(),
-                      ).format(current),
-                    ),
-                  ),
-                  IconButton(
-                    style: IconButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      minimumSize: const Size.square(
-                        ButlerlyButtonTokens.iconTouchTarget,
-                      ),
-                    ),
-                    tooltip: context.l10n.text('nextMonth'),
-                    onPressed: () => _moveMonth(1, current),
-                    icon: const Icon(Icons.chevron_right),
-                  ),
-                  const SizedBox(width: 16),
-                  SizedBox(
-                    width: 220,
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 4,
-                        ),
-                        minimumSize: const Size(
-                          ButlerlyButtonTokens.minimumWidth,
-                          ButlerlyButtonTokens.height,
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // At the narrow end of the wide shell, or with large text,
+                  // icon-only actions preserve the toolbar's touch targets.
+                  final compactToolbar =
+                      constraints.maxWidth < 760 || largeTextToolbar;
+                  return Row(
+                    children: [
+                      Expanded(
+                        child: PersonalizedHomeGreeting(
+                          greetingKey: greetingKeyForTime(DateTime.now()),
+                          textKey: const ValueKey('desktop-home-greeting'),
+                          maxLines: 1,
+                          textAlign: TextAlign.start,
+                          style: theme.appBarTheme.titleTextStyle,
                         ),
                       ),
-                      onPressed: () => _go('/search'),
-                      icon: const Icon(Icons.search),
-                      label: Text(
-                        context.l10n.text('desktopSearchTransactions'),
+                      IconButton(
+                        style: IconButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          minimumSize: const Size.square(
+                            ButlerlyButtonTokens.iconTouchTarget,
+                          ),
+                        ),
+                        tooltip: context.l10n.text('previousMonth'),
+                        onPressed: canUsePeriodControls
+                            ? () =>
+                                  _moveMonth(-1, current, currentFinancialMonth)
+                            : null,
+                        icon: const Icon(Icons.chevron_left),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
+                      if (compactToolbar)
+                        IconButton(
+                          key: const ValueKey('desktop-home-month-selector'),
+                          tooltip: monthLabel,
+                          onPressed: canUsePeriodControls
+                              ? () =>
+                                    _selectMonth(current, currentFinancialMonth)
+                              : null,
+                          icon: const Icon(Icons.calendar_month_outlined),
+                        )
+                      else
+                        TextButton.icon(
+                          key: const ValueKey('desktop-home-month-selector'),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            minimumSize: const Size(
+                              ButlerlyButtonTokens.minimumWidth,
+                              ButlerlyButtonTokens.height,
+                            ),
+                            backgroundColor: Colors.transparent,
+                            surfaceTintColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                          ),
+                          onPressed: canUsePeriodControls
+                              ? () =>
+                                    _selectMonth(current, currentFinancialMonth)
+                              : null,
+                          icon: const Icon(Icons.calendar_month_outlined),
+                          label: Text(monthLabel),
+                        ),
+                      IconButton(
+                        style: IconButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          minimumSize: const Size.square(
+                            ButlerlyButtonTokens.iconTouchTarget,
+                          ),
+                        ),
+                        tooltip: context.l10n.text('nextMonth'),
+                        onPressed: canMoveNext
+                            ? () =>
+                                  _moveMonth(1, current, currentFinancialMonth)
+                            : null,
+                        icon: const Icon(Icons.chevron_right),
                       ),
-                      minimumSize: const Size(
-                        ButlerlyButtonTokens.minimumWidth,
-                        ButlerlyButtonTokens.height,
-                      ),
-                    ),
-                    onPressed: () => _go('/transactions/add'),
-                    icon: const Icon(Icons.add),
-                    label: Text(context.l10n.text('add')),
-                  ),
-                ],
+                      const SizedBox(width: 8),
+                      if (compactToolbar)
+                        IconButton(
+                          tooltip: context.l10n.text(
+                            'desktopSearchTransactions',
+                          ),
+                          onPressed: () => _go('/search'),
+                          icon: const Icon(Icons.search),
+                        )
+                      else
+                        SizedBox(
+                          width: 220,
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 4,
+                              ),
+                              minimumSize: const Size(
+                                ButlerlyButtonTokens.minimumWidth,
+                                ButlerlyButtonTokens.height,
+                              ),
+                            ),
+                            onPressed: () => _go('/search'),
+                            icon: const Icon(Icons.search),
+                            label: Text(
+                              context.l10n.text('desktopSearchTransactions'),
+                            ),
+                          ),
+                        ),
+                      if (!compactToolbar) const SizedBox(width: 8),
+                      if (compactToolbar)
+                        IconButton(
+                          tooltip: context.l10n.text('add'),
+                          onPressed: () => _go('/transactions/add'),
+                          icon: const Icon(Icons.add),
+                        )
+                      else
+                        FilledButton.icon(
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
+                            minimumSize: const Size(
+                              ButlerlyButtonTokens.minimumWidth,
+                              ButlerlyButtonTokens.height,
+                            ),
+                          ),
+                          onPressed: () => _go('/transactions/add'),
+                          icon: const Icon(Icons.add),
+                          label: Text(context.l10n.text('add')),
+                        ),
+                    ],
+                  );
+                },
               ),
             ),
             Expanded(
               child: RefreshIndicator(
                 onRefresh: () async {
-                  setState(_reload);
+                  _retry();
                   await _overview;
                 },
                 child: ListView(
@@ -321,383 +472,211 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                             style: theme.textTheme.bodyMedium,
                           ),
                           const SizedBox(height: 10),
-                          if (snapshot.connectionState != ConnectionState.done)
-                            const LinearProgressIndicator(),
-                          if (unavailable)
+                          if (loading) const LinearProgressIndicator(),
+                          if (overviewUnavailable)
                             _DesktopPanel(
-                              title: context.l10n.text('homeUnavailable'),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      context.l10n.text(
-                                        'desktopLocalDataUnavailable',
-                                      ),
-                                    ),
-                                  ),
-                                  TextButton(
-                                    style: TextButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 4,
-                                      ),
-                                      minimumSize: const Size(
-                                        ButlerlyButtonTokens.minimumWidth,
-                                        ButlerlyButtonTokens.height,
-                                      ),
-                                    ),
-                                    onPressed: () => setState(_reload),
-                                    child: Text(
-                                      context.l10n.text('desktopRetry'),
-                                    ),
-                                  ),
-                                ],
+                              key: const ValueKey(
+                                'desktop-home-unavailable-card',
+                              ),
+                              title: context.l10n.text(unavailableTitleKey),
+                              child: _DesktopUnavailableContent(
+                                body: unavailableBody,
+                                semanticsKey: const ValueKey(
+                                  'desktop-home-unavailable-content',
+                                ),
+                                onRetry: _retry,
                               ),
                             ),
-                          if (!unavailable) ...[
-                            _DesktopPanel(
-                              title: context.l10n.text('monthlySummary'),
-                              subtitle: context.l10n.text('vsPreviousPeriod'),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: _DesktopMetric(
-                                      key: const ValueKey(
-                                        'desktop-home-summary-expenses',
+                          _DesktopPanel(
+                            key: const ValueKey('desktop-home-summary-card'),
+                            title: context.l10n.text('monthlySummary'),
+                            subtitle: context.l10n.text('vsPreviousPeriod'),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _DesktopMetric(
+                                        key: const ValueKey(
+                                          'desktop-home-summary-expenses',
+                                        ),
+                                        title: context.l10n.text(
+                                          'desktopExpenses',
+                                        ),
+                                        value: _money(
+                                          analysis?.spending,
+                                          currency,
+                                        ),
+                                        icon: Icons.arrow_downward,
+                                        comparison:
+                                            analysis?.spendingComparison,
                                       ),
-                                      title: context.l10n.text(
-                                        'desktopExpenses',
-                                      ),
-                                      value: _money(
-                                        analysis?.spending,
-                                        currency,
-                                      ),
-                                      icon: Icons.arrow_downward,
-                                      comparison: analysis?.spendingComparison,
                                     ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: _DesktopMetric(
-                                      key: const ValueKey(
-                                        'desktop-home-summary-transactions',
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: _DesktopMetric(
+                                        key: const ValueKey(
+                                          'desktop-home-summary-transactions',
+                                        ),
+                                        title: context.l10n.text(
+                                          'transactions',
+                                        ),
+                                        value: _transactionCount(
+                                          analysis?.transactionCount,
+                                        ),
+                                        icon: Icons.receipt_long_outlined,
+                                        comparison: analysis
+                                            ?.transactionCountComparison,
+                                        accentColor: ButlerlyHomeColorTokens
+                                            .standard
+                                            .transactions,
                                       ),
-                                      title: context.l10n.text('transactions'),
-                                      value: _transactionCount(
-                                        analysis?.transactionCount,
-                                      ),
-                                      icon: Icons.receipt_long_outlined,
-                                      comparison:
-                                          analysis?.transactionCountComparison,
-                                      accentColor: ButlerlyHomeColorTokens
-                                          .standard
-                                          .transactions,
                                     ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: _DesktopMetric(
-                                      key: const ValueKey(
-                                        'desktop-home-summary-income',
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: _DesktopMetric(
+                                        key: const ValueKey(
+                                          'desktop-home-summary-income',
+                                        ),
+                                        title: context.l10n.text('income'),
+                                        value: _money(
+                                          analysis?.income,
+                                          currency,
+                                        ),
+                                        icon: Icons.arrow_upward,
+                                        comparison: analysis?.incomeComparison,
                                       ),
-                                      title: context.l10n.text('income'),
-                                      value: _money(analysis?.income, currency),
-                                      icon: Icons.arrow_upward,
-                                      comparison: analysis?.incomeComparison,
                                     ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: _DesktopMetric(
-                                      key: const ValueKey(
-                                        'desktop-home-summary-net',
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: _DesktopMetric(
+                                        key: const ValueKey(
+                                          'desktop-home-summary-net',
+                                        ),
+                                        title: context.l10n.text('netCashFlow'),
+                                        value: _money(analysis?.net, currency),
+                                        icon: Icons.show_chart,
+                                        comparison: analysis?.netComparison,
                                       ),
-                                      title: context.l10n.text('netCashFlow'),
-                                      value: _money(analysis?.net, currency),
-                                      icon: Icons.show_chart,
-                                      comparison: analysis?.netComparison,
                                     ),
+                                  ],
+                                ),
+                                if (loading) ...[
+                                  const SizedBox(height: 8),
+                                  const _DesktopLoadingContent(),
+                                ] else if (cardUnavailable) ...[
+                                  const SizedBox(height: 8),
+                                  _DesktopUnavailableContent(
+                                    body: cardUnavailableBody,
+                                    onRetry: analysisUnavailable
+                                        ? _retry
+                                        : null,
                                   ),
                                 ],
-                              ),
+                              ],
                             ),
-                            const SizedBox(height: 8),
-                            LayoutBuilder(
-                              builder: (context, b) {
-                                final left = SizedBox(
-                                  height: _desktopHomeBreakdownCardHeight,
-                                  child: _DesktopPanel(
-                                    title: context.l10n.text('spendingTrend'),
-                                    showInnerCard: true,
-                                    headerHeight:
-                                        _desktopHomeBreakdownHeaderHeight,
-                                    trailing: DropdownButton<int>(
-                                      isDense: true,
-                                      value: _trendMonths,
-                                      underline: const SizedBox.shrink(),
-                                      items: const [3, 6, 12]
-                                          .map(
-                                            (n) => DropdownMenuItem(
-                                              value: n,
-                                              child: Text(
-                                                context.l10n.text(
-                                                  'desktopMonthsCount',
-                                                  {'count': '$n'},
-                                                ),
+                          ),
+                          const SizedBox(height: 8),
+                          LayoutBuilder(
+                            builder: (context, b) {
+                              final availableCategories =
+                                  analysis?.categories
+                                      .where(
+                                        (category) =>
+                                            category.availability ==
+                                            AnalysisDataAvailability.sufficient,
+                                      )
+                                      .take(6)
+                                      .toList(growable: false) ??
+                                  const <AnalysisMetric>[];
+                              final unavailableCategories =
+                                  analysis?.categories
+                                      .where(
+                                        (category) =>
+                                            category.availability !=
+                                            AnalysisDataAvailability.sufficient,
+                                      )
+                                      .take(6)
+                                      .toList(growable: false) ??
+                                  const <AnalysisMetric>[];
+                              final left = ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  minHeight: _desktopHomeBreakdownCardHeight,
+                                ),
+                                child: _DesktopPanel(
+                                  key: const ValueKey(
+                                    'desktop-home-trend-card',
+                                  ),
+                                  title: context.l10n.text('spendingTrend'),
+                                  showInnerCard: true,
+                                  headerHeight:
+                                      _desktopHomeBreakdownHeaderHeight,
+                                  trailing: DropdownButton<int>(
+                                    isDense: true,
+                                    value: _trendMonths,
+                                    underline: const SizedBox.shrink(),
+                                    items: const [3, 6, 12]
+                                        .map(
+                                          (n) => DropdownMenuItem(
+                                            value: n,
+                                            child: Text(
+                                              context.l10n.text(
+                                                'desktopMonthsCount',
+                                                {'count': '$n'},
                                               ),
                                             ),
-                                          )
-                                          .toList(),
-                                      onChanged: (n) {
-                                        if (n != null) {
-                                          setState(() {
-                                            _trendMonths = n;
-                                            _reload();
-                                          });
-                                        }
-                                      },
-                                    ),
-                                    child: SizedBox(
-                                      height:
-                                          _desktopHomeBreakdownContentHeight -
-                                          ButlerlySpacing.small * 2,
-                                      child: _DesktopTrend(
-                                        points: data.monthlyTrend,
-                                        selectedMonth: current,
-                                        currency: currency,
-                                        onTap: () => _go('/analysis?$query'),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                                final middle = SizedBox(
-                                  height: _desktopHomeBreakdownCardHeight,
-                                  child: _DesktopPanel(
-                                    title: context.l10n.text(
-                                      'desktopCategoryBreakdown',
-                                    ),
-                                    showInnerCard: true,
-                                    headerHeight:
-                                        _desktopHomeBreakdownHeaderHeight,
-                                    trailing: TextButton(
-                                      style: TextButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 4,
-                                        ),
-                                        minimumSize: const Size(
-                                          ButlerlyButtonTokens.minimumWidth,
-                                          ButlerlyButtonTokens.height,
-                                        ),
-                                      ),
-                                      onPressed: () => _go('/analysis?$query'),
-                                      child: Text(context.l10n.text('viewAll')),
-                                    ),
-                                    child: SizedBox(
-                                      // Reserve the 12px inset within the 280px outer card.
-                                      height:
-                                          _desktopHomeBreakdownContentHeight -
-                                          2 * ButlerlySpacing.small,
-                                      child:
-                                          (analysis?.categories
-                                                  .where(
-                                                    (category) =>
-                                                        category.availability ==
-                                                        AnalysisDataAvailability
-                                                            .sufficient,
-                                                  )
-                                                  .isEmpty ??
-                                              true)
-                                          ? Center(
-                                              child: Text(
-                                                context.l10n.text(
-                                                  'desktopNoCategoryData',
-                                                ),
-                                                textAlign: TextAlign.center,
-                                              ),
-                                            )
-                                          : ListView(
-                                              children: [
-                                                for (final metric
-                                                    in analysis?.categories
-                                                            .where(
-                                                              (category) =>
-                                                                  category
-                                                                      .availability ==
-                                                                  AnalysisDataAvailability
-                                                                      .sufficient,
-                                                            )
-                                                            .take(6) ??
-                                                        <AnalysisMetric>[])
-                                                  Column(
-                                                    children: [
-                                                      _DesktopCategorySummaryRow(
-                                                        metric: metric,
-                                                        share:
-                                                            analysis
-                                                                ?.categoryShares[metric
-                                                                .id],
-                                                        masterData: _masterData,
-                                                        amount: _money(
-                                                          metric,
-                                                          currency,
-                                                        ),
-                                                        onTap: () => _go(
-                                                          '/analysis?$query',
-                                                        ),
-                                                      ),
-                                                      const SizedBox(
-                                                        height: ButlerlySpacing
-                                                            .compact,
-                                                      ),
-                                                      Divider(
-                                                        height: 1,
-                                                        thickness: 1,
-                                                        color: context
-                                                            .colors
-                                                            .cardDivider,
-                                                      ),
-                                                      const SizedBox(
-                                                        height: ButlerlySpacing
-                                                            .compact,
-                                                      ),
-                                                    ],
-                                                  ),
-                                              ],
-                                            ),
-                                    ),
-                                  ),
-                                );
-                                final budgets = SizedBox(
-                                  height: _desktopHomeBreakdownCardHeight,
-                                  child: _DesktopPanel(
-                                    title: context.l10n.text('myBudgets'),
-                                    showInnerCard: true,
-                                    headerHeight:
-                                        _desktopHomeBreakdownHeaderHeight,
-                                    child: SizedBox(
-                                      height:
-                                          _desktopHomeBreakdownContentHeight -
-                                          2 * ButlerlySpacing.small,
-                                      child: ListView(
-                                        children: [
-                                          HomeBudgetsCard(
-                                            key: ValueKey(
-                                              'home-budgets-${current.year}-${current.month}',
-                                            ),
-                                            month: current,
-                                            embedded: true,
                                           ),
-                                        ],
-                                      ),
-                                    ),
+                                        )
+                                        .toList(),
+                                    onChanged: loading || trendUnavailable
+                                        ? null
+                                        : (n) {
+                                            if (n != null) {
+                                              setState(() {
+                                                _trendMonths = n;
+                                                _reload();
+                                              });
+                                            }
+                                          },
                                   ),
-                                );
-                                return b.maxWidth >= 960
-                                    ? Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Expanded(child: budgets),
-                                          const SizedBox(width: 8),
-                                          Expanded(child: left),
-                                          const SizedBox(width: 8),
-                                          Expanded(child: middle),
-                                        ],
-                                      )
-                                    : b.maxWidth >= 680
-                                    ? Column(
-                                        children: [
-                                          budgets,
-                                          const SizedBox(height: 8),
-                                          Row(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Expanded(child: left),
-                                              const SizedBox(width: 8),
-                                              Expanded(child: middle),
-                                            ],
-                                          ),
-                                        ],
-                                      )
-                                    : Column(
-                                        children: [
-                                          budgets,
-                                          const SizedBox(height: 8),
-                                          left,
-                                          const SizedBox(height: 8),
-                                          middle,
-                                        ],
-                                      );
-                              },
-                            ),
-                            const SizedBox(height: 8),
-                            LayoutBuilder(
-                              builder: (context, b) {
-                                final actions = _DesktopPanel(
+                                  child: loading
+                                      ? const _DesktopLoadingContent()
+                                      : trendUnavailable
+                                      ? _DesktopUnavailableContent(
+                                          body: cardUnavailableBody,
+                                          onRetry:
+                                              data?.monthlyTrendUnavailable ==
+                                                      true &&
+                                                  !overviewUnavailable &&
+                                                  !analysisUnavailable
+                                              ? _retry
+                                              : null,
+                                        )
+                                      : _DesktopTrend(
+                                          points: displayData.monthlyTrend,
+                                          selectedMonth: current,
+                                          currency: currency,
+                                          onTap: canOpenAnalysis
+                                              ? () => _go(analysisRoute)
+                                              : null,
+                                        ),
+                                ),
+                              );
+                              final middle = ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  minHeight: _desktopHomeBreakdownCardHeight,
+                                ),
+                                child: _DesktopPanel(
+                                  key: const ValueKey(
+                                    'desktop-home-category-card',
+                                  ),
                                   title: context.l10n.text(
-                                    'desktopActionCenter',
+                                    'desktopCategoryBreakdown',
                                   ),
-                                  child: Column(
-                                    children: [
-                                      _DesktopAction(
-                                        label: context.l10n.text('needsReview'),
-                                        count: data.reviewCount,
-                                        icon: Icons.fact_check_outlined,
-                                        onTap: () =>
-                                            _go('/review?view=needsReview'),
-                                      ),
-                                      _DesktopAction(
-                                        label: context.l10n.text(
-                                          'uncategorized',
-                                        ),
-                                        count:
-                                            data.uncategorizedTransactionCount,
-                                        icon: Icons.category_outlined,
-                                        onTap: () =>
-                                            _go('/review?view=uncategorized'),
-                                      ),
-                                      _DesktopAction(
-                                        label: context.l10n.text(
-                                          'possibleDuplicates',
-                                        ),
-                                        count: data.possibleDuplicateCount,
-                                        icon: Icons.copy_outlined,
-                                        onTap: () =>
-                                            _go('/review?view=duplicates'),
-                                      ),
-                                      _DesktopAction(
-                                        label: context.l10n.text(
-                                          'desktopMerchantIssues',
-                                        ),
-                                        count: data.merchantReviewCount,
-                                        icon: Icons.store_outlined,
-                                        onTap: () =>
-                                            _go('/review?view=overview'),
-                                      ),
-                                      _DesktopAction(
-                                        label: context.l10n.text(
-                                          'desktopImportStatement',
-                                        ),
-                                        icon: Icons.upload_file_outlined,
-                                        onTap: () => _go('/statements'),
-                                      ),
-                                      _DesktopAction(
-                                        label: context.l10n.text(
-                                          'paymentSettlements',
-                                        ),
-                                        icon: Icons.payments_outlined,
-                                        onTap: () =>
-                                            _go('/payment-settlements'),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                                final recent = ButlerlyDesktopTransactionSection(
-                                  title: context.l10n.text(
-                                    'recentTransactions',
-                                  ),
+                                  showInnerCard: true,
+                                  headerHeight:
+                                      _desktopHomeBreakdownHeaderHeight,
                                   trailing: TextButton(
                                     style: TextButton.styleFrom(
                                       padding: const EdgeInsets.symmetric(
@@ -709,73 +688,382 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                         ButlerlyButtonTokens.height,
                                       ),
                                     ),
-                                    onPressed: () => _go('/search?$query'),
+                                    onPressed: canOpenAnalysis
+                                        ? () => _go(analysisRoute)
+                                        : null,
                                     child: Text(context.l10n.text('viewAll')),
                                   ),
-                                  transactions: data.recentTransactions
-                                      .take(7)
-                                      .toList(),
-                                  masterData:
-                                      _masterData ??
-                                      const TransactionMasterData(),
-                                  onTap: (transaction) => _go(
-                                    '/search?ids=${Uri.encodeQueryComponent(transaction.id)}',
-                                  ),
-                                  emptyMessage: context.l10n.text(
-                                    'noTransactions',
-                                  ),
-                                );
-                                final insightGroups = _desktopInsightCatalog(
-                                  context,
-                                  insightGroupSummaries(context, data.insights),
-                                );
-                                final insights = _DesktopPanel(
-                                  title: context.l10n.text('insights'),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.stretch,
-                                    children: [
-                                      for (final group in insightGroups)
-                                        _DesktopAction(
-                                          label: group.title,
-                                          count: group.count,
-                                          icon: _desktopInsightGroupIcon(
-                                            group.group,
-                                          ),
-                                          tintColor: _desktopInsightGroupTint(
-                                            group.group,
-                                          ),
-                                          onTap: () => _go('/insights?$query'),
+                                  child: loading
+                                      ? const _DesktopLoadingContent()
+                                      : cardUnavailable
+                                      ? _DesktopUnavailableContent(
+                                          body: cardUnavailableBody,
+                                        )
+                                      : SizedBox(
+                                          // Reserve the 12px inset within the 280px outer card.
+                                          height:
+                                              _desktopHomeBreakdownContentHeight -
+                                              2 * ButlerlySpacing.small,
+                                          child:
+                                              availableCategories.isEmpty &&
+                                                  unavailableCategories.isEmpty
+                                              ? Center(
+                                                  child: Text(
+                                                    context.l10n.text(
+                                                      'desktopNoCategoryData',
+                                                    ),
+                                                    textAlign: TextAlign.center,
+                                                  ),
+                                                )
+                                              : ListView(
+                                                  children: [
+                                                    for (final metric
+                                                        in availableCategories)
+                                                      Column(
+                                                        children: [
+                                                          _DesktopCategorySummaryRow(
+                                                            metric: metric,
+                                                            share:
+                                                                analysis
+                                                                    ?.categoryShares[metric
+                                                                    .id],
+                                                            masterData:
+                                                                _masterData,
+                                                            amount: _money(
+                                                              metric,
+                                                              currency,
+                                                            ),
+                                                            onTap: () => _go(
+                                                              analysisRoute,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            height:
+                                                                ButlerlySpacing
+                                                                    .compact,
+                                                          ),
+                                                          Divider(
+                                                            height: 1,
+                                                            thickness: 1,
+                                                            color: context
+                                                                .colors
+                                                                .cardDivider,
+                                                          ),
+                                                          const SizedBox(
+                                                            height:
+                                                                ButlerlySpacing
+                                                                    .compact,
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    if (unavailableCategories
+                                                        .isNotEmpty)
+                                                      _DesktopUnavailableCategoryList(
+                                                        categories:
+                                                            unavailableCategories,
+                                                        masterData: _masterData,
+                                                      ),
+                                                  ],
+                                                ),
                                         ),
-                                    ],
+                                ),
+                              );
+                              final budgets = ConstrainedBox(
+                                constraints: const BoxConstraints(
+                                  minHeight: _desktopHomeBreakdownCardHeight,
+                                ),
+                                child: _DesktopPanel(
+                                  key: const ValueKey(
+                                    'desktop-home-budgets-card',
                                   ),
-                                );
-                                return Column(
-                                  children: [
-                                    recent,
-                                    const SizedBox(height: 8),
-                                    if (b.maxWidth >= 680)
-                                      IntrinsicHeight(
-                                        child: Row(
+                                  title: context.l10n.text('myBudgets'),
+                                  showInnerCard: true,
+                                  headerHeight:
+                                      _desktopHomeBreakdownHeaderHeight,
+                                  child: SizedBox(
+                                    height:
+                                        _desktopHomeBreakdownContentHeight -
+                                        2 * ButlerlySpacing.small,
+                                    child: ListView(
+                                      children: [
+                                        HomeBudgetsCard(
+                                          key: ValueKey(
+                                            'home-budgets-${current.year}-${current.month}',
+                                          ),
+                                          month: current,
+                                          embedded: true,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                              return b.maxWidth >= 960
+                                  ? Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Expanded(child: budgets),
+                                        const SizedBox(width: 8),
+                                        Expanded(child: left),
+                                        const SizedBox(width: 8),
+                                        Expanded(child: middle),
+                                      ],
+                                    )
+                                  : b.maxWidth >= 680
+                                  ? Column(
+                                      children: [
+                                        budgets,
+                                        const SizedBox(height: 8),
+                                        Row(
                                           crossAxisAlignment:
-                                              CrossAxisAlignment.stretch,
+                                              CrossAxisAlignment.start,
                                           children: [
-                                            Expanded(child: actions),
+                                            Expanded(child: left),
                                             const SizedBox(width: 8),
-                                            Expanded(child: insights),
+                                            Expanded(child: middle),
                                           ],
                                         ),
+                                      ],
+                                    )
+                                  : Column(
+                                      children: [
+                                        budgets,
+                                        const SizedBox(height: 8),
+                                        left,
+                                        const SizedBox(height: 8),
+                                        middle,
+                                      ],
+                                    );
+                            },
+                          ),
+                          const SizedBox(height: 8),
+                          LayoutBuilder(
+                            builder: (context, b) {
+                              final actions = _DesktopPanel(
+                                key: const ValueKey(
+                                  'desktop-home-action-center-card',
+                                ),
+                                title: context.l10n.text('desktopActionCenter'),
+                                child: loading
+                                    ? const _DesktopLoadingContent()
+                                    : Column(
+                                        children: [
+                                          if (overviewUnavailable)
+                                            _DesktopUnavailableContent(
+                                              body: unavailableBody,
+                                            )
+                                          else ...[
+                                            if (reviewUnavailable)
+                                              _DesktopUnavailableContent(
+                                                title: context.l10n.text(
+                                                  'homeReviewUnavailable',
+                                                ),
+                                                body: context.l10n.text(
+                                                  'homeReviewUnavailableBody',
+                                                ),
+                                                onRetry: _retry,
+                                              ),
+                                            if (reviewUnavailable &&
+                                                duplicateUnavailable)
+                                              const SizedBox(height: 8),
+                                            if (duplicateUnavailable)
+                                              _DesktopUnavailableContent(
+                                                title: context.l10n.text(
+                                                  'possibleDuplicatesUnavailable',
+                                                ),
+                                                body: context.l10n.text(
+                                                  'possibleDuplicatesUnavailableBody',
+                                                ),
+                                                onRetry: reviewUnavailable
+                                                    ? null
+                                                    : _retry,
+                                              ),
+                                            if (!reviewUnavailable) ...[
+                                              _DesktopAction(
+                                                label: context.l10n.text(
+                                                  'needsReview',
+                                                ),
+                                                count: displayData.reviewCount,
+                                                icon: Icons.fact_check_outlined,
+                                                onTap: () => _go(
+                                                  _reviewRoute(
+                                                    displayData,
+                                                    view: 'needsReview',
+                                                  ),
+                                                ),
+                                              ),
+                                              _DesktopAction(
+                                                label: context.l10n.text(
+                                                  'uncategorized',
+                                                ),
+                                                count: displayData
+                                                    .uncategorizedTransactionCount,
+                                                icon: Icons.category_outlined,
+                                                onTap: () => _go(
+                                                  _reviewRoute(
+                                                    displayData,
+                                                    view: 'uncategorized',
+                                                  ),
+                                                ),
+                                              ),
+                                              if (!duplicateUnavailable)
+                                                _DesktopAction(
+                                                  label: context.l10n.text(
+                                                    'possibleDuplicates',
+                                                  ),
+                                                  count: displayData
+                                                      .possibleDuplicateCount,
+                                                  icon: Icons.copy_outlined,
+                                                  onTap: () => _go(
+                                                    _reviewRoute(
+                                                      displayData,
+                                                      view: 'duplicates',
+                                                    ),
+                                                  ),
+                                                ),
+                                              _DesktopAction(
+                                                label: context.l10n.text(
+                                                  'desktopMerchantIssues',
+                                                ),
+                                                count: displayData
+                                                    .merchantReviewCount,
+                                                icon: Icons.store_outlined,
+                                                onTap: () => _go(
+                                                  _reviewRoute(
+                                                    displayData,
+                                                    view: 'overview',
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                          _DesktopAction(
+                                            label: context.l10n.text(
+                                              'desktopImportStatement',
+                                            ),
+                                            icon: Icons.upload_file_outlined,
+                                            onTap: () => _go('/statements'),
+                                          ),
+                                          _DesktopAction(
+                                            label: context.l10n.text(
+                                              'paymentSettlements',
+                                            ),
+                                            icon: Icons.payments_outlined,
+                                            onTap: () =>
+                                                _go('/payment-settlements'),
+                                          ),
+                                        ],
+                                      ),
+                              );
+                              final recent = ButlerlyDesktopTransactionSection(
+                                key: const ValueKey('desktop-home-recent-card'),
+                                title: context.l10n.text('recentTransactions'),
+                                trailing: TextButton(
+                                  style: TextButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 4,
+                                    ),
+                                    minimumSize: const Size(
+                                      ButlerlyButtonTokens.minimumWidth,
+                                      ButlerlyButtonTokens.height,
+                                    ),
+                                  ),
+                                  onPressed: canOpenPeriod
+                                      ? () => _go(searchRoute)
+                                      : null,
+                                  child: Text(context.l10n.text('viewAll')),
+                                ),
+                                transactions: displayData.recentTransactions
+                                    .take(7)
+                                    .toList(),
+                                masterData:
+                                    _masterData ??
+                                    const TransactionMasterData(),
+                                onTap: (transaction) => _go(
+                                  '/search?ids=${Uri.encodeQueryComponent(transaction.id)}',
+                                ),
+                                emptyMessage: loading
+                                    ? context.l10n.text('homeLoading')
+                                    : overviewUnavailable
+                                    ? unavailableBody
+                                    : context.l10n.text('noTransactions'),
+                              );
+                              final insightGroups = _desktopInsightCatalog(
+                                context,
+                                insightGroupSummaries(
+                                  context,
+                                  displayData.insights,
+                                ),
+                              );
+                              final insights = _DesktopPanel(
+                                key: const ValueKey(
+                                  'desktop-home-insights-card',
+                                ),
+                                title: context.l10n.text('insights'),
+                                child: loading
+                                    ? const _DesktopLoadingContent()
+                                    : cardUnavailable
+                                    ? _DesktopUnavailableContent(
+                                        title: analysisUnavailable
+                                            ? context.l10n.text(
+                                                'insightsUnavailable',
+                                              )
+                                            : null,
+                                        body: overviewUnavailable
+                                            ? unavailableBody
+                                            : context.l10n.text(
+                                                'insightsUnavailableBody',
+                                              ),
                                       )
-                                    else ...[
-                                      actions,
-                                      const SizedBox(height: 8),
-                                      insights,
-                                    ],
+                                    : Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          for (final group in insightGroups)
+                                            _DesktopAction(
+                                              label: group.title,
+                                              count: group.count,
+                                              icon: _desktopInsightGroupIcon(
+                                                group.group,
+                                              ),
+                                              tintColor:
+                                                  _desktopInsightGroupTint(
+                                                    group.group,
+                                                  ),
+                                              onTap: canOpenAnalysis
+                                                  ? () => _go(insightsRoute)
+                                                  : null,
+                                            ),
+                                        ],
+                                      ),
+                              );
+                              return Column(
+                                children: [
+                                  recent,
+                                  const SizedBox(height: 8),
+                                  if (b.maxWidth >= 680)
+                                    IntrinsicHeight(
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.stretch,
+                                        children: [
+                                          Expanded(child: actions),
+                                          const SizedBox(width: 8),
+                                          Expanded(child: insights),
+                                        ],
+                                      ),
+                                    )
+                                  else ...[
+                                    actions,
+                                    const SizedBox(height: 8),
+                                    insights,
                                   ],
-                                );
-                              },
-                            ),
-                          ],
+                                ],
+                              );
+                            },
+                          ),
                         ],
                       ),
                     ),
@@ -902,6 +1190,47 @@ class _DesktopCategorySummaryRow extends StatelessWidget {
   }
 }
 
+class _DesktopUnavailableCategoryList extends StatelessWidget {
+  const _DesktopUnavailableCategoryList({
+    required this.categories,
+    required this.masterData,
+  });
+
+  final List<AnalysisMetric> categories;
+  final TransactionMasterData? masterData;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: ButlerlySpacing.compact),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          context.l10n.text('spendingDistributionPartial'),
+          style: Theme.of(context).textTheme.labelMedium,
+        ),
+        for (final metric in categories)
+          Padding(
+            padding: const EdgeInsets.only(top: ButlerlySpacing.micro),
+            child: Row(
+              key: ValueKey('desktop-unavailable-category-${metric.id}'),
+              children: [
+                Expanded(
+                  child: Text(
+                    analysisDimension(context, metric, masterData),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: ButlerlySpacing.compact),
+                Text(context.l10n.text('notAvailable')),
+              ],
+            ),
+          ),
+      ],
+    ),
+  );
+}
+
 class _DesktopCategoryLeadingIcon extends StatelessWidget {
   const _DesktopCategoryLeadingIcon({required this.metric});
 
@@ -952,8 +1281,81 @@ const double _desktopHomeBreakdownCardHeight = 280;
 const double _desktopHomeBreakdownContentHeight = 220;
 const double _desktopHomeTrendMaxBarHeight = 180;
 
+double _desktopTrendChartHeight(BuildContext context, int gridLevels) {
+  final bodySmall = Theme.of(context).textTheme.bodySmall ?? const TextStyle();
+  final labelStyle = ButlerlyTypography.badgeLabel(bodySmall);
+  final fontSize = labelStyle.fontSize ?? 12;
+  final lineHeight = labelStyle.height ?? 1.2;
+  final textScale = MediaQuery.textScalerOf(context).scale(1);
+  final labelHeight = textScale * fontSize * lineHeight;
+  final requiredHeight =
+      gridLevels * labelHeight + (gridLevels - 1) * ButlerlySpacing.micro;
+  return requiredHeight > _desktopHomeTrendMaxBarHeight
+      ? requiredHeight
+      : _desktopHomeTrendMaxBarHeight;
+}
+
+class _DesktopUnavailableContent extends StatelessWidget {
+  const _DesktopUnavailableContent({
+    required this.body,
+    this.title,
+    this.onRetry,
+    this.semanticsKey,
+  });
+
+  final String body;
+  final String? title;
+  final VoidCallback? onRetry;
+  final Key? semanticsKey;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    key: semanticsKey,
+    container: true,
+    liveRegion: true,
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (title != null) ...[
+                Text(
+                  title!,
+                  style: _desktopHomeCardTitleStyle.copyWith(
+                    color: context.colors.primaryText,
+                  ),
+                ),
+                const SizedBox(height: ButlerlySpacing.compact),
+              ],
+              Text(body),
+            ],
+          ),
+        ),
+        if (onRetry != null) ...[
+          const SizedBox(width: ButlerlySpacing.small),
+          TextButton(
+            onPressed: onRetry,
+            child: Text(context.l10n.text('desktopRetry')),
+          ),
+        ],
+      ],
+    ),
+  );
+}
+
+class _DesktopLoadingContent extends StatelessWidget {
+  const _DesktopLoadingContent();
+
+  @override
+  Widget build(BuildContext context) =>
+      ButlerlyLoadingState(message: context.l10n.text('homeLoading'));
+}
+
 class _DesktopPanel extends StatelessWidget {
   const _DesktopPanel({
+    super.key,
     required this.title,
     required this.child,
     this.subtitle,
@@ -985,8 +1387,8 @@ class _DesktopPanel extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            height: headerHeight,
+          ConstrainedBox(
+            constraints: BoxConstraints(minHeight: headerHeight ?? 0),
             child: Row(
               children: [
                 Expanded(
@@ -996,6 +1398,8 @@ class _DesktopPanel extends StatelessWidget {
                     children: [
                       Text(
                         title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: _desktopHomeCardTitleStyle.copyWith(
                           color: context.colors.primaryText,
                         ),
@@ -1013,7 +1417,15 @@ class _DesktopPanel extends StatelessWidget {
                     ],
                   ),
                 ),
-                ?trailing,
+                if (trailing != null)
+                  Flexible(
+                    fit: FlexFit.loose,
+                    child: FittedBox(
+                      alignment: AlignmentDirectional.centerEnd,
+                      fit: BoxFit.scaleDown,
+                      child: trailing!,
+                    ),
+                  ),
               ],
             ),
           ),
@@ -1135,7 +1547,7 @@ class _DesktopAction extends StatelessWidget {
   });
   final String label;
   final IconData icon;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   final int? count;
   final Color? tintColor;
 
@@ -1228,10 +1640,16 @@ class _DesktopTrend extends StatelessWidget {
   final List<MonthlySpendingTrendPoint> points;
   final DateTime selectedMonth;
   final String currency;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    if (points.any(
+      (point) =>
+          point.spending?.availability == AnalysisDataAvailability.insufficient,
+    )) {
+      return Center(child: Text(context.l10n.text('spendingTrendPartial')));
+    }
     final values = points
         .map(
           (point) =>
@@ -1251,14 +1669,16 @@ class _DesktopTrend extends StatelessWidget {
     final gridColor = context.colors.cardDivider;
     final locale = Localizations.localeOf(context).toLanguageTag();
     final formatter = NumberFormat.compact(locale: locale);
+    final chartHeight = _desktopTrendChartHeight(context, gridLevels);
     return InkWell(
+      key: const ValueKey('desktop-home-trend-chart'),
       onTap: onTap,
       child: Row(
         children: [
           Padding(
             padding: const EdgeInsets.only(bottom: 20),
             child: SizedBox(
-              height: _desktopHomeTrendMaxBarHeight,
+              height: chartHeight,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1283,7 +1703,7 @@ class _DesktopTrend extends StatelessWidget {
                   left: 0,
                   right: 0,
                   bottom: 20,
-                  height: _desktopHomeTrendMaxBarHeight,
+                  height: chartHeight,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -1312,7 +1732,7 @@ class _DesktopTrend extends StatelessWidget {
                                     widthFactor: 0.6,
                                     child: Container(
                                       height:
-                                          _desktopHomeTrendMaxBarHeight *
+                                          chartHeight *
                                           values[i] /
                                           chartMaximum,
                                       decoration: BoxDecoration(
@@ -1440,3 +1860,12 @@ Color _desktopInsightGroupTint(InsightPresentationGroup group) =>
       InsightPresentationGroup.paymentSource => const Color(0xFF216FE8),
       InsightPresentationGroup.other => const Color(0xFF8560D4),
     };
+
+DateTime _monthStart(DateTime value) => DateTime(value.year, value.month);
+
+bool _sameMonth(DateTime left, DateTime right) =>
+    left.year == right.year && left.month == right.month;
+
+bool _isAfterMonth(DateTime value, DateTime boundary) =>
+    value.year > boundary.year ||
+    (value.year == boundary.year && value.month > boundary.month);

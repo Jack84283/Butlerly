@@ -32,7 +32,7 @@ class _DesktopPrimaryShellState extends State<DesktopPrimaryShell> {
   @override
   Widget build(BuildContext context) {
     // At tablet and narrow desktop widths, keep the rail compact by default.
-    // Even the 168px expanded rail can crowd content on narrow screens.
+    // Even the 188px expanded rail can crowd content on narrow screens.
     final narrow =
         MediaQuery.sizeOf(context).width < ButlerlySize.wideBreakpoint;
     final expanded = narrow ? _expandedAtNarrowWidths : _expandedAtWideWidths;
@@ -86,7 +86,7 @@ class _WidePrimaryNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    // Switch widths atomically: animating a 168px menu inside a 72px rail
+    // Switch widths atomically: animating a 188px menu inside a 72px rail
     // overflows while transitioning across responsive breakpoints.
     width: expanded
         ? ButlerlySize.wideNavigationExpandedWidth
@@ -257,8 +257,10 @@ class _WideTopLevelItem extends StatelessWidget {
       onTap: onTap,
       child: InkWell(
         onTap: onTap,
-        child: SizedBox(
-          height: ButlerlySize.wideNavigationItemHeight,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            minHeight: ButlerlySize.wideNavigationItemHeight,
+          ),
           child: Padding(
             padding: const EdgeInsets.symmetric(
               horizontal: ButlerlySpacing.compact,
@@ -267,7 +269,16 @@ class _WideTopLevelItem extends StatelessWidget {
               children: [
                 Icon(icon),
                 const SizedBox(width: ButlerlySpacing.compact),
-                Expanded(child: Text(label)),
+                Expanded(
+                  child: Tooltip(
+                    message: label,
+                    child: Text(
+                      label,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -326,11 +337,19 @@ class _WideCollapseButton extends StatelessWidget {
       child: expanded
           ? SizedBox(
               width: double.infinity,
-              height: ButlerlySize.wideNavigationItemHeight,
-              child: OutlinedButton.icon(
-                onPressed: onPressed,
-                icon: icon,
-                label: Text(context.l10n.text('collapse')),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  minHeight: ButlerlySize.wideNavigationItemHeight,
+                ),
+                child: OutlinedButton.icon(
+                  onPressed: onPressed,
+                  icon: icon,
+                  label: Text(
+                    context.l10n.text('collapse'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ),
             )
           : IconButton(

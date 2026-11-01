@@ -685,6 +685,7 @@ void main() {
     expect(uri.path, '/search');
     expect(uri.queryParameters['from'], '2026-09-01');
     expect(uri.queryParameters['to'], '2026-09-14');
+    expect(uri.queryParameters['timeZoneId'], 'UTC');
     expect(uri.queryParameters['includeUndated'], isNull);
   });
 

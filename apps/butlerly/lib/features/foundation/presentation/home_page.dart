@@ -291,6 +291,10 @@ class _HomePageState extends State<HomePage> {
     final overviewUnavailable = periodUnavailable || transactionsUnavailable;
     final reviewUnavailable =
         data.status == _HomeDataStatus.reviewUnavailable || overviewUnavailable;
+    final canOpenAnalysis =
+        period != null && !overviewUnavailable && !data.analysisUnavailable;
+    final canOpenTransactions = period != null && !overviewUnavailable;
+    final canOpenReview = period != null && !reviewUnavailable;
     final unavailableTitleKey = periodUnavailable
         ? 'homeUnavailable'
         : transactionsUnavailable
@@ -309,6 +313,7 @@ class _HomePageState extends State<HomePage> {
           model: data.model,
           analysisUnavailable: data.analysisUnavailable || overviewUnavailable,
           baseCurrency: data.baseCurrency,
+          unavailableTitleKey: overviewUnavailable ? unavailableTitleKey : null,
         ),
         SizedBox(height: context.designTokens.geometry.cardGap),
         HomeBudgetsCard(
@@ -321,15 +326,23 @@ class _HomePageState extends State<HomePage> {
         _HomeTrend(
           data: data,
           unavailable: overviewUnavailable,
+          unavailableMessageKey: overviewUnavailable
+              ? unavailableTitleKey
+              : null,
           trendFuture: _trendFuture,
           rangeCount: _trendMonthCount,
-          onRangeChanged: () => _selectTrendRange(data),
+          onRangeChanged: overviewUnavailable || data.analysisUnavailable
+              ? null
+              : () => _selectTrendRange(data),
         ),
         SizedBox(height: context.designTokens.geometry.cardGap),
         _CategorySummary(
           model: data.model,
           masterData: data.masterData,
-          onViewAll: period == null
+          unavailableMessageKey: overviewUnavailable
+              ? unavailableTitleKey
+              : null,
+          onViewAll: !canOpenAnalysis
               ? null
               : () => context.push(
                   _periodRoute('/analysis', period, currentMonth: currentMonth),
@@ -346,7 +359,7 @@ class _HomePageState extends State<HomePage> {
           unavailableTitleKey: overviewUnavailable ? unavailableTitleKey : null,
           unavailableBodyKey: overviewUnavailable ? unavailableBodyKey : null,
           onRetry: _refresh,
-          period: period,
+          period: canOpenReview ? period : null,
         ),
         SizedBox(height: context.designTokens.geometry.cardGap),
         _HomeRecentActivity(
@@ -356,7 +369,7 @@ class _HomePageState extends State<HomePage> {
           unavailableTitleKey: overviewUnavailable ? unavailableTitleKey : null,
           unavailableBodyKey: overviewUnavailable ? unavailableBodyKey : null,
           onRetry: _refresh,
-          onViewAll: period == null
+          onViewAll: !canOpenTransactions
               ? null
               : () => context.push(
                   _periodRoute('/search', period, currentMonth: currentMonth),
@@ -367,7 +380,9 @@ class _HomePageState extends State<HomePage> {
           insight: data.insight,
           masterData: data.masterData,
           analysisUnavailable: data.analysisUnavailable || overviewUnavailable,
-          onTap: period == null
+          unavailableTitleKey: overviewUnavailable ? unavailableTitleKey : null,
+          unavailableBodyKey: overviewUnavailable ? unavailableBodyKey : null,
+          onTap: !canOpenAnalysis
               ? null
               : () => context.push(
                   _periodRoute('/insights', period, currentMonth: currentMonth),
@@ -883,11 +898,13 @@ class _HomeSummaryCard extends StatelessWidget {
     required this.model,
     required this.analysisUnavailable,
     required this.baseCurrency,
+    this.unavailableTitleKey,
   });
 
   final AnalysisModel? model;
   final bool analysisUnavailable;
   final CurrencyCode? baseCurrency;
+  final String? unavailableTitleKey;
 
   @override
   Widget build(BuildContext context) {
@@ -1010,7 +1027,7 @@ class _HomeSummaryCard extends StatelessWidget {
         if (analysisUnavailable) ...[
           const SizedBox(height: ButlerlySpacing.standard),
           Text(
-            context.l10n.text('analysisUnavailable'),
+            context.l10n.text(unavailableTitleKey ?? 'analysisUnavailable'),
             style: context.designTokens.homeTypography
                 .subtitle(
                   Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
@@ -1201,6 +1218,7 @@ Widget homeSpendingTrendForTest(
         month: point.month,
         value: point.value,
         metric: point.selected ? selectedMetric : null,
+        unavailable: false,
         selected: point.selected,
       ),
   ],
@@ -1232,6 +1250,7 @@ class _SpendingTrend extends StatelessWidget {
     required this.points,
     required this.unavailable,
     this.loading = false,
+    this.unavailableMessage,
     this.comparison,
     this.rangeCount = 6,
     this.onRangeChanged,
@@ -1240,6 +1259,7 @@ class _SpendingTrend extends StatelessWidget {
   final List<_HomeTrendPoint> points;
   final bool unavailable;
   final bool loading;
+  final String? unavailableMessage;
   final AnalysisComparison? comparison;
   final int rangeCount;
   final ValueChanged<int>? onRangeChanged;
@@ -1247,6 +1267,7 @@ class _SpendingTrend extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final meaningful = points.any((point) => point.value > 0);
+    final hasUnavailablePoint = points.any((point) => point.unavailable);
     final locale = Localizations.localeOf(context).toLanguageTag();
     final selectedPoint = points.where((point) => point.selected).firstOrNull;
     final comparisonText = comparison == null
@@ -1297,12 +1318,17 @@ class _SpendingTrend extends StatelessWidget {
                       keepActionInlineAtCompactWidth: true,
                     ),
                   ),
-                  if (unavailable || points.isEmpty || !meaningful) ...[
+                  if (unavailable ||
+                      hasUnavailablePoint ||
+                      points.isEmpty ||
+                      !meaningful) ...[
                     const SizedBox(height: ButlerlySpacing.small),
                     Text(
                       context.l10n.text(
-                        unavailable
-                            ? 'analysisUnavailableBody'
+                        hasUnavailablePoint
+                            ? 'spendingTrendPartial'
+                            : unavailable
+                            ? unavailableMessage ?? 'analysisUnavailableBody'
                             : 'insufficientTrendData',
                       ),
                       style: context.designTokens.homeTypography.subtitle(
@@ -1519,11 +1545,13 @@ class _CategorySummary extends StatelessWidget {
   const _CategorySummary({
     required this.model,
     required this.masterData,
+    this.unavailableMessageKey,
     required this.onViewAll,
   });
 
   final AnalysisModel? model;
   final TransactionMasterData masterData;
+  final String? unavailableMessageKey;
   final VoidCallback? onViewAll;
 
   @override
@@ -1556,7 +1584,9 @@ class _CategorySummary extends StatelessWidget {
           ),
           if (model == null)
             Text(
-              context.l10n.text('analysisUnavailableBody'),
+              context.l10n.text(
+                unavailableMessageKey ?? 'analysisUnavailableBody',
+              ),
               style: context.designTokens.homeTypography.subtitle(
                 Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
               ),
@@ -1787,119 +1817,132 @@ class _AttentionSection extends StatelessWidget {
             : hasAttention
             ? 'attentionNeedsReview'
             : 'nothingNeedsAttention');
-    final body = reviewUnavailable
-        ? <Widget>[
-            Padding(
-              padding: const EdgeInsets.only(top: ButlerlySpacing.compact),
-              child: Semantics(
-                key: const ValueKey('home-review-unavailable-content'),
-                container: true,
-                liveRegion: true,
-                child: _HomeUnavailableContent(
-                  retryKey: const ValueKey('home-review-unavailable-retry'),
-                  titleKey: unavailableTitleKey ?? 'homeReviewUnavailable',
-                  bodyKey: unavailableBodyKey ?? 'homeReviewUnavailableBody',
-                  onRetry: onRetry,
+    final body = <Widget>[
+      if (reviewUnavailable)
+        Padding(
+          padding: const EdgeInsets.only(top: ButlerlySpacing.compact),
+          child: Semantics(
+            key: const ValueKey('home-review-unavailable-content'),
+            container: true,
+            liveRegion: true,
+            child: _HomeUnavailableContent(
+              retryKey: const ValueKey('home-review-unavailable-retry'),
+              titleKey: unavailableTitleKey ?? 'homeReviewUnavailable',
+              bodyKey: unavailableBodyKey ?? 'homeReviewUnavailableBody',
+              onRetry: onRetry,
+            ),
+          ),
+        ),
+      if (reviewUnavailable && duplicateUnavailable)
+        Padding(
+          padding: const EdgeInsets.only(top: ButlerlySpacing.compact),
+          child: Semantics(
+            key: const ValueKey('home-duplicate-unavailable-content'),
+            container: true,
+            liveRegion: true,
+            child: _HomeUnavailableContent(
+              retryKey: const ValueKey('home-duplicate-unavailable-retry'),
+              titleKey: 'possibleDuplicatesUnavailable',
+              bodyKey: 'possibleDuplicatesUnavailableBody',
+              onRetry: null,
+            ),
+          ),
+        ),
+      if (!reviewUnavailable) ...[
+        if (uncategorizedTransactionCount > 0)
+          _AttentionRow(
+            icon: Icons.category_outlined,
+            color: context.colors.warning,
+            title: context.l10n.text('manyTransactions', {
+              'count': localizedCount(
+                context,
+                uncategorizedTransactionCount.toString(),
+              ),
+            }),
+            subtitle: context.l10n.text('uncategorizedTransactions'),
+            onTap: () =>
+                context.push(_reviewRoute(period!, view: 'uncategorized')),
+          ),
+        if (possibleDuplicateCount > 0)
+          _AttentionRow(
+            icon: Icons.copy_all_outlined,
+            color: context.colors.error,
+            title: context.l10n.text('possibleDuplicatesCount', {
+              'count': localizedCount(
+                context,
+                possibleDuplicateCount.toString(),
+              ),
+            }),
+            subtitle: context.l10n.text('reviewSimilarTransactions'),
+            onTap: () =>
+                context.push(_reviewRoute(period!, view: 'duplicates')),
+          ),
+        if (duplicateUnavailable)
+          _AttentionRow(
+            icon: Icons.copy_all_outlined,
+            color: context.colors.error,
+            title: context.l10n.text('possibleDuplicatesUnavailable'),
+            subtitle: context.l10n.text('possibleDuplicatesUnavailableBody'),
+            onTap: () =>
+                context.push(_reviewRoute(period!, view: 'duplicates')),
+          ),
+        if (merchantReviewCount > 0)
+          _AttentionRow(
+            icon: Icons.storefront_outlined,
+            color: context.colors.warning,
+            title: context.l10n.text(
+              merchantReviewCount == 1
+                  ? 'oneMerchantToReview'
+                  : 'manyMerchantsToReview',
+              {
+                'count': localizedCount(
+                  context,
+                  merchantReviewCount.toString(),
                 ),
+              },
+            ),
+            subtitle: context.l10n.text(
+              merchantReviewCount == 1
+                  ? 'newMerchantNeedsCategorization'
+                  : 'newMerchantsNeedCategorization',
+            ),
+            onTap: () => context.push(
+              _reviewRoute(
+                period!,
+                reason: ReviewIssueReason.merchantNeedsReview,
               ),
             ),
-          ]
-        : <Widget>[
-            if (uncategorizedTransactionCount > 0)
-              _AttentionRow(
-                icon: Icons.category_outlined,
-                color: context.colors.warning,
-                title: context.l10n.text('manyTransactions', {
-                  'count': localizedCount(
-                    context,
-                    uncategorizedTransactionCount.toString(),
-                  ),
-                }),
-                subtitle: context.l10n.text('uncategorizedTransactions'),
-                onTap: () =>
-                    context.push(_reviewRoute(period!, view: 'uncategorized')),
+          ),
+        if (reviewCount > 0 &&
+            uncategorizedTransactionCount == 0 &&
+            possibleDuplicateCount == 0 &&
+            merchantReviewCount == 0)
+          _AttentionRow(
+            icon: Icons.rate_review_outlined,
+            color: context.colors.review,
+            title: context.l10n.text(
+              reviewCount == 1 ? 'oneReviewItem' : 'manyReviewItems',
+              {'count': localizedCount(context, reviewCount.toString())},
+            ),
+            subtitle: context.l10n.text('needsReview'),
+            onTap: () => context.push(_reviewRoute(period!)),
+          ),
+        if (uncategorizedTransactionCount == 0 &&
+            possibleDuplicateCount == 0 &&
+            merchantReviewCount == 0 &&
+            reviewCount == 0 &&
+            !duplicateUnavailable)
+          Padding(
+            padding: const EdgeInsets.only(top: ButlerlySpacing.compact),
+            child: Text(
+              context.l10n.text('nothingNeedsAttentionBody'),
+              style: context.designTokens.homeTypography.reviewSubtitle(
+                Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
               ),
-            if (possibleDuplicateCount > 0)
-              _AttentionRow(
-                icon: Icons.copy_all_outlined,
-                color: context.colors.error,
-                title: context.l10n.text('possibleDuplicatesCount', {
-                  'count': localizedCount(
-                    context,
-                    possibleDuplicateCount.toString(),
-                  ),
-                }),
-                subtitle: context.l10n.text('reviewSimilarTransactions'),
-                onTap: () =>
-                    context.push(_reviewRoute(period!, view: 'duplicates')),
-              ),
-            if (duplicateUnavailable)
-              _AttentionRow(
-                icon: Icons.copy_all_outlined,
-                color: context.colors.error,
-                title: context.l10n.text('possibleDuplicatesUnavailable'),
-                subtitle: context.l10n.text(
-                  'possibleDuplicatesUnavailableBody',
-                ),
-                onTap: () =>
-                    context.push(_reviewRoute(period!, view: 'duplicates')),
-              ),
-            if (merchantReviewCount > 0)
-              _AttentionRow(
-                icon: Icons.storefront_outlined,
-                color: context.colors.warning,
-                title: context.l10n.text(
-                  merchantReviewCount == 1
-                      ? 'oneMerchantToReview'
-                      : 'manyMerchantsToReview',
-                  {
-                    'count': localizedCount(
-                      context,
-                      merchantReviewCount.toString(),
-                    ),
-                  },
-                ),
-                subtitle: context.l10n.text(
-                  merchantReviewCount == 1
-                      ? 'newMerchantNeedsCategorization'
-                      : 'newMerchantsNeedCategorization',
-                ),
-                onTap: () => context.push(
-                  _reviewRoute(
-                    period!,
-                    reason: ReviewIssueReason.merchantNeedsReview,
-                  ),
-                ),
-              ),
-            if (reviewCount > 0 &&
-                uncategorizedTransactionCount == 0 &&
-                possibleDuplicateCount == 0 &&
-                merchantReviewCount == 0)
-              _AttentionRow(
-                icon: Icons.rate_review_outlined,
-                color: context.colors.review,
-                title: context.l10n.text(
-                  reviewCount == 1 ? 'oneReviewItem' : 'manyReviewItems',
-                  {'count': localizedCount(context, reviewCount.toString())},
-                ),
-                subtitle: context.l10n.text('needsReview'),
-                onTap: () => context.push(_reviewRoute(period!)),
-              ),
-            if (uncategorizedTransactionCount == 0 &&
-                possibleDuplicateCount == 0 &&
-                merchantReviewCount == 0 &&
-                reviewCount == 0 &&
-                !duplicateUnavailable)
-              Padding(
-                padding: const EdgeInsets.only(top: ButlerlySpacing.compact),
-                child: Text(
-                  context.l10n.text('nothingNeedsAttentionBody'),
-                  style: context.designTokens.homeTypography.reviewSubtitle(
-                    Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
-                  ),
-                ),
-              ),
-          ];
+            ),
+          ),
+      ],
+    ];
     return ButlerlyCard(
       key: const ValueKey('home-attention-card'),
       variant: ButlerlyCardVariant.dashboard,
@@ -2158,20 +2201,28 @@ class _HomeInsightCard extends StatelessWidget {
     required this.insight,
     required this.masterData,
     this.analysisUnavailable = false,
+    this.unavailableTitleKey,
+    this.unavailableBodyKey,
     required this.onTap,
   });
 
   final InsightResult? insight;
   final TransactionMasterData masterData;
   final bool analysisUnavailable;
+  final String? unavailableTitleKey;
+  final String? unavailableBodyKey;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final preview = analysisUnavailable
         ? _HomeInsightPreview(
-            title: context.l10n.text('insightsUnavailable'),
-            description: context.l10n.text('insightsUnavailableBody'),
+            title: context.l10n.text(
+              unavailableTitleKey ?? 'insightsUnavailable',
+            ),
+            description: context.l10n.text(
+              unavailableBodyKey ?? 'insightsUnavailableBody',
+            ),
           )
         : insight == null
         ? _HomeInsightPreview(
@@ -2506,16 +2557,16 @@ String _trendScaleLabel(String locale, double value) {
 
 class _HomeUnavailableContent extends StatelessWidget {
   const _HomeUnavailableContent({
-    required this.retryKey,
+    this.retryKey,
     required this.titleKey,
     required this.bodyKey,
-    required this.onRetry,
+    this.onRetry,
   });
 
-  final Key retryKey;
+  final Key? retryKey;
   final String titleKey;
   final String bodyKey;
-  final VoidCallback onRetry;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) => Row(
@@ -2547,15 +2598,17 @@ class _HomeUnavailableContent extends StatelessWidget {
                 Theme.of(context).textTheme.bodyMedium ?? const TextStyle(),
               ),
             ),
-            const SizedBox(height: ButlerlySpacing.small),
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: TextButton(
-                key: retryKey,
-                onPressed: onRetry,
-                child: Text(context.l10n.text('tryAgain')),
+            if (onRetry != null) ...[
+              const SizedBox(height: ButlerlySpacing.small),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: TextButton(
+                  key: retryKey,
+                  onPressed: onRetry,
+                  child: Text(context.l10n.text('tryAgain')),
+                ),
               ),
-            ),
+            ],
           ],
         ),
       ),
@@ -2567,9 +2620,9 @@ class _HomeLoading extends StatelessWidget {
   const _HomeLoading();
 
   @override
-  Widget build(BuildContext context) => const SizedBox(
+  Widget build(BuildContext context) => SizedBox(
     height: 320,
-    child: Center(child: CircularProgressIndicator()),
+    child: ButlerlyLoadingState(message: context.l10n.text('homeLoading')),
   );
 }
 
@@ -2579,14 +2632,16 @@ class _HomeTrend extends StatelessWidget {
     required this.unavailable,
     required this.trendFuture,
     required this.rangeCount,
-    required this.onRangeChanged,
+    this.unavailableMessageKey,
+    this.onRangeChanged,
   });
 
   final _HomeData data;
   final bool unavailable;
   final Future<_HomeTrendData>? trendFuture;
   final int rangeCount;
-  final VoidCallback onRangeChanged;
+  final String? unavailableMessageKey;
+  final VoidCallback? onRangeChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -2595,9 +2650,14 @@ class _HomeTrend extends StatelessWidget {
       return _SpendingTrend(
         points: data.trend,
         unavailable: data.trendUnavailable || unavailable,
+        unavailableMessage: unavailableMessageKey == null
+            ? null
+            : context.l10n.text(unavailableMessageKey!),
         comparison: data.model?.spendingComparison,
         rangeCount: rangeCount,
-        onRangeChanged: (_) => onRangeChanged(),
+        onRangeChanged: onRangeChanged == null
+            ? null
+            : (_) => onRangeChanged!(),
       );
     }
     return FutureBuilder<_HomeTrendData>(
@@ -2612,9 +2672,14 @@ class _HomeTrend extends StatelessWidget {
           points: trend.points,
           unavailable: trend.unavailable || unavailable,
           loading: snapshot.connectionState != ConnectionState.done,
+          unavailableMessage: unavailableMessageKey == null
+              ? null
+              : context.l10n.text(unavailableMessageKey!),
           comparison: data.model?.spendingComparison,
           rangeCount: rangeCount,
-          onRangeChanged: (_) => onRangeChanged(),
+          onRangeChanged: onRangeChanged == null
+              ? null
+              : (_) => onRangeChanged!(),
         );
       },
     );
@@ -2750,12 +2815,14 @@ class _HomeTrendPoint {
     required this.month,
     required this.value,
     required this.metric,
+    required this.unavailable,
     required this.selected,
   });
 
   final DateTime month;
   final double value;
   final AnalysisMetric? metric;
+  final bool unavailable;
   final bool selected;
 }
 
@@ -2785,6 +2852,8 @@ List<_HomeTrendPoint> _homeTrendPoints(
           point.spending?.availability != AnalysisDataAvailability.sufficient
           ? null
           : point.spending,
+      unavailable:
+          point.spending?.availability == AnalysisDataAvailability.insufficient,
       selected: _sameMonth(point.month, selectedMonth),
     ),
 ];
@@ -2832,6 +2901,7 @@ String _periodRoute(
   final queryParameters = <String, String>{
     'from': period.startDate,
     'to': period.endDate,
+    'timeZoneId': period.timeZoneId,
   };
   if (includeUndated) queryParameters['includeUndated'] = 'true';
   return Uri(path: path, queryParameters: queryParameters).toString();

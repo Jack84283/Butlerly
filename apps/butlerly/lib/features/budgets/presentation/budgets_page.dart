@@ -123,6 +123,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
   }
 
   Future<void> _edit({Budget? existing}) async {
+    if (_management == null) return;
     final masterData = _masterData;
     var scope = existing?.scope ?? 'overall';
     String? scopeId = existing?.scopeId;
@@ -370,7 +371,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
       if (desktop && mounted) {
         setState(() => _desktopEditor = null);
       }
-      if (submitted == null || _management == null) return;
+      if (submitted == null) return;
       final saved = await _management.save(submitted);
       if (saved is! ApplicationSuccess<bool>) {
         throw StateError('Monthly budget could not be saved.');

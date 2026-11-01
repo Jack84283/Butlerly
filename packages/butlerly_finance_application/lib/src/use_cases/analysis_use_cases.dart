@@ -602,10 +602,18 @@ final class CalculateInsights {
     );
     if (previous is! AnalysisPeriodResolved) return null;
     final window = previous.window;
+    final startDate = _date(window.start);
+    final endDate = _date(
+      window.endExclusive.subtract(const Duration(days: 1)),
+    );
+    // On the first financial day of a month there is no elapsed baseline
+    // window yet. Keep the current-period analysis available without trying
+    // to construct an invalid reversed AnalysisPeriod for Insights.
+    if (startDate.compareTo(endDate) > 0) return null;
     return AnalysisContext(
       period: AnalysisPeriod(
-        startDate: _date(window.start),
-        endDate: _date(window.endExclusive.subtract(const Duration(days: 1))),
+        startDate: startDate,
+        endDate: endDate,
         timeZoneId: window.timeZoneId,
       ),
       datasetMode: context.datasetMode,

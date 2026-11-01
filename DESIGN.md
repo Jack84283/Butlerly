@@ -217,7 +217,7 @@ Controls use a compact 6px radius for compact icon controls and a full pill for 
 
 ### Navigation
 - **Compact and medium:** labeled bottom navigation with five primary destinations: Home, Transactions, Add, Tools, and More. Add is the primary capture/action destination; Tools and More group operational and configuration surfaces.
-- **Wide:** width-aware navigation rail with expanded and collapsed modes; expanded width is 248px and collapsed width is 72px.
+- **Wide:** width-aware navigation rail with expanded and collapsed modes; expanded width is 188px and collapsed width is 72px.
 - **States:** selected navigation uses the interactive role; unselected navigation uses secondary text and icon roles.
 
 ### Bottom Sheets and Dialogs
@@ -287,7 +287,7 @@ The following statements describe the current shipped direction. Runtime code, s
 - **Colors:** use the semantic light/dark palettes above. The default dark mode is a near-black canvas with charcoal dashboard, sheet, and elevated surfaces; the default light mode is a cool gray canvas with white dashboard cards.
 - **Cards:** use shared components, 16px outer card radius, 16px standard card-header padding, 8px nested transaction-card horizontal gutter through `ButlerlyInsetTransactionCard`, 4px internal padding through `ButlerlyTransactionInnerCard`, 2px card elevation, and no decorative outline. Do not reintroduce page-specific nested card insets.
 - **Buttons:** use the shared primary, secondary, tertiary, destructive, compact, and segmented variants. Shared buttons use full-pill geometry, 16px horizontal padding, 12px vertical padding, and a preferred 48px height.
-- **Navigation:** compact and medium layouts expose Home, Transactions, Add, Tools, and More. Wide layouts use the same destinations in a 248px expanded or 72px collapsed rail. Add remains a first-class capture action; Review, Analysis, Insights, payment settlements, master data, and rules are reached through Tools or contextual routes.
+- **Navigation:** compact and medium layouts expose Home, Transactions, Add, Tools, and More. Wide layouts use the same destinations in a 188px expanded or 72px collapsed rail. Add remains a first-class capture action; Review, Analysis, Insights, payment settlements, master data, and rules are reached through Tools or contextual routes.
 - **Bottom sheets:** use the shared sheet container with 18px top corners, safe-area-aware padding, semantic surfaces, and explicit escape paths. Selection and filter sheets should use shared controls rather than feature-local variants.
 - **Typography:** use the editorial serif roles for high-level interpretation and financial emphasis, and platform sans-serif roles for functional controls, labels, dense rows, and operational copy. Financial amounts use tabular figures.
 - **Interaction details:** preserve localized full dates in Add/Edit Transaction, the textual image-view action in Transaction Detail, and right-aligned Review decisions, import restoration actions, and Create New Payment Source actions.
