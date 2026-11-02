@@ -21,6 +21,17 @@ export 'package:butlerly_finance_application/butlerly_finance_application.dart'
         BackupInspection,
         LocalRestoreResult;
 
+/// Raised when a portable backup contains invalid analysis-rule state.
+///
+/// This distinction lets the UI offer the explicit rule-repair operation only
+/// for a failure that is actually attributable to rule validation.
+final class BackupAnalysisRuleValidationException extends FormatException {
+  const BackupAnalysisRuleValidationException(super.message);
+
+  @override
+  String toString() => 'BackupAnalysisRuleValidationException: $message';
+}
+
 final class _TableSpec {
   const _TableSpec(
     this.name,
@@ -2243,127 +2254,135 @@ final class LocalBackupManager {
 
     final definitionRows = _tableRows(tables, 'analysis_rule_definitions');
     final definitionsByKey = <String, Map>{};
-    for (var index = 0; index < definitionRows.length; index++) {
-      final row = definitionRows[index];
-      final ruleId = row['rule_id'];
-      final ruleVersion = row['rule_version'];
-      if (ruleId is! String ||
-          ruleId.isEmpty ||
-          ruleVersion is! String ||
-          ruleVersion.isEmpty) {
-        throw FormatException(
-          'Backup schema $sourceSchema table "analysis_rule_definitions" '
-          'row $index contains an invalid rule identity.',
-        );
-      }
-      final key = '$ruleId:$ruleVersion';
-      definitionsByKey[key] = row;
+    try {
+      for (var index = 0; index < definitionRows.length; index++) {
+        final row = definitionRows[index];
+        final ruleId = row['rule_id'];
+        final ruleVersion = row['rule_version'];
+        if (ruleId is! String ||
+            ruleId.isEmpty ||
+            ruleVersion is! String ||
+            ruleVersion.isEmpty) {
+          throw FormatException(
+            'Backup schema $sourceSchema table "analysis_rule_definitions" '
+            'row $index contains an invalid rule identity.',
+          );
+        }
+        final key = '$ruleId:$ruleVersion';
+        definitionsByKey[key] = row;
 
-      final status = row['validation_status'];
-      if (status is! String || !{'valid', 'invalid'}.contains(status)) {
-        throw FormatException(
-          'Backup schema $sourceSchema table "analysis_rule_definitions" '
-          'row $index contains an invalid validation status.',
-        );
-      }
-      if (status != 'valid') continue;
+        final status = row['validation_status'];
+        if (status is! String || !{'valid', 'invalid'}.contains(status)) {
+          throw FormatException(
+            'Backup schema $sourceSchema table "analysis_rule_definitions" '
+            'row $index contains an invalid validation status.',
+          );
+        }
+        if (status != 'valid') continue;
 
-      final canonical = row['canonical_definition'];
-      if (canonical is! String || canonical.isEmpty) {
-        throw FormatException(
-          'Backup schema $sourceSchema table "analysis_rule_definitions" '
-          'row $index contains an invalid canonical definition.',
+        final canonical = row['canonical_definition'];
+        if (canonical is! String || canonical.isEmpty) {
+          throw FormatException(
+            'Backup schema $sourceSchema table "analysis_rule_definitions" '
+            'row $index contains an invalid canonical definition.',
+          );
+        }
+        final values = _decodeRuleDefinition(canonical, sourceSchema, index);
+        final result = const RuleDefinitionValidator().validate(
+          ParsedRuleDocument(values),
         );
+        if (result.definition == null) {
+          final diagnostic = result.diagnostics.isEmpty
+              ? 'definition could not be reconstructed'
+              : result.diagnostics.first.message;
+          throw FormatException(
+            'Backup schema $sourceSchema table "analysis_rule_definitions" '
+            'row $index is invalid: $diagnostic',
+          );
+        }
+        final definition = result.definition!;
+        if (canonicalize(values) != canonical ||
+            definition.identity.value != ruleId ||
+            definition.version.value != ruleVersion ||
+            definition.schemaVersion != row['schema_version'] ||
+            definition.definitionHash.value != row['definition_hash']) {
+          throw FormatException(
+            'Backup schema $sourceSchema table "analysis_rule_definitions" '
+            'row $index does not match its canonical identity or hash.',
+          );
+        }
       }
-      final values = _decodeRuleDefinition(canonical, sourceSchema, index);
-      final result = const RuleDefinitionValidator().validate(
-        ParsedRuleDocument(values),
+
+      final activationRows = _tableRows(tables, 'analysis_rule_activations');
+      for (var index = 0; index < activationRows.length; index++) {
+        final row = activationRows[index];
+        final ruleId = row['rule_id'];
+        final ruleVersion = row['active_rule_version'];
+        final enabled = row['enabled'];
+        if (ruleId is! String ||
+            ruleId.isEmpty ||
+            ruleVersion is! String ||
+            ruleVersion.isEmpty ||
+            enabled is! int ||
+            (enabled != 0 && enabled != 1)) {
+          throw FormatException(
+            'Backup schema $sourceSchema table "analysis_rule_activations" '
+            'row $index contains an invalid activation.',
+          );
+        }
+        final definition = definitionsByKey['$ruleId:$ruleVersion'];
+        if (requireDefinitionReferences &&
+            (definition == null ||
+                definition['validation_status'] != 'valid')) {
+          throw FormatException(
+            'Backup schema $sourceSchema table "analysis_rule_activations" '
+            'row $index references a missing rule definition.',
+          );
+        }
+      }
+
+      final configurationRows = _tableRows(
+        tables,
+        'analysis_rule_configurations',
       );
-      if (result.definition == null) {
-        final diagnostic = result.diagnostics.isEmpty
-            ? 'definition could not be reconstructed'
-            : result.diagnostics.first.message;
-        throw FormatException(
-          'Backup schema $sourceSchema table "analysis_rule_definitions" '
-          'row $index is invalid: $diagnostic',
-        );
+      for (var index = 0; index < configurationRows.length; index++) {
+        final row = configurationRows[index];
+        final ruleId = row['rule_id'];
+        final configuration = row['configuration'];
+        if (ruleId is! String || ruleId.isEmpty || configuration is! String) {
+          throw FormatException(
+            'Backup schema $sourceSchema table '
+            '"analysis_rule_configurations" row $index contains an invalid '
+            'configuration.',
+          );
+        }
+        if (requireDefinitionReferences &&
+            !definitionsByKey.values.any(
+              (definition) =>
+                  definition['rule_id'] == ruleId &&
+                  definition['validation_status'] == 'valid',
+            )) {
+          throw FormatException(
+            'Backup schema $sourceSchema table '
+            '"analysis_rule_configurations" row $index references a missing '
+            'rule definition.',
+          );
+        }
+        try {
+          final decoded = jsonDecode(configuration);
+          if (decoded is! Map) throw const FormatException();
+        } on Object {
+          throw FormatException(
+            'Backup schema $sourceSchema table '
+            '"analysis_rule_configurations" row $index contains invalid JSON.',
+          );
+        }
       }
-      final definition = result.definition!;
-      if (canonicalize(values) != canonical ||
-          definition.identity.value != ruleId ||
-          definition.version.value != ruleVersion ||
-          definition.schemaVersion != row['schema_version'] ||
-          definition.definitionHash.value != row['definition_hash']) {
-        throw FormatException(
-          'Backup schema $sourceSchema table "analysis_rule_definitions" '
-          'row $index does not match its canonical identity or hash.',
-        );
-      }
-    }
-
-    final activationRows = _tableRows(tables, 'analysis_rule_activations');
-    for (var index = 0; index < activationRows.length; index++) {
-      final row = activationRows[index];
-      final ruleId = row['rule_id'];
-      final ruleVersion = row['active_rule_version'];
-      final enabled = row['enabled'];
-      if (ruleId is! String ||
-          ruleId.isEmpty ||
-          ruleVersion is! String ||
-          ruleVersion.isEmpty ||
-          enabled is! int ||
-          (enabled != 0 && enabled != 1)) {
-        throw FormatException(
-          'Backup schema $sourceSchema table "analysis_rule_activations" '
-          'row $index contains an invalid activation.',
-        );
-      }
-      final definition = definitionsByKey['$ruleId:$ruleVersion'];
-      if (requireDefinitionReferences &&
-          (definition == null || definition['validation_status'] != 'valid')) {
-        throw FormatException(
-          'Backup schema $sourceSchema table "analysis_rule_activations" '
-          'row $index references a missing rule definition.',
-        );
-      }
-    }
-
-    final configurationRows = _tableRows(
-      tables,
-      'analysis_rule_configurations',
-    );
-    for (var index = 0; index < configurationRows.length; index++) {
-      final row = configurationRows[index];
-      final ruleId = row['rule_id'];
-      final configuration = row['configuration'];
-      if (ruleId is! String || ruleId.isEmpty || configuration is! String) {
-        throw FormatException(
-          'Backup schema $sourceSchema table '
-          '"analysis_rule_configurations" row $index contains an invalid '
-          'configuration.',
-        );
-      }
-      if (requireDefinitionReferences &&
-          !definitionsByKey.values.any(
-            (definition) =>
-                definition['rule_id'] == ruleId &&
-                definition['validation_status'] == 'valid',
-          )) {
-        throw FormatException(
-          'Backup schema $sourceSchema table '
-          '"analysis_rule_configurations" row $index references a missing '
-          'rule definition.',
-        );
-      }
-      try {
-        final decoded = jsonDecode(configuration);
-        if (decoded is! Map) throw const FormatException();
-      } on Object {
-        throw FormatException(
-          'Backup schema $sourceSchema table '
-          '"analysis_rule_configurations" row $index contains invalid JSON.',
-        );
-      }
+    } on FormatException catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        BackupAnalysisRuleValidationException(error.message),
+        stackTrace,
+      );
     }
 
     final transactionIds = _stringIds(tables, 'transactions', 'id');
@@ -2394,7 +2413,7 @@ final class LocalBackupManager {
       if (definition == null ||
           definition['validation_status'] != 'valid' ||
           definition['definition_hash'] != definitionHash) {
-        throw FormatException(
+        throw BackupAnalysisRuleValidationException(
           'Backup schema $sourceSchema table "analysis_findings" row $index '
           'references an unavailable or mismatched rule definition.',
         );

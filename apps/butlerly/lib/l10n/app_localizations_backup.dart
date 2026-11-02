@@ -29,10 +29,13 @@ const _backupStrings = <String, Map<String, String>>{
     'restoreBackup': 'Restore backup',
     'restoreSubtitle': 'Replace local data from an encrypted Butlerly backup.',
     'backupComplete': 'Encrypted backup created successfully.',
-    'backupShareFailed':
+    'backupAnalysisRepairRequired':
+        'Backup could not be created because analysis rules failed validation. Choose Repair analysis rules and try again.',
+    'backupShareUnconfirmed':
         'The encrypted backup was created, but the platform could not confirm whether it was shared or saved.',
-    'backupFailed':
-        'Backup could not be created. If analysis data is inconsistent, choose Repair analysis rules and try again.',
+    'backupShareFailed':
+        'The encrypted backup was created, but the share sheet could not be opened. No saved backup was confirmed.',
+    'backupFailed': 'Backup could not be created.',
     'restoreFailed': 'Backup could not be restored.',
     'restoreTitle': 'Restore Butlerly backup?',
     'backupCreatedAt': 'Created {date}',
@@ -101,10 +104,13 @@ const _backupStrings = <String, Map<String, String>>{
     'restoreSubtitle':
         'Reemplaza los datos locales desde una copia cifrada de Butlerly.',
     'backupComplete': 'La copia cifrada se creó correctamente.',
-    'backupShareFailed':
+    'backupAnalysisRepairRequired':
+        'No se pudo crear la copia porque las reglas de análisis no superaron la validación. Elige Reparar reglas de análisis y vuelve a intentarlo.',
+    'backupShareUnconfirmed':
         'La copia cifrada se creó, pero la plataforma no pudo confirmar si se compartió o se guardó.',
-    'backupFailed':
-        'No se pudo crear la copia. Si los datos de análisis son incoherentes, elige Reparar reglas de análisis y vuelve a intentarlo.',
+    'backupShareFailed':
+        'La copia cifrada se creó, pero no se pudo abrir la hoja para compartir. No se confirmó ninguna copia guardada.',
+    'backupFailed': 'No se pudo crear la copia.',
     'restoreFailed': 'No se pudo restaurar la copia.',
     'restoreTitle': '¿Restaurar la copia de Butlerly?',
     'backupCreatedAt': 'Creada el {date}',
@@ -173,8 +179,10 @@ const _backupStrings = <String, Map<String, String>>{
     'restoreBackup': '恢复备份',
     'restoreSubtitle': '从加密的 Butlerly 备份替换本地数据。',
     'backupComplete': '加密备份创建成功。',
-    'backupShareFailed': '加密备份已创建，但平台无法确认是否已分享或保存。',
-    'backupFailed': '无法创建备份。如果分析数据不一致，请选择“修复分析规则”后重试。',
+    'backupAnalysisRepairRequired': '无法创建备份，因为分析规则未通过验证。请选择“修复分析规则”后重试。',
+    'backupShareUnconfirmed': '加密备份已创建，但平台无法确认是否已分享或保存。',
+    'backupShareFailed': '加密备份已创建，但无法打开分享面板。未确认有已保存的备份。',
+    'backupFailed': '无法创建备份。',
     'restoreFailed': '无法恢复备份。',
     'restoreTitle': '恢复 Butlerly 备份？',
     'backupCreatedAt': '创建时间：{date}',

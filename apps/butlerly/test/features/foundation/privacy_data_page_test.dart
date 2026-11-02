@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/features/foundation/presentation/privacy_data_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -205,6 +206,86 @@ void main() {
     expect(File(gateway.discardedPath!).existsSync(), isFalse);
   });
 
+  testWidgets('mobile backup reports native share exceptions separately', (
+    tester,
+  ) async {
+    final root = Directory(
+      path.join(
+        Directory.systemTemp.path,
+        'butlerly-share-exception-${DateTime.now().microsecondsSinceEpoch}',
+      ),
+    )..createSync(recursive: true);
+    addTearDown(() async {
+      await services.reset();
+      if (root.existsSync()) root.deleteSync(recursive: true);
+      debugDefaultTargetPlatformOverride = null;
+    });
+    final gateway = _ShareGateway(root);
+    final platform = _SharePlatform(failure: StateError('share fixture'));
+    services.registerSingleton<WorkspaceDataService>(
+      WorkspaceDataService(gateway, refreshSystemData: () async {}),
+    );
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+
+    await tester.pumpWidget(
+      app(shareClient: share_plus.SharePlus.custom(platform)),
+    );
+    await tester.pumpAndSettle();
+    await _completeBackupPasswordFlow(tester);
+
+    debugDefaultTargetPlatformOverride = null;
+    expect(
+      find.text(
+        'The encrypted backup was created, but the share sheet could not be opened. No saved backup was confirmed.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Backup could not be created.'), findsNothing);
+    expect(
+      find.text(
+        'Backup could not be created because analysis rules failed validation. Choose Repair analysis rules and try again.',
+      ),
+      findsNothing,
+    );
+    expect(gateway.discardedPath, isNotNull);
+    expect(File(gateway.discardedPath!).existsSync(), isFalse);
+  });
+
+  testWidgets('mobile backup recommends repair only for rule validation', (
+    tester,
+  ) async {
+    final root = Directory(
+      path.join(
+        Directory.systemTemp.path,
+        'butlerly-rule-validation-${DateTime.now().microsecondsSinceEpoch}',
+      ),
+    )..createSync(recursive: true);
+    addTearDown(() async {
+      await services.reset();
+      if (root.existsSync()) root.deleteSync(recursive: true);
+      debugDefaultTargetPlatformOverride = null;
+    });
+    final gateway = _ShareGateway(root)
+      ..createFailure = const BackupAnalysisRuleValidationException('fixture');
+    services.registerSingleton<WorkspaceDataService>(
+      WorkspaceDataService(gateway, refreshSystemData: () async {}),
+    );
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    await _completeBackupPasswordFlow(tester);
+
+    debugDefaultTargetPlatformOverride = null;
+    expect(
+      find.text(
+        'Backup could not be created because analysis rules failed validation. Choose Repair analysis rules and try again.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Backup could not be created.'), findsNothing);
+  });
+
   testWidgets('mobile backup reports temporary-file creation failure', (
     tester,
   ) async {
@@ -231,6 +312,12 @@ void main() {
 
     debugDefaultTargetPlatformOverride = null;
     expect(find.textContaining('Backup could not be created.'), findsOneWidget);
+    expect(
+      find.text(
+        'Backup could not be created because analysis rules failed validation. Choose Repair analysis rules and try again.',
+      ),
+      findsNothing,
+    );
     expect(gateway.discardedPath, isNull);
   });
 
@@ -298,9 +385,13 @@ Future<void> _completeBackupPasswordFlow(WidgetTester tester) async {
 }
 
 final class _SharePlatform extends share_platform.SharePlatform {
-  _SharePlatform({this.status = share_plus.ShareResultStatus.success});
+  _SharePlatform({
+    this.status = share_plus.ShareResultStatus.success,
+    this.failure,
+  });
 
   final share_plus.ShareResultStatus status;
+  final Object? failure;
   share_plus.ShareParams? params;
   bool sawFileDuringShare = false;
 
@@ -309,6 +400,7 @@ final class _SharePlatform extends share_platform.SharePlatform {
     params = value;
     final file = value.files!.single;
     sawFileDuringShare = File(file.path).existsSync();
+    if (failure != null) throw failure!;
     return share_plus.ShareResult('shared', status);
   }
 }

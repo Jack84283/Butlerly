@@ -309,13 +309,16 @@ void main() {
           diagnosticDestination,
           password: 'correct horse battery staple',
         ),
-        throwsA(isA<FormatException>()),
+        throwsA(isA<BackupAnalysisRuleValidationException>()),
       );
       expect(
         diagnosticLogger.stage,
         'Portable backup failed at stage: backup analysis-rule validation',
       );
-      expect(diagnosticLogger.exceptionType, 'FormatException');
+      expect(
+        diagnosticLogger.exceptionType,
+        'BackupAnalysisRuleValidationException',
+      );
       expect(await diagnosticDestination.exists(), isFalse);
 
       final transactionsBefore = await database.database.query('transactions');
@@ -346,7 +349,7 @@ void main() {
           'without-explicit-repair.butlerlybackup',
           password: password,
         ),
-        throwsA(isA<FormatException>()),
+        throwsA(isA<BackupAnalysisRuleValidationException>()),
       );
       expect(await database.database.query('transactions'), transactionsBefore);
       expect(await database.database.query('budgets'), budgetsBefore);

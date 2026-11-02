@@ -1,5 +1,6 @@
 import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/app/shell/adaptive_shell.dart';
+import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
@@ -87,6 +88,15 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         password: password,
       );
       if (mounted) _message(context.l10n.backupText('backupComplete'));
+    } on BackupAnalysisRuleValidationException catch (error, stackTrace) {
+      _backupLogger.severe(
+        'Backup failed at stage: analysis-rule validation',
+        error,
+        stackTrace,
+      );
+      if (mounted) {
+        _message(context.l10n.backupText('backupAnalysisRepairRequired'));
+      }
     } on BackupPasswordTooShortException {
       if (mounted) _message(context.l10n.backupText('backupPasswordTooShort'));
     } catch (error, stackTrace) {
@@ -104,6 +114,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     setState(() => _busy = true);
     String? filePath;
     var stage = 'temporary backup creation';
+    var nativeShareInvoked = false;
     try {
       filePath = await services<WorkspaceDataService>().createTemporaryBackup(
         fileName,
@@ -111,7 +122,8 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       );
       if (!mounted) return;
 
-      stage = 'iOS share-sheet invocation';
+      stage = 'native share-sheet invocation';
+      nativeShareInvoked = true;
       final renderBox = context.findRenderObject();
       final shareOrigin = renderBox is RenderBox
           ? renderBox.localToGlobal(Offset.zero) & renderBox.size
@@ -134,8 +146,17 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           '(ShareResultStatus.unavailable)',
         );
         if (mounted) {
-          _message(context.l10n.backupText('backupShareFailed'));
+          _message(context.l10n.backupText('backupShareUnconfirmed'));
         }
+      }
+    } on BackupAnalysisRuleValidationException catch (error, stackTrace) {
+      _backupLogger.severe(
+        'Mobile backup failed at stage: analysis-rule validation',
+        error,
+        stackTrace,
+      );
+      if (mounted) {
+        _message(context.l10n.backupText('backupAnalysisRepairRequired'));
       }
     } on BackupPasswordTooShortException {
       if (mounted) _message(context.l10n.backupText('backupPasswordTooShort'));
@@ -145,7 +166,12 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         error,
         stackTrace,
       );
-      if (mounted) _message(context.l10n.backupText('backupFailed'));
+      if (mounted) {
+        final message = nativeShareInvoked
+            ? 'backupShareFailed'
+            : 'backupFailed';
+        _message(context.l10n.backupText(message));
+      }
     } finally {
       if (filePath != null) {
         await services<WorkspaceDataService>().discardTemporaryBackup(filePath);
