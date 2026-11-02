@@ -339,10 +339,16 @@ void main() {
       );
       expect(await database.database.query('transactions'), transactionsBefore);
       expect(await database.database.query('budgets'), budgetsBefore);
-      expect(await database.database.query('financial_profiles'), profilesBefore);
+      expect(
+        await database.database.query('financial_profiles'),
+        profilesBefore,
+      );
       expect(await database.database.query('evidence_items'), evidenceBefore);
       expect(await database.database.query('attachment_links'), linksBefore);
-      expect(await database.database.query('analysis_findings'), findingsBefore);
+      expect(
+        await database.database.query('analysis_findings'),
+        findingsBefore,
+      );
       expect(await evidenceFile.readAsString(), 'receipt fixture');
 
       // Explicit repair is deliberately separate from requesting a backup.
