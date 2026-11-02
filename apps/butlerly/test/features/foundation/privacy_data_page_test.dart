@@ -537,6 +537,40 @@ void main() {
   });
 
   testWidgets(
+    'legacy unencrypted archive reaches validated restore preview without password',
+    (tester) async {
+      final gateway = _ShareGateway(Directory.systemTemp)
+        ..encrypted = false;
+      await services.reset();
+      addTearDown(() async => services.reset());
+      services.registerSingleton<WorkspaceDataService>(
+        WorkspaceDataService(gateway, refreshSystemData: () async {}),
+      );
+
+      await tester.pumpWidget(
+        app(selectRestoreFile: () async => XFile('/unused/legacy.butlerly')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Restore backup'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Unlock'), findsNothing);
+      expect(gateway.inspectionCalls, 1);
+      expect(gateway.inspectionPassword, isNull);
+      expect(find.text('Merge'), findsOneWidget);
+      expect(find.text('Replace'), findsOneWidget);
+      expect(
+        find.textContaining('older backup is not encrypted'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('Merge'));
+      await tester.pumpAndSettle();
+      expect(gateway.selectedRestoreMode, LocalRestoreMode.merge);
+    },
+  );
+
+  testWidgets(
     'restore preview offers Merge and routes selection without Replace confirmation',
     (tester) async {
       final gateway = _ShareGateway(Directory.systemTemp);
@@ -663,6 +697,9 @@ final class _ShareGateway implements LocalDataGateway {
   Object? createFailure;
   Object? discardFailure;
   LocalRestoreMode? selectedRestoreMode;
+  bool encrypted = true;
+  int inspectionCalls = 0;
+  String? inspectionPassword;
 
   @override
   Future<void> createPortableBackup(
@@ -692,21 +729,24 @@ final class _ShareGateway implements LocalDataGateway {
   }
 
   @override
-  Future<bool> isEncryptedBackup(String filePath) async => true;
+  Future<bool> isEncryptedBackup(String filePath) async => encrypted;
 
   @override
-  Future<BackupInspection> inspect(String filePath, {String? password}) async =>
-      BackupInspection(
-        createdAtUtc: DateTime.utc(2026, 11, 1),
-        recordCount: 8,
-        evidenceCount: 2,
-        changes: const BackupChangeSummary(
-          transactionsAdded: 1,
-          transactionsChanged: 0,
-          masterDataChanged: 0,
-          deletedEntities: 0,
-        ),
-      );
+  Future<BackupInspection> inspect(String filePath, {String? password}) async {
+    inspectionCalls++;
+    inspectionPassword = password;
+    return BackupInspection(
+      createdAtUtc: DateTime.utc(2026, 11, 1),
+      recordCount: 8,
+      evidenceCount: 2,
+      changes: const BackupChangeSummary(
+        transactionsAdded: 1,
+        transactionsChanged: 0,
+        masterDataChanged: 0,
+        deletedEntities: 0,
+      ),
+    );
+  }
 
   @override
   Future<LocalRestoreResult> restore(
