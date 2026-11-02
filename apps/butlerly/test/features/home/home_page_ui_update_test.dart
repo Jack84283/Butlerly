@@ -187,15 +187,22 @@ void main() {
         taglineText.style?.fontFamilyFallback,
         ButlerlyTypography.editorialFontFallback,
       );
-      expect(taglineText.maxLines, isNull);
-      expect(taglineText.softWrap, isTrue);
+      expect(taglineText.maxLines, 1);
+      expect(taglineText.softWrap, isFalse);
+      final taglineLineHeight =
+          taglineText.style!.fontSize! * taglineText.style!.height!;
+      expect(
+        tester.getSize(brandTagline).height,
+        closeTo(taglineLineHeight, 1.0),
+        reason: 'The device tagline should occupy one visual line',
+      );
       expect(
         tester.getTopLeft(brandTagline).dy - tester.getBottomLeft(brand).dy,
         closeTo(ButlerlySpacing.micro, 1.0),
       );
       expect(
         tester.getTopLeft(monthSurface).dy,
-        closeTo(tester.getTopLeft(brand).dy, 1.0),
+        greaterThan(tester.getBottomLeft(brandTagline).dy),
       );
       expect(tester.widget<Text>(greeting).style?.fontSize, 20);
       expect(tester.widget<Text>(intro).style?.fontSize, 13);

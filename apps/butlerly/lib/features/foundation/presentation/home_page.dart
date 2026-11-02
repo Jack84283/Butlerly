@@ -543,6 +543,31 @@ Widget _homeEllipsisAction({
   alignment: Alignment.topCenter,
 );
 
+bool _homeHeaderShouldStackTopRow(
+  BuildContext context, {
+  required double availableWidth,
+  required String brandSubtitle,
+  required TextStyle brandSubtitleStyle,
+}) {
+  final scaler = MediaQuery.textScalerOf(context);
+  final largeText = scaler.scale(14) > 18;
+  if (largeText || availableWidth < 360) return true;
+
+  final rowWidth = (availableWidth - ButlerlySpacing.standard)
+      .clamp(1.0, double.infinity)
+      .toDouble();
+  final sideBySideBrandWidth = rowWidth * 5 / 9;
+  final subtitlePainter = TextPainter(
+    text: TextSpan(text: brandSubtitle, style: brandSubtitleStyle),
+    textDirection: Directionality.of(context),
+    textScaler: scaler,
+    locale: Localizations.localeOf(context),
+    maxLines: 1,
+  )..layout();
+
+  return subtitlePainter.width > sideBySideBrandWidth;
+}
+
 double _homeHeaderExtent(
   BuildContext context, {
   required double crossAxisExtent,
@@ -646,7 +671,12 @@ double _homeHeaderExtent(
   final appName = context.l10n.text('appName');
   final brandSubtitle = context.l10n.text('brandTagline');
   final largeText = scaler.scale(14) > 18;
-  final stackedTopRow = largeText || availableWidth < 360;
+  final stackedTopRow = _homeHeaderShouldStackTopRow(
+    context,
+    availableWidth: availableWidth,
+    brandSubtitle: brandSubtitle,
+    brandSubtitleStyle: brandSubtitleStyle,
+  );
   final rowWidth = availableWidth - ButlerlySpacing.standard;
   final brandWidth = stackedTopRow ? availableWidth : rowWidth * 5 / 9;
   final monthWidth = stackedTopRow ? availableWidth : rowWidth * 4 / 9;
@@ -657,7 +687,12 @@ double _homeHeaderExtent(
   final brandHeight =
       math.max(brandIconSize, measure(appName, appStyle, brandNameWidth)) +
       ButlerlySpacing.micro +
-      measure(brandSubtitle, brandSubtitleStyle, brandWidth);
+      measure(
+        brandSubtitle,
+        brandSubtitleStyle,
+        brandWidth,
+        maxLines: largeText ? null : 1,
+      );
   final monthHeight = monthButtonHeight(monthWidth);
   final topRowHeight = stackedTopRow
       ? brandHeight + ButlerlySpacing.small + monthHeight
@@ -764,6 +799,20 @@ class _HomeHeader extends StatelessWidget {
     final selectorMonthLabel = DateFormat.yMMM(locale).format(month);
     return LayoutBuilder(
       builder: (context, constraints) {
+        final brandSubtitle = context.l10n.text('brandTagline');
+        final brandSubtitleStyle = ButlerlyTypography.editorialText(
+          context.designTokens.homeTypography.subtitle(
+            Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
+          ),
+        ).copyWith(color: context.colors.warning);
+        final availableWidth = constraints.maxWidth;
+        final largeText = MediaQuery.textScalerOf(context).scale(14) > 18;
+        final stackedTopRow = _homeHeaderShouldStackTopRow(
+          context,
+          availableWidth: availableWidth,
+          brandSubtitle: brandSubtitle,
+          brandSubtitleStyle: brandSubtitleStyle,
+        );
         final brand = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -781,14 +830,11 @@ class _HomeHeader extends StatelessWidget {
             ),
             const SizedBox(height: ButlerlySpacing.micro),
             Text(
-              context.l10n.text('brandTagline'),
+              brandSubtitle,
               key: const ValueKey('home-brand-tagline'),
-              softWrap: true,
-              style: ButlerlyTypography.editorialText(
-                context.designTokens.homeTypography.subtitle(
-                  Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
-                ),
-              ).copyWith(color: context.colors.warning),
+              maxLines: largeText ? null : 1,
+              softWrap: largeText,
+              style: brandSubtitleStyle,
             ),
           ],
         );
@@ -801,10 +847,6 @@ class _HomeHeader extends StatelessWidget {
           denseSurface: true,
           transparent: true,
         );
-        final availableWidth = constraints.maxWidth;
-        final stackedTopRow =
-            MediaQuery.textScalerOf(context).scale(14) > 18 ||
-            availableWidth < 360;
         final topRow = stackedTopRow
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
