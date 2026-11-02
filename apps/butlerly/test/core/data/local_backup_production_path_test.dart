@@ -80,7 +80,7 @@ void main() {
   });
 
   test(
-    'production portable backup repairs a missing bundled rule definition',
+    'backup rejects inconsistent rules without modifying live records',
     () async {
       final expense = await finance.createTransaction(
         CreateTransactionCommand(
@@ -307,6 +307,48 @@ void main() {
 
       const password = 'correct horse battery staple';
       final workspace = services<WorkspaceDataService>();
+
+      // Production backup must never silently fix corrupt analysis metadata.
+      // A failure must preserve the original state for an explicit repair.
+      final failedArchive = File(
+        path.join(temporaryDirectory.path, 'production.butlerlybackup'),
+      );
+      await expectLater(
+        workspace.createTemporaryBackup(
+          'production.butlerlybackup',
+          password: password,
+        ),
+        throwsA(isA<FormatException>()),
+      );
+      expect(await failedArchive.exists(), isFalse);
+      expect(
+        await database.database.query(
+          'analysis_rule_definitions',
+          where: 'rule_id = ?',
+          whereArgs: ['ANL-R010'],
+        ),
+        isEmpty,
+      );
+      expect(
+        (await database.database.query(
+          'analysis_rule_activations',
+          where: 'rule_id = ?',
+          whereArgs: ['ANL-R010'],
+        )).single,
+        categoryActivation,
+      );
+      expect(await database.database.query('transactions'), transactionsBefore);
+      expect(await database.database.query('budgets'), budgetsBefore);
+      expect(await database.database.query('financial_profiles'), profilesBefore);
+      expect(await database.database.query('evidence_items'), evidenceBefore);
+      expect(await database.database.query('attachment_links'), linksBefore);
+      expect(await database.database.query('analysis_findings'), findingsBefore);
+      expect(await evidenceFile.readAsString(), 'receipt fixture');
+
+      // Explicit repair is deliberately separate from requesting a backup.
+      // This test simulates an independently authorized recovery step; the
+      // backup service itself never performs this mutation.
+      await finance.ensureAnalysisRules!();
       final encryptedPath = await workspace.createTemporaryBackup(
         'production.butlerlybackup',
         password: password,
