@@ -104,28 +104,14 @@ void main() {
     expect(events, ['erase']);
   });
 
-  test('portable backup repairs bundled rules before snapshotting', () async {
-    service = WorkspaceDataService(
-      gateway,
-      refreshSystemData: () async {},
-      ensureAnalysisRules: () async => events.add('rules'),
-    );
-
+  test('portable backup only invokes the read-only backup gateway', () async {
     await service.createPortableBackup('destination', password: 'password');
-
-    expect(events, ['rules', 'portable']);
+    expect(events, ['portable']);
   });
 
-  test('temporary backup repairs bundled rules before snapshotting', () async {
-    service = WorkspaceDataService(
-      gateway,
-      refreshSystemData: () async {},
-      ensureAnalysisRules: () async => events.add('rules'),
-    );
-
+  test('temporary backup only invokes the read-only backup gateway', () async {
     await service.createTemporaryBackup('temporary', password: 'password');
-
-    expect(events, ['rules', 'temporary']);
+    expect(events, ['temporary']);
   });
 }
 
