@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/features/foundation/presentation/privacy_data_page.dart';
+import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:file_selector/file_selector.dart';
@@ -30,6 +31,7 @@ void main() {
   Widget app({
     share_plus.SharePlus? shareClient,
     Future<FileSaveLocation?> Function()? selectBackupLocation,
+    Future<XFile?> Function()? selectRestoreFile,
     Locale locale = const Locale('en'),
   }) => ProviderScope(
     child: MaterialApp(
@@ -44,6 +46,7 @@ void main() {
       home: PrivacyDataPage(
         shareClient: shareClient,
         selectBackupLocation: selectBackupLocation,
+        selectRestoreFile: selectRestoreFile,
       ),
     ),
   );
@@ -518,6 +521,56 @@ void main() {
     expect(find.text('Analysis rules repaired successfully.'), findsOneWidget);
   });
 
+  testWidgets('restore preview offers Merge and routes selection without Replace confirmation', (
+    tester,
+  ) async {
+    final gateway = _ShareGateway(Directory.systemTemp);
+    await services.reset();
+    addTearDown(() async => services.reset());
+    services.registerSingleton<WorkspaceDataService>(
+      WorkspaceDataService(gateway, refreshSystemData: () async {}),
+    );
+
+    await tester.pumpWidget(
+      app(selectRestoreFile: () async => XFile('/unused/backup.butlerly')),
+    );
+    await tester.pumpAndSettle();
+    await _openRestorePreview(tester);
+
+    expect(find.text('Merge'), findsOneWidget);
+    expect(find.text('Replace'), findsOneWidget);
+    await tester.tap(find.text('Merge'));
+    await tester.pumpAndSettle();
+
+    expect(gateway.selectedRestoreMode, LocalRestoreMode.merge);
+    expect(find.text('Replace current Butlerly data?'), findsNothing);
+  });
+
+  testWidgets('Replace requires separate confirmation before invoking restore', (
+    tester,
+  ) async {
+    final gateway = _ShareGateway(Directory.systemTemp);
+    await services.reset();
+    addTearDown(() async => services.reset());
+    services.registerSingleton<WorkspaceDataService>(
+      WorkspaceDataService(gateway, refreshSystemData: () async {}),
+    );
+
+    await tester.pumpWidget(
+      app(selectRestoreFile: () async => XFile('/unused/backup.butlerly')),
+    );
+    await tester.pumpAndSettle();
+    await _openRestorePreview(tester);
+    await tester.tap(find.text('Replace'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Replace current Butlerly data?'), findsOneWidget);
+    expect(gateway.selectedRestoreMode, isNull);
+    await tester.tap(find.widgetWithText(ButlerlyDestructiveButton, 'Replace'));
+    await tester.pumpAndSettle();
+    expect(gateway.selectedRestoreMode, LocalRestoreMode.replace);
+  });
+
   testWidgets('restore preview formats its creation date for each locale', (
     tester,
   ) async {
@@ -536,6 +589,14 @@ void main() {
       expect(formatted, isNot(contains('T13:45:00')));
     }
   });
+}
+
+Future<void> _openRestorePreview(WidgetTester tester) async {
+  await tester.tap(find.text('Restore backup'));
+  await tester.pumpAndSettle();
+  await tester.enterText(find.byType(TextField).last, 'correct horse battery staple');
+  await tester.tap(find.text('Unlock'));
+  await tester.pumpAndSettle();
 }
 
 Future<void> _completeBackupPasswordFlow(WidgetTester tester) async {
@@ -579,6 +640,7 @@ final class _ShareGateway implements LocalDataGateway {
   String? discardedPath;
   Object? createFailure;
   Object? discardFailure;
+  LocalRestoreMode? selectedRestoreMode;
 
   @override
   Future<void> createPortableBackup(
@@ -605,6 +667,35 @@ final class _ShareGateway implements LocalDataGateway {
     if (discardFailure != null) throw discardFailure!;
     final file = File(filePath);
     if (file.existsSync()) file.deleteSync();
+  }
+
+  @override
+  Future<bool> isEncryptedBackup(String filePath) async => true;
+
+  @override
+  Future<BackupInspection> inspect(String filePath, {String? password}) async =>
+      BackupInspection(
+        createdAtUtc: DateTime.utc(2026, 11, 1),
+        recordCount: 8,
+        evidenceCount: 2,
+        changes: const BackupChangeSummary(
+          transactionsAdded: 1,
+          transactionsChanged: 0,
+          masterDataChanged: 0,
+          deletedEntities: 0,
+        ),
+      );
+
+  @override
+  Future<LocalRestoreResult> restore(
+    String filePath, {
+    required LocalRestoreMode mode,
+    String? password,
+    required Future<void> Function() postActivationRefresh,
+  }) async {
+    selectedRestoreMode = mode;
+    // Stop the fake before any refresh or real database write.
+    throw StateError('restore mode captured for regression test');
   }
 
   @override
