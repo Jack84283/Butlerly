@@ -372,7 +372,8 @@ final class AnalysisRuleEngine {
             definitionsById,
           )
         : const <String, AnalysisMetric>{};
-    final baseline = rule.baseline == RuleBaseline.none
+    final baseline =
+        rule.baseline == RuleBaseline.none || baselineContext == null
         ? null
         : _metric(
             rule,
@@ -466,9 +467,18 @@ final class AnalysisRuleEngine {
                   ).add(const Duration(days: 1)),
           )
         : null;
-    return baselineWindow is AnalysisPeriodResolved
-        ? _contextForWindow(dataset.context, baselineWindow.window)
-        : null;
+    if (baselineWindow is! AnalysisPeriodResolved) return null;
+    // On the first financial day of a partial current month there is no
+    // elapsed comparable window yet. The resolver represents that honestly
+    // as a zero-length baseline; do not turn it into a reversed date-only
+    // AnalysisPeriod. The primary metric remains valid, while comparisons
+    // correctly report that no baseline is available.
+    if (!baselineWindow.window.endExclusive.isAfter(
+      baselineWindow.window.start,
+    )) {
+      return null;
+    }
+    return _contextForWindow(dataset.context, baselineWindow.window);
   }
 
   List<AnalysisEconomicTransaction> _baselineGroup(

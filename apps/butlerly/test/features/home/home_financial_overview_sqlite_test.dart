@@ -5,7 +5,6 @@ import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
-import 'package:butlerly_database/butlerly_database.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -46,9 +45,6 @@ void main() {
         firstUseCompleted: true,
       ),
     );
-    await SqliteTransactionRepository(
-      database.persistenceDatabase,
-    ).save(_expense());
   });
 
   tearDown(() async {
@@ -60,6 +56,20 @@ void main() {
   test(
     'Home retries missing bundled rules and restores all summary/trend values',
     () async {
+      await finance.createTransaction(
+        CreateTransactionCommand(
+          id: 'home-sqlite-expense',
+          provenanceId: 'home-sqlite-expense-provenance',
+          timing: KnownTransactionTime(DateTime.utc(2026, 9, 1, 12)),
+          transactionDate: '2026-09-01',
+          money: Money(
+            amount: DecimalValue.parse('12.34'),
+            currency: CurrencyCode('USD'),
+          ),
+          direction: TransactionDirection.expense,
+        ),
+      );
+
       final result = await finance.loadHomeOverview(
         instant: DateTime.utc(2026, 9, 16, 12),
         trendMonthCount: 3,
@@ -91,28 +101,51 @@ void main() {
       );
     },
   );
-}
 
-Transaction _expense() {
-  final at = DateTime.utc(2026, 9, 1, 12);
-  return Transaction(
-    id: TransactionId('home-sqlite-expense'),
-    timing: KnownTransactionTime(at),
-    transactionDate: '2026-09-01',
-    money: Money(
-      amount: DecimalValue.parse('12.34'),
-      currency: CurrencyCode('USD'),
-    ),
-    direction: TransactionDirection.expense,
-    sourceType: TransactionSourceType.manual,
-    provenance: [
-      Provenance(
-        id: ProvenanceId('home-sqlite-expense-provenance'),
-        sourceType: ProvenanceSourceType.userEntry,
-        capturedAt: at,
-      ),
-    ],
-    createdAt: at,
-    updatedAt: at,
+  test(
+    'new current month recalculates after adding the first transaction',
+    () async {
+      final empty = await finance.loadHomeOverview(
+        instant: DateTime.utc(2026, 11, 1, 12),
+        trendMonthCount: 3,
+      );
+      final emptyOverview = (empty as ApplicationSuccess<HomeOverview>).value;
+      expect(emptyOverview.analysisUnavailable, isFalse);
+      expect(emptyOverview.monthlyTrendUnavailable, isFalse);
+
+      final created = await finance.createTransaction(
+        CreateTransactionCommand(
+          id: 'home-sqlite-new-month-expense',
+          provenanceId: 'home-sqlite-new-month-expense-provenance',
+          timing: KnownTransactionTime(DateTime.utc(2026, 11, 1, 12)),
+          transactionDate: '2026-11-01',
+          money: Money(
+            amount: DecimalValue.parse('12.34'),
+            currency: CurrencyCode('USD'),
+          ),
+          direction: TransactionDirection.expense,
+          description: 'New month expense',
+        ),
+      );
+      expect(created, isA<ApplicationSuccess<TransactionDto>>());
+
+      final refreshed = await finance.loadHomeOverview(
+        instant: DateTime.utc(2026, 11, 1, 12),
+        trendMonthCount: 3,
+      );
+      final overview = (refreshed as ApplicationSuccess<HomeOverview>).value;
+      expect(overview.analysisUnavailable, isFalse);
+      expect(overview.analysis?.spending?.value, DecimalValue.parse('12.34'));
+      expect(
+        overview.analysis?.transactionCount?.value,
+        DecimalValue.parse('1'),
+      );
+      expect(overview.analysis?.net?.value, DecimalValue.parse('-12.34'));
+      expect(overview.monthlyTrendUnavailable, isFalse);
+      expect(
+        overview.monthlyTrend.last.spending?.value,
+        DecimalValue.parse('12.34'),
+      );
+    },
   );
 }

@@ -78,7 +78,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
   }
 
   void _onTransactionChange() {
-    if (mounted) setState(_reload);
+    if (mounted) {
+      setState(() => _reload(forceAnalysisRefresh: true));
+    }
   }
 
   void _reload({bool forceAnalysisRefresh = false}) {
