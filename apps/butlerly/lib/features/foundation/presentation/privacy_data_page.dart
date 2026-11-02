@@ -26,6 +26,7 @@ class PrivacyDataPage extends ConsumerStatefulWidget {
   const PrivacyDataPage({
     this.shareClient,
     this.selectBackupLocation,
+    this.selectRestoreFile,
     super.key,
   });
 
@@ -34,6 +35,9 @@ class PrivacyDataPage extends ConsumerStatefulWidget {
 
   @visibleForTesting
   final Future<FileSaveLocation?> Function()? selectBackupLocation;
+
+  @visibleForTesting
+  final Future<XFile?> Function()? selectRestoreFile;
 
   @override
   ConsumerState<PrivacyDataPage> createState() => _PrivacyDataPageState();
@@ -272,7 +276,9 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       services.isRegistered<AppLogger>() ? services<AppLogger>() : AppLogger();
 
   Future<void> _restore() async {
-    final selected = await openFile(acceptedTypeGroups: const [_backupType]);
+    final selected = widget.selectRestoreFile != null
+        ? await widget.selectRestoreFile!()
+        : await openFile(acceptedTypeGroups: const [_backupType]);
     if (selected == null) return;
 
     final file = selected.path;
@@ -575,6 +581,11 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
               ButlerlyCancelButton(
                 onPressed: () => Navigator.pop(context),
                 child: Text(context.l10n.text('cancel')),
+              ),
+              TextButton(
+                onPressed: () =>
+                    Navigator.pop(context, LocalRestoreMode.merge),
+                child: Text(context.l10n.backupText('merge')),
               ),
               TextButton(
                 onPressed: () =>
