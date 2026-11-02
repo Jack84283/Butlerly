@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:butlerly/core/analysis/bundled_analysis_rules.dart';
 import 'package:butlerly/core/config/app_configuration.dart';
 import 'package:butlerly/core/data/backup_encryption.dart';
 import 'package:butlerly/core/data/local_backup_manager.dart';
@@ -301,7 +300,6 @@ void main() {
         database,
         services<LocalDataManager>(),
         logger: diagnosticLogger,
-        repairableBundledRuleVersions: bundledAnalysisRuleVersions,
       );
       final diagnosticDestination = File(
         path.join(temporaryDirectory.path, 'without-recovery.butlerlybackup'),
@@ -313,7 +311,7 @@ void main() {
         ),
         throwsA(
           predicate<BackupAnalysisRuleValidationException>(
-            (error) => error.canRepair,
+            (error) => !error.canRepair,
           ),
         ),
       );
@@ -642,6 +640,34 @@ void main() {
           path.join(restoredEvidenceDirectory.path, 'receipts', 'receipt.txt'),
         ).readAsStringSync(),
         'receipt fixture',
+      );
+
+      final temporaryDestinationDirectory = Directory(
+        path.join(
+          temporaryDirectory.path,
+          'temporary-publication-failure.butlerlybackup',
+        ),
+      )..createSync(recursive: true);
+      BackupStorageException? temporaryPublicationError;
+      try {
+        await workspace.createTemporaryBackup(
+          'temporary-publication-failure.butlerlybackup',
+          password: password,
+        );
+        fail('Temporary publication failure should be reported as storage.');
+      } on BackupStorageException catch (error) {
+        temporaryPublicationError = error;
+      } finally {
+        if (temporaryDestinationDirectory.existsSync()) {
+          temporaryDestinationDirectory.deleteSync(recursive: true);
+        }
+      }
+      expect(temporaryPublicationError, isNotNull);
+      expect(
+        services<LocalBackupManager>()
+            .publicationRecoveryState
+            .isRecoveryRequired,
+        isFalse,
       );
 
       messenger.setMockMethodCallHandler(

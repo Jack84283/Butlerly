@@ -43,7 +43,7 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
     try {
       final directory = await getTemporaryDirectory();
       file = File(path.join(directory.path, path.basename(fileName)));
-      await backups.createPortableBackup(file, password: password);
+      await backups.createTemporaryBackup(file, password: password);
       return file.path;
     } on BackupDestinationWriteException {
       if (file != null) await discardTemporaryBackup(file.path);

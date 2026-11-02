@@ -96,11 +96,7 @@ final class _PreparedTombstoneEvidence {
 }
 
 final class LocalBackupManager {
-  const LocalBackupManager(
-    this.database,
-    this.localDataManager, {
-    this.repairableBundledRuleVersions,
-  });
+  const LocalBackupManager(this.database, this.localDataManager);
 
   static const _builtInTagIds = <String>{
     'tag.business',
@@ -114,7 +110,6 @@ final class LocalBackupManager {
 
   final LocalDatabase database;
   final LocalDataManager localDataManager;
-  final Map<String, String>? repairableBundledRuleVersions;
 
   static const format = BackupContainerFormat.name;
   static const formatVersion = BackupContainerFormat.version;
@@ -2248,7 +2243,7 @@ final class LocalBackupManager {
 
     final definitionRows = _tableRows(tables, 'analysis_rule_definitions');
     final definitionsByKey = <String, Map>{};
-    var canRepair = false;
+    const canRepair = false;
     try {
       for (var index = 0; index < definitionRows.length; index++) {
         final row = definitionRows[index];
@@ -2329,9 +2324,10 @@ final class LocalBackupManager {
         if (requireDefinitionReferences &&
             (definition == null ||
                 definition['validation_status'] != 'valid')) {
-          canRepair =
-              definition == null &&
-              _isRepairableBundledRule(ruleId, ruleVersion);
+          // A missing definition has no persisted provenance. Its ID and
+          // version alone cannot prove that the absent row was bundled rather
+          // than user-owned, so never recommend a repair that could replace
+          // custom rule state.
           throw FormatException(
             'Backup schema $sourceSchema table "analysis_rule_activations" '
             'row $index references a missing rule definition.',
@@ -2369,10 +2365,8 @@ final class LocalBackupManager {
                   definition['rule_id'] == ruleId &&
                   definition['validation_status'] == 'valid',
             )) {
-          final hasDefinitionRow = definitionsByKey.values.any(
-            (definition) => definition['rule_id'] == ruleId,
-          );
-          canRepair = !hasDefinitionRow && _isRepairableBundledRuleId(ruleId);
+          // A configuration row also carries no rule provenance. The bundled
+          // installer cannot safely be recommended for an absent definition.
           throw FormatException(
             'Backup schema $sourceSchema table '
             '"analysis_rule_configurations" row $index references a missing '
@@ -2469,14 +2463,6 @@ final class LocalBackupManager {
         attachmentPairs: attachmentPairs,
       );
     }
-  }
-
-  bool _isRepairableBundledRule(String ruleId, String ruleVersion) =>
-      repairableBundledRuleVersions?[ruleId] == ruleVersion;
-
-  bool _isRepairableBundledRuleId(String ruleId) {
-    final version = repairableBundledRuleVersions?[ruleId];
-    return version != null && _isRepairableBundledRule(ruleId, version);
   }
 
   Map<String, Object?> _decodeRuleDefinition(
