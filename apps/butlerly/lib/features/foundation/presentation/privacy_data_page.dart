@@ -287,16 +287,13 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       final file = selected.path;
       final manager = services<WorkspaceDataService>();
       stage = 'backup encryption detection';
-      if (!await manager.isEncryptedBackup(file)) {
-        if (mounted) {
-          _message(context.l10n.backupText('encryptedBackupRequired'));
-        }
-        return;
-      }
+      final legacyUnencrypted = !await manager.isEncryptedBackup(file);
       if (!mounted) return;
-      stage = 'restore password entry';
-      password = await _requestRestorePassword();
-      if (password == null || !mounted) return;
+      if (!legacyUnencrypted) {
+        stage = 'restore password entry';
+        password = await _requestRestorePassword();
+        if (password == null || !mounted) return;
+      }
 
       setState(() => _busy = true);
       stage = 'archive inspection';
@@ -304,7 +301,10 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       if (!mounted) return;
       setState(() => _busy = false);
       stage = 'restore mode selection';
-      final mode = await _chooseRestoreMode(inspection);
+      final mode = await _chooseRestoreMode(
+        inspection,
+        legacyUnencrypted: legacyUnencrypted,
+      );
       if (mode == null) return;
       stage = 'replace confirmation';
       if (mode == LocalRestoreMode.replace && !await _confirmReplace()) return;
@@ -560,8 +560,10 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     return lines.join('\n');
   }
 
-  Future<LocalRestoreMode?> _chooseRestoreMode(BackupInspection inspection) =>
-      showButlerlyBottomSheet<LocalRestoreMode>(
+  Future<LocalRestoreMode?> _chooseRestoreMode(
+    BackupInspection inspection, {
+    bool legacyUnencrypted = false,
+  }) => showButlerlyBottomSheet<LocalRestoreMode>(
         context: context,
         builder: (context) {
           final summary = context.l10n
@@ -576,6 +578,9 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
                 formatBackupInspectionDate(context, created),
               );
           final details = _changeDetails(inspection);
+          final legacyWarning = legacyUnencrypted
+              ? '${context.l10n.backupText('legacyUnencryptedBackupWarning')}\n\n'
+              : '';
           final body = inspection.hasNewerLocalData
               ? '${context.l10n.backupText('newerData')}\n\n$details'
               : context.l10n.backupText('noNewerData');
@@ -586,7 +591,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
                 maxHeight: MediaQuery.sizeOf(context).height * .45,
               ),
               child: SingleChildScrollView(
-                child: Text('$summary\n$createdLabel\n\n$body'),
+                child: Text('$legacyWarning$summary\n$createdLabel\n\n$body'),
               ),
             ),
             actions: [
