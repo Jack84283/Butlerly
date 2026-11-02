@@ -27,7 +27,7 @@ const _backupStrings = <String, Map<String, String>>{
     'backup': 'Back up Butlerly',
     'backupSubtitle': 'Create one encrypted portable local backup file.',
     'restoreBackup': 'Restore backup',
-    'restoreSubtitle': 'Replace local data from an encrypted Butlerly backup.',
+    'restoreSubtitle': 'Restore a Butlerly backup using Merge or Replace.',
     'backupComplete': 'Encrypted backup created successfully.',
     'backupAnalysisRepairRequired':
         'Backup could not be created because analysis rules failed validation. Choose Repair analysis rules and try again.',
@@ -46,9 +46,9 @@ const _backupStrings = <String, Map<String, String>>{
     'restoreTitle': 'Restore Butlerly backup?',
     'backupCreatedAt': 'Created {date}',
     'newerData':
-        'This device has newer local data. Replacing discards current Butlerly data and restores the backup exactly.',
+        'This device has newer local data. Merge keeps applicable newer local data; Replace discards current data and restores the backup.',
     'noNewerData':
-        'The backup is valid. Review the summary, then confirm replacement to restore it exactly.',
+        'The backup is valid. Choose Merge to combine data or Replace to restore the backup as the current data.',
     'merge': 'Merge',
     'replace': 'Replace',
     'replaceTitle': 'Replace current Butlerly data?',
@@ -76,7 +76,9 @@ const _backupStrings = <String, Map<String, String>>{
     'passwordOrIntegrityFailed':
         'The password is incorrect or the encrypted backup is damaged.',
     'encryptedBackupRequired':
-        'Only encrypted Butlerly backups can be restored from this screen.',
+        'Only supported Butlerly backup files can be restored.',
+    'legacyUnencryptedBackupWarning':
+        'This older backup is not encrypted. Confirm that you trust its source before restoring. New Butlerly backups are encrypted.',
     'recoveryRequiredTitle': 'Butlerly recovery is required',
     'recoveryRequiredBody':
         'Butlerly has paused normal editing until the current restore state is validated. A pre-restore safety copy is available if the current state cannot be kept safely.',
@@ -108,7 +110,7 @@ const _backupStrings = <String, Map<String, String>>{
     'backupSubtitle': 'Crea un archivo de copia local portátil y cifrado.',
     'restoreBackup': 'Restaurar copia',
     'restoreSubtitle':
-        'Reemplaza los datos locales desde una copia cifrada de Butlerly.',
+        'Restaura una copia de Butlerly mediante Combinar o Reemplazar.',
     'backupComplete': 'La copia cifrada se creó correctamente.',
     'backupAnalysisRepairRequired':
         'No se pudo crear la copia porque las reglas de análisis no superaron la validación. Elige Reparar reglas de análisis y vuelve a intentarlo.',
@@ -129,9 +131,9 @@ const _backupStrings = <String, Map<String, String>>{
     'restoreTitle': '¿Restaurar la copia de Butlerly?',
     'backupCreatedAt': 'Creada el {date}',
     'newerData':
-        'Este dispositivo tiene datos locales más recientes. Reemplazar descarta los datos actuales de Butlerly y restaura la copia exactamente.',
+        'Este dispositivo tiene datos locales más recientes. Combinar conserva los datos locales recientes aplicables; Reemplazar descarta los datos actuales y restaura la copia.',
     'noNewerData':
-        'La copia es válida. Revise el resumen y confirme el reemplazo para restaurarla exactamente.',
+        'La copia es válida. Elija Combinar para unir los datos o Reemplazar para restaurar la copia como datos actuales.',
     'merge': 'Combinar',
     'replace': 'Reemplazar',
     'replaceTitle': '¿Reemplazar los datos actuales de Butlerly?',
@@ -159,7 +161,9 @@ const _backupStrings = <String, Map<String, String>>{
     'passwordOrIntegrityFailed':
         'La contraseña es incorrecta o la copia cifrada está dañada.',
     'encryptedBackupRequired':
-        'Desde esta pantalla solo se pueden restaurar copias cifradas de Butlerly.',
+        'Solo se pueden restaurar archivos de copia de Butlerly compatibles.',
+    'legacyUnencryptedBackupWarning':
+        'Esta copia antigua no está cifrada. Compruebe que confía en su origen antes de restaurarla. Las copias nuevas de Butlerly están cifradas.',
     'recoveryRequiredTitle': 'Butlerly requiere recuperación',
     'recoveryRequiredBody':
         'Butlerly ha pausado la edición normal hasta validar el estado actual de restauración. Hay una copia de seguridad previa disponible si no es seguro conservar el estado actual.',
@@ -191,7 +195,7 @@ const _backupStrings = <String, Map<String, String>>{
     'backup': '备份 Butlerly',
     'backupSubtitle': '创建一个加密且可跨设备使用的本地备份文件。',
     'restoreBackup': '恢复备份',
-    'restoreSubtitle': '从加密的 Butlerly 备份替换本地数据。',
+    'restoreSubtitle': '通过合并或替换恢复 Butlerly 备份。',
     'backupComplete': '加密备份创建成功。',
     'backupAnalysisRepairRequired': '无法创建备份，因为分析规则未通过验证。请选择“修复分析规则”后重试。',
     'backupShareUnconfirmed': '加密备份已创建，但平台无法确认是否已分享或保存。',
@@ -204,8 +208,8 @@ const _backupStrings = <String, Map<String, String>>{
     'restoreFailed': '无法恢复备份。',
     'restoreTitle': '恢复 Butlerly 备份？',
     'backupCreatedAt': '创建时间：{date}',
-    'newerData': '此设备包含较新的本地数据。替换会丢弃当前 Butlerly 数据并准确恢复备份。',
-    'noNewerData': '备份有效。请查看摘要，然后确认替换以准确恢复备份。',
+    'newerData': '此设备包含较新的本地数据。合并会保留符合现有规则的较新本地数据；替换会丢弃当前数据并恢复备份。',
+    'noNewerData': '备份有效。请选择合并以整合数据，或选择替换以备份内容作为当前数据。',
     'merge': '合并',
     'replace': '替换',
     'replaceTitle': '替换当前 Butlerly 数据？',
@@ -229,7 +233,8 @@ const _backupStrings = <String, Map<String, String>>{
     'restorePasswordBody': '请输入创建此 Butlerly 备份时使用的密码。',
     'unlockBackup': '解锁',
     'passwordOrIntegrityFailed': '密码不正确，或加密备份已损坏。',
-    'encryptedBackupRequired': '此页面只能恢复加密的 Butlerly 备份。',
+    'encryptedBackupRequired': '只能恢复受支持的 Butlerly 备份文件。',
+    'legacyUnencryptedBackupWarning': '此旧版备份未加密。恢复前请确认文件来源可信。新版 Butlerly 备份均经过加密。',
     'recoveryRequiredTitle': 'Butlerly 需要恢复',
     'recoveryRequiredBody':
         'Butlerly 已暂停正常编辑，直到当前恢复状态通过验证。如果无法安全保留当前状态，可以使用恢复前的安全副本。',
