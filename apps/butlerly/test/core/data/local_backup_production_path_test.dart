@@ -309,7 +309,11 @@ void main() {
           diagnosticDestination,
           password: 'correct horse battery staple',
         ),
-        throwsA(isA<BackupAnalysisRuleValidationException>()),
+        throwsA(
+          predicate<BackupAnalysisRuleValidationException>(
+            (error) => !error.canRepair,
+          ),
+        ),
       );
       expect(
         diagnosticLogger.stage,

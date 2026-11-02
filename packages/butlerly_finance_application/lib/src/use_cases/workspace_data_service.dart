@@ -39,7 +39,14 @@ abstract interface class LocalDataGateway {
 /// explicit rule-repair operation only for a failure attributable to rule
 /// validation, without depending on a storage adapter.
 final class BackupAnalysisRuleValidationException extends FormatException {
-  const BackupAnalysisRuleValidationException(super.message);
+  const BackupAnalysisRuleValidationException(
+    super.message, {
+    this.canRepair = false,
+  });
+
+  /// Whether the persisted failure is known to be repairable by restoring
+  /// bundled definitions and activations.
+  final bool canRepair;
 
   @override
   String toString() => 'BackupAnalysisRuleValidationException: $message';

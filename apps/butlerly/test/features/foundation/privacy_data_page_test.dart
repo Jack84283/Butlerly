@@ -7,6 +7,7 @@ import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -205,50 +206,54 @@ void main() {
     expect(File(gateway.discardedPath!).existsSync(), isFalse);
   });
 
-  testWidgets('mobile backup reports native share exceptions separately', (
-    tester,
-  ) async {
-    final root = Directory(
-      path.join(
-        Directory.systemTemp.path,
-        'butlerly-share-exception-${DateTime.now().microsecondsSinceEpoch}',
-      ),
-    )..createSync(recursive: true);
-    addTearDown(() async {
-      await services.reset();
-      if (root.existsSync()) root.deleteSync(recursive: true);
+  testWidgets(
+    'mobile backup reports native share exceptions when cleanup also fails',
+    (tester) async {
+      final root = Directory(
+        path.join(
+          Directory.systemTemp.path,
+          'butlerly-share-exception-${DateTime.now().microsecondsSinceEpoch}',
+        ),
+      )..createSync(recursive: true);
+      addTearDown(() async {
+        await services.reset();
+        if (root.existsSync()) root.deleteSync(recursive: true);
+        debugDefaultTargetPlatformOverride = null;
+      });
+      final gateway = _ShareGateway(root)
+        ..discardFailure = StateError('cleanup fixture');
+      final platform = _SharePlatform(
+        failure: PlatformException(code: 'share_fixture'),
+      );
+      services.registerSingleton<WorkspaceDataService>(
+        WorkspaceDataService(gateway, refreshSystemData: () async {}),
+      );
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+
+      await tester.pumpWidget(
+        app(shareClient: share_plus.SharePlus.custom(platform)),
+      );
+      await tester.pumpAndSettle();
+      await _completeBackupPasswordFlow(tester);
+
       debugDefaultTargetPlatformOverride = null;
-    });
-    final gateway = _ShareGateway(root);
-    final platform = _SharePlatform(failure: StateError('share fixture'));
-    services.registerSingleton<WorkspaceDataService>(
-      WorkspaceDataService(gateway, refreshSystemData: () async {}),
-    );
-    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
-
-    await tester.pumpWidget(
-      app(shareClient: share_plus.SharePlus.custom(platform)),
-    );
-    await tester.pumpAndSettle();
-    await _completeBackupPasswordFlow(tester);
-
-    debugDefaultTargetPlatformOverride = null;
-    expect(
-      find.text(
-        'The encrypted backup was created, but the share sheet could not be opened. No saved backup was confirmed.',
-      ),
-      findsOneWidget,
-    );
-    expect(find.text('Backup could not be created.'), findsNothing);
-    expect(
-      find.text(
-        'Backup could not be created because analysis rules failed validation. Choose Repair analysis rules and try again.',
-      ),
-      findsNothing,
-    );
-    expect(gateway.discardedPath, isNotNull);
-    expect(File(gateway.discardedPath!).existsSync(), isFalse);
-  });
+      expect(
+        find.text(
+          'The encrypted backup was created, but the share sheet could not be opened. No saved backup was confirmed.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Backup could not be created.'), findsNothing);
+      expect(
+        find.text(
+          'Backup could not be created because analysis rules failed validation. Choose Repair analysis rules and try again.',
+        ),
+        findsNothing,
+      );
+      expect(gateway.discardedPath, isNotNull);
+      expect(File(gateway.discardedPath!).existsSync(), isTrue);
+    },
+  );
 
   testWidgets('mobile backup recommends repair only for rule validation', (
     tester,
@@ -265,7 +270,10 @@ void main() {
       debugDefaultTargetPlatformOverride = null;
     });
     final gateway = _ShareGateway(root)
-      ..createFailure = const BackupAnalysisRuleValidationException('fixture');
+      ..createFailure = const BackupAnalysisRuleValidationException(
+        'fixture',
+        canRepair: true,
+      );
     services.registerSingleton<WorkspaceDataService>(
       WorkspaceDataService(gateway, refreshSystemData: () async {}),
     );
@@ -410,6 +418,7 @@ final class _ShareGateway implements LocalDataGateway {
   final Directory root;
   String? discardedPath;
   Object? createFailure;
+  Object? discardFailure;
 
   @override
   Future<String> createTemporaryBackup(
@@ -425,6 +434,7 @@ final class _ShareGateway implements LocalDataGateway {
   @override
   Future<void> discardTemporaryBackup(String filePath) async {
     discardedPath = filePath;
+    if (discardFailure != null) throw discardFailure!;
     final file = File(filePath);
     if (file.existsSync()) file.deleteSync();
   }

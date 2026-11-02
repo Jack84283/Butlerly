@@ -36,6 +36,8 @@ const _backupStrings = <String, Map<String, String>>{
     'backupShareFailed':
         'The encrypted backup was created, but the share sheet could not be opened. No saved backup was confirmed.',
     'backupFailed': 'Backup could not be created.',
+    'backupStorageFailed':
+        'Backup could not be written to the selected location.',
     'restoreFailed': 'Backup could not be restored.',
     'restoreTitle': 'Restore Butlerly backup?',
     'backupCreatedAt': 'Created {date}',
@@ -111,6 +113,8 @@ const _backupStrings = <String, Map<String, String>>{
     'backupShareFailed':
         'La copia cifrada se creó, pero no se pudo abrir la hoja para compartir. No se confirmó ninguna copia guardada.',
     'backupFailed': 'No se pudo crear la copia.',
+    'backupStorageFailed':
+        'No se pudo guardar la copia en la ubicación seleccionada.',
     'restoreFailed': 'No se pudo restaurar la copia.',
     'restoreTitle': '¿Restaurar la copia de Butlerly?',
     'backupCreatedAt': 'Creada el {date}',
@@ -183,6 +187,7 @@ const _backupStrings = <String, Map<String, String>>{
     'backupShareUnconfirmed': '加密备份已创建，但平台无法确认是否已分享或保存。',
     'backupShareFailed': '加密备份已创建，但无法打开分享面板。未确认有已保存的备份。',
     'backupFailed': '无法创建备份。',
+    'backupStorageFailed': '无法将备份写入所选位置。',
     'restoreFailed': '无法恢复备份。',
     'restoreTitle': '恢复 Butlerly 备份？',
     'backupCreatedAt': '创建时间：{date}',

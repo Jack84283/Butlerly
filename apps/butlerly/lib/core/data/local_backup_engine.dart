@@ -2243,9 +2243,11 @@ final class LocalBackupManager {
 
     final definitionRows = _tableRows(tables, 'analysis_rule_definitions');
     final definitionsByKey = <String, Map>{};
+    var canRepair = false;
     try {
       for (var index = 0; index < definitionRows.length; index++) {
         final row = definitionRows[index];
+        canRepair = row['source_type'] == 'bundled';
         final ruleId = row['rule_id'];
         final ruleVersion = row['rule_version'];
         if (ruleId is! String ||
@@ -2308,6 +2310,8 @@ final class LocalBackupManager {
         final ruleId = row['rule_id'];
         final ruleVersion = row['active_rule_version'];
         final enabled = row['enabled'];
+        final definition = definitionsByKey['$ruleId:$ruleVersion'];
+        canRepair = definition?['source_type'] == 'bundled';
         if (ruleId is! String ||
             ruleId.isEmpty ||
             ruleVersion is! String ||
@@ -2319,7 +2323,6 @@ final class LocalBackupManager {
             'row $index contains an invalid activation.',
           );
         }
-        final definition = definitionsByKey['$ruleId:$ruleVersion'];
         if (requireDefinitionReferences &&
             (definition == null ||
                 definition['validation_status'] != 'valid')) {
@@ -2338,6 +2341,11 @@ final class LocalBackupManager {
         final row = configurationRows[index];
         final ruleId = row['rule_id'];
         final configuration = row['configuration'];
+        canRepair = definitionsByKey.values.any(
+          (definition) =>
+              definition['rule_id'] == ruleId &&
+              definition['source_type'] == 'bundled',
+        );
         if (ruleId is! String || ruleId.isEmpty || configuration is! String) {
           throw FormatException(
             'Backup schema $sourceSchema table '
@@ -2369,7 +2377,10 @@ final class LocalBackupManager {
       }
     } on FormatException catch (error, stackTrace) {
       Error.throwWithStackTrace(
-        BackupAnalysisRuleValidationException(error.message),
+        BackupAnalysisRuleValidationException(
+          error.message,
+          canRepair: canRepair,
+        ),
         stackTrace,
       );
     }
@@ -2405,6 +2416,7 @@ final class LocalBackupManager {
         throw BackupAnalysisRuleValidationException(
           'Backup schema $sourceSchema table "analysis_findings" row $index '
           'references an unavailable or mismatched rule definition.',
+          canRepair: definition?['source_type'] == 'bundled',
         );
       }
       final periodStart = row['period_start'];

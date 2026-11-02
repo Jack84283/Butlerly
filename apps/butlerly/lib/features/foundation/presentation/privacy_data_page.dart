@@ -70,10 +70,23 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       return;
     }
 
-    final location = await getSaveLocation(
-      suggestedName: fileName,
-      acceptedTypeGroups: const [_backupType],
-    );
+    FileSaveLocation? location;
+    try {
+      location = await getSaveLocation(
+        suggestedName: fileName,
+        acceptedTypeGroups: const [_backupType],
+      );
+    } catch (error, stackTrace) {
+      _backupLogger.severe(
+        'Backup failed at stage: destination selection',
+        error,
+        stackTrace,
+      );
+      if (mounted) {
+        _message(context.l10n.backupText('backupStorageFailed'));
+      }
+      return;
+    }
     if (location == null || !mounted) return;
 
     final password = await _createBackupPassword();
@@ -94,7 +107,10 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         stackTrace,
       );
       if (mounted) {
-        _message(context.l10n.backupText('backupAnalysisRepairRequired'));
+        final message = error.canRepair
+            ? 'backupAnalysisRepairRequired'
+            : 'backupFailed';
+        _message(context.l10n.backupText(message));
       }
     } on BackupPasswordTooShortException {
       if (mounted) _message(context.l10n.backupText('backupPasswordTooShort'));
@@ -155,7 +171,10 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         stackTrace,
       );
       if (mounted) {
-        _message(context.l10n.backupText('backupAnalysisRepairRequired'));
+        final message = error.canRepair
+            ? 'backupAnalysisRepairRequired'
+            : 'backupFailed';
+        _message(context.l10n.backupText(message));
       }
     } on BackupPasswordTooShortException {
       if (mounted) _message(context.l10n.backupText('backupPasswordTooShort'));
@@ -172,10 +191,21 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         _message(context.l10n.backupText(message));
       }
     } finally {
-      if (filePath != null) {
-        await services<WorkspaceDataService>().discardTemporaryBackup(filePath);
+      try {
+        if (filePath != null) {
+          await services<WorkspaceDataService>().discardTemporaryBackup(
+            filePath,
+          );
+        }
+      } catch (error, stackTrace) {
+        _backupLogger.severe(
+          'Mobile backup cleanup failed at stage: temporary file cleanup',
+          error,
+          stackTrace,
+        );
+      } finally {
+        if (mounted) setState(() => _busy = false);
       }
-      if (mounted) setState(() => _busy = false);
     }
   }
 
