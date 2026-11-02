@@ -2158,7 +2158,7 @@ void main() {
       await tester.tap(find.text('Unlock').last);
       await tester.pumpAndSettle();
       expect(find.text('Replace'), findsOneWidget);
-      expect(find.text('Merge'), findsNothing);
+      expect(find.text('Merge'), findsOneWidget);
       await tester.tap(find.text('Replace').first);
       await tester.pumpAndSettle();
       expect(find.text('Replace'), findsOneWidget);
