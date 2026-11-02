@@ -186,6 +186,17 @@ void configureDependencies({
       ),
       analysisInvalidation: invalidateAnalysis,
       consistencyGate: consistencyGate,
+      ensureAnalysisRules: () async {
+        final installation = await installBundledAnalysisRules(
+          InstallBuiltInRules(analysisRules),
+        );
+        if (installation.diagnostics.isNotEmpty) {
+          throw StateError(
+            'Bundled analysis rules failed validation: '
+            '${installation.diagnostics.length} diagnostic group(s).',
+          );
+        }
+      },
       deleteEvidenceFile: (evidence) =>
           localEvidenceStore.deletePublishedFile(evidence),
       finalizeDeletedEvidenceFile: (evidence) =>

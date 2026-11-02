@@ -39,6 +39,7 @@ final class FinanceServices {
     BudgetRepository? budgetRepository,
     FinancialProfileRepository? financialProfileRepository,
     HomeCanonicalTransactionIdsLoader? canonicalTransactionIds,
+    Future<void> Function()? ensureAnalysisRules,
     InvalidateAnalysis? analysisInvalidation,
     AnalysisConsistencyGate? consistencyGate,
     Future<void> Function(EvidenceItem evidence)? deleteEvidenceFile,
@@ -429,6 +430,7 @@ final class FinanceServices {
        installBuiltInRules = analysisRules == null
            ? null
            : InstallBuiltInRules(analysisRules),
+       ensureAnalysisRules = ensureAnalysisRules,
        calculateAnalysisOverview = analysisRules == null
            ? null
            : CalculateAnalysisOverview(
@@ -656,6 +658,7 @@ final class FinanceServices {
       merchants: merchants,
       canonicalTransactionIds: canonicalTransactionIds,
       consistencyGate: consistencyGate,
+      ensureAnalysisRules: ensureAnalysisRules,
     );
   }
 
@@ -728,6 +731,7 @@ final class FinanceServices {
   final ResolveDuplicateCandidateGroup? resolveDuplicateCandidateGroup;
   final RepairDuplicateCandidateGroup? repairDuplicateCandidateGroup;
   final InstallBuiltInRules? installBuiltInRules;
+  final Future<void> Function()? ensureAnalysisRules;
   final CalculateAnalysisOverview? calculateAnalysisOverview;
   late final CalculateMonthlySpendingTrend? calculateMonthlySpendingTrend;
   final CalculateAnalysisCalendar? calculateAnalysisCalendar;

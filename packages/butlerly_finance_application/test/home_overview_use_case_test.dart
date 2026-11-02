@@ -318,9 +318,35 @@ void main() {
       );
 
       final overview = (result as ApplicationSuccess<HomeOverview>).value;
-      expect(overview.analysis, isNotNull);
+      expect(overview.analysis, isNull);
+      expect(overview.analysisUnavailable, isTrue);
       expect(overview.monthlyTrend, isEmpty);
       expect(overview.monthlyTrendUnavailable, isTrue);
+    },
+  );
+
+  test(
+    'retries bundled analysis installation before loading Home metrics',
+    () async {
+      final activeRules = <AnalysisRuleDefinition>[];
+      var attempts = 0;
+      final load = _homeOverview(
+        transactions,
+        preferences,
+        activeRules,
+        ensureAnalysisRules: () async {
+          attempts++;
+          activeRules.add(_expenseRule());
+        },
+      );
+
+      final result = await load(instant: DateTime.utc(2026, 9, 16, 12));
+
+      final overview = (result as ApplicationSuccess<HomeOverview>).value;
+      expect(attempts, 1);
+      expect(overview.analysisUnavailable, isFalse);
+      expect(overview.analysis?.spending?.value, DecimalValue.parse('210'));
+      expect(overview.monthlyTrendUnavailable, isFalse);
     },
   );
 }
@@ -332,6 +358,7 @@ GetHomeOverview _homeOverview(
   DuplicateCandidateGroupRepository? duplicateGroups,
   MerchantRepository? merchants,
   HomeCanonicalTransactionIdsLoader? canonicalTransactionIds,
+  Future<void> Function()? ensureAnalysisRules,
 }) {
   final analysis = CalculateAnalysisOverview(
     _Rules(rules),
@@ -349,6 +376,7 @@ GetHomeOverview _homeOverview(
         : ListDuplicateCandidateGroups(duplicateGroups),
     merchants: merchants,
     canonicalTransactionIds: canonicalTransactionIds,
+    ensureAnalysisRules: ensureAnalysisRules,
   );
 }
 

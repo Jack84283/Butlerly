@@ -73,7 +73,10 @@ class AnalysisOverview {
         ? const <String, DecimalValue>{}
         : <String, DecimalValue>{
             for (final category in categories)
-              category.id: _ratio(category.value, spending.value),
+              if (category.availability ==
+                      AnalysisDataAvailability.sufficient &&
+                  _usesSameNormalizedCurrency(category, spending))
+                category.id: _ratio(category.value, spending.value),
           };
     AnalysisComparison? comparisonFor(String role) => results
         .where((r) => r.rule.role == role)
@@ -200,6 +203,22 @@ DecimalValue _ratio(DecimalValue numerator, DecimalValue denominator) {
     coefficient: scaledNumerator ~/ scaledDenominator,
     scale: scale,
   );
+}
+
+bool _usesSameNormalizedCurrency(
+  AnalysisMetric category,
+  AnalysisMetric total,
+) {
+  final categoryCurrency =
+      category.currency?.value ?? category.context.baseCurrency?.value;
+  final totalCurrency =
+      total.currency?.value ?? total.context.baseCurrency?.value;
+  return categoryCurrency != null &&
+      totalCurrency != null &&
+      category.context.currencyBasis == CurrencyBasis.baseCurrency &&
+      total.context.currencyBasis == CurrencyBasis.baseCurrency &&
+      categoryCurrency == totalCurrency &&
+      category.context.currencyBasis == total.context.currencyBasis;
 }
 
 class AnalysisQualitySummary {
