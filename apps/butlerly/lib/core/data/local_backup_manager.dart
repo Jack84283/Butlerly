@@ -29,7 +29,6 @@ export 'backup_encryption.dart'
 export 'backup_publication_recovery_state.dart';
 export 'local_backup_engine.dart'
     show
-        BackupAnalysisRuleValidationException,
         BackupChangeSummary,
         BackupInspection,
         LocalRestoreMode,

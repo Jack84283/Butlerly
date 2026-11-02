@@ -33,6 +33,18 @@ abstract interface class LocalDataGateway {
   });
 }
 
+/// Raised when a portable backup contains invalid analysis-rule state.
+///
+/// Presentation code can use this application-level contract to offer the
+/// explicit rule-repair operation only for a failure attributable to rule
+/// validation, without depending on a storage adapter.
+final class BackupAnalysisRuleValidationException extends FormatException {
+  const BackupAnalysisRuleValidationException(super.message);
+
+  @override
+  String toString() => 'BackupAnalysisRuleValidationException: $message';
+}
+
 /// Application orchestration shared by normal privacy controls and recovery.
 /// System-data refresh must complete inside the adapter's restore safety gate.
 /// UI invalidation must wait until restore commits and closes its recovery gate.

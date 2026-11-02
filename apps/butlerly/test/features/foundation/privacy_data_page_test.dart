@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/features/foundation/presentation/privacy_data_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';

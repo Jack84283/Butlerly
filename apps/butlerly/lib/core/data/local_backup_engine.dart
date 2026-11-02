@@ -21,17 +21,6 @@ export 'package:butlerly_finance_application/butlerly_finance_application.dart'
         BackupInspection,
         LocalRestoreResult;
 
-/// Raised when a portable backup contains invalid analysis-rule state.
-///
-/// This distinction lets the UI offer the explicit rule-repair operation only
-/// for a failure that is actually attributable to rule validation.
-final class BackupAnalysisRuleValidationException extends FormatException {
-  const BackupAnalysisRuleValidationException(super.message);
-
-  @override
-  String toString() => 'BackupAnalysisRuleValidationException: $message';
-}
-
 final class _TableSpec {
   const _TableSpec(
     this.name,
