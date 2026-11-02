@@ -136,8 +136,9 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         // iOS may not report whether Files actually saved the archive.
         // The temporary sharing copy is cleaned up below, so never claim
         // that a recoverable backup was delivered when its outcome is unknown.
-        if (mounted)
+        if (mounted) {
           _message(context.l10n.backupText('backupShareUnconfirmed'));
+        }
       }
     } on BackupPasswordTooShortException {
       if (mounted) _message(context.l10n.backupText('backupPasswordTooShort'));
