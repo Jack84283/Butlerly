@@ -108,6 +108,80 @@ void main() {
       expect(await repository.listDefinitions(), isEmpty);
     },
   );
+
+  test('transactional rule repair rolls back partial installation', () async {
+    final repository = SqliteAnalysisRuleRepository(
+      database.persistenceDatabase,
+    );
+    final original = await rootBundle.loadString(
+      'assets/analysis_rules/metrics/ANL-R001.yaml',
+    );
+    final conflicting = original.replaceFirst(
+      'descriptionKey: analysis.rule.r001.description',
+      'descriptionKey: analysis.rule.r001.conflicting',
+    );
+    final parsed = const RestrictedRuleParser().parse(conflicting);
+    final validation = const RuleDefinitionValidator().validate(
+      parsed.document!,
+    );
+    final definition = validation.definition!;
+    await repository.install(
+      definition,
+      sourceType: 'bundled',
+      canonicalDefinition: canonicalize(parsed.document!.values),
+    );
+
+    final second = await rootBundle.loadString(
+      'assets/analysis_rules/metrics/ANL-R002.yaml',
+    );
+    await expectLater(
+      repository.transaction(
+        (transactionRepository) => InstallBuiltInRules(transactionRepository)({
+          'metrics/ANL-R002.yaml': second,
+          'metrics/ANL-R001.yaml': original,
+        }),
+      ),
+      throwsA(isA<StateError>()),
+    );
+    expect(await repository.listDefinitions(), hasLength(1));
+    expect(
+      (await repository.listDefinitions()).single.identity.value,
+      'ANL-R001',
+    );
+  });
+
+  test('transactional rule repair rolls back installer diagnostics', () async {
+    final repository = SqliteAnalysisRuleRepository(
+      database.persistenceDatabase,
+    );
+    final valid = await rootBundle.loadString(
+      'assets/analysis_rules/metrics/ANL-R002.yaml',
+    );
+    final missingDependency = valid
+        .replaceFirst('ruleId: ANL-R002', 'ruleId: ANL-R999')
+        .replaceFirst(
+          'period: selected_period',
+          'period: selected_period\n'
+              'dependencies:\n'
+              '  - ruleId: ANL-R998\n'
+              '    minimumVersion: "1.0.0"',
+        );
+
+    await expectLater(
+      repository.transaction((transactionRepository) async {
+        final result = await InstallBuiltInRules(transactionRepository)({
+          'metrics/ANL-R002.yaml': valid,
+          'metrics/ANL-R999.yaml': missingDependency,
+        });
+        if (result.diagnostics.isNotEmpty) {
+          throw StateError('Bundled analysis rules failed validation.');
+        }
+        return result;
+      }),
+      throwsA(isA<StateError>()),
+    );
+    expect(await repository.listDefinitions(), isEmpty);
+  });
 }
 
 class _MissingRuleBundle extends CachingAssetBundle {

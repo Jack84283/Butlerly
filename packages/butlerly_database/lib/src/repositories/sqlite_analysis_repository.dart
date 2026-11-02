@@ -6,8 +6,29 @@ import 'package:sqflite_common/sqlite_api.dart';
 import '../database/butlerly_database.dart';
 
 final class SqliteAnalysisRuleRepository implements AnalysisRuleRepository {
-  const SqliteAnalysisRuleRepository(this.database);
+  const SqliteAnalysisRuleRepository(this.database) : _executor = null;
+
+  const SqliteAnalysisRuleRepository._withinTransaction(
+    this.database,
+    this._executor,
+  );
   final ButlerlyDatabase database;
+  final DatabaseExecutor? _executor;
+
+  DatabaseExecutor get _connection => _executor ?? database.connection;
+
+  /// Executes a rule operation against one SQLite transaction.
+  ///
+  /// The transaction-scoped repository keeps SQLite details inside this
+  /// adapter while allowing the application layer to make bundled-rule repair
+  /// atomic.
+  Future<T> transaction<T>(
+    Future<T> Function(SqliteAnalysisRuleRepository repository) action,
+  ) => database.transaction(
+    (executor) => action(
+      SqliteAnalysisRuleRepository._withinTransaction(database, executor),
+    ),
+  );
 
   @override
   Future<void> install(
@@ -15,7 +36,7 @@ final class SqliteAnalysisRuleRepository implements AnalysisRuleRepository {
     required String sourceType,
     required String canonicalDefinition,
   }) async {
-    final existing = await database.connection.query(
+    final existing = await _connection.query(
       'analysis_rule_definitions',
       columns: ['definition_hash'],
       where: 'rule_id = ? AND rule_version = ?',
@@ -31,7 +52,7 @@ final class SqliteAnalysisRuleRepository implements AnalysisRuleRepository {
       }
       return;
     }
-    await database.connection.insert('analysis_rule_definitions', {
+    await _connection.insert('analysis_rule_definitions', {
       'rule_id': definition.identity.value,
       'rule_version': definition.version.value,
       'schema_version': definition.schemaVersion,
@@ -51,7 +72,7 @@ final class SqliteAnalysisRuleRepository implements AnalysisRuleRepository {
 
   @override
   Future<AnalysisRuleActivation?> existingActivation(RuleIdentity id) async {
-    final rows = await database.connection.query(
+    final rows = await _connection.query(
       'analysis_rule_activations',
       columns: ['active_rule_version', 'enabled'],
       where: 'rule_id = ?',
@@ -72,7 +93,7 @@ final class SqliteAnalysisRuleRepository implements AnalysisRuleRepository {
     bool enabled,
     DateTime at,
   ) async {
-    await database.connection.insert('analysis_rule_activations', {
+    await _connection.insert('analysis_rule_activations', {
       'rule_id': id.value,
       'active_rule_version': version.value,
       'enabled': enabled ? 1 : 0,
@@ -83,7 +104,7 @@ final class SqliteAnalysisRuleRepository implements AnalysisRuleRepository {
   @override
   Future<List<AnalysisRuleDefinition>> listActive() async {
     final definitions = await _readDefinitions();
-    final activations = await database.connection.query(
+    final activations = await _connection.query(
       'analysis_rule_activations',
       where: 'enabled = 1',
     );
@@ -100,7 +121,7 @@ final class SqliteAnalysisRuleRepository implements AnalysisRuleRepository {
   }
 
   Future<List<AnalysisRuleDefinition>> _readDefinitions() async {
-    final rows = await database.connection.query(
+    final rows = await _connection.query(
       'analysis_rule_definitions',
       where: 'validation_status = ?',
       whereArgs: ['valid'],

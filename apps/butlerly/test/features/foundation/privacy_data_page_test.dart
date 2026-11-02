@@ -54,6 +54,8 @@ void main() {
         findsOneWidget,
       );
       expect(find.byIcon(CupertinoIcons.arrow_down_doc), findsOneWidget);
+      await tester.drag(find.byType(ListView), const Offset(0, -500));
+      await tester.pumpAndSettle();
       expect(find.byIcon(CupertinoIcons.trash), findsOneWidget);
       expect(find.byIcon(Icons.backup_outlined), findsNothing);
     },
@@ -162,45 +164,46 @@ void main() {
     expect(File(gateway.discardedPath!).existsSync(), isFalse);
   });
 
-  testWidgets(
-    'mobile backup reports an unconfirmed delivery when share outcome is unavailable',
-    (tester) async {
-      final root = Directory(
-        path.join(
-          Directory.systemTemp.path,
-          'butlerly-share-unavailable-${DateTime.now().microsecondsSinceEpoch}',
-        ),
-      )..createSync(recursive: true);
-      addTearDown(() async {
-        await services.reset();
-        if (root.existsSync()) root.deleteSync(recursive: true);
-        debugDefaultTargetPlatformOverride = null;
-      });
-      final gateway = _ShareGateway(root);
-      final platform = _SharePlatform(
-        status: share_plus.ShareResultStatus.unavailable,
-      );
-      services.registerSingleton<WorkspaceDataService>(
-        WorkspaceDataService(gateway, refreshSystemData: () async {}),
-      );
-      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
-
-      await tester.pumpWidget(
-        app(shareClient: share_plus.SharePlus.custom(platform)),
-      );
-      await tester.pumpAndSettle();
-      await _completeBackupPasswordFlow(tester);
-
+  testWidgets('mobile backup reports unavailable share outcome', (
+    tester,
+  ) async {
+    final root = Directory(
+      path.join(
+        Directory.systemTemp.path,
+        'butlerly-share-unavailable-${DateTime.now().microsecondsSinceEpoch}',
+      ),
+    )..createSync(recursive: true);
+    addTearDown(() async {
+      await services.reset();
+      if (root.existsSync()) root.deleteSync(recursive: true);
       debugDefaultTargetPlatformOverride = null;
-      expect(
-        find.textContaining('iOS could not confirm it was saved'),
-        findsOneWidget,
-      );
-      expect(find.text('Encrypted backup created successfully.'), findsNothing);
-      expect(find.text('Backup could not be created.'), findsNothing);
-      expect(gateway.discardedPath, isNotNull);
-    },
-  );
+    });
+    final gateway = _ShareGateway(root);
+    final platform = _SharePlatform(
+      status: share_plus.ShareResultStatus.unavailable,
+    );
+    services.registerSingleton<WorkspaceDataService>(
+      WorkspaceDataService(gateway, refreshSystemData: () async {}),
+    );
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+
+    await tester.pumpWidget(
+      app(shareClient: share_plus.SharePlus.custom(platform)),
+    );
+    await tester.pumpAndSettle();
+    await _completeBackupPasswordFlow(tester);
+
+    debugDefaultTargetPlatformOverride = null;
+    expect(
+      find.text(
+        'The encrypted backup was created, but the platform could not confirm whether it was shared or saved.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Backup could not be created.'), findsNothing);
+    expect(gateway.discardedPath, isNotNull);
+    expect(File(gateway.discardedPath!).existsSync(), isFalse);
+  });
 
   testWidgets('mobile backup reports temporary-file creation failure', (
     tester,
@@ -227,8 +230,38 @@ void main() {
     await _completeBackupPasswordFlow(tester);
 
     debugDefaultTargetPlatformOverride = null;
-    expect(find.text('Backup could not be created.'), findsOneWidget);
+    expect(find.textContaining('Backup could not be created.'), findsOneWidget);
     expect(gateway.discardedPath, isNull);
+  });
+
+  testWidgets('analysis rule repair requires explicit approval', (
+    tester,
+  ) async {
+    var repairs = 0;
+    final gateway = _ShareGateway(Directory.systemTemp);
+    addTearDown(() async => services.reset());
+    services.registerSingleton<WorkspaceDataService>(
+      WorkspaceDataService(
+        gateway,
+        refreshSystemData: () async {},
+        repairAnalysisRulesCallback: () async => repairs++,
+      ),
+    );
+
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    expect(repairs, 0);
+
+    await tester.tap(find.text('Repair analysis rules'));
+    await tester.pumpAndSettle();
+    expect(repairs, 0);
+    await tester.tap(
+      find.widgetWithText(FilledButton, 'Repair analysis rules'),
+    );
+    await tester.pumpAndSettle();
+
+    expect(repairs, 1);
+    expect(find.text('Analysis rules repaired successfully.'), findsOneWidget);
   });
 
   testWidgets('restore preview formats its creation date for each locale', (

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:butlerly/core/config/app_configuration.dart';
 import 'package:butlerly/core/data/backup_encryption.dart';
 import 'package:butlerly/core/data/local_backup_manager.dart';
+import 'package:butlerly/core/data/local_data_gateway.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/di/finance_services.dart';
@@ -80,7 +81,7 @@ void main() {
   });
 
   test(
-    'backup rejects inconsistent rules without modifying live records',
+    'production backup stays read-only until explicit rule repair',
     () async {
       final expense = await finance.createTransaction(
         CreateTransactionCommand(
@@ -175,8 +176,28 @@ void main() {
       );
       expect(attached, isA<ApplicationSuccess<EvidenceItem>>());
 
+      // Continue with the same on-disk database after a close/reopen boundary.
+      // This exercises the existing-install path rather than only an
+      // in-memory or newly created database.
+      await services.reset();
+      await database.close();
+      database = LocalDatabase(
+        logger: AppLogger(),
+        factory: databaseFactoryFfi,
+        databaseDirectory: databaseDirectory.path,
+      );
+      await database.initialize();
+      configureDependencies(
+        configuration: const AppConfiguration(),
+        database: database,
+        logger: AppLogger(),
+        documentsDirectory: Directory(path.join(root.path, 'documents')),
+        localEvidenceDirectory: evidenceDirectory,
+      );
+      finance = services<FinanceServices>();
+
       final rules = SqliteAnalysisRuleRepository(database.persistenceDatabase);
-      await finance.ensureAnalysisRules!();
+      await services<WorkspaceDataService>().repairAnalysisRules();
       final userRule = await _installUserRule(rules);
       await rules.activate(
         userRule.identity,
@@ -244,8 +265,9 @@ void main() {
         'updated_at': capturedAt.toIso8601String(),
       });
 
-      // This is the damaged state that can be left by a partial bundled-rule
-      // install: the activation survives, but its definition does not.
+      // Synthetic partial-install fixture for the repair/rollback contract.
+      // This test is not evidence that the affected iPhone had this state;
+      // the protected device copy is diagnosed separately.
       await database.database.delete(
         'analysis_rule_definitions',
         where: 'rule_id = ? AND rule_version = ?',
@@ -304,38 +326,27 @@ void main() {
       final evidenceBefore = await database.database.query('evidence_items');
       final linksBefore = await database.database.query('attachment_links');
       final findingsBefore = await database.database.query('analysis_findings');
+      final ruleDefinitionsBefore = await database.database.query(
+        'analysis_rule_definitions',
+        orderBy: 'rule_id, rule_version',
+      );
+      final ruleActivationsBefore = await database.database.query(
+        'analysis_rule_activations',
+        orderBy: 'rule_id',
+      );
+      final ruleConfigurationsBefore = await database.database.query(
+        'analysis_rule_configurations',
+        orderBy: 'rule_id',
+      );
 
       const password = 'correct horse battery staple';
       final workspace = services<WorkspaceDataService>();
-
-      // Production backup must never silently fix corrupt analysis metadata.
-      // A failure must preserve the original state for an explicit repair.
-      final failedArchive = File(
-        path.join(temporaryDirectory.path, 'production.butlerlybackup'),
-      );
       await expectLater(
         workspace.createTemporaryBackup(
-          'production.butlerlybackup',
+          'without-explicit-repair.butlerlybackup',
           password: password,
         ),
         throwsA(isA<FormatException>()),
-      );
-      expect(await failedArchive.exists(), isFalse);
-      expect(
-        await database.database.query(
-          'analysis_rule_definitions',
-          where: 'rule_id = ?',
-          whereArgs: ['ANL-R010'],
-        ),
-        isEmpty,
-      );
-      expect(
-        (await database.database.query(
-          'analysis_rule_activations',
-          where: 'rule_id = ?',
-          whereArgs: ['ANL-R010'],
-        )).single,
-        categoryActivation,
       );
       expect(await database.database.query('transactions'), transactionsBefore);
       expect(await database.database.query('budgets'), budgetsBefore);
@@ -349,12 +360,37 @@ void main() {
         await database.database.query('analysis_findings'),
         findingsBefore,
       );
-      expect(await evidenceFile.readAsString(), 'receipt fixture');
+      expect(
+        await database.database.query(
+          'analysis_rule_definitions',
+          where: 'rule_id = ?',
+          whereArgs: ['ANL-R010'],
+        ),
+        isEmpty,
+      );
+      expect(
+        await database.database.query(
+          'analysis_rule_definitions',
+          orderBy: 'rule_id, rule_version',
+        ),
+        ruleDefinitionsBefore,
+      );
+      expect(
+        await database.database.query(
+          'analysis_rule_activations',
+          orderBy: 'rule_id',
+        ),
+        ruleActivationsBefore,
+      );
+      expect(
+        await database.database.query(
+          'analysis_rule_configurations',
+          orderBy: 'rule_id',
+        ),
+        ruleConfigurationsBefore,
+      );
 
-      // Explicit repair is deliberately separate from requesting a backup.
-      // This test simulates an independently authorized recovery step; the
-      // backup service itself never performs this mutation.
-      await finance.ensureAnalysisRules!();
+      await workspace.repairAnalysisRules();
       final encryptedPath = await workspace.createTemporaryBackup(
         'production.butlerlybackup',
         password: password,
@@ -436,6 +472,136 @@ void main() {
           whereArgs: [userRule.identity.value],
         )).single['enabled'],
         0,
+      );
+      final preservedUserDefinition = (await database.database.query(
+        'analysis_rule_definitions',
+        columns: ['source_type', 'definition_hash'],
+        where: 'rule_id = ?',
+        whereArgs: [userRule.identity.value],
+      )).single;
+      expect(preservedUserDefinition['source_type'], 'user');
+      expect(
+        preservedUserDefinition['definition_hash'],
+        userRule.definitionHash.value,
+      );
+
+      final restoredRoot = await Directory.systemTemp.createTemp(
+        'butlerly-backup-restored-',
+      );
+      final restoredDatabaseDirectory = Directory(
+        path.join(restoredRoot.path, 'database'),
+      )..createSync(recursive: true);
+      final restoredEvidenceDirectory = Directory(
+        path.join(restoredRoot.path, 'evidence'),
+      )..createSync(recursive: true);
+      final restoredDocumentsDirectory = Directory(
+        path.join(restoredRoot.path, 'documents'),
+      )..createSync(recursive: true);
+      final restoredDatabase = LocalDatabase(
+        logger: AppLogger(),
+        factory: databaseFactoryFfi,
+        databaseDirectory: restoredDatabaseDirectory.path,
+      );
+      await restoredDatabase.initialize();
+      final restoredDataManager = LocalDataManager(
+        restoredDatabase,
+        documentsDirectory: restoredDocumentsDirectory,
+        localEvidenceDirectory: restoredEvidenceDirectory,
+      );
+      final restoredManager = LocalBackupManager(
+        restoredDatabase,
+        restoredDataManager,
+      );
+      final restoredWorkspace = WorkspaceDataService(
+        LocalWorkspaceDataGateway(restoredManager, restoredDataManager),
+        refreshSystemData: () async {},
+      );
+      addTearDown(() async {
+        await restoredDatabase.close();
+        await restoredRoot.delete(recursive: true);
+      });
+
+      await restoredWorkspace.restore(
+        encrypted.path,
+        mode: LocalRestoreMode.replace,
+        password: password,
+      );
+      expect(
+        await restoredDatabase.database.query(
+          'transactions',
+          where: 'id IN (?, ?)',
+          whereArgs: ['backup-production-expense', 'backup-production-income'],
+        ),
+        hasLength(2),
+      );
+      expect(
+        await restoredDatabase.database.query(
+          'analysis_rule_definitions',
+          where: 'rule_id = ? AND rule_version = ?',
+          whereArgs: ['ANL-R010', '1.1.0'],
+        ),
+        hasLength(1),
+      );
+      expect(
+        await restoredDatabase.database.query(
+          'budgets',
+          where: 'id = ?',
+          whereArgs: ['backup-production-budget'],
+        ),
+        hasLength(1),
+      );
+      expect(
+        await restoredDatabase.database.query('financial_profiles'),
+        hasLength(1),
+      );
+      expect(
+        await restoredDatabase.database.query(
+          'attachment_links',
+          where: 'id = ?',
+          whereArgs: ['backup-production-receipt-link'],
+        ),
+        hasLength(1),
+      );
+      expect(
+        await restoredDatabase.database.query(
+          'analysis_findings',
+          where: 'id = ?',
+          whereArgs: ['backup-production-finding'],
+        ),
+        hasLength(1),
+      );
+      expect(
+        (await restoredDatabase.database.query(
+          'analysis_rule_activations',
+          columns: ['enabled'],
+          where: 'rule_id = ?',
+          whereArgs: [userRule.identity.value],
+        )).single['enabled'],
+        0,
+      );
+      final restoredUserDefinition = (await restoredDatabase.database.query(
+        'analysis_rule_definitions',
+        columns: ['source_type', 'definition_hash'],
+        where: 'rule_id = ?',
+        whereArgs: [userRule.identity.value],
+      )).single;
+      expect(restoredUserDefinition['source_type'], 'user');
+      expect(
+        restoredUserDefinition['definition_hash'],
+        userRule.definitionHash.value,
+      );
+      final restoredUserConfiguration = (await restoredDatabase.database.query(
+        'analysis_rule_configurations',
+        columns: ['configuration'],
+        where: 'rule_id = ?',
+        whereArgs: [userRule.identity.value],
+      )).single;
+      expect(restoredUserConfiguration['configuration'], '{}');
+      expect(
+        File(
+          path.join(restoredEvidenceDirectory.path, 'receipts', 'receipt.txt'),
+        ).readAsStringSync(),
+        'receipt fixture',
       );
     },
   );

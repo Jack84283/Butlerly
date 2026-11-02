@@ -42,6 +42,27 @@ void configureDependencies({
   final restoreRecoveryState = RestoreRecoveryState(localDataManager);
   final publicationRecoveryState = BackupPublicationRecoveryState();
   final evidenceDeletionRecoveryState = EvidenceDeletionRecoveryState();
+  SqliteAnalysisRuleRepository? analysisRules;
+
+  Future<void> repairBundledAnalysisRules() async {
+    final repository = analysisRules;
+    if (repository == null) {
+      throw StateError('Bundled analysis rule repair is unavailable.');
+    }
+    await repository.transaction((transactionRepository) async {
+      final installation = await installBundledAnalysisRules(
+        InstallBuiltInRules(transactionRepository),
+      );
+      if (installation.diagnostics.isNotEmpty) {
+        throw StateError(
+          'Bundled analysis rules failed validation: '
+          '${installation.diagnostics.length} diagnostic group(s).',
+        );
+      }
+      return installation;
+    });
+  }
+
   services
     ..registerSingleton<LocalDataManager>(localDataManager)
     ..registerSingleton<AnalysisConsistencyGate>(consistencyGate)
@@ -72,17 +93,11 @@ void configureDependencies({
         localDataManager,
       ),
       consistencyGate: consistencyGate,
+      repairAnalysisRulesCallback: repairBundledAnalysisRules,
       refreshSystemData: () async {
         await database.reseedSystemData();
         final finance = services<FinanceServices>();
-        final installer = finance.installBuiltInRules;
-        if (installer == null) {
-          throw StateError('Bundled analysis rule installer is unavailable.');
-        }
-        final installation = await installBundledAnalysisRules(installer);
-        if (installation.diagnostics.isNotEmpty) {
-          throw StateError('Bundled analysis rules failed validation.');
-        }
+        await repairBundledAnalysisRules();
         final duplicateRebuild = finance.rebuildDuplicateGroupsAfterRestore;
         if (duplicateRebuild != null) {
           final duplicateResult = await duplicateRebuild();
@@ -98,9 +113,7 @@ void configureDependencies({
     final duplicateGroups = SqliteDuplicateCandidateGroupRepository(
       database.persistenceDatabase,
     );
-    final analysisRules = SqliteAnalysisRuleRepository(
-      database.persistenceDatabase,
-    );
+    analysisRules = SqliteAnalysisRuleRepository(database.persistenceDatabase);
     final analysisFindings = SqliteAnalysisFindingRepository(
       database.persistenceDatabase,
     );
@@ -188,15 +201,7 @@ void configureDependencies({
       analysisInvalidation: invalidateAnalysis,
       consistencyGate: consistencyGate,
       ensureAnalysisRules: () async {
-        final installation = await installBundledAnalysisRules(
-          InstallBuiltInRules(analysisRules),
-        );
-        if (installation.diagnostics.isNotEmpty) {
-          throw StateError(
-            'Bundled analysis rules failed validation: '
-            '${installation.diagnostics.length} diagnostic group(s).',
-          );
-        }
+        await repairBundledAnalysisRules();
       },
       deleteEvidenceFile: (evidence) =>
           localEvidenceStore.deletePublishedFile(evidence),

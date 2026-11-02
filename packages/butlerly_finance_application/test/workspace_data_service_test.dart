@@ -104,14 +104,40 @@ void main() {
     expect(events, ['erase']);
   });
 
-  test('portable backup only invokes the read-only backup gateway', () async {
+  test('portable backup does not repair bundled rules', () async {
+    service = WorkspaceDataService(
+      gateway,
+      refreshSystemData: () async {},
+      repairAnalysisRulesCallback: () async => events.add('rules'),
+    );
+
     await service.createPortableBackup('destination', password: 'password');
+
     expect(events, ['portable']);
   });
 
-  test('temporary backup only invokes the read-only backup gateway', () async {
+  test('temporary backup does not repair bundled rules', () async {
+    service = WorkspaceDataService(
+      gateway,
+      refreshSystemData: () async {},
+      repairAnalysisRulesCallback: () async => events.add('rules'),
+    );
+
     await service.createTemporaryBackup('temporary', password: 'password');
+
     expect(events, ['temporary']);
+  });
+
+  test('rule repair is a separate explicitly invoked operation', () async {
+    service = WorkspaceDataService(
+      gateway,
+      refreshSystemData: () async {},
+      repairAnalysisRulesCallback: () async => events.add('rules'),
+    );
+
+    await service.repairAnalysisRules();
+
+    expect(events, ['rules']);
   });
 }
 

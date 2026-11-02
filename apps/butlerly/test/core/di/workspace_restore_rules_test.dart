@@ -324,4 +324,47 @@ void main() {
       );
     },
   );
+
+  test(
+    'restore rule refresh rolls back earlier installs on a later conflict',
+    () async {
+      final source = await rootBundle.loadString(
+        'assets/analysis_rules/metrics/ANL-R002.yaml',
+      );
+      final conflicting = source.replaceFirst(
+        'role: incomeTotal',
+        'role: incompatibleRole',
+      );
+      final installed = await InstallBuiltInRules(rules)({
+        'conflicting.yaml': conflicting,
+      });
+      expect(installed.diagnostics, isEmpty);
+      final backup = File('${root.path}/conflicting-late.butlerlybackup');
+      await services<LocalBackupManager>().createBackup(backup);
+
+      await expectLater(
+        services<WorkspaceDataService>().restore(
+          backup.path,
+          mode: LocalRestoreMode.replace,
+        ),
+        throwsA(isA<RestoreRecoveryRequiredException>()),
+      );
+
+      expect(
+        await database.database.query(
+          'analysis_rule_definitions',
+          where: 'rule_id = ?',
+          whereArgs: ['ANL-R001'],
+        ),
+        isEmpty,
+      );
+      final persisted = (await rules.listDefinitions()).singleWhere(
+        (rule) => rule.identity.value == 'ANL-R002',
+      );
+      expect(
+        persisted.definitionHash,
+        installed.installed.single.definitionHash,
+      );
+    },
+  );
 }

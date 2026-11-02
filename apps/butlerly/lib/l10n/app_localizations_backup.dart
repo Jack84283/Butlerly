@@ -29,9 +29,10 @@ const _backupStrings = <String, Map<String, String>>{
     'restoreBackup': 'Restore backup',
     'restoreSubtitle': 'Replace local data from an encrypted Butlerly backup.',
     'backupComplete': 'Encrypted backup created successfully.',
-    'backupShareUnconfirmed':
-        'An encrypted backup was created, but iOS could not confirm it was saved. Check Files before relying on this backup.',
-    'backupFailed': 'Backup could not be created.',
+    'backupShareFailed':
+        'The encrypted backup was created, but the platform could not confirm whether it was shared or saved.',
+    'backupFailed':
+        'Backup could not be created. If analysis data is inconsistent, choose Repair analysis rules and try again.',
     'restoreFailed': 'Backup could not be restored.',
     'restoreTitle': 'Restore Butlerly backup?',
     'backupCreatedAt': 'Created {date}',
@@ -100,9 +101,10 @@ const _backupStrings = <String, Map<String, String>>{
     'restoreSubtitle':
         'Reemplaza los datos locales desde una copia cifrada de Butlerly.',
     'backupComplete': 'La copia cifrada se creó correctamente.',
-    'backupShareUnconfirmed':
-        'Se creó una copia cifrada, pero iOS no confirmó que se guardara. Compruebe Archivos antes de confiar en esta copia.',
-    'backupFailed': 'No se pudo crear la copia.',
+    'backupShareFailed':
+        'La copia cifrada se creó, pero la plataforma no pudo confirmar si se compartió o se guardó.',
+    'backupFailed':
+        'No se pudo crear la copia. Si los datos de análisis son incoherentes, elige Reparar reglas de análisis y vuelve a intentarlo.',
     'restoreFailed': 'No se pudo restaurar la copia.',
     'restoreTitle': '¿Restaurar la copia de Butlerly?',
     'backupCreatedAt': 'Creada el {date}',
@@ -171,8 +173,8 @@ const _backupStrings = <String, Map<String, String>>{
     'restoreBackup': '恢复备份',
     'restoreSubtitle': '从加密的 Butlerly 备份替换本地数据。',
     'backupComplete': '加密备份创建成功。',
-    'backupShareUnconfirmed': '已创建加密备份，但 iOS 未确认文件已保存。使用备份前，请先在“文件”中确认。',
-    'backupFailed': '无法创建备份。',
+    'backupShareFailed': '加密备份已创建，但平台无法确认是否已分享或保存。',
+    'backupFailed': '无法创建备份。如果分析数据不一致，请选择“修复分析规则”后重试。',
     'restoreFailed': '无法恢复备份。',
     'restoreTitle': '恢复 Butlerly 备份？',
     'backupCreatedAt': '创建时间：{date}',

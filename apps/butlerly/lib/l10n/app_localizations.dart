@@ -1055,6 +1055,15 @@ class AppLocalizations {
           'Add more confirmed transactions to see a useful local summary.',
       'resetAllData': 'Erase all local data',
       'localDataControls': 'Local data controls',
+      'repairAnalysisRules': 'Repair analysis rules',
+      'repairAnalysisRulesSubtitle':
+          'Explicitly restore missing bundled definitions without changing your custom rules.',
+      'repairAnalysisRulesTitle': 'Repair bundled analysis rules?',
+      'repairAnalysisRulesBody':
+          'Butlerly will validate and transactionally restore missing bundled rule definitions. Your financial records and custom rule preferences will be preserved.',
+      'repairAnalysisRulesComplete': 'Analysis rules repaired successfully.',
+      'repairAnalysisRulesFailed':
+          'Analysis rules could not be repaired. No partial repair was kept.',
       'privacyScopeBody':
           'Your finance records and evidence stay on this device. Review the scope before exporting or erasing them.',
       'exportScopeBody':
@@ -2079,6 +2088,13 @@ class AppLocalizations {
       'notEnoughInsightDataBody': '添加更多已确认交易以查看有用的本地摘要。',
       'resetAllData': '清除所有本地数据',
       'localDataControls': '本地数据控制',
+      'repairAnalysisRules': '修复分析规则',
+      'repairAnalysisRulesSubtitle': '明确恢复缺失的内置定义，不更改您的自定义规则。',
+      'repairAnalysisRulesTitle': '修复内置分析规则？',
+      'repairAnalysisRulesBody':
+          'Butlerly 将验证并以事务方式恢复缺失的内置规则定义。您的财务记录和自定义规则偏好将得到保留。',
+      'repairAnalysisRulesComplete': '分析规则已成功修复。',
+      'repairAnalysisRulesFailed': '无法修复分析规则。未保留部分修复结果。',
       'privacyScopeBody': '您的财务记录和凭证保留在此设备上。导出或清除前请检查范围。',
       'exportScopeBody': '将财务记录、偏好、来源记录和本地凭证导出到 账房先生 文档文件夹。',
       'eraseScopeBody': '永久删除财务记录、偏好和所有本地存储的凭证文件。',
@@ -3233,6 +3249,16 @@ class AppLocalizations {
           'Añade más transacciones confirmadas para ver un resumen.',
       'resetAllData': 'Borrar todos los datos locales',
       'localDataControls': 'Controles de datos locales',
+      'repairAnalysisRules': 'Reparar reglas de análisis',
+      'repairAnalysisRulesSubtitle':
+          'Restaura explícitamente definiciones integradas que falten sin cambiar tus reglas personalizadas.',
+      'repairAnalysisRulesTitle': '¿Reparar las reglas de análisis integradas?',
+      'repairAnalysisRulesBody':
+          'Butlerly validará y restaurará de forma transaccional las definiciones integradas que falten. Tus registros financieros y preferencias de reglas personalizadas se conservarán.',
+      'repairAnalysisRulesComplete':
+          'Las reglas de análisis se repararon correctamente.',
+      'repairAnalysisRulesFailed':
+          'No se pudieron reparar las reglas de análisis. No se conservó ninguna reparación parcial.',
       'privacyScopeBody':
           'Tus registros financieros y comprobantes permanecen en este dispositivo. Revisa el alcance antes de exportarlos o borrarlos.',
       'exportScopeBody':

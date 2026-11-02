@@ -40,11 +40,18 @@ final class WorkspaceDataService {
   const WorkspaceDataService(
     this.gateway, {
     required this.refreshSystemData,
+    this.repairAnalysisRulesCallback,
     this.consistencyGate,
   });
   final LocalDataGateway gateway;
   final Future<void> Function() refreshSystemData;
 
+  /// Explicitly repairs the installed bundled analysis rules.
+  ///
+  /// Backup creation deliberately does not call this callback. A backup is a
+  /// protective read-only operation against live financial data; callers must
+  /// obtain user approval before invoking a repair.
+  final Future<void> Function()? repairAnalysisRulesCallback;
   final AnalysisConsistencyGate? consistencyGate;
 
   bool get hasRecoverySafetyCopy => gateway.hasRecoverySafetyCopy;
@@ -52,19 +59,25 @@ final class WorkspaceDataService {
   Future<void> createPortableBackup(
     String destination, {
     required String password,
-  }) => _runConsistently(() async {
-    // A backup is a read-only operation against the user's live records.
-    // Never install or activate rules merely because a backup was requested.
-    await gateway.createPortableBackup(destination, password: password);
-  });
+  }) => _runConsistently(
+    () => gateway.createPortableBackup(destination, password: password),
+  );
   Future<void> recoverPortableBackupPublication(String destination) =>
       gateway.recoverPortableBackupPublication(destination);
   Future<String> createTemporaryBackup(
     String fileName, {
     required String password,
-  }) => _runConsistently(() async {
-    // Validation failures must leave the original persisted state untouched.
-    return gateway.createTemporaryBackup(fileName, password: password);
+  }) => _runConsistently(
+    () => gateway.createTemporaryBackup(fileName, password: password),
+  );
+
+  /// Runs the separately approved analysis-rule repair operation.
+  Future<void> repairAnalysisRules() => _runConsistently(() async {
+    final repair = repairAnalysisRulesCallback;
+    if (repair == null) {
+      throw StateError('Bundled analysis rule repair is unavailable.');
+    }
+    await repair();
   });
   Future<void> discardTemporaryBackup(String filePath) =>
       gateway.discardTemporaryBackup(filePath);

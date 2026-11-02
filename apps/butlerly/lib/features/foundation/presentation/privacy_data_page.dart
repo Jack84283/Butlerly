@@ -133,11 +133,8 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           'Mobile backup share outcome unavailable at stage: $stage '
           '(ShareResultStatus.unavailable)',
         );
-        // iOS may not report whether Files actually saved the archive.
-        // The temporary sharing copy is cleaned up below, so never claim
-        // that a recoverable backup was delivered when its outcome is unknown.
         if (mounted) {
-          _message(context.l10n.backupText('backupShareUnconfirmed'));
+          _message(context.l10n.backupText('backupShareFailed'));
         }
       }
     } on BackupPasswordTooShortException {
@@ -218,6 +215,48 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       // recovery-only surface. Do not add a competing generic snackbar here.
     } catch (_) {
       if (mounted) _message(context.l10n.backupText('restoreFailed'));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _repairAnalysisRules() async {
+    final approved = await showButlerlyBottomSheet<bool>(
+      context: context,
+      builder: (context) => ButlerlySheet(
+        title: Text(context.l10n.text('repairAnalysisRulesTitle')),
+        content: Text(context.l10n.text('repairAnalysisRulesBody')),
+        actions: [
+          ButlerlyCancelButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(context.l10n.text('cancel')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(context.l10n.text('repairAnalysisRules')),
+          ),
+        ],
+      ),
+    );
+    if (approved != true || !mounted) return;
+
+    setState(() => _busy = true);
+    try {
+      await services<WorkspaceDataService>().repairAnalysisRules();
+      notifyTransactionChanged();
+      notifyBudgetsChanged();
+      if (mounted) {
+        _message(context.l10n.text('repairAnalysisRulesComplete'));
+      }
+    } catch (error, stackTrace) {
+      _backupLogger.severe(
+        'Analysis rule repair failed at stage: transactional repair',
+        error,
+        stackTrace,
+      );
+      if (mounted) {
+        _message(context.l10n.text('repairAnalysisRulesFailed'));
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -548,6 +587,12 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           description: l10n.backupText('restoreSubtitle'),
           onTap: _busy ? null : _restore,
         ),
+        _DesktopPrivacyAction(
+          icon: Icons.rule_folder_outlined,
+          label: l10n.text('repairAnalysisRules'),
+          description: l10n.text('repairAnalysisRulesSubtitle'),
+          onTap: _busy ? null : _repairAnalysisRules,
+        ),
       ],
     );
     final export = _DesktopPrivacyCard(
@@ -749,6 +794,18 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
               ),
               trailing: Icon(_privacyIcon(context, Icons.chevron_right)),
               onTap: _restore,
+            ),
+            const Divider(),
+            ListTile(
+              enabled: !_busy,
+              leading: Icon(_privacyIcon(context, Icons.rule_folder_outlined)),
+              title: Text(context.l10n.text('repairAnalysisRules')),
+              subtitle: Text(
+                context.l10n.text('repairAnalysisRulesSubtitle'),
+                style: _subtitleStyle(context),
+              ),
+              trailing: Icon(_privacyIcon(context, Icons.chevron_right)),
+              onTap: _repairAnalysisRules,
             ),
             const Divider(),
             ListTile(
