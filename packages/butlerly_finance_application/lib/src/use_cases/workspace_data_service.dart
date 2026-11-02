@@ -40,16 +40,11 @@ final class WorkspaceDataService {
   const WorkspaceDataService(
     this.gateway, {
     required this.refreshSystemData,
-    this.ensureAnalysisRules,
     this.consistencyGate,
   });
   final LocalDataGateway gateway;
   final Future<void> Function() refreshSystemData;
 
-  /// Repairs missing bundled analysis definitions before a portable backup is
-  /// created. The callback is supplied by the composition root so this
-  /// application service does not depend on the packaged rule assets.
-  final Future<void> Function()? ensureAnalysisRules;
   final AnalysisConsistencyGate? consistencyGate;
 
   bool get hasRecoverySafetyCopy => gateway.hasRecoverySafetyCopy;
@@ -58,7 +53,8 @@ final class WorkspaceDataService {
     String destination, {
     required String password,
   }) => _runConsistently(() async {
-    await ensureAnalysisRules?.call();
+    // A backup is a read-only operation against the user's live records.
+    // Never install or activate rules merely because a backup was requested.
     await gateway.createPortableBackup(destination, password: password);
   });
   Future<void> recoverPortableBackupPublication(String destination) =>
@@ -67,7 +63,7 @@ final class WorkspaceDataService {
     String fileName, {
     required String password,
   }) => _runConsistently(() async {
-    await ensureAnalysisRules?.call();
+    // Validation failures must leave the original persisted state untouched.
     return gateway.createTemporaryBackup(fileName, password: password);
   });
   Future<void> discardTemporaryBackup(String filePath) =>
