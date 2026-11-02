@@ -163,7 +163,7 @@ void main() {
   });
 
   testWidgets(
-    'mobile backup does not report failure when share outcome is unavailable',
+    'mobile backup reports an unconfirmed delivery when share outcome is unavailable',
     (tester) async {
       final root = Directory(
         path.join(
@@ -193,9 +193,10 @@ void main() {
 
       debugDefaultTargetPlatformOverride = null;
       expect(
-        find.text('Encrypted backup created successfully.'),
+        find.textContaining('iOS could not confirm it was saved'),
         findsOneWidget,
       );
+      expect(find.text('Encrypted backup created successfully.'), findsNothing);
       expect(find.text('Backup could not be created.'), findsNothing);
       expect(gateway.discardedPath, isNotNull);
     },
