@@ -539,8 +539,7 @@ void main() {
   testWidgets(
     'legacy unencrypted archive reaches validated restore preview without password',
     (tester) async {
-      final gateway = _ShareGateway(Directory.systemTemp)
-        ..encrypted = false;
+      final gateway = _ShareGateway(Directory.systemTemp)..encrypted = false;
       await services.reset();
       addTearDown(() async => services.reset());
       services.registerSingleton<WorkspaceDataService>(
