@@ -171,6 +171,7 @@ final class LocalBackupManager {
       return destination;
     } on BackupPublicationRecoveryRequiredException catch (error, stackTrace) {
       preservePublicationRecovery = true;
+      publicationRecoveryState.markRequired(error);
       _logger.severe(
         'Portable backup failed at stage: $stage',
         error,
@@ -179,6 +180,12 @@ final class LocalBackupManager {
       rethrow;
     } on BackupDestinationWriteException catch (error, stackTrace) {
       preservePublicationRecovery = true;
+      publicationRecoveryState.markRequired(
+        BackupPublicationRecoveryRequiredException(
+          'Portable backup publication requires recovery.',
+          recoveries: error.recoveries,
+        ),
+      );
       _logger.severe(
         'Portable backup failed at stage: $stage',
         error,

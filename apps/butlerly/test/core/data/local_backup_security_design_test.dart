@@ -10,6 +10,7 @@ import 'package:butlerly/core/data/restore_recovery_state.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/evidence/evidence_mutation_lock.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -182,7 +183,7 @@ void main() {
           destination,
           password: 'correct horse battery staple',
         ),
-        throwsA(isA<FileSystemException>()),
+        throwsA(isA<BackupStorageException>()),
       );
       expect(await destination.readAsString(), 'existing selected backup');
       expect(
@@ -190,6 +191,36 @@ void main() {
         isEmpty,
       );
       expect(await _namesStarting(fixture.root, '.portable-backup-'), isEmpty);
+    },
+  );
+
+  test(
+    'portable backup publication recovery marks state before rethrowing',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final selectedDirectory = await Directory.systemTemp.createTemp(
+        'butlerly-selected-backup-recovery-',
+      );
+      addTearDown(() => selectedDirectory.delete(recursive: true));
+      final destination = File(
+        path.join(selectedDirectory.path, 'portable.butlerlybackup'),
+      );
+      final manager = LocalBackupManager(
+        fixture.database,
+        fixture.data,
+        publicationRecoveryState: fixture.manager.publicationRecoveryState,
+        destinationWriter: const _RecoveryFailingDestinationWriter(),
+      );
+
+      await expectLater(
+        manager.createPortableBackup(
+          destination,
+          password: 'correct horse battery staple',
+        ),
+        throwsA(isA<BackupDestinationWriteException>()),
+      );
+      expect(manager.publicationRecoveryState.isRecoveryRequired, isTrue);
     },
   );
 
@@ -728,6 +759,24 @@ final class _FailingDestinationWriter implements BackupDestinationWriter {
     required String operationId,
   }) async {
     throw const FileSystemException('simulated destination failure');
+  }
+}
+
+final class _RecoveryFailingDestinationWriter
+    implements BackupDestinationWriter {
+  const _RecoveryFailingDestinationWriter();
+
+  @override
+  Future<void> publish({
+    required File source,
+    required File destination,
+    required Directory privateDirectory,
+    required String operationId,
+  }) async {
+    throw const BackupDestinationWriteException(
+      error: FileSystemException('simulated destination failure'),
+      rollbackError: FileSystemException('simulated rollback failure'),
+    );
   }
 }
 

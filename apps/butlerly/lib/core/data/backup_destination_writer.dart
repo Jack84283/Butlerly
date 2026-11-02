@@ -852,6 +852,7 @@ final class SandboxedBackupDestinationWriter
           BackupDestinationWriteException(
             error: error,
             rollbackError: rollbackError,
+            recoveries: [recovery.copyWith(previousReady: previousReady)],
           ),
           rollbackStack,
         );
@@ -891,10 +892,12 @@ final class BackupDestinationWriteException implements Exception {
   const BackupDestinationWriteException({
     required this.error,
     required this.rollbackError,
+    this.recoveries = const [],
   });
 
   final Object error;
   final Object rollbackError;
+  final List<BackupPublicationRecovery> recoveries;
 
   @override
   String toString() =>

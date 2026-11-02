@@ -643,6 +643,22 @@ void main() {
         ).readAsStringSync(),
         'receipt fixture',
       );
+
+      messenger.setMockMethodCallHandler(
+        pathProviderChannel,
+        (_) async => throw PlatformException(code: 'temporary_directory'),
+      );
+      BackupStorageException? temporaryDirectoryError;
+      try {
+        await workspace.createTemporaryBackup(
+          'temporary-directory-failure.butlerlybackup',
+          password: password,
+        );
+        fail('Temporary-directory failure should be reported as storage.');
+      } on BackupStorageException catch (error) {
+        temporaryDirectoryError = error;
+      }
+      expect(temporaryDirectoryError, isNotNull);
     },
   );
 }
