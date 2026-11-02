@@ -902,6 +902,94 @@ void main() {
       );
     },
   );
+
+  test('reports generic archive inspection failures accurately', () async {
+    // The database schema permits these legacy enum columns, while the
+    // portable-backup contract rejects unknown values. This reaches the
+    // production snapshot/decrypt/inspect path without manufacturing a
+    // malformed archive or changing the backup engine's integrity checks.
+    await database.database.insert('payment_sources', {
+      'id': 'backup-production-invalid-payment-source',
+      'name': 'Invalid fixture',
+      'type': 'unsupported-type',
+      'status': 'unsupported-status',
+      'created_at': '2026-11-03T12:00:00.000Z',
+      'updated_at': '2026-11-03T12:00:00.000Z',
+    });
+
+    final diagnosticLogger = _RecordingLogger();
+    final diagnosticManager = LocalBackupManager(
+      database,
+      services<LocalDataManager>(),
+      logger: diagnosticLogger,
+    );
+    final destination = File(
+      path.join(
+        temporaryDirectory.path,
+        'invalid-archive-content.butlerlybackup',
+      ),
+    );
+
+    await expectLater(
+      diagnosticManager.createPortableBackup(
+        destination,
+        password: 'correct horse battery staple',
+      ),
+      throwsA(isA<FormatException>()),
+    );
+    expect(
+      diagnosticLogger.stage,
+      'Portable backup failed at stage: backup archive inspection',
+    );
+    expect(diagnosticLogger.exceptionType, 'FormatException');
+    expect(await destination.exists(), isFalse);
+  });
+
+  test('reports missing evidence during collection accurately', () async {
+    const provenanceId = 'backup-production-missing-evidence-provenance';
+    await database.database.insert('provenances', {
+      'id': provenanceId,
+      'source_type': 'userEntry',
+      'captured_at': '2026-11-03T12:00:00.000Z',
+      'source_id': null,
+      'original_representation': null,
+      'source_language': null,
+    });
+    await database.database.insert('evidence_items', {
+      'id': 'backup-production-missing-evidence',
+      'type': 'receiptImage',
+      'original_name': 'missing-receipt.pdf',
+      'media_type': 'application/pdf',
+      'provenance_id': provenanceId,
+      'created_at': '2026-11-03T12:00:00.000Z',
+      'source_language': null,
+      'local_file_name': 'receipts/missing-receipt.pdf',
+    });
+
+    final diagnosticLogger = _RecordingLogger();
+    final diagnosticManager = LocalBackupManager(
+      database,
+      services<LocalDataManager>(),
+      logger: diagnosticLogger,
+    );
+    final destination = File(
+      path.join(temporaryDirectory.path, 'missing-evidence.butlerlybackup'),
+    );
+
+    await expectLater(
+      diagnosticManager.createPortableBackup(
+        destination,
+        password: 'correct horse battery staple',
+      ),
+      throwsA(isA<StateError>()),
+    );
+    expect(
+      diagnosticLogger.stage,
+      'Portable backup failed at stage: evidence collection',
+    );
+    expect(diagnosticLogger.exceptionType, 'StateError');
+    expect(await destination.exists(), isFalse);
+  });
 }
 
 final class _RecordingLogger extends AppLogger {

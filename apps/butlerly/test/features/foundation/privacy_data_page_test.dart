@@ -284,7 +284,7 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
     expect(
       find.text(
-        'Backup could not be finalized safely. Your previous backup was preserved; open Backup recovery to continue.',
+        'Backup could not be finalized safely. Recovery is required; the destination file status is unknown. Open Backup recovery to continue.',
       ),
       findsOneWidget,
     );

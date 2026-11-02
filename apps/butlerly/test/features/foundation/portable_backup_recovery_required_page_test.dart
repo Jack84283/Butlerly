@@ -42,6 +42,12 @@ void main() {
     );
 
     expect(find.text('Backup recovery required'), findsOneWidget);
+    expect(
+      find.text(
+        'A backup replacement was interrupted. Recovery is required; the destination file status is unknown. Select the original backup location to continue.',
+      ),
+      findsOneWidget,
+    );
     expect(find.text('Select backup location'), findsOneWidget);
     expect(find.text('Keep recovery data'), findsOneWidget);
 
@@ -51,6 +57,12 @@ void main() {
     expect(gateway.recoveries, 1);
     expect(
       find.textContaining('Recovery could not be completed'),
+      findsOneWidget,
+    );
+    expect(
+      find.text(
+        'Recovery could not be completed. The destination and recovery artifacts still require verification.',
+      ),
       findsOneWidget,
     );
 

@@ -38,7 +38,7 @@ const _backupStrings = <String, Map<String, String>>{
     'backupEncryptionFailed':
         'Backup encryption or verification failed. No backup was saved.',
     'backupRecoveryRequired':
-        'Backup could not be finalized safely. Your previous backup was preserved; open Backup recovery to continue.',
+        'Backup could not be finalized safely. Recovery is required; the destination file status is unknown. Open Backup recovery to continue.',
     'backupFailed': 'Backup could not be created.',
     'backupLocationSelectionFailed': 'Backup location could not be selected.',
     'backupStorageFailed': 'Backup could not be saved to device storage.',
@@ -97,11 +97,11 @@ const _backupStrings = <String, Map<String, String>>{
         'The unresolved staged evidence was copied without changing the original recovery files. You can use this copy before choosing a destructive reset.',
     'portableRecoveryTitle': 'Backup recovery required',
     'portableRecoveryBody':
-        'A backup replacement was interrupted. Butlerly preserved the previous valid backup, but needs access to the original backup location to finish recovery.',
+        'A backup replacement was interrupted. Recovery is required; the destination file status is unknown. Select the original backup location to continue.',
     'selectBackupLocation': 'Select backup location',
     'keepRecoveryData': 'Keep recovery data',
     'portableRecoveryStillRequired':
-        'Recovery could not be completed. The preserved recovery data was kept.',
+        'Recovery could not be completed. The destination and recovery artifacts still require verification.',
   },
   'es': {
     'backup': 'Crear copia de Butlerly',
@@ -119,7 +119,7 @@ const _backupStrings = <String, Map<String, String>>{
     'backupEncryptionFailed':
         'No se pudo cifrar o verificar la copia. No se guardó ninguna copia.',
     'backupRecoveryRequired':
-        'No se pudo finalizar la copia de forma segura. La copia anterior se conservó; abre Recuperación de copias para continuar.',
+        'No se pudo finalizar la copia de forma segura. Se requiere recuperación; se desconoce el estado del archivo de destino. Abre Recuperación de copias para continuar.',
     'backupFailed': 'No se pudo crear la copia.',
     'backupLocationSelectionFailed':
         'No se pudo seleccionar la ubicación de la copia.',
@@ -181,11 +181,11 @@ const _backupStrings = <String, Map<String, String>>{
         'La evidencia pendiente se copió sin cambiar los archivos originales de recuperación. Puede usar esta copia antes de elegir un reinicio destructivo.',
     'portableRecoveryTitle': 'Se requiere recuperar la copia',
     'portableRecoveryBody':
-        'Se interrumpió el reemplazo de una copia. Butlerly conservó la copia válida anterior, pero necesita acceso a la ubicación original para completar la recuperación.',
+        'Se interrumpió el reemplazo de una copia. Se requiere recuperación; se desconoce el estado del archivo de destino. Selecciona la ubicación original de la copia para continuar.',
     'selectBackupLocation': 'Seleccionar ubicación de la copia',
     'keepRecoveryData': 'Conservar los datos de recuperación',
     'portableRecoveryStillRequired':
-        'No se pudo completar la recuperación. Los datos de recuperación conservados permanecen disponibles.',
+        'No se pudo completar la recuperación. El archivo de destino y los artefactos de recuperación aún deben verificarse.',
   },
   'zh': {
     'backup': '备份 Butlerly',
@@ -197,7 +197,7 @@ const _backupStrings = <String, Map<String, String>>{
     'backupShareUnconfirmed': '加密备份已创建，但平台无法确认是否已分享或保存。',
     'backupShareFailed': '加密备份已创建，但无法打开分享面板。未确认有已保存的备份。',
     'backupEncryptionFailed': '备份加密或验证失败。未保存备份。',
-    'backupRecoveryRequired': '无法安全完成备份。之前的备份已保留；请打开备份恢复以继续。',
+    'backupRecoveryRequired': '无法安全完成备份。需要恢复；无法确定目标文件的状态。请打开备份恢复以继续。',
     'backupFailed': '无法创建备份。',
     'backupLocationSelectionFailed': '无法选择备份位置。',
     'backupStorageFailed': '无法将备份保存到设备存储。',
@@ -246,9 +246,9 @@ const _backupStrings = <String, Map<String, String>>{
     'recoveryEvidenceExported': '已创建凭证恢复副本',
     'recoveryEvidenceExportedBody': '未解决的暂存凭证已复制，原始恢复文件未被更改。您可以在选择清除数据前使用此副本。',
     'portableRecoveryTitle': '需要恢复备份',
-    'portableRecoveryBody': '备份替换过程中断。Butlerly 已保留之前的有效备份，但需要访问原备份位置才能完成恢复。',
+    'portableRecoveryBody': '备份替换过程中断。需要恢复；无法确定目标文件的状态。请选择原备份位置以继续。',
     'selectBackupLocation': '选择备份位置',
     'keepRecoveryData': '保留恢复数据',
-    'portableRecoveryStillRequired': '无法完成恢复。已保留恢复数据。',
+    'portableRecoveryStillRequired': '无法完成恢复。目标文件和恢复文件仍需验证。',
   },
 };

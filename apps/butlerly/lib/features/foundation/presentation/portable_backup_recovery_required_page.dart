@@ -104,73 +104,79 @@ class _PortableBackupRecoveryRequiredPageState
       body: SafeArea(
         child: ButlerlyResponsiveBody(
           contentKey: const ValueKey('portable-backup-recovery-content'),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: ButlerlySize.contentGutter,
-                  vertical: ButlerlySpacing.section,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.folder_open_outlined,
-                      size: 52,
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      context.l10n.backupText('portableRecoveryTitle'),
-                      style: Theme.of(context).textTheme.headlineSmall,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      context.l10n.backupText('portableRecoveryBody'),
-                      style: Theme.of(context).textTheme.bodyLarge,
-                      textAlign: TextAlign.center,
-                    ),
-                    if (_failed) ...[
-                      const SizedBox(height: 12),
+          child: SingleChildScrollView(
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: ButlerlySize.contentGutter,
+                    vertical: ButlerlySpacing.section,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.folder_open_outlined,
+                        size: 52,
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                      const SizedBox(height: 20),
                       Text(
-                        context.l10n.backupText(
-                          'portableRecoveryStillRequired',
-                        ),
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
+                        context.l10n.backupText('portableRecoveryTitle'),
+                        style: Theme.of(context).textTheme.headlineSmall,
                         textAlign: TextAlign.center,
                       ),
+                      const SizedBox(height: 12),
+                      Text(
+                        context.l10n.backupText('portableRecoveryBody'),
+                        style: Theme.of(context).textTheme.bodyLarge,
+                        textAlign: TextAlign.center,
+                      ),
+                      if (_failed) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          context.l10n.backupText(
+                            'portableRecoveryStillRequired',
+                          ),
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                      const SizedBox(height: 24),
+                      FilledButton.icon(
+                        onPressed: _busy ? null : _selectLocation,
+                        icon: _busy
+                            ? const SizedBox.square(
+                                dimension: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.folder_open),
+                        label: Text(
+                          context.l10n.backupText('selectBackupLocation'),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextButton(
+                        onPressed: _busy
+                            ? null
+                            : () => setState(() => _failed = false),
+                        child: Text(
+                          context.l10n.backupText('keepRecoveryData'),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: _busy ? null : _eraseLocalData,
+                        child: Text(
+                          context.l10n.backupText('eraseLocalRecoveryData'),
+                        ),
+                      ),
                     ],
-                    const SizedBox(height: 24),
-                    FilledButton.icon(
-                      onPressed: _busy ? null : _selectLocation,
-                      icon: _busy
-                          ? const SizedBox.square(
-                              dimension: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.folder_open),
-                      label: Text(
-                        context.l10n.backupText('selectBackupLocation'),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextButton(
-                      onPressed: _busy
-                          ? null
-                          : () => setState(() => _failed = false),
-                      child: Text(context.l10n.backupText('keepRecoveryData')),
-                    ),
-                    TextButton(
-                      onPressed: _busy ? null : _eraseLocalData,
-                      child: Text(
-                        context.l10n.backupText('eraseLocalRecoveryData'),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),

@@ -179,8 +179,16 @@ final class LocalBackupManager {
       stage = 'backup schema validation';
       await _assertSupportedBackupSchema(verificationPlain);
 
-      stage = 'backup analysis-rule validation';
-      await _engine.inspect(verificationPlain);
+      stage = 'backup archive inspection';
+      try {
+        await _engine.inspect(verificationPlain);
+      } on BackupAnalysisRuleValidationException {
+        // Keep the rule-specific diagnostic only for the typed validation
+        // failure. Archive inspection also validates evidence and other table
+        // payloads, which must not be misreported as an analysis-rule issue.
+        stage = 'backup analysis-rule validation';
+        rethrow;
+      }
 
       stage = temporary
           ? 'temporary backup file publication'
