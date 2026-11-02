@@ -642,6 +642,49 @@ void main() {
         'receipt fixture',
       );
 
+      const unresolvedOperationId = 'unresolved-external-publication';
+      final unresolvedRecovery = BackupPublicationRecovery(
+        operationId: unresolvedOperationId,
+        sourcePath: path.join(
+          databaseDirectory.path,
+          '.portable-backup-encrypted-$unresolvedOperationId.butlerlybackup',
+        ),
+        destinationPath: path.join(
+          root.path,
+          'external-destination',
+          'portable.butlerlybackup',
+        ),
+        previousPath: path.join(
+          databaseDirectory.path,
+          '.portable-backup-previous-$unresolvedOperationId.butlerlybackup',
+        ),
+        hadExistingDestination: false,
+        previousReady: false,
+      );
+      await const FileBackupPublicationRecoveryStore().write(
+        databaseDirectory,
+        unresolvedRecovery,
+      );
+      final temporaryPath = await workspace.createTemporaryBackup(
+        'temporary-with-unresolved-external-marker.butlerlybackup',
+        password: password,
+      );
+      addTearDown(() => workspace.discardTemporaryBackup(temporaryPath));
+      expect(await File(temporaryPath).exists(), isTrue);
+      expect(
+        services<LocalBackupManager>()
+            .publicationRecoveryState
+            .isRecoveryRequired,
+        isFalse,
+      );
+      expect(
+        await FileBackupPublicationRecoveryStore.markerFile(
+          databaseDirectory,
+          unresolvedOperationId,
+        ).exists(),
+        isTrue,
+      );
+
       final temporaryDestinationDirectory = Directory(
         path.join(
           temporaryDirectory.path,

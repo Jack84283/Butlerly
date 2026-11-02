@@ -136,7 +136,7 @@ final class LocalBackupManager {
 
     var preservePublicationRecovery = false;
     try {
-      await recoverInterruptedPortableBackupPublications();
+      if (!temporary) await recoverInterruptedPortableBackupPublications();
 
       stage = 'SQLite snapshot and integrity validation';
       await _runConsistently(
