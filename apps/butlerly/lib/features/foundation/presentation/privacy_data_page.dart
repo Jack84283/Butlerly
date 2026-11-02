@@ -564,54 +564,50 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     BackupInspection inspection, {
     bool legacyUnencrypted = false,
   }) => showButlerlyBottomSheet<LocalRestoreMode>(
-        context: context,
-        builder: (context) {
-          final summary = context.l10n
-              .backupText('backupSummary')
-              .replaceAll('{records}', '${inspection.recordCount}')
-              .replaceAll('{evidence}', '${inspection.evidenceCount}');
-          final created = inspection.createdAtUtc.toLocal();
-          final createdLabel = context.l10n
-              .backupText('backupCreatedAt')
-              .replaceAll(
-                '{date}',
-                formatBackupInspectionDate(context, created),
-              );
-          final details = _changeDetails(inspection);
-          final legacyWarning = legacyUnencrypted
-              ? '${context.l10n.backupText('legacyUnencryptedBackupWarning')}\n\n'
-              : '';
-          final body = inspection.hasNewerLocalData
-              ? '${context.l10n.backupText('newerData')}\n\n$details'
-              : context.l10n.backupText('noNewerData');
-          return ButlerlySheet(
-            title: Text(context.l10n.backupText('restoreTitle')),
-            content: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.sizeOf(context).height * .45,
-              ),
-              child: SingleChildScrollView(
-                child: Text('$legacyWarning$summary\n$createdLabel\n\n$body'),
-              ),
-            ),
-            actions: [
-              ButlerlyCancelButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(context.l10n.text('cancel')),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, LocalRestoreMode.merge),
-                child: Text(context.l10n.backupText('merge')),
-              ),
-              TextButton(
-                onPressed: () =>
-                    Navigator.pop(context, LocalRestoreMode.replace),
-                child: Text(context.l10n.backupText('replace')),
-              ),
-            ],
-          );
-        },
+    context: context,
+    builder: (context) {
+      final summary = context.l10n
+          .backupText('backupSummary')
+          .replaceAll('{records}', '${inspection.recordCount}')
+          .replaceAll('{evidence}', '${inspection.evidenceCount}');
+      final created = inspection.createdAtUtc.toLocal();
+      final createdLabel = context.l10n
+          .backupText('backupCreatedAt')
+          .replaceAll('{date}', formatBackupInspectionDate(context, created));
+      final details = _changeDetails(inspection);
+      final legacyWarning = legacyUnencrypted
+          ? '${context.l10n.backupText('legacyUnencryptedBackupWarning')}\n\n'
+          : '';
+      final body = inspection.hasNewerLocalData
+          ? '${context.l10n.backupText('newerData')}\n\n$details'
+          : context.l10n.backupText('noNewerData');
+      return ButlerlySheet(
+        title: Text(context.l10n.backupText('restoreTitle')),
+        content: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * .45,
+          ),
+          child: SingleChildScrollView(
+            child: Text('$legacyWarning$summary\n$createdLabel\n\n$body'),
+          ),
+        ),
+        actions: [
+          ButlerlyCancelButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(context.l10n.text('cancel')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, LocalRestoreMode.merge),
+            child: Text(context.l10n.backupText('merge')),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, LocalRestoreMode.replace),
+            child: Text(context.l10n.backupText('replace')),
+          ),
+        ],
       );
+    },
+  );
 
   Future<bool> _confirmReplace() async =>
       (await showButlerlyBottomSheet<bool>(
