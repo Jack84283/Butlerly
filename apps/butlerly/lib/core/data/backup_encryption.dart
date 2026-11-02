@@ -8,6 +8,7 @@ import 'package:cryptography/cryptography.dart';
 
 export 'package:butlerly_finance_application/butlerly_finance_application.dart'
     show
+        BackupEncryptionException,
         BackupPasswordRequiredException,
         BackupPasswordTooShortException,
         BackupPasswordOrIntegrityException;

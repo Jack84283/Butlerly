@@ -23,6 +23,7 @@ import 'package:sqflite_common/sqlite_api.dart';
 export 'backup_destination_writer.dart';
 export 'backup_encryption.dart'
     show
+        BackupEncryptionException,
         BackupPasswordOrIntegrityException,
         BackupPasswordRequiredException,
         BackupPasswordTooShortException;
@@ -146,14 +147,34 @@ final class LocalBackupManager {
       );
 
       stage = 'encryption';
-      await _encryption.encrypt(plain, encryptedCandidate, password: password);
+      try {
+        await _encryption.encrypt(
+          plain,
+          encryptedCandidate,
+          password: password,
+        );
+      } on BackupPasswordTooShortException {
+        rethrow;
+      } on FileSystemException {
+        throw const BackupStorageException();
+      } catch (_) {
+        throw const BackupEncryptionException();
+      }
 
       stage = 'decryption verification';
-      await _encryption.decrypt(
-        encryptedCandidate,
-        verificationPlain,
-        password: password,
-      );
+      try {
+        await _encryption.decrypt(
+          encryptedCandidate,
+          verificationPlain,
+          password: password,
+        );
+      } on BackupPasswordTooShortException {
+        rethrow;
+      } on FileSystemException {
+        throw const BackupStorageException();
+      } catch (_) {
+        throw const BackupEncryptionException();
+      }
 
       stage = 'backup schema validation';
       await _assertSupportedBackupSchema(verificationPlain);
@@ -211,6 +232,20 @@ final class LocalBackupManager {
         stackTrace,
       );
       rethrow;
+    } on BackupStorageException catch (error, stackTrace) {
+      _logger.severe(
+        'Portable backup failed at stage: $stage',
+        error,
+        stackTrace,
+      );
+      rethrow;
+    } on FileSystemException catch (error, stackTrace) {
+      _logger.severe(
+        'Portable backup failed at stage: $stage',
+        error,
+        stackTrace,
+      );
+      throw const BackupStorageException();
     } catch (error, stackTrace) {
       _logger.severe(
         'Portable backup failed at stage: $stage',

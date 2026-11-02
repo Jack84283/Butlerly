@@ -23,8 +23,10 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
   }) async {
     try {
       await backups.createPortableBackup(File(destination), password: password);
+    } on BackupPublicationRecoveryRequiredException {
+      throw const BackupPublicationRecoveryException();
     } on BackupDestinationWriteException {
-      throw const BackupStorageException();
+      throw const BackupPublicationRecoveryException();
     }
   }
 
@@ -45,9 +47,12 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
       file = File(path.join(directory.path, path.basename(fileName)));
       await backups.createTemporaryBackup(file, password: password);
       return file.path;
+    } on BackupPublicationRecoveryRequiredException {
+      if (file != null) await discardTemporaryBackup(file.path);
+      throw const BackupPublicationRecoveryException();
     } on BackupDestinationWriteException {
       if (file != null) await discardTemporaryBackup(file.path);
-      throw const BackupStorageException();
+      throw const BackupPublicationRecoveryException();
     } on BackupStorageException {
       if (file != null) await discardTemporaryBackup(file.path);
       rethrow;

@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:butlerly/core/data/backup_encryption.dart';
 import 'package:butlerly/core/data/local_backup_manager.dart';
+import 'package:butlerly/core/data/local_data_gateway.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/data/restore_recovery_state.dart';
 import 'package:butlerly/core/database/local_database.dart';
@@ -219,6 +220,33 @@ void main() {
           password: 'correct horse battery staple',
         ),
         throwsA(isA<BackupDestinationWriteException>()),
+      );
+      expect(manager.publicationRecoveryState.isRecoveryRequired, isTrue);
+    },
+  );
+
+  test(
+    'workspace gateway preserves publication recovery classification',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final destination = File(
+        path.join(fixture.root.path, 'portable.butlerlybackup'),
+      );
+      final manager = LocalBackupManager(
+        fixture.database,
+        fixture.data,
+        publicationRecoveryState: fixture.manager.publicationRecoveryState,
+        destinationWriter: const _RecoveryFailingDestinationWriter(),
+      );
+      final gateway = LocalWorkspaceDataGateway(manager, fixture.data);
+
+      await expectLater(
+        gateway.createPortableBackup(
+          destination.path,
+          password: 'correct horse battery staple',
+        ),
+        throwsA(isA<BackupPublicationRecoveryException>()),
       );
       expect(manager.publicationRecoveryState.isRecoveryRequired, isTrue);
     },

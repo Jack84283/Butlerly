@@ -50,6 +50,8 @@ void configureDependencies({
       throw StateError('Bundled analysis rule repair is unavailable.');
     }
     await repository.transaction((transactionRepository) async {
+      final expectedBundledRules = await transactionRepository
+          .bundledRuleProvenanceHashes();
       final installation = await installBundledAnalysisRules(
         InstallBuiltInRules(transactionRepository),
       );
@@ -57,6 +59,23 @@ void configureDependencies({
         throw StateError(
           'Bundled analysis rules failed validation: '
           '${installation.diagnostics.length} diagnostic group(s).',
+        );
+      }
+      final installedRules = await transactionRepository
+          .installedRuleMetadata();
+      final unrepaired = expectedBundledRules.entries
+          .where((entry) {
+            final metadata = installedRules[entry.key];
+            return metadata == null ||
+                metadata['source_type'] != 'bundled' ||
+                metadata['definition_hash'] != entry.value;
+          })
+          .map((entry) => entry.key)
+          .toList(growable: false);
+      if (unrepaired.isNotEmpty) {
+        throw StateError(
+          'Bundled analysis rule repair did not restore '
+          '${unrepaired.length} persisted rule(s).',
         );
       }
       return installation;

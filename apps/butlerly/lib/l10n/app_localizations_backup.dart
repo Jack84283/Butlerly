@@ -35,6 +35,10 @@ const _backupStrings = <String, Map<String, String>>{
         'The encrypted backup was created, but the platform could not confirm whether it was shared or saved.',
     'backupShareFailed':
         'The encrypted backup was created, but the share sheet could not be opened. No saved backup was confirmed.',
+    'backupEncryptionFailed':
+        'Backup encryption or verification failed. No backup was saved.',
+    'backupRecoveryRequired':
+        'Backup could not be finalized safely. Your previous backup was preserved; open Backup recovery to continue.',
     'backupFailed': 'Backup could not be created.',
     'backupLocationSelectionFailed': 'Backup location could not be selected.',
     'backupStorageFailed': 'Backup could not be saved to device storage.',
@@ -112,6 +116,10 @@ const _backupStrings = <String, Map<String, String>>{
         'La copia cifrada se creó, pero la plataforma no pudo confirmar si se compartió o se guardó.',
     'backupShareFailed':
         'La copia cifrada se creó, pero no se pudo abrir la hoja para compartir. No se confirmó ninguna copia guardada.',
+    'backupEncryptionFailed':
+        'No se pudo cifrar o verificar la copia. No se guardó ninguna copia.',
+    'backupRecoveryRequired':
+        'No se pudo finalizar la copia de forma segura. La copia anterior se conservó; abre Recuperación de copias para continuar.',
     'backupFailed': 'No se pudo crear la copia.',
     'backupLocationSelectionFailed':
         'No se pudo seleccionar la ubicación de la copia.',
@@ -188,6 +196,8 @@ const _backupStrings = <String, Map<String, String>>{
     'backupAnalysisRepairRequired': '无法创建备份，因为分析规则未通过验证。请选择“修复分析规则”后重试。',
     'backupShareUnconfirmed': '加密备份已创建，但平台无法确认是否已分享或保存。',
     'backupShareFailed': '加密备份已创建，但无法打开分享面板。未确认有已保存的备份。',
+    'backupEncryptionFailed': '备份加密或验证失败。未保存备份。',
+    'backupRecoveryRequired': '无法安全完成备份。之前的备份已保留；请打开备份恢复以继续。',
     'backupFailed': '无法创建备份。',
     'backupLocationSelectionFailed': '无法选择备份位置。',
     'backupStorageFailed': '无法将备份保存到设备存储。',

@@ -618,6 +618,22 @@ final class LocalBackupManager {
                   keptNewer++;
                   continue;
                 }
+                if (spec.name == 'analysis_rule_definitions' &&
+                    await _localProvenanceConflictsWithDefinition(tx, row)) {
+                  // A local provenance row is part of the immutable rule
+                  // pair. Do not insert a backup definition that would make
+                  // that existing provenance describe the wrong rule.
+                  keptNewer++;
+                  continue;
+                }
+                if (spec.name == 'analysis_rule_provenance' &&
+                    await _localDefinitionConflictsWithProvenance(tx, row)) {
+                  // Rule definitions and their provenance are one immutable
+                  // pair. A merge must never combine the backup definition
+                  // with local provenance, or vice versa.
+                  keptNewer++;
+                  continue;
+                }
                 if (await _hasNewerLocalTombstone(tx, spec, row, backupTime)) {
                   keptNewer++;
                   continue;
@@ -2348,7 +2364,7 @@ final class LocalBackupManager {
             sourceType is! String ||
             sourceType.isEmpty ||
             definitionHash is! String ||
-            definitionHash.isEmpty) {
+            !RegExp(r'^[0-9a-fA-F]{64}$').hasMatch(definitionHash)) {
           throw FormatException(
             'Backup schema $sourceSchema table '
             '"analysis_rule_provenance" row $index contains invalid '
@@ -2394,7 +2410,8 @@ final class LocalBackupManager {
             (definition == null ||
                 definition['validation_status'] != 'valid')) {
           if (definition == null &&
-              bundledProvenanceMatches('$ruleId:$ruleVersion', null)) {
+              bundledProvenanceMatches('$ruleId:$ruleVersion', null) &&
+              ruleHasOnlyBundledProvenance(ruleId)) {
             canRepair = true;
           } else {
             // A missing definition without exact bundled provenance cannot be
@@ -2499,7 +2516,11 @@ final class LocalBackupManager {
           'references an unavailable or mismatched rule definition.',
           canRepair:
               definition == null &&
-              bundledProvenanceMatches('$ruleId:$ruleVersion', definitionHash),
+              bundledProvenanceMatches(
+                '$ruleId:$ruleVersion',
+                definitionHash,
+              ) &&
+              ruleHasOnlyBundledProvenance(ruleId),
         );
       }
       final periodStart = row['period_start'];
@@ -2964,6 +2985,69 @@ final class LocalBackupManager {
     final values = spec.keys.map((key) => row[key]).toList(growable: false);
     final rows = await _queryByKeys(tx, spec, values);
     return rows.isEmpty ? null : rows.single;
+  }
+
+  Future<bool> _localDefinitionConflictsWithProvenance(
+    Transaction tx,
+    Map<String, Object?> provenance,
+  ) async {
+    final ruleId = provenance['rule_id'];
+    final ruleVersion = provenance['rule_version'];
+    if (ruleId == null || ruleVersion == null) return true;
+    final definitions = await tx.query(
+      'analysis_rule_definitions',
+      columns: ['source_type', 'definition_hash'],
+      where: 'rule_id = ? AND rule_version = ?',
+      whereArgs: [ruleId, ruleVersion],
+      limit: 1,
+    );
+    if (definitions.isEmpty) return false;
+    final definition = definitions.single;
+    final localProvenance = await tx.query(
+      'analysis_rule_provenance',
+      columns: ['source_type', 'definition_hash'],
+      where: 'rule_id = ? AND rule_version = ?',
+      whereArgs: [ruleId, ruleVersion],
+      limit: 1,
+    );
+    if (localProvenance.isNotEmpty &&
+        (localProvenance.single['source_type'] != definition['source_type'] ||
+            localProvenance.single['definition_hash'] !=
+                definition['definition_hash'])) {
+      throw const FormatException(
+        'Local analysis rule definition and provenance disagree.',
+      );
+    }
+    final conflicts =
+        definition['source_type'] != provenance['source_type'] ||
+        definition['definition_hash'] != provenance['definition_hash'];
+    if (conflicts) {
+      if (localProvenance.isEmpty) {
+        throw const FormatException(
+          'Local analysis rule provenance is missing for a merge conflict.',
+        );
+      }
+    }
+    return conflicts;
+  }
+
+  Future<bool> _localProvenanceConflictsWithDefinition(
+    Transaction tx,
+    Map<String, Object?> definition,
+  ) async {
+    final ruleId = definition['rule_id'];
+    final ruleVersion = definition['rule_version'];
+    if (ruleId == null || ruleVersion == null) return true;
+    final provenance = await tx.query(
+      'analysis_rule_provenance',
+      columns: ['source_type', 'definition_hash'],
+      where: 'rule_id = ? AND rule_version = ?',
+      whereArgs: [ruleId, ruleVersion],
+      limit: 1,
+    );
+    if (provenance.isEmpty) return false;
+    return provenance.single['source_type'] != definition['source_type'] ||
+        provenance.single['definition_hash'] != definition['definition_hash'];
   }
 
   Future<List<Map<String, Object?>>> _queryByKeys(

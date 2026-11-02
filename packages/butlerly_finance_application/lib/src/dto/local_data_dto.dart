@@ -76,6 +76,20 @@ final class BackupPasswordOrIntegrityException implements Exception {
   const BackupPasswordOrIntegrityException();
 }
 
+/// Raised when an encrypted backup cannot be produced or verified.
+final class BackupEncryptionException implements Exception {
+  const BackupEncryptionException();
+}
+
+/// Raised when a portable backup publication entered controlled recovery.
+///
+/// This intentionally carries no filesystem paths or adapter-specific
+/// recovery payload. The recovery surface reads its state through the normal
+/// application flow.
+final class BackupPublicationRecoveryException implements Exception {
+  const BackupPublicationRecoveryException();
+}
+
 final class RestoreRecoveryRequiredException implements Exception {
   const RestoreRecoveryRequiredException();
 }

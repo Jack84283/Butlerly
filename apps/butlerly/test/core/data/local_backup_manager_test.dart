@@ -6,6 +6,8 @@ import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly_database/butlerly_database.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -66,6 +68,80 @@ void main() {
       'User-owned tag',
     );
   });
+
+  test(
+    'merge keeps a local rule definition and its provenance as one pair',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final repository = SqliteAnalysisRuleRepository(
+        fixture.database.persistenceDatabase,
+      );
+      await _installTestRule(
+        repository,
+        sourceType: 'bundled',
+        descriptionKey: 'backup.rule.description',
+      );
+      final backup = File(
+        path.join(fixture.root.path, 'rule-pair-merge.butlerlybackup'),
+      );
+      await fixture.backups.createBackup(backup);
+
+      await fixture.database.database.delete('analysis_rule_definitions');
+      await fixture.database.database.delete('analysis_rule_provenance');
+      final localRule = await _installTestRule(
+        repository,
+        sourceType: 'user',
+        descriptionKey: 'custom.rule.description',
+      );
+
+      await fixture.backups.restore(backup, mode: LocalRestoreMode.merge);
+
+      final definition = (await fixture.database.database.query(
+        'analysis_rule_definitions',
+        where: 'rule_id = ? AND rule_version = ?',
+        whereArgs: [localRule.identity.value, localRule.version.value],
+      )).single;
+      expect(definition['source_type'], 'user');
+      expect(definition['definition_hash'], localRule.definitionHash.value);
+      expect(
+        definition['canonical_definition'],
+        contains('custom.rule.description'),
+      );
+      final provenance = (await fixture.database.database.query(
+        'analysis_rule_provenance',
+        where: 'rule_id = ? AND rule_version = ?',
+        whereArgs: [localRule.identity.value, localRule.version.value],
+      )).single;
+      expect(provenance['source_type'], 'user');
+      expect(provenance['definition_hash'], localRule.definitionHash.value);
+
+      // The inverse damaged state must also avoid combining the backup
+      // definition with the local user-owned provenance.
+      await fixture.database.database.delete(
+        'analysis_rule_definitions',
+        where: 'rule_id = ? AND rule_version = ?',
+        whereArgs: [localRule.identity.value, localRule.version.value],
+      );
+      await fixture.backups.restore(backup, mode: LocalRestoreMode.merge);
+      expect(
+        await fixture.database.database.query(
+          'analysis_rule_definitions',
+          where: 'rule_id = ? AND rule_version = ?',
+          whereArgs: [localRule.identity.value, localRule.version.value],
+        ),
+        isEmpty,
+      );
+      expect(
+        (await fixture.database.database.query(
+          'analysis_rule_provenance',
+          where: 'rule_id = ? AND rule_version = ?',
+          whereArgs: [localRule.identity.value, localRule.version.value],
+        )).single['source_type'],
+        'user',
+      );
+    },
+  );
 
   test(
     'merge preserves local edits to durable reference and translation data',
@@ -1049,4 +1125,42 @@ final class _Fixture {
     );
     return rows.isEmpty ? null : rows.single['description'] as String?;
   }
+}
+
+Future<AnalysisRuleDefinition> _installTestRule(
+  SqliteAnalysisRuleRepository repository, {
+  required String sourceType,
+  required String descriptionKey,
+}) async {
+  final source =
+      '''
+schemaVersion: "1.0.0"
+ruleId: ANL-R099
+ruleVersion: "1.0.0"
+enabled: true
+surface: spending
+type: metric
+nameKey: analysis.rule.test.name
+descriptionKey: $descriptionKey
+period: selected_period
+grouping: category
+measure:
+  operation: sum
+  field: amount
+  currencyBasis: baseCurrency
+filters:
+  direction: expense
+result:
+  persistence: materialized
+  refresh: onInvalidation
+''';
+  final parsed = const RestrictedRuleParser().parse(source);
+  final validation = const RuleDefinitionValidator().validate(parsed.document!);
+  final definition = validation.definition!;
+  await repository.install(
+    definition,
+    sourceType: sourceType,
+    canonicalDefinition: canonicalize(parsed.document!.values),
+  );
+  return definition;
 }

@@ -121,8 +121,26 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
             : 'backupFailed';
         _message(context.l10n.backupText(message));
       }
+    } on BackupPublicationRecoveryException catch (error, stackTrace) {
+      _backupLogger.severe(
+        'Backup failed at stage: publication recovery',
+        error,
+        stackTrace,
+      );
+      if (mounted) {
+        _message(context.l10n.backupText('backupRecoveryRequired'));
+      }
     } on BackupPasswordTooShortException {
       if (mounted) _message(context.l10n.backupText('backupPasswordTooShort'));
+    } on BackupEncryptionException catch (error, stackTrace) {
+      _backupLogger.severe(
+        'Backup failed at stage: encryption verification',
+        error,
+        stackTrace,
+      );
+      if (mounted) {
+        _message(context.l10n.backupText('backupEncryptionFailed'));
+      }
     } on BackupStorageException catch (error, stackTrace) {
       _backupLogger.severe(
         'Backup failed at stage: destination storage',
@@ -192,8 +210,26 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
             : 'backupFailed';
         _message(context.l10n.backupText(message));
       }
+    } on BackupPublicationRecoveryException catch (error, stackTrace) {
+      _backupLogger.severe(
+        'Mobile backup failed at stage: publication recovery',
+        error,
+        stackTrace,
+      );
+      if (mounted) {
+        _message(context.l10n.backupText('backupRecoveryRequired'));
+      }
     } on BackupPasswordTooShortException {
       if (mounted) _message(context.l10n.backupText('backupPasswordTooShort'));
+    } on BackupEncryptionException catch (error, stackTrace) {
+      _backupLogger.severe(
+        'Mobile backup failed at stage: encryption verification',
+        error,
+        stackTrace,
+      );
+      if (mounted) {
+        _message(context.l10n.backupText('backupEncryptionFailed'));
+      }
     } on BackupStorageException catch (error, stackTrace) {
       _backupLogger.severe(
         'Mobile backup failed at stage: temporary storage',

@@ -282,10 +282,6 @@ void main() {
         categoryActivation,
       );
 
-      final homeAfterDamage = await finance.loadHomeOverview(
-        instant: DateTime.utc(2026, 11, 15, 12),
-      );
-      expect(homeAfterDamage, isA<ApplicationSuccess<HomeOverview>>());
       expect(
         await database.database.query(
           'analysis_rule_definitions',
@@ -758,6 +754,152 @@ void main() {
         temporaryDirectoryError = error;
       }
       expect(temporaryDirectoryError, isNotNull);
+    },
+  );
+
+  test(
+    'restore does not reject a user rule colliding with a bundled identity',
+    () async {
+      final workspace = services<WorkspaceDataService>();
+      final rules = SqliteAnalysisRuleRepository(database.persistenceDatabase);
+      await workspace.repairAnalysisRules();
+
+      final bundled = await rootBundle.loadString(
+        'assets/analysis_rules/metrics/ANL-R010.yaml',
+      );
+      final custom = bundled.replaceFirst(
+        'descriptionKey: analysis.rule.r010.description',
+        'descriptionKey: custom.rule.r010.description',
+      );
+      final parsed = const RestrictedRuleParser().parse(custom);
+      final validation = const RuleDefinitionValidator().validate(
+        parsed.document!,
+      );
+      final customDefinition = validation.definition!;
+      await database.database.delete(
+        'analysis_rule_configurations',
+        where: 'rule_id = ?',
+        whereArgs: [customDefinition.identity.value],
+      );
+      await database.database.delete(
+        'analysis_rule_activations',
+        where: 'rule_id = ?',
+        whereArgs: [customDefinition.identity.value],
+      );
+      await database.database.delete(
+        'analysis_rule_provenance',
+        where: 'rule_id = ? AND rule_version = ?',
+        whereArgs: [
+          customDefinition.identity.value,
+          customDefinition.version.value,
+        ],
+      );
+      await database.database.delete(
+        'analysis_rule_definitions',
+        where: 'rule_id = ? AND rule_version = ?',
+        whereArgs: [
+          customDefinition.identity.value,
+          customDefinition.version.value,
+        ],
+      );
+      await rules.install(
+        customDefinition,
+        sourceType: 'user',
+        canonicalDefinition: canonicalize(parsed.document!.values),
+      );
+      await rules.activate(
+        customDefinition.identity,
+        customDefinition.version,
+        true,
+        DateTime.utc(2026, 11, 5),
+      );
+      await database.database.insert('analysis_rule_configurations', {
+        'rule_id': customDefinition.identity.value,
+        'configuration': '{"custom":true}',
+        'updated_at': '2026-11-05T00:00:00.000Z',
+      });
+
+      final backup = File(
+        path.join(temporaryDirectory.path, 'custom-collision.butlerlybackup'),
+      );
+      const password = 'correct horse battery staple';
+      await workspace.createPortableBackup(backup.path, password: password);
+
+      await workspace.restore(
+        backup.path,
+        mode: LocalRestoreMode.replace,
+        password: password,
+      );
+
+      final restoredDefinition = (await database.database.query(
+        'analysis_rule_definitions',
+        columns: ['source_type', 'definition_hash'],
+        where: 'rule_id = ? AND rule_version = ?',
+        whereArgs: [
+          customDefinition.identity.value,
+          customDefinition.version.value,
+        ],
+      )).single;
+      expect(restoredDefinition['source_type'], 'user');
+      expect(
+        restoredDefinition['definition_hash'],
+        customDefinition.definitionHash.value,
+      );
+      expect(
+        (await database.database.query(
+          'analysis_rule_provenance',
+          where: 'rule_id = ? AND rule_version = ?',
+          whereArgs: [
+            customDefinition.identity.value,
+            customDefinition.version.value,
+          ],
+        )).single['source_type'],
+        'user',
+      );
+      expect(
+        (await database.database.query(
+          'analysis_rule_configurations',
+          columns: ['configuration'],
+          where: 'rule_id = ?',
+          whereArgs: [customDefinition.identity.value],
+        )).single['configuration'],
+        '{"custom":true}',
+      );
+    },
+  );
+
+  test(
+    'rule repair fails atomically when persisted bundled provenance is unknown',
+    () async {
+      final workspace = services<WorkspaceDataService>();
+      await database.database.insert('analysis_rule_provenance', {
+        'rule_id': 'ANL-R998',
+        'rule_version': '1.0.0',
+        'source_type': 'bundled',
+        'definition_hash': List.filled(64, 'a').join(),
+        'recorded_at': '2026-11-05T00:00:00.000Z',
+      });
+
+      await expectLater(
+        workspace.repairAnalysisRules(),
+        throwsA(isA<StateError>()),
+      );
+      expect(
+        await database.database.query(
+          'analysis_rule_definitions',
+          where: 'rule_id = ?',
+          whereArgs: ['ANL-R001'],
+        ),
+        isEmpty,
+      );
+      expect(
+        await database.database.query(
+          'analysis_rule_provenance',
+          where: 'rule_id = ?',
+          whereArgs: ['ANL-R998'],
+        ),
+        hasLength(1),
+      );
     },
   );
 }

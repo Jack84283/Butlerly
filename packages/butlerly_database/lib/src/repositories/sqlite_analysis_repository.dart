@@ -5,7 +5,8 @@ import 'package:sqflite_common/sqlite_api.dart';
 
 import '../database/butlerly_database.dart';
 
-final class SqliteAnalysisRuleRepository implements AnalysisRuleRepository {
+final class SqliteAnalysisRuleRepository
+    implements AnalysisRuleRepository, AnalysisRuleSourceRepository {
   const SqliteAnalysisRuleRepository(this.database) : _executor = null;
 
   const SqliteAnalysisRuleRepository._withinTransaction(
@@ -16,6 +17,116 @@ final class SqliteAnalysisRuleRepository implements AnalysisRuleRepository {
   final DatabaseExecutor? _executor;
 
   DatabaseExecutor get _connection => _executor ?? database.connection;
+
+  @override
+  Future<bool> hasNonBundledDefinition(
+    RuleIdentity id,
+    RuleVersion version,
+  ) async {
+    final provenance = await _connection.query(
+      'analysis_rule_provenance',
+      columns: ['rule_id'],
+      where: 'rule_id = ? AND rule_version = ? AND source_type != ?',
+      whereArgs: [id.value, version.value, 'bundled'],
+    );
+    final definition = await _connection.query(
+      'analysis_rule_definitions',
+      columns: ['rule_id'],
+      where: 'rule_id = ? AND rule_version = ? AND source_type != ?',
+      whereArgs: [id.value, version.value, 'bundled'],
+    );
+    return provenance.isNotEmpty || definition.isNotEmpty;
+  }
+
+  @override
+  Future<bool> hasBundledDefinition({
+    required AnalysisRuleType type,
+    required AnalysisSurface surface,
+    required RuleGrouping grouping,
+  }) async {
+    final definitions = await _connection.query(
+      'analysis_rule_definitions',
+      columns: [
+        'rule_id',
+        'rule_version',
+        'source_type',
+        'canonical_definition',
+        'definition_hash',
+        'validation_status',
+      ],
+      where: 'source_type = ? AND validation_status = ?',
+      whereArgs: ['bundled', 'valid'],
+    );
+    for (final definition in definitions) {
+      final ruleId = definition['rule_id'];
+      final ruleVersion = definition['rule_version'];
+      final canonical = definition['canonical_definition'];
+      if (ruleId is! String || ruleVersion is! String || canonical is! String) {
+        continue;
+      }
+      Object? parsed;
+      try {
+        parsed = jsonDecode(canonical);
+      } on FormatException {
+        continue;
+      }
+      if (parsed is! Map) continue;
+      if (parsed['type'] != type.name ||
+          parsed['surface'] != surface.name ||
+          parsed['grouping'] != grouping.name) {
+        continue;
+      }
+      final provenance = await _connection.query(
+        'analysis_rule_provenance',
+        columns: ['source_type', 'definition_hash'],
+        where: 'rule_id = ? AND rule_version = ?',
+        whereArgs: [ruleId, ruleVersion],
+        limit: 1,
+      );
+      if (provenance.length == 1 &&
+          provenance.single['source_type'] == 'bundled' &&
+          provenance.single['definition_hash'] ==
+              definition['definition_hash']) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// Returns the immutable hashes of every rule recorded as bundled.
+  ///
+  /// Repair uses this persisted set as its input and verifies the same keys
+  /// and hashes after the packaged installer commits. This keeps the repair
+  /// transaction honest when an old or damaged database contains a bundled
+  /// provenance row that the current asset catalog no longer provides.
+  Future<Map<String, String>> bundledRuleProvenanceHashes() async {
+    final rows = await _connection.query(
+      'analysis_rule_provenance',
+      columns: ['rule_id', 'rule_version', 'definition_hash'],
+      where: 'source_type = ?',
+      whereArgs: ['bundled'],
+    );
+    return {
+      for (final row in rows)
+        '${row['rule_id']}@${row['rule_version']}':
+            row['definition_hash']! as String,
+    };
+  }
+
+  /// Returns installed rule source types and hashes keyed by identity/version.
+  Future<Map<String, Map<String, String>>> installedRuleMetadata() async {
+    final rows = await _connection.query(
+      'analysis_rule_definitions',
+      columns: ['rule_id', 'rule_version', 'source_type', 'definition_hash'],
+    );
+    return {
+      for (final row in rows)
+        '${row['rule_id']}@${row['rule_version']}': {
+          'source_type': row['source_type']! as String,
+          'definition_hash': row['definition_hash']! as String,
+        },
+    };
+  }
 
   /// Executes a rule operation against one SQLite transaction.
   ///

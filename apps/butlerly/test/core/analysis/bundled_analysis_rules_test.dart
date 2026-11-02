@@ -5,6 +5,7 @@ import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly_database/butlerly_database.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -193,14 +194,13 @@ void main() {
         ],
       );
 
-      await expectLater(
-        repository.transaction(
-          (transactionRepository) => InstallBuiltInRules(transactionRepository)(
-            {'metrics/ANL-R010.yaml': bundled},
-          ),
-        ),
-        throwsA(isA<StateError>()),
+      final installation = await repository.transaction(
+        (transactionRepository) => InstallBuiltInRules(transactionRepository)({
+          'metrics/ANL-R010.yaml': bundled,
+        }),
       );
+      expect(installation.diagnostics, isEmpty);
+      expect(installation.installed, isEmpty);
       expect(
         await database.database.query(
           'analysis_rule_definitions',
@@ -244,6 +244,68 @@ void main() {
           whereArgs: [customDefinition.identity.value],
         ),
         hasLength(1),
+      );
+    },
+  );
+
+  test(
+    'restores a missing bundled version without changing a custom active version',
+    () async {
+      final repository = SqliteAnalysisRuleRepository(
+        database.persistenceDatabase,
+      );
+      final bundled = await rootBundle.loadString(
+        'assets/analysis_rules/metrics/ANL-R010.yaml',
+      );
+      final custom = bundled
+          .replaceFirst('ruleVersion: "1.1.0"', 'ruleVersion: "9.9.9"')
+          .replaceFirst(
+            'descriptionKey: analysis.rule.r010.description',
+            'descriptionKey: custom.rule.r010.description',
+          );
+      final parsed = const RestrictedRuleParser().parse(custom);
+      final validation = const RuleDefinitionValidator().validate(
+        parsed.document!,
+      );
+      final customDefinition = validation.definition!;
+      await repository.install(
+        customDefinition,
+        sourceType: 'user',
+        canonicalDefinition: canonicalize(parsed.document!.values),
+      );
+      await repository.activate(
+        customDefinition.identity,
+        customDefinition.version,
+        true,
+        DateTime.utc(2026, 11, 1),
+      );
+
+      final installation = await repository.transaction(
+        (transactionRepository) => InstallBuiltInRules(transactionRepository)({
+          'metrics/ANL-R010.yaml': bundled,
+        }),
+      );
+
+      expect(installation.diagnostics, isEmpty);
+      expect(installation.installed, hasLength(1));
+      expect(
+        await repository.hasBundledDefinition(
+          type: AnalysisRuleType.metric,
+          surface: AnalysisSurface.spending,
+          grouping: RuleGrouping.category,
+        ),
+        isTrue,
+      );
+      final activation = await repository.existingActivation(
+        customDefinition.identity,
+      );
+      expect(activation?.version, customDefinition.version);
+      expect(activation?.enabled, isTrue);
+      expect(
+        (await repository.listDefinitions()).map(
+          (value) => '${value.identity.value}@${value.version.value}',
+        ),
+        containsAll(['ANL-R010@1.1.0', 'ANL-R010@9.9.9']),
       );
     },
   );

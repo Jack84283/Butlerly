@@ -74,6 +74,10 @@ final class InstallBuiltInRules {
       }
     }
     final ids = parsedDefinitions.map((value) => value.identity.value).toSet();
+    final AnalysisRuleSourceRepository? sourceRepository =
+        repository is AnalysisRuleSourceRepository
+        ? repository as AnalysisRuleSourceRepository
+        : null;
     final byId = {
       for (final value in parsedDefinitions) value.identity.value: value,
     };
@@ -136,6 +140,16 @@ final class InstallBuiltInRules {
         ];
         continue;
       }
+      if (sourceRepository != null &&
+          await sourceRepository.hasNonBundledDefinition(
+            definition.identity,
+            definition.version,
+          )) {
+        // A user/import-owned definition with the exact identity is not a
+        // missing packaged rule. Preserve that version, activation, and
+        // configuration; a different packaged version may still be restored.
+        continue;
+      }
       await repository.install(
         definition,
         sourceType: 'bundled',
@@ -143,12 +157,21 @@ final class InstallBuiltInRules {
       );
       final existing = await repository.existingActivation(definition.identity);
       if (existing == null || existing.version != definition.version) {
-        await repository.activate(
-          definition.identity,
-          definition.version,
-          existing?.enabled ?? definition.enabled,
-          DateTime.now().toUtc(),
-        );
+        final activeVersionIsUserOwned =
+            sourceRepository != null &&
+            existing != null &&
+            await sourceRepository.hasNonBundledDefinition(
+              definition.identity,
+              existing.version,
+            );
+        if (!activeVersionIsUserOwned) {
+          await repository.activate(
+            definition.identity,
+            definition.version,
+            existing?.enabled ?? definition.enabled,
+            DateTime.now().toUtc(),
+          );
+        }
       }
       installed.add(definition);
     }

@@ -211,6 +211,95 @@ void main() {
     expect(File(gateway.discardedPath!).existsSync(), isFalse);
   });
 
+  testWidgets('mobile backup reports encryption failures separately', (
+    tester,
+  ) async {
+    final root = Directory(
+      path.join(
+        Directory.systemTemp.path,
+        'butlerly-encryption-failure-${DateTime.now().microsecondsSinceEpoch}',
+      ),
+    )..createSync(recursive: true);
+    addTearDown(() async {
+      await services.reset();
+      if (root.existsSync()) root.deleteSync(recursive: true);
+      debugDefaultTargetPlatformOverride = null;
+    });
+    final gateway = _ShareGateway(root)
+      ..createFailure = const BackupEncryptionException();
+    services.registerSingleton<WorkspaceDataService>(
+      WorkspaceDataService(gateway, refreshSystemData: () async {}),
+    );
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    await _completeBackupPasswordFlow(tester);
+
+    debugDefaultTargetPlatformOverride = null;
+    expect(
+      find.text(
+        'Backup encryption or verification failed. No backup was saved.',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.text(
+        'Backup could not be created because analysis rules failed validation. Choose Repair analysis rules and try again.',
+      ),
+      findsNothing,
+    );
+  });
+
+  testWidgets('desktop backup reports publication recovery separately', (
+    tester,
+  ) async {
+    final root = Directory(
+      path.join(
+        Directory.systemTemp.path,
+        'butlerly-publication-recovery-${DateTime.now().microsecondsSinceEpoch}',
+      ),
+    )..createSync(recursive: true);
+    addTearDown(() async {
+      await services.reset();
+      if (root.existsSync()) root.deleteSync(recursive: true);
+      debugDefaultTargetPlatformOverride = null;
+    });
+    final gateway = _ShareGateway(root)
+      ..createFailure = const BackupPublicationRecoveryException();
+    services.registerSingleton<WorkspaceDataService>(
+      WorkspaceDataService(gateway, refreshSystemData: () async {}),
+    );
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+
+    await tester.pumpWidget(
+      app(
+        selectBackupLocation: () async =>
+            FileSaveLocation(path.join(root.path, 'selected.butlerlybackup')),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _completeBackupPasswordFlow(tester);
+
+    debugDefaultTargetPlatformOverride = null;
+    expect(
+      find.text(
+        'Backup could not be finalized safely. Your previous backup was preserved; open Backup recovery to continue.',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Backup could not be saved to device storage.'),
+      findsNothing,
+    );
+    expect(
+      find.text(
+        'Backup could not be created because analysis rules failed validation. Choose Repair analysis rules and try again.',
+      ),
+      findsNothing,
+    );
+  });
+
   testWidgets(
     'mobile backup reports native share exceptions when cleanup also fails',
     (tester) async {

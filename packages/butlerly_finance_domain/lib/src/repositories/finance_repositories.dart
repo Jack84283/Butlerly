@@ -87,6 +87,23 @@ abstract interface class AnalysisRuleRepository {
   Future<AnalysisRuleActivation?> existingActivation(RuleIdentity id);
 }
 
+/// Optional persistence capability used when installing packaged rules.
+///
+/// A user-owned rule may intentionally use the same identity as a packaged
+/// rule. Installers must be able to recognize that ownership before attempting
+/// to activate or replace any version of the definition.
+abstract interface class AnalysisRuleSourceRepository {
+  Future<bool> hasNonBundledDefinition(RuleIdentity id, RuleVersion version);
+
+  /// Whether a valid, provenance-matched packaged definition with the
+  /// requested semantic shape is installed.
+  Future<bool> hasBundledDefinition({
+    required AnalysisRuleType type,
+    required AnalysisSurface surface,
+    required RuleGrouping grouping,
+  });
+}
+
 final class AnalysisRuleActivation {
   const AnalysisRuleActivation({required this.version, required this.enabled});
   final RuleVersion version;
