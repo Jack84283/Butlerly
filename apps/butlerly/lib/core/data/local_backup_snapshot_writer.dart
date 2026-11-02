@@ -44,6 +44,7 @@ final class LocalBackupSnapshotWriter {
     'analysis_rule_activations',
     'analysis_rule_configurations',
     'analysis_rule_definitions',
+    'analysis_rule_provenance',
     'analysis_findings',
     'recurring_pattern_decisions',
     'user_preferences',

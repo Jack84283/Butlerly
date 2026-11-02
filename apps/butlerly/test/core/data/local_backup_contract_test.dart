@@ -34,7 +34,7 @@ void main() {
     expect((manifest['backupId']! as String), isNotEmpty);
     expect(manifest['appVersion'], '1.0.0');
     expect(manifest['appBuild'], '1');
-    expect(manifest['schemaVersion'], 16);
+    expect(manifest['schemaVersion'], 17);
   });
 
   test('backup and restore preserves the optional financial profile', () async {
@@ -1216,6 +1216,14 @@ void main() {
       expect(
         engine.LocalBackupManager.requiredTablesForSchema(16),
         contains('analysis_findings'),
+      );
+      expect(
+        engine.LocalBackupManager.requiredTablesForSchema(16),
+        isNot(contains('analysis_rule_provenance')),
+      );
+      expect(
+        engine.LocalBackupManager.requiredTablesForSchema(17),
+        contains('analysis_rule_provenance'),
       );
     },
   );

@@ -42,6 +42,15 @@ CREATE TABLE analysis_rule_definitions (
       PRIMARY KEY(rule_id, rule_version)
     );
 
+CREATE TABLE analysis_rule_provenance (
+      rule_id TEXT NOT NULL,
+      rule_version TEXT NOT NULL,
+      source_type TEXT NOT NULL,
+      definition_hash TEXT NOT NULL,
+      recorded_at TEXT NOT NULL,
+      PRIMARY KEY(rule_id, rule_version)
+    );
+
 CREATE TABLE analysis_rule_results (
       id TEXT PRIMARY KEY NOT NULL,
       rule_id TEXT NOT NULL,

@@ -38,7 +38,7 @@ final class SqliteAnalysisRuleRepository implements AnalysisRuleRepository {
   }) async {
     final existing = await _connection.query(
       'analysis_rule_definitions',
-      columns: ['definition_hash'],
+      columns: ['definition_hash', 'source_type'],
       where: 'rule_id = ? AND rule_version = ?',
       whereArgs: [definition.identity.value, definition.version.value],
       limit: 1,
@@ -50,8 +50,43 @@ final class SqliteAnalysisRuleRepository implements AnalysisRuleRepository {
           'Analysis rule version ${definition.identity.value}@${definition.version.value} is immutable.',
         );
       }
+      await _recordProvenance(
+        definition,
+        sourceType: existing.first['source_type']! as String,
+        definitionHash: existing.first['definition_hash']! as String,
+      );
       return;
     }
+
+    final provenance = await _connection.query(
+      'analysis_rule_provenance',
+      where: 'rule_id = ? AND rule_version = ?',
+      whereArgs: [definition.identity.value, definition.version.value],
+      limit: 1,
+    );
+    if (provenance.isNotEmpty) {
+      final row = provenance.single;
+      final recordedSourceType = row['source_type']! as String;
+      final recordedHash = row['definition_hash']! as String;
+      if (recordedHash != definition.definitionHash.value) {
+        throw StateError(
+          'Analysis rule provenance for ${definition.identity.value}@'
+          '${definition.version.value} does not match the definition.',
+        );
+      }
+      if (recordedSourceType != sourceType) {
+        throw StateError(
+          'Analysis rule ${definition.identity.value}@${definition.version.value} '
+          'has persisted $recordedSourceType provenance.',
+        );
+      }
+    } else if (await _hasAmbiguousReferences(definition)) {
+      throw StateError(
+        'Analysis rule ${definition.identity.value}@${definition.version.value} '
+        'cannot be restored without persisted provenance.',
+      );
+    }
+
     await _connection.insert('analysis_rule_definitions', {
       'rule_id': definition.identity.value,
       'rule_version': definition.version.value,
@@ -64,6 +99,80 @@ final class SqliteAnalysisRuleRepository implements AnalysisRuleRepository {
       'validation_diagnostics': null,
       'installed_at': DateTime.now().toUtc().toIso8601String(),
     });
+    await _recordProvenance(
+      definition,
+      sourceType: sourceType,
+      definitionHash: definition.definitionHash.value,
+    );
+  }
+
+  Future<void> _recordProvenance(
+    AnalysisRuleDefinition definition, {
+    required String sourceType,
+    required String definitionHash,
+  }) async {
+    final existing = await _connection.query(
+      'analysis_rule_provenance',
+      where: 'rule_id = ? AND rule_version = ?',
+      whereArgs: [definition.identity.value, definition.version.value],
+      limit: 1,
+    );
+    if (existing.isNotEmpty) {
+      final row = existing.single;
+      if (row['source_type'] != sourceType ||
+          row['definition_hash'] != definitionHash) {
+        throw StateError(
+          'Analysis rule provenance for ${definition.identity.value}@'
+          '${definition.version.value} is immutable.',
+        );
+      }
+      return;
+    }
+    await _connection.insert('analysis_rule_provenance', {
+      'rule_id': definition.identity.value,
+      'rule_version': definition.version.value,
+      'source_type': sourceType,
+      'definition_hash': definitionHash,
+      'recorded_at': DateTime.now().toUtc().toIso8601String(),
+    });
+  }
+
+  Future<bool> _hasAmbiguousReferences(
+    AnalysisRuleDefinition definition,
+  ) async {
+    final ruleId = definition.identity.value;
+    final version = definition.version.value;
+    final activation = await _connection.query(
+      'analysis_rule_activations',
+      where: 'rule_id = ? AND active_rule_version = ?',
+      whereArgs: [ruleId, version],
+      limit: 1,
+    );
+    if (activation.isNotEmpty) return true;
+
+    final configuration = await _connection.query(
+      'analysis_rule_configurations',
+      where: 'rule_id = ?',
+      whereArgs: [ruleId],
+      limit: 1,
+    );
+    if (configuration.isNotEmpty) return true;
+
+    final finding = await _connection.query(
+      'analysis_findings',
+      where: 'rule_id = ? AND rule_version = ?',
+      whereArgs: [ruleId, version],
+      limit: 1,
+    );
+    if (finding.isNotEmpty) return true;
+
+    final result = await _connection.query(
+      'analysis_rule_results',
+      where: 'rule_id = ? AND rule_version = ?',
+      whereArgs: [ruleId, version],
+      limit: 1,
+    );
+    return result.isNotEmpty;
   }
 
   @override

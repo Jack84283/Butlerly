@@ -311,7 +311,7 @@ void main() {
         ),
         throwsA(
           predicate<BackupAnalysisRuleValidationException>(
-            (error) => !error.canRepair,
+            (error) => error.canRepair,
           ),
         ),
       );
@@ -337,6 +337,10 @@ void main() {
         'analysis_rule_definitions',
         orderBy: 'rule_id, rule_version',
       );
+      final ruleProvenanceBefore = await database.database.query(
+        'analysis_rule_provenance',
+        orderBy: 'rule_id, rule_version',
+      );
       final ruleActivationsBefore = await database.database.query(
         'analysis_rule_activations',
         orderBy: 'rule_id',
@@ -353,7 +357,11 @@ void main() {
           'without-explicit-repair.butlerlybackup',
           password: password,
         ),
-        throwsA(isA<BackupAnalysisRuleValidationException>()),
+        throwsA(
+          predicate<BackupAnalysisRuleValidationException>(
+            (error) => error.canRepair,
+          ),
+        ),
       );
       expect(await database.database.query('transactions'), transactionsBefore);
       expect(await database.database.query('budgets'), budgetsBefore);
@@ -381,6 +389,13 @@ void main() {
           orderBy: 'rule_id, rule_version',
         ),
         ruleDefinitionsBefore,
+      );
+      expect(
+        await database.database.query(
+          'analysis_rule_provenance',
+          orderBy: 'rule_id, rule_version',
+        ),
+        ruleProvenanceBefore,
       );
       expect(
         await database.database.query(
@@ -478,6 +493,13 @@ void main() {
       expect(
         restoredCategory.single['definition_hash'],
         categoryDefinition['definition_hash'],
+      );
+      expect(
+        await database.database.query(
+          'analysis_rule_provenance',
+          orderBy: 'rule_id, rule_version',
+        ),
+        ruleProvenanceBefore,
       );
       final restoredCategoryActivation = (await database.database.query(
         'analysis_rule_activations',
@@ -579,6 +601,14 @@ void main() {
           whereArgs: ['ANL-R010', '1.1.0'],
         ),
         hasLength(1),
+      );
+      expect(
+        await restoredDatabase.database.query(
+          'analysis_rule_provenance',
+          where: 'rule_id = ? AND rule_version = ?',
+          whereArgs: ['ANL-R010', '1.1.0'],
+        ),
+        contains(containsPair('source_type', 'bundled')),
       );
       expect(
         await restoredDatabase.database.query(

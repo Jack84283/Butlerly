@@ -1,4 +1,4 @@
--- Butlerly SQLite upgrade deployment, schema targets 2 through 19.
+-- Butlerly SQLite upgrade deployment, schema targets 2 through 20.
 -- Each block is run ONLY when upgrading to that target version, in order.
 -- Never run this whole file using sqlite3 .read against an existing database.
 -- Fresh installations use database/schema/v1.sql plus the marked hardening block.
@@ -1118,3 +1118,29 @@ CREATE TABLE IF NOT EXISTS financial_profiles (
         OR (monthly_savings_target IS NOT NULL AND monthly_savings_target_currency IS NOT NULL)
       )
     );
+
+-- BUTLERLY_MIGRATION_TARGET: 20
+-- Source: v19_to_v20.sql
+CREATE TABLE IF NOT EXISTS analysis_rule_provenance (
+      rule_id TEXT NOT NULL,
+      rule_version TEXT NOT NULL,
+      source_type TEXT NOT NULL,
+      definition_hash TEXT NOT NULL,
+      recorded_at TEXT NOT NULL,
+      PRIMARY KEY(rule_id, rule_version)
+    );
+
+INSERT OR IGNORE INTO analysis_rule_provenance (
+      rule_id,
+      rule_version,
+      source_type,
+      definition_hash,
+      recorded_at
+    )
+SELECT
+      rule_id,
+      rule_version,
+      source_type,
+      definition_hash,
+      installed_at
+FROM analysis_rule_definitions;

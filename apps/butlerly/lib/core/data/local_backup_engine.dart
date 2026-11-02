@@ -259,6 +259,12 @@ final class LocalBackupManager {
       preserveLocalOnMergeConflict: true,
     ),
     _TableSpec(
+      'analysis_rule_provenance',
+      ['rule_id', 'rule_version'],
+      createdAt: 'recorded_at',
+      preserveLocalOnMergeConflict: true,
+    ),
+    _TableSpec(
       'analysis_findings',
       ['id'],
       updatedAt: 'updated_at',
@@ -303,6 +309,12 @@ final class LocalBackupManager {
         'analysis_rule_definitions',
         'analysis_findings',
       });
+    }
+    if (sourceSchema <= 16) {
+      // Schema 17 is the first archive contract that includes persisted
+      // analysis-rule provenance. Older archives remain restorable, but they
+      // cannot safely authorize repair of a missing definition.
+      required.remove('analysis_rule_provenance');
     }
     if (sourceSchema <= 13) {
       // Schema 13 was emitted both before and after budgets were introduced.
@@ -1790,6 +1802,7 @@ final class LocalBackupManager {
       'effective_at',
       'generated_at',
       'installed_at',
+      'recorded_at',
       'occurred_at',
       'updated_at',
       'calculated_at',
@@ -2243,9 +2256,27 @@ final class LocalBackupManager {
 
     final definitionRows = _tableRows(tables, 'analysis_rule_definitions');
     final definitionsByKey = <String, Map>{};
-    const canRepair = false;
+    final provenanceByKey = <String, Map>{};
+    final provenanceByRuleId = <String, List<Map>>{};
+    bool bundledProvenanceMatches(String key, String? definitionHash) {
+      final provenance = provenanceByKey[key];
+      return provenance != null &&
+          provenance['source_type'] == 'bundled' &&
+          (definitionHash == null ||
+              provenance['definition_hash'] == definitionHash);
+    }
+
+    bool ruleHasOnlyBundledProvenance(String ruleId) {
+      final provenance = provenanceByRuleId[ruleId];
+      return provenance != null &&
+          provenance.isNotEmpty &&
+          provenance.every((row) => row['source_type'] == 'bundled');
+    }
+
+    var canRepair = false;
     try {
       for (var index = 0; index < definitionRows.length; index++) {
+        canRepair = false;
         final row = definitionRows[index];
         final ruleId = row['rule_id'];
         final ruleVersion = row['rule_version'];
@@ -2303,8 +2334,46 @@ final class LocalBackupManager {
         }
       }
 
+      final provenanceRows = _tableRows(tables, 'analysis_rule_provenance');
+      for (var index = 0; index < provenanceRows.length; index++) {
+        final row = provenanceRows[index];
+        final ruleId = row['rule_id'];
+        final ruleVersion = row['rule_version'];
+        final sourceType = row['source_type'];
+        final definitionHash = row['definition_hash'];
+        if (ruleId is! String ||
+            ruleId.isEmpty ||
+            ruleVersion is! String ||
+            ruleVersion.isEmpty ||
+            sourceType is! String ||
+            sourceType.isEmpty ||
+            definitionHash is! String ||
+            definitionHash.isEmpty) {
+          throw FormatException(
+            'Backup schema $sourceSchema table '
+            '"analysis_rule_provenance" row $index contains invalid '
+            'provenance.',
+          );
+        }
+        final key = '$ruleId:$ruleVersion';
+        provenanceByKey[key] = row;
+        provenanceByRuleId.putIfAbsent(ruleId, () => <Map>[]).add(row);
+        final definition = definitionsByKey['$ruleId:$ruleVersion'];
+        if (definition != null &&
+            definition['validation_status'] == 'valid' &&
+            (definition['definition_hash'] != definitionHash ||
+                definition['source_type'] != sourceType)) {
+          throw FormatException(
+            'Backup schema $sourceSchema table '
+            '"analysis_rule_provenance" row $index does not match its '
+            'definition hash.',
+          );
+        }
+      }
+
       final activationRows = _tableRows(tables, 'analysis_rule_activations');
       for (var index = 0; index < activationRows.length; index++) {
+        canRepair = false;
         final row = activationRows[index];
         final ruleId = row['rule_id'];
         final ruleVersion = row['active_rule_version'];
@@ -2324,10 +2393,14 @@ final class LocalBackupManager {
         if (requireDefinitionReferences &&
             (definition == null ||
                 definition['validation_status'] != 'valid')) {
-          // A missing definition has no persisted provenance. Its ID and
-          // version alone cannot prove that the absent row was bundled rather
-          // than user-owned, so never recommend a repair that could replace
-          // custom rule state.
+          if (definition == null &&
+              bundledProvenanceMatches('$ruleId:$ruleVersion', null)) {
+            canRepair = true;
+          } else {
+            // A missing definition without exact bundled provenance cannot be
+            // distinguished from a user rule with a colliding identity.
+            canRepair = false;
+          }
           throw FormatException(
             'Backup schema $sourceSchema table "analysis_rule_activations" '
             'row $index references a missing rule definition.',
@@ -2340,6 +2413,7 @@ final class LocalBackupManager {
         'analysis_rule_configurations',
       );
       for (var index = 0; index < configurationRows.length; index++) {
+        canRepair = false;
         final row = configurationRows[index];
         final ruleId = row['rule_id'];
         final configuration = row['configuration'];
@@ -2359,14 +2433,22 @@ final class LocalBackupManager {
             '"analysis_rule_configurations" row $index contains invalid JSON.',
           );
         }
-        if (requireDefinitionReferences &&
-            !definitionsByKey.values.any(
-              (definition) =>
-                  definition['rule_id'] == ruleId &&
-                  definition['validation_status'] == 'valid',
-            )) {
-          // A configuration row also carries no rule provenance. The bundled
-          // installer cannot safely be recommended for an absent definition.
+        final hasValidDefinition = definitionsByKey.values.any(
+          (definition) =>
+              definition['rule_id'] == ruleId &&
+              definition['validation_status'] == 'valid',
+        );
+        final hasInvalidDefinition = definitionsByKey.values.any(
+          (definition) =>
+              definition['rule_id'] == ruleId &&
+              definition['validation_status'] != 'valid',
+        );
+        if (requireDefinitionReferences && !hasValidDefinition) {
+          if (!hasInvalidDefinition && ruleHasOnlyBundledProvenance(ruleId)) {
+            canRepair = true;
+          } else {
+            canRepair = false;
+          }
           throw FormatException(
             'Backup schema $sourceSchema table '
             '"analysis_rule_configurations" row $index references a missing '
@@ -2415,10 +2497,9 @@ final class LocalBackupManager {
         throw BackupAnalysisRuleValidationException(
           'Backup schema $sourceSchema table "analysis_findings" row $index '
           'references an unavailable or mismatched rule definition.',
-          // Repair restores installed definitions and activations. It cannot
-          // prove that an arbitrary historical finding hash belongs to the
-          // bundled definition, so never recommend repair for this case.
-          canRepair: false,
+          canRepair:
+              definition == null &&
+              bundledProvenanceMatches('$ruleId:$ruleVersion', definitionHash),
         );
       }
       final periodStart = row['period_start'];
@@ -3206,6 +3287,7 @@ final class LocalBackupManager {
       'analysis_rule_configurations',
       'analysis_rule_activations',
       'analysis_findings',
+      'analysis_rule_provenance',
       'analysis_rule_definitions',
       'recurring_pattern_decisions',
       'payment_sources',

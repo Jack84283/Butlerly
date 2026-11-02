@@ -150,6 +150,104 @@ void main() {
     );
   });
 
+  test(
+    'does not replace a missing custom rule with a colliding bundled rule',
+    () async {
+      final repository = SqliteAnalysisRuleRepository(
+        database.persistenceDatabase,
+      );
+      final bundled = await rootBundle.loadString(
+        'assets/analysis_rules/metrics/ANL-R010.yaml',
+      );
+      final custom = bundled.replaceFirst(
+        'descriptionKey: analysis.rule.r010.description',
+        'descriptionKey: custom.rule.r010.description',
+      );
+      final parsed = const RestrictedRuleParser().parse(custom);
+      final validation = const RuleDefinitionValidator().validate(
+        parsed.document!,
+      );
+      final customDefinition = validation.definition!;
+      await repository.install(
+        customDefinition,
+        sourceType: 'user',
+        canonicalDefinition: canonicalize(parsed.document!.values),
+      );
+      await repository.activate(
+        customDefinition.identity,
+        customDefinition.version,
+        true,
+        DateTime.utc(2026, 11, 1),
+      );
+      await database.database.insert('analysis_rule_configurations', {
+        'rule_id': customDefinition.identity.value,
+        'configuration': '{"custom":true}',
+        'updated_at': '2026-11-01T00:00:00.000Z',
+      });
+      await database.database.delete(
+        'analysis_rule_definitions',
+        where: 'rule_id = ? AND rule_version = ?',
+        whereArgs: [
+          customDefinition.identity.value,
+          customDefinition.version.value,
+        ],
+      );
+
+      await expectLater(
+        repository.transaction(
+          (transactionRepository) => InstallBuiltInRules(transactionRepository)(
+            {'metrics/ANL-R010.yaml': bundled},
+          ),
+        ),
+        throwsA(isA<StateError>()),
+      );
+      expect(
+        await database.database.query(
+          'analysis_rule_definitions',
+          where: 'rule_id = ? AND rule_version = ?',
+          whereArgs: [
+            customDefinition.identity.value,
+            customDefinition.version.value,
+          ],
+        ),
+        isEmpty,
+      );
+      expect(
+        (await database.database.query(
+          'analysis_rule_provenance',
+          where: 'rule_id = ? AND rule_version = ?',
+          whereArgs: [
+            customDefinition.identity.value,
+            customDefinition.version.value,
+          ],
+        )).single,
+        allOf(
+          containsPair('source_type', 'user'),
+          containsPair(
+            'definition_hash',
+            customDefinition.definitionHash.value,
+          ),
+        ),
+      );
+      expect(
+        await database.database.query(
+          'analysis_rule_activations',
+          where: 'rule_id = ?',
+          whereArgs: [customDefinition.identity.value],
+        ),
+        hasLength(1),
+      );
+      expect(
+        await database.database.query(
+          'analysis_rule_configurations',
+          where: 'rule_id = ?',
+          whereArgs: [customDefinition.identity.value],
+        ),
+        hasLength(1),
+      );
+    },
+  );
+
   test('transactional rule repair rolls back installer diagnostics', () async {
     final repository = SqliteAnalysisRuleRepository(
       database.persistenceDatabase,
