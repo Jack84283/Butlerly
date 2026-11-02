@@ -1703,6 +1703,11 @@ final class LocalBackupManager {
         '${unknown.join(', ')}.',
       );
     }
+    if (sourceSchema <= 16 && tables.containsKey('analysis_rule_provenance')) {
+      throw FormatException(
+        'Backup schema $sourceSchema cannot contain analysis-rule provenance.',
+      );
+    }
 
     for (final table in backupTableNames) {
       if (!tables.containsKey(table)) continue;

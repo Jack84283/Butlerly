@@ -276,15 +276,17 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       services.isRegistered<AppLogger>() ? services<AppLogger>() : AppLogger();
 
   Future<void> _restore() async {
-    final selected = widget.selectRestoreFile != null
-        ? await widget.selectRestoreFile!()
-        : await openFile(acceptedTypeGroups: const [_backupType]);
-    if (selected == null) return;
-
-    final file = selected.path;
-    final manager = services<WorkspaceDataService>();
+    var stage = 'restore file selection';
     String? password;
     try {
+      final selected = widget.selectRestoreFile != null
+          ? await widget.selectRestoreFile!()
+          : await openFile(acceptedTypeGroups: const [_backupType]);
+      if (selected == null) return;
+
+      final file = selected.path;
+      final manager = services<WorkspaceDataService>();
+      stage = 'backup encryption detection';
       if (!await manager.isEncryptedBackup(file)) {
         if (mounted) {
           _message(context.l10n.backupText('encryptedBackupRequired'));
@@ -292,18 +294,23 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         return;
       }
       if (!mounted) return;
+      stage = 'restore password entry';
       password = await _requestRestorePassword();
       if (password == null || !mounted) return;
 
       setState(() => _busy = true);
+      stage = 'archive inspection';
       final inspection = await manager.inspect(file, password: password);
       if (!mounted) return;
       setState(() => _busy = false);
+      stage = 'restore mode selection';
       final mode = await _chooseRestoreMode(inspection);
       if (mode == null) return;
+      stage = 'replace confirmation';
       if (mode == LocalRestoreMode.replace && !await _confirmReplace()) return;
       if (!mounted) return;
       setState(() => _busy = true);
+      stage = 'restore activation';
       final result = await manager.restore(
         file,
         mode: mode,
@@ -333,7 +340,12 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     } on RestoreRecoveryRequiredException {
       // RestoreRecoveryState immediately replaces normal navigation with the
       // recovery-only surface. Do not add a competing generic snackbar here.
-    } catch (_) {
+    } catch (error, stackTrace) {
+      _backupLogger.severe(
+        'Restore failed at stage: $stage',
+        error,
+        stackTrace,
+      );
       if (mounted) _message(context.l10n.backupText('restoreFailed'));
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -583,8 +595,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
                 child: Text(context.l10n.text('cancel')),
               ),
               TextButton(
-                onPressed: () =>
-                    Navigator.pop(context, LocalRestoreMode.merge),
+                onPressed: () => Navigator.pop(context, LocalRestoreMode.merge),
                 child: Text(context.l10n.backupText('merge')),
               ),
               TextButton(

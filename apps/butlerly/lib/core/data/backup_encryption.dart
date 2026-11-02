@@ -105,33 +105,38 @@ final class BackupEncryption {
     final temporary = File(
       '${destination.path}.encrypting-${DateTime.now().microsecondsSinceEpoch}',
     );
-    final output = temporary.openWrite();
+    var published = false;
     try {
-      output.add(magic);
-      output.add(_encodeInt64(headerBytes.length));
-      output.add(headerBytes);
+      final output = temporary.openWrite();
+      try {
+        output.add(magic);
+        output.add(_encodeInt64(headerBytes.length));
+        output.add(headerBytes);
 
-      late Mac mac;
-      final encrypted = _cipher.encryptStream(
-        source.openRead(),
-        secretKey: secretKey,
-        nonce: nonce,
-        aad: headerBytes,
-        onMac: (value) => mac = value,
-      );
-      await output.addStream(encrypted);
-      output.add(mac.bytes);
-      await output.flush();
-    } finally {
-      await output.close();
-    }
+        late Mac mac;
+        final encrypted = _cipher.encryptStream(
+          source.openRead(),
+          secretKey: secretKey,
+          nonce: nonce,
+          aad: headerBytes,
+          onMac: (value) => mac = value,
+        );
+        await output.addStream(encrypted);
+        output.add(mac.bytes);
+        await output.flush();
+      } finally {
+        await output.close();
+      }
 
-    try {
       if (await destination.exists()) await destination.delete();
       await temporary.rename(destination.path);
-    } catch (_) {
-      if (await temporary.exists()) await temporary.delete();
-      rethrow;
+      published = true;
+    } finally {
+      if (!published) {
+        try {
+          if (await temporary.exists()) await temporary.delete();
+        } catch (_) {}
+      }
     }
     return destination;
   }

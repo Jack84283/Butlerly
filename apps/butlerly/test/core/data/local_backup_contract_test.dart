@@ -151,6 +151,7 @@ void main() {
         final tables = (metadata['tables']! as Map).cast<String, Object?>();
         tables.remove('analysis_rule_definitions');
         tables.remove('analysis_findings');
+        tables.remove('analysis_rule_provenance');
       });
       await fixture.database.database.insert(
         'analysis_rule_definitions',
@@ -165,6 +166,56 @@ void main() {
         orderBy: 'rule_id',
       );
       expect(rows, isEmpty);
+    },
+  );
+
+  test(
+    'historical schemas reject provenance before replacing local data',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.insertTransaction('tx-historical-provenance');
+      final backup = File(
+        path.join(fixture.root.path, 'historical-provenance.butlerlybackup'),
+      );
+      await fixture.manager.createBackup(backup);
+      await _rewriteBackupMetadata(backup, (metadata) {
+        final manifest = (metadata['manifest']! as Map).cast<String, Object?>();
+        manifest['schemaVersion'] = 15;
+        final tables = (metadata['tables']! as Map).cast<String, Object?>();
+        tables.remove('analysis_rule_definitions');
+        tables.remove('analysis_findings');
+        tables['analysis_rule_provenance'] = [
+          <String, Object?>{
+            'rule_id': 'ANL-FORGED-394',
+            'rule_version': '1.0.0',
+            'source_type': 'bundled',
+            'definition_hash': 'not-a-sha256',
+            'recorded_at': '2026-11-03T12:00:00.000Z',
+          },
+        ];
+      });
+
+      await expectLater(
+        fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
+        throwsA(isA<FormatException>()),
+      );
+      expect(
+        await fixture.database.database.query(
+          'transactions',
+          where: 'id = ?',
+          whereArgs: ['tx-historical-provenance'],
+        ),
+        hasLength(1),
+      );
+      expect(
+        await fixture.database.database.query(
+          'analysis_rule_provenance',
+          where: 'rule_id = ?',
+          whereArgs: ['ANL-FORGED-394'],
+        ),
+        isEmpty,
+      );
     },
   );
 
@@ -2655,6 +2706,7 @@ Future<void> _downgradeBackupToV11(File backup) async {
   final tables = (metadata['tables']! as Map).cast<String, Object?>();
   manifest['schemaVersion'] = 11;
   tables.remove('recurring_pattern_decisions');
+  tables.remove('analysis_rule_provenance');
   final encoded = utf8.encode(jsonEncode(metadata));
   await backup.writeAsBytes([
     ...magic,
@@ -2679,6 +2731,7 @@ Future<void> _downgradeBackupToV12(File backup) async {
   final manifest = (metadata['manifest']! as Map).cast<String, Object?>();
   final tables = (metadata['tables']! as Map).cast<String, Object?>();
   manifest['schemaVersion'] = 12;
+  tables.remove('analysis_rule_provenance');
   final groups = (tables['duplicate_candidate_groups'] as List?) ?? const [];
   for (final value in groups) {
     if (value is Map) value.remove('statement_rows');
@@ -2707,6 +2760,7 @@ Future<void> _downgradeBackupToV13(File backup) async {
   final manifest = (metadata['manifest']! as Map).cast<String, Object?>();
   final tables = (metadata['tables']! as Map).cast<String, Object?>();
   manifest['schemaVersion'] = 13;
+  tables.remove('analysis_rule_provenance');
   for (final table in [
     'category_translations',
     'tag_translations',

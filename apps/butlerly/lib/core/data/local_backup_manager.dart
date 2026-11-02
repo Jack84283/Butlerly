@@ -379,13 +379,24 @@ final class LocalBackupManager {
   Future<bool> isEncryptedBackup(File file) => _encryption.isEncrypted(file);
 
   Future<engine.BackupInspection> inspect(File file, {String? password}) async {
-    final readable = await _openReadableBackup(file, password: password);
+    var stage = 'archive decryption';
     try {
-      await _assertSupportedBackupSchema(readable.file);
-      final base = await _engine.inspect(readable.file);
-      return base;
-    } finally {
-      await readable.dispose();
+      final readable = await _openReadableBackup(file, password: password);
+      try {
+        stage = 'archive schema validation';
+        await _assertSupportedBackupSchema(readable.file);
+        stage = 'archive inspection';
+        return await _engine.inspect(readable.file);
+      } finally {
+        await readable.dispose();
+      }
+    } catch (error, stackTrace) {
+      _logger.severe(
+        'Backup inspection failed at stage: $stage',
+        error,
+        stackTrace,
+      );
+      rethrow;
     }
   }
 
@@ -467,29 +478,39 @@ final class LocalBackupManager {
     String? password,
     Future<void> Function()? postActivationRefresh,
   }) => _runConsistently(() async {
-    if (recoveryState.isRecoveryRequired) {
-      throw const RestoreRecoveryRequiredException();
-    }
-
-    return EvidenceMutationLock.runExclusive(() async {
-      final readable = await _openReadableBackup(file, password: password);
-      try {
-        return await _restoreReadableBackup(
-          readable.file,
-          mode: mode,
-          postActivationRefresh: postActivationRefresh,
-        );
-      } finally {
-        await readable.dispose();
+    var stage = 'restore recovery initialization';
+    try {
+      if (recoveryState.isRecoveryRequired) {
+        throw const RestoreRecoveryRequiredException();
       }
-    });
+
+      return await EvidenceMutationLock.runExclusive(() async {
+        stage = 'archive decryption';
+        final readable = await _openReadableBackup(file, password: password);
+        try {
+          return await _restoreReadableBackup(
+            readable.file,
+            mode: mode,
+            postActivationRefresh: postActivationRefresh,
+            onStage: (value) => stage = value,
+          );
+        } finally {
+          await readable.dispose();
+        }
+      });
+    } catch (error, stackTrace) {
+      _logger.severe('Restore failed at stage: $stage', error, stackTrace);
+      rethrow;
+    }
   });
 
   Future<engine.LocalRestoreResult> _restoreReadableBackup(
     File file, {
     required engine.LocalRestoreMode mode,
     Future<void> Function()? postActivationRefresh,
+    void Function(String stage)? onStage,
   }) async {
+    onStage?.call('restore recovery initialization');
     await recoverInterruptedLocalRestore(
       database,
       localDataManager,
@@ -498,9 +519,11 @@ final class LocalBackupManager {
     if (recoveryState.isRecoveryRequired) {
       throw const RestoreRecoveryRequiredException();
     }
+    onStage?.call('archive schema validation');
     await _assertSupportedBackupSchema(file);
 
     final operationId = 'restore-${DateTime.now().microsecondsSinceEpoch}';
+    onStage?.call('staging workspace creation');
     final staging = await _createStagingWorkspace();
     File? safetyBackup;
     var liveActivated = false;
@@ -509,11 +532,19 @@ final class LocalBackupManager {
         staging.database,
         staging.dataManager,
       );
+      onStage?.call('staged database restore');
       await stagedEngine.restore(file, mode: mode);
+      onStage?.call('staged database validation');
       await _validateDatabase(staging.database.database);
 
-      safetyBackup = await _createPreRestoreSafetyBackup(mode);
+      onStage?.call('pre-restore safety backup');
+      safetyBackup = await _createPreRestoreSafetyBackup(
+        mode,
+        onStage: (backupStage) =>
+            onStage?.call('pre-restore safety backup: $backupStage'),
+      );
 
+      onStage?.call('live activation');
       final liveResult = await _restoreLivePackage(
         file,
         mode: mode,
@@ -521,6 +552,7 @@ final class LocalBackupManager {
         safetyBackup: safetyBackup,
       );
       liveActivated = true;
+      onStage?.call('post-activation validation and refresh');
       await _validateDatabase(database.database);
       await _validateLiveEvidenceReferences();
       if (postActivationRefresh != null) {
@@ -924,8 +956,9 @@ final class LocalBackupManager {
   }
 
   Future<File> _createPreRestoreSafetyBackup(
-    engine.LocalRestoreMode mode,
-  ) async {
+    engine.LocalRestoreMode mode, {
+    void Function(String stage)? onStage,
+  }) async {
     final directory = await localDataManager.safetyBackupDirectory();
     final timestamp = DateTime.now().toUtc().toIso8601String().replaceAll(
       ':',
@@ -936,6 +969,7 @@ final class LocalBackupManager {
         : 'Before Restore';
     return _createBackupUnlocked(
       File(path.join(directory.path, '$label $timestamp.butlerlybackup')),
+      onStage: onStage,
     );
   }
 

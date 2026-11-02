@@ -1,4 +1,5 @@
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
@@ -37,25 +38,37 @@ class _PortableBackupRecoveryRequiredPageState
   bool _failed = false;
 
   Future<void> _selectLocation() async {
-    final selectedPath = widget.selectLocation != null
-        ? (await widget.selectLocation!.call())?.path
-        : (await getSaveLocation(
-            suggestedName:
-                'Butlerly Recovery.${PortableBackupPolicy.extension}',
-            acceptedTypeGroups: const [_backupType],
-          ))?.path;
-    if (selectedPath == null || !mounted) return;
-
-    setState(() {
-      _busy = true;
-      _failed = false;
-    });
+    var stage = 'recovery destination selection';
     try {
+      final selectedPath = widget.selectLocation != null
+          ? (await widget.selectLocation!.call())?.path
+          : (await getSaveLocation(
+              suggestedName:
+                  'Butlerly Recovery.${PortableBackupPolicy.extension}',
+              acceptedTypeGroups: const [_backupType],
+            ))?.path;
+      if (selectedPath == null || !mounted) return;
+
+      setState(() {
+        _busy = true;
+        _failed = false;
+      });
+      stage = 'portable backup publication recovery';
       await services<WorkspaceDataService>().recoverPortableBackupPublication(
         selectedPath,
       );
-    } catch (_) {
-      if (mounted) setState(() => _failed = true);
+    } catch (error, stackTrace) {
+      final logger = services.isRegistered<AppLogger>()
+          ? services<AppLogger>()
+          : AppLogger();
+      logger.severe(
+        'Backup recovery failed at stage: $stage',
+        error,
+        stackTrace,
+      );
+      if (mounted) {
+        setState(() => _failed = true);
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }

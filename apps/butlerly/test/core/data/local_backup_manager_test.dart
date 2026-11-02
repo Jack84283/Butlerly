@@ -876,6 +876,10 @@ Future<void> _downgradeBackupToV9(File backup) async {
   final manifest = (metadata['manifest']! as Map).cast<String, Object?>();
   final tables = (metadata['tables']! as Map).cast<String, Object?>();
   manifest['schemaVersion'] = 9;
+  // Rule provenance was introduced by schema 17. Keep this fixture faithful
+  // to the historical schema instead of relying on the current archive's
+  // optional tables.
+  tables.remove('analysis_rule_provenance');
 
   final settlements = (tables['payment_settlements']! as List)
       .cast<Map>()
@@ -994,6 +998,10 @@ Future<void> _downgradeBackupToV8(File backup) async {
   final manifest = (metadata['manifest']! as Map).cast<String, Object?>();
   final tables = (metadata['tables']! as Map).cast<String, Object?>();
   manifest['schemaVersion'] = 8;
+  // Rule provenance was introduced by schema 17. Keep this fixture faithful
+  // to the historical schema instead of relying on the current archive's
+  // optional tables.
+  tables.remove('analysis_rule_provenance');
   tables.remove('payment_settlements');
   tables.remove('reference_data');
   tables.remove('reference_data_translations');

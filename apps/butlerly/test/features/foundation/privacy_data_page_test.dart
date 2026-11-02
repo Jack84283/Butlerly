@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:butlerly/core/di/service_locator.dart';
-import 'package:butlerly/features/foundation/presentation/privacy_data_page.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/features/foundation/presentation/privacy_data_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:file_selector/file_selector.dart';
@@ -374,6 +374,21 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
   });
 
+  testWidgets('restore reports restore-file selection failures', (
+    tester,
+  ) async {
+    addTearDown(() => services.reset());
+    await tester.pumpWidget(
+      app(selectRestoreFile: () async => throw StateError('fixture')),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Restore backup'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Backup could not be restored.'), findsOneWidget);
+  });
+
   testWidgets('desktop backup reports destination storage failures', (
     tester,
   ) async {
@@ -521,55 +536,59 @@ void main() {
     expect(find.text('Analysis rules repaired successfully.'), findsOneWidget);
   });
 
-  testWidgets('restore preview offers Merge and routes selection without Replace confirmation', (
-    tester,
-  ) async {
-    final gateway = _ShareGateway(Directory.systemTemp);
-    await services.reset();
-    addTearDown(() async => services.reset());
-    services.registerSingleton<WorkspaceDataService>(
-      WorkspaceDataService(gateway, refreshSystemData: () async {}),
-    );
+  testWidgets(
+    'restore preview offers Merge and routes selection without Replace confirmation',
+    (tester) async {
+      final gateway = _ShareGateway(Directory.systemTemp);
+      await services.reset();
+      addTearDown(() async => services.reset());
+      services.registerSingleton<WorkspaceDataService>(
+        WorkspaceDataService(gateway, refreshSystemData: () async {}),
+      );
 
-    await tester.pumpWidget(
-      app(selectRestoreFile: () async => XFile('/unused/backup.butlerly')),
-    );
-    await tester.pumpAndSettle();
-    await _openRestorePreview(tester);
+      await tester.pumpWidget(
+        app(selectRestoreFile: () async => XFile('/unused/backup.butlerly')),
+      );
+      await tester.pumpAndSettle();
+      await _openRestorePreview(tester);
 
-    expect(find.text('Merge'), findsOneWidget);
-    expect(find.text('Replace'), findsOneWidget);
-    await tester.tap(find.text('Merge'));
-    await tester.pumpAndSettle();
+      expect(find.text('Merge'), findsOneWidget);
+      expect(find.text('Replace'), findsOneWidget);
+      await tester.tap(find.text('Merge'));
+      await tester.pumpAndSettle();
 
-    expect(gateway.selectedRestoreMode, LocalRestoreMode.merge);
-    expect(find.text('Replace current Butlerly data?'), findsNothing);
-  });
+      expect(gateway.selectedRestoreMode, LocalRestoreMode.merge);
+      expect(find.text('Replace current Butlerly data?'), findsNothing);
+    },
+  );
 
-  testWidgets('Replace requires separate confirmation before invoking restore', (
-    tester,
-  ) async {
-    final gateway = _ShareGateway(Directory.systemTemp);
-    await services.reset();
-    addTearDown(() async => services.reset());
-    services.registerSingleton<WorkspaceDataService>(
-      WorkspaceDataService(gateway, refreshSystemData: () async {}),
-    );
+  testWidgets(
+    'Replace requires separate confirmation before invoking restore',
+    (tester) async {
+      final gateway = _ShareGateway(Directory.systemTemp);
+      await services.reset();
+      addTearDown(() async => services.reset());
+      services.registerSingleton<WorkspaceDataService>(
+        WorkspaceDataService(gateway, refreshSystemData: () async {}),
+      );
 
-    await tester.pumpWidget(
-      app(selectRestoreFile: () async => XFile('/unused/backup.butlerly')),
-    );
-    await tester.pumpAndSettle();
-    await _openRestorePreview(tester);
-    await tester.tap(find.text('Replace'));
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        app(selectRestoreFile: () async => XFile('/unused/backup.butlerly')),
+      );
+      await tester.pumpAndSettle();
+      await _openRestorePreview(tester);
+      await tester.tap(find.text('Replace'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Replace current Butlerly data?'), findsOneWidget);
-    expect(gateway.selectedRestoreMode, isNull);
-    await tester.tap(find.widgetWithText(ButlerlyDestructiveButton, 'Replace'));
-    await tester.pumpAndSettle();
-    expect(gateway.selectedRestoreMode, LocalRestoreMode.replace);
-  });
+      expect(find.text('Replace current Butlerly data?'), findsOneWidget);
+      expect(gateway.selectedRestoreMode, isNull);
+      await tester.tap(
+        find.widgetWithText(ButlerlyDestructiveButton, 'Replace'),
+      );
+      await tester.pumpAndSettle();
+      expect(gateway.selectedRestoreMode, LocalRestoreMode.replace);
+    },
+  );
 
   testWidgets('restore preview formats its creation date for each locale', (
     tester,
@@ -594,7 +613,10 @@ void main() {
 Future<void> _openRestorePreview(WidgetTester tester) async {
   await tester.tap(find.text('Restore backup'));
   await tester.pumpAndSettle();
-  await tester.enterText(find.byType(TextField).last, 'correct horse battery staple');
+  await tester.enterText(
+    find.byType(TextField).last,
+    'correct horse battery staple',
+  );
   await tester.tap(find.text('Unlock'));
   await tester.pumpAndSettle();
 }

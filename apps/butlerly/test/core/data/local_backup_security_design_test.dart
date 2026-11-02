@@ -195,6 +195,32 @@ void main() {
     },
   );
 
+  test('encryption failure cleans its temporary encrypted artifact', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final source = File(path.join(fixture.root.path, 'missing-source'));
+    final destination = File(
+      path.join(fixture.root.path, 'encrypted.butlerlybackup'),
+    );
+
+    await expectLater(
+      const BackupEncryption().encrypt(
+        source,
+        destination,
+        password: 'correct horse battery staple',
+      ),
+      throwsA(isA<FileSystemException>()),
+    );
+    expect(
+      await _namesStarting(
+        fixture.root,
+        'encrypted.butlerlybackup.encrypting-',
+      ),
+      isEmpty,
+    );
+    expect(await destination.exists(), isFalse);
+  });
+
   test(
     'portable backup publication recovery marks state before rethrowing',
     () async {

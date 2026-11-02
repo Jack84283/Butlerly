@@ -71,6 +71,25 @@ void main() {
     await tester.pumpAndSettle();
     expect(gateway.recoveries, 2);
   });
+
+  testWidgets('shows recovery failure when location selection throws', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      app(selectLocation: () async => throw StateError('picker fixture')),
+    );
+
+    await tester.tap(find.text('Select backup location'));
+    await tester.pumpAndSettle();
+
+    expect(gateway.recoveries, 0);
+    expect(
+      find.text(
+        'Recovery could not be completed. The destination and recovery artifacts still require verification.',
+      ),
+      findsOneWidget,
+    );
+  });
 }
 
 final class _RecoveryGateway implements LocalDataGateway {

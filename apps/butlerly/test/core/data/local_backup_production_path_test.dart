@@ -990,6 +990,96 @@ void main() {
     expect(diagnosticLogger.exceptionType, 'StateError');
     expect(await destination.exists(), isFalse);
   });
+
+  test('reports generic inspection failures accurately', () async {
+    final archive = File(
+      path.join(temporaryDirectory.path, 'invalid-inspection.butlerlybackup'),
+    )..writeAsStringSync('not a Butlerly backup');
+    final diagnosticLogger = _RecordingLogger();
+    final diagnosticManager = LocalBackupManager(
+      database,
+      services<LocalDataManager>(),
+      logger: diagnosticLogger,
+    );
+
+    await expectLater(
+      diagnosticManager.inspect(archive),
+      throwsA(isA<FormatException>()),
+    );
+    expect(
+      diagnosticLogger.stage,
+      'Backup inspection failed at stage: archive inspection',
+    );
+    expect(diagnosticLogger.exceptionType, 'FormatException');
+  });
+
+  test('reports missing live evidence during restore safety backup', () async {
+    const provenanceId =
+        'backup-production-restore-missing-evidence-provenance';
+    const localFileName = 'receipts/restore-missing-evidence.txt';
+    final capturedAt = DateTime.utc(2026, 11, 3, 12);
+    final evidenceFile = File(path.join(evidenceDirectory.path, localFileName))
+      ..createSync(recursive: true);
+    await evidenceFile.writeAsString('restore evidence fixture', flush: true);
+    await database.database.insert('provenances', {
+      'id': provenanceId,
+      'source_type': 'userEntry',
+      'captured_at': capturedAt.toIso8601String(),
+      'source_id': null,
+      'original_representation': null,
+      'source_language': null,
+    });
+    await database.database.insert('evidence_items', {
+      'id': 'backup-production-restore-missing-evidence',
+      'type': 'receiptImage',
+      'original_name': 'restore-missing-evidence.txt',
+      'media_type': 'text/plain',
+      'provenance_id': provenanceId,
+      'created_at': capturedAt.toIso8601String(),
+      'source_language': null,
+      'local_file_name': localFileName,
+    });
+
+    final archive = File(
+      path.join(
+        temporaryDirectory.path,
+        'restore-missing-evidence.butlerlybackup',
+      ),
+    );
+    final sourceRows = await database.database.query('evidence_items');
+    final sourceManager = LocalBackupManager(
+      database,
+      services<LocalDataManager>(),
+    );
+    await sourceManager.createPortableBackup(
+      archive,
+      password: 'correct horse battery staple',
+    );
+    await evidenceFile.delete();
+
+    final diagnosticLogger = _RecordingLogger();
+    final restoreManager = LocalBackupManager(
+      database,
+      services<LocalDataManager>(),
+      logger: diagnosticLogger,
+    );
+    await expectLater(
+      restoreManager.restore(
+        archive,
+        mode: LocalRestoreMode.replace,
+        password: 'correct horse battery staple',
+        postActivationRefresh: () async {},
+      ),
+      throwsA(isA<StateError>()),
+    );
+    expect(
+      diagnosticLogger.stage,
+      'Restore failed at stage: pre-restore safety backup: evidence collection',
+    );
+    expect(diagnosticLogger.exceptionType, 'StateError');
+    expect(await database.database.query('evidence_items'), sourceRows);
+    expect(await evidenceFile.exists(), isFalse);
+  });
 }
 
 final class _RecordingLogger extends AppLogger {
