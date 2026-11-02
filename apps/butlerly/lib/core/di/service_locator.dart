@@ -72,14 +72,6 @@ void configureDependencies({
         localDataManager,
       ),
       consistencyGate: consistencyGate,
-      ensureAnalysisRules: () async {
-        final finance = services<FinanceServices>();
-        final ensure = finance.ensureAnalysisRules;
-        if (ensure == null) {
-          throw StateError('Bundled analysis rule recovery is unavailable.');
-        }
-        await ensure();
-      },
       refreshSystemData: () async {
         await database.reseedSystemData();
         final finance = services<FinanceServices>();
