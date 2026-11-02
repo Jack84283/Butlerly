@@ -234,7 +234,8 @@ const _backupStrings = <String, Map<String, String>>{
     'unlockBackup': '解锁',
     'passwordOrIntegrityFailed': '密码不正确，或加密备份已损坏。',
     'encryptedBackupRequired': '只能恢复受支持的 Butlerly 备份文件。',
-    'legacyUnencryptedBackupWarning': '此旧版备份未加密。恢复前请确认文件来源可信。新版 Butlerly 备份均经过加密。',
+    'legacyUnencryptedBackupWarning':
+        '此旧版备份未加密。恢复前请确认文件来源可信。新版 Butlerly 备份均经过加密。',
     'recoveryRequiredTitle': 'Butlerly 需要恢复',
     'recoveryRequiredBody':
         'Butlerly 已暂停正常编辑，直到当前恢复状态通过验证。如果无法安全保留当前状态，可以使用恢复前的安全副本。',
