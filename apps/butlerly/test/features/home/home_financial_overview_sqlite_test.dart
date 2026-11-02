@@ -5,6 +5,7 @@ import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
+import 'package:butlerly_database/butlerly_database.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -127,6 +128,48 @@ void main() {
         whereArgs: ['ANL-R010', '1.1.0'],
       );
 
+      const customCategorySource = '''
+schemaVersion: "1.0.0"
+ruleId: ANL-R777
+ruleVersion: "1.0.0"
+enabled: true
+surface: spending
+type: metric
+nameKey: analysis.rule.test.category.name
+descriptionKey: analysis.rule.test.category.description
+period: selected_period
+grouping: category
+measure:
+  operation: sum
+  field: amount
+  currencyBasis: baseCurrency
+filters:
+  direction: income
+result:
+  persistence: materialized
+  refresh: onInvalidation
+''';
+      const parser = RestrictedRuleParser();
+      final parsed = parser.parse(customCategorySource);
+      expect(parsed.isValid, isTrue);
+      final customValidation = const RuleDefinitionValidator().validate(
+        parsed.document!,
+      );
+      expect(customValidation.diagnostics, isEmpty);
+      final customCategoryRule = customValidation.definition!;
+      final rules = SqliteAnalysisRuleRepository(database.persistenceDatabase);
+      await rules.install(
+        customCategoryRule,
+        sourceType: 'user',
+        canonicalDefinition: canonicalize(parsed.document!.values),
+      );
+      await rules.activate(
+        customCategoryRule.identity,
+        customCategoryRule.version,
+        true,
+        DateTime.utc(2026, 9, 16, 12),
+      );
+
       final created = await finance.createTransaction(
         CreateTransactionCommand(
           id: 'home-sqlite-partial-rule-category',
@@ -170,10 +213,20 @@ void main() {
         whereArgs: ['ANL-R020'],
       );
       expect(customizedActivation.single['enabled'], 0);
-      expect(overview.analysis?.categories, hasLength(1));
+      final customCategoryActivation = await database.database.query(
+        'analysis_rule_activations',
+        columns: ['enabled'],
+        where: 'rule_id = ?',
+        whereArgs: ['ANL-R777'],
+      );
+      expect(customCategoryActivation.single['enabled'], 1);
+      final analysis = overview.analysis;
+      expect(analysis, isNotNull);
+      expect(analysis!.categories, hasLength(1));
+      expect(analysis.categories.single.value, DecimalValue.parse('12.34'));
       expect(
-        overview.analysis?.categories.single.value,
-        DecimalValue.parse('12.34'),
+        analysis.categoryShares[analysis.categories.single.id],
+        DecimalValue.parse('1'),
       );
     },
   );

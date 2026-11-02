@@ -315,8 +315,13 @@ final class GetHomeOverview {
           (rule) => rule.type == AnalysisRuleType.metric && rule.role == role,
         ),
       );
+      // A user-created category rule must not make a damaged bundled-rule
+      // installation appear complete. ANL-R010 is the stable bundled rule
+      // identity for Home's Top Categories projection.
+      const bundledCategoryRuleId = 'ANL-R010';
       final categoryGroupingReady = active.any(
         (rule) =>
+            rule.identity.value == bundledCategoryRuleId &&
             rule.type == AnalysisRuleType.metric &&
             rule.surface == AnalysisSurface.spending &&
             rule.grouping == RuleGrouping.category,
