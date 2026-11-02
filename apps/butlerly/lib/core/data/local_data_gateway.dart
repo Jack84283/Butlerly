@@ -21,7 +21,11 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
     String destination, {
     required String password,
   }) async {
-    await backups.createPortableBackup(File(destination), password: password);
+    try {
+      await backups.createPortableBackup(File(destination), password: password);
+    } on BackupDestinationWriteException {
+      throw const BackupStorageException();
+    }
   }
 
   @override
@@ -40,6 +44,9 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
     try {
       await backups.createPortableBackup(file, password: password);
       return file.path;
+    } on BackupDestinationWriteException {
+      await discardTemporaryBackup(file.path);
+      throw const BackupStorageException();
     } catch (_) {
       await discardTemporaryBackup(file.path);
       rethrow;

@@ -23,10 +23,17 @@ import 'package:path/path.dart' as path;
 import 'package:share_plus/share_plus.dart' as share;
 
 class PrivacyDataPage extends ConsumerStatefulWidget {
-  const PrivacyDataPage({this.shareClient, super.key});
+  const PrivacyDataPage({
+    this.shareClient,
+    this.selectBackupLocation,
+    super.key,
+  });
 
   @visibleForTesting
   final share.SharePlus? shareClient;
+
+  @visibleForTesting
+  final Future<FileSaveLocation?> Function()? selectBackupLocation;
 
   @override
   ConsumerState<PrivacyDataPage> createState() => _PrivacyDataPageState();
@@ -72,10 +79,12 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
 
     FileSaveLocation? location;
     try {
-      location = await getSaveLocation(
-        suggestedName: fileName,
-        acceptedTypeGroups: const [_backupType],
-      );
+      location = widget.selectBackupLocation != null
+          ? await widget.selectBackupLocation!()
+          : await getSaveLocation(
+              suggestedName: fileName,
+              acceptedTypeGroups: const [_backupType],
+            );
     } catch (error, stackTrace) {
       _backupLogger.severe(
         'Backup failed at stage: destination selection',
@@ -83,7 +92,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         stackTrace,
       );
       if (mounted) {
-        _message(context.l10n.backupText('backupStorageFailed'));
+        _message(context.l10n.backupText('backupLocationSelectionFailed'));
       }
       return;
     }
@@ -114,6 +123,13 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       }
     } on BackupPasswordTooShortException {
       if (mounted) _message(context.l10n.backupText('backupPasswordTooShort'));
+    } on BackupStorageException catch (error, stackTrace) {
+      _backupLogger.severe(
+        'Backup failed at stage: destination storage',
+        error,
+        stackTrace,
+      );
+      if (mounted) _message(context.l10n.backupText('backupStorageFailed'));
     } catch (error, stackTrace) {
       _backupLogger.severe('Backup failed at stage: $stage', error, stackTrace);
       if (mounted) _message(context.l10n.backupText('backupFailed'));
@@ -178,6 +194,13 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       }
     } on BackupPasswordTooShortException {
       if (mounted) _message(context.l10n.backupText('backupPasswordTooShort'));
+    } on BackupStorageException catch (error, stackTrace) {
+      _backupLogger.severe(
+        'Mobile backup failed at stage: temporary storage',
+        error,
+        stackTrace,
+      );
+      if (mounted) _message(context.l10n.backupText('backupStorageFailed'));
     } catch (error, stackTrace) {
       _backupLogger.severe(
         'Mobile backup failed at stage: $stage',

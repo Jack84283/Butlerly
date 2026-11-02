@@ -4,6 +4,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/features/foundation/presentation/privacy_data_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -28,6 +29,7 @@ void main() {
 
   Widget app({
     share_plus.SharePlus? shareClient,
+    Future<FileSaveLocation?> Function()? selectBackupLocation,
     Locale locale = const Locale('en'),
   }) => ProviderScope(
     child: MaterialApp(
@@ -39,7 +41,10 @@ void main() {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      home: PrivacyDataPage(shareClient: shareClient),
+      home: PrivacyDataPage(
+        shareClient: shareClient,
+        selectBackupLocation: selectBackupLocation,
+      ),
     ),
   );
 
@@ -255,6 +260,72 @@ void main() {
     },
   );
 
+  testWidgets('desktop backup reports destination selection failures', (
+    tester,
+  ) async {
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+
+    await tester.pumpWidget(
+      app(selectBackupLocation: () async => throw StateError('fixture')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Back up Butlerly'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Backup location could not be selected.'), findsOneWidget);
+    expect(find.text('Backup could not be created.'), findsNothing);
+    expect(
+      find.text('Backup could not be saved to device storage.'),
+      findsNothing,
+    );
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets('desktop backup reports destination storage failures', (
+    tester,
+  ) async {
+    final root = Directory(
+      path.join(
+        Directory.systemTemp.path,
+        'butlerly-storage-failure-${DateTime.now().microsecondsSinceEpoch}',
+      ),
+    )..createSync(recursive: true);
+    addTearDown(() async {
+      await services.reset();
+      if (root.existsSync()) root.deleteSync(recursive: true);
+      debugDefaultTargetPlatformOverride = null;
+    });
+    final gateway = _ShareGateway(root)
+      ..createFailure = const BackupStorageException();
+    services.registerSingleton<WorkspaceDataService>(
+      WorkspaceDataService(gateway, refreshSystemData: () async {}),
+    );
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+
+    await tester.pumpWidget(
+      app(
+        selectBackupLocation: () async =>
+            FileSaveLocation(path.join(root.path, 'selected.butlerlybackup')),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _completeBackupPasswordFlow(tester);
+
+    debugDefaultTargetPlatformOverride = null;
+    expect(
+      find.text('Backup could not be saved to device storage.'),
+      findsOneWidget,
+    );
+    expect(find.text('Backup could not be created.'), findsNothing);
+    expect(
+      find.text(
+        'Backup could not be created because analysis rules failed validation. Choose Repair analysis rules and try again.',
+      ),
+      findsNothing,
+    );
+  });
+
   testWidgets('mobile backup recommends repair only for rule validation', (
     tester,
   ) async {
@@ -419,6 +490,14 @@ final class _ShareGateway implements LocalDataGateway {
   String? discardedPath;
   Object? createFailure;
   Object? discardFailure;
+
+  @override
+  Future<void> createPortableBackup(
+    String destination, {
+    required String password,
+  }) async {
+    if (createFailure != null) throw createFailure!;
+  }
 
   @override
   Future<String> createTemporaryBackup(

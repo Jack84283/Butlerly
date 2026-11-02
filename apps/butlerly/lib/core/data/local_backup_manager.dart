@@ -48,6 +48,7 @@ final class LocalBackupManager {
     AnalysisConsistencyGate? consistencyGate,
     Future<void> Function()? recoverStagedEvidenceDeletions,
     AppLogger? logger,
+    Map<String, String>? repairableBundledRuleVersions,
     @visibleForTesting
     Future<void> Function(Directory root)? afterStagingRootCreated,
   }) : recoveryState = recoveryState ?? RestoreRecoveryState(localDataManager),
@@ -55,7 +56,12 @@ final class LocalBackupManager {
            publicationRecoveryState ?? BackupPublicationRecoveryState(),
        _afterStagingRootCreated = afterStagingRootCreated,
        _consistencyGate = consistencyGate,
-       _engine = engine.LocalBackupManager(database, localDataManager),
+       _repairableBundledRuleVersions = repairableBundledRuleVersions,
+       _engine = engine.LocalBackupManager(
+         database,
+         localDataManager,
+         repairableBundledRuleVersions: repairableBundledRuleVersions,
+       ),
        _snapshotWriter = LocalBackupSnapshotWriter(localDataManager),
        _recoverStagedEvidenceDeletions = recoverStagedEvidenceDeletions,
        _logger = logger ?? AppLogger(),
@@ -79,6 +85,7 @@ final class LocalBackupManager {
   final Future<void> Function(Directory root)? _afterStagingRootCreated;
   final Future<void> Function()? _recoverStagedEvidenceDeletions;
   final AnalysisConsistencyGate? _consistencyGate;
+  final Map<String, String>? _repairableBundledRuleVersions;
   final AppLogger _logger;
   final BackupEncryption _encryption = const BackupEncryption();
 
@@ -147,12 +154,20 @@ final class LocalBackupManager {
       await _engine.inspect(verificationPlain);
 
       stage = 'temporary file publication';
-      await _destinationWriter.publish(
-        source: encryptedCandidate,
-        destination: destination,
-        privateDirectory: privateDirectory,
-        operationId: operationId.toString(),
-      );
+      try {
+        await _destinationWriter.publish(
+          source: encryptedCandidate,
+          destination: destination,
+          privateDirectory: privateDirectory,
+          operationId: operationId.toString(),
+        );
+      } on BackupPublicationRecoveryRequiredException {
+        rethrow;
+      } on BackupDestinationWriteException {
+        rethrow;
+      } catch (_) {
+        throw const BackupStorageException();
+      }
       return destination;
     } on BackupPublicationRecoveryRequiredException catch (error, stackTrace) {
       preservePublicationRecovery = true;
@@ -424,6 +439,7 @@ final class LocalBackupManager {
       final stagedEngine = engine.LocalBackupManager(
         staging.database,
         staging.dataManager,
+        repairableBundledRuleVersions: _repairableBundledRuleVersions,
       );
       await stagedEngine.restore(file, mode: mode);
       await _validateDatabase(staging.database.database);

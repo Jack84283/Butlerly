@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:butlerly/core/analysis/bundled_analysis_rules.dart';
 import 'package:butlerly/core/config/app_configuration.dart';
 import 'package:butlerly/core/data/backup_encryption.dart';
 import 'package:butlerly/core/data/local_backup_manager.dart';
@@ -300,6 +301,7 @@ void main() {
         database,
         services<LocalDataManager>(),
         logger: diagnosticLogger,
+        repairableBundledRuleVersions: bundledAnalysisRuleVersions,
       );
       final diagnosticDestination = File(
         path.join(temporaryDirectory.path, 'without-recovery.butlerlybackup'),
@@ -311,7 +313,7 @@ void main() {
         ),
         throwsA(
           predicate<BackupAnalysisRuleValidationException>(
-            (error) => !error.canRepair,
+            (error) => error.canRepair,
           ),
         ),
       );
@@ -398,6 +400,37 @@ void main() {
       );
 
       await workspace.repairAnalysisRules();
+
+      // The bundled installer restores missing definitions and activations,
+      // but it does not repair malformed user configuration. The backup UI
+      // must therefore keep the neutral failure message for this case.
+      await database.database.delete(
+        'analysis_rule_configurations',
+        where: 'rule_id = ?',
+        whereArgs: ['ANL-R010'],
+      );
+      await database.database.insert('analysis_rule_configurations', {
+        'rule_id': 'ANL-R010',
+        'configuration': '{invalid-json',
+        'updated_at': capturedAt.toIso8601String(),
+      });
+      BackupAnalysisRuleValidationException? configurationError;
+      try {
+        await workspace.createTemporaryBackup(
+          'invalid-bundled-configuration.butlerlybackup',
+          password: password,
+        );
+        fail('Malformed bundled configuration should fail backup validation.');
+      } on BackupAnalysisRuleValidationException catch (error) {
+        configurationError = error;
+      }
+      expect(configurationError, isNotNull);
+      expect(configurationError.canRepair, isFalse);
+      await database.database.delete(
+        'analysis_rule_configurations',
+        where: 'rule_id = ?',
+        whereArgs: ['ANL-R010'],
+      );
       final encryptedPath = await workspace.createTemporaryBackup(
         'production.butlerlybackup',
         password: password,

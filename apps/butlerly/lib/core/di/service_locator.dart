@@ -81,6 +81,7 @@ void configureDependencies({
         publicationRecoveryState: publicationRecoveryState,
         consistencyGate: consistencyGate,
         logger: logger,
+        repairableBundledRuleVersions: bundledAnalysisRuleVersions,
         recoverStagedEvidenceDeletions: () => services<LocalEvidenceStore>()
             .recoverStagedEvidenceDeletionsWhileLocked(),
       ),

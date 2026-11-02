@@ -52,6 +52,15 @@ final class BackupAnalysisRuleValidationException extends FormatException {
   String toString() => 'BackupAnalysisRuleValidationException: $message';
 }
 
+/// Raised when a validated backup cannot be published to device storage.
+///
+/// The adapter deliberately exposes no path or filesystem details so the
+/// presentation layer can report the correct category without leaking
+/// private storage information.
+final class BackupStorageException implements Exception {
+  const BackupStorageException();
+}
+
 /// Application orchestration shared by normal privacy controls and recovery.
 /// System-data refresh must complete inside the adapter's restore safety gate.
 /// UI invalidation must wait until restore commits and closes its recovery gate.

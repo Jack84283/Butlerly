@@ -96,7 +96,11 @@ final class _PreparedTombstoneEvidence {
 }
 
 final class LocalBackupManager {
-  const LocalBackupManager(this.database, this.localDataManager);
+  const LocalBackupManager(
+    this.database,
+    this.localDataManager, {
+    this.repairableBundledRuleVersions,
+  });
 
   static const _builtInTagIds = <String>{
     'tag.business',
@@ -110,6 +114,7 @@ final class LocalBackupManager {
 
   final LocalDatabase database;
   final LocalDataManager localDataManager;
+  final Map<String, String>? repairableBundledRuleVersions;
 
   static const format = BackupContainerFormat.name;
   static const formatVersion = BackupContainerFormat.version;
@@ -2247,7 +2252,6 @@ final class LocalBackupManager {
     try {
       for (var index = 0; index < definitionRows.length; index++) {
         final row = definitionRows[index];
-        canRepair = row['source_type'] == 'bundled';
         final ruleId = row['rule_id'];
         final ruleVersion = row['rule_version'];
         if (ruleId is! String ||
@@ -2311,7 +2315,6 @@ final class LocalBackupManager {
         final ruleVersion = row['active_rule_version'];
         final enabled = row['enabled'];
         final definition = definitionsByKey['$ruleId:$ruleVersion'];
-        canRepair = definition?['source_type'] == 'bundled';
         if (ruleId is! String ||
             ruleId.isEmpty ||
             ruleVersion is! String ||
@@ -2326,6 +2329,9 @@ final class LocalBackupManager {
         if (requireDefinitionReferences &&
             (definition == null ||
                 definition['validation_status'] != 'valid')) {
+          canRepair =
+              definition == null &&
+              _isRepairableBundledRule(ruleId, ruleVersion);
           throw FormatException(
             'Backup schema $sourceSchema table "analysis_rule_activations" '
             'row $index references a missing rule definition.',
@@ -2341,28 +2347,11 @@ final class LocalBackupManager {
         final row = configurationRows[index];
         final ruleId = row['rule_id'];
         final configuration = row['configuration'];
-        canRepair = definitionsByKey.values.any(
-          (definition) =>
-              definition['rule_id'] == ruleId &&
-              definition['source_type'] == 'bundled',
-        );
         if (ruleId is! String || ruleId.isEmpty || configuration is! String) {
           throw FormatException(
             'Backup schema $sourceSchema table '
             '"analysis_rule_configurations" row $index contains an invalid '
             'configuration.',
-          );
-        }
-        if (requireDefinitionReferences &&
-            !definitionsByKey.values.any(
-              (definition) =>
-                  definition['rule_id'] == ruleId &&
-                  definition['validation_status'] == 'valid',
-            )) {
-          throw FormatException(
-            'Backup schema $sourceSchema table '
-            '"analysis_rule_configurations" row $index references a missing '
-            'rule definition.',
           );
         }
         try {
@@ -2372,6 +2361,22 @@ final class LocalBackupManager {
           throw FormatException(
             'Backup schema $sourceSchema table '
             '"analysis_rule_configurations" row $index contains invalid JSON.',
+          );
+        }
+        if (requireDefinitionReferences &&
+            !definitionsByKey.values.any(
+              (definition) =>
+                  definition['rule_id'] == ruleId &&
+                  definition['validation_status'] == 'valid',
+            )) {
+          final hasDefinitionRow = definitionsByKey.values.any(
+            (definition) => definition['rule_id'] == ruleId,
+          );
+          canRepair = !hasDefinitionRow && _isRepairableBundledRuleId(ruleId);
+          throw FormatException(
+            'Backup schema $sourceSchema table '
+            '"analysis_rule_configurations" row $index references a missing '
+            'rule definition.',
           );
         }
       }
@@ -2416,7 +2421,10 @@ final class LocalBackupManager {
         throw BackupAnalysisRuleValidationException(
           'Backup schema $sourceSchema table "analysis_findings" row $index '
           'references an unavailable or mismatched rule definition.',
-          canRepair: definition?['source_type'] == 'bundled',
+          // Repair restores installed definitions and activations. It cannot
+          // prove that an arbitrary historical finding hash belongs to the
+          // bundled definition, so never recommend repair for this case.
+          canRepair: false,
         );
       }
       final periodStart = row['period_start'];
@@ -2461,6 +2469,14 @@ final class LocalBackupManager {
         attachmentPairs: attachmentPairs,
       );
     }
+  }
+
+  bool _isRepairableBundledRule(String ruleId, String ruleVersion) =>
+      repairableBundledRuleVersions?[ruleId] == ruleVersion;
+
+  bool _isRepairableBundledRuleId(String ruleId) {
+    final version = repairableBundledRuleVersions?[ruleId];
+    return version != null && _isRepairableBundledRule(ruleId, version);
   }
 
   Map<String, Object?> _decodeRuleDefinition(
