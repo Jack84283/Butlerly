@@ -310,12 +310,18 @@ final class GetHomeOverview {
         AnalysisSemanticRole.netCashFlow,
         AnalysisSemanticRole.eligibleTransactionCount,
       ];
-      final homeRulesReady = requiredRoles.every(
+      final summaryRulesReady = requiredRoles.every(
         (role) => active.any(
           (rule) => rule.type == AnalysisRuleType.metric && rule.role == role,
         ),
       );
-      if (!homeRulesReady) await ensure();
+      final categoryGroupingReady = active.any(
+        (rule) =>
+            rule.type == AnalysisRuleType.metric &&
+            rule.surface == AnalysisSurface.spending &&
+            rule.grouping == RuleGrouping.category,
+      );
+      if (!summaryRulesReady || !categoryGroupingReady) await ensure();
     } on Object {
       // Let the normal analysis application result carry the failure. Home
       // must remain usable for transactions/review and must not synthesize
