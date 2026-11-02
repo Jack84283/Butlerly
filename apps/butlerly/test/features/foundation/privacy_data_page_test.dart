@@ -162,6 +162,74 @@ void main() {
     expect(File(gateway.discardedPath!).existsSync(), isFalse);
   });
 
+  testWidgets(
+    'mobile backup does not report failure when share outcome is unavailable',
+    (tester) async {
+      final root = Directory(
+        path.join(
+          Directory.systemTemp.path,
+          'butlerly-share-unavailable-${DateTime.now().microsecondsSinceEpoch}',
+        ),
+      )..createSync(recursive: true);
+      addTearDown(() async {
+        await services.reset();
+        if (root.existsSync()) root.deleteSync(recursive: true);
+        debugDefaultTargetPlatformOverride = null;
+      });
+      final gateway = _ShareGateway(root);
+      final platform = _SharePlatform(
+        status: share_plus.ShareResultStatus.unavailable,
+      );
+      services.registerSingleton<WorkspaceDataService>(
+        WorkspaceDataService(gateway, refreshSystemData: () async {}),
+      );
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+
+      await tester.pumpWidget(
+        app(shareClient: share_plus.SharePlus.custom(platform)),
+      );
+      await tester.pumpAndSettle();
+      await _completeBackupPasswordFlow(tester);
+
+      debugDefaultTargetPlatformOverride = null;
+      expect(
+        find.text('Encrypted backup created successfully.'),
+        findsOneWidget,
+      );
+      expect(find.text('Backup could not be created.'), findsNothing);
+      expect(gateway.discardedPath, isNotNull);
+    },
+  );
+
+  testWidgets('mobile backup reports temporary-file creation failure', (
+    tester,
+  ) async {
+    final root = Directory(
+      path.join(
+        Directory.systemTemp.path,
+        'butlerly-share-create-failure-${DateTime.now().microsecondsSinceEpoch}',
+      ),
+    )..createSync(recursive: true);
+    addTearDown(() async {
+      await services.reset();
+      if (root.existsSync()) root.deleteSync(recursive: true);
+      debugDefaultTargetPlatformOverride = null;
+    });
+    final gateway = _ShareGateway(root)..createFailure = StateError('fixture');
+    services.registerSingleton<WorkspaceDataService>(
+      WorkspaceDataService(gateway, refreshSystemData: () async {}),
+    );
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    await _completeBackupPasswordFlow(tester);
+
+    debugDefaultTargetPlatformOverride = null;
+    expect(find.text('Backup could not be created.'), findsOneWidget);
+    expect(gateway.discardedPath, isNull);
+  });
+
   testWidgets('restore preview formats its creation date for each locale', (
     tester,
   ) async {
@@ -182,7 +250,23 @@ void main() {
   });
 }
 
+Future<void> _completeBackupPasswordFlow(WidgetTester tester) async {
+  await tester.tap(find.text('Back up Butlerly'));
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 500));
+  final fields = find.byType(TextField);
+  expect(fields, findsNWidgets(2));
+  await tester.enterText(fields.at(0), 'correct horse battery staple');
+  await tester.enterText(fields.at(1), 'correct horse battery staple');
+  await tester.tap(find.text('Create encrypted backup'));
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 500));
+}
+
 final class _SharePlatform extends share_platform.SharePlatform {
+  _SharePlatform({this.status = share_plus.ShareResultStatus.success});
+
+  final share_plus.ShareResultStatus status;
   share_plus.ShareParams? params;
   bool sawFileDuringShare = false;
 
@@ -191,10 +275,7 @@ final class _SharePlatform extends share_platform.SharePlatform {
     params = value;
     final file = value.files!.single;
     sawFileDuringShare = File(file.path).existsSync();
-    return const share_plus.ShareResult(
-      'shared',
-      share_plus.ShareResultStatus.success,
-    );
+    return share_plus.ShareResult('shared', status);
   }
 }
 
@@ -203,12 +284,14 @@ final class _ShareGateway implements LocalDataGateway {
 
   final Directory root;
   String? discardedPath;
+  Object? createFailure;
 
   @override
   Future<String> createTemporaryBackup(
     String fileName, {
     required String password,
   }) async {
+    if (createFailure != null) throw createFailure!;
     final file = File(path.join(root.path, fileName));
     file.writeAsBytesSync(const [1, 2, 3]);
     return file.path;

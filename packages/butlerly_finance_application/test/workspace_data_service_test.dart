@@ -103,6 +103,30 @@ void main() {
     await expectLater(service.eraseAll(), throwsStateError);
     expect(events, ['erase']);
   });
+
+  test('portable backup repairs bundled rules before snapshotting', () async {
+    service = WorkspaceDataService(
+      gateway,
+      refreshSystemData: () async {},
+      ensureAnalysisRules: () async => events.add('rules'),
+    );
+
+    await service.createPortableBackup('destination', password: 'password');
+
+    expect(events, ['rules', 'portable']);
+  });
+
+  test('temporary backup repairs bundled rules before snapshotting', () async {
+    service = WorkspaceDataService(
+      gateway,
+      refreshSystemData: () async {},
+      ensureAnalysisRules: () async => events.add('rules'),
+    );
+
+    await service.createTemporaryBackup('temporary', password: 'password');
+
+    expect(events, ['rules', 'temporary']);
+  });
 }
 
 class _Gateway implements LocalDataGateway {
@@ -150,6 +174,23 @@ class _Gateway implements LocalDataGateway {
   Future<void> eraseAll() async {
     events.add('erase');
     if (failErase) throw StateError('storage failed');
+  }
+
+  @override
+  Future<void> createPortableBackup(
+    String destination, {
+    required String password,
+  }) async {
+    events.add('portable');
+  }
+
+  @override
+  Future<String> createTemporaryBackup(
+    String fileName, {
+    required String password,
+  }) async {
+    events.add('temporary');
+    return fileName;
   }
 
   @override

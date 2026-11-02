@@ -63,10 +63,12 @@ final class LocalBackupSnapshotWriter {
     File destination, {
     required DatabaseExecutor source,
     required DateTime createdAtUtc,
+    void Function(String stage)? onStage,
   }) async {
     final tables = <String, Object?>{};
     var recordCount = 0;
 
+    onStage?.call('SQLite snapshot');
     for (final table in _plainTables) {
       final rows = await source.query(table);
       tables[table] = rows;
@@ -230,6 +232,7 @@ final class LocalBackupSnapshotWriter {
 
     final evidenceRows =
         tables['evidence_items']! as List<Map<String, Object?>>;
+    onStage?.call('evidence collection');
     final evidenceRoot = await localDataManager.evidenceDirectory();
     await rejectEvidenceRoot(evidenceRoot);
 
@@ -312,6 +315,7 @@ final class LocalBackupSnapshotWriter {
     await temporary.parent.create(recursive: true);
     final sink = temporary.openWrite();
     try {
+      onStage?.call('evidence verification');
       sink.add(_magic);
       sink.add(int64Bytes(metadataBytes.length));
       sink.add(metadataHash);

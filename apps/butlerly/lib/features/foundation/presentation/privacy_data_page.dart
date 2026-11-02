@@ -1,6 +1,7 @@
 import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
@@ -79,6 +80,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     if (password == null || !mounted) return;
 
     setState(() => _busy = true);
+    const stage = 'portable backup creation';
     try {
       await services<WorkspaceDataService>().createPortableBackup(
         location.path,
@@ -87,7 +89,8 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       if (mounted) _message(context.l10n.backupText('backupComplete'));
     } on BackupPasswordTooShortException {
       if (mounted) _message(context.l10n.backupText('backupPasswordTooShort'));
-    } catch (_) {
+    } catch (error, stackTrace) {
+      _backupLogger.severe('Backup failed at stage: $stage', error, stackTrace);
       if (mounted) _message(context.l10n.backupText('backupFailed'));
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -100,6 +103,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
   ) async {
     setState(() => _busy = true);
     String? filePath;
+    var stage = 'temporary backup creation';
     try {
       filePath = await services<WorkspaceDataService>().createTemporaryBackup(
         fileName,
@@ -107,6 +111,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       );
       if (!mounted) return;
 
+      stage = 'iOS share-sheet invocation';
       final renderBox = context.findRenderObject();
       final shareOrigin = renderBox is RenderBox
           ? renderBox.localToGlobal(Offset.zero) & renderBox.size
@@ -123,10 +128,21 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           );
       if (mounted && result.status == share.ShareResultStatus.success) {
         _message(context.l10n.backupText('backupComplete'));
+      } else if (result.status == share.ShareResultStatus.unavailable) {
+        _backupLogger.warning(
+          'Mobile backup share outcome unavailable at stage: $stage '
+          '(ShareResultStatus.unavailable)',
+        );
+        if (mounted) _message(context.l10n.backupText('backupComplete'));
       }
     } on BackupPasswordTooShortException {
       if (mounted) _message(context.l10n.backupText('backupPasswordTooShort'));
-    } catch (_) {
+    } catch (error, stackTrace) {
+      _backupLogger.severe(
+        'Mobile backup failed at stage: $stage',
+        error,
+        stackTrace,
+      );
       if (mounted) _message(context.l10n.backupText('backupFailed'));
     } finally {
       if (filePath != null) {
@@ -135,6 +151,9 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       if (mounted) setState(() => _busy = false);
     }
   }
+
+  AppLogger get _backupLogger =>
+      services.isRegistered<AppLogger>() ? services<AppLogger>() : AppLogger();
 
   Future<void> _restore() async {
     final selected = await openFile(acceptedTypeGroups: const [_backupType]);

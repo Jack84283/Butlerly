@@ -47,6 +47,7 @@ final class LocalBackupManager {
     BackupPublicationRecoveryState? publicationRecoveryState,
     AnalysisConsistencyGate? consistencyGate,
     Future<void> Function()? recoverStagedEvidenceDeletions,
+    AppLogger? logger,
     @visibleForTesting
     Future<void> Function(Directory root)? afterStagingRootCreated,
   }) : recoveryState = recoveryState ?? RestoreRecoveryState(localDataManager),
@@ -57,6 +58,7 @@ final class LocalBackupManager {
        _engine = engine.LocalBackupManager(database, localDataManager),
        _snapshotWriter = LocalBackupSnapshotWriter(localDataManager),
        _recoverStagedEvidenceDeletions = recoverStagedEvidenceDeletions,
+       _logger = logger ?? AppLogger(),
        _publicationRecovery = BackupPublicationRecoveryManager(
          store: publicationRecoveryStore,
        ),
@@ -77,6 +79,7 @@ final class LocalBackupManager {
   final Future<void> Function(Directory root)? _afterStagingRootCreated;
   final Future<void> Function()? _recoverStagedEvidenceDeletions;
   final AnalysisConsistencyGate? _consistencyGate;
+  final AppLogger _logger;
   final BackupEncryption _encryption = const BackupEncryption();
 
   static final _backupMagic = BackupContainerFormat.magic;
@@ -92,7 +95,7 @@ final class LocalBackupManager {
     File destination, {
     required String password,
   }) async {
-    await recoverInterruptedPortableBackupPublications();
+    var stage = 'interrupted portable publication recovery';
     final operationId = DateTime.now().microsecondsSinceEpoch;
     final privateDirectory = Directory(
       path.dirname(database.persistenceDatabase.path),
@@ -118,20 +121,32 @@ final class LocalBackupManager {
 
     var preservePublicationRecovery = false;
     try {
+      await recoverInterruptedPortableBackupPublications();
+
+      stage = 'SQLite snapshot and integrity validation';
       await _runConsistently(
         () => EvidenceMutationLock.runExclusive(
-          () => _createBackupUnlocked(plain),
+          () => _createBackupUnlocked(plain, onStage: (value) => stage = value),
         ),
       );
+
+      stage = 'encryption';
       await _encryption.encrypt(plain, encryptedCandidate, password: password);
+
+      stage = 'decryption verification';
       await _encryption.decrypt(
         encryptedCandidate,
         verificationPlain,
         password: password,
       );
+
+      stage = 'backup schema validation';
       await _assertSupportedBackupSchema(verificationPlain);
+
+      stage = 'backup analysis-rule validation';
       await _engine.inspect(verificationPlain);
 
+      stage = 'temporary file publication';
       await _destinationWriter.publish(
         source: encryptedCandidate,
         destination: destination,
@@ -139,11 +154,28 @@ final class LocalBackupManager {
         operationId: operationId.toString(),
       );
       return destination;
-    } on BackupPublicationRecoveryRequiredException {
+    } on BackupPublicationRecoveryRequiredException catch (error, stackTrace) {
       preservePublicationRecovery = true;
+      _logger.severe(
+        'Portable backup failed at stage: $stage',
+        error,
+        stackTrace,
+      );
       rethrow;
-    } on BackupDestinationWriteException {
+    } on BackupDestinationWriteException catch (error, stackTrace) {
       preservePublicationRecovery = true;
+      _logger.severe(
+        'Portable backup failed at stage: $stage',
+        error,
+        stackTrace,
+      );
+      rethrow;
+    } catch (error, stackTrace) {
+      _logger.severe(
+        'Portable backup failed at stage: $stage',
+        error,
+        stackTrace,
+      );
       rethrow;
     } finally {
       await _deleteFileBestEffort(plain);
@@ -155,7 +187,10 @@ final class LocalBackupManager {
     }
   }
 
-  Future<File> _createBackupUnlocked(File destination) async {
+  Future<File> _createBackupUnlocked(
+    File destination, {
+    void Function(String stage)? onStage,
+  }) async {
     final operationId = DateTime.now().microsecondsSinceEpoch;
     final candidate = File('${destination.path}.candidate-$operationId');
 
@@ -163,11 +198,13 @@ final class LocalBackupManager {
       final snapshotFuture = database.database.transaction((snapshot) async {
         await snapshot.rawQuery('SELECT COUNT(*) FROM sqlite_master');
         final createdAtUtc = DateTime.now().toUtc();
+        onStage?.call('SQLite integrity validation');
         await _validateDatabase(snapshot);
         await _snapshotWriter.write(
           candidate,
           source: snapshot,
           createdAtUtc: createdAtUtc,
+          onStage: onStage,
         );
       });
       await snapshotFuture;
