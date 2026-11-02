@@ -103,6 +103,82 @@ void main() {
   );
 
   test(
+    'Home repairs a partial rule set and preserves user rule customization',
+    () async {
+      final primed = await finance.loadHomeOverview(
+        instant: DateTime.utc(2026, 9, 16, 12),
+      );
+      expect(primed, isA<ApplicationSuccess<HomeOverview>>());
+
+      await database.database.update(
+        'analysis_rule_activations',
+        {'enabled': 0},
+        where: 'rule_id = ?',
+        whereArgs: ['ANL-R020'],
+      );
+      await database.database.delete(
+        'analysis_rule_activations',
+        where: 'rule_id = ?',
+        whereArgs: ['ANL-R010'],
+      );
+      await database.database.delete(
+        'analysis_rule_definitions',
+        where: 'rule_id = ? AND rule_version = ?',
+        whereArgs: ['ANL-R010', '1.1.0'],
+      );
+
+      final created = await finance.createTransaction(
+        CreateTransactionCommand(
+          id: 'home-sqlite-partial-rule-category',
+          provenanceId: 'home-sqlite-partial-rule-category-provenance',
+          timing: KnownTransactionTime(DateTime.utc(2026, 9, 3, 12)),
+          transactionDate: '2026-09-03',
+          money: Money(
+            amount: DecimalValue.parse('12.34'),
+            currency: CurrencyCode('USD'),
+          ),
+          direction: TransactionDirection.expense,
+          categoryId: 'category.food.groceries',
+        ),
+      );
+      expect(created, isA<ApplicationSuccess<TransactionDto>>());
+
+      final repaired = await finance.loadHomeOverview(
+        instant: DateTime.utc(2026, 9, 16, 12),
+      );
+      expect(repaired, isA<ApplicationSuccess<HomeOverview>>());
+      final overview = (repaired as ApplicationSuccess<HomeOverview>).value;
+
+      final restoredCategoryDefinition = await database.database.query(
+        'analysis_rule_definitions',
+        where: 'rule_id = ?',
+        whereArgs: ['ANL-R010'],
+      );
+      expect(restoredCategoryDefinition, hasLength(1));
+      final restoredCategoryActivation = await database.database.query(
+        'analysis_rule_activations',
+        where: 'rule_id = ?',
+        whereArgs: ['ANL-R010'],
+      );
+      expect(restoredCategoryActivation, hasLength(1));
+      expect(restoredCategoryActivation.single['enabled'], 1);
+
+      final customizedActivation = await database.database.query(
+        'analysis_rule_activations',
+        columns: ['enabled'],
+        where: 'rule_id = ?',
+        whereArgs: ['ANL-R020'],
+      );
+      expect(customizedActivation.single['enabled'], 0);
+      expect(overview.analysis?.categories, hasLength(1));
+      expect(
+        overview.analysis?.categories.single.value,
+        DecimalValue.parse('12.34'),
+      );
+    },
+  );
+
+  test(
     'new current month recalculates after adding the first transaction',
     () async {
       final empty = await finance.loadHomeOverview(

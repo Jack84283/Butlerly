@@ -1968,14 +1968,29 @@ String _desktopTrendAxisLabel(
   return NumberFormat.compactCurrency(
     locale: locale,
     name: code,
-    decimalDigits: _desktopTrendAxisDecimalDigits(interval),
+    decimalDigits: _desktopTrendAxisDecimalDigits(
+      locale: locale,
+      currency: code,
+      interval: interval,
+    ),
   ).format(value);
 }
 
-int _desktopTrendAxisDecimalDigits(double interval) {
+int _desktopTrendAxisDecimalDigits({
+  required String locale,
+  required String currency,
+  required double interval,
+}) {
+  final currencyDigits =
+      NumberFormat.simpleCurrency(
+        locale: locale,
+        name: currency,
+      ).decimalDigits ??
+      2;
   if (!interval.isFinite || interval >= 1) return 0;
-  final digits = (-math.log(interval) / math.ln10).ceil();
-  return digits.clamp(1, 2);
+  if (interval <= 0) return currencyDigits;
+  final intervalDigits = (-math.log(interval) / math.ln10).ceil();
+  return math.max(currencyDigits, intervalDigits);
 }
 
 String _desktopTrendPointLabel(

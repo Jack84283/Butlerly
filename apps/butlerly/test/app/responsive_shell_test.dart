@@ -1223,6 +1223,68 @@ void main() {
   });
 
   testWidgets(
+    'Desktop spending trend keeps three-decimal KWD tick labels distinct',
+    (tester) async {
+      final transactions = MemoryTransactionRepository();
+      final finance = await _desktopHomeFinance(
+        transactions: transactions,
+        analysisRules: _DesktopAnalysisRules([_desktopExpenseRule()]),
+      );
+      await finance.saveUserPreference(
+        UserPreference(
+          locale: 'en',
+          formattingLocale: 'en-US',
+          regionCode: 'KW',
+          baseCurrency: CurrencyCode('KWD'),
+          timeZoneId: 'UTC',
+          firstUseCompleted: true,
+        ),
+      );
+      final now = DateTime.now().toUtc();
+      final created = await finance.createTransaction(
+        CreateTransactionCommand(
+          id: 'desktop-home-kwd-fractional-trend',
+          provenanceId: 'desktop-home-kwd-fractional-trend-provenance',
+          timing: KnownTransactionTime(now),
+          transactionDate: _dateOnly(now),
+          money: Money(
+            amount: DecimalValue.parse('0.0004'),
+            currency: CurrencyCode('KWD'),
+          ),
+          direction: TransactionDirection.expense,
+          description: 'Tiny KWD trend transaction',
+        ),
+      );
+      expect(created, isA<ApplicationSuccess<TransactionDto>>());
+      services.registerSingleton<FinanceServices>(finance);
+      addTearDown(() => services.unregister<FinanceServices>());
+
+      await _pumpAt(tester, const Size(1200, 800));
+
+      final chart = find.byKey(const ValueKey('desktop-home-trend-chart'));
+      expect(chart, findsOneWidget);
+      final axisText = [
+        for (var index = 0; index < 8; index++)
+          if (find
+              .byKey(ValueKey('desktop-home-trend-axis-label-$index'))
+              .evaluate()
+              .isNotEmpty)
+            tester
+                    .widget<Text>(
+                      find.byKey(
+                        ValueKey('desktop-home-trend-axis-label-$index'),
+                      ),
+                    )
+                    .data ??
+                '',
+      ];
+      expect(axisText.toSet(), hasLength(greaterThan(2)));
+      expect(axisText.any((label) => label.contains('0.000')), isTrue);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'Desktop Home shows normalized category amounts and percentages together',
     (tester) async {
       final transactions = MemoryTransactionRepository();
