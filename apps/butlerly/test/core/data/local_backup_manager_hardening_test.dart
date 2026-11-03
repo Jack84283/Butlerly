@@ -6,6 +6,7 @@ import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly_database/butlerly_database.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -256,7 +257,15 @@ void main() {
 
     await expectLater(
       failingManager.restore(backup, mode: LocalRestoreMode.replace),
-      throwsA(isA<StateError>()),
+      throwsA(
+        isA<RestoreFailureException>()
+            .having(
+              (error) => error.stage,
+              'stage',
+              'staging workspace creation',
+            )
+            .having((error) => error.errorType, 'error type', 'StateError'),
+      ),
     );
     final stageDirectories = await fixture.root
         .list(followLinks: false)

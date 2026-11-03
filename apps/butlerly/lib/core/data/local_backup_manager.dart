@@ -555,7 +555,16 @@ final class LocalBackupManager {
       });
     } catch (error, stackTrace) {
       _logger.severe('Restore failed at stage: $stage', error, stackTrace);
-      rethrow;
+      if (error is BackupPasswordOrIntegrityException ||
+          error is BackupPasswordRequiredException ||
+          error is RestoreFailureException ||
+          error is RestoreRecoveryRequiredException) {
+        rethrow;
+      }
+      throw RestoreFailureException(
+        stage: stage,
+        errorType: error.runtimeType.toString(),
+      );
     }
   });
 

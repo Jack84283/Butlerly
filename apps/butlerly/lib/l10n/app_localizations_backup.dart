@@ -48,6 +48,8 @@ const _backupStrings = <String, Map<String, String>>{
     'backupLocationSelectionFailed': 'Backup location could not be selected.',
     'backupStorageFailed': 'Backup could not be saved to device storage.',
     'restoreFailed': 'Backup could not be restored.',
+    'restoreFailedWithDetails':
+        'Backup could not be restored. Failure stage: {stage}. Error type: {errorType}. No restore was confirmed.',
     'evidenceRecoveryComplete':
         'Evidence recovery finished: {recovered} restored, {present} already present.',
     'evidenceRecoveryIncomplete':
@@ -149,6 +151,8 @@ const _backupStrings = <String, Map<String, String>>{
     'backupStorageFailed':
         'No se pudo guardar la copia en el almacenamiento del dispositivo.',
     'restoreFailed': 'No se pudo restaurar la copia.',
+    'restoreFailedWithDetails':
+        'No se pudo restaurar la copia. Etapa del fallo: {stage}. Tipo de error: {errorType}. No se confirmó ninguna restauración.',
     'evidenceRecoveryComplete':
         'Recuperación de evidencia completada: {recovered} restaurados, {present} ya estaban disponibles.',
     'evidenceRecoveryIncomplete':
@@ -242,6 +246,8 @@ const _backupStrings = <String, Map<String, String>>{
     'backupLocationSelectionFailed': '无法选择备份位置。',
     'backupStorageFailed': '无法将备份保存到设备存储。',
     'restoreFailed': '无法恢复备份。',
+    'restoreFailedWithDetails':
+        '无法恢复备份。失败阶段：{stage}。错误类型：{errorType}。未确认完成任何恢复。',
     'evidenceRecoveryComplete': '凭证恢复完成：恢复 {recovered} 个，已有 {present} 个。',
     'evidenceRecoveryIncomplete':
         '凭证恢复未完成：恢复 {recovered} 个，已有 {present} 个，仍有 {unresolved} 个未解决。',

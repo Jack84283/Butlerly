@@ -82,6 +82,22 @@ final class BackupFailureException extends FormatException {
   final String errorType;
 }
 
+/// Raised when restore fails outside a known password or recovery category.
+///
+/// Only the safe operation stage and exception type cross the application
+/// boundary. Exception messages and stack traces may contain private paths,
+/// platform payloads, or financial data and must remain in privacy-safe logs.
+final class RestoreFailureException extends FormatException {
+  const RestoreFailureException({required this.stage, required this.errorType})
+    : super('Backup restore failed.');
+
+  /// The bounded restore stage reported by the storage adapter.
+  final String stage;
+
+  /// The exception class name, without its message or payload.
+  final String errorType;
+}
+
 /// Application orchestration shared by normal privacy controls and recovery.
 /// System-data refresh must complete inside the adapter's restore safety gate.
 /// UI invalidation must wait until restore commits and closes its recovery gate.

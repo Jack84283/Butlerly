@@ -388,7 +388,39 @@ void main() {
     await tester.tap(find.text('Restore backup'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Backup could not be restored.'), findsOneWidget);
+    expect(
+      find.text(
+        'Backup could not be restored. Failure stage: restore file selection. Error type: StateError. No restore was confirmed.',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('restore reports generic failures with diagnostics', (
+    tester,
+  ) async {
+    final gateway = _ShareGateway(Directory.systemTemp);
+    await services.reset();
+    addTearDown(() async => services.reset());
+    services.registerSingleton<WorkspaceDataService>(
+      WorkspaceDataService(gateway, refreshSystemData: () async {}),
+    );
+
+    await tester.pumpWidget(
+      app(selectRestoreFile: () async => XFile('/unused/backup.butlerly')),
+    );
+    await tester.pumpAndSettle();
+    await _openRestorePreview(tester);
+    await tester.tap(find.text('Merge'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'Backup could not be restored. Failure stage: restore activation. Error type: StateError. No restore was confirmed.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('restore mode captured'), findsNothing);
   });
 
   testWidgets('desktop backup reports destination storage failures', (

@@ -306,6 +306,21 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         );
   }
 
+  String _restoreFailureMessage(
+    BuildContext context,
+    Object error, {
+    required String stage,
+  }) {
+    final details = error is RestoreFailureException ? error : null;
+    return context.l10n
+        .backupText('restoreFailedWithDetails')
+        .replaceAll('{stage}', details?.stage ?? stage)
+        .replaceAll(
+          '{errorType}',
+          details?.errorType ?? error.runtimeType.toString(),
+        );
+  }
+
   Future<void> _restore() async {
     var stage = 'restore file selection';
     String? password;
@@ -377,7 +392,9 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         error,
         stackTrace,
       );
-      if (mounted) _message(context.l10n.backupText('restoreFailed'));
+      if (mounted) {
+        _message(_restoreFailureMessage(context, error, stage: stage));
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }

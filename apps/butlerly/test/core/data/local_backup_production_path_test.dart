@@ -1297,7 +1297,15 @@ void main() {
         password: 'correct horse battery staple',
         postActivationRefresh: () async {},
       ),
-      throwsA(isA<StateError>()),
+      throwsA(
+        isA<RestoreFailureException>()
+            .having(
+              (error) => error.stage,
+              'stage',
+              'pre-restore safety backup: evidence collection',
+            )
+            .having((error) => error.errorType, 'error type', 'StateError'),
+      ),
     );
     expect(
       diagnosticLogger.stage,
