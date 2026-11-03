@@ -409,12 +409,9 @@ final class LocalBackupManager {
     }
   }
 
-  /// Runs the explicitly approved, non-destructive evidence recovery flow.
-  ///
-  /// The readable archive is validated before any evidence staging begins.
-  /// This operation never invokes the SQLite restore engine and never repairs
-  /// analysis rules.
-  Future<EvidenceRecoveryResult> recoverMissingEvidence(
+  /// Inspects the archive and current evidence references without publishing
+  /// files or modifying SQLite.
+  Future<EvidenceRecoveryPreview> inspectMissingEvidence(
     File file, {
     String? password,
   }) => _runConsistently(() async {
@@ -425,8 +422,45 @@ final class LocalBackupManager {
         try {
           stage = 'evidence recovery archive validation';
           await _assertSupportedBackupSchema(readable.file);
-          stage = 'evidence recovery staging and publication';
-          return await _engine.recoverMissingEvidence(readable.file);
+          stage = 'evidence recovery preview';
+          return await _engine.inspectMissingEvidence(readable.file);
+        } finally {
+          await readable.dispose();
+        }
+      });
+    } catch (error, stackTrace) {
+      _logger.severe(
+        'Evidence recovery preview failed at stage: $stage',
+        error,
+        stackTrace,
+      );
+      rethrow;
+    }
+  });
+
+  /// Runs the explicitly approved, non-destructive evidence recovery flow.
+  ///
+  /// The preview is supplied by the caller and is revalidated against the
+  /// current SQLite references immediately before any evidence staging. This
+  /// operation never invokes the SQLite restore engine and never repairs
+  /// analysis rules.
+  Future<EvidenceRecoveryResult> recoverMissingEvidence(
+    File file, {
+    String? password,
+    required EvidenceRecoveryPreview preview,
+  }) => _runConsistently(() async {
+    var stage = 'evidence recovery archive decryption';
+    try {
+      return await EvidenceMutationLock.runExclusive(() async {
+        final readable = await _openReadableBackup(file, password: password);
+        try {
+          stage = 'evidence recovery archive validation';
+          await _assertSupportedBackupSchema(readable.file);
+          stage = 'evidence recovery preview revalidation';
+          return await _engine.recoverMissingEvidence(
+            readable.file,
+            preview: preview,
+          );
         } finally {
           await readable.dispose();
         }

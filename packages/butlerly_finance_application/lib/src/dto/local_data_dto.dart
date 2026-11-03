@@ -66,13 +66,45 @@ final class EvidenceRecoveryResult {
     required this.recoveredCount,
     required this.alreadyPresentCount,
     required this.unresolvedCount,
+    this.conflictingCount = 0,
+    this.unavailableCount = 0,
   });
 
   final int recoveredCount;
   final int alreadyPresentCount;
   final int unresolvedCount;
+  final int conflictingCount;
+  final int unavailableCount;
 
   bool get isComplete => unresolvedCount == 0;
+}
+
+/// Read-only evidence recovery assessment produced before any file is
+/// published. The fingerprint is opaque to presentation and binds the
+/// confirmation step to the exact current database/archive assessment.
+final class EvidenceRecoveryPreview {
+  const EvidenceRecoveryPreview({
+    required this.recoverableCount,
+    required this.alreadyPresentCount,
+    required this.conflictingCount,
+    required this.unavailableCount,
+    required this.unresolvedCount,
+    required this.fingerprint,
+  });
+
+  final int recoverableCount;
+  final int alreadyPresentCount;
+  final int conflictingCount;
+  final int unavailableCount;
+  final int unresolvedCount;
+  final String fingerprint;
+
+  bool get isComplete => unresolvedCount == 0;
+}
+
+/// The live evidence references changed after preview and before confirmation.
+final class EvidenceRecoveryPreviewStaleException implements Exception {
+  const EvidenceRecoveryPreviewStaleException();
 }
 
 final class LocalDataExportResult {

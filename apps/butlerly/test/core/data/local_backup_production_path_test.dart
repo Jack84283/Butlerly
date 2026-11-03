@@ -1058,8 +1058,16 @@ void main() {
       );
       await evidenceFile.delete();
 
-      final result = await services<LocalBackupManager>()
-          .recoverMissingEvidence(archive, password: password);
+      final manager = services<LocalBackupManager>();
+      final preview = await manager.inspectMissingEvidence(
+        archive,
+        password: password,
+      );
+      final result = await manager.recoverMissingEvidence(
+        archive,
+        password: password,
+        preview: preview,
+      );
 
       expect(result.recoveredCount, 1);
       expect(result.alreadyPresentCount, 0);
@@ -1142,13 +1150,255 @@ void main() {
     await services<LocalBackupManager>().createBackup(archive);
     await evidenceFile.writeAsString('user replacement bytes', flush: true);
 
-    final result = await services<LocalBackupManager>().recoverMissingEvidence(
+    final manager = services<LocalBackupManager>();
+    final preview = await manager.inspectMissingEvidence(archive);
+    final result = await manager.recoverMissingEvidence(
       archive,
+      preview: preview,
     );
 
     expect(result.recoveredCount, 0);
     expect(result.unresolvedCount, 1);
     expect(await evidenceFile.readAsString(), 'user replacement bytes');
+  });
+
+  test('evidence recovery rejects ID, path, and metadata mismatches', () async {
+    final capturedAt = DateTime.utc(2026, 11, 3, 12);
+    Future<void> insertEvidence({
+      required String id,
+      required String provenanceId,
+      required String fileName,
+    }) async {
+      await database.database.insert('provenances', {
+        'id': provenanceId,
+        'source_type': 'userEntry',
+        'captured_at': capturedAt.toIso8601String(),
+        'source_id': null,
+        'original_representation': null,
+        'source_language': null,
+      });
+      await database.database.insert('evidence_items', {
+        'id': id,
+        'type': 'receiptImage',
+        'original_name': '$id.txt',
+        'media_type': 'text/plain',
+        'provenance_id': provenanceId,
+        'created_at': capturedAt.toIso8601String(),
+        'source_language': null,
+        'local_file_name': fileName,
+      });
+    }
+
+    final idMismatchPath = 'receipts/id-mismatch.txt';
+    final pathMismatchPath = 'receipts/path-mismatch.txt';
+    final metadataMismatchPath = 'receipts/metadata-mismatch.txt';
+    for (final fileName in [
+      idMismatchPath,
+      pathMismatchPath,
+      metadataMismatchPath,
+    ]) {
+      final file = File(path.join(evidenceDirectory.path, fileName))
+        ..createSync(recursive: true);
+      await file.writeAsString(fileName, flush: true);
+    }
+    await insertEvidence(
+      id: 'evidence-id-mismatch',
+      provenanceId: 'provenance-id-mismatch',
+      fileName: idMismatchPath,
+    );
+    await insertEvidence(
+      id: 'evidence-path-mismatch',
+      provenanceId: 'provenance-path-mismatch',
+      fileName: pathMismatchPath,
+    );
+    await insertEvidence(
+      id: 'evidence-metadata-mismatch',
+      provenanceId: 'provenance-metadata-mismatch',
+      fileName: metadataMismatchPath,
+    );
+    final archive = File(
+      path.join(temporaryDirectory.path, 'identity-mismatches.butlerlybackup'),
+    );
+    final manager = services<LocalBackupManager>();
+    await manager.createBackup(archive);
+
+    await database.database.update(
+      'evidence_items',
+      {'id': 'evidence-id-mismatch-current'},
+      where: 'id = ?',
+      whereArgs: ['evidence-id-mismatch'],
+    );
+    await database.database.update(
+      'evidence_items',
+      {'local_file_name': 'receipts/path-mismatch-current.txt'},
+      where: 'id = ?',
+      whereArgs: ['evidence-path-mismatch'],
+    );
+    await database.database.update(
+      'evidence_items',
+      {'media_type': 'application/pdf'},
+      where: 'id = ?',
+      whereArgs: ['evidence-metadata-mismatch'],
+    );
+    for (final fileName in [
+      idMismatchPath,
+      pathMismatchPath,
+      metadataMismatchPath,
+    ]) {
+      await File(path.join(evidenceDirectory.path, fileName)).delete();
+    }
+
+    final preview = await manager.inspectMissingEvidence(archive);
+    expect(preview.recoverableCount, 0);
+    expect(preview.conflictingCount, 3);
+    expect(preview.unavailableCount, 0);
+    final result = await manager.recoverMissingEvidence(
+      archive,
+      preview: preview,
+    );
+    expect(result.recoveredCount, 0);
+    expect(result.conflictingCount, 3);
+    expect(
+      await File(path.join(evidenceDirectory.path, idMismatchPath)).exists(),
+      isFalse,
+    );
+    expect(
+      await File(path.join(evidenceDirectory.path, pathMismatchPath)).exists(),
+      isFalse,
+    );
+  });
+
+  test(
+    'evidence recovery supports shared references, ignores archive extras, and is idempotent',
+    () async {
+      const sharedPath = 'receipts/shared-reference.txt';
+      const extraPath = 'receipts/archive-extra.txt';
+      final capturedAt = DateTime.utc(2026, 11, 3, 12);
+      final sharedFile = File(path.join(evidenceDirectory.path, sharedPath))
+        ..createSync(recursive: true);
+      await sharedFile.writeAsString('shared evidence', flush: true);
+      final extraFile = File(path.join(evidenceDirectory.path, extraPath))
+        ..createSync(recursive: true);
+      await extraFile.writeAsString('unrelated archive evidence', flush: true);
+      await database.database.insert('provenances', {
+        'id': 'shared-provenance',
+        'source_type': 'userEntry',
+        'captured_at': capturedAt.toIso8601String(),
+        'source_id': null,
+        'original_representation': null,
+        'source_language': null,
+      });
+      for (final id in ['shared-evidence-one', 'shared-evidence-two']) {
+        await database.database.insert('evidence_items', {
+          'id': id,
+          'type': 'receiptImage',
+          'original_name': 'shared-reference.txt',
+          'media_type': 'text/plain',
+          'provenance_id': 'shared-provenance',
+          'created_at': capturedAt.toIso8601String(),
+          'source_language': null,
+          'local_file_name': sharedPath,
+        });
+      }
+      await database.database.insert('provenances', {
+        'id': 'extra-provenance',
+        'source_type': 'userEntry',
+        'captured_at': capturedAt.toIso8601String(),
+        'source_id': null,
+        'original_representation': null,
+        'source_language': null,
+      });
+      await database.database.insert('evidence_items', {
+        'id': 'archive-only-extra',
+        'type': 'receiptImage',
+        'original_name': 'archive-extra.txt',
+        'media_type': 'text/plain',
+        'provenance_id': 'extra-provenance',
+        'created_at': capturedAt.toIso8601String(),
+        'source_language': null,
+        'local_file_name': extraPath,
+      });
+      final archive = File(
+        path.join(temporaryDirectory.path, 'shared-and-extra.butlerlybackup'),
+      );
+      final manager = services<LocalBackupManager>();
+      await manager.createBackup(archive);
+      await database.database.delete(
+        'evidence_items',
+        where: 'id = ?',
+        whereArgs: ['archive-only-extra'],
+      );
+      await extraFile.delete();
+      await sharedFile.delete();
+
+      final preview = await manager.inspectMissingEvidence(archive);
+      expect(preview.recoverableCount, 1);
+      expect(preview.conflictingCount, 0);
+      expect(preview.unavailableCount, 0);
+      final first = await manager.recoverMissingEvidence(
+        archive,
+        preview: preview,
+      );
+      expect(first.recoveredCount, 1);
+      expect(await sharedFile.readAsString(), 'shared evidence');
+      expect(await extraFile.exists(), isFalse);
+
+      final secondPreview = await manager.inspectMissingEvidence(archive);
+      expect(secondPreview.recoverableCount, 0);
+      expect(secondPreview.alreadyPresentCount, 2);
+      final second = await manager.recoverMissingEvidence(
+        archive,
+        preview: secondPreview,
+      );
+      expect(second.recoveredCount, 0);
+      expect(second.alreadyPresentCount, 2);
+      expect(await sharedFile.readAsString(), 'shared evidence');
+    },
+  );
+
+  test('evidence recovery rejects a stale confirmation preview', () async {
+    const localFileName = 'receipts/stale-preview.txt';
+    final capturedAt = DateTime.utc(2026, 11, 3, 12);
+    final evidenceFile = File(path.join(evidenceDirectory.path, localFileName))
+      ..createSync(recursive: true);
+    await evidenceFile.writeAsString('stale preview fixture', flush: true);
+    await database.database.insert('provenances', {
+      'id': 'stale-preview-provenance',
+      'source_type': 'userEntry',
+      'captured_at': capturedAt.toIso8601String(),
+      'source_id': null,
+      'original_representation': null,
+      'source_language': null,
+    });
+    await database.database.insert('evidence_items', {
+      'id': 'stale-preview-evidence',
+      'type': 'receiptImage',
+      'original_name': 'stale-preview.txt',
+      'media_type': 'text/plain',
+      'provenance_id': 'stale-preview-provenance',
+      'created_at': capturedAt.toIso8601String(),
+      'source_language': null,
+      'local_file_name': localFileName,
+    });
+    final archive = File(
+      path.join(temporaryDirectory.path, 'stale-preview.butlerlybackup'),
+    );
+    final manager = services<LocalBackupManager>();
+    await manager.createBackup(archive);
+    await evidenceFile.delete();
+    final preview = await manager.inspectMissingEvidence(archive);
+    await database.database.update(
+      'evidence_items',
+      {'original_name': 'changed-after-preview.txt'},
+      where: 'id = ?',
+      whereArgs: ['stale-preview-evidence'],
+    );
+
+    await expectLater(
+      manager.recoverMissingEvidence(archive, preview: preview),
+      throwsA(isA<EvidenceRecoveryPreviewStaleException>()),
+    );
+    expect(await evidenceFile.exists(), isFalse);
   });
 
   test(
@@ -1205,8 +1455,12 @@ void main() {
       });
       await firstFile.delete();
 
-      final result = await services<LocalBackupManager>()
-          .recoverMissingEvidence(archive);
+      final manager = services<LocalBackupManager>();
+      final preview = await manager.inspectMissingEvidence(archive);
+      final result = await manager.recoverMissingEvidence(
+        archive,
+        preview: preview,
+      );
 
       expect(result.recoveredCount, 1);
       expect(result.unresolvedCount, 1);

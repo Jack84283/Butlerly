@@ -55,6 +55,69 @@ final class _EvidenceDescriptor {
   final int offset;
 }
 
+final class _EvidenceIdentity {
+  const _EvidenceIdentity({
+    required this.id,
+    required this.normalizedPath,
+    required this.fields,
+    required this.provenance,
+  });
+
+  final String id;
+  final String? normalizedPath;
+  final Map<String, Object?> fields;
+  final Map<String, Object?>? provenance;
+
+  String? get pathKey =>
+      normalizedPath == null ? null : evidencePathKey(normalizedPath!);
+
+  bool matches(_EvidenceIdentity other) {
+    if (id != other.id || pathKey != other.pathKey) return false;
+    if (provenance == null || other.provenance == null) return false;
+    for (final key in fields.keys) {
+      if (other.fields.containsKey(key) && fields[key] != other.fields[key]) {
+        return false;
+      }
+    }
+    for (final key in provenance!.keys) {
+      if (other.provenance!.containsKey(key) &&
+          provenance![key] != other.provenance![key]) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  Map<String, Object?> toFingerprintMap() => {
+    'id': id,
+    'path': normalizedPath,
+    'fields': fields,
+    'provenance': provenance,
+  };
+}
+
+final class _EvidenceRecoveryAssessment {
+  const _EvidenceRecoveryAssessment({
+    required this.recoverableCount,
+    required this.alreadyPresentCount,
+    required this.conflictingCount,
+    required this.unavailableCount,
+    required this.unresolvedCount,
+    required this.fingerprint,
+    required this.plan,
+    required this.currentRelativePaths,
+  });
+
+  final int recoverableCount;
+  final int alreadyPresentCount;
+  final int conflictingCount;
+  final int unavailableCount;
+  final int unresolvedCount;
+  final String fingerprint;
+  final List<({String relative, _EvidenceDescriptor descriptor})> plan;
+  final List<String> currentRelativePaths;
+}
+
 final class _BackupPackage {
   const _BackupPackage({
     required this.file,
@@ -455,114 +518,33 @@ final class LocalBackupManager {
   /// restore. SQLite remains read-only throughout. The live evidence tree is
   /// copied to a sibling staging tree, verified with the selected archive, and
   /// swapped only after every current reference is resolvable. Existing files
-  /// are never overwritten.
-  Future<EvidenceRecoveryResult> recoverMissingEvidence(File file) async {
+  /// are never overwritten. The supplied preview is re-created immediately
+  /// before publication so a database change cannot be hidden by confirmation.
+  Future<EvidenceRecoveryResult> recoverMissingEvidence(
+    File file, {
+    required EvidenceRecoveryPreview preview,
+  }) async {
     final package = await _readPackage(file);
+    final assessment = await _buildEvidenceRecoveryAssessment(package);
+    if (assessment.fingerprint != preview.fingerprint ||
+        assessment.recoverableCount != preview.recoverableCount ||
+        assessment.alreadyPresentCount != preview.alreadyPresentCount ||
+        assessment.conflictingCount != preview.conflictingCount ||
+        assessment.unavailableCount != preview.unavailableCount ||
+        assessment.unresolvedCount != preview.unresolvedCount) {
+      throw const EvidenceRecoveryPreviewStaleException();
+    }
+    await _validateEvidencePlan(package, assessment.plan);
+
     final root = await localDataManager.evidenceDirectory();
-    await rejectEvidenceRoot(root);
-    final recoveryJournal = File('${root.path}.evidence-recovery-journal.json');
-    await rejectSymlinkedPath(recoveryJournal.path);
-    if (await recoveryJournal.exists()) {
-      throw StateError(
-        'Evidence recovery has an unresolved previous operation.',
-      );
-    }
-    final recoveryPrefix = '${path.basename(root.path)}.evidence-recovery-';
-    if (await root.parent.exists()) {
-      await for (final entity in root.parent.list(followLinks: false)) {
-        if (path.basename(entity.path).startsWith(recoveryPrefix)) {
-          throw StateError(
-            'Evidence recovery has unresolved private artifacts.',
-          );
-        }
-      }
-    }
-
-    final descriptorsByPath = <String, _EvidenceDescriptor>{};
-    for (final descriptor in package.evidence) {
-      descriptorsByPath[evidencePathKey(
-            normalizeEvidencePath(descriptor.relativePath),
-          )] =
-          descriptor;
-    }
-
-    final descriptorsById = <String, _EvidenceDescriptor>{};
-    for (final row in _tableRows(package.tables, 'evidence_items')) {
-      final id = row['id'];
-      final rawPath = row['local_file_name'];
-      if (id is! String || rawPath is! String || rawPath.trim().isEmpty) {
-        continue;
-      }
-      final normalized = normalizeEvidencePath(rawPath);
-      final descriptor = descriptorsByPath[evidencePathKey(normalized)];
-      if (descriptor != null) descriptorsById[id] = descriptor;
-    }
-
-    final currentRows = await database.database.query(
-      'evidence_items',
-      columns: ['id', 'local_file_name'],
-    );
-    final plannedPaths = <String>{};
-    final plan = <({String relative, _EvidenceDescriptor descriptor})>[];
-    var alreadyPresent = 0;
-    var unresolved = 0;
-
-    for (final row in currentRows) {
-      final rawPath = row['local_file_name'];
-      if (rawPath == null || rawPath is! String || rawPath.trim().isEmpty) {
-        continue;
-      }
-      final relative = await validateEvidenceReferencePath(
-        root,
-        rawPath,
-        message: 'Unsafe current evidence path.',
-      );
-      final live = File(path.join(root.path, relative));
-      final descriptor =
-          descriptorsByPath[evidencePathKey(relative)] ??
-          (row['id'] is String ? descriptorsById[row['id']! as String] : null);
-
-      if (await live.exists()) {
-        if (descriptor == null ||
-            await sha256FileRange(live) == descriptor.sha256) {
-          alreadyPresent++;
-        } else {
-          // A present file with different bytes is a user-data conflict. Do
-          // not overwrite it with a backup copy; surface it as unresolved.
-          unresolved++;
-        }
-        continue;
-      }
-
-      if (descriptor == null) {
-        unresolved++;
-        continue;
-      }
-      // Multiple evidence rows may legitimately refer to the same file. One
-      // verified copy resolves all owners, so do not count later owners as
-      // unresolved merely because the path is already planned.
-      if (!plannedPaths.add(evidencePathKey(relative))) continue;
-      plan.add((relative: relative, descriptor: descriptor));
-    }
-
-    for (final item in plan) {
-      final actualHash = await sha256FileRange(
-        package.file,
-        start: item.descriptor.offset,
-        endExclusive: item.descriptor.offset + item.descriptor.length,
-      );
-      if (actualHash != item.descriptor.sha256) {
-        throw const FormatException(
-          'Evidence integrity validation failed during recovery.',
-        );
-      }
-    }
-
+    final plan = assessment.plan;
     if (plan.isEmpty) {
       return EvidenceRecoveryResult(
         recoveredCount: 0,
-        alreadyPresentCount: alreadyPresent,
-        unresolvedCount: unresolved,
+        alreadyPresentCount: assessment.alreadyPresentCount,
+        unresolvedCount: assessment.unresolvedCount,
+        conflictingCount: assessment.conflictingCount,
+        unavailableCount: assessment.unavailableCount,
       );
     }
 
@@ -600,6 +582,13 @@ final class LocalBackupManager {
       if (await root.exists()) await _copyDirectory(root, staging);
 
       for (final item in plan) {
+        // A file may appear after preview revalidation but before the staged
+        // copy is written. Never replace it; abort and require a fresh
+        // preview instead.
+        final live = File(path.join(root.path, item.relative));
+        if (await live.exists()) {
+          throw const EvidenceRecoveryPreviewStaleException();
+        }
         final destination = File(path.join(staging.path, item.relative));
         await destination.parent.create(recursive: true);
         final sink = destination.openWrite();
@@ -621,15 +610,13 @@ final class LocalBackupManager {
         }
       }
 
-      for (final row in currentRows) {
-        final rawPath = row['local_file_name'];
-        if (rawPath == null || rawPath is! String || rawPath.trim().isEmpty) {
-          continue;
-        }
-        final relative = normalizeEvidencePath(rawPath);
+      for (final relative in assessment.currentRelativePaths) {
         final recovered = File(path.join(staging.path, relative));
         if (!await recovered.exists() &&
-            plannedPaths.contains(evidencePathKey(relative))) {
+            plan.any(
+              (item) =>
+                  evidencePathKey(item.relative) == evidencePathKey(relative),
+            )) {
           throw StateError(
             'Evidence recovery could not resolve a current reference.',
           );
@@ -654,8 +641,10 @@ final class LocalBackupManager {
 
       return EvidenceRecoveryResult(
         recoveredCount: plan.length,
-        alreadyPresentCount: alreadyPresent,
-        unresolvedCount: unresolved,
+        alreadyPresentCount: assessment.alreadyPresentCount,
+        unresolvedCount: assessment.unresolvedCount,
+        conflictingCount: assessment.conflictingCount,
+        unavailableCount: assessment.unavailableCount,
       );
     } catch (_) {
       if (activationStarted) {
@@ -678,6 +667,293 @@ final class LocalBackupManager {
       }
       rethrow;
     }
+  }
+
+  /// Inspects missing evidence without publishing files or modifying SQLite.
+  Future<EvidenceRecoveryPreview> inspectMissingEvidence(File file) async {
+    final package = await _readPackage(file);
+    final assessment = await _buildEvidenceRecoveryAssessment(package);
+    await _validateEvidencePlan(package, assessment.plan);
+    return EvidenceRecoveryPreview(
+      recoverableCount: assessment.recoverableCount,
+      alreadyPresentCount: assessment.alreadyPresentCount,
+      conflictingCount: assessment.conflictingCount,
+      unavailableCount: assessment.unavailableCount,
+      unresolvedCount: assessment.unresolvedCount,
+      fingerprint: assessment.fingerprint,
+    );
+  }
+
+  Future<_EvidenceRecoveryAssessment> _buildEvidenceRecoveryAssessment(
+    _BackupPackage package,
+  ) async {
+    final root = await localDataManager.evidenceDirectory();
+    await _assertEvidenceRecoveryState(root);
+
+    final descriptorsByPath = <String, List<_EvidenceDescriptor>>{};
+    for (final descriptor in package.evidence) {
+      descriptorsByPath
+          .putIfAbsent(
+            evidencePathKey(normalizeEvidencePath(descriptor.relativePath)),
+            () => [],
+          )
+          .add(descriptor);
+    }
+
+    final archiveProvenances = <String, Map<String, Object?>>{};
+    for (final row in _tableRows(package.tables, 'provenances')) {
+      final id = row['id'];
+      if (id is String) archiveProvenances[id] = row;
+    }
+    final archiveById = <String, List<_EvidenceIdentity>>{};
+    final archiveByPath = <String, List<_EvidenceIdentity>>{};
+    for (final row in _tableRows(package.tables, 'evidence_items')) {
+      final identity = _archiveEvidenceIdentity(row, archiveProvenances);
+      if (identity?.normalizedPath == null) continue;
+      archiveById.putIfAbsent(identity!.id, () => []).add(identity);
+      archiveByPath.putIfAbsent(identity.pathKey!, () => []).add(identity);
+    }
+
+    final currentRows = await database.database.rawQuery(
+      '''SELECT e.id, e.type, e.original_name, e.media_type,
+                e.provenance_id, e.created_at, e.source_language,
+                e.local_file_name,
+                p.id AS p_id, p.source_type AS p_source_type,
+                p.captured_at AS p_captured_at,
+                p.source_id AS p_source_id,
+                p.original_representation AS p_original_representation,
+                p.source_language AS p_source_language
+         FROM evidence_items e
+         LEFT JOIN provenances p ON p.id = e.provenance_id
+         ORDER BY e.id''',
+    );
+    final plannedPaths = <String>{};
+    final plan = <({String relative, _EvidenceDescriptor descriptor})>[];
+    final currentRelativePaths = <String>[];
+    final fingerprintRows = <Map<String, Object?>>[];
+    var alreadyPresent = 0;
+    var conflicting = 0;
+    var unavailable = 0;
+
+    for (final row in currentRows) {
+      final current = _currentEvidenceIdentity(row);
+      if (current == null) continue;
+      final rawPath = row['local_file_name'];
+      if (current.normalizedPath != null) {
+        final relative = await validateEvidenceReferencePath(
+          root,
+          rawPath! as String,
+          message: 'Unsafe current evidence path.',
+        );
+        currentRelativePaths.add(relative);
+      }
+
+      final idCandidates = archiveById[current.id] ?? const [];
+      final pathCandidates = current.pathKey == null
+          ? const <_EvidenceIdentity>[]
+          : archiveByPath[current.pathKey!] ?? const [];
+      final matches = idCandidates
+          .where(current.matches)
+          .where((candidate) => candidate.pathKey == current.pathKey)
+          .toList(growable: false);
+      final identityIsAmbiguous =
+          matches.length != 1 || idCandidates.length != 1;
+      String status;
+      _EvidenceDescriptor? descriptor;
+      if (current.normalizedPath == null) {
+        status = 'no_path';
+        unavailable++;
+      } else if (identityIsAmbiguous) {
+        status = idCandidates.isEmpty && pathCandidates.isEmpty
+            ? 'unavailable'
+            : 'conflicting';
+        if (status == 'conflicting') {
+          conflicting++;
+        } else {
+          unavailable++;
+        }
+      } else {
+        final descriptorCandidates =
+            descriptorsByPath[current.pathKey!] ?? const [];
+        final descriptorSignatures = descriptorCandidates
+            .map((candidate) => (candidate.length, candidate.sha256))
+            .toSet();
+        if (descriptorCandidates.isEmpty) {
+          status = 'unavailable';
+          unavailable++;
+        } else if (descriptorSignatures.length != 1) {
+          status = 'conflicting';
+          conflicting++;
+        } else {
+          descriptor = descriptorCandidates.first;
+          final live = File(path.join(root.path, current.normalizedPath!));
+          if (await live.exists()) {
+            final matchesArchive =
+                await live.length() == descriptor.length &&
+                await sha256FileRange(live) == descriptor.sha256;
+            if (matchesArchive) {
+              status = 'already_present';
+              alreadyPresent++;
+            } else {
+              status = 'conflicting';
+              conflicting++;
+            }
+          } else if (!plannedPaths.add(current.pathKey!)) {
+            status = 'recoverable_shared';
+          } else {
+            status = 'recoverable';
+            plan.add((
+              relative: current.normalizedPath!,
+              descriptor: descriptor,
+            ));
+          }
+        }
+      }
+      fingerprintRows.add({
+        'identity': current.toFingerprintMap(),
+        'archiveIds': idCandidates
+            .map((candidate) => candidate.toFingerprintMap())
+            .toList(growable: false),
+        'archivePaths': pathCandidates
+            .map((candidate) => candidate.toFingerprintMap())
+            .toList(growable: false),
+        'descriptor': descriptor == null
+            ? null
+            : {
+                'path': normalizeEvidencePath(descriptor.relativePath),
+                'length': descriptor.length,
+                'sha256': descriptor.sha256,
+              },
+        'status': status,
+      });
+    }
+
+    final descriptorFingerprint = package.evidence
+        .map(
+          (descriptor) => {
+            'path': normalizeEvidencePath(descriptor.relativePath),
+            'length': descriptor.length,
+            'sha256': descriptor.sha256,
+          },
+        )
+        .toList(growable: false);
+    final fingerprint = sha256Bytes(
+      utf8.encode(
+        jsonEncode({
+          'createdAt': package.manifest['createdAtUtc'],
+          'descriptors': descriptorFingerprint,
+          'rows': fingerprintRows,
+        }),
+      ),
+    );
+    return _EvidenceRecoveryAssessment(
+      recoverableCount: plan.length,
+      alreadyPresentCount: alreadyPresent,
+      conflictingCount: conflicting,
+      unavailableCount: unavailable,
+      unresolvedCount: conflicting + unavailable,
+      fingerprint: fingerprint,
+      plan: plan,
+      currentRelativePaths: currentRelativePaths,
+    );
+  }
+
+  Future<void> _validateEvidencePlan(
+    _BackupPackage package,
+    List<({String relative, _EvidenceDescriptor descriptor})> plan,
+  ) async {
+    for (final item in plan) {
+      final actualHash = await sha256FileRange(
+        package.file,
+        start: item.descriptor.offset,
+        endExclusive: item.descriptor.offset + item.descriptor.length,
+      );
+      if (actualHash != item.descriptor.sha256) {
+        throw const FormatException(
+          'Evidence integrity validation failed during recovery.',
+        );
+      }
+    }
+  }
+
+  Future<void> _assertEvidenceRecoveryState(Directory root) async {
+    await rejectEvidenceRoot(root);
+    final recoveryJournal = File('${root.path}.evidence-recovery-journal.json');
+    await rejectSymlinkedPath(recoveryJournal.path);
+    if (await recoveryJournal.exists()) {
+      throw StateError(
+        'Evidence recovery has an unresolved previous operation.',
+      );
+    }
+    final recoveryPrefix = '${path.basename(root.path)}.evidence-recovery-';
+    if (await root.parent.exists()) {
+      await for (final entity in root.parent.list(followLinks: false)) {
+        if (path.basename(entity.path).startsWith(recoveryPrefix)) {
+          throw StateError(
+            'Evidence recovery has unresolved private artifacts.',
+          );
+        }
+      }
+    }
+  }
+
+  _EvidenceIdentity? _archiveEvidenceIdentity(
+    Map<String, Object?> row,
+    Map<String, Map<String, Object?>> provenances,
+  ) {
+    final id = row['id'];
+    if (id is! String) return null;
+    final provenanceId = row['provenance_id'];
+    return _EvidenceIdentity(
+      id: id,
+      normalizedPath: _normalizeOptionalEvidencePath(row['local_file_name']),
+      fields: _evidenceFields(row),
+      provenance: provenanceId is String ? provenances[provenanceId] : null,
+    );
+  }
+
+  _EvidenceIdentity? _currentEvidenceIdentity(Map<String, Object?> row) {
+    final id = row['id'];
+    if (id is! String) return null;
+    final provenanceId = row['provenance_id'];
+    final provenance = provenanceId is String && row['p_id'] != null
+        ? <String, Object?>{
+            'id': row['p_id'],
+            'source_type': row['p_source_type'],
+            'captured_at': row['p_captured_at'],
+            'source_id': row['p_source_id'],
+            'original_representation': row['p_original_representation'],
+            'source_language': row['p_source_language'],
+          }
+        : null;
+    return _EvidenceIdentity(
+      id: id,
+      normalizedPath: _normalizeOptionalEvidencePath(row['local_file_name']),
+      fields: _evidenceFields(row),
+      provenance: provenance,
+    );
+  }
+
+  Map<String, Object?> _evidenceFields(Map<String, Object?> row) => {
+    for (final key in const [
+      'id',
+      'type',
+      'original_name',
+      'media_type',
+      'provenance_id',
+      'created_at',
+      'source_language',
+      'local_file_name',
+    ])
+      if (row.containsKey(key))
+        key: key == 'local_file_name'
+            ? _normalizeOptionalEvidencePath(row[key])
+            : row[key],
+  };
+
+  String? _normalizeOptionalEvidencePath(Object? value) {
+    if (value is! String || value.trim().isEmpty) return null;
+    return normalizeEvidencePath(value);
   }
 
   /// Completes or rolls back an interrupted explicit evidence recovery.

@@ -18,9 +18,14 @@ abstract interface class LocalDataGateway {
   Future<void> discardTemporaryBackup(String filePath);
   Future<bool> isEncryptedBackup(String filePath);
   Future<BackupInspection> inspect(String filePath, {String? password});
+  Future<EvidenceRecoveryPreview> inspectMissingEvidence(
+    String filePath, {
+    String? password,
+  });
   Future<EvidenceRecoveryResult> recoverMissingEvidence(
     String filePath, {
     String? password,
+    required EvidenceRecoveryPreview preview,
   });
   Future<LocalRestoreResult> restore(
     String filePath, {
@@ -152,11 +157,22 @@ final class WorkspaceDataService {
       gateway.isEncryptedBackup(filePath);
   Future<BackupInspection> inspect(String filePath, {String? password}) =>
       gateway.inspect(filePath, password: password);
-  Future<EvidenceRecoveryResult> recoverMissingEvidence(
+  Future<EvidenceRecoveryPreview> inspectMissingEvidence(
     String filePath, {
     String? password,
   }) => _runConsistently(
-    () => gateway.recoverMissingEvidence(filePath, password: password),
+    () => gateway.inspectMissingEvidence(filePath, password: password),
+  );
+  Future<EvidenceRecoveryResult> recoverMissingEvidence(
+    String filePath, {
+    String? password,
+    required EvidenceRecoveryPreview preview,
+  }) => _runConsistently(
+    () => gateway.recoverMissingEvidence(
+      filePath,
+      password: password,
+      preview: preview,
+    ),
   );
   Future<LocalDataExportResult> exportAll() => gateway.exportAll();
 

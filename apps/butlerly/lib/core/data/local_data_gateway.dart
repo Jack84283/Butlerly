@@ -87,10 +87,21 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
       backups.inspect(File(filePath), password: password);
 
   @override
+  Future<EvidenceRecoveryPreview> inspectMissingEvidence(
+    String filePath, {
+    String? password,
+  }) => backups.inspectMissingEvidence(File(filePath), password: password);
+
+  @override
   Future<EvidenceRecoveryResult> recoverMissingEvidence(
     String filePath, {
     String? password,
-  }) => backups.recoverMissingEvidence(File(filePath), password: password);
+    required EvidenceRecoveryPreview preview,
+  }) => backups.recoverMissingEvidence(
+    File(filePath),
+    password: password,
+    preview: preview,
+  );
 
   @override
   Future<LocalRestoreResult> restore(

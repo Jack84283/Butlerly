@@ -421,6 +421,19 @@ void main() {
       findsOneWidget,
     );
     expect(find.textContaining('restore mode captured'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('privacy-diagnostic-banner')),
+      findsOneWidget,
+    );
+    final viewDetails = find.descendant(
+      of: find.byKey(const ValueKey('privacy-diagnostic-banner')),
+      matching: find.text('View details'),
+    );
+    await tester.ensureVisible(viewDetails);
+    await tester.tap(viewDetails);
+    await tester.pumpAndSettle();
+    expect(find.text('Failure details'), findsOneWidget);
+    expect(find.textContaining('Merge'), findsAtLeastNWidgets(1));
   });
 
   testWidgets('desktop backup reports destination storage failures', (
@@ -465,6 +478,14 @@ void main() {
       ),
       findsNothing,
     );
+    final diagnostic = find.descendant(
+      of: find.byKey(const ValueKey('privacy-diagnostic-banner')),
+      matching: find.text('View details'),
+    );
+    await tester.ensureVisible(diagnostic);
+    await tester.tap(diagnostic);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('destination storage'), findsAtLeastNWidgets(1));
   });
 
   testWidgets('mobile backup recommends repair only for rule validation', (
@@ -583,6 +604,58 @@ void main() {
     );
   });
 
+  testWidgets('backup failure details remain available and copy safe codes', (
+    tester,
+  ) async {
+    final root = Directory(
+      path.join(
+        Directory.systemTemp.path,
+        'butlerly-desktop-backup-diagnostic-${DateTime.now().microsecondsSinceEpoch}',
+      ),
+    )..createSync(recursive: true);
+    addTearDown(() async {
+      await services.reset();
+      if (root.existsSync()) root.deleteSync(recursive: true);
+      debugDefaultTargetPlatformOverride = null;
+    });
+    final gateway = _ShareGateway(root)..createFailure = StateError('private');
+    services.registerSingleton<WorkspaceDataService>(
+      WorkspaceDataService(gateway, refreshSystemData: () async {}),
+    );
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+
+    await tester.pumpWidget(
+      app(
+        selectBackupLocation: () async =>
+            FileSaveLocation(path.join(root.path, 'selected.butlerly')),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _completeBackupPasswordFlow(tester);
+    debugDefaultTargetPlatformOverride = null;
+
+    expect(
+      find.byKey(const ValueKey('privacy-diagnostic-banner')),
+      findsOneWidget,
+    );
+    expect(find.text('View details'), findsAtLeastNWidgets(1));
+    final viewDetails = find.descendant(
+      of: find.byKey(const ValueKey('privacy-diagnostic-banner')),
+      matching: find.text('View details'),
+    );
+    await tester.ensureVisible(viewDetails);
+    await tester.tap(viewDetails);
+    await tester.pumpAndSettle();
+    expect(find.text('Failure details'), findsOneWidget);
+    expect(
+      find.textContaining('portable backup creation'),
+      findsAtLeastNWidgets(1),
+    );
+    expect(find.textContaining('StateError'), findsAtLeastNWidgets(1));
+    expect(find.text('Copy diagnostic'), findsOneWidget);
+    expect(find.text('private'), findsNothing);
+  });
+
   testWidgets('analysis rule repair requires explicit approval', (
     tester,
   ) async {
@@ -697,6 +770,14 @@ void main() {
     tester,
   ) async {
     final gateway = _ShareGateway(Directory.systemTemp)
+      ..evidenceRecoveryPreview = const EvidenceRecoveryPreview(
+        recoverableCount: 3,
+        alreadyPresentCount: 1,
+        conflictingCount: 0,
+        unavailableCount: 0,
+        unresolvedCount: 0,
+        fingerprint: 'fixture',
+      )
       ..evidenceRecoveryResult = const EvidenceRecoveryResult(
         recoveredCount: 3,
         alreadyPresentCount: 1,
@@ -722,6 +803,10 @@ void main() {
       'correct horse battery staple',
     );
     await tester.tap(find.text('Unlock'));
+    await tester.pumpAndSettle();
+    expect(find.text('Review evidence recovery'), findsOneWidget);
+    expect(find.text('Confirm recovery'), findsOneWidget);
+    await tester.tap(find.text('Confirm recovery'));
     await tester.pumpAndSettle();
 
     expect(gateway.recoveredEvidencePassword, 'correct horse battery staple');
@@ -836,6 +921,7 @@ final class _ShareGateway implements LocalDataGateway {
   int inspectionCalls = 0;
   String? inspectionPassword;
   String? inspectPassword;
+  EvidenceRecoveryPreview? evidenceRecoveryPreview;
   EvidenceRecoveryResult? evidenceRecoveryResult;
   String? recoveredEvidencePassword;
 
@@ -888,9 +974,27 @@ final class _ShareGateway implements LocalDataGateway {
   }
 
   @override
+  Future<EvidenceRecoveryPreview> inspectMissingEvidence(
+    String filePath, {
+    String? password,
+  }) async {
+    inspectionPassword = password;
+    return evidenceRecoveryPreview ??
+        const EvidenceRecoveryPreview(
+          recoverableCount: 0,
+          alreadyPresentCount: 0,
+          conflictingCount: 0,
+          unavailableCount: 0,
+          unresolvedCount: 0,
+          fingerprint: 'fixture',
+        );
+  }
+
+  @override
   Future<EvidenceRecoveryResult> recoverMissingEvidence(
     String filePath, {
     String? password,
+    required EvidenceRecoveryPreview preview,
   }) async {
     recoveredEvidencePassword = password;
     return evidenceRecoveryResult ??
