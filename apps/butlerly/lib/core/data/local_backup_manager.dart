@@ -400,6 +400,44 @@ final class LocalBackupManager {
     }
   }
 
+  /// Runs the explicitly approved, non-destructive evidence recovery flow.
+  ///
+  /// The readable archive is validated before any evidence staging begins.
+  /// This operation never invokes the SQLite restore engine and never repairs
+  /// analysis rules.
+  Future<EvidenceRecoveryResult> recoverMissingEvidence(
+    File file, {
+    String? password,
+  }) => _runConsistently(() async {
+    var stage = 'evidence recovery archive decryption';
+    try {
+      return await EvidenceMutationLock.runExclusive(() async {
+        final readable = await _openReadableBackup(file, password: password);
+        try {
+          stage = 'evidence recovery archive validation';
+          await _assertSupportedBackupSchema(readable.file);
+          stage = 'evidence recovery staging and publication';
+          return await _engine.recoverMissingEvidence(readable.file);
+        } finally {
+          await readable.dispose();
+        }
+      });
+    } catch (error, stackTrace) {
+      _logger.severe(
+        'Evidence recovery failed at stage: $stage',
+        error,
+        stackTrace,
+      );
+      rethrow;
+    }
+  });
+
+  Future<void> recoverInterruptedEvidenceRecovery() => _runConsistently(
+    () => EvidenceMutationLock.runExclusive(
+      _engine.recoverInterruptedEvidenceRecovery,
+    ),
+  );
+
   Future<void> recoverInterruptedPortableBackupPublications({
     String? authorizedDestinationPath,
   }) async {
@@ -413,6 +451,14 @@ final class LocalBackupManager {
       publicationRecoveryState.markRequired(error);
       rethrow;
     }
+  }
+
+  /// Lets the user continue using the live workspace without claiming that an
+  /// external backup publication succeeded. Recovery artifacts and their
+  /// destination-unknown marker remain on disk so the operation can be retried
+  /// later, including after the next launch.
+  void dismissPortableBackupPublicationRecovery() {
+    publicationRecoveryState.clear();
   }
 
   Future<void> cleanupOrphanedPrivateArtifacts() async {

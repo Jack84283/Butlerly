@@ -55,6 +55,26 @@ final class LocalRestoreResult {
   final bool presentationRefreshFailed;
 }
 
+/// Result of an explicitly approved evidence-file recovery operation.
+///
+/// Recovery is deliberately scoped to files referenced by the current local
+/// database. It never changes SQLite rows or analysis state. Existing files
+/// are verified and left untouched; only missing files whose bytes are present
+/// and valid in the selected backup are added.
+final class EvidenceRecoveryResult {
+  const EvidenceRecoveryResult({
+    required this.recoveredCount,
+    required this.alreadyPresentCount,
+    required this.unresolvedCount,
+  });
+
+  final int recoveredCount;
+  final int alreadyPresentCount;
+  final int unresolvedCount;
+
+  bool get isComplete => unresolvedCount == 0;
+}
+
 final class LocalDataExportResult {
   const LocalDataExportResult({
     required this.directoryPath,

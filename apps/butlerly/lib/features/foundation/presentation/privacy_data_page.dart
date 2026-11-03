@@ -27,6 +27,7 @@ class PrivacyDataPage extends ConsumerStatefulWidget {
     this.shareClient,
     this.selectBackupLocation,
     this.selectRestoreFile,
+    this.selectEvidenceRecoveryFile,
     super.key,
   });
 
@@ -38,6 +39,9 @@ class PrivacyDataPage extends ConsumerStatefulWidget {
 
   @visibleForTesting
   final Future<XFile?> Function()? selectRestoreFile;
+
+  @visibleForTesting
+  final Future<XFile?> Function()? selectEvidenceRecoveryFile;
 
   @override
   ConsumerState<PrivacyDataPage> createState() => _PrivacyDataPageState();
@@ -347,6 +351,75 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         stackTrace,
       );
       if (mounted) _message(context.l10n.backupText('restoreFailed'));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _recoverMissingEvidence() async {
+    var stage = 'evidence recovery file selection';
+    String? password;
+    try {
+      final selected = widget.selectEvidenceRecoveryFile != null
+          ? await widget.selectEvidenceRecoveryFile!()
+          : await openFile(acceptedTypeGroups: const [_backupType]);
+      if (selected == null) return;
+
+      final file = selected.path;
+      final manager = services<WorkspaceDataService>();
+      stage = 'evidence recovery encryption detection';
+      if (await manager.isEncryptedBackup(file)) {
+        if (!mounted) return;
+        stage = 'evidence recovery password entry';
+        password = await _requestRestorePassword();
+        if (password == null || !mounted) return;
+      }
+
+      setState(() => _busy = true);
+      stage = 'evidence recovery validation and publication';
+      final result = await manager.recoverMissingEvidence(
+        file,
+        password: password,
+      );
+      if (!mounted) return;
+      final message = context.l10n
+          .backupText(
+            result.isComplete
+                ? 'evidenceRecoveryComplete'
+                : 'evidenceRecoveryIncomplete',
+          )
+          .replaceAll('{recovered}', '${result.recoveredCount}')
+          .replaceAll('{present}', '${result.alreadyPresentCount}')
+          .replaceAll('{unresolved}', '${result.unresolvedCount}');
+      _message(message);
+    } on BackupPasswordOrIntegrityException {
+      if (mounted) {
+        _message(context.l10n.backupText('passwordOrIntegrityFailed'));
+      }
+    } on BackupPasswordRequiredException {
+      if (mounted) {
+        _message(context.l10n.backupText('passwordOrIntegrityFailed'));
+      }
+    } on BackupStorageException {
+      if (mounted) {
+        _message(context.l10n.backupText('evidenceRecoveryStorageFailed'));
+      }
+    } on FormatException catch (error, stackTrace) {
+      _backupLogger.severe(
+        'Evidence recovery failed at stage: archive validation',
+        error,
+        stackTrace,
+      );
+      if (mounted) {
+        _message(context.l10n.backupText('evidenceRecoveryInvalid'));
+      }
+    } catch (error, stackTrace) {
+      _backupLogger.severe(
+        'Evidence recovery failed at stage: $stage',
+        error,
+        stackTrace,
+      );
+      if (mounted) _message(context.l10n.backupText('evidenceRecoveryFailed'));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -725,6 +798,12 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           onTap: _busy ? null : _restore,
         ),
         _DesktopPrivacyAction(
+          icon: Icons.build_outlined,
+          label: l10n.backupText('recoverEvidence'),
+          description: l10n.backupText('recoverEvidenceSubtitle'),
+          onTap: _busy ? null : _recoverMissingEvidence,
+        ),
+        _DesktopPrivacyAction(
           icon: Icons.rule_folder_outlined,
           label: l10n.text('repairAnalysisRules'),
           description: l10n.text('repairAnalysisRulesSubtitle'),
@@ -943,6 +1022,18 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
               ),
               trailing: Icon(_privacyIcon(context, Icons.chevron_right)),
               onTap: _repairAnalysisRules,
+            ),
+            const Divider(),
+            ListTile(
+              enabled: !_busy,
+              leading: Icon(_privacyIcon(context, Icons.build_outlined)),
+              title: Text(context.l10n.backupText('recoverEvidence')),
+              subtitle: Text(
+                context.l10n.backupText('recoverEvidenceSubtitle'),
+                style: _subtitleStyle(context),
+              ),
+              trailing: Icon(_privacyIcon(context, Icons.chevron_right)),
+              onTap: _recoverMissingEvidence,
             ),
             const Divider(),
             ListTile(

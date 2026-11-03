@@ -482,6 +482,18 @@ Future<void> initializeButlerly(AppLogger logger) async {
           : null;
       phase = 'interrupted portable backup recovery';
       if (backupManager != null) {
+        phase = 'interrupted evidence recovery';
+        try {
+          await backupManager.recoverInterruptedEvidenceRecovery();
+          logger.info('Startup: explicit evidence recovery checked');
+        } catch (error, stackTrace) {
+          logger.severe(
+            'Explicit evidence recovery remains unresolved; retaining artifacts',
+            error,
+            stackTrace,
+          );
+        }
+
         try {
           await backupManager.recoverInterruptedPortableBackupPublications();
           logger.info('Startup: portable backup recovery checked');

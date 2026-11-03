@@ -128,6 +128,15 @@ void main() {
     expect(events, ['temporary']);
   });
 
+  test(
+    'publication warning dismissal does not trigger data operations',
+    () async {
+      await service.dismissPortableBackupPublicationRecovery();
+
+      expect(events, ['dismiss-publication-warning']);
+    },
+  );
+
   test('rule repair is a separate explicitly invoked operation', () async {
     service = WorkspaceDataService(
       gateway,
@@ -194,6 +203,11 @@ class _Gateway implements LocalDataGateway {
     required String password,
   }) async {
     events.add('portable');
+  }
+
+  @override
+  Future<void> dismissPortableBackupPublicationRecovery() async {
+    events.add('dismiss-publication-warning');
   }
 
   @override

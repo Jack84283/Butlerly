@@ -44,12 +44,12 @@ void main() {
     expect(find.text('Backup recovery required'), findsOneWidget);
     expect(
       find.text(
-        'A backup replacement was interrupted. Recovery is required; the destination file status is unknown. Select the original backup location to continue.',
+        'A backup replacement was interrupted. The destination file status is unknown. Re-select the original backup location to recover it, or continue with current data without deleting local financial data.',
       ),
       findsOneWidget,
     );
     expect(find.text('Select backup location'), findsOneWidget);
-    expect(find.text('Keep recovery data'), findsOneWidget);
+    expect(find.text('Continue with current data'), findsOneWidget);
 
     gateway.fail = true;
     await tester.tap(find.text('Select backup location'));
@@ -70,6 +70,18 @@ void main() {
     await tester.tap(find.text('Select backup location'));
     await tester.pumpAndSettle();
     expect(gateway.recoveries, 2);
+  });
+
+  testWidgets('continues without deleting financial data', (tester) async {
+    await tester.pumpWidget(
+      app(selectLocation: () async => XFile('/selected/backup')),
+    );
+
+    await tester.tap(find.text('Continue with current data'));
+    await tester.pumpAndSettle();
+
+    expect(gateway.dismissals, 1);
+    expect(find.text('Backup recovery required'), findsNothing);
   });
 
   testWidgets('shows recovery failure when location selection throws', (
@@ -95,11 +107,17 @@ void main() {
 final class _RecoveryGateway implements LocalDataGateway {
   bool fail = false;
   int recoveries = 0;
+  int dismissals = 0;
 
   @override
   Future<void> recoverPortableBackupPublication(String destination) async {
     recoveries++;
     if (fail) throw StateError('recovery remains required');
+  }
+
+  @override
+  Future<void> dismissPortableBackupPublicationRecovery() async {
+    dismissals++;
   }
 
   @override

@@ -509,6 +509,143 @@ void main() {
   });
 
   test(
+    'interrupted explicit evidence recovery restores the original tree',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      const operation = '123';
+      await fixture.evidence.delete(recursive: true);
+      final previous = Directory(
+        '${fixture.evidence.path}.evidence-recovery-previous-$operation',
+      )..createSync(recursive: true);
+      await File(path.join(previous.path, 'receipt.bin')).writeAsString('old');
+      final staging = Directory(
+        '${fixture.evidence.path}.evidence-recovery-$operation',
+      )..createSync(recursive: true);
+      await File(path.join(staging.path, 'receipt.bin')).writeAsString('old');
+      await File(path.join(staging.path, 'recovered.bin')).writeAsString('new');
+      final journal = File(
+        '${fixture.evidence.path}.evidence-recovery-journal.json',
+      );
+      await journal.writeAsString(
+        jsonEncode({
+          'operationId': operation,
+          'previousPath': previous.path,
+          'stagingPath': staging.path,
+          'phase': 'prepared',
+        }),
+        flush: true,
+      );
+
+      await fixture.manager.recoverInterruptedEvidenceRecovery();
+
+      expect(
+        await File(
+          path.join(fixture.evidence.path, 'receipt.bin'),
+        ).readAsString(),
+        'old',
+      );
+      expect(
+        await File(path.join(fixture.evidence.path, 'recovered.bin')).exists(),
+        isFalse,
+      );
+      expect(await previous.exists(), isFalse);
+      expect(await staging.exists(), isFalse);
+      expect(await journal.exists(), isFalse);
+    },
+  );
+
+  test(
+    'prepared evidence recovery before activation keeps the live tree',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      const operation = '234';
+      await File(
+        path.join(fixture.evidence.path, 'receipt.bin'),
+      ).writeAsString('live');
+      final staging = Directory(
+        '${fixture.evidence.path}.evidence-recovery-$operation',
+      )..createSync(recursive: true);
+      await File(
+        path.join(staging.path, 'receipt.bin'),
+      ).writeAsString('staged');
+      await File(path.join(staging.path, 'recovered.bin')).writeAsString('new');
+      final journal = File(
+        '${fixture.evidence.path}.evidence-recovery-journal.json',
+      );
+      await journal.writeAsString(
+        jsonEncode({
+          'operationId': operation,
+          'previousPath':
+              '${fixture.evidence.path}.evidence-recovery-previous-$operation',
+          'stagingPath': staging.path,
+          'phase': 'prepared',
+        }),
+        flush: true,
+      );
+
+      await fixture.manager.recoverInterruptedEvidenceRecovery();
+
+      expect(
+        await File(
+          path.join(fixture.evidence.path, 'receipt.bin'),
+        ).readAsString(),
+        'live',
+      );
+      expect(
+        await File(path.join(fixture.evidence.path, 'recovered.bin')).exists(),
+        isFalse,
+      );
+      expect(await staging.exists(), isFalse);
+      expect(await journal.exists(), isFalse);
+    },
+  );
+
+  test(
+    'interrupted activated evidence recovery retains verified new tree',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      const operation = '456';
+      final previous = Directory(
+        '${fixture.evidence.path}.evidence-recovery-previous-$operation',
+      )..createSync(recursive: true);
+      await File(path.join(previous.path, 'receipt.bin')).writeAsString('old');
+      await File(
+        path.join(fixture.evidence.path, 'receipt.bin'),
+      ).writeAsString('new');
+      final staging = Directory(
+        '${fixture.evidence.path}.evidence-recovery-$operation',
+      )..createSync(recursive: true);
+      final journal = File(
+        '${fixture.evidence.path}.evidence-recovery-journal.json',
+      );
+      await journal.writeAsString(
+        jsonEncode({
+          'operationId': operation,
+          'previousPath': previous.path,
+          'stagingPath': staging.path,
+          'phase': 'activated',
+        }),
+        flush: true,
+      );
+
+      await fixture.manager.recoverInterruptedEvidenceRecovery();
+
+      expect(
+        await File(
+          path.join(fixture.evidence.path, 'receipt.bin'),
+        ).readAsString(),
+        'new',
+      );
+      expect(await previous.exists(), isFalse);
+      expect(await staging.exists(), isFalse);
+      expect(await journal.exists(), isFalse);
+    },
+  );
+
+  test(
     'external journal paths fail closed without touching their targets',
     () async {
       final fixture = await _Fixture.create();

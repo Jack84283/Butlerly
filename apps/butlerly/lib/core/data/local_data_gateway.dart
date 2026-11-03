@@ -37,6 +37,11 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
       );
 
   @override
+  Future<void> dismissPortableBackupPublicationRecovery() async {
+    backups.dismissPortableBackupPublicationRecovery();
+  }
+
+  @override
   Future<String> createTemporaryBackup(
     String fileName, {
     required String password,
@@ -80,6 +85,12 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
   @override
   Future<BackupInspection> inspect(String filePath, {String? password}) =>
       backups.inspect(File(filePath), password: password);
+
+  @override
+  Future<EvidenceRecoveryResult> recoverMissingEvidence(
+    String filePath, {
+    String? password,
+  }) => backups.recoverMissingEvidence(File(filePath), password: password);
 
   @override
   Future<LocalRestoreResult> restore(

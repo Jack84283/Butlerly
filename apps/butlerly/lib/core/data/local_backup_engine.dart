@@ -449,6 +449,295 @@ final class LocalBackupManager {
     );
   }
 
+  /// Restores only missing evidence bytes referenced by the current database.
+  ///
+  /// This is an explicit repair operation, not part of backup creation or
+  /// restore. SQLite remains read-only throughout. The live evidence tree is
+  /// copied to a sibling staging tree, verified with the selected archive, and
+  /// swapped only after every current reference is resolvable. Existing files
+  /// are never overwritten.
+  Future<EvidenceRecoveryResult> recoverMissingEvidence(File file) async {
+    final package = await _readPackage(file);
+    final root = await localDataManager.evidenceDirectory();
+    await rejectEvidenceRoot(root);
+    final recoveryJournal = File('${root.path}.evidence-recovery-journal.json');
+    await rejectSymlinkedPath(recoveryJournal.path);
+    if (await recoveryJournal.exists()) {
+      throw StateError(
+        'Evidence recovery has an unresolved previous operation.',
+      );
+    }
+    final recoveryPrefix = '${path.basename(root.path)}.evidence-recovery-';
+    if (await root.parent.exists()) {
+      await for (final entity in root.parent.list(followLinks: false)) {
+        if (path.basename(entity.path).startsWith(recoveryPrefix)) {
+          throw StateError(
+            'Evidence recovery has unresolved private artifacts.',
+          );
+        }
+      }
+    }
+
+    final descriptorsByPath = <String, _EvidenceDescriptor>{};
+    for (final descriptor in package.evidence) {
+      descriptorsByPath[evidencePathKey(
+            normalizeEvidencePath(descriptor.relativePath),
+          )] =
+          descriptor;
+    }
+
+    final descriptorsById = <String, _EvidenceDescriptor>{};
+    for (final row in _tableRows(package.tables, 'evidence_items')) {
+      final id = row['id'];
+      final rawPath = row['local_file_name'];
+      if (id is! String || rawPath is! String || rawPath.trim().isEmpty) {
+        continue;
+      }
+      final normalized = normalizeEvidencePath(rawPath);
+      final descriptor = descriptorsByPath[evidencePathKey(normalized)];
+      if (descriptor != null) descriptorsById[id] = descriptor;
+    }
+
+    final currentRows = await database.database.query(
+      'evidence_items',
+      columns: ['id', 'local_file_name'],
+    );
+    final plannedPaths = <String>{};
+    final plan = <({String relative, _EvidenceDescriptor descriptor})>[];
+    var alreadyPresent = 0;
+    var unresolved = 0;
+
+    for (final row in currentRows) {
+      final rawPath = row['local_file_name'];
+      if (rawPath == null || rawPath is! String || rawPath.trim().isEmpty) {
+        continue;
+      }
+      final relative = await validateEvidenceReferencePath(
+        root,
+        rawPath,
+        message: 'Unsafe current evidence path.',
+      );
+      final live = File(path.join(root.path, relative));
+      final descriptor =
+          descriptorsByPath[evidencePathKey(relative)] ??
+          (row['id'] is String ? descriptorsById[row['id']! as String] : null);
+
+      if (await live.exists()) {
+        if (descriptor == null ||
+            await sha256FileRange(live) == descriptor.sha256) {
+          alreadyPresent++;
+        } else {
+          // A present file with different bytes is a user-data conflict. Do
+          // not overwrite it with a backup copy; surface it as unresolved.
+          unresolved++;
+        }
+        continue;
+      }
+
+      if (descriptor == null) {
+        unresolved++;
+        continue;
+      }
+      // Multiple evidence rows may legitimately refer to the same file. One
+      // verified copy resolves all owners, so do not count later owners as
+      // unresolved merely because the path is already planned.
+      if (!plannedPaths.add(evidencePathKey(relative))) continue;
+      plan.add((relative: relative, descriptor: descriptor));
+    }
+
+    for (final item in plan) {
+      final actualHash = await sha256FileRange(
+        package.file,
+        start: item.descriptor.offset,
+        endExclusive: item.descriptor.offset + item.descriptor.length,
+      );
+      if (actualHash != item.descriptor.sha256) {
+        throw const FormatException(
+          'Evidence integrity validation failed during recovery.',
+        );
+      }
+    }
+
+    if (plan.isEmpty) {
+      return EvidenceRecoveryResult(
+        recoveredCount: 0,
+        alreadyPresentCount: alreadyPresent,
+        unresolvedCount: unresolved,
+      );
+    }
+
+    final operationId = DateTime.now().microsecondsSinceEpoch.toString();
+    final staging = Directory('${root.path}.evidence-recovery-$operationId');
+    final previous = Directory(
+      '${root.path}.evidence-recovery-previous-$operationId',
+    );
+    final journal = File('${root.path}.evidence-recovery-journal.json');
+    var activationStarted = false;
+    var activated = false;
+    try {
+      await rejectSymlinkedPath(staging.path);
+      await rejectSymlinkedPath(previous.path);
+      await rejectSymlinkedPath(journal.path);
+      if (await staging.exists() || await previous.exists()) {
+        throw StateError(
+          'Evidence recovery has an unresolved previous operation.',
+        );
+      }
+
+      // Persist the prepared state before creating the staging tree. If the
+      // process stops during the copy, startup can safely discard the
+      // incomplete staging tree while retaining the live evidence root.
+      await journal.writeAsString(
+        jsonEncode({
+          'operationId': operationId,
+          'previousPath': previous.path,
+          'stagingPath': staging.path,
+          'phase': 'prepared',
+        }),
+        flush: true,
+      );
+      await staging.create(recursive: true);
+      if (await root.exists()) await _copyDirectory(root, staging);
+
+      for (final item in plan) {
+        final destination = File(path.join(staging.path, item.relative));
+        await destination.parent.create(recursive: true);
+        final sink = destination.openWrite();
+        try {
+          await sink.addStream(
+            package.file.openRead(
+              item.descriptor.offset,
+              item.descriptor.offset + item.descriptor.length,
+            ),
+          );
+          await sink.flush();
+        } finally {
+          await sink.close();
+        }
+        if (await sha256FileRange(destination) != item.descriptor.sha256) {
+          throw const FormatException(
+            'Recovered evidence failed integrity validation.',
+          );
+        }
+      }
+
+      for (final row in currentRows) {
+        final rawPath = row['local_file_name'];
+        if (rawPath == null || rawPath is! String || rawPath.trim().isEmpty) {
+          continue;
+        }
+        final relative = normalizeEvidencePath(rawPath);
+        final recovered = File(path.join(staging.path, relative));
+        if (!await recovered.exists() &&
+            plannedPaths.contains(evidencePathKey(relative))) {
+          throw StateError(
+            'Evidence recovery could not resolve a current reference.',
+          );
+        }
+      }
+
+      activationStarted = true;
+      if (await root.exists()) await root.rename(previous.path);
+      await staging.rename(root.path);
+      activated = true;
+      await journal.writeAsString(
+        jsonEncode({
+          'operationId': operationId,
+          'previousPath': previous.path,
+          'stagingPath': staging.path,
+          'phase': 'activated',
+        }),
+        flush: true,
+      );
+      if (await previous.exists()) await previous.delete(recursive: true);
+      if (await journal.exists()) await journal.delete();
+
+      return EvidenceRecoveryResult(
+        recoveredCount: plan.length,
+        alreadyPresentCount: alreadyPresent,
+        unresolvedCount: unresolved,
+      );
+    } catch (_) {
+      if (activationStarted) {
+        try {
+          if (activated && await root.exists()) {
+            await root.delete(recursive: true);
+          }
+          if (!await root.exists() && await previous.exists()) {
+            await previous.rename(root.path);
+          }
+          if (await staging.exists()) await staging.delete(recursive: true);
+          if (await journal.exists()) await journal.delete();
+        } catch (_) {
+          // Preserve the journal and trees when rollback cannot be proven.
+          rethrow;
+        }
+      } else {
+        if (await staging.exists()) await staging.delete(recursive: true);
+        if (await journal.exists()) await journal.delete();
+      }
+      rethrow;
+    }
+  }
+
+  /// Completes or rolls back an interrupted explicit evidence recovery.
+  ///
+  /// The operation has no SQLite commit marker because it never writes
+  /// SQLite. The journal is therefore intentionally conservative: a prepared
+  /// swap with no live root restores the previous tree; a live root alongside
+  /// the previous tree means the verified staging tree was activated and the
+  /// new tree is retained.
+  Future<void> recoverInterruptedEvidenceRecovery() async {
+    final root = await localDataManager.evidenceDirectory();
+    final journal = File('${root.path}.evidence-recovery-journal.json');
+    await rejectEvidenceRoot(root);
+    await rejectSymlinkedPath(journal.path);
+    if (!await journal.exists()) return;
+
+    final decoded = jsonDecode(await journal.readAsString());
+    if (decoded is! Map) {
+      throw const FormatException('Evidence recovery journal is invalid.');
+    }
+    final data = decoded.cast<String, Object?>();
+    final operationId = data['operationId'] as String?;
+    final phase = data['phase'] as String?;
+    if (operationId == null ||
+        !RegExp(r'^[0-9]+$').hasMatch(operationId) ||
+        (phase != 'prepared' && phase != 'activated')) {
+      throw const FormatException('Evidence recovery journal is invalid.');
+    }
+    final staging = Directory('${root.path}.evidence-recovery-$operationId');
+    final previous = Directory(
+      '${root.path}.evidence-recovery-previous-$operationId',
+    );
+    if (data['stagingPath'] != staging.path ||
+        data['previousPath'] != previous.path) {
+      throw const FormatException('Evidence recovery journal path is invalid.');
+    }
+    await rejectSymlinkedPath(staging.path);
+    await rejectSymlinkedPath(previous.path);
+
+    final rootExists = await root.exists();
+    final stagingExists = await staging.exists();
+    final previousExists = await previous.exists();
+    if (phase == 'prepared' && !rootExists && previousExists) {
+      await previous.rename(root.path);
+    } else if ((phase == 'prepared' || phase == 'activated') &&
+        rootExists &&
+        previousExists) {
+      // The new root was activated before the journal could be finalized.
+      // It contains the original tree plus verified missing files.
+      await previous.delete(recursive: true);
+    } else if (!rootExists && !previousExists) {
+      throw StateError(
+        'Evidence recovery state cannot be proven safe after interruption.',
+      );
+    }
+
+    if (stagingExists) await staging.delete(recursive: true);
+    if (await journal.exists()) await journal.delete();
+  }
+
   Future<LocalRestoreResult> restore(
     File file, {
     required LocalRestoreMode mode,

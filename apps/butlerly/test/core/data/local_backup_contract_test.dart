@@ -1280,6 +1280,38 @@ void main() {
   );
 
   test(
+    'plain historical schemas 10, 14, and 16 remain inspectable and restorable',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.insertTransaction('plain-historical-compatibility');
+
+      for (final schema in [10, 14, 16]) {
+        final backup = File(
+          path.join(
+            fixture.root.path,
+            'plain-historical-schema-$schema.butlerlybackup',
+          ),
+        );
+        await fixture.manager.createBackup(backup);
+        await _downgradeBackupToSchema(backup, schema);
+
+        final inspection = await fixture.manager.inspect(backup);
+        expect(inspection.recordCount, greaterThan(0));
+        await fixture.manager.restore(backup, mode: LocalRestoreMode.replace);
+        expect(
+          await fixture.database.database.query(
+            'transactions',
+            where: 'id = ?',
+            whereArgs: ['plain-historical-compatibility'],
+          ),
+          hasLength(1),
+        );
+      }
+    },
+  );
+
+  test(
     'schema 14 rejects null and malformed required table payloads before mutation',
     () async {
       final fixture = await _Fixture.create();
@@ -2585,6 +2617,16 @@ Future<void> _removeTableFromBackup(File backup, String tableName) async {
   await _rewriteBackupMetadata(backup, (metadata) {
     final tables = (metadata['tables']! as Map).cast<String, Object?>();
     tables.remove(tableName);
+  });
+}
+
+Future<void> _downgradeBackupToSchema(File backup, int schema) async {
+  await _rewriteBackupMetadata(backup, (metadata) {
+    final manifest = (metadata['manifest']! as Map).cast<String, Object?>();
+    final tables = (metadata['tables']! as Map).cast<String, Object?>();
+    manifest['schemaVersion'] = schema;
+    final required = engine.LocalBackupManager.requiredTablesForSchema(schema);
+    tables.removeWhere((table, _) => !required.contains(table));
   });
 }
 

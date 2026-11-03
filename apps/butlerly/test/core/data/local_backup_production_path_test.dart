@@ -991,6 +991,229 @@ void main() {
     expect(await destination.exists(), isFalse);
   });
 
+  test(
+    'explicit evidence recovery restores a protected copy without SQLite writes',
+    () async {
+      const provenanceId = 'backup-production-evidence-recovery-provenance';
+      const evidenceId = 'backup-production-evidence-recovery';
+      const localFileName = 'receipts/recoverable-receipt.txt';
+      final capturedAt = DateTime.utc(2026, 11, 3, 12);
+      final evidenceFile = File(
+        path.join(evidenceDirectory.path, localFileName),
+      )..createSync(recursive: true);
+      await evidenceFile.writeAsString('protected receipt copy', flush: true);
+      await database.database.insert('provenances', {
+        'id': provenanceId,
+        'source_type': 'userEntry',
+        'captured_at': capturedAt.toIso8601String(),
+        'source_id': null,
+        'original_representation': null,
+        'source_language': null,
+      });
+      await database.database.insert('evidence_items', {
+        'id': evidenceId,
+        'type': 'receiptImage',
+        'original_name': 'recoverable-receipt.txt',
+        'media_type': 'text/plain',
+        'provenance_id': provenanceId,
+        'created_at': capturedAt.toIso8601String(),
+        'source_language': null,
+        'local_file_name': localFileName,
+      });
+      await finance.createTransaction(
+        CreateTransactionCommand(
+          id: 'backup-production-evidence-recovery-transaction',
+          provenanceId: provenanceId,
+          timing: KnownTransactionTime(capturedAt),
+          transactionDate: '2026-11-03',
+          money: Money(
+            amount: DecimalValue.parse('24.50'),
+            currency: CurrencyCode('USD'),
+          ),
+          direction: TransactionDirection.expense,
+          categoryId: 'category.food.groceries',
+        ),
+      );
+
+      const password = 'correct horse battery staple';
+      final archive = File(
+        path.join(temporaryDirectory.path, 'protected-copy.butlerlybackup'),
+      );
+      await services<LocalBackupManager>().createPortableBackup(
+        archive,
+        password: password,
+      );
+      final sourceEvidenceRows = await database.database.query(
+        'evidence_items',
+      );
+      final sourceRuleRows = await database.database.query(
+        'analysis_rule_definitions',
+      );
+      final sourceTransactionRows = await database.database.query(
+        'transactions',
+      );
+      await evidenceFile.delete();
+
+      final result = await services<LocalBackupManager>()
+          .recoverMissingEvidence(archive, password: password);
+
+      expect(result.recoveredCount, 1);
+      expect(result.alreadyPresentCount, 0);
+      expect(result.unresolvedCount, 0);
+      expect(await evidenceFile.readAsString(), 'protected receipt copy');
+      expect(
+        await database.database.query('evidence_items'),
+        sourceEvidenceRows,
+      );
+      expect(
+        await database.database.query('analysis_rule_definitions'),
+        sourceRuleRows,
+      );
+      expect(
+        await database.database.query('transactions'),
+        sourceTransactionRows,
+      );
+
+      // The protected copy is usable through all three production paths after
+      // evidence recovery: a new backup, Merge, and Replace.
+      final recoveredArchive = File(
+        path.join(temporaryDirectory.path, 'recovered-copy.butlerly'),
+      );
+      await services<LocalBackupManager>().createPortableBackup(
+        recoveredArchive,
+        password: password,
+      );
+      await services<LocalBackupManager>().restore(
+        recoveredArchive,
+        mode: LocalRestoreMode.merge,
+        password: password,
+        postActivationRefresh: () async {},
+      );
+      await services<LocalBackupManager>().restore(
+        recoveredArchive,
+        mode: LocalRestoreMode.replace,
+        password: password,
+        postActivationRefresh: () async {},
+      );
+      expect(
+        await database.database.query(
+          'transactions',
+          where: 'id = ?',
+          whereArgs: ['backup-production-evidence-recovery-transaction'],
+        ),
+        hasLength(1),
+      );
+      expect(await evidenceFile.readAsString(), 'protected receipt copy');
+    },
+  );
+
+  test('evidence recovery never overwrites a conflicting live file', () async {
+    const provenanceId = 'backup-production-evidence-conflict-provenance';
+    const localFileName = 'receipts/conflicting-receipt.txt';
+    final capturedAt = DateTime.utc(2026, 11, 3, 12);
+    final evidenceFile = File(path.join(evidenceDirectory.path, localFileName))
+      ..createSync(recursive: true);
+    await evidenceFile.writeAsString('original bytes', flush: true);
+    await database.database.insert('provenances', {
+      'id': provenanceId,
+      'source_type': 'userEntry',
+      'captured_at': capturedAt.toIso8601String(),
+      'source_id': null,
+      'original_representation': null,
+      'source_language': null,
+    });
+    await database.database.insert('evidence_items', {
+      'id': 'backup-production-evidence-conflict',
+      'type': 'receiptImage',
+      'original_name': 'conflicting-receipt.txt',
+      'media_type': 'text/plain',
+      'provenance_id': provenanceId,
+      'created_at': capturedAt.toIso8601String(),
+      'source_language': null,
+      'local_file_name': localFileName,
+    });
+    final archive = File(
+      path.join(temporaryDirectory.path, 'conflicting-copy.butlerlybackup'),
+    );
+    await services<LocalBackupManager>().createBackup(archive);
+    await evidenceFile.writeAsString('user replacement bytes', flush: true);
+
+    final result = await services<LocalBackupManager>().recoverMissingEvidence(
+      archive,
+    );
+
+    expect(result.recoveredCount, 0);
+    expect(result.unresolvedCount, 1);
+    expect(await evidenceFile.readAsString(), 'user replacement bytes');
+  });
+
+  test(
+    'evidence recovery reports unresolved rows without discarding verified files',
+    () async {
+      const firstProvenance = 'backup-production-partial-first-provenance';
+      const secondProvenance = 'backup-production-partial-second-provenance';
+      const firstPath = 'receipts/partial-first.txt';
+      const secondPath = 'receipts/partial-second.txt';
+      final capturedAt = DateTime.utc(2026, 11, 3, 12);
+      final firstFile = File(path.join(evidenceDirectory.path, firstPath))
+        ..createSync(recursive: true);
+      await firstFile.writeAsString('recoverable', flush: true);
+      await database.database.insert('provenances', {
+        'id': firstProvenance,
+        'source_type': 'userEntry',
+        'captured_at': capturedAt.toIso8601String(),
+        'source_id': null,
+        'original_representation': null,
+        'source_language': null,
+      });
+      await database.database.insert('evidence_items', {
+        'id': 'backup-production-partial-first',
+        'type': 'receiptImage',
+        'original_name': 'partial-first.txt',
+        'media_type': 'text/plain',
+        'provenance_id': firstProvenance,
+        'created_at': capturedAt.toIso8601String(),
+        'source_language': null,
+        'local_file_name': firstPath,
+      });
+      final archive = File(
+        path.join(temporaryDirectory.path, 'partial-copy.butlerlybackup'),
+      );
+      await services<LocalBackupManager>().createBackup(archive);
+
+      await database.database.insert('provenances', {
+        'id': secondProvenance,
+        'source_type': 'userEntry',
+        'captured_at': capturedAt.toIso8601String(),
+        'source_id': null,
+        'original_representation': null,
+        'source_language': null,
+      });
+      await database.database.insert('evidence_items', {
+        'id': 'backup-production-partial-second',
+        'type': 'receiptImage',
+        'original_name': 'partial-second.txt',
+        'media_type': 'text/plain',
+        'provenance_id': secondProvenance,
+        'created_at': capturedAt.toIso8601String(),
+        'source_language': null,
+        'local_file_name': secondPath,
+      });
+      await firstFile.delete();
+
+      final result = await services<LocalBackupManager>()
+          .recoverMissingEvidence(archive);
+
+      expect(result.recoveredCount, 1);
+      expect(result.unresolvedCount, 1);
+      expect(await firstFile.readAsString(), 'recoverable');
+      expect(
+        await File(path.join(evidenceDirectory.path, secondPath)).exists(),
+        isFalse,
+      );
+    },
+  );
+
   test('reports generic inspection failures accurately', () async {
     final archive = File(
       path.join(temporaryDirectory.path, 'invalid-inspection.butlerlybackup'),

@@ -36,6 +36,7 @@ class _PortableBackupRecoveryRequiredPageState
 
   bool _busy = false;
   bool _failed = false;
+  bool _continued = false;
 
   Future<void> _selectLocation() async {
     var stage = 'recovery destination selection';
@@ -111,8 +112,29 @@ class _PortableBackupRecoveryRequiredPageState
     }
   }
 
+  Future<void> _continueWithCurrentData() async {
+    setState(() {
+      _busy = true;
+      _failed = false;
+    });
+    try {
+      // This only dismisses the process-visible warning. The publication
+      // marker and private artifacts remain available for a later retry; no
+      // financial data or recovery file is deleted and no backup success is
+      // implied.
+      await services<WorkspaceDataService>()
+          .dismissPortableBackupPublicationRecovery();
+      if (mounted) setState(() => _continued = true);
+    } catch (_) {
+      if (mounted) setState(() => _failed = true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_continued) return const SizedBox.shrink();
     return Scaffold(
       body: SafeArea(
         child: ButlerlyResponsiveBody(
@@ -175,11 +197,9 @@ class _PortableBackupRecoveryRequiredPageState
                       ),
                       const SizedBox(height: 12),
                       TextButton(
-                        onPressed: _busy
-                            ? null
-                            : () => setState(() => _failed = false),
+                        onPressed: _busy ? null : _continueWithCurrentData,
                         child: Text(
-                          context.l10n.backupText('keepRecoveryData'),
+                          context.l10n.backupText('continueWithLocalData'),
                         ),
                       ),
                       TextButton(

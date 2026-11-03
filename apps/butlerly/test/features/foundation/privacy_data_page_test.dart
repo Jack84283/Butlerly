@@ -32,6 +32,7 @@ void main() {
     share_plus.SharePlus? shareClient,
     Future<FileSaveLocation?> Function()? selectBackupLocation,
     Future<XFile?> Function()? selectRestoreFile,
+    Future<XFile?> Function()? selectEvidenceRecoveryFile,
     Locale locale = const Locale('en'),
   }) => ProviderScope(
     child: MaterialApp(
@@ -47,6 +48,7 @@ void main() {
         shareClient: shareClient,
         selectBackupLocation: selectBackupLocation,
         selectRestoreFile: selectRestoreFile,
+        selectEvidenceRecoveryFile: selectEvidenceRecoveryFile,
       ),
     ),
   );
@@ -595,6 +597,65 @@ void main() {
     },
   );
 
+  testWidgets('restore preview accepts a supported unencrypted backup', (
+    tester,
+  ) async {
+    final gateway = _ShareGateway(Directory.systemTemp)..encrypted = false;
+    await services.reset();
+    addTearDown(() async => services.reset());
+    services.registerSingleton<WorkspaceDataService>(
+      WorkspaceDataService(gateway, refreshSystemData: () async {}),
+    );
+
+    await tester.pumpWidget(
+      app(selectRestoreFile: () async => XFile('/unused/historical.butler')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Restore backup'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Merge'), findsOneWidget);
+    expect(gateway.inspectPassword, isNull);
+  });
+
+  testWidgets('evidence recovery is an explicit file operation', (
+    tester,
+  ) async {
+    final gateway = _ShareGateway(Directory.systemTemp)
+      ..evidenceRecoveryResult = const EvidenceRecoveryResult(
+        recoveredCount: 3,
+        alreadyPresentCount: 1,
+        unresolvedCount: 0,
+      );
+    await services.reset();
+    addTearDown(() async => services.reset());
+    services.registerSingleton<WorkspaceDataService>(
+      WorkspaceDataService(gateway, refreshSystemData: () async {}),
+    );
+
+    await tester.pumpWidget(
+      app(
+        selectEvidenceRecoveryFile: () async =>
+            XFile('/unused/evidence-recovery.butlerly'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Recover missing evidence'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byType(TextField),
+      'correct horse battery staple',
+    );
+    await tester.tap(find.text('Unlock'));
+    await tester.pumpAndSettle();
+
+    expect(gateway.recoveredEvidencePassword, 'correct horse battery staple');
+    expect(
+      find.text('Evidence recovery finished: 3 restored, 1 already present.'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets(
     'Replace requires separate confirmation before invoking restore',
     (tester) async {
@@ -699,6 +760,9 @@ final class _ShareGateway implements LocalDataGateway {
   bool encrypted = true;
   int inspectionCalls = 0;
   String? inspectionPassword;
+  String? inspectPassword;
+  EvidenceRecoveryResult? evidenceRecoveryResult;
+  String? recoveredEvidencePassword;
 
   @override
   Future<void> createPortableBackup(
@@ -734,6 +798,7 @@ final class _ShareGateway implements LocalDataGateway {
   Future<BackupInspection> inspect(String filePath, {String? password}) async {
     inspectionCalls++;
     inspectionPassword = password;
+    inspectPassword = password;
     return BackupInspection(
       createdAtUtc: DateTime.utc(2026, 11, 1),
       recordCount: 8,
@@ -745,6 +810,20 @@ final class _ShareGateway implements LocalDataGateway {
         deletedEntities: 0,
       ),
     );
+  }
+
+  @override
+  Future<EvidenceRecoveryResult> recoverMissingEvidence(
+    String filePath, {
+    String? password,
+  }) async {
+    recoveredEvidencePassword = password;
+    return evidenceRecoveryResult ??
+        const EvidenceRecoveryResult(
+          recoveredCount: 0,
+          alreadyPresentCount: 0,
+          unresolvedCount: 0,
+        );
   }
 
   @override

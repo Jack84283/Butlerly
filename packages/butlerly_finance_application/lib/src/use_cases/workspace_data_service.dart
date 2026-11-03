@@ -10,6 +10,7 @@ abstract interface class LocalDataGateway {
     required String password,
   });
   Future<void> recoverPortableBackupPublication(String destination);
+  Future<void> dismissPortableBackupPublicationRecovery();
   Future<String> createTemporaryBackup(
     String fileName, {
     required String password,
@@ -17,6 +18,10 @@ abstract interface class LocalDataGateway {
   Future<void> discardTemporaryBackup(String filePath);
   Future<bool> isEncryptedBackup(String filePath);
   Future<BackupInspection> inspect(String filePath, {String? password});
+  Future<EvidenceRecoveryResult> recoverMissingEvidence(
+    String filePath, {
+    String? password,
+  });
   Future<LocalRestoreResult> restore(
     String filePath, {
     required LocalRestoreMode mode,
@@ -92,6 +97,8 @@ final class WorkspaceDataService {
   );
   Future<void> recoverPortableBackupPublication(String destination) =>
       gateway.recoverPortableBackupPublication(destination);
+  Future<void> dismissPortableBackupPublicationRecovery() =>
+      gateway.dismissPortableBackupPublicationRecovery();
   Future<String> createTemporaryBackup(
     String fileName, {
     required String password,
@@ -113,6 +120,12 @@ final class WorkspaceDataService {
       gateway.isEncryptedBackup(filePath);
   Future<BackupInspection> inspect(String filePath, {String? password}) =>
       gateway.inspect(filePath, password: password);
+  Future<EvidenceRecoveryResult> recoverMissingEvidence(
+    String filePath, {
+    String? password,
+  }) => _runConsistently(
+    () => gateway.recoverMissingEvidence(filePath, password: password),
+  );
   Future<LocalDataExportResult> exportAll() => gateway.exportAll();
 
   Future<void> _refresh(Future<void> Function()? refreshPresentation) async {

@@ -28,6 +28,9 @@ const _backupStrings = <String, Map<String, String>>{
     'backupSubtitle': 'Create one encrypted portable local backup file.',
     'restoreBackup': 'Restore backup',
     'restoreSubtitle': 'Restore a Butlerly backup using Merge or Replace.',
+    'recoverEvidence': 'Recover missing evidence',
+    'recoverEvidenceSubtitle':
+        'Restore verified receipt and document files without changing financial records.',
     'backupComplete': 'Encrypted backup created successfully.',
     'backupAnalysisRepairRequired':
         'Backup could not be created because analysis rules failed validation. Choose Repair analysis rules and try again.',
@@ -43,6 +46,16 @@ const _backupStrings = <String, Map<String, String>>{
     'backupLocationSelectionFailed': 'Backup location could not be selected.',
     'backupStorageFailed': 'Backup could not be saved to device storage.',
     'restoreFailed': 'Backup could not be restored.',
+    'evidenceRecoveryComplete':
+        'Evidence recovery finished: {recovered} restored, {present} already present.',
+    'evidenceRecoveryIncomplete':
+        'Evidence recovery finished with unresolved files: {recovered} restored, {present} already present, {unresolved} unresolved.',
+    'evidenceRecoveryStorageFailed':
+        'Verified evidence could not be written to device storage. No financial records were changed.',
+    'evidenceRecoveryInvalid':
+        'The selected backup is invalid or its evidence could not be verified.',
+    'evidenceRecoveryFailed':
+        'Missing evidence could not be recovered. No financial records were changed.',
     'restoreTitle': 'Restore Butlerly backup?',
     'backupCreatedAt': 'Created {date}',
     'newerData':
@@ -99,9 +112,10 @@ const _backupStrings = <String, Map<String, String>>{
         'The unresolved staged evidence was copied without changing the original recovery files. You can use this copy before choosing a destructive reset.',
     'portableRecoveryTitle': 'Backup recovery required',
     'portableRecoveryBody':
-        'A backup replacement was interrupted. Recovery is required; the destination file status is unknown. Select the original backup location to continue.',
+        'A backup replacement was interrupted. The destination file status is unknown. Re-select the original backup location to recover it, or continue with current data without deleting local financial data.',
     'selectBackupLocation': 'Select backup location',
     'keepRecoveryData': 'Keep recovery data',
+    'continueWithLocalData': 'Continue with current data',
     'portableRecoveryStillRequired':
         'Recovery could not be completed. The destination and recovery artifacts still require verification.',
   },
@@ -111,6 +125,9 @@ const _backupStrings = <String, Map<String, String>>{
     'restoreBackup': 'Restaurar copia',
     'restoreSubtitle':
         'Restaura una copia de Butlerly mediante Combinar o Reemplazar.',
+    'recoverEvidence': 'Recuperar evidencia faltante',
+    'recoverEvidenceSubtitle':
+        'Restaura comprobantes y documentos verificados sin cambiar los datos financieros.',
     'backupComplete': 'La copia cifrada se creó correctamente.',
     'backupAnalysisRepairRequired':
         'No se pudo crear la copia porque las reglas de análisis no superaron la validación. Elige Reparar reglas de análisis y vuelve a intentarlo.',
@@ -128,6 +145,16 @@ const _backupStrings = <String, Map<String, String>>{
     'backupStorageFailed':
         'No se pudo guardar la copia en el almacenamiento del dispositivo.',
     'restoreFailed': 'No se pudo restaurar la copia.',
+    'evidenceRecoveryComplete':
+        'Recuperación de evidencia completada: {recovered} restaurados, {present} ya estaban disponibles.',
+    'evidenceRecoveryIncomplete':
+        'Recuperación de evidencia incompleta: {recovered} restaurados, {present} ya estaban disponibles y {unresolved} siguen sin resolver.',
+    'evidenceRecoveryStorageFailed':
+        'No se pudo guardar la evidencia verificada. No se cambiaron los datos financieros.',
+    'evidenceRecoveryInvalid':
+        'La copia seleccionada no es válida o no se pudo verificar su evidencia.',
+    'evidenceRecoveryFailed':
+        'No se pudo recuperar la evidencia faltante. No se cambiaron los datos financieros.',
     'restoreTitle': '¿Restaurar la copia de Butlerly?',
     'backupCreatedAt': 'Creada el {date}',
     'newerData':
@@ -185,9 +212,10 @@ const _backupStrings = <String, Map<String, String>>{
         'La evidencia pendiente se copió sin cambiar los archivos originales de recuperación. Puede usar esta copia antes de elegir un reinicio destructivo.',
     'portableRecoveryTitle': 'Se requiere recuperar la copia',
     'portableRecoveryBody':
-        'Se interrumpió el reemplazo de una copia. Se requiere recuperación; se desconoce el estado del archivo de destino. Selecciona la ubicación original de la copia para continuar.',
+        'Se interrumpió el reemplazo de una copia y se desconoce el estado del archivo de destino. Selecciona la ubicación original para recuperarlo o continúa con los datos actuales sin borrar los datos financieros locales.',
     'selectBackupLocation': 'Seleccionar ubicación de la copia',
     'keepRecoveryData': 'Conservar los datos de recuperación',
+    'continueWithLocalData': 'Continuar con los datos actuales',
     'portableRecoveryStillRequired':
         'No se pudo completar la recuperación. El archivo de destino y los artefactos de recuperación aún deben verificarse.',
   },
@@ -196,6 +224,8 @@ const _backupStrings = <String, Map<String, String>>{
     'backupSubtitle': '创建一个加密且可跨设备使用的本地备份文件。',
     'restoreBackup': '恢复备份',
     'restoreSubtitle': '通过合并或替换恢复 Butlerly 备份。',
+    'recoverEvidence': '恢复缺失的凭证',
+    'recoverEvidenceSubtitle': '恢复已验证的收据和文档文件，不修改财务记录。',
     'backupComplete': '加密备份创建成功。',
     'backupAnalysisRepairRequired': '无法创建备份，因为分析规则未通过验证。请选择“修复分析规则”后重试。',
     'backupShareUnconfirmed': '加密备份已创建，但平台无法确认是否已分享或保存。',
@@ -206,6 +236,12 @@ const _backupStrings = <String, Map<String, String>>{
     'backupLocationSelectionFailed': '无法选择备份位置。',
     'backupStorageFailed': '无法将备份保存到设备存储。',
     'restoreFailed': '无法恢复备份。',
+    'evidenceRecoveryComplete': '凭证恢复完成：恢复 {recovered} 个，已有 {present} 个。',
+    'evidenceRecoveryIncomplete':
+        '凭证恢复未完成：恢复 {recovered} 个，已有 {present} 个，仍有 {unresolved} 个未解决。',
+    'evidenceRecoveryStorageFailed': '无法写入已验证的凭证。财务记录未被修改。',
+    'evidenceRecoveryInvalid': '所选备份无效，或其中的凭证无法验证。',
+    'evidenceRecoveryFailed': '无法恢复缺失凭证。财务记录未被修改。',
     'restoreTitle': '恢复 Butlerly 备份？',
     'backupCreatedAt': '创建时间：{date}',
     'newerData': '此设备包含较新的本地数据。合并会保留符合现有规则的较新本地数据；替换会丢弃当前数据并恢复备份。',
@@ -252,9 +288,11 @@ const _backupStrings = <String, Map<String, String>>{
     'recoveryEvidenceExported': '已创建凭证恢复副本',
     'recoveryEvidenceExportedBody': '未解决的暂存凭证已复制，原始恢复文件未被更改。您可以在选择清除数据前使用此副本。',
     'portableRecoveryTitle': '需要恢复备份',
-    'portableRecoveryBody': '备份替换过程中断。需要恢复；无法确定目标文件的状态。请选择原备份位置以继续。',
+    'portableRecoveryBody':
+        '备份替换过程中断，无法确定目标文件的状态。请选择原备份位置进行恢复，或继续使用当前数据而不清除本地财务数据。',
     'selectBackupLocation': '选择备份位置',
     'keepRecoveryData': '保留恢复数据',
+    'continueWithLocalData': '继续使用当前数据',
     'portableRecoveryStillRequired': '无法完成恢复。目标文件和恢复文件仍需验证。',
   },
 };
