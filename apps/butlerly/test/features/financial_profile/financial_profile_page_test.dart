@@ -370,11 +370,11 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     await _pumpUntilVisible(
       tester,
-      find.byKey(const ValueKey('financial-profile-back'), skipOffstage: false),
+      find.text('What are your main spending categories?'),
     );
 
     expect(
-      find.byKey(const ValueKey('financial-profile-back'), skipOffstage: false),
+      find.text('What are your main spending categories?'),
       findsOneWidget,
     );
   });
@@ -400,7 +400,7 @@ Future<void> _tapSurveyAction(WidgetTester tester, ValueKey<String> key) async {
     scrollable: find.byType(Scrollable).first,
   );
   await tester.tap(action);
-  await tester.pump();
+  await _pumpWithRealAsync(tester);
 }
 
 Future<void> _tapVisible(WidgetTester tester, Finder finder) async {
