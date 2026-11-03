@@ -43,6 +43,8 @@ const _backupStrings = <String, Map<String, String>>{
     'backupRecoveryRequired':
         'Backup could not be finalized safely. Recovery is required; the destination file status is unknown. Open Backup recovery to continue.',
     'backupFailed': 'Backup could not be created.',
+    'backupFailedWithDetails':
+        'Backup could not be created. Failure stage: {stage}. Error type: {errorType}. Your financial data was not changed.',
     'backupLocationSelectionFailed': 'Backup location could not be selected.',
     'backupStorageFailed': 'Backup could not be saved to device storage.',
     'restoreFailed': 'Backup could not be restored.',
@@ -140,6 +142,8 @@ const _backupStrings = <String, Map<String, String>>{
     'backupRecoveryRequired':
         'No se pudo finalizar la copia de forma segura. Se requiere recuperación; se desconoce el estado del archivo de destino. Abre Recuperación de copias para continuar.',
     'backupFailed': 'No se pudo crear la copia.',
+    'backupFailedWithDetails':
+        'No se pudo crear la copia. Etapa del fallo: {stage}. Tipo de error: {errorType}. No se modificaron sus datos financieros.',
     'backupLocationSelectionFailed':
         'No se pudo seleccionar la ubicación de la copia.',
     'backupStorageFailed':
@@ -233,6 +237,8 @@ const _backupStrings = <String, Map<String, String>>{
     'backupEncryptionFailed': '备份加密或验证失败。未保存备份。',
     'backupRecoveryRequired': '无法安全完成备份。需要恢复；无法确定目标文件的状态。请打开备份恢复以继续。',
     'backupFailed': '无法创建备份。',
+    'backupFailedWithDetails':
+        '无法创建备份。失败阶段：{stage}。错误类型：{errorType}。您的财务数据未被修改。',
     'backupLocationSelectionFailed': '无法选择备份位置。',
     'backupStorageFailed': '无法将备份保存到设备存储。',
     'restoreFailed': '无法恢复备份。',

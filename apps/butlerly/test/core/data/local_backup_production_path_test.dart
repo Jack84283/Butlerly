@@ -981,7 +981,11 @@ void main() {
         destination,
         password: 'correct horse battery staple',
       ),
-      throwsA(isA<StateError>()),
+      throwsA(
+        isA<BackupFailureException>()
+            .having((error) => error.stage, 'stage', 'evidence collection')
+            .having((error) => error.errorType, 'error type', 'StateError'),
+      ),
     );
     expect(
       diagnosticLogger.stage,

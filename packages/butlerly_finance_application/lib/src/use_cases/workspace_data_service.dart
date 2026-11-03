@@ -66,6 +66,22 @@ final class BackupStorageException implements Exception {
   const BackupStorageException();
 }
 
+/// Raised when backup creation fails outside a known product-level category.
+///
+/// Only the safe operation stage and exception type cross the application
+/// boundary. Exception messages and stack traces may contain private paths,
+/// platform payloads, or financial data and must remain in privacy-safe logs.
+final class BackupFailureException extends FormatException {
+  const BackupFailureException({required this.stage, required this.errorType})
+    : super('Portable backup creation failed.');
+
+  /// The bounded backup stage reported by the storage adapter.
+  final String stage;
+
+  /// The exception class name, without its message or payload.
+  final String errorType;
+}
+
 /// Application orchestration shared by normal privacy controls and recovery.
 /// System-data refresh must complete inside the adapter's restore safety gate.
 /// UI invalidation must wait until restore commits and closes its recovery gate.

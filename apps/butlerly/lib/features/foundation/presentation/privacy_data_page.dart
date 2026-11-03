@@ -124,10 +124,16 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         stackTrace,
       );
       if (mounted) {
-        final message = error.canRepair
-            ? 'backupAnalysisRepairRequired'
-            : 'backupFailed';
-        _message(context.l10n.backupText(message));
+        final message = error.canRepair ? 'backupAnalysisRepairRequired' : null;
+        _message(
+          message == null
+              ? _backupFailureMessage(
+                  context,
+                  error,
+                  stage: 'analysis-rule validation',
+                )
+              : context.l10n.backupText(message),
+        );
       }
     } on BackupPublicationRecoveryException catch (error, stackTrace) {
       _backupLogger.severe(
@@ -158,7 +164,9 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       if (mounted) _message(context.l10n.backupText('backupStorageFailed'));
     } catch (error, stackTrace) {
       _backupLogger.severe('Backup failed at stage: $stage', error, stackTrace);
-      if (mounted) _message(context.l10n.backupText('backupFailed'));
+      if (mounted) {
+        _message(_backupFailureMessage(context, error, stage: stage));
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -213,10 +221,12 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         stackTrace,
       );
       if (mounted) {
-        final message = error.canRepair
-            ? 'backupAnalysisRepairRequired'
-            : 'backupFailed';
-        _message(context.l10n.backupText(message));
+        final message = error.canRepair ? 'backupAnalysisRepairRequired' : null;
+        _message(
+          message == null
+              ? _backupFailureMessage(context, error, stage: stage)
+              : context.l10n.backupText(message),
+        );
       }
     } on BackupPublicationRecoveryException catch (error, stackTrace) {
       _backupLogger.severe(
@@ -252,10 +262,12 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         stackTrace,
       );
       if (mounted) {
-        final message = nativeShareInvoked
-            ? 'backupShareFailed'
-            : 'backupFailed';
-        _message(context.l10n.backupText(message));
+        final message = nativeShareInvoked ? 'backupShareFailed' : null;
+        _message(
+          message == null
+              ? _backupFailureMessage(context, error, stage: stage)
+              : context.l10n.backupText(message),
+        );
       }
     } finally {
       try {
@@ -278,6 +290,21 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
 
   AppLogger get _backupLogger =>
       services.isRegistered<AppLogger>() ? services<AppLogger>() : AppLogger();
+
+  String _backupFailureMessage(
+    BuildContext context,
+    Object error, {
+    required String stage,
+  }) {
+    final details = error is BackupFailureException ? error : null;
+    return context.l10n
+        .backupText('backupFailedWithDetails')
+        .replaceAll('{stage}', details?.stage ?? stage)
+        .replaceAll(
+          '{errorType}',
+          details?.errorType ?? error.runtimeType.toString(),
+        );
+  }
 
   Future<void> _restore() async {
     var stage = 'restore file selection';

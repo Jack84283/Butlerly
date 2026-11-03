@@ -498,7 +498,12 @@ void main() {
     await _completeBackupPasswordFlow(tester);
 
     debugDefaultTargetPlatformOverride = null;
-    expect(find.textContaining('Backup could not be created.'), findsOneWidget);
+    expect(
+      find.text(
+        'Backup could not be created. Failure stage: temporary backup creation. Error type: StateError. Your financial data was not changed.',
+      ),
+      findsOneWidget,
+    );
     expect(
       find.text(
         'Backup could not be created because analysis rules failed validation. Choose Repair analysis rules and try again.',
@@ -506,6 +511,44 @@ void main() {
       findsNothing,
     );
     expect(gateway.discardedPath, isNull);
+  });
+
+  testWidgets('desktop backup reports generic failures with diagnostics', (
+    tester,
+  ) async {
+    final root = Directory(
+      path.join(
+        Directory.systemTemp.path,
+        'butlerly-desktop-backup-failure-${DateTime.now().microsecondsSinceEpoch}',
+      ),
+    )..createSync(recursive: true);
+    addTearDown(() async {
+      await services.reset();
+      if (root.existsSync()) root.deleteSync(recursive: true);
+      debugDefaultTargetPlatformOverride = null;
+    });
+    final gateway = _ShareGateway(root)..createFailure = StateError('fixture');
+    services.registerSingleton<WorkspaceDataService>(
+      WorkspaceDataService(gateway, refreshSystemData: () async {}),
+    );
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+
+    await tester.pumpWidget(
+      app(
+        selectBackupLocation: () async =>
+            FileSaveLocation(path.join(root.path, 'selected.butlerly')),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _completeBackupPasswordFlow(tester);
+
+    debugDefaultTargetPlatformOverride = null;
+    expect(
+      find.text(
+        'Backup could not be created. Failure stage: portable backup creation. Error type: StateError. Your financial data was not changed.',
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('analysis rule repair requires explicit approval', (

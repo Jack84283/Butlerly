@@ -260,7 +260,16 @@ final class LocalBackupManager {
         error,
         stackTrace,
       );
-      rethrow;
+      if (error is BackupAnalysisRuleValidationException ||
+          error is BackupEncryptionException ||
+          error is BackupFailureException ||
+          error is BackupPasswordTooShortException) {
+        rethrow;
+      }
+      throw BackupFailureException(
+        stage: stage,
+        errorType: error.runtimeType.toString(),
+      );
     } finally {
       await _deleteFileBestEffort(plain);
       await _deleteFileBestEffort(verificationPlain);
