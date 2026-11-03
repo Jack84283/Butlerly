@@ -20,19 +20,25 @@ void main() {
 
   tearDown(() => services.reset());
 
-  Widget app({required Future<XFile?> Function() selectLocation}) =>
-      MaterialApp(
-        localizationsDelegates: const [
-          AppLocalizations.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: PortableBackupRecoveryRequiredPage(
-          selectLocation: selectLocation,
-        ),
-      );
+  Widget app({
+    Future<XFile?> Function()? selectLocation,
+    Future<FileSaveLocation?> Function(String suggestedName)?
+    selectSaveLocation,
+    String? suggestedFileName,
+  }) => MaterialApp(
+    localizationsDelegates: const [
+      AppLocalizations.delegate,
+      GlobalMaterialLocalizations.delegate,
+      GlobalWidgetsLocalizations.delegate,
+      GlobalCupertinoLocalizations.delegate,
+    ],
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: PortableBackupRecoveryRequiredPage(
+      selectLocation: selectLocation,
+      selectSaveLocation: selectSaveLocation,
+      suggestedFileName: suggestedFileName,
+    ),
+  );
 
   testWidgets('shows recovery instructions and retries after reauthorization', (
     tester,
@@ -82,6 +88,25 @@ void main() {
 
     expect(gateway.dismissals, 1);
     expect(find.text('Backup recovery required'), findsNothing);
+  });
+
+  testWidgets('suggests the original destination basename', (tester) async {
+    String? suggestedName;
+    await tester.pumpWidget(
+      app(
+        suggestedFileName: 'monthly-finances.butlerlybackup',
+        selectSaveLocation: (name) async {
+          suggestedName = name;
+          return const FileSaveLocation('/selected/monthly-finances');
+        },
+      ),
+    );
+
+    await tester.tap(find.text('Select backup location'));
+    await tester.pumpAndSettle();
+
+    expect(suggestedName, 'monthly-finances.butlerlybackup');
+    expect(gateway.recoveries, 1);
   });
 
   testWidgets('shows recovery failure when location selection throws', (

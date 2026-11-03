@@ -110,7 +110,10 @@ class ButlerlyApp extends ConsumerWidget {
                 listenable: portableRecoveryState,
                 builder: (context, _) {
                   if (portableRecoveryState.isRecoveryRequired) {
-                    return const PortableBackupRecoveryRequiredPage();
+                    return PortableBackupRecoveryRequiredPage(
+                      suggestedFileName:
+                          portableRecoveryState.suggestedDestinationFileName,
+                    );
                   }
                   return contentWithEvidenceDeletionRecovery();
                 },

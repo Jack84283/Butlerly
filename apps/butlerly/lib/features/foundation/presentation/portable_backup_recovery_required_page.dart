@@ -14,9 +14,20 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// Recovery surface shown when a portable backup destination must be
 /// re-authorized before Butlerly can safely finish or roll back publication.
 class PortableBackupRecoveryRequiredPage extends ConsumerStatefulWidget {
-  const PortableBackupRecoveryRequiredPage({super.key, this.selectLocation});
+  const PortableBackupRecoveryRequiredPage({
+    super.key,
+    this.selectLocation,
+    this.selectSaveLocation,
+    this.suggestedFileName,
+  });
 
   final Future<XFile?> Function()? selectLocation;
+
+  @visibleForTesting
+  final Future<FileSaveLocation?> Function(String suggestedName)?
+  selectSaveLocation;
+
+  final String? suggestedFileName;
 
   @override
   ConsumerState<PortableBackupRecoveryRequiredPage> createState() =>
@@ -43,11 +54,18 @@ class _PortableBackupRecoveryRequiredPageState
     try {
       final selectedPath = widget.selectLocation != null
           ? (await widget.selectLocation!.call())?.path
-          : (await getSaveLocation(
-              suggestedName:
-                  'Butlerly Recovery.${PortableBackupPolicy.extension}',
-              acceptedTypeGroups: const [_backupType],
-            ))?.path;
+          : (await (widget.selectSaveLocation != null
+                    ? widget.selectSaveLocation!.call(
+                        widget.suggestedFileName ??
+                            'Butlerly Backup.${PortableBackupPolicy.extension}',
+                      )
+                    : getSaveLocation(
+                        suggestedName:
+                            widget.suggestedFileName ??
+                            'Butlerly Backup.${PortableBackupPolicy.extension}',
+                        acceptedTypeGroups: const [_backupType],
+                      )))
+                ?.path;
       if (selectedPath == null || !mounted) return;
 
       setState(() {
