@@ -206,7 +206,8 @@ BackupFailureKind classifyBackupFailure(Object error) {
         RepositoryFailureCode.integrity => BackupFailureKind.databaseIntegrity,
         RepositoryFailureCode.storageFull => BackupFailureKind.storageFull,
         RepositoryFailureCode.permission => BackupFailureKind.fileAccess,
-        RepositoryFailureCode.unavailable => BackupFailureKind.databaseUnavailable,
+        RepositoryFailureCode.unavailable =>
+          BackupFailureKind.databaseUnavailable,
         _ => BackupFailureKind.unknown,
       };
     }
