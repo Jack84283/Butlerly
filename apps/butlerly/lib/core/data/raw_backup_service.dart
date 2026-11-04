@@ -81,7 +81,12 @@ final class RawBackupService {
         innerFormat: _rawInnerFormat,
       );
       final verification = File(path.join(working.path, 'verification'));
-      await _encryption.decrypt(encrypted, verification, password: password);
+      await _encryption.decrypt(
+        encrypted,
+        verification,
+        password: password,
+        acceptedInnerFormats: const {_rawInnerFormat},
+      );
       final verified = await _archive.inspect(verification);
       if (verified.sqliteBytes != inspection.sqliteBytes ||
           verified.attachmentCount != inspection.attachmentCount ||
