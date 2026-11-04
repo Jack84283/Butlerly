@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:butlerly/app/butlerly_app.dart';
 import 'package:butlerly/app/router/app_router.dart';
@@ -7,6 +8,7 @@ import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/core/config/app_configuration.dart';
 import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
+import 'package:butlerly/core/data/raw_restore_service.dart';
 import 'package:butlerly/core/data/restore_recovery_state.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/di/finance_services.dart';
@@ -24,6 +26,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
 
 @visibleForTesting
 final class ButlerlyStorageUnavailableException implements Exception {
@@ -440,6 +444,13 @@ Future<void> initializeButlerly(AppLogger logger) async {
 
     phase = 'database initialization';
     logger.info('Startup: opening local database');
+    // Roll back any interrupted raw Replace activation before SQLite opens.
+    // Opening a half-switched file would otherwise make rollback unsafe.
+    final support = await getApplicationSupportDirectory();
+    await RawRestoreService.recoverInterruptedReplace(
+      liveDatabase: File(path.join(support.path, 'butlerly.db')),
+      evidenceDirectory: Directory(path.join(support.path, 'evidence')),
+    );
     database = LocalDatabase(logger: logger);
     await initializeLocalDatabaseForStartup(database, logger);
     logger.info('Startup: local database ready');
