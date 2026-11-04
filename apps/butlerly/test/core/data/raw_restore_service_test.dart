@@ -5,6 +5,7 @@ import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/data/local_data_gateway.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/data/raw_backup_service.dart';
+import 'package:butlerly/core/data/raw_merge_service.dart';
 import 'package:butlerly/core/data/raw_restore_service.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
@@ -190,6 +191,92 @@ void main() {
       expect(await getProbe(), 'archived');
     },
   );
+
+  test('Merge keeps local changes, imports missing rows and preserves files',
+      () async {
+    await setProbe('archived-value');
+    await database.database.insert('restore_probe', {
+      'id': 'backup-only',
+      'value': 'from-backup',
+    });
+    final shared = File(path.join(evidence.path, 'shared.bin'));
+    final fromBackup = File(path.join(evidence.path, 'from-backup.bin'));
+    await shared.writeAsBytes([1, 2, 3]);
+    await fromBackup.writeAsBytes([4, 5, 6]);
+    final archive = File(path.join(root.path, 'merge-source.butlerly'));
+    await backups.createBackup(
+      archive,
+      password: 'correct horse battery staple',
+    );
+
+    await database.database.update(
+      'restore_probe',
+      {'value': 'local-wins'},
+      where: 'id = ?',
+      whereArgs: ['original'],
+    );
+    await database.database.delete(
+      'restore_probe',
+      where: 'id = ?',
+      whereArgs: ['backup-only'],
+    );
+    await database.database.insert('restore_probe', {
+      'id': 'local-only',
+      'value': 'new-local',
+    });
+    await shared.writeAsBytes([7, 8, 9]);
+    await fromBackup.delete();
+    final localFile = File(path.join(evidence.path, 'local-only.bin'));
+    await localFile.writeAsBytes([10]);
+
+    final merged = await RawMergeService(database, backups, restores)
+        .restoreMerge(archive, password: 'correct horse battery staple');
+    expect(merged.recordCount, greaterThan(0));
+    expect(await getProbe(), 'local-wins');
+    final rows = await database.database.query('restore_probe');
+    expect(rows.map((row) => row['id']).toSet(), {
+      'original',
+      'backup-only',
+      'local-only',
+    });
+    expect(await shared.readAsBytes(), [7, 8, 9]);
+    expect(await fromBackup.readAsBytes(), [4, 5, 6]);
+    expect(await localFile.readAsBytes(), [10]);
+  });
+
+  test('Merge respects local deletion tombstones', () async {
+    await setProbe('archived-value');
+    await database.database.insert('restore_probe', {
+      'id': 'deleted-locally',
+      'value': 'do-not-resurrect',
+    });
+    final archive = File(path.join(root.path, 'merge-tombstone.butlerly'));
+    await backups.createBackup(
+      archive,
+      password: 'correct horse battery staple',
+    );
+    await database.database.delete(
+      'restore_probe',
+      where: 'id = ?',
+      whereArgs: ['deleted-locally'],
+    );
+    await database.database.insert('entity_tombstones', {
+      'entity_type': 'restore_probe',
+      'entity_id': 'deleted-locally',
+      'deleted_at': DateTime.now().toUtc().toIso8601String(),
+    });
+
+    await RawMergeService(database, backups, restores).restoreMerge(
+      archive,
+      password: 'correct horse battery staple',
+    );
+    final rows = await database.database.query(
+      'restore_probe',
+      where: 'id = ?',
+      whereArgs: ['deleted-locally'],
+    );
+    expect(rows, isEmpty);
+  });
 
   test('wrong password leaves live database and files untouched', () async {
     await setProbe('local');
