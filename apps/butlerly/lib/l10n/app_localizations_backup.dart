@@ -25,6 +25,12 @@ Set<String> get backupLocalizationKeys => _backupStrings['en']!.keys.toSet();
 const _backupStrings = <String, Map<String, String>>{
   'en': {
     'backup': 'Back up Butlerly',
+    'toastDetails': 'Details',
+    'toastClose': 'Close',
+    'toastExportFailedDetails':
+        'The export could not be completed or saved. Check available storage and file permissions. Preserve your current Butlerly data and retry to a writable location.',
+    'toastEraseFailedDetails':
+        'The erase operation did not complete successfully. Do not assume any data was removed or preserved without checking the current app state. Keep available backups and follow any recovery guidance.',
     'backupSubtitle': 'Create one encrypted portable local backup file.',
     'restoreBackup': 'Restore backup',
     'restoreMerge': 'Merge backup',
@@ -241,6 +247,12 @@ const _backupStrings = <String, Map<String, String>>{
   },
   'es': {
     'backup': 'Crear copia de Butlerly',
+    'toastDetails': 'Detalles',
+    'toastClose': 'Cerrar',
+    'toastExportFailedDetails':
+        'No se pudo completar o guardar la exportación. Comprueba el espacio y los permisos. Conserva tus datos de Butlerly e inténtalo de nuevo en una ubicación con permiso de escritura.',
+    'toastEraseFailedDetails':
+        'No se pudo completar el borrado. No supongas que todos los datos se eliminaron o conservaron sin comprobar el estado actual. Mantén las copias disponibles y sigue las instrucciones de recuperación.',
     'backupSubtitle': 'Crea un archivo de copia local portátil y cifrado.',
     'restoreBackup': 'Restaurar copia',
     'restoreMerge': 'Combinar copia de seguridad',
@@ -459,6 +471,12 @@ const _backupStrings = <String, Map<String, String>>{
   },
   'zh': {
     'backup': '备份 Butlerly',
+    'toastDetails': '详细信息',
+    'toastClose': '关闭',
+    'toastExportFailedDetails':
+        '导出无法完成或保存。请检查剩余存储空间与文件权限，保留当前 Butlerly 数据，选择可写入位置后重试。',
+    'toastEraseFailedDetails':
+        '清除操作未成功完成。在确认当前应用状态前，无法确定数据已全部清除或保留。请保存已有备份，并按照恢复指引处理。',
     'backupSubtitle': '创建一个加密且可跨设备使用的本地备份文件。',
     'restoreBackup': '恢复备份',
     'restoreMerge': '合并备份',
