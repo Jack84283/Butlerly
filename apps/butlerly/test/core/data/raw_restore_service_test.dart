@@ -323,87 +323,88 @@ void main() {
     expect(rows, isEmpty);
   });
 
-  test('Replace upgrades prior schema in staging without changing archive',
-      () async {
-    await setProbe('older-backup-value');
-    final oldArchive = await archivedSchema(
-      version: 18,
-      label: 'older-replace',
-    );
-    final originalArchiveBytes = await oldArchive.readAsBytes();
-    await database.database.update(
-      'restore_probe',
-      {'value': 'live-newer'},
-      where: 'id = ?',
-      whereArgs: ['original'],
-    );
+  test(
+    'Replace upgrades prior schema in staging without changing archive',
+    () async {
+      await setProbe('older-backup-value');
+      final oldArchive = await archivedSchema(
+        version: 18,
+        label: 'older-replace',
+      );
+      final originalArchiveBytes = await oldArchive.readAsBytes();
+      await database.database.update(
+        'restore_probe',
+        {'value': 'live-newer'},
+        where: 'id = ?',
+        whereArgs: ['original'],
+      );
 
-    await restores.restoreReplace(
-      oldArchive,
-      password: 'correct horse battery staple',
-      onStage: (stage) async {
-        if (stage == 'database connection close') {
-          // Migration occurs before the first live database is closed.
-          expect(await getProbe(), 'live-newer');
-        }
-      },
-    );
+      await restores.restoreReplace(
+        oldArchive,
+        password: 'correct horse battery staple',
+        onStage: (stage) async {
+          if (stage == 'database connection close') {
+            // Migration occurs before the first live database is closed.
+            expect(await getProbe(), 'live-newer');
+          }
+        },
+      );
 
-    expect(await getProbe(), 'older-backup-value');
-    final version = await database.database.rawQuery('PRAGMA user_version');
-    expect(version.single.values.single, 19);
-    final profileTables = await database.database.rawQuery(
-      "SELECT name FROM sqlite_master WHERE name = 'financial_profiles'",
-    );
-    expect(profileTables, hasLength(1));
-    expect(await oldArchive.readAsBytes(), originalArchiveBytes);
-  });
+      expect(await getProbe(), 'older-backup-value');
+      final version = await database.database.rawQuery('PRAGMA user_version');
+      expect(version.single.values.single, 19);
+      final profileTables = await database.database.rawQuery(
+        "SELECT name FROM sqlite_master WHERE name = 'financial_profiles'",
+      );
+      expect(profileTables, hasLength(1));
+      expect(await oldArchive.readAsBytes(), originalArchiveBytes);
+    },
+  );
 
-  test('Merge upgrades prior schema while retaining newer local records',
-      () async {
-    await setProbe('old-value');
-    await database.database.insert('restore_probe', {
-      'id': 'backup-only',
-      'value': 'import-me',
-    });
-    final oldArchive = await archivedSchema(
-      version: 18,
-      label: 'older-merge',
-    );
-    await database.database.update(
-      'restore_probe',
-      {'value': 'local-kept'},
-      where: 'id = ?',
-      whereArgs: ['original'],
-    );
-    await database.database.delete(
-      'restore_probe',
-      where: 'id = ?',
-      whereArgs: ['backup-only'],
-    );
+  test(
+    'Merge upgrades prior schema while retaining newer local records',
+    () async {
+      await setProbe('old-value');
+      await database.database.insert('restore_probe', {
+        'id': 'backup-only',
+        'value': 'import-me',
+      });
+      final oldArchive = await archivedSchema(
+        version: 18,
+        label: 'older-merge',
+      );
+      await database.database.update(
+        'restore_probe',
+        {'value': 'local-kept'},
+        where: 'id = ?',
+        whereArgs: ['original'],
+      );
+      await database.database.delete(
+        'restore_probe',
+        where: 'id = ?',
+        whereArgs: ['backup-only'],
+      );
 
-    await RawMergeService(database, backups, restores).restoreMerge(
-      oldArchive,
-      password: 'correct horse battery staple',
-    );
-    expect(await getProbe(), 'local-kept');
-    final imported = await database.database.query(
-      'restore_probe',
-      where: 'id = ?',
-      whereArgs: ['backup-only'],
-    );
-    expect(imported.single['value'], 'import-me');
-    final version = await database.database.rawQuery('PRAGMA user_version');
-    expect(version.single.values.single, 19);
-  });
+      await RawMergeService(
+        database,
+        backups,
+        restores,
+      ).restoreMerge(oldArchive, password: 'correct horse battery staple');
+      expect(await getProbe(), 'local-kept');
+      final imported = await database.database.query(
+        'restore_probe',
+        where: 'id = ?',
+        whereArgs: ['backup-only'],
+      );
+      expect(imported.single['value'], 'import-me');
+      final version = await database.database.rawQuery('PRAGMA user_version');
+      expect(version.single.values.single, 19);
+    },
+  );
 
-  test('newer unsupported schema rejects without mutating live data',
-      () async {
+  test('newer unsupported schema rejects without mutating live data', () async {
     await setProbe('never-change-live');
-    final archive = await archivedSchema(
-      version: 20,
-      label: 'future-schema',
-    );
+    final archive = await archivedSchema(version: 20, label: 'future-schema');
     final originalArchiveBytes = await archive.readAsBytes();
 
     await expectLater(
