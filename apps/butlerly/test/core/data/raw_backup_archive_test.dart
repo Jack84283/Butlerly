@@ -89,45 +89,50 @@ void main() {
     },
   );
 
-  test('archive metadata is device-independent and uses relative evidence paths',
-      () async {
-    await const RawBackupArchive().write(
-      sqliteSnapshot: sqlite,
-      evidenceDirectory: evidence,
-      referencedEvidencePaths: const ['receipts/one.jpg'],
-      destination: archive,
-    );
+  test(
+    'archive metadata is device-independent and uses relative evidence paths',
+    () async {
+      await const RawBackupArchive().write(
+        sqliteSnapshot: sqlite,
+        evidenceDirectory: evidence,
+        referencedEvidencePaths: const ['receipts/one.jpg'],
+        destination: archive,
+      );
 
-    final reader = await archive.open(mode: FileMode.read);
-    late final Map<String, dynamic> manifest;
-    try {
-      final magic = ascii.decode(await reader.read(12));
-      expect(magic, 'BUTLERLYRAW1');
-      final manifestLength = int64FromBytes(await reader.read(8));
-      await reader.read(64); // Authenticated manifest digest.
-      manifest = jsonDecode(utf8.decode(await reader.read(manifestLength)))
-          as Map<String, dynamic>;
-    } finally {
-      await reader.close();
-    }
-    expect(manifest.keys.toSet(), {
-      'format',
-      'formatVersion',
-      'createdAtUtc',
-      'sqliteLength',
-      'sqliteSha256',
-      'recordCount',
-      'attachments',
-      'missingAttachmentPaths',
-      'unsafeReferenceCount',
-    });
-    final attachments = manifest['attachments'] as List<dynamic>;
-    expect((attachments.single as Map<String, dynamic>)['path'],
-        'receipts/one.jpg');
-    expect(jsonEncode(manifest), isNot(contains(working.path)));
-    // The SQLite schema version travels inside the native snapshot itself.
-    // No device or installation identity is needed for Restore.
-  });
+      final reader = await archive.open(mode: FileMode.read);
+      late final Map<String, dynamic> manifest;
+      try {
+        final magic = ascii.decode(await reader.read(12));
+        expect(magic, 'BUTLERLYRAW1');
+        final manifestLength = int64FromBytes(await reader.read(8));
+        await reader.read(64); // Authenticated manifest digest.
+        manifest =
+            jsonDecode(utf8.decode(await reader.read(manifestLength)))
+                as Map<String, dynamic>;
+      } finally {
+        await reader.close();
+      }
+      expect(manifest.keys.toSet(), {
+        'format',
+        'formatVersion',
+        'createdAtUtc',
+        'sqliteLength',
+        'sqliteSha256',
+        'recordCount',
+        'attachments',
+        'missingAttachmentPaths',
+        'unsafeReferenceCount',
+      });
+      final attachments = manifest['attachments'] as List<dynamic>;
+      expect(
+        (attachments.single as Map<String, dynamic>)['path'],
+        'receipts/one.jpg',
+      );
+      expect(jsonEncode(manifest), isNot(contains(working.path)));
+      // The SQLite schema version travels inside the native snapshot itself.
+      // No device or installation identity is needed for Restore.
+    },
+  );
 
   test('missing optional evidence does not fail backup', () async {
     final archiveManager = const RawBackupArchive();
