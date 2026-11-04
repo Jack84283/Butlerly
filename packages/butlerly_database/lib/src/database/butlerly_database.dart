@@ -48,7 +48,7 @@ final class ButlerlyDatabase {
     return database;
   }
 
-  Future<void> open() async {
+  Future<void> open({bool seedSystemDataOnOpen = true}) async {
     try {
       if (_isDebugBuild) {
         developer.log('Butlerly DB: opening target v$targetVersion');
@@ -100,9 +100,11 @@ final class ButlerlyDatabase {
           },
         ),
       );
-      if (_isDebugBuild) developer.log('Butlerly DB: seeding catalog');
-      await seedSystemData();
-      if (_isDebugBuild) developer.log('Butlerly DB: catalog complete');
+      if (seedSystemDataOnOpen) {
+        if (_isDebugBuild) developer.log('Butlerly DB: seeding catalog');
+        await seedSystemData();
+        if (_isDebugBuild) developer.log('Butlerly DB: catalog complete');
+      }
     } on DatabaseException catch (error) {
       if (_isDebugBuild) {
         final reason = error.toString().split(" sql '").first;
