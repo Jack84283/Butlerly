@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
+import 'package:butlerly/core/data/raw_backup_archive.dart';
 import 'package:butlerly/core/data/raw_backup_service.dart';
 import 'package:butlerly/core/data/raw_merge_service.dart';
 import 'package:butlerly/core/data/raw_restore_service.dart';
@@ -139,9 +140,26 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
     if (password == null || password.isEmpty) {
       throw const BackupPasswordRequiredException();
     }
-    final result = mode == LocalRestoreMode.merge
-        ? await _rawMerges.restoreMerge(File(filePath), password: password)
-        : await _rawRestores.restoreReplace(File(filePath), password: password);
+    final RawBackupInspection result;
+    try {
+      result = mode == LocalRestoreMode.merge
+          ? await _rawMerges.restoreMerge(File(filePath), password: password)
+          : await _rawRestores.restoreReplace(File(filePath), password: password);
+    } on RestoreRecoveryRequiredException {
+      // The physical restore journal remains authoritative. Persist a
+      // recovery-only UI gate, including when the database cannot reopen;
+      // do not let normal financial writes resume on an uncertain file set.
+      try {
+        await backups.recoveryState.markUnknownRequired(
+          operationId: 'raw-restore-${DateTime.now().microsecondsSinceEpoch}',
+          reason: 'raw-restore-rollback-incomplete',
+        );
+      } catch (_) {
+        // markUnknownRequired updates in-memory state before attempting disk
+        // persistence; preserve the original recovery exception and journal.
+      }
+      rethrow;
+    }
     // The old postActivationRefresh callback installs and validates analysis
     // rules. Do not run business validation as part of restoring raw files.
     // WorkspaceDataService refreshes presentation state after this returns.
