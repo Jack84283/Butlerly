@@ -425,10 +425,9 @@ void main() {
     );
     expect(await getProbe(), 'historical');
     expect(
-      (await database.database.rawQuery('PRAGMA user_version'))
-          .single
-          .values
-          .single,
+      (await database.database.rawQuery(
+        'PRAGMA user_version',
+      )).single.values.single,
       19,
     );
     final tables = await database.database.rawQuery(
