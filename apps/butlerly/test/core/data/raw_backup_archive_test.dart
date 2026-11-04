@@ -169,6 +169,60 @@ void main() {
     );
   });
 
+  test('extract verifies SQLite bytes without a preliminary full scan', () async {
+    final manager = const RawBackupArchive();
+    await manager.write(
+      sqliteSnapshot: sqlite,
+      evidenceDirectory: evidence,
+      referencedEvidencePaths: const ['receipts/one.jpg'],
+      destination: archive,
+    );
+
+    // Change a byte within the SQLite payload but preserve archive length and
+    // the manifest. The extraction itself must detect this corruption.
+    final bytes = await archive.readAsBytes();
+    const headerLength = 12 + 8 + 64;
+    final manifestLength = int64FromBytes(bytes.sublist(12, 20));
+    final payloadOffset = headerLength + manifestLength;
+    bytes[payloadOffset + 100] ^= 0xff;
+    await archive.writeAsBytes(bytes);
+
+    final staged = Directory(path.join(working.path, 'corrupt-sqlite'));
+    await expectLater(
+      manager.extract(archive: archive, stagingDirectory: staged),
+      throwsA(isA<FormatException>()),
+    );
+    expect(await staged.exists(), isFalse);
+    expect(await sqlite.exists(), isTrue);
+  });
+
+  test('extract verifies evidence bytes and cleans failed staging', () async {
+    final manager = const RawBackupArchive();
+    await manager.write(
+      sqliteSnapshot: sqlite,
+      evidenceDirectory: evidence,
+      referencedEvidencePaths: const ['receipts/one.jpg'],
+      destination: archive,
+    );
+
+    // Last payload byte is evidence; validation must still reject the archive
+    // even though there is no separate pre-extraction inspect() pass.
+    final bytes = await archive.readAsBytes();
+    bytes[bytes.length - 1] ^= 0xff;
+    await archive.writeAsBytes(bytes);
+
+    final staged = Directory(path.join(working.path, 'corrupt-evidence'));
+    await expectLater(
+      manager.extract(archive: archive, stagingDirectory: staged),
+      throwsA(isA<FormatException>()),
+    );
+    expect(await staged.exists(), isFalse);
+    expect(
+      await File(path.join(evidence.path, 'receipts', 'one.jpg')).readAsBytes(),
+      [1, 2, 3, 4, 5],
+    );
+  });
+
   test(
     'unsupported or legacy archive is rejected without changing files',
     () async {
