@@ -52,12 +52,14 @@ final class RawBackupArchive {
             'Evidence filenames are not portable to this device.',
           );
         }
-        files.add(_RawFile(
-          relative,
-          entity,
-          await entity.length(),
-          await sha256FileRange(entity),
-        ));
+        files.add(
+          _RawFile(
+            relative,
+            entity,
+            await entity.length(),
+            await sha256FileRange(entity),
+          ),
+        );
       }
     }
     files.sort((a, b) => a.relativePath.compareTo(b.relativePath));
@@ -82,7 +84,9 @@ final class RawBackupArchive {
     final manifest = <String, Object?>{
       'format': _format,
       'formatVersion': _formatVersion,
-      'createdAtUtc': (createdAtUtc ?? DateTime.now()).toUtc().toIso8601String(),
+      'createdAtUtc': (createdAtUtc ?? DateTime.now())
+          .toUtc()
+          .toIso8601String(),
       'sqliteLength': sqliteLength,
       'sqliteSha256': sqliteHash,
       'attachments': [
@@ -146,7 +150,8 @@ final class RawBackupArchive {
           archive,
           start: offset,
           endExclusive: offset + parsed.sqliteLength,
-        ) != parsed.sqliteHash) {
+        ) !=
+        parsed.sqliteHash) {
       throw const FormatException('Backup SQLite bytes are not intact.');
     }
     offset += parsed.sqliteLength;
@@ -155,7 +160,8 @@ final class RawBackupArchive {
             archive,
             start: offset,
             endExclusive: offset + file.length,
-          ) != file.sha256) {
+          ) !=
+          file.sha256) {
         throw const FormatException('Backup attachment bytes are not intact.');
       }
       offset += file.length;
@@ -297,7 +303,9 @@ final class RawBackupArchive {
         if (length < 0 ||
             !_shaPattern.hasMatch(hash) ||
             !names.add(evidencePathKey(relative))) {
-          throw const FormatException('Invalid or duplicate backup attachment.');
+          throw const FormatException(
+            'Invalid or duplicate backup attachment.',
+          );
         }
         files.add(_RawFile(relative, null, length, hash));
       }
@@ -313,7 +321,8 @@ final class RawBackupArchive {
         throw const FormatException('Invalid backup date.');
       }
       final payloadOffset = _magic.length + 8 + 64 + metadataLength;
-      final expectedTotal = payloadOffset +
+      final expectedTotal =
+          payloadOffset +
           sqliteLength +
           files.fold<int>(0, (total, file) => total + file.length);
       if (expectedTotal != await archive.length()) {
