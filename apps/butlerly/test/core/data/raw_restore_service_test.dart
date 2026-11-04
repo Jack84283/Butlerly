@@ -399,6 +399,78 @@ void main() {
   );
 
   test(
+    'Merge rejects an orphaned backup child instead of adopting local parent',
+    () async {
+      await database.database.execute(
+        'CREATE TABLE orphan_parent (id TEXT PRIMARY KEY, label TEXT NOT NULL)',
+      );
+      await database.database.execute(
+        'CREATE TABLE orphan_child (id TEXT PRIMARY KEY, '
+        'parent_id TEXT NOT NULL REFERENCES orphan_parent(id))',
+      );
+      await database.database.insert('orphan_parent', {
+        'id': 'shared-id',
+        'label': 'local-parent',
+      });
+
+      // Build a deliberately damaged backup that contains a child whose
+      // original parent is absent. Target SQLite has a parent with the same
+      // identifier, so target-only FK checks would incorrectly pass.
+      final sourceFile = File(path.join(root.path, 'orphan-source.sqlite'));
+      final quoted = sourceFile.path.replaceAll("'", "''");
+      await database.database.execute("VACUUM INTO '$quoted'");
+      final source = await databaseFactoryFfi.openDatabase(sourceFile.path);
+      try {
+        await source.execute('PRAGMA foreign_keys = OFF');
+        await source.insert('orphan_child', {
+          'id': 'orphan-in-source',
+          'parent_id': 'shared-id',
+        });
+        await source.delete('orphan_parent', where: 'id = ?', whereArgs: [
+          'shared-id',
+        ]);
+        final orphans = await source.rawQuery('PRAGMA foreign_key_check');
+        expect(orphans, isNotEmpty);
+      } finally {
+        await source.close();
+      }
+      final plain = File(path.join(root.path, 'orphan-source.raw'));
+      await const RawBackupArchive().write(
+        sqliteSnapshot: sourceFile,
+        evidenceDirectory: evidence,
+        referencedEvidencePaths: const [],
+        destination: plain,
+        recordCount: 1,
+      );
+      final encrypted = File(path.join(root.path, 'orphan-source.butlerly'));
+      await const BackupEncryption().encrypt(
+        plain,
+        encrypted,
+        password: 'correct horse battery staple',
+        innerFormat: 'butlerly-raw-backup',
+      );
+      await expectLater(
+        RawMergeService(database, backups, restores).restoreMerge(
+          encrypted,
+          password: 'correct horse battery staple',
+        ),
+        throwsA(
+          isA<FormatException>().having(
+            (error) => error.message,
+            'message',
+            contains('unresolved foreign-key references'),
+          ),
+        ),
+      );
+      expect(
+        (await database.database.query('orphan_parent')).single['label'],
+        'local-parent',
+      );
+      expect(await database.database.query('orphan_child'), isEmpty);
+    },
+  );
+
+  test(
     'Merge aborts when a direct SQLite write arrives during staging',
     () async {
       await setProbe('archived-value');
