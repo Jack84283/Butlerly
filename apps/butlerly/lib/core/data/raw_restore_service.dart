@@ -221,7 +221,8 @@ final class RawRestoreService {
         throw StateError('Restored SQLite file failed physical integrity.');
       }
       await onStage?.call('restored database reopened');
-      await journal.delete(); // durable success: rollback copies remain until then
+      await journal
+          .delete(); // durable success: rollback copies remain until then
       journalWritten = false;
       committed = true;
       return inspection;
@@ -303,7 +304,10 @@ final class RawRestoreService {
       throw const FileSystemException('Evidence restore staging exists.');
     }
     await destination.create(recursive: true);
-    await for (final entity in source.list(recursive: true, followLinks: false)) {
+    await for (final entity in source.list(
+      recursive: true,
+      followLinks: false,
+    )) {
       await rejectEvidenceLink(entity);
       if (entity is! File) continue;
       final relative = await validateEvidencePath(
