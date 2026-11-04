@@ -136,7 +136,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     }
   }
 
-  Future<void> _restore() async {
+  Future<void> _restore(LocalRestoreMode mode) async {
     final selected = await openFile(acceptedTypeGroups: const [_backupType]);
     if (selected == null) return;
 
@@ -158,9 +158,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       final inspection = await manager.inspect(file, password: password);
       if (!mounted) return;
       setState(() => _busy = false);
-      final mode = await _chooseRestoreMode(inspection);
-      if (mode == null) return;
-      if (mode == LocalRestoreMode.replace && !await _confirmReplace()) return;
+      if (!await _confirmRestore(inspection, mode)) return;
       if (!mounted) return;
       setState(() => _busy = true);
       final result = await manager.restore(
@@ -334,67 +332,63 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     }
   }
 
-  Future<LocalRestoreMode?> _chooseRestoreMode(BackupInspection inspection) =>
-      showButlerlyBottomSheet<LocalRestoreMode>(
-        context: context,
-        builder: (context) {
-          final summary = context.l10n
-              .backupText('backupSummary')
-              .replaceAll('{records}', '${inspection.recordCount}')
-              .replaceAll('{evidence}', '${inspection.evidenceCount}');
-          final created = inspection.createdAtUtc.toLocal();
-          final createdLabel = context.l10n
-              .backupText('backupCreatedAt')
-              .replaceAll(
-                '{date}',
-                formatBackupInspectionDate(context, created),
-              );
-          final body = context.l10n.backupText('replaceBody');
-          return ButlerlySheet(
-            title: Text(context.l10n.backupText('restoreTitle')),
-            content: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.sizeOf(context).height * .45,
+  Future<bool> _confirmRestore(
+    BackupInspection inspection,
+    LocalRestoreMode mode,
+  ) async {
+    final replace = mode == LocalRestoreMode.replace;
+    return (await showButlerlyBottomSheet<bool>(
+          context: context,
+          builder: (sheetContext) {
+            final summary = sheetContext.l10n
+                .backupText('backupSummary')
+                .replaceAll('{records}', '${inspection.recordCount}')
+                .replaceAll('{evidence}', '${inspection.evidenceCount}');
+            final created = sheetContext.l10n
+                .backupText('backupCreatedAt')
+                .replaceAll(
+                  '{date}',
+                  formatBackupInspectionDate(
+                    sheetContext,
+                    inspection.createdAtUtc.toLocal(),
+                  ),
+                );
+            final explanation = sheetContext.l10n.backupText(
+              replace ? 'replaceBody' : 'mergeBody',
+            );
+            return ButlerlySheet(
+              title: Text(sheetContext.l10n.backupText(
+                replace ? 'replaceTitle' : 'mergeTitle',
+              )),
+              content: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(sheetContext).height * .45,
+                ),
+                child: SingleChildScrollView(
+                  child: Text('$summary\\n$created\\n\\n$explanation'),
+                ),
               ),
-              child: SingleChildScrollView(
-                child: Text('$summary\n$createdLabel\n\n$body'),
-              ),
-            ),
-            actions: [
-              ButlerlyCancelButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(context.l10n.text('cancel')),
-              ),
-              TextButton(
-                onPressed: () =>
-                    Navigator.pop(context, LocalRestoreMode.replace),
-                child: Text(context.l10n.backupText('replace')),
-              ),
-            ],
-          );
-        },
-      );
-
-  Future<bool> _confirmReplace() async =>
-      (await showButlerlyBottomSheet<bool>(
-        context: context,
-        builder: (context) => ButlerlySheet(
-          title: Text(context.l10n.backupText('replaceTitle')),
-          content: Text(context.l10n.backupText('replaceBody')),
-          actions: [
-            ButlerlyCancelButton(
-              autofocus: true,
-              onPressed: () => Navigator.pop(context, false),
-              child: Text(context.l10n.text('cancel')),
-            ),
-            ButlerlyDestructiveButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text(context.l10n.backupText('replace')),
-            ),
-          ],
-        ),
-      )) ==
-      true;
+              actions: [
+                ButlerlyCancelButton(
+                  onPressed: () => Navigator.pop(sheetContext, false),
+                  child: Text(sheetContext.l10n.text('cancel')),
+                ),
+                if (replace)
+                  ButlerlyDestructiveButton(
+                    onPressed: () => Navigator.pop(sheetContext, true),
+                    child: Text(sheetContext.l10n.backupText('replace')),
+                  )
+                else
+                  FilledButton(
+                    onPressed: () => Navigator.pop(sheetContext, true),
+                    child: Text(sheetContext.l10n.backupText('merge')),
+                  ),
+              ],
+            );
+          },
+        )) ==
+        true;
+  }
 
   Future<void> _export() async {
     setState(() => _busy = true);
@@ -485,10 +479,18 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           onTap: _busy ? null : _backup,
         ),
         _DesktopPrivacyAction(
+          key: const ValueKey('desktop-privacy-restore-merge'),
+          icon: Icons.merge_type_outlined,
+          label: l10n.backupText('restoreMerge'),
+          description: l10n.backupText('mergeSubtitle'),
+          onTap: _busy ? null : () => _restore(LocalRestoreMode.merge),
+        ),
+        _DesktopPrivacyAction(
+          key: const ValueKey('desktop-privacy-restore-replace'),
           icon: Icons.restore_outlined,
-          label: l10n.backupText('restoreBackup'),
+          label: l10n.backupText('restoreReplace'),
           description: l10n.backupText('restoreSubtitle'),
-          onTap: _busy ? null : _restore,
+          onTap: _busy ? null : () => _restore(LocalRestoreMode.replace),
         ),
       ],
     );
@@ -682,15 +684,29 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
             ),
             const Divider(),
             ListTile(
+              key: const ValueKey('mobile-privacy-restore-merge'),
+              enabled: !_busy,
+              leading: Icon(_privacyIcon(context, Icons.merge_type_outlined)),
+              title: Text(context.l10n.backupText('restoreMerge')),
+              subtitle: Text(
+                context.l10n.backupText('mergeSubtitle'),
+                style: _subtitleStyle(context),
+              ),
+              trailing: Icon(_privacyIcon(context, Icons.chevron_right)),
+              onTap: () => _restore(LocalRestoreMode.merge),
+            ),
+            const Divider(),
+            ListTile(
+              key: const ValueKey('mobile-privacy-restore-replace'),
               enabled: !_busy,
               leading: Icon(_privacyIcon(context, Icons.restore_outlined)),
-              title: Text(context.l10n.backupText('restoreBackup')),
+              title: Text(context.l10n.backupText('restoreReplace')),
               subtitle: Text(
                 context.l10n.backupText('restoreSubtitle'),
                 style: _subtitleStyle(context),
               ),
               trailing: Icon(_privacyIcon(context, Icons.chevron_right)),
-              onTap: _restore,
+              onTap: () => _restore(LocalRestoreMode.replace),
             ),
             const Divider(),
             ListTile(
@@ -798,6 +814,7 @@ class _DesktopPrivacyAction extends StatelessWidget {
     required this.description,
     required this.onTap,
     this.danger = false,
+    super.key,
   });
 
   final IconData icon;
