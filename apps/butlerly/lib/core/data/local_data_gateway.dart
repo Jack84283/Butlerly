@@ -230,7 +230,9 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
       }
       await backups.recoveryState.clear();
       persistence.finishRestoreActivation();
-      await postActivationRefresh();
+      // Clearing the recovery-only state rebuilds normal navigation. Do not
+      // invoke legacy rule-installation or business validation while merely
+      // recovering original raw SQLite bytes.
       return;
     }
     await backups.recoverControlledState(
