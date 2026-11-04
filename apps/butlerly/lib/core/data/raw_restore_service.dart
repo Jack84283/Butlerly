@@ -120,6 +120,9 @@ final class RawRestoreService {
     File encryptedArchive, {
     required String password,
     Future<void> Function(String stage)? onStage,
+    // A disposable Merge snapshot must be revalidated before live activation.
+    // A failed guard leaves original files, journal and connections untouched.
+    Future<void> Function()? beforeActivation,
     Future<RawBackupInspection> Function(
       Directory staging,
       RawBackupInspection inspection,
@@ -186,6 +189,10 @@ final class RawRestoreService {
           checkpoint.first['busy'] != 0) {
         throw StateError('SQLite still has active readers; restore deferred.');
       }
+
+      // This callback must run while the live SQLite connection is still
+      // usable, after staging and the WAL checkpoint, before the first move.
+      await beforeActivation?.call();
 
       final markerTemp = File('${journal.path}.tmp');
       await rejectSymlinkedPath(markerTemp.path);
