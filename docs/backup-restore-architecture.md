@@ -79,6 +79,39 @@ store destinations have not been configured.
   Other screens with legacy inline SnackBars should adopt the shared helper
   separately to enforce the same app-wide policy.
 
+## Review hardening — missing evidence, Merge identity, and UI refresh
+
+- **Verified export warnings:** raw archive packaging records missing referenced
+  evidence. The application gateway returns the count to desktop and mobile
+  callers without a second expensive decrypt/inspection pass. A published
+  backup with missing attachments triggers a localized, persistent warning
+  dialog; it must not be represented as a complete evidence backup.
+- **Foreign-key identity preflight:** before staging SQL writes, Merge compares
+  referenced parent rows in the backup and live database for each child row
+  being imported. If matching parent keys contain different values, it
+  conservatively rejects the entire Merge rather than reassign the imported
+  child to a potentially different category, merchant, or payment source.
+  This can reject a valid merge when only timestamps differ; resolving these
+  conflicts safely requires an explicit reconciliation policy, not guessing.
+- **Staging write detection:** a Merge records the live connection's
+  `total_changes()`, SQLite `PRAGMA data_version`, and schema version before
+  the local snapshot. After staging and WAL checkpoint, it rechecks all three.
+  A change aborts without moving original database or evidence files.
+  Normal application use-case writes are serialized by
+  `AnalysisConsistencyGate` during Restore, but the revision check is an
+  extra fail-closed safeguard for direct or external database writes.
+- **Remaining concurrency gate:** this optimistic check does not create a
+  database-wide write lock across the final check/connection-close/file-swap
+  interval. Before merge, audit background and direct writers, establish a
+  complete application-wide maintenance barrier, and exercise attempts to
+  write during the final activation window on disposable data. Do not
+  describe concurrent Merge as fully proven until that gate is complete.
+- **Post-Restore refresh:** the committed Restore emits
+  `workspaceRestoreChanges`, also invalidating transaction and budget data.
+  Mounted profile, master data, payment sources, budgets, rules and payment
+  settlement pages refresh their cached snapshots; stale editors are reset
+  rather than allowed to overwrite restored records.
+
 ## Performance optimizations (PR #396)
 
 The raw archive is streamed, and financial/business rules never run during
