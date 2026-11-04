@@ -444,13 +444,15 @@ Future<void> initializeButlerly(AppLogger logger) async {
 
     phase = 'database initialization';
     logger.info('Startup: opening local database');
-    // Roll back any interrupted raw Replace activation before SQLite opens.
-    // Opening a half-switched file would otherwise make rollback unsafe.
-    final support = await getApplicationSupportDirectory();
-    await RawRestoreService.recoverInterruptedReplace(
-      liveDatabase: File(path.join(support.path, 'butlerly.db')),
-      evidenceDirectory: Directory(path.join(support.path, 'evidence')),
-    );
+    // Roll back an interrupted physical Replace before opening SQLite.
+    // Web builds do not have an application support directory on disk.
+    if (!kIsWeb) {
+      final support = await getApplicationSupportDirectory();
+      await RawRestoreService.recoverInterruptedReplace(
+        liveDatabase: File(path.join(support.path, 'butlerly.db')),
+        evidenceDirectory: Directory(path.join(support.path, 'evidence')),
+      );
+    }
     database = LocalDatabase(logger: logger);
     await initializeLocalDatabaseForStartup(database, logger);
     logger.info('Startup: local database ready');
