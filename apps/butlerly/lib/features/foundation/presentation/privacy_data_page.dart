@@ -774,7 +774,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         password: password,
         refreshPresentation: () async {
           ref.invalidate(userPreferenceProvider);
-          notifyTransactionChanged();
+          notifyWorkspaceRestored();
           notifyBudgetsChanged();
         },
       );
