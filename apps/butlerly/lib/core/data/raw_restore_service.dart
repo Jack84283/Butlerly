@@ -11,12 +11,6 @@ import 'package:butlerly_database/butlerly_database.dart'
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common/sqlite_api.dart';
 
-/// An archive schema is newer than the app or is not a usable SQLite schema.
-final class UnsupportedBackupSchemaException extends FormatException {
-  const UnsupportedBackupSchemaException()
-    : super('Unsupported SQLite backup schema version.');
-}
-
 /// Physical Replace restore for an encrypted raw Butlerly archive.
 ///
 /// Source data is never interpreted or repaired. A durable journal and
@@ -294,6 +288,9 @@ final class RawRestoreService {
   /// The archive stays encrypted and untouched; any migration failure occurs
   /// before activation and therefore leaves the live SQLite files unchanged.
   Future<void> _upgradeStagedSqlite(File snapshot) async {
+    // The same read-only check is performed during the user-facing preview,
+    // but recheck here in case the supplied archive changed between actions.
+    await backup.requireSupportedSchema(snapshot);
     final template = database.persistenceDatabase;
     final factory = template.factory;
     final reader = await factory.openDatabase(
@@ -307,9 +304,6 @@ final class RawRestoreService {
         throw const FormatException('Backup has an invalid SQLite schema.');
       }
       sourceVersion = result.single.values.single as int;
-      if (sourceVersion < 1 || sourceVersion > template.targetVersion) {
-        throw const UnsupportedBackupSchemaException();
-      }
       final integrity = await reader.rawQuery('PRAGMA integrity_check');
       if (integrity.length != 1 || integrity.single.values.single != 'ok') {
         throw const FormatException('Backup SQLite snapshot is damaged.');
