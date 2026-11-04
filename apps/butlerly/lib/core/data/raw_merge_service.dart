@@ -76,8 +76,16 @@ final class RawMergeService {
 
       final tables = await _loadTables(connection);
       final ordered = await _orderTables(connection, tables);
-      final sourceTombstones = await _hasTable(connection, 'archived', 'entity_tombstones');
-      final localTombstones = await _hasTable(connection, 'main', 'entity_tombstones');
+      final sourceTombstones = await _hasTable(
+        connection,
+        'archived',
+        'entity_tombstones',
+      );
+      final localTombstones = await _hasTable(
+        connection,
+        'main',
+        'entity_tombstones',
+      );
       if (sourceTombstones != localTombstones) {
         throw const FormatException('Incompatible deletion tracking.');
       }
@@ -94,9 +102,9 @@ final class RawMergeService {
         for (final row in rows) {
           final value = row['local_file_name'];
           if (value is String && value.trim().isNotEmpty) {
-            importedEvidenceNames.add(evidencePathKey(
-              normalizeEvidencePath(value),
-            ));
+            importedEvidenceNames.add(
+              evidencePathKey(normalizeEvidencePath(value)),
+            );
           }
         }
       }
@@ -114,22 +122,26 @@ final class RawMergeService {
           }
           final keys = await _primaryKey(tx, table);
           if (keys.isEmpty) {
-            throw FormatException('Cannot safely merge table $table without a key.');
+            throw FormatException(
+              'Cannot safely merge table $table without a key.',
+            );
           }
           final quotedColumns = columns.map(_quote).join(', ');
-          final sourceColumns =
-              columns.map((column) => 'b.${_quote(column)}').join(', ');
+          final sourceColumns = columns
+              .map((column) => 'b.${_quote(column)}')
+              .join(', ');
           final sameIdentity = keys
               .map((column) => 'l.${_quote(column)} IS b.${_quote(column)}')
               .join(' AND ');
-          var where = 'NOT EXISTS (SELECT 1 FROM main.${_quote(table)} l '
+          var where =
+              'NOT EXISTS (SELECT 1 FROM main.${_quote(table)} l '
               'WHERE $sameIdentity)';
           if (localTombstones) {
             final entityId = keys.length == 1
                 ? 'b.${_quote(keys.single)}'
-                : keys.map((key) => 'b.${_quote(key)}')
-                    .join(" || '|' || ");
-            where += ' AND NOT EXISTS (SELECT 1 FROM main.entity_tombstones t '
+                : keys.map((key) => 'b.${_quote(key)}').join(" || '|' || ");
+            where +=
+                ' AND NOT EXISTS (SELECT 1 FROM main.entity_tombstones t '
                 "WHERE t.entity_type = '$table' AND t.entity_id = $entityId)";
           }
           await tx.execute(
@@ -149,8 +161,7 @@ final class RawMergeService {
             final keys = entry.value;
             final idExpr = keys.length == 1
                 ? 'l.${_quote(keys.single)}'
-                : keys.map((key) => 'l.${_quote(key)}')
-                    .join(" || '|' || ");
+                : keys.map((key) => 'l.${_quote(key)}').join(" || '|' || ");
             await tx.execute(
               'INSERT OR IGNORE INTO main.entity_tombstones '
               '(entity_type, entity_id, deleted_at) '
@@ -273,14 +284,13 @@ final class RawMergeService {
     String schema,
     String table,
   ) async {
-    final rows = await db.rawQuery('PRAGMA $schema.table_info(${_quote(table)})');
+    final rows = await db.rawQuery(
+      'PRAGMA $schema.table_info(${_quote(table)})',
+    );
     return rows.map((row) => row['name']! as String).toList();
   }
 
-  Future<List<String>> _primaryKey(
-    DatabaseExecutor db,
-    String table,
-  ) async {
+  Future<List<String>> _primaryKey(DatabaseExecutor db, String table) async {
     final rows = await db.rawQuery('PRAGMA main.table_info(${_quote(table)})');
     final sorted = rows.where((row) => (row['pk'] as int? ?? 0) > 0).toList()
       ..sort((a, b) => (a['pk'] as int).compareTo(b['pk'] as int));
@@ -317,10 +327,13 @@ final class RawMergeService {
     final pending = {...tables};
     final result = <String>[];
     while (pending.isNotEmpty) {
-      final ready = pending
-          .where((table) => dependencies[table]!.intersection(pending).isEmpty)
-          .toList()
-        ..sort();
+      final ready =
+          pending
+              .where(
+                (table) => dependencies[table]!.intersection(pending).isEmpty,
+              )
+              .toList()
+            ..sort();
       // Cycles are handled with deferred foreign keys in the transaction.
       if (ready.isEmpty) {
         result.addAll(pending.toList()..sort());
