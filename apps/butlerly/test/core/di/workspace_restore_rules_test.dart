@@ -18,6 +18,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart'
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(sqfliteFfiInit);
+  const backupPassword = 'correct horse battery staple';
   late Directory root;
   late LocalDatabase database;
   late SqliteAnalysisRuleRepository rules;
@@ -108,45 +109,56 @@ void main() {
       );
     }
     final backup = File('${root.path}/legacy.butlerlybackup');
-    await services<LocalBackupManager>().createBackup(backup);
-    return backup;
-  }
-
-  Future<void> expectSummary() async {
-    final evaluation = await services<FinanceServices>()
-        .calculateAnalysisOverview!
-        .currentMonth(DateTime.utc(2026, 9, 10));
-    expect(evaluation, isA<ApplicationSuccess<List<RuleExecutionResult>>>());
-    final overview = AnalysisOverview.fromResults(
-      (evaluation as ApplicationSuccess<List<RuleExecutionResult>>).value,
+    await services<WorkspaceDataService>().createPortableBackup(
+      backup.path,
+      password: backupPassword,
     );
-    expect(overview.spending?.value.toString(), '12.34');
-    expect(overview.income?.value.toString(), '0');
-    expect(overview.net?.value.toString(), '-12.34');
-    expect(overview.transactionCount?.value.toString(), '1');
+    return backup;
   }
 
   for (final mode in LocalRestoreMode.values) {
     test(
-      '$mode restore activates current rules before UI refresh without restart',
+      '$mode Restore preserves original SQLite rule rows without business repair',
       () async {
         final backup = await legacyBackup();
         final historical = await database.database.query(
           'analysis_rule_definitions',
         );
         await installBundledAnalysisRules(InstallBuiltInRules(rules));
+        final localBefore = await database.database.query(
+          'analysis_rule_definitions',
+        );
+        var presentationRefreshed = false;
         await services<WorkspaceDataService>().restore(
           backup.path,
           mode: mode,
-          refreshPresentation: expectSummary,
+          password: backupPassword,
+          refreshPresentation: () async {
+            presentationRefreshed = true;
+          },
         );
-        await expectSummary();
-        for (final old in historical) {
+        expect(presentationRefreshed, isTrue);
+        expect(
+          await database.database.query(
+            'transactions',
+            where: 'id = ?',
+            whereArgs: ['restored-expense'],
+          ),
+          hasLength(1),
+        );
+        // Replace restores source rows exactly; Merge gives existing
+        // destinations precedence. Neither operation rewrites definitions
+        // using semantic-role validation during raw restoration.
+        final expected = mode == LocalRestoreMode.replace
+            ? historical
+            : localBefore;
+        for (final old in expected) {
           final persisted = await database.database.query(
             'analysis_rule_definitions',
             where: 'rule_id = ? AND rule_version = ?',
             whereArgs: [old['rule_id'], old['rule_version']],
           );
+          expect(persisted, hasLength(1));
           expect(
             persisted.single['canonical_definition'],
             old['canonical_definition'],
@@ -160,7 +172,7 @@ void main() {
       },
     );
   }
-  test('restore rebuilds unresolved duplicate review state', () async {
+  test('Replace restores original duplicate records without fabrication', () async {
     final timestamp = DateTime.utc(2026, 9, 1);
     await SqliteTransactionRepository(database.persistenceDatabase).save(
       Transaction(
@@ -187,7 +199,10 @@ void main() {
       ),
     );
     final backup = File('${root.path}/duplicates.butlerlybackup');
-    await services<LocalBackupManager>().createBackup(backup);
+    await services<WorkspaceDataService>().createPortableBackup(
+      backup.path,
+      password: backupPassword,
+    );
 
     await SqliteTransactionRepository(
       database.persistenceDatabase,
@@ -196,19 +211,20 @@ void main() {
     await services<WorkspaceDataService>().restore(
       backup.path,
       mode: LocalRestoreMode.replace,
+      password: backupPassword,
     );
 
-    final groups =
-        await services<FinanceServices>().listDuplicateCandidateGroups!();
-    expect(groups, isA<ApplicationSuccess<List<DuplicateCandidateGroup>>>());
-    expect(
-      (groups as ApplicationSuccess<List<DuplicateCandidateGroup>>).value,
-      hasLength(1),
+    final rows = await database.database.query(
+      'transactions',
+      where: 'id IN (?, ?)',
+      whereArgs: ['restored-expense', 'restored-expense-duplicate'],
     );
-    expect(groups.value.single.transactionIds.map((id) => id.value).toSet(), {
-      'restored-expense',
-      'restored-expense-duplicate',
-    });
+    expect(rows, hasLength(2));
+    // Raw Replace restores the snapshot, not a newly computed duplicate scan.
+    expect(
+      await database.database.query('duplicate_candidate_groups'),
+      isEmpty,
+    );
   });
 
   test('restore preserves resolved duplicate decisions', () async {
@@ -247,13 +263,17 @@ void main() {
       DuplicateCandidateGroupStatus.keepBoth,
     );
     final backup = File('${root.path}/resolved-duplicates.butlerlybackup');
-    await services<LocalBackupManager>().createBackup(backup);
+    await services<WorkspaceDataService>().createPortableBackup(
+      backup.path,
+      password: backupPassword,
+    );
 
     await finance.deleteTransactionPermanently('resolved-duplicate');
 
     await services<WorkspaceDataService>().restore(
       backup.path,
       mode: LocalRestoreMode.replace,
+      password: backupPassword,
     );
 
     final groups = await database.database.query(
@@ -265,12 +285,13 @@ void main() {
   });
 
   test(
-    'legacy restore preserves disabled activation while upgrading definition',
+    'raw Restore preserves historical disabled activation and definition',
     () async {
       final backup = await legacyBackup(disableCount: true);
       await services<WorkspaceDataService>().restore(
         backup.path,
         mode: LocalRestoreMode.replace,
+        password: backupPassword,
       );
       final id = RuleIdentity('ANL-R004');
       final activation = (await rules.existingActivation(id))!;
@@ -278,12 +299,12 @@ void main() {
       final definition = (await rules.listDefinitions()).singleWhere(
         (rule) => rule.identity == id && rule.version == activation.version,
       );
-      expect(definition.role, AnalysisSemanticRole.eligibleTransactionCount);
+      expect(definition.role, isNull);
     },
   );
 
   test(
-    'rule installation failure keeps restore gated and preserves financial data',
+    'raw Restore preserves unvalidated analysis definitions and financial data',
     () async {
       final source = await rootBundle.loadString(
         'assets/analysis_rules/metrics/ANL-R001.yaml',
@@ -296,23 +317,32 @@ void main() {
         'conflicting.yaml': conflicting,
       });
       expect(installed.diagnostics, isEmpty);
-      final backup = File('${root.path}/conflicting.butlerlybackup');
-      await services<LocalBackupManager>().createBackup(backup);
-      var refreshed = false;
-      await expectLater(
-        services<WorkspaceDataService>().restore(
-          backup.path,
-          mode: LocalRestoreMode.replace,
-          refreshPresentation: () async {
-            refreshed = true;
-          },
-        ),
-        throwsA(isA<RestoreRecoveryRequiredException>()),
+      final backup = File('\${root.path}/conflicting.butlerlybackup');
+      await services<WorkspaceDataService>().createPortableBackup(
+        backup.path,
+        password: backupPassword,
       );
-      expect(refreshed, isFalse);
+      await database.database.delete(
+        'transactions',
+        where: 'id = ?',
+        whereArgs: ['restored-expense'],
+      );
+
+      var refreshed = false;
+      await services<WorkspaceDataService>().restore(
+        backup.path,
+        mode: LocalRestoreMode.replace,
+        password: backupPassword,
+        refreshPresentation: () async {
+          refreshed = true;
+        },
+      );
+      // Restore must not rewrite user data to satisfy a new analysis rule;
+      // an incompatible rule is preserved byte-for-byte for later review.
+      expect(refreshed, isTrue);
       expect(
         services<LocalBackupManager>().recoveryState.isRecoveryRequired,
-        isTrue,
+        isFalse,
       );
       expect(await database.database.query('transactions'), hasLength(1));
       final persisted = (await rules.listDefinitions()).singleWhere(
@@ -324,4 +354,5 @@ void main() {
       );
     },
   );
+
 }
