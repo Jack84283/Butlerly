@@ -5,6 +5,7 @@ import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly/features/financial_profile/presentation/financial_profile_page.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_database/butlerly_database.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -106,6 +107,30 @@ void main() {
     );
     expect(stored?.status, FinancialProfileStatus.completed);
     expect(stored?.answeredQuestionCount, 0);
+  });
+
+  testWidgets('mounted profile refreshes when workspace restore completes',
+      (tester) async {
+    await tester.pumpWidget(app());
+    await _pumpUntilVisible(
+      tester,
+      find.byKey(const ValueKey('financial-profile-edit')),
+    );
+    expect(find.text('No Financial Profile yet.'), findsOneWidget);
+
+    final now = DateTime.utc(2026, 11, 4);
+    await tester.runAsync(
+      () => SqliteFinancialProfileRepository(database.persistenceDatabase).save(
+        FinancialProfile.empty(now: now).copyWith(
+          status: FinancialProfileStatus.completed,
+          updatedAt: now,
+          completedAt: now,
+        ),
+      ),
+    );
+    notifyWorkspaceRestored();
+    await _pumpUntilVisible(tester, find.text('Completed'));
+    expect(find.text('Completed'), findsOneWidget);
   });
 
   testWidgets('cancel discards unsaved answers', (tester) async {
