@@ -9,6 +9,7 @@ import 'package:butlerly/core/data/raw_restore_service.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
+import 'package:sqflite_common/sqlite_api.dart';
 
 /// Local adapter for application-owned privacy and recovery operations.
 final class LocalWorkspaceDataGateway implements LocalDataGateway {
@@ -206,9 +207,41 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
   @override
   Future<void> recoverControlledState({
     required Future<void> Function() postActivationRefresh,
-  }) => backups.recoverControlledState(
-    postActivationRefresh: postActivationRefresh,
-  );
+  }) async {
+    if (backups.recoveryState.incident?.reason ==
+        'raw-restore-rollback-incomplete') {
+      final persistence = data.database.persistenceDatabase;
+      final live = File(persistence.path);
+      await RawRestoreService.recoverInterruptedReplace(
+        liveDatabase: live,
+        evidenceDirectory: await data.evidenceDirectory(),
+      );
+      // Reuse the repository-owned persistence object after physical
+      // recovery. Never replace it with a new object that would leave
+      // existing financial repositories referencing stale connections.
+      await data.database.reopenActiveConnection();
+      final check = await persistence.factory.openDatabase(
+        live.path,
+        options: OpenDatabaseOptions(readOnly: true),
+      );
+      try {
+        final integrity = await check.rawQuery('PRAGMA integrity_check');
+        if (integrity.length != 1 ||
+            integrity.single.values.single != 'ok') {
+          throw StateError('Recovered SQLite failed physical integrity.');
+        }
+      } finally {
+        await check.close();
+      }
+      await backups.recoveryState.clear();
+      persistence.finishRestoreActivation();
+      await postActivationRefresh();
+      return;
+    }
+    await backups.recoverControlledState(
+      postActivationRefresh: postActivationRefresh,
+    );
+  }
 
   @override
   Future<void> resetControlledRecovery({
