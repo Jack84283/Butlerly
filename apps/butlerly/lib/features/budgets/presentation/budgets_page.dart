@@ -13,6 +13,7 @@ import 'package:butlerly/features/budgets/application/budget_change_notifier.dar
 import 'package:butlerly/features/budgets/application/budget_suggestions.dart';
 import 'package:butlerly/features/desktop/presentation/desktop_transaction_detail_split_view.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -41,6 +42,28 @@ class _BudgetsPageState extends State<BudgetsPage> {
   String? _error;
   Widget? _desktopEditor;
   bool _creationRouteHandled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    workspaceRestoreChanges.addListener(_onWorkspaceRestored);
+  }
+
+  @override
+  void dispose() {
+    workspaceRestoreChanges.removeListener(_onWorkspaceRestored);
+    super.dispose();
+  }
+
+  void _onWorkspaceRestored() {
+    if (!mounted) return;
+    // Cached scope names and editor selections may refer to previous rows.
+    _masterData = null;
+    _categories = const [];
+    _merchants = const [];
+    _desktopEditor = null;
+    _refresh();
+  }
 
   @override
   void didChangeDependencies() {
