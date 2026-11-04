@@ -136,45 +136,46 @@ void main() {
     },
   );
 
-  test('published backup reports missing referenced evidence to the gateway',
-      () async {
-    final data = LocalDataManager(
-      database,
-      localEvidenceDirectory: evidence,
-    );
-    await database.database.insert('provenances', {
-      'id': 'missing-original-provenance',
-      'source_type': 'userEntry',
-      'captured_at': DateTime.utc(2026, 11, 4).toIso8601String(),
-    });
-    await database.database.insert('evidence_items', {
-      'id': 'missing-original-receipt',
-      'type': 'receipt',
-      'original_name': 'missing.pdf',
-      'media_type': 'application/pdf',
-      'provenance_id': 'missing-original-provenance',
-      'created_at': DateTime.utc(2026, 11, 4).toIso8601String(),
-      'local_file_name': 'missing.pdf',
-    });
-    final gateway = LocalWorkspaceDataGateway(
-      LocalBackupManager(database, data),
-      data,
-    );
-    final destination = File(path.join(output.path, 'missing-evidence.butlerly'));
-    final result = await gateway.createPortableBackup(
-      destination.path,
-      password: 'correct horse battery staple',
-    );
-    expect(result.attachmentCount, 0);
-    expect(result.missingAttachmentCount, 1);
-    expect(result.hasMissingAttachments, isTrue);
-    expect(await destination.exists(), isTrue);
-    final inspection = await service.inspect(
-      destination,
-      password: 'correct horse battery staple',
-    );
-    expect(inspection.missingAttachmentCount, 1);
-  });
+  test(
+    'published backup reports missing referenced evidence to the gateway',
+    () async {
+      final data = LocalDataManager(database, localEvidenceDirectory: evidence);
+      await database.database.insert('provenances', {
+        'id': 'missing-original-provenance',
+        'source_type': 'userEntry',
+        'captured_at': DateTime.utc(2026, 11, 4).toIso8601String(),
+      });
+      await database.database.insert('evidence_items', {
+        'id': 'missing-original-receipt',
+        'type': 'receipt',
+        'original_name': 'missing.pdf',
+        'media_type': 'application/pdf',
+        'provenance_id': 'missing-original-provenance',
+        'created_at': DateTime.utc(2026, 11, 4).toIso8601String(),
+        'local_file_name': 'missing.pdf',
+      });
+      final gateway = LocalWorkspaceDataGateway(
+        LocalBackupManager(database, data),
+        data,
+      );
+      final destination = File(
+        path.join(output.path, 'missing-evidence.butlerly'),
+      );
+      final result = await gateway.createPortableBackup(
+        destination.path,
+        password: 'correct horse battery staple',
+      );
+      expect(result.attachmentCount, 0);
+      expect(result.missingAttachmentCount, 1);
+      expect(result.hasMissingAttachments, isTrue);
+      expect(await destination.exists(), isTrue);
+      final inspection = await service.inspect(
+        destination,
+        password: 'correct horse battery staple',
+      );
+      expect(inspection.missingAttachmentCount, 1);
+    },
+  );
 
   test('incorrect password cannot produce staged files', () async {
     final destination = File(path.join(output.path, 'butlerly.butlerly'));
