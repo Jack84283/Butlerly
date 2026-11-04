@@ -23,6 +23,12 @@ rewrite and is not a claim that the replacement is production-ready.
 - **Legacy formats.** New backups need not support old archive formats. Existing
   backup files must not be removed or modified. An older unsupported archive
   must be rejected with a clear explanation, not called corrupt.
+- **Historical SQLite schemas.** Before activation, read the decrypted SQLite
+  source version and physical integrity. If the source schema is older, apply
+  the app's ordered database migrations on the extracted *staging database*,
+  with catalog seeding disabled. The encrypted archive stays unchanged.
+  Reject future, unversioned, malformed, or un-migratable SQLite schemas.
+  This applies to both Replace and Merge and is not business-rule repair.
 
 ## Modules
 
@@ -31,12 +37,12 @@ rewrite and is not a claim that the replacement is production-ready.
   Butlerly financial tables.
 - `raw_backup_service.dart` — SQLite `VACUUM INTO` snapshot, attachment
   reference collection, encryption, publication, and read-only staging.
-- **Replace activation** — pending implementation. Must use a proven database
-  close/reopen and persistent crash-recovery protocol; not an unsafe live-file
-  overwrite.
-- **Merge** — separate optional feature. A SQLite file cannot be merged
-  without explicit identity, conflict, and deletion rules. Do not pretend that
-  replacing a database constitutes Merge.
+- `raw_restore_service.dart` — decrypts, verifies, migrates staged SQLite
+  snapshots using native database deployment SQL, then activates Replace with
+  a restore journal, previous-data copies, and connection reopen.
+- `raw_merge_service.dart` — runs a local-wins SQL merge on disposable staged
+  SQLite, then uses the same guarded activation path as Replace. Tombstones and
+  unresolved evidence conflicts must be respected. Not byte concatenation.
 
 ## Implementation sequence
 
