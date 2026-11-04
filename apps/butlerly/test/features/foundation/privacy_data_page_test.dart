@@ -4,6 +4,8 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/features/foundation/presentation/privacy_data_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart'
+    show RepositoryException, RepositoryFailureCode;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -88,6 +90,24 @@ void main() {
     expect(
       classifyRestoreFailure(StateError('Restore recovery required')),
       RestoreFailureKind.recovery,
+    );
+    expect(
+      classifyRestoreFailure(
+        const RepositoryException(
+          RepositoryFailureCode.migration,
+          'upgrade staging schema',
+        ),
+      ),
+      RestoreFailureKind.migration,
+    );
+    expect(
+      classifyRestoreFailure(
+        const RepositoryException(
+          RepositoryFailureCode.integrity,
+          'validate SQLite',
+        ),
+      ),
+      RestoreFailureKind.damaged,
     );
     expect(
       classifyRestoreFailure(StateError('Other unclassified error')),
