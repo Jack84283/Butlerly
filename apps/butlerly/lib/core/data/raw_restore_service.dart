@@ -8,6 +8,8 @@ import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/evidence/evidence_mutation_lock.dart';
 import 'package:butlerly_database/butlerly_database.dart'
     show ButlerlyDatabase, sha256FileRange;
+import 'package:butlerly_finance_application/butlerly_finance_application.dart'
+    show RestoreRecoveryRequiredException;
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common/sqlite_api.dart';
 
@@ -122,7 +124,7 @@ final class RawRestoreService {
     Future<void> Function(String stage)? onStage,
     // A disposable Merge snapshot must be revalidated before live activation.
     // A failed guard leaves original files, journal and connections untouched.
-    Future<void> Function()? beforeActivation,
+    Future<void> Function(Database liveConnection)? beforeActivation,
     Future<RawBackupInspection> Function(
       Directory staging,
       RawBackupInspection inspection,
@@ -147,6 +149,8 @@ final class RawRestoreService {
     final journal = File(path.join(parent.path, _journalName));
     var journalWritten = false;
     var committed = false;
+    var activationFenced = false;
+    var uncertainRecovery = false;
     await working.create(recursive: true);
     try {
       await onStage?.call('archive extraction');
@@ -190,9 +194,18 @@ final class RawRestoreService {
         throw StateError('SQLite still has active readers; restore deferred.');
       }
 
-      // This callback must run while the live SQLite connection is still
-      // usable, after staging and the WAL checkpoint, before the first move.
-      await beforeActivation?.call();
+      // All cooperative application writes are serialized by the workspace
+      // consistency gate. Fence every other normal persistence connection
+      // accessor *before* the final revision check and keep the fence through
+      // activation or successful rollback. Captured direct SQLite handles
+      // remain a reason to use the consistency gate for every writer.
+      await onStage?.call('database connection close');
+      database.persistenceDatabase.beginRestoreActivation();
+      activationFenced = true;
+      await onStage?.call('restore write barrier entered');
+      await beforeActivation?.call(
+        database.persistenceDatabase.restoreActivationConnection,
+      );
 
       final markerTemp = File('${journal.path}.tmp');
       await rejectSymlinkedPath(markerTemp.path);
@@ -206,8 +219,6 @@ final class RawRestoreService {
       );
       await markerTemp.rename(journal.path);
       journalWritten = true;
-      await onStage?.call('database connection close');
-
       // Do not replace a file while any Butlerly connection holds it open.
       await database.persistenceDatabase.close();
 
@@ -232,7 +243,8 @@ final class RawRestoreService {
       // Reuse the same ButlerlyDatabase object held by app repositories.
       // On open SQLite applies its normal schema setup, not semantic checks.
       await database.reopenActiveConnection();
-      final check = await database.database.rawQuery('PRAGMA integrity_check');
+      final check = await database.persistenceDatabase
+          .restoreActivationConnection.rawQuery('PRAGMA integrity_check');
       if (check.length != 1 || check.single.values.single != 'ok') {
         throw StateError('Restored SQLite file failed physical integrity.');
       }
@@ -254,14 +266,17 @@ final class RawRestoreService {
           await database.reopenActiveConnection();
           journalWritten = false;
         } catch (_) {
-          // Never erase the durable journal on an uncertain rollback.
-          throw StateError(
-            'Restore recovery required; original files are retained.',
-          );
+          // Keep the restore journal and the write fence until recovery.
+          // Gateway persists a recovery-only UI marker separately.
+          uncertainRecovery = true;
+          throw const RestoreRecoveryRequiredException();
         }
       }
       Error.throwWithStackTrace(error, stack);
     } finally {
+      if (activationFenced && !uncertainRecovery) {
+        database.persistenceDatabase.finishRestoreActivation();
+      }
       if (!journalWritten) {
         await _cleanupAfterRestore(
           working: working,
