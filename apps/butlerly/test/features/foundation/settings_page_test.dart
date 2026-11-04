@@ -269,6 +269,10 @@ void main() {
       await tester.pump();
     }
     expect(find.text('Budget Settings'), findsOneWidget);
+    // A built sliver child can still be below the visible viewport. Ensure
+    // the target is actually hittable before testing its navigation.
+    await tester.ensureVisible(find.text('Budget Settings'));
+    await tester.pumpAndSettle();
     await tester.tap(
       find
           .ancestor(
