@@ -46,8 +46,9 @@ void main() {
     ),
   );
 
-  testWidgets('missing attachments remain visible in a localized warning',
-      (tester) async {
+  testWidgets('missing attachments remain visible in a localized warning', (
+    tester,
+  ) async {
     await tester.pumpWidget(app(locale: const Locale('zh')));
     await tester.pumpAndSettle();
     final context = tester.element(find.byType(PrivacyDataPage));
