@@ -106,10 +106,7 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
     }
     final result = mode == LocalRestoreMode.merge
         ? await _rawMerges.restoreMerge(File(filePath), password: password)
-        : await _rawRestores.restoreReplace(
-            File(filePath),
-            password: password,
-          );
+        : await _rawRestores.restoreReplace(File(filePath), password: password);
     // The old postActivationRefresh callback installs and validates analysis
     // rules. Do not run business validation as part of restoring raw files.
     // WorkspaceDataService refreshes presentation state after this returns.
