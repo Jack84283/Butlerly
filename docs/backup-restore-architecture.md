@@ -112,6 +112,31 @@ store destinations have not been configured.
   settlement pages refresh their cached snapshots; stale editors are reset
   rather than allowed to overwrite restored records.
 
+## P1 data-safety hardening (follow-up review)
+
+- **Source foreign keys:** before merging anything, validate the archived
+  SQLite database's own foreign-key constraints. An orphaned source child
+  cannot borrow an unrelated destination parent merely because the IDs match.
+  Reject the entire merge with no live mutation and keep the archive unchanged.
+- **Final activation fence:** normal repository SQLite connection access is
+  suspended before the last live revision check and remains suspended until
+  activation succeeds or rollback completes. The workspace consistency gate
+  continues to serialize regular financial mutations. A Merge additionally
+  fingerprints the checkpointed live SQLite file before close and again after
+  close to detect commits from a raw handle retained before the fence. If the
+  file changed, abort activation and recover the original database, retaining
+  the committed late write.
+- **Uncertain rollback:** a failed journal recovery keeps normal repository
+  access fenced and raises RestoreRecoveryRequiredException. The production
+  gateway persists a recovery-only application state and leaves the raw journal
+  and private original files intact; a subsequent successful startup journal
+  rollback clears only the corresponding raw-restore recovery state.
+- **Scope:** the fence protects the active app's repositories; it is not an
+  operating-system lock against independent processes that directly open the
+  SQLite file. Final device acceptance must confirm Butlerly permits only one
+  active writer/installation per local workspace and test interrupted activation
+  on a disposable database.
+
 ## Performance optimizations (PR #396)
 
 The raw archive is streamed, and financial/business rules never run during
