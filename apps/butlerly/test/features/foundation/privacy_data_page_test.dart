@@ -690,13 +690,19 @@ final class _ShareGateway implements LocalDataGateway {
   String? discardedPath;
 
   @override
-  Future<String> createTemporaryBackup(
+  Future<TemporaryBackupCreationResult> createTemporaryBackup(
     String fileName, {
     required String password,
   }) async {
     final file = File(path.join(root.path, fileName));
     file.writeAsBytesSync(const [1, 2, 3]);
-    return file.path;
+    return TemporaryBackupCreationResult(
+      filePath: file.path,
+      backup: const BackupCreationResult(
+        attachmentCount: 0,
+        missingAttachmentCount: 0,
+      ),
+    );
   }
 
   @override
