@@ -628,6 +628,50 @@ void main() {
     expect(await archive.readAsBytes(), originalArchiveBytes);
   });
 
+  test('staging storage failure does not move original SQLite or evidence',
+      () async {
+    await setProbe('archived-value');
+    final receipt = File(path.join(evidence.path, 'keep-local.bin'));
+    await receipt.writeAsBytes([1, 2, 3]);
+    final archive = File(path.join(root.path, 'storage-failure.butlerly'));
+    await backups.createBackup(
+      archive,
+      password: 'correct horse battery staple',
+    );
+    await database.database.update(
+      'restore_probe',
+      {'value': 'live-after-backup'},
+      where: 'id = ?',
+      whereArgs: ['original'],
+    );
+    await receipt.writeAsBytes([9, 8, 7]);
+
+    await expectLater(
+      restores.restoreReplace(
+        archive,
+        password: 'correct horse battery staple',
+        onStage: (stage) async {
+          if (stage == 'attachment staging') {
+            throw const FileSystemException(
+              'Not enough space to stage evidence',
+              '',
+              OSError('No space left on device', 28),
+            );
+          }
+        },
+      ),
+      throwsA(isA<FileSystemException>()),
+    );
+    expect(await getProbe(), 'live-after-backup');
+    expect(await receipt.readAsBytes(), [9, 8, 7]);
+    expect(
+      await File(
+        path.join(databaseDirectory.path, '.raw-restore-journal.json'),
+      ).exists(),
+      isFalse,
+    );
+  });
+
   test('wrong password leaves live database and files untouched', () async {
     await setProbe('local');
     final archive = File(path.join(root.path, 'original.butlerly'));
