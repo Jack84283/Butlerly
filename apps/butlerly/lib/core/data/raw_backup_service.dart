@@ -8,7 +8,12 @@ import 'package:butlerly/core/data/raw_backup_archive.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/evidence/evidence_mutation_lock.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart'
-    show NewerBackupSchemaException, UnsupportedBackupSchemaException;
+    show
+        BackupCreationException,
+        BackupCreationStage,
+        BackupPasswordTooShortException,
+        NewerBackupSchemaException,
+        UnsupportedBackupSchemaException;
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common/sqlite_api.dart';
 
@@ -44,6 +49,7 @@ final class RawBackupService {
     final working = Directory(path.join(root.path, '.raw-backup-work-$id'));
     final encrypted = File(path.join(root.path, '.raw-backup-$id.butlerly'));
     var preserveEncrypted = false;
+    var stage = BackupCreationStage.snapshot;
     await working.create();
     try {
       final snapshot = File(path.join(working.path, 'butlerly.db'));
@@ -56,6 +62,7 @@ final class RawBackupService {
             snapshot.path,
             options: OpenDatabaseOptions(readOnly: true),
           );
+      stage = BackupCreationStage.inventory;
       final references = <String>[];
       var recordCount = 0;
       try {
@@ -75,6 +82,7 @@ final class RawBackupService {
       } finally {
         await snapshotDatabase.close();
       }
+      stage = BackupCreationStage.packaging;
       final plain = File(path.join(working.path, 'payload'));
       final inspection = await _archive.write(
         sqliteSnapshot: snapshot,
@@ -83,12 +91,14 @@ final class RawBackupService {
         destination: plain,
         recordCount: recordCount,
       );
+      stage = BackupCreationStage.encryption;
       await _encryption.encrypt(
         plain,
         encrypted,
         password: password,
         innerFormat: _rawInnerFormat,
       );
+      stage = BackupCreationStage.verification;
       final verification = File(path.join(working.path, 'verification'));
       await _encryption.decrypt(
         encrypted,
@@ -103,6 +113,7 @@ final class RawBackupService {
               inspection.missingAttachmentCount) {
         throw const FormatException('Encrypted backup verification failed.');
       }
+      stage = BackupCreationStage.publication;
       await _destinationWriter.publish(
         source: encrypted,
         destination: destination,
@@ -118,6 +129,13 @@ final class RawBackupService {
       // original external destination; never delete that recovery artifact.
       preserveEncrypted = true;
       rethrow;
+    } on BackupPasswordTooShortException {
+      rethrow;
+    } catch (error, stack) {
+      Error.throwWithStackTrace(
+        BackupCreationException(stage: stage, cause: error),
+        stack,
+      );
     } finally {
       // Do not retain a plaintext backup, even after a publication failure.
       if (await working.exists()) await working.delete(recursive: true);
