@@ -114,6 +114,18 @@ final class RawMergeService {
       }
 
       final tables = await _loadTables(connection);
+      // The backup must satisfy its own declared relationships. Otherwise an
+      // orphaned source child could silently attach to an unrelated local
+      // parent that happens to reuse the same ID. Checking only the merged
+      // target would miss this semantic corruption.
+      final sourceOrphans = await connection.rawQuery(
+        'PRAGMA archived.foreign_key_check',
+      );
+      if (sourceOrphans.isNotEmpty) {
+        throw const FormatException(
+          'Cannot merge: backup has unresolved foreign-key references.',
+        );
+      }
       final ordered = await _orderTables(connection, tables);
       final sourceTombstones = await _hasTable(
         connection,
