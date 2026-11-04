@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/data/local_data_gateway.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
+import 'package:butlerly/core/data/backup_encryption.dart';
+import 'package:butlerly/core/data/raw_backup_archive.dart';
 import 'package:butlerly/core/data/raw_backup_service.dart';
 import 'package:butlerly/core/data/raw_merge_service.dart';
 import 'package:butlerly/core/data/raw_restore_service.dart';
@@ -39,6 +41,43 @@ void main() {
       whereArgs: ['original'],
     );
     return rows.single['value']! as String;
+  }
+
+  /// Build a genuine encrypted raw archive containing a prior SQLite schema.
+  /// The archived database is made from real app tables, not a mocked schema.
+  Future<File> archivedSchema({
+    required int version,
+    required String label,
+  }) async {
+    final oldDb = File(path.join(root.path, '$label.sqlite'));
+    final quoted = oldDb.path.replaceAll("'", "''");
+    await database.database.execute("VACUUM INTO '$quoted'");
+    final connection = await databaseFactoryFfi.openDatabase(oldDb.path);
+    try {
+      if (version == 18) {
+        // This is precisely the table introduced by deployment migration 19.
+        await connection.execute('DROP TABLE financial_profiles');
+      }
+      await connection.execute('PRAGMA user_version = $version');
+    } finally {
+      await connection.close();
+    }
+    final plain = File(path.join(root.path, '$label.raw'));
+    await const RawBackupArchive().write(
+      sqliteSnapshot: oldDb,
+      evidenceDirectory: evidence,
+      referencedEvidencePaths: const [],
+      destination: plain,
+      recordCount: 1,
+    );
+    final encrypted = File(path.join(root.path, '$label.butlerly'));
+    await const BackupEncryption().encrypt(
+      plain,
+      encrypted,
+      password: 'correct horse battery staple',
+      innerFormat: 'butlerly-raw-backup',
+    );
+    return encrypted;
   }
 
   setUp(() async {
@@ -282,6 +321,102 @@ void main() {
       whereArgs: ['deleted-locally'],
     );
     expect(rows, isEmpty);
+  });
+
+  test('Replace upgrades prior schema in staging without changing archive',
+      () async {
+    await setProbe('older-backup-value');
+    final oldArchive = await archivedSchema(
+      version: 18,
+      label: 'older-replace',
+    );
+    final originalArchiveBytes = await oldArchive.readAsBytes();
+    await database.database.update(
+      'restore_probe',
+      {'value': 'live-newer'},
+      where: 'id = ?',
+      whereArgs: ['original'],
+    );
+
+    await restores.restoreReplace(
+      oldArchive,
+      password: 'correct horse battery staple',
+      onStage: (stage) async {
+        if (stage == 'database connection close') {
+          // Migration occurs before the first live database is closed.
+          expect(await getProbe(), 'live-newer');
+        }
+      },
+    );
+
+    expect(await getProbe(), 'older-backup-value');
+    final version = await database.database.rawQuery('PRAGMA user_version');
+    expect(version.single.values.single, 19);
+    final profileTables = await database.database.rawQuery(
+      "SELECT name FROM sqlite_master WHERE name = 'financial_profiles'",
+    );
+    expect(profileTables, hasLength(1));
+    expect(await oldArchive.readAsBytes(), originalArchiveBytes);
+  });
+
+  test('Merge upgrades prior schema while retaining newer local records',
+      () async {
+    await setProbe('old-value');
+    await database.database.insert('restore_probe', {
+      'id': 'backup-only',
+      'value': 'import-me',
+    });
+    final oldArchive = await archivedSchema(
+      version: 18,
+      label: 'older-merge',
+    );
+    await database.database.update(
+      'restore_probe',
+      {'value': 'local-kept'},
+      where: 'id = ?',
+      whereArgs: ['original'],
+    );
+    await database.database.delete(
+      'restore_probe',
+      where: 'id = ?',
+      whereArgs: ['backup-only'],
+    );
+
+    await RawMergeService(database, backups, restores).restoreMerge(
+      oldArchive,
+      password: 'correct horse battery staple',
+    );
+    expect(await getProbe(), 'local-kept');
+    final imported = await database.database.query(
+      'restore_probe',
+      where: 'id = ?',
+      whereArgs: ['backup-only'],
+    );
+    expect(imported.single['value'], 'import-me');
+    final version = await database.database.rawQuery('PRAGMA user_version');
+    expect(version.single.values.single, 19);
+  });
+
+  test('newer unsupported schema rejects without mutating live data',
+      () async {
+    await setProbe('never-change-live');
+    final archive = await archivedSchema(
+      version: 20,
+      label: 'future-schema',
+    );
+    final originalArchiveBytes = await archive.readAsBytes();
+
+    await expectLater(
+      restores.restoreReplace(
+        archive,
+        password: 'correct horse battery staple',
+      ),
+      throwsA(isA<FormatException>()),
+    );
+    expect(await getProbe(), 'never-change-live');
+    final version = await database.database.rawQuery('PRAGMA user_version');
+    expect(version.single.values.single, 19);
+    expect(await archive.readAsBytes(), originalArchiveBytes);
   });
 
   test('wrong password leaves live database and files untouched', () async {
