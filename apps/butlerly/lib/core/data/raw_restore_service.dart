@@ -116,8 +116,9 @@ final class RawRestoreService {
     );
   }
 
-  /// Restores exactly the saved SQLite snapshot and available attachments.
-  /// No analysis/business validation, migrations, or automatic data repair.
+  /// Restores the saved SQLite rows and available attachments, applying only
+  /// the established SQLite schema migrations to a temporary staged database.
+  /// No financial/analysis rule validation or automatic data repair.
   ///
   /// [onStage] is a test/diagnostic hook. Errors before journal deletion trigger
   /// rollback to the exact pre-activation files, not a best-effort merge.
