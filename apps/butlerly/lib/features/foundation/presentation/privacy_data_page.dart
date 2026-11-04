@@ -76,6 +76,94 @@ Future<void> showBackupRequiresAppUpdateDialog(
   );
 }
 
+/// Requires explicit acknowledgement before replacing the entire local database.
+/// Merge retains its separate, non-destructive confirmation.
+@visibleForTesting
+Future<bool> showBackupRestoreConfirmation(
+  BuildContext context, {
+  required BackupInspection inspection,
+  required LocalRestoreMode mode,
+}) async {
+  final replace = mode == LocalRestoreMode.replace;
+  var acknowledgedReplace = false;
+  return (await showButlerlyBottomSheet<bool>(
+        context: context,
+        builder: (sheetContext) => StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            final l10n = sheetContext.l10n;
+            final summary = l10n
+                .backupText('backupSummary')
+                .replaceAll('{records}', '\${inspection.recordCount}')
+                .replaceAll('{evidence}', '\${inspection.evidenceCount}');
+            final created = l10n.backupText('backupCreatedAt').replaceAll(
+              '{date}',
+              formatBackupInspectionDate(
+                sheetContext,
+                inspection.createdAtUtc.toLocal(),
+              ),
+            );
+            final explanation = l10n.backupText(
+              replace ? 'replaceBody' : 'mergeBody',
+            );
+            return ButlerlySheet(
+              title: Text(
+                l10n.backupText(replace ? 'replaceTitle' : 'mergeTitle'),
+              ),
+              content: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(sheetContext).height * .55,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('$summary\n$created'),
+                      const SizedBox(height: ButlerlySpacing.standard),
+                      Text(explanation),
+                      if (replace) ...[
+                        const SizedBox(height: ButlerlySpacing.small),
+                        CheckboxListTile(
+                          key: const ValueKey('restore-replace-acknowledgement'),
+                          value: acknowledgedReplace,
+                          onChanged: (value) => setSheetState(
+                            () => acknowledgedReplace = value ?? false,
+                          ),
+                          controlAffinity: ListTileControlAffinity.leading,
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(l10n.backupText('replaceAcknowledgement')),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                ButlerlyCancelButton(
+                  onPressed: () => Navigator.pop(sheetContext, false),
+                  child: Text(l10n.text('cancel')),
+                ),
+                if (replace)
+                  ButlerlyDestructiveButton(
+                    key: const ValueKey('restore-replace-confirm'),
+                    onPressed: acknowledgedReplace
+                        ? () => Navigator.pop(sheetContext, true)
+                        : null,
+                    child: Text(l10n.backupText('replaceAllData')),
+                  )
+                else
+                  FilledButton(
+                    onPressed: () => Navigator.pop(sheetContext, true),
+                    child: Text(l10n.backupText('merge')),
+                  ),
+              ],
+            );
+          },
+        ),
+      )) ==
+      true;
+}
+
 class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
   static const _backupType = XTypeGroup(
     label: 'Butlerly backup',
@@ -386,62 +474,11 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
   Future<bool> _confirmRestore(
     BackupInspection inspection,
     LocalRestoreMode mode,
-  ) async {
-    final replace = mode == LocalRestoreMode.replace;
-    return (await showButlerlyBottomSheet<bool>(
-          context: context,
-          builder: (sheetContext) {
-            final summary = sheetContext.l10n
-                .backupText('backupSummary')
-                .replaceAll('{records}', '${inspection.recordCount}')
-                .replaceAll('{evidence}', '${inspection.evidenceCount}');
-            final created = sheetContext.l10n
-                .backupText('backupCreatedAt')
-                .replaceAll(
-                  '{date}',
-                  formatBackupInspectionDate(
-                    sheetContext,
-                    inspection.createdAtUtc.toLocal(),
-                  ),
-                );
-            final explanation = sheetContext.l10n.backupText(
-              replace ? 'replaceBody' : 'mergeBody',
-            );
-            return ButlerlySheet(
-              title: Text(
-                sheetContext.l10n.backupText(
-                  replace ? 'replaceTitle' : 'mergeTitle',
-                ),
-              ),
-              content: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxHeight: MediaQuery.sizeOf(sheetContext).height * .45,
-                ),
-                child: SingleChildScrollView(
-                  child: Text('$summary\\n$created\\n\\n$explanation'),
-                ),
-              ),
-              actions: [
-                ButlerlyCancelButton(
-                  onPressed: () => Navigator.pop(sheetContext, false),
-                  child: Text(sheetContext.l10n.text('cancel')),
-                ),
-                if (replace)
-                  ButlerlyDestructiveButton(
-                    onPressed: () => Navigator.pop(sheetContext, true),
-                    child: Text(sheetContext.l10n.backupText('replace')),
-                  )
-                else
-                  FilledButton(
-                    onPressed: () => Navigator.pop(sheetContext, true),
-                    child: Text(sheetContext.l10n.backupText('merge')),
-                  ),
-              ],
-            );
-          },
-        )) ==
-        true;
-  }
+  ) => showBackupRestoreConfirmation(
+    context,
+    inspection: inspection,
+    mode: mode,
+  );
 
   Future<void> _export() async {
     setState(() => _busy = true);
