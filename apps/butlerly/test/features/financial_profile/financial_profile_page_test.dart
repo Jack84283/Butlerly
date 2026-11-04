@@ -166,6 +166,10 @@ void main() {
     await _pumpWithRealAsync(tester);
 
     expect(find.text('Perfil financiero'), findsOneWidget);
+    // The save and reloaded summary use asynchronous SQLite work. Wait for
+    // the final localized value instead of assuming a fixed 100 ms delay is
+    // sufficient on a busy CI runner.
+    await _pumpUntilVisible(tester, find.textContaining('750,25'));
     expect(find.textContaining('750,25'), findsOneWidget);
 
     await tester.runAsync(
