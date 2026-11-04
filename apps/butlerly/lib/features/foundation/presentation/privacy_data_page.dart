@@ -95,13 +95,15 @@ Future<bool> showBackupRestoreConfirmation(
                 .backupText('backupSummary')
                 .replaceAll('{records}', '${inspection.recordCount}')
                 .replaceAll('{evidence}', '${inspection.evidenceCount}');
-            final created = l10n.backupText('backupCreatedAt').replaceAll(
-              '{date}',
-              formatBackupInspectionDate(
-                sheetContext,
-                inspection.createdAtUtc.toLocal(),
-              ),
-            );
+            final created = l10n
+                .backupText('backupCreatedAt')
+                .replaceAll(
+                  '{date}',
+                  formatBackupInspectionDate(
+                    sheetContext,
+                    inspection.createdAtUtc.toLocal(),
+                  ),
+                );
             final explanation = l10n.backupText(
               replace ? 'replaceBody' : 'mergeBody',
             );
@@ -124,14 +126,18 @@ Future<bool> showBackupRestoreConfirmation(
                       if (replace) ...[
                         const SizedBox(height: ButlerlySpacing.small),
                         CheckboxListTile(
-                          key: const ValueKey('restore-replace-acknowledgement'),
+                          key: const ValueKey(
+                            'restore-replace-acknowledgement',
+                          ),
                           value: acknowledgedReplace,
                           onChanged: (value) => setSheetState(
                             () => acknowledgedReplace = value ?? false,
                           ),
                           controlAffinity: ListTileControlAffinity.leading,
                           contentPadding: EdgeInsets.zero,
-                          title: Text(l10n.backupText('replaceAcknowledgement')),
+                          title: Text(
+                            l10n.backupText('replaceAcknowledgement'),
+                          ),
                         ),
                       ],
                     ],
