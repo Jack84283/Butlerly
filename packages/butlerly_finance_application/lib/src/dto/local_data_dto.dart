@@ -25,6 +25,30 @@ final class BackupCreationException implements Exception {
   final bool recoveryRequired;
 }
 
+/// Result of a published encrypted backup. Missing optional evidence never
+/// makes the snapshot invalid, but must be disclosed to the user.
+final class BackupCreationResult {
+  const BackupCreationResult({
+    required this.attachmentCount,
+    required this.missingAttachmentCount,
+  });
+
+  final int attachmentCount;
+  final int missingAttachmentCount;
+  bool get hasMissingAttachments => missingAttachmentCount > 0;
+}
+
+/// A temporary encrypted backup and its verified attachment inventory.
+final class TemporaryBackupCreationResult {
+  const TemporaryBackupCreationResult({
+    required this.filePath,
+    required this.backup,
+  });
+
+  final String filePath;
+  final BackupCreationResult backup;
+}
+
 enum LocalRestoreMode { merge, replace }
 
 final class BackupChangeSummary {
