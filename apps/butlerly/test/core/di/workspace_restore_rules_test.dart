@@ -359,7 +359,10 @@ void main() {
         whereArgs: ['restored-expense'],
       );
       expect(restored, hasLength(1));
-      expect(restored.single['amount_coefficient'], before['amount_coefficient']);
+      expect(
+        restored.single['amount_coefficient'],
+        before['amount_coefficient'],
+      );
       final persisted = (await rules.listDefinitions()).singleWhere(
         (rule) => rule.identity.value == 'ANL-R001',
       );
@@ -368,5 +371,5 @@ void main() {
         installed.installed.single.definitionHash,
       );
     },
-    );
+  );
 }
