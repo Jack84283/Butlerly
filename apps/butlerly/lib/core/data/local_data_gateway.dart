@@ -12,7 +12,11 @@ import 'package:path_provider/path_provider.dart';
 
 /// Local adapter for application-owned privacy and recovery operations.
 final class LocalWorkspaceDataGateway implements LocalDataGateway {
-  LocalWorkspaceDataGateway(this.backups, this.data) {
+  LocalWorkspaceDataGateway(
+    this.backups,
+    this.data, {
+    this.restoreDiagnosticStage,
+  }) {
     _rawBackups = RawBackupService(data.database, data);
     _rawRestores = RawRestoreService(data.database, _rawBackups);
     _rawMerges = RawMergeService(data.database, _rawBackups, _rawRestores);
@@ -20,6 +24,8 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
 
   final LocalBackupManager backups;
   final LocalDataManager data;
+  /// Optional fault-injection / diagnostic hook; never set by the UI.
+  final Future<void> Function(String stage)? restoreDiagnosticStage;
   late final RawBackupService _rawBackups;
   late final RawRestoreService _rawRestores;
   late final RawMergeService _rawMerges;
@@ -143,8 +149,16 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
     final RawBackupInspection result;
     try {
       result = mode == LocalRestoreMode.merge
-          ? await _rawMerges.restoreMerge(File(filePath), password: password)
-          : await _rawRestores.restoreReplace(File(filePath), password: password);
+          ? await _rawMerges.restoreMerge(
+              File(filePath),
+              password: password,
+              onStage: restoreDiagnosticStage,
+            )
+          : await _rawRestores.restoreReplace(
+              File(filePath),
+              password: password,
+              onStage: restoreDiagnosticStage,
+            );
     } on RestoreRecoveryRequiredException {
       // The physical restore journal remains authoritative. Persist a
       // recovery-only UI gate, including when the database cannot reopen;
