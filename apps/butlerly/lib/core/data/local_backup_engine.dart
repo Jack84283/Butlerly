@@ -1354,19 +1354,35 @@ final class LocalBackupManager {
         }
       }
       // Also enrich historical warning records that predate the explicit
-      // missing-content list. This keeps generic legacy warning codes intact
-      // while restoring the transaction context available in the snapshot.
-      final missingEvidenceIds = <String>{
-        ...missingContentRecords
-            .where((record) => record.type == 'evidence')
-            .map((record) => record.id),
-        for (final warning in warnings.where(
-          (warning) => isMissingEvidenceWarning(warning.code),
-        ))
-          ...warning.affectedRecords
-              .where((record) => record.type == 'evidence')
-              .map((record) => record.id),
-      };
+      // missing-content list. Keep each warning category tied to its own
+      // evidence IDs so mixed receipt/attachment archives do not mislabel
+      // diagnostics while restoring the transaction context from the snapshot.
+      final missingEvidenceIdsByWarningCode = <String, Set<String>>{};
+      final explicitlyMissingEvidenceIds = missingContentRecords
+          .where((record) => record.type == 'evidence')
+          .map((record) => record.id)
+          .toSet();
+      final assignedEvidenceIds = <String>{};
+      for (final warning in warnings.where(
+        (warning) => isMissingEvidenceWarning(warning.code),
+      )) {
+        final evidenceIds = missingEvidenceIdsByWarningCode.putIfAbsent(
+          warning.code,
+          () => <String>{},
+        );
+        for (final record in warning.affectedRecords.where(
+          (record) => record.type == 'evidence',
+        )) {
+          evidenceIds.add(record.id);
+          assignedEvidenceIds.add(record.id);
+        }
+      }
+      for (final evidenceId in explicitlyMissingEvidenceIds) {
+        if (assignedEvidenceIds.contains(evidenceId)) continue;
+        missingEvidenceIdsByWarningCode
+            .putIfAbsent(warningCodeForEvidence(evidenceId), () => <String>{})
+            .add(evidenceId);
+      }
       if (warnings.any((warning) => isMissingEvidenceWarning(warning.code))) {
         final enrichedWarnings = <BackupWarning>[];
         for (final warning in warnings) {
@@ -1375,7 +1391,9 @@ final class LocalBackupManager {
             continue;
           }
           final records = [...warning.affectedRecords];
-          for (final evidenceId in missingEvidenceIds) {
+          for (final evidenceId
+              in missingEvidenceIdsByWarningCode[warning.code] ??
+                  const <String>{}) {
             for (final record in recordsForEvidence(evidenceId)) {
               if (!records.any(
                 (existing) =>

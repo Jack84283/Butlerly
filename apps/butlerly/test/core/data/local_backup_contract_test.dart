@@ -961,6 +961,105 @@ void main() {
   });
 
   test(
+    'mixed missing evidence warnings retain their own affected records',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.insertTransaction('tx-mixed-missing-receipt');
+      await fixture.insertTransaction('tx-mixed-missing-statement');
+      const capturedAt = '2026-09-01T00:00:00.000Z';
+      await fixture.database.database.insert('provenances', {
+        'id': 'mixed-missing-evidence-provenance',
+        'source_type': 'userEntry',
+        'captured_at': capturedAt,
+        'source_id': null,
+        'original_representation': null,
+        'source_language': null,
+      });
+      await fixture.database.database.insert('evidence_items', {
+        'id': 'mixed-missing-receipt',
+        'type': 'receiptImage',
+        'original_name': 'receipt.jpg',
+        'media_type': 'image/jpeg',
+        'provenance_id': 'mixed-missing-evidence-provenance',
+        'created_at': capturedAt,
+        'source_language': null,
+        'local_file_name': 'receipts/missing-receipt.jpg',
+      });
+      await fixture.database.database.insert('evidence_items', {
+        'id': 'mixed-missing-statement',
+        'type': 'statement',
+        'original_name': 'statement.pdf',
+        'media_type': 'application/pdf',
+        'provenance_id': 'mixed-missing-evidence-provenance',
+        'created_at': capturedAt,
+        'source_language': null,
+        'local_file_name': 'statements/missing-statement.pdf',
+      });
+      await fixture.database.database.insert('attachment_links', {
+        'id': 'mixed-missing-receipt-link',
+        'transaction_id': 'tx-mixed-missing-receipt',
+        'evidence_id': 'mixed-missing-receipt',
+        'created_at': capturedAt,
+      });
+      await fixture.database.database.insert('attachment_links', {
+        'id': 'mixed-missing-statement-link',
+        'transaction_id': 'tx-mixed-missing-statement',
+        'evidence_id': 'mixed-missing-statement',
+        'created_at': capturedAt,
+      });
+
+      final backup = File(
+        path.join(fixture.root.path, 'mixed-missing-evidence.butlerlybackup'),
+      );
+      await fixture.manager.createBackup(backup);
+
+      void expectWarnings(List<BackupWarning> warnings) {
+        Set<String> affectedIds(BackupWarning warning) => warning
+            .affectedRecords
+            .map((record) => '${record.type}:${record.id}')
+            .toSet();
+
+        final receipt = warnings.singleWhere(
+          (warning) => warning.code == 'missing_receipt',
+        );
+        final evidence = warnings.singleWhere(
+          (warning) => warning.code == 'missing_evidence',
+        );
+        expect(
+          affectedIds(receipt),
+          containsAll(<String>[
+            'evidence:mixed-missing-receipt',
+            'transaction:tx-mixed-missing-receipt',
+          ]),
+        );
+        expect(
+          affectedIds(receipt),
+          isNot(contains('evidence:mixed-missing-statement')),
+        );
+        expect(
+          affectedIds(evidence),
+          containsAll(<String>[
+            'evidence:mixed-missing-statement',
+            'transaction:tx-mixed-missing-statement',
+          ]),
+        );
+        expect(
+          affectedIds(evidence),
+          isNot(contains('evidence:mixed-missing-receipt')),
+        );
+      }
+
+      expectWarnings((await fixture.manager.inspect(backup)).warnings);
+      final result = await fixture.manager.restore(
+        backup,
+        mode: LocalRestoreMode.replace,
+      );
+      expectWarnings(result.warnings);
+    },
+  );
+
+  test(
     'merge remaps missing content by evidence identity, not only by path',
     () async {
       final fixture = await _Fixture.create();
