@@ -1,6 +1,7 @@
 import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/core/data/raw_restore_service.dart' show UnsupportedBackupSchemaException;
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
@@ -186,6 +187,10 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     } on BackupPasswordRequiredException {
       if (mounted) {
         _message(context.l10n.backupText('passwordOrIntegrityFailed'));
+      }
+    } on UnsupportedBackupSchemaException {
+      if (mounted) {
+        _message(context.l10n.backupText('unsupportedBackupSchema'));
       }
     } on RestoreRecoveryRequiredException {
       // RestoreRecoveryState immediately replaces normal navigation with the
