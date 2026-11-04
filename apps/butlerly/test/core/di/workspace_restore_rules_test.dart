@@ -172,60 +172,63 @@ void main() {
       },
     );
   }
-  test('Replace restores original duplicate records without fabrication', () async {
-    final timestamp = DateTime.utc(2026, 9, 1);
-    await SqliteTransactionRepository(database.persistenceDatabase).save(
-      Transaction(
-        id: TransactionId('restored-expense-duplicate'),
-        timing: const UnknownTransactionTime(
-          UnknownTransactionTimeReason.unknown,
-        ),
-        transactionDate: '2026-09-01',
-        money: Money(
-          amount: DecimalValue.parse('12.34'),
-          currency: CurrencyCode('USD'),
-        ),
-        direction: TransactionDirection.expense,
-        sourceType: TransactionSourceType.manual,
-        provenance: [
-          Provenance(
-            id: ProvenanceId('origin-duplicate'),
-            sourceType: ProvenanceSourceType.userEntry,
-            capturedAt: timestamp,
+  test(
+    'Replace restores original duplicate records without fabrication',
+    () async {
+      final timestamp = DateTime.utc(2026, 9, 1);
+      await SqliteTransactionRepository(database.persistenceDatabase).save(
+        Transaction(
+          id: TransactionId('restored-expense-duplicate'),
+          timing: const UnknownTransactionTime(
+            UnknownTransactionTimeReason.unknown,
           ),
-        ],
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      ),
-    );
-    final backup = File('${root.path}/duplicates.butlerlybackup');
-    await services<WorkspaceDataService>().createPortableBackup(
-      backup.path,
-      password: backupPassword,
-    );
+          transactionDate: '2026-09-01',
+          money: Money(
+            amount: DecimalValue.parse('12.34'),
+            currency: CurrencyCode('USD'),
+          ),
+          direction: TransactionDirection.expense,
+          sourceType: TransactionSourceType.manual,
+          provenance: [
+            Provenance(
+              id: ProvenanceId('origin-duplicate'),
+              sourceType: ProvenanceSourceType.userEntry,
+              capturedAt: timestamp,
+            ),
+          ],
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        ),
+      );
+      final backup = File('${root.path}/duplicates.butlerlybackup');
+      await services<WorkspaceDataService>().createPortableBackup(
+        backup.path,
+        password: backupPassword,
+      );
 
-    await SqliteTransactionRepository(
-      database.persistenceDatabase,
-    ).removePermanently(TransactionId('restored-expense-duplicate'));
+      await SqliteTransactionRepository(
+        database.persistenceDatabase,
+      ).removePermanently(TransactionId('restored-expense-duplicate'));
 
-    await services<WorkspaceDataService>().restore(
-      backup.path,
-      mode: LocalRestoreMode.replace,
-      password: backupPassword,
-    );
+      await services<WorkspaceDataService>().restore(
+        backup.path,
+        mode: LocalRestoreMode.replace,
+        password: backupPassword,
+      );
 
-    final rows = await database.database.query(
-      'transactions',
-      where: 'id IN (?, ?)',
-      whereArgs: ['restored-expense', 'restored-expense-duplicate'],
-    );
-    expect(rows, hasLength(2));
-    // Raw Replace restores the snapshot, not a newly computed duplicate scan.
-    expect(
-      await database.database.query('duplicate_candidate_groups'),
-      isEmpty,
-    );
-  });
+      final rows = await database.database.query(
+        'transactions',
+        where: 'id IN (?, ?)',
+        whereArgs: ['restored-expense', 'restored-expense-duplicate'],
+      );
+      expect(rows, hasLength(2));
+      // Raw Replace restores the snapshot, not a newly computed duplicate scan.
+      expect(
+        await database.database.query('duplicate_candidate_groups'),
+        isEmpty,
+      );
+    },
+  );
 
   test('restore preserves resolved duplicate decisions', () async {
     final timestamp = DateTime.utc(2026, 9, 1);
@@ -365,6 +368,4 @@ void main() {
         installed.installed.single.definitionHash,
       );
     },
-  );
-
-}
+  );}
