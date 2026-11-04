@@ -38,6 +38,18 @@ const _backupStrings = <String, Map<String, String>>{
     'backupComplete': 'Encrypted backup created successfully.',
     'backupFailed': 'Backup could not be created.',
     'restoreFailed': 'Backup could not be restored.',
+    'upgradeAppRequiredTitle': 'Update Butlerly before restoring',
+    'upgradeAppRequiredBody':
+        'This backup requires database schema {backupVersion}, but your installed Butlerly supports schema {supportedVersion}. Nothing on this device was changed. Update Butlerly, then retry the same backup.',
+    'upgradeFromAppleStore':
+        'On iPhone or iPad, open the App Store and search for Butlerly. Choose Update if a newer official version is available. If you installed a test build, update it from its original source instead.',
+    'upgradeFromGooglePlay':
+        'On Android, open Google Play and search for Butlerly. Choose Update if a newer official version is available. If you installed a test build, update it from its original source instead.',
+    'upgradeFromMacStore':
+        'On Mac, check the Mac App Store for a Butlerly update if that is where you installed it. For a development or directly installed copy, install a newer compatible Butlerly build from its original source.',
+    'upgradeFromDesktopDistribution':
+        'Install a newer compatible Butlerly build from the same trusted source you used originally, then try Restore again.',
+    'upgradeAppDismiss': 'OK',
     'unsupportedBackupSchema':
         'This backup uses a SQLite schema that this Butlerly version cannot restore. Your data has not been changed.',
     'restoreTitle': 'Restore Butlerly backup?',
@@ -116,6 +128,18 @@ const _backupStrings = <String, Map<String, String>>{
     'backupComplete': 'La copia cifrada se creó correctamente.',
     'backupFailed': 'No se pudo crear la copia.',
     'restoreFailed': 'No se pudo restaurar la copia.',
+    'upgradeAppRequiredTitle': 'Actualiza Butlerly antes de restaurar',
+    'upgradeAppRequiredBody':
+        'Esta copia necesita el esquema de base de datos {backupVersion}, pero tu versión instalada de Butlerly admite hasta {supportedVersion}. Los datos de este dispositivo no se han modificado. Actualiza Butlerly e inténtalo de nuevo con la misma copia.',
+    'upgradeFromAppleStore':
+        'En iPhone o iPad, abre App Store y busca Butlerly. Pulsa Actualizar si hay una versión oficial más reciente. Si instalaste una versión de prueba, actualízala desde su origen original.',
+    'upgradeFromGooglePlay':
+        'En Android, abre Google Play y busca Butlerly. Pulsa Actualizar si hay una versión oficial más reciente. Si instalaste una versión de prueba, actualízala desde su origen original.',
+    'upgradeFromMacStore':
+        'En Mac, busca una actualización en Mac App Store si instalaste Butlerly allí. Para una versión de desarrollo o instalación directa, instala una versión compatible desde su origen original.',
+    'upgradeFromDesktopDistribution':
+        'Instala una versión compatible más reciente de Butlerly desde la misma fuente de confianza que usaste originalmente y vuelve a intentar la restauración.',
+    'upgradeAppDismiss': 'Entendido',
     'unsupportedBackupSchema':
         'Esta copia usa un esquema SQLite que esta versión de Butlerly no puede restaurar. Sus datos no se han modificado.',
     'restoreTitle': '¿Restaurar la copia de Butlerly?',
@@ -193,6 +217,18 @@ const _backupStrings = <String, Map<String, String>>{
     'backupComplete': '加密备份创建成功。',
     'backupFailed': '无法创建备份。',
     'restoreFailed': '无法恢复备份。',
+    'upgradeAppRequiredTitle': '请先更新 Butlerly 再恢复备份',
+    'upgradeAppRequiredBody':
+        '此备份需要数据库结构版本 {backupVersion}，而当前安装的 Butlerly 仅支持到版本 {supportedVersion}。本机数据未被修改。请更新 Butlerly 后使用同一备份重试。',
+    'upgradeFromAppleStore':
+        '在 iPhone 或 iPad 上打开 App Store，搜索 Butlerly。如有较新的官方版本，点击“更新”。若使用的是测试版，请从原安装渠道更新。',
+    'upgradeFromGooglePlay':
+        '在 Android 设备上打开 Google Play，搜索 Butlerly。如有较新的官方版本，点击“更新”。若使用的是测试版，请从原安装渠道更新。',
+    'upgradeFromMacStore':
+        '在 Mac 上，如果 Butlerly 是通过 Mac App Store 安装的，请在其中检查更新；如果是开发版或直接安装的版本，请从原可信渠道安装支持该数据库结构的更新版本。',
+    'upgradeFromDesktopDistribution':
+        '请从原可信安装渠道获取支持该数据库结构的较新 Butlerly 版本，安装后重新尝试恢复。',
+    'upgradeAppDismiss': '知道了',
     'unsupportedBackupSchema':
         '此备份使用当前 Butlerly 版本无法恢复的 SQLite 数据库结构。您的本机数据未被修改。',
     'restoreTitle': '恢复 Butlerly 备份？',
