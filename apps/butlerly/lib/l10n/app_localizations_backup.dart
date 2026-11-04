@@ -28,12 +28,9 @@ const _backupStrings = <String, Map<String, String>>{
     'backupSubtitle': 'Create one encrypted portable local backup file.',
     'restoreBackup': 'Restore backup',
     'restoreSubtitle': 'Restore a Butlerly backup using Merge or Replace.',
-    'recoverEvidence': 'Recover missing evidence',
-    'recoverEvidenceSubtitle':
-        'Restore verified receipt and document files without changing financial records.',
     'backupComplete': 'Encrypted backup created successfully.',
-    'backupAnalysisRepairRequired':
-        'Backup could not be created because analysis rules failed validation. Choose Repair analysis rules and try again.',
+    'backupCompleteWithWarnings':
+        'Encrypted backup created with warnings. Open Data Integrity Reports for details.',
     'backupShareUnconfirmed':
         'The encrypted backup was created, but the platform could not confirm whether it was shared or saved.',
     'backupShareFailed':
@@ -44,12 +41,12 @@ const _backupStrings = <String, Map<String, String>>{
         'Backup could not be finalized safely. Recovery is required; the destination file status is unknown. Open Backup recovery to continue.',
     'backupFailed': 'Backup could not be created.',
     'backupFailedWithDetails':
-        'Backup could not be created. Failure stage: {stage}. Error type: {errorType}. Your financial data was not changed.',
+        'Backup could not be created. Failure stage: {stage}. Your financial data was not changed.',
     'backupLocationSelectionFailed': 'Backup location could not be selected.',
     'backupStorageFailed': 'Backup could not be saved to device storage.',
     'restoreFailed': 'Backup could not be restored.',
     'restoreFailedWithDetails':
-        'Backup could not be restored. Failure stage: {stage}. Error type: {errorType}. No restore was confirmed.',
+        'Backup could not be restored. Failure stage: {stage}. No restore was confirmed.',
     'diagnosticAvailable': 'Backup or restore failure details are available.',
     'diagnosticTitle': 'Failure details',
     'viewDiagnostic': 'View details',
@@ -60,27 +57,38 @@ const _backupStrings = <String, Map<String, String>>{
         'This diagnostic contains safe technical codes only. It does not include passwords, financial records, file paths, or exception text.',
     'diagnosticOperation': 'Operation',
     'diagnosticStage': 'Failure stage',
-    'diagnosticErrorCode': 'Error code',
+    'diagnosticErrorCode': 'Error category',
+    'diagnosticErrorStorage': 'storage operation',
+    'diagnosticErrorEncryption': 'encryption verification',
+    'diagnosticErrorPassword': 'backup password or policy',
+    'diagnosticErrorPublicationRecovery': 'publication recovery',
+    'diagnosticErrorShare': 'sharing operation',
+    'diagnosticErrorFormat': 'archive or data format',
+    'diagnosticErrorInvalidArgument': 'invalid operation input',
+    'diagnosticErrorRecovery': 'controlled recovery',
+    'diagnosticErrorState': 'operation state',
+    'diagnosticErrorUnknown': 'protected operation error',
     'diagnosticRestoreMode': 'Restore mode',
     'diagnosticRecoveryRequired': 'Recovery required',
     'diagnosticYes': 'Yes',
     'diagnosticNo': 'No',
     'diagnosticStageDestinationSelection': 'destination selection',
     'diagnosticStageDestinationStorage': 'destination storage',
+    'diagnosticStageBackupEvidenceCollection': 'evidence collection',
+    'diagnosticStageRestorePreflightSafetyBackupEvidenceCollection':
+        'pre-restore safety backup: evidence collection',
     'diagnosticStageTemporaryStorage': 'temporary storage',
     'diagnosticStageTemporaryBackupCreation': 'temporary backup creation',
     'diagnosticStagePortableBackupCreation': 'portable backup creation',
     'diagnosticStageEncryptionVerification': 'encryption verification',
     'diagnosticStageShareSheet': 'share sheet',
     'diagnosticStagePublicationRecovery': 'publication recovery',
-    'diagnosticStageAnalysisRuleValidation': 'analysis-rule validation',
     'diagnosticStageRestoreFileSelection': 'restore file selection',
     'diagnosticStageRestorePassword': 'restore password',
     'diagnosticStageArchiveInspection': 'archive inspection',
     'diagnosticStageArchiveDecryption': 'archive decryption',
     'diagnosticStageRestoreActivation': 'restore activation',
     'diagnosticStageRestoreValidation': 'restore validation',
-    'diagnosticStageEvidenceRecovery': 'evidence recovery',
     'diagnosticStageUnknown': 'operation processing',
     'diagnosticExplanationEncryption':
         'The encrypted archive could not be verified. Try again and keep the app open until it finishes.',
@@ -90,8 +98,10 @@ const _backupStrings = <String, Map<String, String>>{
         'The archive may exist only temporarily. Use the share sheet or create a desktop backup to a known destination.',
     'diagnosticExplanationPublicationRecovery':
         'The destination status is unknown. Use Backup recovery to verify it before trying again.',
-    'diagnosticExplanationAnalysisRules':
-        'The archive could not be validated because analysis-rule data is inconsistent. Repair is a separate, explicit action.',
+    'diagnosticExplanationEvidenceCollection':
+        'Backup could not collect all referenced evidence. Verify the evidence files and available device storage, then try again.',
+    'diagnosticExplanationRestorePreflightEvidenceCollection':
+        'Restore could not create its pre-restore safety copy because evidence collection failed. Verify the evidence files before retrying.',
     'diagnosticExplanationRestorePassword':
         'Check the password. If it is correct, the archive may be damaged or incomplete.',
     'diagnosticExplanationRestoreRecovery':
@@ -100,41 +110,24 @@ const _backupStrings = <String, Map<String, String>>{
         'Restore did not report a committed result. Do not retry a destructive action until the recovery state is verified.',
     'diagnosticExplanationGeneric':
         'Review the operation details and try again. No private diagnostic payload is shown here.',
-    'evidenceRecoveryPreviewTitle': 'Review evidence recovery',
-    'evidenceRecoveryPreviewComplete':
-        'The selected backup contains every missing evidence file that can be verified.',
-    'evidenceRecoveryPreviewPartial':
-        'Some evidence cannot be safely recovered from the selected backup.',
-    'evidenceRecoveryPreviewRecoverable': 'Recoverable files: {count}',
-    'evidenceRecoveryPreviewPresent': 'Already present: {count}',
-    'evidenceRecoveryPreviewConflicting': 'Conflicting files: {count}',
-    'evidenceRecoveryPreviewUnavailable': 'Unavailable files: {count}',
-    'evidenceRecoveryConfirm': 'Confirm recovery',
-    'evidenceRecoveryCancel': 'Cancel',
-    'evidenceRecoveryPreviewStale':
-        'The local evidence changed after preview. Review the backup again before recovering files.',
-    'evidenceRecoveryComplete':
-        'Evidence recovery finished: {recovered} restored, {present} already present.',
-    'evidenceRecoveryIncomplete':
-        'Evidence recovery finished with unresolved files: {recovered} restored, {present} already present, {conflicting} conflicting, {unavailable} unavailable.',
-    'evidenceRecoveryStorageFailed':
-        'Verified evidence could not be written to device storage. No financial records were changed.',
-    'evidenceRecoveryInvalid':
-        'The selected backup is invalid or its evidence could not be verified.',
-    'evidenceRecoveryFailed':
-        'Missing evidence could not be recovered. No financial records were changed.',
     'restoreTitle': 'Restore Butlerly backup?',
     'backupCreatedAt': 'Created {date}',
     'newerData':
         'This device has newer local data. Merge keeps applicable newer local data; Replace discards current data and restores the backup.',
     'noNewerData':
         'The backup is valid. Choose Merge to combine data or Replace to restore the backup as the current data.',
+    'restoreMissingContentWarning':
+        'This backup has {missing} missing optional item(s) and {warnings} integrity warning(s). Available records will be preserved; review Data Integrity Reports before choosing Replace.',
+    'restoreIntegrityWarning':
+        'This backup has {warnings} integrity warning(s). Review Data Integrity Reports before choosing Replace.',
     'merge': 'Merge',
     'replace': 'Replace',
     'replaceTitle': 'Replace current Butlerly data?',
     'replaceBody':
         'Current local Butlerly data will be replaced by the backup. This cannot be undone unless you have another backup.',
     'restoreComplete': 'Restore completed.',
+    'restoreCompleteWithWarnings':
+        'Restore completed with warnings. Open Data Integrity Reports for details.',
     'restoreResult': '{restored} restored',
     'backupSummary': '{records} records • {evidence} evidence files',
     'addedTransactions': 'transactions added after the backup',
@@ -192,12 +185,9 @@ const _backupStrings = <String, Map<String, String>>{
     'restoreBackup': 'Restaurar copia',
     'restoreSubtitle':
         'Restaura una copia de Butlerly mediante Combinar o Reemplazar.',
-    'recoverEvidence': 'Recuperar evidencia faltante',
-    'recoverEvidenceSubtitle':
-        'Restaura comprobantes y documentos verificados sin cambiar los datos financieros.',
     'backupComplete': 'La copia cifrada se creó correctamente.',
-    'backupAnalysisRepairRequired':
-        'No se pudo crear la copia porque las reglas de análisis no superaron la validación. Elige Reparar reglas de análisis y vuelve a intentarlo.',
+    'backupCompleteWithWarnings':
+        'La copia cifrada se creó con advertencias. Abre los informes de integridad de datos para ver los detalles.',
     'backupShareUnconfirmed':
         'La copia cifrada se creó, pero la plataforma no pudo confirmar si se compartió o se guardó.',
     'backupShareFailed':
@@ -208,14 +198,14 @@ const _backupStrings = <String, Map<String, String>>{
         'No se pudo finalizar la copia de forma segura. Se requiere recuperación; se desconoce el estado del archivo de destino. Abre Recuperación de copias para continuar.',
     'backupFailed': 'No se pudo crear la copia.',
     'backupFailedWithDetails':
-        'No se pudo crear la copia. Etapa del fallo: {stage}. Tipo de error: {errorType}. No se modificaron sus datos financieros.',
+        'No se pudo crear la copia. Etapa del fallo: {stage}. No se modificaron sus datos financieros.',
     'backupLocationSelectionFailed':
         'No se pudo seleccionar la ubicación de la copia.',
     'backupStorageFailed':
         'No se pudo guardar la copia en el almacenamiento del dispositivo.',
     'restoreFailed': 'No se pudo restaurar la copia.',
     'restoreFailedWithDetails':
-        'No se pudo restaurar la copia. Etapa del fallo: {stage}. Tipo de error: {errorType}. No se confirmó ninguna restauración.',
+        'No se pudo restaurar la copia. Etapa del fallo: {stage}. No se confirmó ninguna restauración.',
     'diagnosticAvailable': 'Hay detalles del fallo de la copia o restauración.',
     'diagnosticTitle': 'Detalles del fallo',
     'viewDiagnostic': 'Ver detalles',
@@ -226,20 +216,32 @@ const _backupStrings = <String, Map<String, String>>{
         'Este diagnóstico solo contiene códigos técnicos seguros. No incluye contraseñas, datos financieros, rutas de archivos ni texto de excepciones.',
     'diagnosticOperation': 'Operación',
     'diagnosticStage': 'Etapa del fallo',
-    'diagnosticErrorCode': 'Código de error',
+    'diagnosticErrorCode': 'Categoría del error',
+    'diagnosticErrorStorage': 'operación de almacenamiento',
+    'diagnosticErrorEncryption': 'verificación de cifrado',
+    'diagnosticErrorPassword': 'contraseña o política de copia',
+    'diagnosticErrorPublicationRecovery': 'recuperación de publicación',
+    'diagnosticErrorShare': 'operación de uso compartido',
+    'diagnosticErrorFormat': 'formato de archivo o datos',
+    'diagnosticErrorInvalidArgument': 'entrada de operación no válida',
+    'diagnosticErrorRecovery': 'recuperación controlada',
+    'diagnosticErrorState': 'estado de la operación',
+    'diagnosticErrorUnknown': 'error protegido de la operación',
     'diagnosticRestoreMode': 'Modo de restauración',
     'diagnosticRecoveryRequired': 'Recuperación necesaria',
     'diagnosticYes': 'Sí',
     'diagnosticNo': 'No',
     'diagnosticStageDestinationSelection': 'selección del destino',
     'diagnosticStageDestinationStorage': 'almacenamiento del destino',
+    'diagnosticStageBackupEvidenceCollection': 'recopilación de evidencia',
+    'diagnosticStageRestorePreflightSafetyBackupEvidenceCollection':
+        'copia de seguridad previa a la restauración: recopilación de evidencia',
     'diagnosticStageTemporaryStorage': 'almacenamiento temporal',
     'diagnosticStageTemporaryBackupCreation': 'creación de copia temporal',
     'diagnosticStagePortableBackupCreation': 'creación de copia portátil',
     'diagnosticStageEncryptionVerification': 'verificación del cifrado',
     'diagnosticStageShareSheet': 'hoja para compartir',
     'diagnosticStagePublicationRecovery': 'recuperación de publicación',
-    'diagnosticStageAnalysisRuleValidation': 'validación de reglas de análisis',
     'diagnosticStageRestoreFileSelection':
         'selección del archivo de restauración',
     'diagnosticStageRestorePassword': 'contraseña de restauración',
@@ -247,7 +249,6 @@ const _backupStrings = <String, Map<String, String>>{
     'diagnosticStageArchiveDecryption': 'descifrado del archivo',
     'diagnosticStageRestoreActivation': 'activación de la restauración',
     'diagnosticStageRestoreValidation': 'validación de la restauración',
-    'diagnosticStageEvidenceRecovery': 'recuperación de evidencia',
     'diagnosticStageUnknown': 'procesamiento de la operación',
     'diagnosticExplanationEncryption':
         'No se pudo verificar el archivo cifrado. Vuelva a intentarlo y mantenga abierta la aplicación hasta que termine.',
@@ -257,8 +258,10 @@ const _backupStrings = <String, Map<String, String>>{
         'El archivo puede existir solo temporalmente. Use la hoja para compartir o cree una copia de escritorio en un destino conocido.',
     'diagnosticExplanationPublicationRecovery':
         'Se desconoce el estado del destino. Use Recuperación de copias para verificarlo antes de volver a intentarlo.',
-    'diagnosticExplanationAnalysisRules':
-        'No se pudo validar el archivo porque los datos de reglas de análisis son inconsistentes. La reparación es una acción separada y explícita.',
+    'diagnosticExplanationEvidenceCollection':
+        'No se pudo recopilar toda la evidencia referenciada. Compruebe los archivos de evidencia y el espacio disponible, y vuelva a intentarlo.',
+    'diagnosticExplanationRestorePreflightEvidenceCollection':
+        'No se pudo crear la copia de seguridad previa a la restauración porque falló la recopilación de evidencia. Compruebe los archivos antes de volver a intentarlo.',
     'diagnosticExplanationRestorePassword':
         'Compruebe la contraseña. Si es correcta, el archivo puede estar dañado o incompleto.',
     'diagnosticExplanationRestoreRecovery':
@@ -267,41 +270,24 @@ const _backupStrings = <String, Map<String, String>>{
         'La restauración no confirmó un resultado guardado. No repita una acción destructiva hasta verificar el estado de recuperación.',
     'diagnosticExplanationGeneric':
         'Revise los detalles de la operación y vuelva a intentarlo. No se muestra aquí ninguna información privada del diagnóstico.',
-    'evidenceRecoveryPreviewTitle': 'Revisar recuperación de evidencia',
-    'evidenceRecoveryPreviewComplete':
-        'La copia seleccionada contiene todos los archivos de evidencia faltantes que se pueden verificar.',
-    'evidenceRecoveryPreviewPartial':
-        'Algunas evidencias no se pueden recuperar de forma segura desde la copia seleccionada.',
-    'evidenceRecoveryPreviewRecoverable': 'Archivos recuperables: {count}',
-    'evidenceRecoveryPreviewPresent': 'Ya disponibles: {count}',
-    'evidenceRecoveryPreviewConflicting': 'Archivos en conflicto: {count}',
-    'evidenceRecoveryPreviewUnavailable': 'Archivos no disponibles: {count}',
-    'evidenceRecoveryConfirm': 'Confirmar recuperación',
-    'evidenceRecoveryCancel': 'Cancelar',
-    'evidenceRecoveryPreviewStale':
-        'La evidencia local cambió después de la vista previa. Revise de nuevo la copia antes de recuperar archivos.',
-    'evidenceRecoveryComplete':
-        'Recuperación de evidencia completada: {recovered} restaurados, {present} ya estaban disponibles.',
-    'evidenceRecoveryIncomplete':
-        'Recuperación de evidencia incompleta: {recovered} restaurados, {present} ya estaban disponibles, {conflicting} en conflicto y {unavailable} no disponibles.',
-    'evidenceRecoveryStorageFailed':
-        'No se pudo guardar la evidencia verificada. No se cambiaron los datos financieros.',
-    'evidenceRecoveryInvalid':
-        'La copia seleccionada no es válida o no se pudo verificar su evidencia.',
-    'evidenceRecoveryFailed':
-        'No se pudo recuperar la evidencia faltante. No se cambiaron los datos financieros.',
     'restoreTitle': '¿Restaurar la copia de Butlerly?',
     'backupCreatedAt': 'Creada el {date}',
     'newerData':
         'Este dispositivo tiene datos locales más recientes. Combinar conserva los datos locales recientes aplicables; Reemplazar descarta los datos actuales y restaura la copia.',
     'noNewerData':
         'La copia es válida. Elija Combinar para unir los datos o Reemplazar para restaurar la copia como datos actuales.',
+    'restoreMissingContentWarning':
+        'Esta copia tiene {missing} elemento(s) opcional(es) ausente(s) y {warnings} advertencia(s) de integridad. Los registros disponibles se conservarán; revise los informes de integridad de datos antes de elegir Reemplazar.',
+    'restoreIntegrityWarning':
+        'Esta copia tiene {warnings} advertencia(s) de integridad. Revise los informes de integridad de datos antes de elegir Reemplazar.',
     'merge': 'Combinar',
     'replace': 'Reemplazar',
     'replaceTitle': '¿Reemplazar los datos actuales de Butlerly?',
     'replaceBody':
         'Los datos locales actuales de Butlerly serán reemplazados por la copia. No se puede deshacer salvo que tenga otra copia.',
     'restoreComplete': 'Restauración completada.',
+    'restoreCompleteWithWarnings':
+        'La restauración se completó con advertencias. Puede faltar contenido o no se pudieron reconstruir algunos análisis. Abre los informes de integridad de datos para ver los detalles.',
     'restoreResult': '{restored} restaurados',
     'backupSummary': '{records} registros • {evidence} archivos de evidencia',
     'addedTransactions': 'transacciones añadidas después de la copia',
@@ -359,22 +345,18 @@ const _backupStrings = <String, Map<String, String>>{
     'backupSubtitle': '创建一个加密且可跨设备使用的本地备份文件。',
     'restoreBackup': '恢复备份',
     'restoreSubtitle': '通过合并或替换恢复 Butlerly 备份。',
-    'recoverEvidence': '恢复缺失的凭证',
-    'recoverEvidenceSubtitle': '恢复已验证的收据和文档文件，不修改财务记录。',
     'backupComplete': '加密备份创建成功。',
-    'backupAnalysisRepairRequired': '无法创建备份，因为分析规则未通过验证。请选择“修复分析规则”后重试。',
+    'backupCompleteWithWarnings': '加密备份已创建，但存在警告。请打开数据完整性报告查看详情。',
     'backupShareUnconfirmed': '加密备份已创建，但平台无法确认是否已分享或保存。',
     'backupShareFailed': '加密备份已创建，但无法打开分享面板。未确认有已保存的备份。',
     'backupEncryptionFailed': '备份加密或验证失败。未保存备份。',
     'backupRecoveryRequired': '无法安全完成备份。需要恢复；无法确定目标文件的状态。请打开备份恢复以继续。',
     'backupFailed': '无法创建备份。',
-    'backupFailedWithDetails':
-        '无法创建备份。失败阶段：{stage}。错误类型：{errorType}。您的财务数据未被修改。',
+    'backupFailedWithDetails': '无法创建备份。失败阶段：{stage}。您的财务数据未被修改。',
     'backupLocationSelectionFailed': '无法选择备份位置。',
     'backupStorageFailed': '无法将备份保存到设备存储。',
     'restoreFailed': '无法恢复备份。',
-    'restoreFailedWithDetails':
-        '无法恢复备份。失败阶段：{stage}。错误类型：{errorType}。未确认完成任何恢复。',
+    'restoreFailedWithDetails': '无法恢复备份。失败阶段：{stage}。未确认完成任何恢复。',
     'diagnosticAvailable': '备份或恢复失败的详细信息可用。',
     'diagnosticTitle': '失败详情',
     'viewDiagnostic': '查看详情',
@@ -384,63 +366,64 @@ const _backupStrings = <String, Map<String, String>>{
     'diagnosticPrimaryExplanation': '此诊断仅包含安全的技术代码，不包含密码、财务记录、文件路径或异常文本。',
     'diagnosticOperation': '操作',
     'diagnosticStage': '失败阶段',
-    'diagnosticErrorCode': '错误代码',
+    'diagnosticErrorCode': '错误类别',
+    'diagnosticErrorStorage': '存储操作',
+    'diagnosticErrorEncryption': '加密验证',
+    'diagnosticErrorPassword': '备份密码或策略',
+    'diagnosticErrorPublicationRecovery': '发布恢复',
+    'diagnosticErrorShare': '分享操作',
+    'diagnosticErrorFormat': '备份或数据格式',
+    'diagnosticErrorInvalidArgument': '操作输入无效',
+    'diagnosticErrorRecovery': '受控恢复',
+    'diagnosticErrorState': '操作状态',
+    'diagnosticErrorUnknown': '受保护的操作错误',
     'diagnosticRestoreMode': '恢复模式',
     'diagnosticRecoveryRequired': '需要恢复',
     'diagnosticYes': '是',
     'diagnosticNo': '否',
     'diagnosticStageDestinationSelection': '选择目标位置',
     'diagnosticStageDestinationStorage': '目标存储',
+    'diagnosticStageBackupEvidenceCollection': '证据收集',
+    'diagnosticStageRestorePreflightSafetyBackupEvidenceCollection':
+        '恢复前安全备份：证据收集',
     'diagnosticStageTemporaryStorage': '临时存储',
     'diagnosticStageTemporaryBackupCreation': '创建临时备份',
     'diagnosticStagePortableBackupCreation': '创建便携式备份',
     'diagnosticStageEncryptionVerification': '加密验证',
     'diagnosticStageShareSheet': '分享面板',
     'diagnosticStagePublicationRecovery': '发布恢复',
-    'diagnosticStageAnalysisRuleValidation': '分析规则验证',
     'diagnosticStageRestoreFileSelection': '选择恢复文件',
     'diagnosticStageRestorePassword': '恢复密码',
     'diagnosticStageArchiveInspection': '检查备份文件',
     'diagnosticStageArchiveDecryption': '解密备份文件',
     'diagnosticStageRestoreActivation': '激活恢复',
     'diagnosticStageRestoreValidation': '恢复验证',
-    'diagnosticStageEvidenceRecovery': '凭证恢复',
     'diagnosticStageUnknown': '处理操作',
     'diagnosticExplanationEncryption': '无法验证加密文件。请重试，并在完成前保持应用打开。',
     'diagnosticExplanationStorage': '请检查选择的目标位置和设备可用空间，然后重试。',
     'diagnosticExplanationShare': '备份文件可能只存在于临时位置。请使用分享面板，或在桌面设备上保存到已知位置。',
     'diagnosticExplanationPublicationRecovery': '无法确定目标文件状态。请先打开备份恢复进行验证，再重试。',
-    'diagnosticExplanationAnalysisRules':
-        '由于分析规则数据不一致，无法验证备份。规则修复是单独且需要明确确认的操作。',
+    'diagnosticExplanationEvidenceCollection':
+        '无法收集所有引用的证据。请检查证据文件和设备可用空间，然后重试。',
+    'diagnosticExplanationRestorePreflightEvidenceCollection':
+        '由于证据收集失败，无法创建恢复前安全备份。请在重试前检查证据文件。',
     'diagnosticExplanationRestorePassword': '请检查密码。如果密码正确，备份文件可能已损坏或不完整。',
     'diagnosticExplanationRestoreRecovery': '恢复进入了受控恢复状态。请先按照恢复页面操作。',
     'diagnosticExplanationRestore': '恢复没有确认已提交结果。在验证恢复状态前，请勿重复破坏性操作。',
     'diagnosticExplanationGeneric': '请查看操作详情并重试。此处不会显示私密诊断内容。',
-    'evidenceRecoveryPreviewTitle': '检查凭证恢复',
-    'evidenceRecoveryPreviewComplete': '所选备份包含所有可验证的缺失凭证文件。',
-    'evidenceRecoveryPreviewPartial': '所选备份中有些凭证无法安全恢复。',
-    'evidenceRecoveryPreviewRecoverable': '可恢复文件：{count}',
-    'evidenceRecoveryPreviewPresent': '已经存在：{count}',
-    'evidenceRecoveryPreviewConflicting': '冲突文件：{count}',
-    'evidenceRecoveryPreviewUnavailable': '不可用文件：{count}',
-    'evidenceRecoveryConfirm': '确认恢复',
-    'evidenceRecoveryCancel': '取消',
-    'evidenceRecoveryPreviewStale': '预览后本地凭证发生了变化。请重新检查备份后再恢复文件。',
-    'evidenceRecoveryComplete': '凭证恢复完成：恢复 {recovered} 个，已有 {present} 个。',
-    'evidenceRecoveryIncomplete':
-        '凭证恢复未完成：恢复 {recovered} 个，已有 {present} 个，{conflicting} 个冲突，{unavailable} 个不可用。',
-    'evidenceRecoveryStorageFailed': '无法写入已验证的凭证。财务记录未被修改。',
-    'evidenceRecoveryInvalid': '所选备份无效，或其中的凭证无法验证。',
-    'evidenceRecoveryFailed': '无法恢复缺失凭证。财务记录未被修改。',
     'restoreTitle': '恢复 Butlerly 备份？',
     'backupCreatedAt': '创建时间：{date}',
     'newerData': '此设备包含较新的本地数据。合并会保留符合现有规则的较新本地数据；替换会丢弃当前数据并恢复备份。',
     'noNewerData': '备份有效。请选择合并以整合数据，或选择替换以备份内容作为当前数据。',
+    'restoreMissingContentWarning':
+        '此备份缺少 {missing} 项可选内容，并包含 {warnings} 条完整性警告。可用记录会被保留；选择替换前请查看数据完整性报告。',
+    'restoreIntegrityWarning': '此备份包含 {warnings} 条完整性警告。选择替换前请查看数据完整性报告。',
     'merge': '合并',
     'replace': '替换',
     'replaceTitle': '替换当前 Butlerly 数据？',
     'replaceBody': '当前本地 Butlerly 数据将被备份替换。除非您还有其他备份，否则此操作无法撤销。',
     'restoreComplete': '恢复完成。',
+    'restoreCompleteWithWarnings': '恢复已完成，但存在警告。请打开数据完整性报告查看详情。',
     'restoreResult': '已恢复 {restored} 条',
     'backupSummary': '{records} 条记录 • {evidence} 个凭证文件',
     'addedTransactions': '笔交易是在备份之后新增的',

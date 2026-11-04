@@ -28,7 +28,7 @@ class PrivacyDataPage extends ConsumerStatefulWidget {
     this.shareClient,
     this.selectBackupLocation,
     this.selectRestoreFile,
-    this.selectEvidenceRecoveryFile,
+    this.copyDiagnostic,
     super.key,
   });
 
@@ -42,7 +42,7 @@ class PrivacyDataPage extends ConsumerStatefulWidget {
   final Future<XFile?> Function()? selectRestoreFile;
 
   @visibleForTesting
-  final Future<XFile?> Function()? selectEvidenceRecoveryFile;
+  final Future<void> Function(String diagnostic)? copyDiagnostic;
 
   @override
   ConsumerState<PrivacyDataPage> createState() => _PrivacyDataPageState();
@@ -126,30 +126,17 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         location.path,
         password: password,
       );
-      if (mounted) _message(context.l10n.backupText('backupComplete'));
-    } on BackupAnalysisRuleValidationException catch (error, stackTrace) {
-      _backupLogger.severe(
-        'Backup failed at stage: analysis-rule validation',
-        error,
-        stackTrace,
+      final inspection = await services<WorkspaceDataService>().inspect(
+        location.path,
+        password: password,
       );
       if (mounted) {
-        _recordDiagnostic(
-          operation: 'backup',
-          stage: 'analysis-rule validation',
-          errorCode: 'backup_analysis_rule_validation',
-          explanationKey: 'diagnosticExplanationAnalysisRules',
-          recoveryRequired: error.canRepair,
-        );
-        final message = error.canRepair ? 'backupAnalysisRepairRequired' : null;
         _message(
-          message == null
-              ? _backupFailureMessage(
-                  context,
-                  error,
-                  stage: 'analysis-rule validation',
-                )
-              : context.l10n.backupText(message),
+          _backupCompleteMessage(
+            context,
+            hasWarnings: inspection.warnings.isNotEmpty,
+          ),
+          viewReports: inspection.warnings.isNotEmpty,
         );
       }
     } on BackupPublicationRecoveryException catch (error, stackTrace) {
@@ -218,7 +205,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         _recordDiagnostic(
           operation: 'backup',
           stage: details?.stage ?? stage,
-          errorCode: details?.errorType ?? error.runtimeType.toString(),
+          errorCode: details?.errorCode ?? _safeDiagnosticErrorCode(error),
           explanationKey: _failureExplanationKey(
             details?.stage ?? stage,
             restore: false,
@@ -238,11 +225,15 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
   ) async {
     setState(() => _busy = true);
     String? filePath;
+    BackupInspection? inspection;
     var stage = 'temporary backup creation';
     var nativeShareInvoked = false;
     try {
-      filePath = await services<WorkspaceDataService>().createTemporaryBackup(
-        fileName,
+      final createdPath = await services<WorkspaceDataService>()
+          .createTemporaryBackup(fileName, password: password);
+      filePath = createdPath;
+      inspection = await services<WorkspaceDataService>().inspect(
+        createdPath,
         password: password,
       );
       if (!mounted) return;
@@ -264,7 +255,11 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
             ),
           );
       if (mounted && result.status == share.ShareResultStatus.success) {
-        _message(context.l10n.backupText('backupComplete'));
+        final hasWarnings = inspection.warnings.isNotEmpty;
+        _message(
+          _backupCompleteMessage(context, hasWarnings: hasWarnings),
+          viewReports: hasWarnings,
+        );
       } else if (result.status == share.ShareResultStatus.unavailable) {
         _backupLogger.warning(
           'Mobile backup share outcome unavailable at stage: $stage '
@@ -280,27 +275,6 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           );
           _message(context.l10n.backupText('backupShareUnconfirmed'));
         }
-      }
-    } on BackupAnalysisRuleValidationException catch (error, stackTrace) {
-      _backupLogger.severe(
-        'Mobile backup failed at stage: analysis-rule validation',
-        error,
-        stackTrace,
-      );
-      if (mounted) {
-        _recordDiagnostic(
-          operation: 'backup',
-          stage: 'analysis-rule validation',
-          errorCode: 'backup_analysis_rule_validation',
-          explanationKey: 'diagnosticExplanationAnalysisRules',
-          recoveryRequired: error.canRepair,
-        );
-        final message = error.canRepair ? 'backupAnalysisRepairRequired' : null;
-        _message(
-          message == null
-              ? _backupFailureMessage(context, error, stage: stage)
-              : context.l10n.backupText(message),
-        );
       }
     } on BackupPublicationRecoveryException catch (error, stackTrace) {
       _backupLogger.severe(
@@ -375,8 +349,8 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           errorCode: nativeShareInvoked
               ? 'backup_share_sheet'
               : (error is BackupFailureException
-                    ? error.errorType
-                    : error.runtimeType.toString()),
+                    ? error.errorCode
+                    : _safeDiagnosticErrorCode(error)),
           explanationKey: _failureExplanationKey(stage, restore: false),
           recoveryRequired: false,
         );
@@ -408,6 +382,13 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
   AppLogger get _backupLogger =>
       services.isRegistered<AppLogger>() ? services<AppLogger>() : AppLogger();
 
+  String _backupCompleteMessage(
+    BuildContext context, {
+    required bool hasWarnings,
+  }) => context.l10n.backupText(
+    hasWarnings ? 'backupCompleteWithWarnings' : 'backupComplete',
+  );
+
   String _backupFailureMessage(
     BuildContext context,
     Object error, {
@@ -419,10 +400,6 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         .replaceAll(
           '{stage}',
           _failureStageLabel(context, details?.stage ?? stage),
-        )
-        .replaceAll(
-          '{errorType}',
-          details?.errorType ?? error.runtimeType.toString(),
         );
   }
 
@@ -437,15 +414,17 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         .replaceAll(
           '{stage}',
           _failureStageLabel(context, details?.stage ?? stage),
-        )
-        .replaceAll(
-          '{errorType}',
-          details?.errorType ?? error.runtimeType.toString(),
         );
   }
 
   String _failureStageCode(String stage) {
     final value = stage.toLowerCase();
+    if (value.contains('pre-restore safety backup: evidence collection')) {
+      return 'restore_preflight_safety_backup_evidence_collection';
+    }
+    if (value.contains('evidence collection')) {
+      return 'backup_evidence_collection';
+    }
     if (value.contains('destination selection')) {
       return 'destination_selection';
     }
@@ -464,7 +443,6 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     if (value.contains('publication recovery')) {
       return 'publication_recovery';
     }
-    if (value.contains('analysis-rule')) return 'analysis_rule_validation';
     if (value.contains('restore file selection')) {
       return 'restore_file_selection';
     }
@@ -473,7 +451,6 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     if (value.contains('archive decryption')) return 'archive_decryption';
     if (value.contains('restore activation')) return 'restore_activation';
     if (value.contains('restore')) return 'restore_validation';
-    if (value.contains('evidence recovery')) return 'evidence_recovery';
     return 'unknown';
   }
 
@@ -482,20 +459,20 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         const {
           'destination_selection',
           'destination_storage',
+          'backup_evidence_collection',
+          'restore_preflight_safety_backup_evidence_collection',
           'temporary_storage',
           'temporary_backup_creation',
           'portable_backup_creation',
           'encryption_verification',
           'share_sheet',
           'publication_recovery',
-          'analysis_rule_validation',
           'restore_file_selection',
           'restore_password',
           'archive_inspection',
           'archive_decryption',
           'restore_activation',
           'restore_validation',
-          'evidence_recovery',
           'unknown',
         }.contains(stage)
         ? stage
@@ -503,20 +480,21 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     final key = switch (code) {
       'destination_selection' => 'diagnosticStageDestinationSelection',
       'destination_storage' => 'diagnosticStageDestinationStorage',
+      'backup_evidence_collection' => 'diagnosticStageBackupEvidenceCollection',
+      'restore_preflight_safety_backup_evidence_collection' =>
+        'diagnosticStageRestorePreflightSafetyBackupEvidenceCollection',
       'temporary_storage' => 'diagnosticStageTemporaryStorage',
       'temporary_backup_creation' => 'diagnosticStageTemporaryBackupCreation',
       'portable_backup_creation' => 'diagnosticStagePortableBackupCreation',
       'encryption_verification' => 'diagnosticStageEncryptionVerification',
       'share_sheet' => 'diagnosticStageShareSheet',
       'publication_recovery' => 'diagnosticStagePublicationRecovery',
-      'analysis_rule_validation' => 'diagnosticStageAnalysisRuleValidation',
       'restore_file_selection' => 'diagnosticStageRestoreFileSelection',
       'restore_password' => 'diagnosticStageRestorePassword',
       'archive_inspection' => 'diagnosticStageArchiveInspection',
       'archive_decryption' => 'diagnosticStageArchiveDecryption',
       'restore_activation' => 'diagnosticStageRestoreActivation',
       'restore_validation' => 'diagnosticStageRestoreValidation',
-      'evidence_recovery' => 'diagnosticStageEvidenceRecovery',
       _ => 'diagnosticStageUnknown',
     };
     return context.l10n.backupText(key);
@@ -537,7 +515,9 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       'portable_backup_creation' => 'diagnosticExplanationStorage',
       'share_sheet' => 'diagnosticExplanationShare',
       'publication_recovery' => 'diagnosticExplanationPublicationRecovery',
-      'analysis_rule_validation' => 'diagnosticExplanationAnalysisRules',
+      'backup_evidence_collection' => 'diagnosticExplanationEvidenceCollection',
+      'restore_preflight_safety_backup_evidence_collection' =>
+        'diagnosticExplanationRestorePreflightEvidenceCollection',
       'restore_activation' ||
       'restore_validation' => 'diagnosticExplanationRestore',
       _ => 'diagnosticExplanationGeneric',
@@ -557,13 +537,74 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       _diagnostic = _FailureDiagnostic(
         operation: operation,
         stageCode: _failureStageCode(stage),
-        errorCode: errorCode,
+        errorCode: _normalizeDiagnosticErrorCode(errorCode),
         explanationKey: explanationKey,
         mode: mode,
         recoveryRequired: recoveryRequired,
       );
       _diagnosticActionPending = true;
     });
+  }
+
+  String _safeDiagnosticErrorCode(Object error) {
+    if (error is BackupFailureException) {
+      return _normalizeDiagnosticErrorCode(error.errorCode);
+    }
+    if (error is RestoreFailureException) {
+      return _normalizeDiagnosticErrorCode(error.errorCode);
+    }
+    if (error is BackupStorageException) return 'backup_storage';
+    if (error is BackupEncryptionException) {
+      return 'backup_encryption_verification';
+    }
+    if (error is BackupPasswordTooShortException) {
+      return 'backup_password_policy';
+    }
+    if (error is FormatException) return 'format';
+    if (error is StateError) return 'state';
+    if (error is ArgumentError) return 'invalid_argument';
+    return 'unknown';
+  }
+
+  String _normalizeDiagnosticErrorCode(String code) {
+    const allowed = {
+      'backup_destination_selection',
+      'backup_encryption_verification',
+      'backup_password_policy',
+      'backup_publication_recovery_required',
+      'backup_share_outcome_unavailable',
+      'backup_share_sheet',
+      'backup_storage',
+      'filesystem',
+      'format',
+      'invalid_argument',
+      'restore_password_or_integrity',
+      'restore_password_required',
+      'restore_recovery_required',
+      'state',
+      'unknown',
+    };
+    return allowed.contains(code) ? code : 'unknown';
+  }
+
+  String _diagnosticErrorLabel(BuildContext context, String code) {
+    final key = switch (_normalizeDiagnosticErrorCode(code)) {
+      'backup_storage' || 'filesystem' => 'diagnosticErrorStorage',
+      'backup_encryption_verification' => 'diagnosticErrorEncryption',
+      'backup_password_policy' => 'diagnosticErrorPassword',
+      'backup_publication_recovery_required' =>
+        'diagnosticErrorPublicationRecovery',
+      'backup_share_outcome_unavailable' ||
+      'backup_share_sheet' => 'diagnosticErrorShare',
+      'format' => 'diagnosticErrorFormat',
+      'invalid_argument' => 'diagnosticErrorInvalidArgument',
+      'restore_password_or_integrity' ||
+      'restore_password_required' => 'diagnosticErrorPassword',
+      'restore_recovery_required' => 'diagnosticErrorRecovery',
+      'state' => 'diagnosticErrorState',
+      _ => 'diagnosticErrorUnknown',
+    };
+    return context.l10n.backupText(key);
   }
 
   String _diagnosticText(_FailureDiagnostic diagnostic) {
@@ -609,7 +650,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
                 ),
                 Text(
                   '${context.l10n.backupText('diagnosticErrorCode')}: '
-                  '${diagnostic.errorCode}',
+                  '${_diagnosticErrorLabel(context, diagnostic.errorCode)}',
                 ),
                 if (diagnostic.mode != null)
                   Text(
@@ -629,9 +670,13 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         actions: [
           TextButton(
             onPressed: () async {
-              await Clipboard.setData(
-                ClipboardData(text: _diagnosticText(diagnostic)),
-              );
+              final text = _diagnosticText(diagnostic);
+              final copy = widget.copyDiagnostic;
+              if (copy == null) {
+                await Clipboard.setData(ClipboardData(text: text));
+              } else {
+                await copy(text);
+              }
               if (sheetContext.mounted) Navigator.pop(sheetContext);
               if (mounted) {
                 _message(context.l10n.backupText('diagnosticCopied'));
@@ -700,9 +745,12 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       final summary = context.l10n
           .backupText('restoreResult')
           .replaceAll('{restored}', '${result.restoredRows}');
+      final hasWarnings =
+          result.warnings.isNotEmpty || result.analysisRebuildFailed;
       _message(
-        '${context.l10n.backupText('restoreComplete')} $summary'
+        '${context.l10n.backupText(hasWarnings ? 'restoreCompleteWithWarnings' : 'restoreComplete')} $summary'
         '${result.presentationRefreshFailed ? ' ${context.l10n.text('restoreRefreshWarning')}' : ''}',
+        viewReports: hasWarnings,
       );
     } on BackupPasswordOrIntegrityException catch (error, stackTrace) {
       _backupLogger.severe(
@@ -765,7 +813,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         _recordDiagnostic(
           operation: 'restore',
           stage: details?.stage ?? stage,
-          errorCode: details?.errorType ?? error.runtimeType.toString(),
+          errorCode: details?.errorCode ?? _safeDiagnosticErrorCode(error),
           explanationKey: _failureExplanationKey(
             details?.stage ?? stage,
             restore: true,
@@ -774,182 +822,6 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           recoveryRequired: false,
         );
         _message(_restoreFailureMessage(context, error, stage: stage));
-      }
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _recoverMissingEvidence() async {
-    var stage = 'evidence recovery file selection';
-    String? password;
-    try {
-      final selected = widget.selectEvidenceRecoveryFile != null
-          ? await widget.selectEvidenceRecoveryFile!()
-          : await openFile(acceptedTypeGroups: const [_backupType]);
-      if (selected == null) return;
-
-      final file = selected.path;
-      final manager = services<WorkspaceDataService>();
-      stage = 'evidence recovery encryption detection';
-      if (await manager.isEncryptedBackup(file)) {
-        if (!mounted) return;
-        stage = 'evidence recovery password entry';
-        password = await _requestRestorePassword();
-        if (password == null || !mounted) return;
-      }
-
-      setState(() => _busy = true);
-      stage = 'evidence recovery preview';
-      final preview = await manager.inspectMissingEvidence(
-        file,
-        password: password,
-      );
-      if (!mounted) return;
-      setState(() => _busy = false);
-      final confirmed = await _confirmEvidenceRecovery(preview);
-      if (confirmed != true || !mounted) return;
-
-      setState(() => _busy = true);
-      stage = 'evidence recovery staging and publication';
-      final result = await manager.recoverMissingEvidence(
-        file,
-        password: password,
-        preview: preview,
-      );
-      if (!mounted) return;
-      final message = context.l10n
-          .backupText(
-            result.isComplete
-                ? 'evidenceRecoveryComplete'
-                : 'evidenceRecoveryIncomplete',
-          )
-          .replaceAll('{recovered}', '${result.recoveredCount}')
-          .replaceAll('{present}', '${result.alreadyPresentCount}')
-          .replaceAll('{unresolved}', '${result.unresolvedCount}')
-          .replaceAll('{conflicting}', '${result.conflictingCount}')
-          .replaceAll('{unavailable}', '${result.unavailableCount}');
-      _message(message);
-    } on BackupPasswordOrIntegrityException {
-      if (mounted) {
-        _message(context.l10n.backupText('passwordOrIntegrityFailed'));
-      }
-    } on BackupPasswordRequiredException {
-      if (mounted) {
-        _message(context.l10n.backupText('passwordOrIntegrityFailed'));
-      }
-    } on EvidenceRecoveryPreviewStaleException {
-      if (mounted) {
-        _message(context.l10n.backupText('evidenceRecoveryPreviewStale'));
-      }
-    } on BackupStorageException {
-      if (mounted) {
-        _message(context.l10n.backupText('evidenceRecoveryStorageFailed'));
-      }
-    } on FormatException catch (error, stackTrace) {
-      _backupLogger.severe(
-        'Evidence recovery failed at stage: archive validation',
-        error,
-        stackTrace,
-      );
-      if (mounted) {
-        _message(context.l10n.backupText('evidenceRecoveryInvalid'));
-      }
-    } catch (error, stackTrace) {
-      _backupLogger.severe(
-        'Evidence recovery failed at stage: $stage',
-        error,
-        stackTrace,
-      );
-      if (mounted) _message(context.l10n.backupText('evidenceRecoveryFailed'));
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<bool?> _confirmEvidenceRecovery(EvidenceRecoveryPreview preview) =>
-      showButlerlyBottomSheet<bool>(
-        context: context,
-        builder: (sheetContext) {
-          final status = preview.isComplete
-              ? context.l10n.backupText('evidenceRecoveryPreviewComplete')
-              : context.l10n.backupText('evidenceRecoveryPreviewPartial');
-          final body = [
-            status,
-            '',
-            context.l10n
-                .backupText('evidenceRecoveryPreviewRecoverable')
-                .replaceAll('{count}', '${preview.recoverableCount}'),
-            context.l10n
-                .backupText('evidenceRecoveryPreviewPresent')
-                .replaceAll('{count}', '${preview.alreadyPresentCount}'),
-            context.l10n
-                .backupText('evidenceRecoveryPreviewConflicting')
-                .replaceAll('{count}', '${preview.conflictingCount}'),
-            context.l10n
-                .backupText('evidenceRecoveryPreviewUnavailable')
-                .replaceAll('{count}', '${preview.unavailableCount}'),
-          ].join('\n');
-          return ButlerlySheet(
-            title: Text(
-              context.l10n.backupText('evidenceRecoveryPreviewTitle'),
-            ),
-            content: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.sizeOf(context).height * .5,
-              ),
-              child: SingleChildScrollView(child: Text(body)),
-            ),
-            actions: [
-              ButlerlyCancelButton(
-                onPressed: () => Navigator.pop(sheetContext, false),
-                child: Text(context.l10n.backupText('evidenceRecoveryCancel')),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(sheetContext, true),
-                child: Text(context.l10n.backupText('evidenceRecoveryConfirm')),
-              ),
-            ],
-          );
-        },
-      );
-
-  Future<void> _repairAnalysisRules() async {
-    final approved = await showButlerlyBottomSheet<bool>(
-      context: context,
-      builder: (context) => ButlerlySheet(
-        title: Text(context.l10n.text('repairAnalysisRulesTitle')),
-        content: Text(context.l10n.text('repairAnalysisRulesBody')),
-        actions: [
-          ButlerlyCancelButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(context.l10n.text('cancel')),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(context.l10n.text('repairAnalysisRules')),
-          ),
-        ],
-      ),
-    );
-    if (approved != true || !mounted) return;
-
-    setState(() => _busy = true);
-    try {
-      await services<WorkspaceDataService>().repairAnalysisRules();
-      notifyTransactionChanged();
-      notifyBudgetsChanged();
-      if (mounted) {
-        _message(context.l10n.text('repairAnalysisRulesComplete'));
-      }
-    } catch (error, stackTrace) {
-      _backupLogger.severe(
-        'Analysis rule repair failed at stage: transactional repair',
-        error,
-        stackTrace,
-      );
-      if (mounted) {
-        _message(context.l10n.text('repairAnalysisRulesFailed'));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -1122,6 +994,24 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     return lines.join('\n');
   }
 
+  String? _restoreWarningSummary(
+    BuildContext context,
+    BackupInspection inspection,
+  ) {
+    final missing = inspection.missingContentCount;
+    final warnings = inspection.warnings.length;
+    if (missing == 0 && warnings == 0) return null;
+    if (missing > 0) {
+      return context.l10n
+          .backupText('restoreMissingContentWarning')
+          .replaceAll('{missing}', '$missing')
+          .replaceAll('{warnings}', '$warnings');
+    }
+    return context.l10n
+        .backupText('restoreIntegrityWarning')
+        .replaceAll('{warnings}', '$warnings');
+  }
+
   Future<LocalRestoreMode?> _chooseRestoreMode(
     BackupInspection inspection, {
     bool legacyUnencrypted = false,
@@ -1143,6 +1033,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       final body = inspection.hasNewerLocalData
           ? '${context.l10n.backupText('newerData')}\n\n$details'
           : context.l10n.backupText('noNewerData');
+      final warningSummary = _restoreWarningSummary(context, inspection);
       return ButlerlySheet(
         title: Text(context.l10n.backupText('restoreTitle')),
         content: ConstrainedBox(
@@ -1150,10 +1041,32 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
             maxHeight: MediaQuery.sizeOf(context).height * .45,
           ),
           child: SingleChildScrollView(
-            child: Text('$legacyWarning$summary\n$createdLabel\n\n$body'),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('$legacyWarning$summary\n$createdLabel\n\n$body'),
+                if (warningSummary != null) ...[
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  Text(
+                    warningSummary,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
         actions: [
+          if (warningSummary != null)
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                this.context.go('/data-integrity-reports');
+              },
+              child: Text(context.l10n.text('viewReports')),
+            ),
           ButlerlyCancelButton(
             onPressed: () => Navigator.pop(context),
             child: Text(context.l10n.text('cancel')),
@@ -1261,13 +1174,18 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     }
   }
 
-  void _message(String value) {
+  void _message(String value, {bool viewReports = false}) {
     final showDetails = _diagnosticActionPending;
     _diagnosticActionPending = false;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(value),
-        action: showDetails
+        action: viewReports
+            ? SnackBarAction(
+                label: context.l10n.text('viewReports'),
+                onPressed: () => context.go('/data-integrity-reports'),
+              )
+            : showDetails
             ? SnackBarAction(
                 label: context.l10n.backupText('viewDiagnostic'),
                 onPressed: _showDiagnosticDetails,
@@ -1339,18 +1257,6 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           label: l10n.backupText('restoreBackup'),
           description: l10n.backupText('restoreSubtitle'),
           onTap: _busy ? null : _restore,
-        ),
-        _DesktopPrivacyAction(
-          icon: Icons.build_outlined,
-          label: l10n.backupText('recoverEvidence'),
-          description: l10n.backupText('recoverEvidenceSubtitle'),
-          onTap: _busy ? null : _recoverMissingEvidence,
-        ),
-        _DesktopPrivacyAction(
-          icon: Icons.rule_folder_outlined,
-          label: l10n.text('repairAnalysisRules'),
-          description: l10n.text('repairAnalysisRulesSubtitle'),
-          onTap: _busy ? null : _repairAnalysisRules,
         ),
       ],
     );
@@ -1561,30 +1467,6 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
               ),
               trailing: Icon(_privacyIcon(context, Icons.chevron_right)),
               onTap: _restore,
-            ),
-            const Divider(),
-            ListTile(
-              enabled: !_busy,
-              leading: Icon(_privacyIcon(context, Icons.rule_folder_outlined)),
-              title: Text(context.l10n.text('repairAnalysisRules')),
-              subtitle: Text(
-                context.l10n.text('repairAnalysisRulesSubtitle'),
-                style: _subtitleStyle(context),
-              ),
-              trailing: Icon(_privacyIcon(context, Icons.chevron_right)),
-              onTap: _repairAnalysisRules,
-            ),
-            const Divider(),
-            ListTile(
-              enabled: !_busy,
-              leading: Icon(_privacyIcon(context, Icons.build_outlined)),
-              title: Text(context.l10n.backupText('recoverEvidence')),
-              subtitle: Text(
-                context.l10n.backupText('recoverEvidenceSubtitle'),
-                style: _subtitleStyle(context),
-              ),
-              trailing: Icon(_privacyIcon(context, Icons.chevron_right)),
-              onTap: _recoverMissingEvidence,
             ),
             const Divider(),
             ListTile(

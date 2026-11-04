@@ -49,5 +49,6 @@ export 'src/dto/analysis_value.dart';
 export 'src/dto/home_overview.dart';
 export 'src/dto/monthly_spending_trend_point.dart';
 export 'src/dto/local_data_dto.dart';
+export 'src/dto/data_integrity_dto.dart';
 export 'src/use_cases/workspace_data_service.dart';
 export 'src/use_cases/statement_intake_policy.dart';

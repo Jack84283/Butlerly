@@ -13,10 +13,16 @@ void main() {
   setUpAll(sqfliteFfiInit);
 
   test('export and erase contracts cover durable user-owned tables', () {
-    const derivedTables = {'analysis_findings', 'analysis_rule_results'};
+    const nonExportedLocalArtifacts = {
+      'analysis_findings',
+      'analysis_rule_results',
+      'data_integrity_reports',
+      'data_integrity_findings',
+      'operation_diagnostics',
+    };
     final exported = LocalDataManager.exportedTableNames.toSet();
     final erased = LocalDataManager.erasedTableNames.where(
-      (table) => !derivedTables.contains(table),
+      (table) => !nonExportedLocalArtifacts.contains(table),
     );
     expect(erased.every(exported.contains), isTrue);
     expect(

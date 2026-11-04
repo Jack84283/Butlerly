@@ -4,7 +4,9 @@ import 'package:butlerly/core/analysis/bundled_analysis_rules.dart';
 import 'package:butlerly/core/config/app_configuration.dart';
 import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/data/local_data_gateway.dart';
+import 'package:butlerly/core/data/local_data_integrity_report_service.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
+import 'package:butlerly/core/data/local_operation_diagnostics_store.dart';
 import 'package:butlerly/core/data/restore_recovery_state.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/di/finance_services.dart';
@@ -44,14 +46,12 @@ void configureDependencies({
   final evidenceDeletionRecoveryState = EvidenceDeletionRecoveryState();
   SqliteAnalysisRuleRepository? analysisRules;
 
-  Future<void> repairBundledAnalysisRules() async {
+  Future<void> ensureBundledAnalysisRules() async {
     final repository = analysisRules;
     if (repository == null) {
-      throw StateError('Bundled analysis rule repair is unavailable.');
+      throw StateError('Bundled analysis rule installation is unavailable.');
     }
     await repository.transaction((transactionRepository) async {
-      final expectedBundledRules = await transactionRepository
-          .bundledRuleProvenanceHashes();
       final installation = await installBundledAnalysisRules(
         InstallBuiltInRules(transactionRepository),
       );
@@ -61,29 +61,22 @@ void configureDependencies({
           '${installation.diagnostics.length} diagnostic group(s).',
         );
       }
-      final installedRules = await transactionRepository
-          .installedRuleMetadata();
-      final unrepaired = expectedBundledRules.entries
-          .where((entry) {
-            final metadata = installedRules[entry.key];
-            return metadata == null ||
-                metadata['source_type'] != 'bundled' ||
-                metadata['definition_hash'] != entry.value;
-          })
-          .map((entry) => entry.key)
-          .toList(growable: false);
-      if (unrepaired.isNotEmpty) {
-        throw StateError(
-          'Bundled analysis rule repair did not restore '
-          '${unrepaired.length} persisted rule(s).',
-        );
-      }
       return installation;
     });
   }
 
   services
     ..registerSingleton<LocalDataManager>(localDataManager)
+    ..registerSingleton<OperationDiagnosticsStore>(
+      LocalOperationDiagnosticsStore(database),
+    )
+    ..registerSingleton<DataIntegrityReportService>(
+      LocalDataIntegrityReportService(
+        database,
+        localDataManager,
+        consistencyGate: consistencyGate,
+      ),
+    )
     ..registerSingleton<AnalysisConsistencyGate>(consistencyGate)
     ..registerSingleton<RestoreRecoveryState>(restoreRecoveryState)
     ..registerSingleton<BackupPublicationRecoveryState>(
@@ -99,6 +92,7 @@ void configureDependencies({
         recoveryState: restoreRecoveryState,
         publicationRecoveryState: publicationRecoveryState,
         consistencyGate: consistencyGate,
+        operationDiagnostics: services<OperationDiagnosticsStore>(),
         logger: logger,
         recoverStagedEvidenceDeletions: () => services<LocalEvidenceStore>()
             .recoverStagedEvidenceDeletionsWhileLocked(),
@@ -112,16 +106,22 @@ void configureDependencies({
         localDataManager,
       ),
       consistencyGate: consistencyGate,
-      repairAnalysisRulesCallback: repairBundledAnalysisRules,
       refreshSystemData: () async {
         await database.reseedSystemData();
         final finance = services<FinanceServices>();
-        await repairBundledAnalysisRules();
+        await ensureBundledAnalysisRules();
         final duplicateRebuild = finance.rebuildDuplicateGroupsAfterRestore;
         if (duplicateRebuild != null) {
           final duplicateResult = await duplicateRebuild();
           if (duplicateResult is ApplicationFailure) {
             throw StateError('Duplicate review state could not be rebuilt.');
+          }
+        }
+        final analysis = finance.calculateAnalysisOverview;
+        if (analysis != null) {
+          final analysisResult = await analysis.currentMonth(DateTime.now());
+          if (analysisResult is ApplicationFailure) {
+            throw StateError('Derived analysis could not be rebuilt.');
           }
         }
       },
@@ -220,7 +220,7 @@ void configureDependencies({
       analysisInvalidation: invalidateAnalysis,
       consistencyGate: consistencyGate,
       ensureAnalysisRules: () async {
-        await repairBundledAnalysisRules();
+        await ensureBundledAnalysisRules();
       },
       deleteEvidenceFile: (evidence) =>
           localEvidenceStore.deletePublishedFile(evidence),

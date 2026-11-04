@@ -47,16 +47,24 @@ final class LocalBackupManager {
     BackupPublicationRecoveryStore? publicationRecoveryStore,
     BackupPublicationRecoveryState? publicationRecoveryState,
     AnalysisConsistencyGate? consistencyGate,
+    OperationDiagnosticsStore? operationDiagnostics,
     Future<void> Function()? recoverStagedEvidenceDeletions,
     AppLogger? logger,
     @visibleForTesting
     Future<void> Function(Directory root)? afterStagingRootCreated,
+    @visibleForTesting
+    Future<void> Function(bool enabled)? foreignKeysController,
   }) : recoveryState = recoveryState ?? RestoreRecoveryState(localDataManager),
        publicationRecoveryState =
            publicationRecoveryState ?? BackupPublicationRecoveryState(),
        _afterStagingRootCreated = afterStagingRootCreated,
        _consistencyGate = consistencyGate,
-       _engine = engine.LocalBackupManager(database, localDataManager),
+       _operationDiagnostics = operationDiagnostics,
+       _engine = engine.LocalBackupManager(
+         database,
+         localDataManager,
+         foreignKeysController: foreignKeysController,
+       ),
        _snapshotWriter = LocalBackupSnapshotWriter(localDataManager),
        _recoverStagedEvidenceDeletions = recoverStagedEvidenceDeletions,
        _logger = logger ?? AppLogger(),
@@ -80,6 +88,7 @@ final class LocalBackupManager {
   final Future<void> Function(Directory root)? _afterStagingRootCreated;
   final Future<void> Function()? _recoverStagedEvidenceDeletions;
   final AnalysisConsistencyGate? _consistencyGate;
+  final OperationDiagnosticsStore? _operationDiagnostics;
   final AppLogger _logger;
   final BackupEncryption _encryption = const BackupEncryption();
 
@@ -87,9 +96,11 @@ final class LocalBackupManager {
   static const _supportedSchemaVersion = BackupContainerFormat.schemaVersion;
 
   Future<File> createBackup(File destination) => _runConsistently(
-    () => EvidenceMutationLock.runExclusive(
-      () => _createBackupUnlocked(destination),
-    ),
+    () => EvidenceMutationLock.runExclusive(() async {
+      final result = await _createBackupUnlocked(destination);
+      await _recordArchiveDiagnostics(result, operation: 'backup');
+      return result;
+    }),
   );
 
   Future<File> createPortableBackup(
@@ -180,15 +191,7 @@ final class LocalBackupManager {
       await _assertSupportedBackupSchema(verificationPlain);
 
       stage = 'backup archive inspection';
-      try {
-        await _engine.inspect(verificationPlain);
-      } on BackupAnalysisRuleValidationException {
-        // Keep the rule-specific diagnostic only for the typed validation
-        // failure. Archive inspection also validates evidence and other table
-        // payloads, which must not be misreported as an analysis-rule issue.
-        stage = 'backup analysis-rule validation';
-        rethrow;
-      }
+      await _engine.inspect(verificationPlain);
 
       stage = temporary
           ? 'temporary backup file publication'
@@ -216,6 +219,11 @@ final class LocalBackupManager {
           throw const BackupStorageException();
         }
       }
+      await _recordArchiveDiagnostics(
+        destination,
+        operation: 'backup',
+        password: password,
+      );
       return destination;
     } on BackupPublicationRecoveryRequiredException catch (error, stackTrace) {
       preservePublicationRecovery = true;
@@ -260,15 +268,14 @@ final class LocalBackupManager {
         error,
         stackTrace,
       );
-      if (error is BackupAnalysisRuleValidationException ||
-          error is BackupEncryptionException ||
+      if (error is BackupEncryptionException ||
           error is BackupFailureException ||
           error is BackupPasswordTooShortException) {
         rethrow;
       }
       throw BackupFailureException(
         stage: stage,
-        errorType: error.runtimeType.toString(),
+        errorCode: _safeFailureCode(error),
       );
     } finally {
       await _deleteFileBestEffort(plain);
@@ -292,7 +299,7 @@ final class LocalBackupManager {
         await snapshot.rawQuery('SELECT COUNT(*) FROM sqlite_master');
         final createdAtUtc = DateTime.now().toUtc();
         onStage?.call('SQLite integrity validation');
-        await _validateDatabase(snapshot);
+        await _validateDatabase(snapshot, requireForeignKeys: false);
         await _snapshotWriter.write(
           candidate,
           source: snapshot,
@@ -408,78 +415,6 @@ final class LocalBackupManager {
       rethrow;
     }
   }
-
-  /// Inspects the archive and current evidence references without publishing
-  /// files or modifying SQLite.
-  Future<EvidenceRecoveryPreview> inspectMissingEvidence(
-    File file, {
-    String? password,
-  }) => _runConsistently(() async {
-    var stage = 'evidence recovery archive decryption';
-    try {
-      return await EvidenceMutationLock.runExclusive(() async {
-        final readable = await _openReadableBackup(file, password: password);
-        try {
-          stage = 'evidence recovery archive validation';
-          await _assertSupportedBackupSchema(readable.file);
-          stage = 'evidence recovery preview';
-          return await _engine.inspectMissingEvidence(readable.file);
-        } finally {
-          await readable.dispose();
-        }
-      });
-    } catch (error, stackTrace) {
-      _logger.severe(
-        'Evidence recovery preview failed at stage: $stage',
-        error,
-        stackTrace,
-      );
-      rethrow;
-    }
-  });
-
-  /// Runs the explicitly approved, non-destructive evidence recovery flow.
-  ///
-  /// The preview is supplied by the caller and is revalidated against the
-  /// current SQLite references immediately before any evidence staging. This
-  /// operation never invokes the SQLite restore engine and never repairs
-  /// analysis rules.
-  Future<EvidenceRecoveryResult> recoverMissingEvidence(
-    File file, {
-    String? password,
-    required EvidenceRecoveryPreview preview,
-  }) => _runConsistently(() async {
-    var stage = 'evidence recovery archive decryption';
-    try {
-      return await EvidenceMutationLock.runExclusive(() async {
-        final readable = await _openReadableBackup(file, password: password);
-        try {
-          stage = 'evidence recovery archive validation';
-          await _assertSupportedBackupSchema(readable.file);
-          stage = 'evidence recovery preview revalidation';
-          return await _engine.recoverMissingEvidence(
-            readable.file,
-            preview: preview,
-          );
-        } finally {
-          await readable.dispose();
-        }
-      });
-    } catch (error, stackTrace) {
-      _logger.severe(
-        'Evidence recovery failed at stage: $stage',
-        error,
-        stackTrace,
-      );
-      rethrow;
-    }
-  });
-
-  Future<void> recoverInterruptedEvidenceRecovery() => _runConsistently(
-    () => EvidenceMutationLock.runExclusive(
-      _engine.recoverInterruptedEvidenceRecovery,
-    ),
-  );
 
   Future<void> recoverInterruptedPortableBackupPublications({
     String? authorizedDestinationPath,
@@ -597,7 +532,7 @@ final class LocalBackupManager {
       }
       throw RestoreFailureException(
         stage: stage,
-        errorType: error.runtimeType.toString(),
+        errorCode: _safeFailureCode(error),
       );
     }
   });
@@ -631,9 +566,12 @@ final class LocalBackupManager {
         staging.dataManager,
       );
       onStage?.call('staged database restore');
-      await stagedEngine.restore(file, mode: mode);
+      final stagedResult = await stagedEngine.restore(file, mode: mode);
       onStage?.call('staged database validation');
-      await _validateDatabase(staging.database.database);
+      await _validateDatabase(
+        staging.database.database,
+        requireForeignKeys: !_allowsMissingReferencedRecords(stagedResult),
+      );
 
       onStage?.call('pre-restore safety backup');
       safetyBackup = await _createPreRestoreSafetyBackup(
@@ -651,15 +589,40 @@ final class LocalBackupManager {
       );
       liveActivated = true;
       onStage?.call('post-activation validation and refresh');
-      await _validateDatabase(database.database);
+      await _validateDatabase(
+        database.database,
+        requireForeignKeys: !_allowsMissingReferencedRecords(liveResult),
+      );
       await _validateLiveEvidenceReferences();
+      var analysisRebuildFailed = false;
       if (postActivationRefresh != null) {
-        await postActivationRefresh();
+        try {
+          await postActivationRefresh();
+        } catch (error, stackTrace) {
+          // The primary restore is already committed and validated. A
+          // recalculation failure must be reported as a warning, not turn a
+          // safe source-data restore into a rollback incident.
+          analysisRebuildFailed = true;
+          _logger.warning(
+            'Derived analysis rebuild failed after restore',
+            error.runtimeType.toString(),
+            stackTrace,
+          );
+        }
       }
 
       await _clearRestoreOriginState();
       await _pruneSafetyBackupsBestEffort();
-      return liveResult;
+      final result = LocalRestoreResult(
+        mode: liveResult.mode,
+        restoredRows: liveResult.restoredRows,
+        keptNewerLocalRows: liveResult.keptNewerLocalRows,
+        restoredEvidence: liveResult.restoredEvidence,
+        warnings: liveResult.warnings,
+        analysisRebuildFailed: analysisRebuildFailed,
+      );
+      await _recordRestoreDiagnostics(result);
+      return result;
     } catch (error, stack) {
       if (liveActivated && safetyBackup != null) {
         try {
@@ -783,6 +746,147 @@ final class LocalBackupManager {
     }
   }
 
+  Future<void> _recordArchiveDiagnostics(
+    File archive, {
+    required String operation,
+    String? password,
+  }) async {
+    final store = _operationDiagnostics;
+    if (store == null) return;
+    try {
+      final readable = await _openReadableBackup(archive, password: password);
+      try {
+        final inspection = await _engine.inspect(readable.file);
+        await _recordOperationFindings(operation, [
+          for (final warning in inspection.warnings)
+            _findingForWarning(operation, warning, DateTime.now().toUtc()),
+        ]);
+      } finally {
+        await readable.dispose();
+      }
+    } on Object catch (error, stackTrace) {
+      // Diagnostic persistence is advisory. Never turn a successfully
+      // published archive into a failed backup because its history row could
+      // not be written.
+      _logger.warning(
+        'Operation diagnostic recording failed',
+        error.runtimeType.toString(),
+        stackTrace,
+      );
+    }
+  }
+
+  Future<void> _recordRestoreDiagnostics(LocalRestoreResult result) async {
+    final findings = [
+      for (final warning in result.warnings)
+        _findingForWarning('restore', warning, DateTime.now().toUtc()),
+      if (result.analysisRebuildFailed)
+        DataIntegrityFinding(
+          id: 'restore:analysis_rebuild_failed',
+          code: 'analysis_rebuild_failed',
+          category: DataIntegrityFindingCategory.analysisInconsistency,
+          severity: DataIntegrityFindingSeverity.warning,
+          description: 'Derived analysis could not be rebuilt after restore.',
+          affectedRecords: const [],
+          context: const {},
+          recommendedAction:
+              'Review Data Integrity Reports and retry analysis when available.',
+          detectedAtUtc: DateTime.now().toUtc(),
+        ),
+    ];
+    await _recordOperationFindings('restore', findings);
+  }
+
+  Future<void> _recordOperationFindings(
+    String operation,
+    List<DataIntegrityFinding> findings,
+  ) async {
+    final store = _operationDiagnostics;
+    if (store == null || findings.isEmpty) return;
+    try {
+      await store.record(operation: operation, findings: findings);
+    } on Object catch (error, stackTrace) {
+      _logger.warning(
+        'Operation diagnostic recording failed',
+        error.runtimeType.toString(),
+        stackTrace,
+      );
+    }
+  }
+
+  DataIntegrityFinding _findingForWarning(
+    String operation,
+    BackupWarning warning,
+    DateTime detectedAtUtc,
+  ) {
+    final records = [...warning.affectedRecords]
+      ..sort((left, right) {
+        final typeOrder = left.type.compareTo(right.type);
+        return typeOrder == 0 ? left.id.compareTo(right.id) : typeOrder;
+      });
+    final recordKey = records.map((record) => '${record.type}:${record.id}');
+    final category = switch (warning.code) {
+      'missing_receipt' => DataIntegrityFindingCategory.missingReceipt,
+      'missing_evidence' => DataIntegrityFindingCategory.missingAttachment,
+      'invalid_custom_analysis_rule' =>
+        DataIntegrityFindingCategory.analysisInconsistency,
+      'invalid_custom_configuration' =>
+        DataIntegrityFindingCategory.invalidCustomConfiguration,
+      'missing_referenced_record' =>
+        DataIntegrityFindingCategory.missingReferencedRecord,
+      'relationship_inconsistency' =>
+        DataIntegrityFindingCategory.relationshipInconsistency,
+      _ => DataIntegrityFindingCategory.analysisInconsistency,
+    };
+    final severity = switch (warning.code) {
+      'missing_receipt' => DataIntegrityFindingSeverity.warning,
+      'missing_evidence' => DataIntegrityFindingSeverity.warning,
+      _ => DataIntegrityFindingSeverity.error,
+    };
+    final description = switch (warning.code) {
+      'missing_receipt' =>
+        'Receipt content referenced by this operation was unavailable.',
+      'missing_evidence' =>
+        'Attachment or evidence content referenced by this operation was unavailable.',
+      'invalid_custom_analysis_rule' =>
+        'A user analysis rule definition is incomplete or invalid.',
+      'invalid_custom_configuration' =>
+        'A user analysis rule configuration is not valid JSON.',
+      'missing_referenced_record' =>
+        'A record referenced by this operation was unavailable.',
+      'relationship_inconsistency' =>
+        'A local record contains an inconsistent relationship.',
+      _ => 'The operation encountered local data that needs review.',
+    };
+    final recommendedAction = switch (warning.code) {
+      'missing_receipt' =>
+        'Attach the original receipt again from the affected record.',
+      'missing_evidence' =>
+        'Attach the original file again from the affected record.',
+      'invalid_custom_analysis_rule' =>
+        'Review the rule configuration or reinstall the rule from its original source.',
+      'invalid_custom_configuration' =>
+        'Review the rule configuration and correct it before running analysis.',
+      'missing_referenced_record' =>
+        'Review the affected records and restore the missing related data from a trusted source.',
+      'relationship_inconsistency' =>
+        'Review the affected records and correct the relationship manually.',
+      _ =>
+        'Review the affected local data and choose a safe corrective action.',
+    };
+    return DataIntegrityFinding(
+      id: '$operation:${warning.code}:${recordKey.join('|')}',
+      code: warning.code,
+      category: category,
+      severity: severity,
+      description: description,
+      affectedRecords: List.unmodifiable(records),
+      context: {'operation': operation, 'count': '${warning.count}'},
+      recommendedAction: recommendedAction,
+      detectedAtUtc: detectedAtUtc,
+    );
+  }
+
   Future<void> recoverControlledState({
     Future<void> Function()? postActivationRefresh,
   }) => _runConsistently(() async {
@@ -821,13 +925,16 @@ final class LocalBackupManager {
       }
 
       await _assertSupportedBackupSchema(safetyBackup);
-      await _restoreLivePackage(
+      final restored = await _restoreLivePackage(
         safetyBackup,
         mode: engine.LocalRestoreMode.replace,
         operationId: 'recovery-${DateTime.now().microsecondsSinceEpoch}',
         safetyBackup: safetyBackup,
       );
-      await _validateDatabase(database.database);
+      await _validateDatabase(
+        database.database,
+        requireForeignKeys: !_allowsMissingReferencedRecords(restored),
+      );
       await _validateLiveEvidenceReferences();
       await _recoverStagedEvidenceBeforeClearing();
       if (postActivationRefresh != null) {
@@ -954,7 +1061,10 @@ final class LocalBackupManager {
     }
   }
 
-  Future<void> _validateDatabase(DatabaseExecutor db) async {
+  Future<void> _validateDatabase(
+    DatabaseExecutor db, {
+    bool requireForeignKeys = true,
+  }) async {
     final integrity = await db.rawQuery('PRAGMA integrity_check');
     final integrityValue = integrity.isEmpty
         ? null
@@ -963,6 +1073,7 @@ final class LocalBackupManager {
       throw StateError('Restored database failed SQLite integrity validation.');
     }
 
+    if (!requireForeignKeys) return;
     final foreignKeys = await db.rawQuery('PRAGMA foreign_key_check');
     if (foreignKeys.isNotEmpty) {
       throw StateError(
@@ -970,6 +1081,10 @@ final class LocalBackupManager {
       );
     }
   }
+
+  bool _allowsMissingReferencedRecords(LocalRestoreResult result) => result
+      .warnings
+      .any((warning) => warning.code == 'missing_referenced_record');
 
   Future<void> _validateLiveEvidenceReferences() async {
     final root = await localDataManager.evidenceDirectory();
@@ -985,9 +1100,8 @@ final class LocalBackupManager {
         throw StateError('Restored evidence contains a non-string path.');
       }
       if (raw.trim().isEmpty) continue;
-      late final String relative;
       try {
-        relative = await validateEvidenceReferencePath(
+        await validateEvidenceReferencePath(
           root,
           raw,
           message: 'Restored evidence contains an unsafe local path.',
@@ -995,9 +1109,9 @@ final class LocalBackupManager {
       } on FormatException catch (error) {
         throw StateError(error.message);
       }
-      if (!await File(path.join(root.path, relative)).exists()) {
-        throw StateError('Restored database references missing evidence.');
-      }
+      // Missing optional evidence is preserved as metadata and surfaced by
+      // Data Integrity Reports. Restore only needs to prove that any path
+      // that is present is safely contained by the app-owned evidence root.
     }
   }
 
@@ -1105,6 +1219,14 @@ final class LocalBackupManager {
       if (await file.exists()) await file.delete();
     } catch (_) {}
   }
+}
+
+String _safeFailureCode(Object error) {
+  if (error is FileSystemException) return 'filesystem';
+  if (error is FormatException) return 'format';
+  if (error is StateError) return 'state';
+  if (error is ArgumentError) return 'invalid_argument';
+  return 'unknown';
 }
 
 final class _ReadableBackup {

@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:butlerly/core/di/service_locator.dart';
-import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/features/foundation/presentation/privacy_data_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -32,7 +31,7 @@ void main() {
     share_plus.SharePlus? shareClient,
     Future<FileSaveLocation?> Function()? selectBackupLocation,
     Future<XFile?> Function()? selectRestoreFile,
-    Future<XFile?> Function()? selectEvidenceRecoveryFile,
+    Future<void> Function(String diagnostic)? copyDiagnostic,
     Locale locale = const Locale('en'),
   }) => ProviderScope(
     child: MaterialApp(
@@ -48,7 +47,7 @@ void main() {
         shareClient: shareClient,
         selectBackupLocation: selectBackupLocation,
         selectRestoreFile: selectRestoreFile,
-        selectEvidenceRecoveryFile: selectEvidenceRecoveryFile,
+        copyDiagnostic: copyDiagnostic,
       ),
     ),
   );
@@ -128,6 +127,8 @@ void main() {
       findsNothing,
     );
     expect(find.text('Local data controls'), findsOneWidget);
+    expect(find.text('Repair analysis rules'), findsNothing);
+    expect(find.text('Recover missing evidence'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -376,6 +377,85 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
   });
 
+  testWidgets('backup warning copy stays generic for rule warnings', (
+    tester,
+  ) async {
+    final root = Directory(
+      path.join(
+        Directory.systemTemp.path,
+        'butlerly-warning-copy-${DateTime.now().microsecondsSinceEpoch}',
+      ),
+    )..createSync(recursive: true);
+    addTearDown(() async {
+      await services.reset();
+      if (root.existsSync()) root.deleteSync(recursive: true);
+      debugDefaultTargetPlatformOverride = null;
+    });
+    final gateway = _ShareGateway(root)
+      ..inspectionWarnings = const [
+        BackupWarning(code: 'invalid_custom_analysis_rule', count: 1),
+      ];
+    services.registerSingleton<WorkspaceDataService>(
+      WorkspaceDataService(gateway, refreshSystemData: () async {}),
+    );
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+
+    await tester.pumpWidget(
+      app(
+        selectBackupLocation: () async =>
+            FileSaveLocation(path.join(root.path, 'warning.butlerly')),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _completeBackupPasswordFlow(tester);
+
+    debugDefaultTargetPlatformOverride = null;
+    expect(
+      find.text(
+        'Encrypted backup created with warnings. Open Data Integrity Reports for details.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('optional files'), findsNothing);
+  });
+
+  testWidgets('restore warning copy stays generic for relationship warnings', (
+    tester,
+  ) async {
+    final gateway = _ShareGateway(Directory.systemTemp)
+      ..inspectionWarnings = const [
+        BackupWarning(code: 'relationship_inconsistency', count: 1),
+      ]
+      ..successfulRestore = const LocalRestoreResult(
+        mode: LocalRestoreMode.merge,
+        restoredRows: 1,
+        keptNewerLocalRows: 0,
+        restoredEvidence: 0,
+        warnings: [BackupWarning(code: 'relationship_inconsistency', count: 1)],
+      );
+    await services.reset();
+    addTearDown(() async => services.reset());
+    services.registerSingleton<WorkspaceDataService>(
+      WorkspaceDataService(gateway, refreshSystemData: () async {}),
+    );
+
+    await tester.pumpWidget(
+      app(selectRestoreFile: () async => XFile('/unused/backup.butlerly')),
+    );
+    await tester.pumpAndSettle();
+    await _openRestorePreview(tester);
+    await tester.tap(find.text('Merge'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining(
+        'Restore completed with warnings. Open Data Integrity Reports for details.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Some content'), findsNothing);
+  });
+
   testWidgets('restore reports restore-file selection failures', (
     tester,
   ) async {
@@ -390,7 +470,7 @@ void main() {
 
     expect(
       find.text(
-        'Backup could not be restored. Failure stage: restore file selection. Error type: StateError. No restore was confirmed.',
+        'Backup could not be restored. Failure stage: restore file selection. No restore was confirmed.',
       ),
       findsOneWidget,
     );
@@ -416,7 +496,7 @@ void main() {
 
     expect(
       find.text(
-        'Backup could not be restored. Failure stage: restore activation. Error type: StateError. No restore was confirmed.',
+        'Backup could not be restored. Failure stage: restore activation. No restore was confirmed.',
       ),
       findsOneWidget,
     );
@@ -488,44 +568,6 @@ void main() {
     expect(find.textContaining('destination storage'), findsAtLeastNWidgets(1));
   });
 
-  testWidgets('mobile backup recommends repair only for rule validation', (
-    tester,
-  ) async {
-    final root = Directory(
-      path.join(
-        Directory.systemTemp.path,
-        'butlerly-rule-validation-${DateTime.now().microsecondsSinceEpoch}',
-      ),
-    )..createSync(recursive: true);
-    addTearDown(() async {
-      await services.reset();
-      if (root.existsSync()) root.deleteSync(recursive: true);
-      debugDefaultTargetPlatformOverride = null;
-    });
-    final gateway = _ShareGateway(root)
-      ..createFailure = const BackupAnalysisRuleValidationException(
-        'fixture',
-        canRepair: true,
-      );
-    services.registerSingleton<WorkspaceDataService>(
-      WorkspaceDataService(gateway, refreshSystemData: () async {}),
-    );
-    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
-
-    await tester.pumpWidget(app());
-    await tester.pumpAndSettle();
-    await _completeBackupPasswordFlow(tester);
-
-    debugDefaultTargetPlatformOverride = null;
-    expect(
-      find.text(
-        'Backup could not be created because analysis rules failed validation. Choose Repair analysis rules and try again.',
-      ),
-      findsOneWidget,
-    );
-    expect(find.text('Backup could not be created.'), findsNothing);
-  });
-
   testWidgets('mobile backup reports temporary-file creation failure', (
     tester,
   ) async {
@@ -553,7 +595,7 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
     expect(
       find.text(
-        'Backup could not be created. Failure stage: temporary backup creation. Error type: StateError. Your financial data was not changed.',
+        'Backup could not be created. Failure stage: temporary backup creation. Your financial data was not changed.',
       ),
       findsOneWidget,
     );
@@ -598,7 +640,7 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
     expect(
       find.text(
-        'Backup could not be created. Failure stage: portable backup creation. Error type: StateError. Your financial data was not changed.',
+        'Backup could not be created. Failure stage: portable backup creation. Your financial data was not changed.',
       ),
       findsOneWidget,
     );
@@ -651,39 +693,10 @@ void main() {
       find.textContaining('portable backup creation'),
       findsAtLeastNWidgets(1),
     );
-    expect(find.textContaining('StateError'), findsAtLeastNWidgets(1));
+    expect(find.textContaining('StateError'), findsNothing);
+    expect(find.textContaining('operation state'), findsAtLeastNWidgets(1));
     expect(find.text('Copy diagnostic'), findsOneWidget);
     expect(find.text('private'), findsNothing);
-  });
-
-  testWidgets('analysis rule repair requires explicit approval', (
-    tester,
-  ) async {
-    var repairs = 0;
-    final gateway = _ShareGateway(Directory.systemTemp);
-    addTearDown(() async => services.reset());
-    services.registerSingleton<WorkspaceDataService>(
-      WorkspaceDataService(
-        gateway,
-        refreshSystemData: () async {},
-        repairAnalysisRulesCallback: () async => repairs++,
-      ),
-    );
-
-    await tester.pumpWidget(app());
-    await tester.pumpAndSettle();
-    expect(repairs, 0);
-
-    await tester.tap(find.text('Repair analysis rules'));
-    await tester.pumpAndSettle();
-    expect(repairs, 0);
-    await tester.tap(
-      find.widgetWithText(FilledButton, 'Repair analysis rules'),
-    );
-    await tester.pumpAndSettle();
-
-    expect(repairs, 1);
-    expect(find.text('Analysis rules repaired successfully.'), findsOneWidget);
   });
 
   testWidgets(
@@ -745,6 +758,36 @@ void main() {
     },
   );
 
+  testWidgets(
+    'restore preview discloses archive warnings before mode selection',
+    (tester) async {
+      final gateway = _ShareGateway(Directory.systemTemp)
+        ..inspectionWarnings = const [
+          BackupWarning(code: 'missing_receipt', count: 2),
+        ]
+        ..inspectionMissingContentCount = 2;
+      await services.reset();
+      addTearDown(() async => services.reset());
+      services.registerSingleton<WorkspaceDataService>(
+        WorkspaceDataService(gateway, refreshSystemData: () async {}),
+      );
+
+      await tester.pumpWidget(
+        app(selectRestoreFile: () async => XFile('/unused/backup.butlerly')),
+      );
+      await tester.pumpAndSettle();
+      await _openRestorePreview(tester);
+
+      expect(
+        find.textContaining(
+          'This backup has 2 missing optional item(s) and 1 integrity warning(s).',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('View reports'), findsOneWidget);
+    },
+  );
+
   testWidgets('restore preview accepts a supported unencrypted backup', (
     tester,
   ) async {
@@ -765,84 +808,6 @@ void main() {
     expect(find.text('Merge'), findsOneWidget);
     expect(gateway.inspectPassword, isNull);
   });
-
-  testWidgets('evidence recovery is an explicit file operation', (
-    tester,
-  ) async {
-    final gateway = _ShareGateway(Directory.systemTemp)
-      ..evidenceRecoveryPreview = const EvidenceRecoveryPreview(
-        recoverableCount: 3,
-        alreadyPresentCount: 1,
-        conflictingCount: 0,
-        unavailableCount: 0,
-        unresolvedCount: 0,
-        fingerprint: 'fixture',
-      )
-      ..evidenceRecoveryResult = const EvidenceRecoveryResult(
-        recoveredCount: 3,
-        alreadyPresentCount: 1,
-        unresolvedCount: 0,
-      );
-    await services.reset();
-    addTearDown(() async => services.reset());
-    services.registerSingleton<WorkspaceDataService>(
-      WorkspaceDataService(gateway, refreshSystemData: () async {}),
-    );
-
-    await tester.pumpWidget(
-      app(
-        selectEvidenceRecoveryFile: () async =>
-            XFile('/unused/evidence-recovery.butlerly'),
-      ),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Recover missing evidence'));
-    await tester.pumpAndSettle();
-    await tester.enterText(
-      find.byType(TextField),
-      'correct horse battery staple',
-    );
-    await tester.tap(find.text('Unlock'));
-    await tester.pumpAndSettle();
-    expect(find.text('Review evidence recovery'), findsOneWidget);
-    expect(find.text('Confirm recovery'), findsOneWidget);
-    await tester.tap(find.text('Confirm recovery'));
-    await tester.pumpAndSettle();
-
-    expect(gateway.recoveredEvidencePassword, 'correct horse battery staple');
-    expect(
-      find.text('Evidence recovery finished: 3 restored, 1 already present.'),
-      findsOneWidget,
-    );
-  });
-
-  testWidgets(
-    'Replace requires separate confirmation before invoking restore',
-    (tester) async {
-      final gateway = _ShareGateway(Directory.systemTemp);
-      await services.reset();
-      addTearDown(() async => services.reset());
-      services.registerSingleton<WorkspaceDataService>(
-        WorkspaceDataService(gateway, refreshSystemData: () async {}),
-      );
-
-      await tester.pumpWidget(
-        app(selectRestoreFile: () async => XFile('/unused/backup.butlerly')),
-      );
-      await tester.pumpAndSettle();
-      await _openRestorePreview(tester);
-      await tester.tap(find.text('Replace'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Replace current Butlerly data?'), findsOneWidget);
-      expect(gateway.selectedRestoreMode, isNull);
-      await tester.tap(
-        find.widgetWithText(ButlerlyDestructiveButton, 'Replace'),
-      );
-      await tester.pumpAndSettle();
-      expect(gateway.selectedRestoreMode, LocalRestoreMode.replace);
-    },
-  );
 
   testWidgets('restore preview formats its creation date for each locale', (
     tester,
@@ -916,14 +881,15 @@ final class _ShareGateway implements LocalDataGateway {
   String? discardedPath;
   Object? createFailure;
   Object? discardFailure;
+  Object? restoreFailure;
   LocalRestoreMode? selectedRestoreMode;
   bool encrypted = true;
   int inspectionCalls = 0;
   String? inspectionPassword;
   String? inspectPassword;
-  EvidenceRecoveryPreview? evidenceRecoveryPreview;
-  EvidenceRecoveryResult? evidenceRecoveryResult;
-  String? recoveredEvidencePassword;
+  List<BackupWarning> inspectionWarnings = const [];
+  int inspectionMissingContentCount = 0;
+  LocalRestoreResult? successfulRestore;
 
   @override
   Future<void> createPortableBackup(
@@ -970,39 +936,9 @@ final class _ShareGateway implements LocalDataGateway {
         masterDataChanged: 0,
         deletedEntities: 0,
       ),
+      warnings: inspectionWarnings,
+      missingContentCount: inspectionMissingContentCount,
     );
-  }
-
-  @override
-  Future<EvidenceRecoveryPreview> inspectMissingEvidence(
-    String filePath, {
-    String? password,
-  }) async {
-    inspectionPassword = password;
-    return evidenceRecoveryPreview ??
-        const EvidenceRecoveryPreview(
-          recoverableCount: 0,
-          alreadyPresentCount: 0,
-          conflictingCount: 0,
-          unavailableCount: 0,
-          unresolvedCount: 0,
-          fingerprint: 'fixture',
-        );
-  }
-
-  @override
-  Future<EvidenceRecoveryResult> recoverMissingEvidence(
-    String filePath, {
-    String? password,
-    required EvidenceRecoveryPreview preview,
-  }) async {
-    recoveredEvidencePassword = password;
-    return evidenceRecoveryResult ??
-        const EvidenceRecoveryResult(
-          recoveredCount: 0,
-          alreadyPresentCount: 0,
-          unresolvedCount: 0,
-        );
   }
 
   @override
@@ -1014,6 +950,8 @@ final class _ShareGateway implements LocalDataGateway {
   }) async {
     selectedRestoreMode = mode;
     // Stop the fake before any refresh or real database write.
+    if (restoreFailure != null) throw restoreFailure!;
+    if (successfulRestore != null) return successfulRestore!;
     throw StateError('restore mode captured for regression test');
   }
 

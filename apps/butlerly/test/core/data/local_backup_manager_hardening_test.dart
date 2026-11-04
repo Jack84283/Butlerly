@@ -264,7 +264,7 @@ void main() {
               'stage',
               'staging workspace creation',
             )
-            .having((error) => error.errorType, 'error type', 'StateError'),
+            .having((error) => error.errorCode, 'error code', 'state'),
       ),
     );
     final stageDirectories = await fixture.root

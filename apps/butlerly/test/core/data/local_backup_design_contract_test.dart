@@ -64,7 +64,7 @@ void main() {
   });
 
   test(
-    'refresh failure preserves activated state and retries in recovery',
+    'refresh failure reports a rebuild warning after preserving activated state',
     () async {
       final fixture = await _Fixture.create();
       addTearDown(fixture.dispose);
@@ -89,7 +89,7 @@ void main() {
       );
 
       var refreshCalls = 0;
-      var failRefresh = true;
+      final failRefresh = true;
       final workspace = WorkspaceDataService(
         LocalWorkspaceDataGateway(fixture.manager, fixture.data),
         refreshSystemData: () async {
@@ -97,9 +97,9 @@ void main() {
           if (failRefresh) throw StateError('synthetic refresh failure');
         },
       );
-      await expectLater(
-        workspace.restore(backup.path, mode: LocalRestoreMode.replace),
-        throwsA(isA<RestoreRecoveryRequiredException>()),
+      final result = await workspace.restore(
+        backup.path,
+        mode: LocalRestoreMode.replace,
       );
 
       final activated = await fixture.database.database.query(
@@ -109,83 +109,66 @@ void main() {
       );
       expect(activated, hasLength(1));
       expect(activated.single['amount_coefficient'], '100');
+      expect(result.analysisRebuildFailed, isTrue);
       expect(refreshCalls, 1);
-      expect(fixture.manager.recoveryState.isRecoveryRequired, isTrue);
-      expect(fixture.manager.recoveryState.incident?.retryCurrentState, isTrue);
-      expect(
-        fixture.manager.recoveryState.incident?.reason,
-        'post-activation-validation-or-refresh-failed',
-      );
-      expect(
-        fixture.manager.recoveryState.incident?.safetyBackupPath,
-        isNotEmpty,
-      );
-
-      failRefresh = false;
-      expect(workspace.hasRecoverySafetyCopy, isTrue);
-      await workspace.recoverControlledState();
-
-      expect(refreshCalls, 2);
       expect(fixture.manager.recoveryState.isRecoveryRequired, isFalse);
-      final recovered = await fixture.database.database.query(
-        'transactions',
-        where: 'id = ?',
-        whereArgs: ['tx-1'],
-      );
-      expect(recovered.single['amount_coefficient'], '100');
+      expect(workspace.hasRecoverySafetyCopy, isFalse);
     },
   );
 
-  test('invalid current evidence falls back to safety snapshot', () async {
-    final fixture = await _Fixture.create();
-    addTearDown(fixture.dispose);
-    final timestamp = DateTime.utc(2026, 1, 1);
-    await fixture.insertTransaction('tx-evidence', timestamp, amount: '100');
-    await fixture.database.database.insert('provenances', {
-      'id': 'prov-evidence',
-      'source_type': 'manual',
-      'captured_at': timestamp.toIso8601String(),
-    });
-    await fixture.database.database.insert('evidence_items', {
-      'id': 'evidence-fallback',
-      'type': 'receipt',
-      'original_name': 'receipt.bin',
-      'media_type': 'application/octet-stream',
-      'provenance_id': 'prov-evidence',
-      'created_at': timestamp.toIso8601String(),
-      'local_file_name': 'receipt.bin',
-    });
-    final receipt = File(path.join(fixture.evidence.path, 'receipt.bin'));
-    await receipt.writeAsString('safe-evidence', flush: true);
+  test(
+    'recovery keeps committed state when optional evidence is unavailable',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final timestamp = DateTime.utc(2026, 1, 1);
+      await fixture.insertTransaction('tx-evidence', timestamp, amount: '100');
+      await fixture.database.database.insert('provenances', {
+        'id': 'prov-evidence',
+        'source_type': 'manual',
+        'captured_at': timestamp.toIso8601String(),
+      });
+      await fixture.database.database.insert('evidence_items', {
+        'id': 'evidence-fallback',
+        'type': 'receipt',
+        'original_name': 'receipt.bin',
+        'media_type': 'application/octet-stream',
+        'provenance_id': 'prov-evidence',
+        'created_at': timestamp.toIso8601String(),
+        'local_file_name': 'receipt.bin',
+      });
+      final receipt = File(path.join(fixture.evidence.path, 'receipt.bin'));
+      await receipt.writeAsString('safe-evidence', flush: true);
 
-    final safetyDirectory = await fixture.data.safetyBackupDirectory();
-    final safety = File(
-      path.join(safetyDirectory.path, 'manual-safety.butlerlybackup'),
-    );
-    await fixture.manager.createBackup(safety);
-    await fixture.manager.recoveryState.markRequired(
-      operationId: 'engine-failure',
-      safetyBackup: safety,
-      reason: 'engine-restore-recovery-pending',
-      retryCurrentState: true,
-    );
+      final safetyDirectory = await fixture.data.safetyBackupDirectory();
+      final safety = File(
+        path.join(safetyDirectory.path, 'manual-safety.butlerlybackup'),
+      );
+      await fixture.manager.createBackup(safety);
+      await fixture.manager.recoveryState.markRequired(
+        operationId: 'engine-failure',
+        safetyBackup: safety,
+        reason: 'engine-restore-recovery-pending',
+        retryCurrentState: true,
+      );
 
-    await receipt.delete();
-    expect(await receipt.exists(), isFalse);
+      await receipt.delete();
+      expect(await receipt.exists(), isFalse);
 
-    await fixture.manager.recoverControlledState();
+      await fixture.manager.recoverControlledState();
 
-    expect(fixture.manager.recoveryState.isRecoveryRequired, isFalse);
-    expect(await receipt.readAsString(), 'safe-evidence');
-    expect(
-      await fixture.database.database.query(
-        'transactions',
-        where: 'id = ?',
-        whereArgs: ['tx-evidence'],
-      ),
-      hasLength(1),
-    );
-  });
+      expect(fixture.manager.recoveryState.isRecoveryRequired, isFalse);
+      expect(await receipt.exists(), isFalse);
+      expect(
+        await fixture.database.database.query(
+          'transactions',
+          where: 'id = ?',
+          whereArgs: ['tx-evidence'],
+        ),
+        hasLength(1),
+      );
+    },
+  );
 
   test('Merge preserves an edit made after staging snapshot', () async {
     final fixture = await _Fixture.create();

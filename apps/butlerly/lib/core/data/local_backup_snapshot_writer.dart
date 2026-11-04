@@ -6,7 +6,9 @@ import 'package:butlerly/core/data/backup_container_format.dart';
 import 'package:butlerly/core/data/duplicate_group_backup_policy.dart';
 import 'package:butlerly/core/data/evidence_path_safety.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
+import 'package:butlerly/core/data/persisted_analysis_rule_validation.dart';
 import 'package:butlerly_database/butlerly_database.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common/sqlite_api.dart';
 
@@ -41,11 +43,13 @@ final class LocalBackupSnapshotWriter {
     'statement_rows',
     'extractions',
     'attachment_links',
+    // Generated findings are omitted below unless they carry a user-owned
+    // acknowledged/dismissed lifecycle decision.
+    'analysis_findings',
     'analysis_rule_activations',
     'analysis_rule_configurations',
     'analysis_rule_definitions',
     'analysis_rule_provenance',
-    'analysis_findings',
     'recurring_pattern_decisions',
     'user_preferences',
     'financial_profiles',
@@ -71,7 +75,16 @@ final class LocalBackupSnapshotWriter {
 
     onStage?.call('SQLite snapshot');
     for (final table in _plainTables) {
-      final rows = await source.query(table);
+      var rows = await source.query(table);
+      if (table == 'analysis_findings') {
+        rows = rows
+            .where(
+              (row) =>
+                  row['lifecycle'] == 'acknowledged' ||
+                  row['lifecycle'] == 'dismissed',
+            )
+            .toList(growable: false);
+      }
       tables[table] = rows;
       recordCount += rows.length;
     }
@@ -236,20 +249,240 @@ final class LocalBackupSnapshotWriter {
     onStage?.call('evidence collection');
     final evidenceRoot = await localDataManager.evidenceDirectory();
     await rejectEvidenceRoot(evidenceRoot);
+    final missingContent = <Map<String, Object?>>[];
+    final warningCounts = <String, int>{};
+    final warningRecords = <String, List<Map<String, String>>>{};
+    final transactionsByEvidence = <String, Set<String>>{};
+    for (final rawLink
+        in tables['attachment_links']! as List<Map<String, Object?>>) {
+      final evidenceId = rawLink['evidence_id'];
+      final transactionId = rawLink['transaction_id'];
+      if (evidenceId is String && transactionId is String) {
+        transactionsByEvidence
+            .putIfAbsent(evidenceId, () => <String>{})
+            .add(transactionId);
+      }
+    }
+    List<DataIntegrityRecordReference> recordsForEvidence(Object? evidenceId) {
+      if (evidenceId is! String) return const [];
+      final transactionIds = [
+        ...(transactionsByEvidence[evidenceId] ?? const <String>{}),
+      ]..sort();
+      return [
+        DataIntegrityRecordReference(type: 'evidence', id: evidenceId),
+        for (final transactionId in transactionIds)
+          DataIntegrityRecordReference(type: 'transaction', id: transactionId),
+      ];
+    }
 
-    // Every DB-referenced binary must exist. In addition, preserve unreferenced
-    // files conservatively: a partially completed metadata operation must never
-    // cause Backup to silently discard a user's receipt or statement.
+    String warningCodeForEvidence(Object? evidenceType) =>
+        evidenceType is String && evidenceType.toLowerCase().contains('receipt')
+        ? 'missing_receipt'
+        : 'missing_evidence';
+    bool isMissingEvidenceWarning(String code) =>
+        code == 'missing_evidence' || code == 'missing_receipt';
+    void addWarning(
+      String code, {
+      int count = 1,
+      Iterable<DataIntegrityRecordReference> records = const [],
+    }) {
+      if (count < 1) return;
+      warningCounts.update(
+        code,
+        (value) => value + count,
+        ifAbsent: () => count,
+      );
+      final encodedRecords = warningRecords.putIfAbsent(code, () => []);
+      for (final record in records) {
+        final value = {'type': record.type, 'id': record.id};
+        if (!encodedRecords.any(
+          (existing) =>
+              existing['type'] == value['type'] &&
+              existing['id'] == value['id'],
+        )) {
+          encodedRecords.add(value);
+        }
+      }
+    }
+
+    final definitions =
+        tables['analysis_rule_definitions']! as List<Map<String, Object?>>;
+    final sourceTypeByRule = <String, String>{};
+    for (final row in definitions) {
+      final ruleId = row['rule_id'];
+      final version = row['rule_version'];
+      if (ruleId is! String || version is! String) continue;
+      final sourceType = row['source_type'];
+      if (sourceType is String) {
+        sourceTypeByRule['$ruleId@$version'] = sourceType;
+      }
+      final valid = isSemanticallyValidPersistedAnalysisRule(row);
+      if (!valid && _isUserOwnedRuleSource(sourceType)) {
+        addWarning(
+          'invalid_custom_analysis_rule',
+          records: [
+            DataIntegrityRecordReference(
+              type: 'analysisRule',
+              id: '$ruleId@$version',
+            ),
+          ],
+        );
+      }
+    }
+    final configurations =
+        tables['analysis_rule_configurations']! as List<Map<String, Object?>>;
+    for (final row in configurations) {
+      final ruleId = row['rule_id'];
+      final configuration = row['configuration'];
+      if (ruleId is! String) continue;
+      final sourceType = sourceTypeByRule.entries
+          .where((entry) => entry.key.startsWith('$ruleId@'))
+          .map((entry) => entry.value)
+          .firstOrNull;
+      var valid = false;
+      if (configuration is String) {
+        try {
+          final decoded = jsonDecode(configuration);
+          valid = decoded is Map || decoded is List;
+        } on Object {
+          valid = false;
+        }
+      }
+      if (!valid &&
+          (sourceType == null || _isUserOwnedRuleSource(sourceType))) {
+        addWarning(
+          'invalid_custom_configuration',
+          records: [
+            DataIntegrityRecordReference(type: 'analysisRule', id: ruleId),
+          ],
+        );
+      }
+    }
+
+    // A backup is a faithful snapshot, not an integrity gate. Preserve rows
+    // with broken optional relationships and surface them as operation
+    // warnings so the standalone report can explain them after restore.
+    final foreignKeyViolations = await source.rawQuery(
+      'PRAGMA foreign_key_check',
+    );
+    for (final violation in foreignKeyViolations) {
+      final record = await _foreignKeyViolationRecord(source, violation);
+      addWarning('missing_referenced_record', records: [?record]);
+    }
+    final budgetRows = tables['budgets']! as List<Map<String, Object?>>;
+    final categoryRows = await source.query(
+      'categories',
+      columns: ['id', 'parent_id'],
+    );
+    final categoryParents = <String, Object?>{
+      for (final row in categoryRows)
+        if (row['id'] is String) row['id']! as String: row['parent_id'],
+    };
+    final merchantIds = (await source.query(
+      'merchants',
+      columns: ['id'],
+    )).map((row) => row['id']).whereType<String>().toSet();
+    const budgetScopes = {'category', 'subcategory', 'merchant', 'overall'};
+    for (final row in budgetRows) {
+      final scope = row['scope'];
+      final scopeId = row['scope_id'];
+      if (scope == 'overall' && scopeId == null) continue;
+      if (scope is! String ||
+          !budgetScopes.contains(scope) ||
+          (scope == 'overall' && scopeId != null) ||
+          (scope != 'overall' && scopeId is! String)) {
+        addWarning(
+          'relationship_inconsistency',
+          records: [
+            if (row['id'] is String)
+              DataIntegrityRecordReference(
+                type: 'budget',
+                id: row['id']! as String,
+              ),
+          ],
+        );
+        continue;
+      }
+      final targetIds = scope == 'merchant'
+          ? merchantIds
+          : categoryParents.keys;
+      if (!targetIds.contains(scopeId)) {
+        addWarning(
+          'missing_referenced_record',
+          records: [
+            if (row['id'] is String)
+              DataIntegrityRecordReference(
+                type: 'budget',
+                id: row['id']! as String,
+              ),
+            if (scopeId is String)
+              DataIntegrityRecordReference(
+                type: scope == 'merchant' ? 'merchant' : 'category',
+                id: scopeId,
+              ),
+          ],
+        );
+      } else if (scope != 'merchant') {
+        final parentId = categoryParents[scopeId];
+        final validHierarchy = switch (scope) {
+          'category' => parentId == null,
+          'subcategory' =>
+            parentId is String &&
+                parentId.isNotEmpty &&
+                categoryParents.containsKey(parentId) &&
+                categoryParents[parentId] == null,
+          _ => true,
+        };
+        if (!validHierarchy) {
+          addWarning(
+            'relationship_inconsistency',
+            records: [
+              if (row['id'] is String)
+                DataIntegrityRecordReference(
+                  type: 'budget',
+                  id: row['id']! as String,
+                ),
+              DataIntegrityRecordReference(
+                type: 'category',
+                id: scopeId as String,
+              ),
+            ],
+          );
+        }
+      }
+    }
+
+    // Missing optional content is a warning, not a reason to discard the
+    // database snapshot. Keep the original metadata row and record the
+    // unavailable content explicitly in the manifest.
     for (final row in evidenceRows) {
       final localName = row['local_file_name'] as String?;
-      if (localName == null || localName.trim().isEmpty) continue;
+      final warningCode = warningCodeForEvidence(row['type']);
+      if (localName == null || localName.trim().isEmpty) {
+        final evidenceId = row['id'];
+        addWarning(warningCode, records: recordsForEvidence(evidenceId));
+        missingContent.add({
+          'evidenceId': row['id'],
+          if (row['type'] is String) 'evidenceType': row['type']! as String,
+          'path': null,
+          'status': 'missing',
+        });
+        continue;
+      }
       final normalized = await validateEvidenceReferencePath(
         evidenceRoot,
         localName,
         message: 'Unsafe local evidence path.',
       );
       if (!await File(path.join(evidenceRoot.path, normalized)).exists()) {
-        throw StateError('Referenced evidence file is missing.');
+        final evidenceId = row['id'];
+        addWarning(warningCode, records: recordsForEvidence(evidenceId));
+        missingContent.add({
+          'evidenceId': row['id'],
+          if (row['type'] is String) 'evidenceType': row['type']! as String,
+          'path': normalized,
+          'status': 'missing',
+        });
       }
     }
 
@@ -303,6 +536,27 @@ final class LocalBackupSnapshotWriter {
         'createdAtUtc': createdAtUtc.toUtc().toIso8601String(),
         'recordCount': recordCount,
         'evidenceCount': evidence.length,
+        'missingContentCount': missingContent.length,
+        'missingContent': missingContent,
+        'warnings': [
+          for (final entry in warningCounts.entries)
+            {
+              'code': entry.key,
+              'count': entry.value,
+              'records': warningRecords[entry.key] ?? const [],
+            },
+          if (missingContent.isNotEmpty &&
+              !warningCounts.keys.any(isMissingEvidenceWarning))
+            {
+              'code': 'missing_evidence',
+              'count': missingContent.length,
+              'records': [
+                for (final row in missingContent)
+                  for (final record in recordsForEvidence(row['evidenceId']))
+                    {'type': record.type, 'id': record.id},
+              ],
+            },
+        ],
         'derivedDataPolicy': 'rebuild',
       },
       'tables': tables,
@@ -339,6 +593,65 @@ final class LocalBackupSnapshotWriter {
     await temporary.rename(destination.path);
     return destination;
   }
+
+  Future<DataIntegrityRecordReference?> _foreignKeyViolationRecord(
+    DatabaseExecutor source,
+    Map<String, Object?> violation,
+  ) async {
+    final table = violation['table'];
+    final rowId = violation['rowid'];
+    if (table is! String || table.isEmpty || rowId == null) return null;
+
+    final recordType = _recordTypeForTable(table);
+    try {
+      final quotedTable = '"${table.replaceAll('"', '""')}"';
+      final columns = await source.rawQuery('PRAGMA table_info($quotedTable)');
+      final primaryKeys =
+          columns
+              .where(
+                (column) => column['pk'] is int && (column['pk']! as int) > 0,
+              )
+              .toList()
+            ..sort(
+              (left, right) =>
+                  (left['pk']! as int).compareTo(right['pk']! as int),
+            );
+      final rows = await source.rawQuery(
+        'SELECT * FROM $quotedTable WHERE rowid = ? LIMIT 1',
+        [rowId],
+      );
+      if (rows.isEmpty) {
+        return DataIntegrityRecordReference(type: recordType, id: 'row:$rowId');
+      }
+      final row = rows.single;
+      final keyColumns = primaryKeys.isEmpty
+          ? const <String>['rowid']
+          : [
+              for (final column in primaryKeys)
+                if (column['name'] is String) column['name']! as String,
+            ];
+      final id = keyColumns.length == 1 && keyColumns.single == 'rowid'
+          ? 'row:$rowId'
+          : keyColumns.map((column) => '${row[column]}').join('|');
+      return DataIntegrityRecordReference(type: recordType, id: id);
+    } on Object {
+      return DataIntegrityRecordReference(type: recordType, id: 'row:$rowId');
+    }
+  }
+
+  String _recordTypeForTable(String table) => switch (table) {
+    'transactions' => 'transaction',
+    'evidence_items' => 'evidence',
+    'attachment_links' => 'attachment',
+    'budgets' => 'budget',
+    'categories' => 'category',
+    'merchants' => 'merchant',
+    'analysis_rule_definitions' ||
+    'analysis_rule_activations' ||
+    'analysis_rule_configurations' ||
+    'analysis_rule_provenance' => 'analysisRule',
+    _ => 'relatedRecord',
+  };
 
   List<Map<String, Object?>> _orderCategoriesForBackup(
     List<Map<String, Object?>> rows,
@@ -395,4 +708,7 @@ final class LocalBackupSnapshotWriter {
         '${text.substring(16, 20)}-'
         '${text.substring(20)}';
   }
+
+  bool _isUserOwnedRuleSource(Object? sourceType) =>
+      sourceType == 'custom' || sourceType == 'user';
 }

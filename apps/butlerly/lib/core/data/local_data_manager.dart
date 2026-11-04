@@ -73,6 +73,9 @@ final class LocalDataManager {
   ];
 
   static const _eraseOrder = <String>[
+    'operation_diagnostics',
+    'data_integrity_findings',
+    'data_integrity_reports',
     'statement_rows',
     'financial_statements',
     'suggestions',

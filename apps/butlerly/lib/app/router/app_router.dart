@@ -12,6 +12,7 @@ import 'package:butlerly/features/financial_profile/presentation/financial_profi
 import 'package:butlerly/features/foundation/presentation/add_page.dart';
 import 'package:butlerly/features/foundation/presentation/butlerly_launch_page.dart';
 import 'package:butlerly/features/foundation/presentation/contextual_pages.dart';
+import 'package:butlerly/features/foundation/presentation/data_integrity_reports_page.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/features/foundation/presentation/legal_licenses_page.dart';
 import 'package:butlerly/features/foundation/presentation/master_data_page.dart';
@@ -294,6 +295,10 @@ final appRouter = GoRouter(
         GoRoute(
           path: '/privacy-data',
           builder: (_, _) => const PrivacyDataPage(),
+        ),
+        GoRoute(
+          path: '/data-integrity-reports',
+          builder: (_, _) => const DataIntegrityReportsPage(),
         ),
         GoRoute(
           path: '/master-data',

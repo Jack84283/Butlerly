@@ -173,6 +173,40 @@ void main() {
   );
 
   test(
+    'successful publication leaves no staging sidecar beside destination',
+    () async {
+      final root = await Directory.systemTemp.createTemp(
+        'butlerly-backup-publication-private-stage-',
+      );
+      addTearDown(() => root.delete(recursive: true));
+      final privateDirectory = Directory(path.join(root.path, 'private'))
+        ..createSync();
+      final selectedDirectory = Directory(path.join(root.path, 'selected'))
+        ..createSync();
+      final source = File(path.join(privateDirectory.path, 'new.backup'))
+        ..writeAsStringSync('new backup');
+      final destination = File(path.join(selectedDirectory.path, 'backup'));
+
+      await const SandboxedBackupDestinationWriter().publish(
+        source: source,
+        destination: destination,
+        privateDirectory: privateDirectory,
+        operationId: 'private-stage',
+      );
+
+      expect(await destination.readAsString(), 'new backup');
+      expect(
+        await _namesStarting(selectedDirectory, '.butlerly-backup-stage-'),
+        isEmpty,
+      );
+      expect(
+        await _namesStarting(privateDirectory, '.portable-backup-stage-'),
+        isEmpty,
+      );
+    },
+  );
+
+  test(
     'failed new publication removes the partial selected destination',
     () async {
       final root = await Directory.systemTemp.createTemp(
@@ -389,7 +423,7 @@ void main() {
       const store = FileBackupPublicationRecoveryStore();
       await store.write(privateDirectory, recovery);
       final staging = File(
-        path.join(root.path, '.butlerly-backup-stage-absent.tmp'),
+        path.join(privateDirectory.path, '.portable-backup-stage-absent.tmp'),
       );
       await source.copy(staging.path);
 

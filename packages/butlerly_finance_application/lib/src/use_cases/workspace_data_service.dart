@@ -18,15 +18,6 @@ abstract interface class LocalDataGateway {
   Future<void> discardTemporaryBackup(String filePath);
   Future<bool> isEncryptedBackup(String filePath);
   Future<BackupInspection> inspect(String filePath, {String? password});
-  Future<EvidenceRecoveryPreview> inspectMissingEvidence(
-    String filePath, {
-    String? password,
-  });
-  Future<EvidenceRecoveryResult> recoverMissingEvidence(
-    String filePath, {
-    String? password,
-    required EvidenceRecoveryPreview preview,
-  });
   Future<LocalRestoreResult> restore(
     String filePath, {
     required LocalRestoreMode mode,
@@ -43,25 +34,6 @@ abstract interface class LocalDataGateway {
   });
 }
 
-/// Raised when a portable backup contains invalid analysis-rule state.
-///
-/// Presentation code can use this application-level contract to offer the
-/// explicit rule-repair operation only for a failure attributable to rule
-/// validation, without depending on a storage adapter.
-final class BackupAnalysisRuleValidationException extends FormatException {
-  const BackupAnalysisRuleValidationException(
-    super.message, {
-    this.canRepair = false,
-  });
-
-  /// Whether the persisted failure is known to be repairable by restoring
-  /// bundled definitions and activations.
-  final bool canRepair;
-
-  @override
-  String toString() => 'BackupAnalysisRuleValidationException: $message';
-}
-
 /// Raised when a validated backup cannot be published to device storage.
 ///
 /// The adapter deliberately exposes no path or filesystem details so the
@@ -73,34 +45,36 @@ final class BackupStorageException implements Exception {
 
 /// Raised when backup creation fails outside a known product-level category.
 ///
-/// Only the safe operation stage and exception type cross the application
-/// boundary. Exception messages and stack traces may contain private paths,
-/// platform payloads, or financial data and must remain in privacy-safe logs.
+/// Only the safe operation stage and bounded error code cross the application
+/// boundary. Exception messages, type names, and stack traces may contain
+/// private paths, platform payloads, or financial data and must remain in
+/// privacy-safe logs.
 final class BackupFailureException extends FormatException {
-  const BackupFailureException({required this.stage, required this.errorType})
+  const BackupFailureException({required this.stage, required this.errorCode})
     : super('Portable backup creation failed.');
 
   /// The bounded backup stage reported by the storage adapter.
   final String stage;
 
-  /// The exception class name, without its message or payload.
-  final String errorType;
+  /// A bounded, privacy-safe category for the underlying failure.
+  final String errorCode;
 }
 
 /// Raised when restore fails outside a known password or recovery category.
 ///
-/// Only the safe operation stage and exception type cross the application
-/// boundary. Exception messages and stack traces may contain private paths,
-/// platform payloads, or financial data and must remain in privacy-safe logs.
+/// Only the safe operation stage and bounded error code cross the application
+/// boundary. Exception messages, type names, and stack traces may contain
+/// private paths, platform payloads, or financial data and must remain in
+/// privacy-safe logs.
 final class RestoreFailureException extends FormatException {
-  const RestoreFailureException({required this.stage, required this.errorType})
+  const RestoreFailureException({required this.stage, required this.errorCode})
     : super('Backup restore failed.');
 
   /// The bounded restore stage reported by the storage adapter.
   final String stage;
 
-  /// The exception class name, without its message or payload.
-  final String errorType;
+  /// A bounded, privacy-safe category for the underlying failure.
+  final String errorCode;
 }
 
 /// Application orchestration shared by normal privacy controls and recovery.
@@ -110,18 +84,10 @@ final class WorkspaceDataService {
   const WorkspaceDataService(
     this.gateway, {
     required this.refreshSystemData,
-    this.repairAnalysisRulesCallback,
     this.consistencyGate,
   });
   final LocalDataGateway gateway;
   final Future<void> Function() refreshSystemData;
-
-  /// Explicitly repairs the installed bundled analysis rules.
-  ///
-  /// Backup creation deliberately does not call this callback. A backup is a
-  /// protective read-only operation against live financial data; callers must
-  /// obtain user approval before invoking a repair.
-  final Future<void> Function()? repairAnalysisRulesCallback;
   final AnalysisConsistencyGate? consistencyGate;
 
   bool get hasRecoverySafetyCopy => gateway.hasRecoverySafetyCopy;
@@ -143,37 +109,12 @@ final class WorkspaceDataService {
     () => gateway.createTemporaryBackup(fileName, password: password),
   );
 
-  /// Runs the separately approved analysis-rule repair operation.
-  Future<void> repairAnalysisRules() => _runConsistently(() async {
-    final repair = repairAnalysisRulesCallback;
-    if (repair == null) {
-      throw StateError('Bundled analysis rule repair is unavailable.');
-    }
-    await repair();
-  });
   Future<void> discardTemporaryBackup(String filePath) =>
       gateway.discardTemporaryBackup(filePath);
   Future<bool> isEncryptedBackup(String filePath) =>
       gateway.isEncryptedBackup(filePath);
   Future<BackupInspection> inspect(String filePath, {String? password}) =>
       gateway.inspect(filePath, password: password);
-  Future<EvidenceRecoveryPreview> inspectMissingEvidence(
-    String filePath, {
-    String? password,
-  }) => _runConsistently(
-    () => gateway.inspectMissingEvidence(filePath, password: password),
-  );
-  Future<EvidenceRecoveryResult> recoverMissingEvidence(
-    String filePath, {
-    String? password,
-    required EvidenceRecoveryPreview preview,
-  }) => _runConsistently(
-    () => gateway.recoverMissingEvidence(
-      filePath,
-      password: password,
-      preview: preview,
-    ),
-  );
   Future<LocalDataExportResult> exportAll() => gateway.exportAll();
 
   Future<void> _refresh(Future<void> Function()? refreshPresentation) async {
@@ -207,6 +148,8 @@ final class WorkspaceDataService {
         keptNewerLocalRows: result.keptNewerLocalRows,
         restoredEvidence: result.restoredEvidence,
         presentationRefreshFailed: true,
+        analysisRebuildFailed: result.analysisRebuildFailed,
+        warnings: result.warnings,
       );
     }
   });

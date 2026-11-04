@@ -1055,15 +1055,98 @@ class AppLocalizations {
           'Add more confirmed transactions to see a useful local summary.',
       'resetAllData': 'Erase all local data',
       'localDataControls': 'Local data controls',
-      'repairAnalysisRules': 'Repair analysis rules',
-      'repairAnalysisRulesSubtitle':
-          'Explicitly restore missing bundled definitions without changing your custom rules.',
-      'repairAnalysisRulesTitle': 'Repair bundled analysis rules?',
-      'repairAnalysisRulesBody':
-          'Butlerly will validate and transactionally restore missing bundled rule definitions. Your financial records and custom rule preferences will be preserved.',
-      'repairAnalysisRulesComplete': 'Analysis rules repaired successfully.',
-      'repairAnalysisRulesFailed':
-          'Analysis rules could not be repaired. No partial repair was kept.',
+      'dataIntegrityReports': 'Data Integrity Reports',
+      'dataIntegrityReportsBody':
+          'Review read-only findings about missing or inconsistent local data.',
+      'dataIntegrityRun': 'Run report',
+      'dataIntegrityRefresh': 'Refresh report',
+      'dataIntegrityLastScan': 'Last scan',
+      'dataIntegrityNoReport': 'No integrity report has been run yet.',
+      'dataIntegrityNoFindings': 'No integrity issues were found.',
+      'dataIntegrityFindingsSummary': '{count} finding(s) need attention.',
+      'dataIntegrityFindings': 'Findings',
+      'dataIntegrityHistory': 'Report history',
+      'dataIntegrityOperationDiagnostics': 'Recent operation warnings',
+      'dataIntegrityOperationDiagnosticsBody':
+          'Warnings recorded while creating or restoring a backup.',
+      'dataIntegrityNoHistory': 'No report history is available.',
+      'dataIntegrityLoadFailed': 'Unable to load integrity reports.',
+      'dataIntegrityScanFailed': 'The integrity report could not be refreshed.',
+      'dataIntegrityRecommendedAction': 'Recommended action',
+      'dataIntegrityAffectedRecords': 'Affected records',
+      'dataIntegrityRecordReference': '{type} reference: {id}',
+      'dataIntegrityRecordTypeTransaction': 'Transaction',
+      'dataIntegrityRecordTypeEvidence': 'Evidence',
+      'dataIntegrityRecordTypeAttachment': 'Attachment',
+      'dataIntegrityRecordTypeBudget': 'Budget',
+      'dataIntegrityRecordTypeCategory': 'Category',
+      'dataIntegrityRecordTypeMerchant': 'Merchant',
+      'dataIntegrityRecordTypeAnalysisRule': 'Analysis rule',
+      'dataIntegrityRecordTypeRelated': 'Related record',
+      'dataIntegritySeverityInfo': 'Information',
+      'dataIntegritySeverityWarning': 'Warning',
+      'dataIntegritySeverityError': 'Error',
+      'dataIntegrityCategoryMissingReceipt': 'Missing receipts',
+      'dataIntegrityCategoryMissingAttachment': 'Missing attachments',
+      'dataIntegrityCategoryInvalidFileReference': 'Invalid file references',
+      'dataIntegrityCategoryMissingRecord': 'Missing referenced records',
+      'dataIntegrityCategoryAnalysis': 'Analysis inconsistencies',
+      'dataIntegrityCategoryCustomConfiguration':
+          'Invalid custom configurations',
+      'dataIntegrityCategoryRelationship': 'Relationship inconsistencies',
+      'dataIntegrityFindingMissingReceipt':
+          'A receipt linked to a transaction could not be found in local storage.',
+      'dataIntegrityFindingMissingAttachment':
+          'An attachment linked to a record could not be found in local storage.',
+      'dataIntegrityFindingInvalidFileReference':
+          'An attachment has an invalid local file reference.',
+      'dataIntegrityFindingUnsafeFileReference':
+          'An attachment points to an unsafe local file reference.',
+      'dataIntegrityFindingMissingReferencedRecord':
+          'One or more records refer to local records that are unavailable.',
+      'dataIntegrityFindingInvalidBudgetScope':
+          'A budget has an invalid scope reference.',
+      'dataIntegrityFindingMissingBudgetRecord':
+          'A budget points to a record that is unavailable.',
+      'dataIntegrityFindingInvalidRuleDefinition':
+          'An analysis rule definition is incomplete or invalid.',
+      'dataIntegrityFindingProvenanceMismatch':
+          'An analysis rule provenance record does not match its definition.',
+      'dataIntegrityFindingActiveRuleMissing':
+          'An enabled analysis rule is missing its active definition.',
+      'dataIntegrityFindingInvalidRuleConfiguration':
+          'An analysis rule configuration is not valid JSON.',
+      'dataIntegrityFindingRelationshipInconsistency':
+          'A local record contains an inconsistent relationship.',
+      'dataIntegrityFindingAnalysisRebuildFailed':
+          'Derived analysis could not be rebuilt after restore.',
+      'dataIntegrityActionAttachEvidence':
+          'Attach the original file again from the affected record.',
+      'dataIntegrityActionReviewEvidence':
+          'Review the affected record and attach the file again.',
+      'dataIntegrityActionReviewRelatedData':
+          'Review the affected records and restore the missing related data from a trusted source.',
+      'dataIntegrityActionReviewBudgetScope':
+          'Review the budget scope and choose an available category, subcategory, or merchant.',
+      'dataIntegrityActionReviewBudgetRecord':
+          'Review the budget and select an available record for its scope.',
+      'dataIntegrityActionReviewRuleSource':
+          'Review the rule configuration or reinstall the rule from its original source.',
+      'dataIntegrityActionReviewRuleProvenance':
+          'Review the rule source and configuration before relying on its results.',
+      'dataIntegrityActionReviewActiveRule':
+          'Review the rule configuration before running analysis again.',
+      'dataIntegrityActionReviewRuleConfiguration':
+          'Review the rule configuration and correct it before running analysis.',
+      'dataIntegrityActionReviewRelationship':
+          'Review the affected records and correct the relationship manually.',
+      'dataIntegrityActionRetryAnalysis':
+          'Review Data Integrity Reports and retry analysis when available.',
+      'dataIntegrityFindingUnknown':
+          'This data integrity finding needs review.',
+      'dataIntegrityActionReviewLocalData':
+          'Review the affected local data and choose a safe corrective action.',
+      'viewReports': 'View reports',
       'privacyScopeBody':
           'Your finance records and evidence stay on this device. Review the scope before exporting or erasing them.',
       'exportScopeBody':
@@ -2088,13 +2171,69 @@ class AppLocalizations {
       'notEnoughInsightDataBody': '添加更多已确认交易以查看有用的本地摘要。',
       'resetAllData': '清除所有本地数据',
       'localDataControls': '本地数据控制',
-      'repairAnalysisRules': '修复分析规则',
-      'repairAnalysisRulesSubtitle': '明确恢复缺失的内置定义，不更改您的自定义规则。',
-      'repairAnalysisRulesTitle': '修复内置分析规则？',
-      'repairAnalysisRulesBody':
-          'Butlerly 将验证并以事务方式恢复缺失的内置规则定义。您的财务记录和自定义规则偏好将得到保留。',
-      'repairAnalysisRulesComplete': '分析规则已成功修复。',
-      'repairAnalysisRulesFailed': '无法修复分析规则。未保留部分修复结果。',
+      'dataIntegrityReports': '数据完整性报告',
+      'dataIntegrityReportsBody': '查看关于本地数据缺失或不一致的只读报告。',
+      'dataIntegrityRun': '运行报告',
+      'dataIntegrityRefresh': '刷新报告',
+      'dataIntegrityLastScan': '上次扫描',
+      'dataIntegrityNoReport': '尚未运行数据完整性报告。',
+      'dataIntegrityNoFindings': '未发现数据完整性问题。',
+      'dataIntegrityFindingsSummary': '有 {count} 项发现需要关注。',
+      'dataIntegrityFindings': '发现',
+      'dataIntegrityHistory': '报告历史',
+      'dataIntegrityOperationDiagnostics': '最近的操作警告',
+      'dataIntegrityOperationDiagnosticsBody': '创建或恢复备份时记录的警告。',
+      'dataIntegrityNoHistory': '暂无报告历史。',
+      'dataIntegrityLoadFailed': '无法加载数据完整性报告。',
+      'dataIntegrityScanFailed': '无法刷新数据完整性报告。',
+      'dataIntegrityRecommendedAction': '建议操作',
+      'dataIntegrityAffectedRecords': '受影响的记录',
+      'dataIntegrityRecordReference': '{type}引用：{id}',
+      'dataIntegrityRecordTypeTransaction': '交易',
+      'dataIntegrityRecordTypeEvidence': '凭证',
+      'dataIntegrityRecordTypeAttachment': '附件',
+      'dataIntegrityRecordTypeBudget': '预算',
+      'dataIntegrityRecordTypeCategory': '类别',
+      'dataIntegrityRecordTypeMerchant': '商户',
+      'dataIntegrityRecordTypeAnalysisRule': '分析规则',
+      'dataIntegrityRecordTypeRelated': '相关记录',
+      'dataIntegritySeverityInfo': '信息',
+      'dataIntegritySeverityWarning': '警告',
+      'dataIntegritySeverityError': '错误',
+      'dataIntegrityCategoryMissingReceipt': '缺失收据',
+      'dataIntegrityCategoryMissingAttachment': '缺失附件',
+      'dataIntegrityCategoryInvalidFileReference': '无效文件引用',
+      'dataIntegrityCategoryMissingRecord': '缺失被引用记录',
+      'dataIntegrityCategoryAnalysis': '分析不一致',
+      'dataIntegrityCategoryCustomConfiguration': '无效自定义配置',
+      'dataIntegrityCategoryRelationship': '关系不一致',
+      'dataIntegrityFindingMissingReceipt': '无法在本地存储中找到与交易关联的收据。',
+      'dataIntegrityFindingMissingAttachment': '无法在本地存储中找到与记录关联的附件。',
+      'dataIntegrityFindingInvalidFileReference': '附件包含无效的本地文件引用。',
+      'dataIntegrityFindingUnsafeFileReference': '附件指向不安全的本地文件引用。',
+      'dataIntegrityFindingMissingReferencedRecord': '一个或多个记录引用了不可用的本地记录。',
+      'dataIntegrityFindingInvalidBudgetScope': '预算包含无效的范围引用。',
+      'dataIntegrityFindingMissingBudgetRecord': '预算指向不可用的记录。',
+      'dataIntegrityFindingInvalidRuleDefinition': '分析规则定义不完整或无效。',
+      'dataIntegrityFindingProvenanceMismatch': '分析规则来源记录与其定义不匹配。',
+      'dataIntegrityFindingActiveRuleMissing': '启用的分析规则缺少其活动定义。',
+      'dataIntegrityFindingInvalidRuleConfiguration': '分析规则配置不是有效的 JSON。',
+      'dataIntegrityFindingRelationshipInconsistency': '本地记录包含不一致的关系。',
+      'dataIntegrityFindingAnalysisRebuildFailed': '恢复后无法重新生成派生分析。',
+      'dataIntegrityActionAttachEvidence': '请从受影响的记录重新附加原始文件。',
+      'dataIntegrityActionReviewEvidence': '请检查受影响的记录并重新附加文件。',
+      'dataIntegrityActionReviewRelatedData': '请检查受影响的记录，并从可信来源恢复缺失的相关数据。',
+      'dataIntegrityActionReviewBudgetScope': '请检查预算范围，并选择可用的类别、子类别或商户。',
+      'dataIntegrityActionReviewBudgetRecord': '请检查预算，并为其范围选择可用的记录。',
+      'dataIntegrityActionReviewRuleSource': '请检查规则配置，或从其原始来源重新安装规则。',
+      'dataIntegrityActionReviewRuleProvenance': '在依赖分析结果前，请检查规则来源和配置。',
+      'dataIntegrityActionReviewActiveRule': '请检查规则配置，然后再次运行分析。',
+      'dataIntegrityActionReviewRuleConfiguration': '请检查规则配置并在再次运行分析前修正它。',
+      'dataIntegrityActionReviewRelationship': '请检查受影响的记录并手动修正关系。',
+      'dataIntegrityActionRetryAnalysis': '请查看数据完整性报告，并在可用时重试分析。',
+      'dataIntegrityFindingUnknown': '此数据完整性发现需要处理。',
+      'dataIntegrityActionReviewLocalData': '请检查受影响的本地数据，并选择安全的处理方式。',
+      'viewReports': '查看报告',
       'privacyScopeBody': '您的财务记录和凭证保留在此设备上。导出或清除前请检查范围。',
       'exportScopeBody': '将财务记录、偏好、来源记录和本地凭证导出到 账房先生 文档文件夹。',
       'eraseScopeBody': '永久删除财务记录、偏好和所有本地存储的凭证文件。',
@@ -3249,16 +3388,103 @@ class AppLocalizations {
           'Añade más transacciones confirmadas para ver un resumen.',
       'resetAllData': 'Borrar todos los datos locales',
       'localDataControls': 'Controles de datos locales',
-      'repairAnalysisRules': 'Reparar reglas de análisis',
-      'repairAnalysisRulesSubtitle':
-          'Restaura explícitamente definiciones integradas que falten sin cambiar tus reglas personalizadas.',
-      'repairAnalysisRulesTitle': '¿Reparar las reglas de análisis integradas?',
-      'repairAnalysisRulesBody':
-          'Butlerly validará y restaurará de forma transaccional las definiciones integradas que falten. Tus registros financieros y preferencias de reglas personalizadas se conservarán.',
-      'repairAnalysisRulesComplete':
-          'Las reglas de análisis se repararon correctamente.',
-      'repairAnalysisRulesFailed':
-          'No se pudieron reparar las reglas de análisis. No se conservó ninguna reparación parcial.',
+      'dataIntegrityReports': 'Informes de integridad de datos',
+      'dataIntegrityReportsBody':
+          'Revisa hallazgos de solo lectura sobre datos locales faltantes o inconsistentes.',
+      'dataIntegrityRun': 'Ejecutar informe',
+      'dataIntegrityRefresh': 'Actualizar informe',
+      'dataIntegrityLastScan': 'Último análisis',
+      'dataIntegrityNoReport':
+          'Aún no se ha ejecutado ningún informe de integridad.',
+      'dataIntegrityNoFindings': 'No se encontraron problemas de integridad.',
+      'dataIntegrityFindingsSummary': '{count} hallazgo(s) requieren atención.',
+      'dataIntegrityFindings': 'Hallazgos',
+      'dataIntegrityHistory': 'Historial de informes',
+      'dataIntegrityOperationDiagnostics':
+          'Advertencias de operaciones recientes',
+      'dataIntegrityOperationDiagnosticsBody':
+          'Advertencias registradas al crear o restaurar una copia local.',
+      'dataIntegrityNoHistory': 'No hay historial de informes disponible.',
+      'dataIntegrityLoadFailed':
+          'No se pueden cargar los informes de integridad.',
+      'dataIntegrityScanFailed':
+          'No se pudo actualizar el informe de integridad.',
+      'dataIntegrityRecommendedAction': 'Acción recomendada',
+      'dataIntegrityAffectedRecords': 'Registros afectados',
+      'dataIntegrityRecordReference': 'Referencia de {type}: {id}',
+      'dataIntegrityRecordTypeTransaction': 'Transacción',
+      'dataIntegrityRecordTypeEvidence': 'Evidencia',
+      'dataIntegrityRecordTypeAttachment': 'Archivo adjunto',
+      'dataIntegrityRecordTypeBudget': 'Presupuesto',
+      'dataIntegrityRecordTypeCategory': 'Categoría',
+      'dataIntegrityRecordTypeMerchant': 'Comercio',
+      'dataIntegrityRecordTypeAnalysisRule': 'Regla de análisis',
+      'dataIntegrityRecordTypeRelated': 'Registro relacionado',
+      'dataIntegritySeverityInfo': 'Información',
+      'dataIntegritySeverityWarning': 'Advertencia',
+      'dataIntegritySeverityError': 'Error',
+      'dataIntegrityCategoryMissingReceipt': 'Recibos faltantes',
+      'dataIntegrityCategoryMissingAttachment': 'Archivos adjuntos faltantes',
+      'dataIntegrityCategoryInvalidFileReference':
+          'Referencias de archivo no válidas',
+      'dataIntegrityCategoryMissingRecord': 'Registros referenciados faltantes',
+      'dataIntegrityCategoryAnalysis': 'Inconsistencias de análisis',
+      'dataIntegrityCategoryCustomConfiguration':
+          'Configuraciones personalizadas no válidas',
+      'dataIntegrityCategoryRelationship': 'Inconsistencias de relaciones',
+      'dataIntegrityFindingMissingReceipt':
+          'No se pudo encontrar localmente un recibo vinculado a una transacción.',
+      'dataIntegrityFindingMissingAttachment':
+          'No se pudo encontrar localmente un archivo adjunto vinculado a un registro.',
+      'dataIntegrityFindingInvalidFileReference':
+          'Un archivo adjunto tiene una referencia de archivo local no válida.',
+      'dataIntegrityFindingUnsafeFileReference':
+          'Un archivo adjunto apunta a una referencia de archivo local insegura.',
+      'dataIntegrityFindingMissingReferencedRecord':
+          'Uno o más registros hacen referencia a registros locales que no están disponibles.',
+      'dataIntegrityFindingInvalidBudgetScope':
+          'Un presupuesto tiene una referencia de alcance no válida.',
+      'dataIntegrityFindingMissingBudgetRecord':
+          'Un presupuesto apunta a un registro que no está disponible.',
+      'dataIntegrityFindingInvalidRuleDefinition':
+          'La definición de una regla de análisis está incompleta o no es válida.',
+      'dataIntegrityFindingProvenanceMismatch':
+          'Un registro de procedencia de una regla de análisis no coincide con su definición.',
+      'dataIntegrityFindingActiveRuleMissing':
+          'A una regla de análisis habilitada le falta su definición activa.',
+      'dataIntegrityFindingInvalidRuleConfiguration':
+          'La configuración de una regla de análisis no es JSON válido.',
+      'dataIntegrityFindingRelationshipInconsistency':
+          'Un registro local contiene una relación inconsistente.',
+      'dataIntegrityFindingAnalysisRebuildFailed':
+          'No se pudo reconstruir el análisis derivado después de restaurar.',
+      'dataIntegrityActionAttachEvidence':
+          'Vuelve a adjuntar el archivo original desde el registro afectado.',
+      'dataIntegrityActionReviewEvidence':
+          'Revisa el registro afectado y vuelve a adjuntar el archivo.',
+      'dataIntegrityActionReviewRelatedData':
+          'Revisa los registros afectados y restaura los datos relacionados faltantes desde una fuente confiable.',
+      'dataIntegrityActionReviewBudgetScope':
+          'Revisa el alcance del presupuesto y elige una categoría, subcategoría o comercio disponible.',
+      'dataIntegrityActionReviewBudgetRecord':
+          'Revisa el presupuesto y selecciona un registro disponible para su alcance.',
+      'dataIntegrityActionReviewRuleSource':
+          'Revisa la configuración de la regla o vuelve a instalarla desde su fuente original.',
+      'dataIntegrityActionReviewRuleProvenance':
+          'Revisa el origen y la configuración de la regla antes de confiar en sus resultados.',
+      'dataIntegrityActionReviewActiveRule':
+          'Revisa la configuración de la regla antes de volver a ejecutar el análisis.',
+      'dataIntegrityActionReviewRuleConfiguration':
+          'Revisa la configuración de la regla y corrígela antes de volver a ejecutar el análisis.',
+      'dataIntegrityActionReviewRelationship':
+          'Revisa los registros afectados y corrige la relación manualmente.',
+      'dataIntegrityActionRetryAnalysis':
+          'Revisa los informes de integridad de datos y vuelve a intentar el análisis cuando esté disponible.',
+      'dataIntegrityFindingUnknown':
+          'Este hallazgo de integridad de datos necesita revisión.',
+      'dataIntegrityActionReviewLocalData':
+          'Revisa los datos locales afectados y elige una acción correctiva segura.',
+      'viewReports': 'Ver informes',
       'privacyScopeBody':
           'Tus registros financieros y comprobantes permanecen en este dispositivo. Revisa el alcance antes de exportarlos o borrarlos.',
       'exportScopeBody':

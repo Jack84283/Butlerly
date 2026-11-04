@@ -341,6 +341,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       title: l10n.text('managePrivacyData'),
                       onTap: () => context.go('/privacy-data'),
                     ),
+                    _DesktopMoreRow(
+                      title: l10n.text('dataIntegrityReports'),
+                      onTap: () => context.go('/data-integrity-reports'),
+                    ),
                   ],
                 ),
                 const SizedBox(height: ButlerlySpacing.small),
@@ -660,6 +664,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               title: context.l10n.text('privacyAndData'),
               subtitle: context.l10n.text('privacyAndDataBody'),
               onTap: () => context.go('/privacy-data'),
+            ),
+            _SettingsRow(
+              icon: Icons.fact_check_outlined,
+              title: context.l10n.text('dataIntegrityReports'),
+              subtitle: context.l10n.text('dataIntegrityReportsBody'),
+              onTap: () => context.go('/data-integrity-reports'),
             ),
           ],
         ),

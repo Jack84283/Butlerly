@@ -51,10 +51,11 @@ Future<void> _validateDestinationPath(File destination) async {
   }
 }
 
-String _stagingPath(String destinationPath, String operationId) => path.join(
-  path.dirname(path.normalize(path.absolute(destinationPath))),
-  '.butlerly-backup-stage-$operationId.tmp',
-);
+String _stagingPath(String privateDirectoryPath, String operationId) =>
+    path.join(
+      path.normalize(path.absolute(privateDirectoryPath)),
+      '.portable-backup-stage-$operationId.tmp',
+    );
 
 Future<bool> _sameFileIdentity(File first, File second) async {
   if (!await first.exists() || !await second.exists()) return false;
@@ -88,11 +89,14 @@ Future<void> _validateDestinationIsolation({
   final sourcePath = path.normalize(path.absolute(source.path));
   final previousPath = path.normalize(path.absolute(previous.path));
   if (destinationPath == privateRoot ||
-      path.isWithin(privateRoot, destinationPath) ||
-      stagingPath == privateRoot ||
-      path.isWithin(privateRoot, stagingPath)) {
+      path.isWithin(privateRoot, destinationPath)) {
     throw const FormatException(
       'Portable backup destination must not use Butlerly private storage.',
+    );
+  }
+  if (stagingPath == privateRoot || !path.isWithin(privateRoot, stagingPath)) {
+    throw const FormatException(
+      'Portable backup staging must use Butlerly private storage.',
     );
   }
   if (destinationPath == sourcePath ||
@@ -185,7 +189,12 @@ Future<void> _atomicCopy({
   if (!await _sameFileContents(source, staging)) {
     throw StateError('Portable backup staging copy does not match its source.');
   }
-  await staging.rename(destination.path);
+  // Keep the staging artifact in Butlerly-owned storage. A rename from the
+  // private directory into a user-selected destination can cross volumes and,
+  // on macOS, can also require a second sandbox permission. Copying the
+  // validated staged bytes preserves the publication recovery protocol without
+  // creating a sidecar beside the selected destination.
+  await copy(staging, destination.path);
   if (!await _sameFileContents(source, destination)) {
     throw StateError('Published backup does not match its source.');
   }
@@ -536,7 +545,12 @@ final class BackupPublicationRecoveryManager {
       for (final recovery in recoveries) {
         names
           ..add(path.basename(recovery.sourcePath))
-          ..add(path.basename(recovery.previousPath));
+          ..add(path.basename(recovery.previousPath))
+          ..add(
+            path.basename(
+              _stagingPath(privateDirectory.path, recovery.operationId),
+            ),
+          );
       }
     } on BackupPublicationRecoveryRequiredException {
       // Keep every portable artifact when metadata is unreadable. Deleting
@@ -554,7 +568,9 @@ final class BackupPublicationRecoveryManager {
     final source = File(recovery.sourcePath);
     final destination = File(recovery.destinationPath);
     final previous = File(recovery.previousPath);
-    final staging = File(_stagingPath(destination.path, recovery.operationId));
+    final staging = File(
+      _stagingPath(privateDirectory.path, recovery.operationId),
+    );
     await _validateDestinationPath(destination);
     await _validateDestinationPath(staging);
     await _validateDestinationIsolation(
@@ -675,7 +691,7 @@ final class BackupPublicationRecoveryManager {
     File previous,
   ) async {
     final staging = File(
-      _stagingPath(recovery.destinationPath, recovery.operationId),
+      _stagingPath(privateDirectory.path, recovery.operationId),
     );
     await _validateDestinationPath(staging);
     if (await staging.exists()) await staging.delete();
@@ -752,7 +768,7 @@ final class SandboxedBackupDestinationWriter
     required String operationId,
   }) async {
     await _validateDestinationPath(destination);
-    final staging = File(_stagingPath(destination.path, operationId));
+    final staging = File(_stagingPath(privateDirectory.path, operationId));
     await _validateDestinationPath(staging);
     final previous = File(
       path.join(

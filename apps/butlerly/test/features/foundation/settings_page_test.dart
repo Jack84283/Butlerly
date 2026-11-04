@@ -220,20 +220,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(appRouter.routeInformationProvider.value.uri.path, '/settings');
     expect(find.byType(SettingsPage), findsOneWidget);
-    for (var attempt = 0; attempt < 10; attempt++) {
-      if (find.text('Budget Settings').evaluate().isNotEmpty) break;
-      await tester.drag(find.byType(CustomScrollView), const Offset(0, -300));
-      await tester.pump();
-    }
-    expect(find.text('Budget Settings'), findsOneWidget);
-    await tester.tap(
-      find
-          .ancestor(
-            of: find.text('Budget Settings'),
-            matching: find.byType(InkWell),
-          )
-          .first,
+    await tester.scrollUntilVisible(
+      find.text('Budget Settings'),
+      400,
+      scrollable: find.byType(Scrollable).first,
     );
+    expect(find.text('Budget Settings'), findsOneWidget);
+    await tester.tap(find.text('Budget Settings'));
     await tester.pumpAndSettle();
     expect(appRouter.routeInformationProvider.value.uri.path, '/budgets');
     expect(find.byIcon(Icons.arrow_back_rounded), findsOneWidget);

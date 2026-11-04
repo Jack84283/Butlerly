@@ -135,11 +135,12 @@ void main() {
           'analysis_rule_definitions',
         );
         await installBundledAnalysisRules(InstallBuiltInRules(rules));
-        await services<WorkspaceDataService>().restore(
+        final result = await services<WorkspaceDataService>().restore(
           backup.path,
           mode: mode,
           refreshPresentation: expectSummary,
         );
+        expect(result.analysisRebuildFailed, isFalse);
         await expectSummary();
         for (final old in historical) {
           final persisted = await database.database.query(
@@ -283,7 +284,7 @@ void main() {
   );
 
   test(
-    'rule installation failure keeps restore gated and preserves financial data',
+    'rule installation failure reports a rebuild warning and preserves data',
     () async {
       final source = await rootBundle.loadString(
         'assets/analysis_rules/metrics/ANL-R001.yaml',
@@ -299,20 +300,18 @@ void main() {
       final backup = File('${root.path}/conflicting.butlerlybackup');
       await services<LocalBackupManager>().createBackup(backup);
       var refreshed = false;
-      await expectLater(
-        services<WorkspaceDataService>().restore(
-          backup.path,
-          mode: LocalRestoreMode.replace,
-          refreshPresentation: () async {
-            refreshed = true;
-          },
-        ),
-        throwsA(isA<RestoreRecoveryRequiredException>()),
+      final result = await services<WorkspaceDataService>().restore(
+        backup.path,
+        mode: LocalRestoreMode.replace,
+        refreshPresentation: () async {
+          refreshed = true;
+        },
       );
-      expect(refreshed, isFalse);
+      expect(result.analysisRebuildFailed, isTrue);
+      expect(refreshed, isTrue);
       expect(
         services<LocalBackupManager>().recoveryState.isRecoveryRequired,
-        isTrue,
+        isFalse,
       );
       expect(await database.database.query('transactions'), hasLength(1));
       final persisted = (await rules.listDefinitions()).singleWhere(
@@ -326,7 +325,7 @@ void main() {
   );
 
   test(
-    'restore rule refresh rolls back earlier installs on a later conflict',
+    'restore rule refresh keeps source data when a later conflict remains',
     () async {
       final source = await rootBundle.loadString(
         'assets/analysis_rules/metrics/ANL-R002.yaml',
@@ -342,12 +341,14 @@ void main() {
       final backup = File('${root.path}/conflicting-late.butlerlybackup');
       await services<LocalBackupManager>().createBackup(backup);
 
-      await expectLater(
-        services<WorkspaceDataService>().restore(
-          backup.path,
-          mode: LocalRestoreMode.replace,
-        ),
-        throwsA(isA<RestoreRecoveryRequiredException>()),
+      final result = await services<WorkspaceDataService>().restore(
+        backup.path,
+        mode: LocalRestoreMode.replace,
+      );
+      expect(result.analysisRebuildFailed, isTrue);
+      expect(
+        services<LocalBackupManager>().recoveryState.isRecoveryRequired,
+        isFalse,
       );
 
       expect(

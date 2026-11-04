@@ -77,6 +77,14 @@ Butlerly follows the accessibility expectations maintained in `DESIGN.md` and en
 - Extraction and attachment are distinct: attaching a file never means extraction succeeded. Original transaction values, provenance, and user corrections remain authoritative.
 - Financial and data-loss semantics must be verified against current implementation and tests, rather than reconstructed from retired milestone reports.
 
+### Backup, restore, and data integrity
+
+- Portable backup and restore are source-data workflows, independent from integrity diagnostics. They do not run a comprehensive integrity scan or repair action.
+- Backups include source records, user rules, configuration, settings, and available evidence metadata/files. Missing optional receipts, attachments, evidence, or references are preserved as unresolved metadata, reported as privacy-safe warnings, and do not block backup creation.
+- Derived analysis findings/results and caches are excluded from portable backups. Restore rebuilds derived analysis after source activation; if rebuilding fails, restore remains committed and the user is directed to Data Integrity Reports.
+- Settings exposes a standalone offline, read-only Data Integrity Reports surface. It scans local SQLite and app-owned evidence without changing source financial records, persists timestamped report history, groups findings by category/severity, and provides affected-record context and recommended next actions.
+- Backup and restore warnings link to Data Integrity Reports. They never silently repair rules, remove unresolved references, or overwrite user-owned custom configuration.
+
 ### Finance V1 release-readiness invariants
 
 - Historical Analysis, Insights, calendars, reports, and exports use one deterministic canonical-selection policy over the economic history of Active and Archived transactions. Permanently deleted records, receipt-side records already linked to a payment, and noncanonical duplicate members are excluded; Review, Uncategorized, reconciliation candidates, and duplicate candidate generation remain Active-only.

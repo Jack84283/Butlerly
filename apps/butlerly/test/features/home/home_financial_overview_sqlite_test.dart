@@ -155,7 +155,6 @@ void main() {
     'Home restores the bundled category definition when a custom category rule is active',
     () async {
       final rules = SqliteAnalysisRuleRepository(database.persistenceDatabase);
-      await services<WorkspaceDataService>().repairAnalysisRules();
 
       final bundled = await rootBundle.loadString(
         'assets/analysis_rules/metrics/ANL-R010.yaml',

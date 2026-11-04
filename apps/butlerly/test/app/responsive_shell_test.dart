@@ -1763,7 +1763,11 @@ void main() {
     await _pumpAt(tester, const Size(1200, 800));
     await tester.tap(find.byKey(const ValueKey('wide-more-navigation')));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Legal & licenses'));
+    final pageScroll = tester.state<ScrollableState>(
+      find.byType(Scrollable).last,
+    );
+    pageScroll.position.jumpTo(pageScroll.position.maxScrollExtent);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Legal & licenses'));
     await tester.pumpAndSettle();
     expect(find.byType(LegalLicensesPage), findsOneWidget);

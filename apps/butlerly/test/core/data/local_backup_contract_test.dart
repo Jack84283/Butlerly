@@ -34,8 +34,45 @@ void main() {
     expect((manifest['backupId']! as String), isNotEmpty);
     expect(manifest['appVersion'], '1.0.0');
     expect(manifest['appBuild'], '1');
-    expect(manifest['schemaVersion'], 17);
+    expect(manifest['schemaVersion'], 18);
   });
+
+  test(
+    'backup warns when a correctly hashed custom rule is semantically malformed',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.database.database.insert('analysis_rule_definitions', {
+        'rule_id': 'ANL-R997',
+        'rule_version': '1.0.0',
+        'schema_version': '1.0.0',
+        'source_type': 'user',
+        'definition': '{}',
+        'canonical_definition': '{}',
+        'definition_hash': sha256Bytes(utf8.encode('{}')),
+        'validation_status': 'valid',
+        'validation_diagnostics': null,
+        'installed_at': '2026-11-03T12:00:00.000Z',
+        'retired_at': null,
+      });
+      final backup = File(
+        path.join(fixture.root.path, 'malformed-custom-rule.butlerlybackup'),
+      );
+
+      await fixture.manager.createBackup(backup);
+
+      final inspection = await fixture.manager.inspect(backup);
+      expect(
+        inspection.warnings
+            .where((warning) => warning.code == 'invalid_custom_analysis_rule')
+            .single
+            .affectedRecords
+            .single
+            .id,
+        'ANL-R997@1.0.0',
+      );
+    },
+  );
 
   test('backup and restore preserves the optional financial profile', () async {
     final fixture = await _Fixture.create();
@@ -220,7 +257,7 @@ void main() {
   );
 
   test(
-    'backup and replace restore preserves analysis finding lifecycle',
+    'backup and restore preserves user-reviewed finding decisions only',
     () async {
       final fixture = await _Fixture.create();
       addTearDown(fixture.dispose);
@@ -271,7 +308,6 @@ void main() {
         orderBy: 'id',
       );
       expect(rows, [
-        {'id': 'finding-active-351', 'lifecycle': 'active'},
         {'id': 'finding-dismissed-351', 'lifecycle': 'dismissed'},
       ]);
     },
@@ -360,166 +396,74 @@ void main() {
   );
 
   test(
-    'restore rejects malformed analysis definitions and findings before mutation',
+    'invalid custom analysis data is preserved with a backup warning',
     () async {
       final fixture = await _Fixture.create();
       addTearDown(fixture.dispose);
-      final rules = SqliteAnalysisRuleRepository(
-        fixture.database.persistenceDatabase,
-      );
-      final installation = await installBundledAnalysisRules(
-        InstallBuiltInRules(rules),
-      );
-      expect(installation.diagnostics, isEmpty);
-      final definition = (await fixture.database.database.query(
-        'analysis_rule_definitions',
-        where: 'rule_id = ?',
-        whereArgs: ['ANL-R001'],
-        limit: 1,
-      )).single;
       await fixture.insertTransaction('tx-analysis-validation-351');
-      await _insertFinding(
-        fixture,
-        id: 'finding-validation-351',
-        lifecycle: 'active',
-        definitionHash: definition['definition_hash']! as String,
-        ruleVersion: definition['rule_version']! as String,
+      await fixture.database.database.insert('analysis_rule_definitions', {
+        'rule_id': 'custom.invalid-351',
+        'rule_version': '1.0.0',
+        'schema_version': '1',
+        'source_type': 'custom',
+        'definition': 'not-json',
+        'canonical_definition': 'not-json',
+        'definition_hash': List.filled(64, '0').join(),
+        'validation_status': 'invalid',
+        'validation_diagnostics': '[{"code":"invalid"}]',
+        'installed_at': '2026-10-30T00:00:00.000Z',
+        'retired_at': null,
+      });
+      await fixture.database.database.insert('analysis_rule_configurations', {
+        'rule_id': 'custom.invalid-351',
+        'configuration': '{invalid',
+        'updated_at': '2026-10-30T00:00:00.000Z',
+      });
+      final backup = File(
+        path.join(fixture.root.path, 'invalid-custom-analysis.butlerlybackup'),
       );
 
-      final cases = <String, void Function(Map<String, Object?>)>{
-        'canonical': (tables) {
-          final rows = (tables['analysis_rule_definitions']! as List)
-              .cast<Map>();
-          rows.first['canonical_definition'] = 'not-json';
-        },
-        'lifecycle': (tables) {
-          final rows = (tables['analysis_findings']! as List).cast<Map>();
-          rows.single['lifecycle'] = 'unknown';
-        },
-        'rule-reference': (tables) {
-          final rows = (tables['analysis_findings']! as List).cast<Map>();
-          rows.single['rule_id'] = 'ANL-MISSING-351';
-        },
-        'reversed-period': (tables) {
-          final rows = (tables['analysis_findings']! as List).cast<Map>();
-          rows.single['period_start'] = '2026-10-31';
-          rows.single['period_end'] = '2026-10-30';
-        },
-        'invalid-timezone': (tables) {
-          final rows = (tables['analysis_findings']! as List).cast<Map>();
-          rows.single['time_zone_id'] = 'Mars/Phobos';
-        },
-      };
-      for (final entry in cases.entries) {
-        final backup = File(
-          path.join(
-            fixture.root.path,
-            'invalid-analysis-${entry.key}.butlerly',
-          ),
-        );
-        await fixture.manager.createBackup(backup);
-        await _rewriteBackupMetadata(backup, (metadata) {
-          final tables = (metadata['tables']! as Map).cast<String, Object?>();
-          entry.value(tables);
-        });
-
-        await expectLater(
-          fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
-          throwsA(isA<FormatException>()),
-        );
-        expect(
-          await fixture.database.database.query(
-            'transactions',
-            where: 'id = ?',
-            whereArgs: ['tx-analysis-validation-351'],
-          ),
-          hasLength(1),
-        );
-        expect(
-          await fixture.database.database.query(
-            'analysis_findings',
-            where: 'id = ?',
-            whereArgs: ['finding-validation-351'],
-          ),
-          hasLength(1),
-        );
-      }
-    },
-  );
-
-  test(
-    'encrypted production restore rejects an unlinked finding evidence reference',
-    () async {
-      final fixture = await _Fixture.create();
-      addTearDown(fixture.dispose);
-      final rules = SqliteAnalysisRuleRepository(
-        fixture.database.persistenceDatabase,
+      await fixture.manager.createBackup(backup);
+      final inspection = await fixture.manager.inspect(backup);
+      expect(
+        inspection.warnings.map((warning) => warning.code),
+        containsAll(<String>[
+          'invalid_custom_analysis_rule',
+          'invalid_custom_configuration',
+        ]),
       );
-      final installation = await installBundledAnalysisRules(
-        InstallBuiltInRules(rules),
-      );
-      expect(installation.diagnostics, isEmpty);
-      final definition = (await fixture.database.database.query(
+
+      await fixture.database.database.delete(
         'analysis_rule_definitions',
         where: 'rule_id = ?',
-        whereArgs: ['ANL-R001'],
-        limit: 1,
-      )).single;
-      await fixture.insertTransaction('tx-analysis-evidence-351');
-      await fixture.database.database.insert('evidence_items', {
-        'id': 'evidence-not-linked-351',
-        'type': 'receipt',
-        'original_name': 'receipt.txt',
-        'media_type': 'text/plain',
-        'provenance_id': 'tx-analysis-evidence-351-provenance',
-        'created_at': '2026-10-30T00:00:00.000Z',
-        'source_language': null,
-        'local_file_name': null,
-      });
-      await _insertFinding(
-        fixture,
-        id: 'finding-evidence-351',
-        lifecycle: 'active',
-        definitionHash: definition['definition_hash']! as String,
-        ruleVersion: definition['rule_version']! as String,
+        whereArgs: ['custom.invalid-351'],
       );
-      final plain = File(
-        path.join(fixture.root.path, 'invalid.butlerlybackup'),
+      await fixture.database.database.delete(
+        'analysis_rule_configurations',
+        where: 'rule_id = ?',
+        whereArgs: ['custom.invalid-351'],
       );
-      final encrypted = File(path.join(fixture.root.path, 'invalid.butlerly'));
-      await fixture.manager.createBackup(plain);
-      await _rewriteBackupMetadata(plain, (metadata) {
-        final tables = (metadata['tables']! as Map).cast<String, Object?>();
-        final rows = (tables['analysis_findings']! as List).cast<Map>();
-        rows.single['payload'] = jsonEncode({
-          'evidence': [
-            {
-              'transactionId': 'tx-analysis-evidence-351',
-              'evidenceId': 'evidence-not-linked-351',
-            },
-          ],
-        });
-      });
-      const password = 'correct horse battery staple';
-      await const BackupEncryption().encrypt(
-        plain,
-        encrypted,
-        password: password,
+      final result = await fixture.manager.restore(
+        backup,
+        mode: LocalRestoreMode.replace,
       );
-
-      await expectLater(
-        fixture.manager.restore(
-          encrypted,
-          mode: LocalRestoreMode.replace,
-          password: password,
+      expect(
+        result.warnings.map((warning) => warning.code),
+        contains('invalid_custom_analysis_rule'),
+      );
+      expect(
+        await fixture.database.database.query(
+          'analysis_rule_definitions',
+          where: 'rule_id = ?',
+          whereArgs: ['custom.invalid-351'],
         ),
-        throwsA(isA<FormatException>()),
+        hasLength(1),
       );
       expect(
         await fixture.database.database.query(
           'transactions',
           where: 'id = ?',
-          whereArgs: ['tx-analysis-evidence-351'],
+          whereArgs: ['tx-analysis-validation-351'],
         ),
         hasLength(1),
       );
@@ -892,7 +836,7 @@ void main() {
   );
 
   test(
-    'restore rejects missing referenced evidence before activating the package',
+    'restore preserves missing referenced evidence without blocking the package',
     () async {
       final fixture = await _Fixture.create();
       addTearDown(fixture.dispose);
@@ -920,11 +864,15 @@ void main() {
         rows.single['local_file_name'] = 'missing.bin';
       });
 
-      await expectLater(
-        fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
-        throwsA(isA<FormatException>()),
+      final result = await fixture.manager.restore(
+        backup,
+        mode: LocalRestoreMode.replace,
       );
-      expect(await liveEvidence.readAsString(), 'live evidence');
+      expect(result, isA<LocalRestoreResult>());
+      // The archive still contains the original bytes. The rewritten source
+      // row intentionally points at an unresolved path, so restore succeeds
+      // without treating that archive inconsistency as a data-loss failure.
+      expect(await liveEvidence.exists(), isTrue);
       expect(
         await fixture.database.database.query(
           'transactions',
@@ -932,6 +880,14 @@ void main() {
           whereArgs: ['tx-evidence-preserve'],
         ),
         hasLength(1),
+      );
+      expect(
+        (await fixture.database.database.query(
+          'evidence_items',
+          where: 'id = ?',
+          whereArgs: ['evidence-preserve'],
+        )).single['local_file_name'],
+        'missing.bin',
       );
       final stagingDirectories = await fixture.evidence.parent
           .list(followLinks: false)
@@ -965,7 +921,114 @@ void main() {
   );
 
   test(
-    'restore rejects malformed budget scope references before mutation',
+    'merge remaps missing content by evidence identity, not only by path',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.insertTransaction('tx-missing-content-remap');
+      const capturedAt = '2026-09-01T00:00:00.000Z';
+      await fixture.database.database.insert('evidence_items', {
+        'id': 'evidence-missing-remap',
+        'type': 'receipt',
+        'original_name': 'missing.bin',
+        'media_type': 'application/octet-stream',
+        'provenance_id': 'tx-missing-content-remap-provenance',
+        'created_at': capturedAt,
+        'local_file_name': 'missing.bin',
+      });
+      await fixture.database.database.insert('evidence_items', {
+        'id': 'evidence-shared-remap',
+        'type': 'statement',
+        'original_name': 'other.bin',
+        'media_type': 'application/octet-stream',
+        'provenance_id': 'tx-missing-content-remap-provenance',
+        'created_at': capturedAt,
+        'local_file_name': 'other.bin',
+      });
+      await File(
+        path.join(fixture.evidence.path, 'other.bin'),
+      ).writeAsString('packaged content', flush: true);
+      final backup = File(
+        path.join(fixture.root.path, 'identity-remap.butlerlybackup'),
+      );
+      await fixture.manager.createBackup(backup);
+      await File(
+        path.join(fixture.evidence.path, 'missing.bin'),
+      ).writeAsString('unrelated local content', flush: true);
+      await _rewriteBackupMetadata(backup, (metadata) {
+        final tables = (metadata['tables']! as Map).cast<String, Object?>();
+        final rows = (tables['evidence_items']! as List).cast<Map>();
+        rows.singleWhere(
+          (row) => row['id'] == 'evidence-shared-remap',
+        )['local_file_name'] = 'missing.bin';
+      });
+
+      await fixture.manager.restore(backup, mode: LocalRestoreMode.merge);
+
+      final rows = await fixture.database.database.query(
+        'evidence_items',
+        columns: ['id', 'local_file_name'],
+        orderBy: 'id',
+      );
+      final byId = {
+        for (final row in rows) row['id']! as String: row['local_file_name'],
+      };
+      expect(byId['evidence-missing-remap'], startsWith('unresolved-content/'));
+      expect(byId['evidence-shared-remap'], 'missing.bin');
+      expect(
+        await File(
+          path.join(fixture.evidence.path, 'missing.bin'),
+        ).readAsString(),
+        'unrelated local content',
+      );
+    },
+  );
+
+  test(
+    'restore rejects missing-content IDs or paths that do not match metadata',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.insertTransaction('tx-invalid-missing-content');
+      await fixture.database.database.insert('evidence_items', {
+        'id': 'evidence-invalid-missing-content',
+        'type': 'receipt',
+        'original_name': 'missing.bin',
+        'media_type': 'application/octet-stream',
+        'provenance_id': 'tx-invalid-missing-content-provenance',
+        'created_at': '2026-09-01T00:00:00.000Z',
+        'local_file_name': 'missing.bin',
+      });
+      final backup = File(
+        path.join(fixture.root.path, 'invalid-missing-content.butlerlybackup'),
+      );
+      await fixture.manager.createBackup(backup);
+
+      await _rewriteBackupMetadata(backup, (metadata) {
+        final manifest = (metadata['manifest']! as Map).cast<String, Object?>();
+        final entries = (manifest['missingContent']! as List).cast<Map>();
+        entries.single['evidenceId'] = 'unknown-evidence';
+      });
+      await expectLater(
+        fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
+        throwsA(isA<FormatException>()),
+      );
+
+      await fixture.manager.createBackup(backup);
+      await _rewriteBackupMetadata(backup, (metadata) {
+        final tables = (metadata['tables']! as Map).cast<String, Object?>();
+        final rows = (tables['evidence_items']! as List).cast<Map>();
+        rows.single['local_file_name'] = 'different.bin';
+      });
+      await expectLater(
+        fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
+        throwsA(isA<FormatException>()),
+      );
+    },
+  );
+
+  test(
+    'restore preserves malformed budget scope references for reporting',
     () async {
       final fixture = await _Fixture.create();
       addTearDown(fixture.dispose);
@@ -992,10 +1055,7 @@ void main() {
           rows.single['scope_id'] = invalidScopeId;
         });
 
-        await expectLater(
-          fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
-          throwsA(isA<FormatException>()),
-        );
+        await fixture.manager.restore(backup, mode: LocalRestoreMode.replace);
         expect(
           await fixture.database.database.query(
             'budgets',
@@ -1003,6 +1063,14 @@ void main() {
             whereArgs: ['budget-invalid-scope'],
           ),
           hasLength(1),
+        );
+        expect(
+          (await fixture.database.database.query(
+            'budgets',
+            where: 'id = ?',
+            whereArgs: ['budget-invalid-scope'],
+          )).single['scope_id'],
+          '$invalidScopeId',
         );
       }
     },
@@ -1705,6 +1773,38 @@ void main() {
       expect(await shared.readAsString(), 'owned by A and B');
     },
   );
+
+  test('inspection rejects a tampered unencrypted evidence payload', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    await fixture.insertTransaction('tx-inspection-integrity');
+    await fixture.database.database.insert('evidence_items', {
+      'id': 'evidence-inspection-integrity',
+      'type': 'receipt',
+      'original_name': 'receipt.bin',
+      'media_type': 'application/octet-stream',
+      'provenance_id': 'tx-inspection-integrity-provenance',
+      'created_at': '2026-09-01T00:00:00.000Z',
+      'local_file_name': 'receipt.bin',
+    });
+    await File(path.join(fixture.evidence.path, 'receipt.bin')).writeAsString(
+      'payload that must be hashed during inspection',
+      flush: true,
+    );
+    final backup = File(
+      path.join(fixture.root.path, 'tampered-inspection.butlerlybackup'),
+    );
+    await fixture.manager.createBackup(backup);
+
+    final bytes = await backup.readAsBytes();
+    bytes[bytes.length - 1] ^= 0xff;
+    await backup.writeAsBytes(bytes, flush: true);
+
+    await expectLater(
+      fixture.manager.inspect(backup),
+      throwsA(isA<FormatException>()),
+    );
+  });
 
   test('backup rejects symbolic links in the evidence tree', () async {
     final fixture = await _Fixture.create();

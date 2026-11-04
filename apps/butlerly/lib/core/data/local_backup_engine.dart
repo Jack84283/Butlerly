@@ -55,67 +55,16 @@ final class _EvidenceDescriptor {
   final int offset;
 }
 
-final class _EvidenceIdentity {
-  const _EvidenceIdentity({
-    required this.id,
-    required this.normalizedPath,
-    required this.fields,
-    required this.provenance,
+final class _MissingContentDescriptor {
+  const _MissingContentDescriptor({
+    required this.evidenceId,
+    required this.evidenceType,
+    required this.relativePath,
   });
 
-  final String id;
-  final String? normalizedPath;
-  final Map<String, Object?> fields;
-  final Map<String, Object?>? provenance;
-
-  String? get pathKey =>
-      normalizedPath == null ? null : evidencePathKey(normalizedPath!);
-
-  bool matches(_EvidenceIdentity other) {
-    if (id != other.id || pathKey != other.pathKey) return false;
-    if (provenance == null || other.provenance == null) return false;
-    for (final key in fields.keys) {
-      if (other.fields.containsKey(key) && fields[key] != other.fields[key]) {
-        return false;
-      }
-    }
-    for (final key in provenance!.keys) {
-      if (other.provenance!.containsKey(key) &&
-          provenance![key] != other.provenance![key]) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  Map<String, Object?> toFingerprintMap() => {
-    'id': id,
-    'path': normalizedPath,
-    'fields': fields,
-    'provenance': provenance,
-  };
-}
-
-final class _EvidenceRecoveryAssessment {
-  const _EvidenceRecoveryAssessment({
-    required this.recoverableCount,
-    required this.alreadyPresentCount,
-    required this.conflictingCount,
-    required this.unavailableCount,
-    required this.unresolvedCount,
-    required this.fingerprint,
-    required this.plan,
-    required this.currentRelativePaths,
-  });
-
-  final int recoverableCount;
-  final int alreadyPresentCount;
-  final int conflictingCount;
-  final int unavailableCount;
-  final int unresolvedCount;
-  final String fingerprint;
-  final List<({String relative, _EvidenceDescriptor descriptor})> plan;
-  final List<String> currentRelativePaths;
+  final String evidenceId;
+  final String? evidenceType;
+  final String? relativePath;
 }
 
 final class _BackupPackage {
@@ -124,12 +73,18 @@ final class _BackupPackage {
     required this.manifest,
     required this.tables,
     required this.evidence,
+    required this.warnings,
+    required this.missingContentCount,
+    required this.missingContent,
   });
 
   final File file;
   final Map<String, Object?> manifest;
   final Map<String, Object?> tables;
   final List<_EvidenceDescriptor> evidence;
+  final List<BackupWarning> warnings;
+  final int missingContentCount;
+  final List<_MissingContentDescriptor> missingContent;
 }
 
 final class _PreparedEvidence {
@@ -159,7 +114,11 @@ final class _PreparedTombstoneEvidence {
 }
 
 final class LocalBackupManager {
-  const LocalBackupManager(this.database, this.localDataManager);
+  const LocalBackupManager(
+    this.database,
+    this.localDataManager, {
+    Future<void> Function(bool enabled)? foreignKeysController,
+  }) : _foreignKeysController = foreignKeysController;
 
   static const _builtInTagIds = <String>{
     'tag.business',
@@ -173,7 +132,7 @@ final class LocalBackupManager {
 
   final LocalDatabase database;
   final LocalDataManager localDataManager;
-
+  final Future<void> Function(bool enabled)? _foreignKeysController;
   static const format = BackupContainerFormat.name;
   static const formatVersion = BackupContainerFormat.version;
   static const schemaVersion = BackupContainerFormat.schemaVersion;
@@ -379,6 +338,12 @@ final class LocalBackupManager {
       // cannot safely authorize repair of a missing definition.
       required.remove('analysis_rule_provenance');
     }
+    if (sourceSchema >= 18) {
+      // Findings are recalculable analysis output. Schema 17 and older
+      // archives may contain them and remain restorable, but new archives do
+      // not require or emit that table.
+      required.remove('analysis_findings');
+    }
     if (sourceSchema <= 13) {
       // Schema 13 was emitted both before and after budgets were introduced.
       // Treat it as a compatibility family: budgets may be absent from a
@@ -497,10 +462,8 @@ final class LocalBackupManager {
   static Set<String> _enumNames<T extends Enum>(List<T> values) =>
       values.map((value) => value.name).toSet();
 
-  static const _derivedTables = <String>['analysis_rule_results'];
-
   Future<BackupInspection> inspect(File file) async {
-    final package = await _readPackage(file);
+    final package = await _readPackage(file, verifyEvidenceHashes: true);
     final createdAt = DateTime.parse(
       package.manifest['createdAtUtc']! as String,
     ).toUtc();
@@ -509,509 +472,9 @@ final class LocalBackupManager {
       recordCount: package.manifest['recordCount']! as int,
       evidenceCount: package.manifest['evidenceCount']! as int,
       changes: await _newerLocalSummary(createdAt, package.tables),
+      warnings: package.warnings,
+      missingContentCount: package.missingContentCount,
     );
-  }
-
-  /// Restores only missing evidence bytes referenced by the current database.
-  ///
-  /// This is an explicit repair operation, not part of backup creation or
-  /// restore. SQLite remains read-only throughout. The live evidence tree is
-  /// copied to a sibling staging tree, verified with the selected archive, and
-  /// swapped only after every current reference is resolvable. Existing files
-  /// are never overwritten. The supplied preview is re-created immediately
-  /// before publication so a database change cannot be hidden by confirmation.
-  Future<EvidenceRecoveryResult> recoverMissingEvidence(
-    File file, {
-    required EvidenceRecoveryPreview preview,
-  }) async {
-    final package = await _readPackage(file);
-    final assessment = await _buildEvidenceRecoveryAssessment(package);
-    if (assessment.fingerprint != preview.fingerprint ||
-        assessment.recoverableCount != preview.recoverableCount ||
-        assessment.alreadyPresentCount != preview.alreadyPresentCount ||
-        assessment.conflictingCount != preview.conflictingCount ||
-        assessment.unavailableCount != preview.unavailableCount ||
-        assessment.unresolvedCount != preview.unresolvedCount) {
-      throw const EvidenceRecoveryPreviewStaleException();
-    }
-    await _validateEvidencePlan(package, assessment.plan);
-
-    final root = await localDataManager.evidenceDirectory();
-    final plan = assessment.plan;
-    if (plan.isEmpty) {
-      return EvidenceRecoveryResult(
-        recoveredCount: 0,
-        alreadyPresentCount: assessment.alreadyPresentCount,
-        unresolvedCount: assessment.unresolvedCount,
-        conflictingCount: assessment.conflictingCount,
-        unavailableCount: assessment.unavailableCount,
-      );
-    }
-
-    final operationId = DateTime.now().microsecondsSinceEpoch.toString();
-    final staging = Directory('${root.path}.evidence-recovery-$operationId');
-    final previous = Directory(
-      '${root.path}.evidence-recovery-previous-$operationId',
-    );
-    final journal = File('${root.path}.evidence-recovery-journal.json');
-    var activationStarted = false;
-    var activated = false;
-    try {
-      await rejectSymlinkedPath(staging.path);
-      await rejectSymlinkedPath(previous.path);
-      await rejectSymlinkedPath(journal.path);
-      if (await staging.exists() || await previous.exists()) {
-        throw StateError(
-          'Evidence recovery has an unresolved previous operation.',
-        );
-      }
-
-      // Persist the prepared state before creating the staging tree. If the
-      // process stops during the copy, startup can safely discard the
-      // incomplete staging tree while retaining the live evidence root.
-      await journal.writeAsString(
-        jsonEncode({
-          'operationId': operationId,
-          'previousPath': previous.path,
-          'stagingPath': staging.path,
-          'phase': 'prepared',
-        }),
-        flush: true,
-      );
-      await staging.create(recursive: true);
-      if (await root.exists()) await _copyDirectory(root, staging);
-
-      for (final item in plan) {
-        // A file may appear after preview revalidation but before the staged
-        // copy is written. Never replace it; abort and require a fresh
-        // preview instead.
-        final live = File(path.join(root.path, item.relative));
-        if (await live.exists()) {
-          throw const EvidenceRecoveryPreviewStaleException();
-        }
-        final destination = File(path.join(staging.path, item.relative));
-        await destination.parent.create(recursive: true);
-        final sink = destination.openWrite();
-        try {
-          await sink.addStream(
-            package.file.openRead(
-              item.descriptor.offset,
-              item.descriptor.offset + item.descriptor.length,
-            ),
-          );
-          await sink.flush();
-        } finally {
-          await sink.close();
-        }
-        if (await sha256FileRange(destination) != item.descriptor.sha256) {
-          throw const FormatException(
-            'Recovered evidence failed integrity validation.',
-          );
-        }
-      }
-
-      for (final relative in assessment.currentRelativePaths) {
-        final recovered = File(path.join(staging.path, relative));
-        if (!await recovered.exists() &&
-            plan.any(
-              (item) =>
-                  evidencePathKey(item.relative) == evidencePathKey(relative),
-            )) {
-          throw StateError(
-            'Evidence recovery could not resolve a current reference.',
-          );
-        }
-      }
-
-      activationStarted = true;
-      if (await root.exists()) await root.rename(previous.path);
-      await staging.rename(root.path);
-      activated = true;
-      await journal.writeAsString(
-        jsonEncode({
-          'operationId': operationId,
-          'previousPath': previous.path,
-          'stagingPath': staging.path,
-          'phase': 'activated',
-        }),
-        flush: true,
-      );
-      if (await previous.exists()) await previous.delete(recursive: true);
-      if (await journal.exists()) await journal.delete();
-
-      return EvidenceRecoveryResult(
-        recoveredCount: plan.length,
-        alreadyPresentCount: assessment.alreadyPresentCount,
-        unresolvedCount: assessment.unresolvedCount,
-        conflictingCount: assessment.conflictingCount,
-        unavailableCount: assessment.unavailableCount,
-      );
-    } catch (_) {
-      if (activationStarted) {
-        try {
-          if (activated && await root.exists()) {
-            await root.delete(recursive: true);
-          }
-          if (!await root.exists() && await previous.exists()) {
-            await previous.rename(root.path);
-          }
-          if (await staging.exists()) await staging.delete(recursive: true);
-          if (await journal.exists()) await journal.delete();
-        } catch (_) {
-          // Preserve the journal and trees when rollback cannot be proven.
-          rethrow;
-        }
-      } else {
-        if (await staging.exists()) await staging.delete(recursive: true);
-        if (await journal.exists()) await journal.delete();
-      }
-      rethrow;
-    }
-  }
-
-  /// Inspects missing evidence without publishing files or modifying SQLite.
-  Future<EvidenceRecoveryPreview> inspectMissingEvidence(File file) async {
-    final package = await _readPackage(file);
-    final assessment = await _buildEvidenceRecoveryAssessment(package);
-    await _validateEvidencePlan(package, assessment.plan);
-    return EvidenceRecoveryPreview(
-      recoverableCount: assessment.recoverableCount,
-      alreadyPresentCount: assessment.alreadyPresentCount,
-      conflictingCount: assessment.conflictingCount,
-      unavailableCount: assessment.unavailableCount,
-      unresolvedCount: assessment.unresolvedCount,
-      fingerprint: assessment.fingerprint,
-    );
-  }
-
-  Future<_EvidenceRecoveryAssessment> _buildEvidenceRecoveryAssessment(
-    _BackupPackage package,
-  ) async {
-    final root = await localDataManager.evidenceDirectory();
-    await _assertEvidenceRecoveryState(root);
-
-    final descriptorsByPath = <String, List<_EvidenceDescriptor>>{};
-    for (final descriptor in package.evidence) {
-      descriptorsByPath
-          .putIfAbsent(
-            evidencePathKey(normalizeEvidencePath(descriptor.relativePath)),
-            () => [],
-          )
-          .add(descriptor);
-    }
-
-    final archiveProvenances = <String, Map<String, Object?>>{};
-    for (final row in _tableRows(package.tables, 'provenances')) {
-      final id = row['id'];
-      if (id is String) archiveProvenances[id] = row;
-    }
-    final archiveById = <String, List<_EvidenceIdentity>>{};
-    final archiveByPath = <String, List<_EvidenceIdentity>>{};
-    for (final row in _tableRows(package.tables, 'evidence_items')) {
-      final identity = _archiveEvidenceIdentity(row, archiveProvenances);
-      if (identity?.normalizedPath == null) continue;
-      archiveById.putIfAbsent(identity!.id, () => []).add(identity);
-      archiveByPath.putIfAbsent(identity.pathKey!, () => []).add(identity);
-    }
-
-    final currentRows = await database.database.rawQuery(
-      '''SELECT e.id, e.type, e.original_name, e.media_type,
-                e.provenance_id, e.created_at, e.source_language,
-                e.local_file_name,
-                p.id AS p_id, p.source_type AS p_source_type,
-                p.captured_at AS p_captured_at,
-                p.source_id AS p_source_id,
-                p.original_representation AS p_original_representation,
-                p.source_language AS p_source_language
-         FROM evidence_items e
-         LEFT JOIN provenances p ON p.id = e.provenance_id
-         ORDER BY e.id''',
-    );
-    final plannedPaths = <String>{};
-    final plan = <({String relative, _EvidenceDescriptor descriptor})>[];
-    final currentRelativePaths = <String>[];
-    final fingerprintRows = <Map<String, Object?>>[];
-    var alreadyPresent = 0;
-    var conflicting = 0;
-    var unavailable = 0;
-
-    for (final row in currentRows) {
-      final current = _currentEvidenceIdentity(row);
-      if (current == null) continue;
-      final rawPath = row['local_file_name'];
-      if (current.normalizedPath != null) {
-        final relative = await validateEvidenceReferencePath(
-          root,
-          rawPath! as String,
-          message: 'Unsafe current evidence path.',
-        );
-        currentRelativePaths.add(relative);
-      }
-
-      final idCandidates = archiveById[current.id] ?? const [];
-      final pathCandidates = current.pathKey == null
-          ? const <_EvidenceIdentity>[]
-          : archiveByPath[current.pathKey!] ?? const [];
-      final matches = idCandidates
-          .where(current.matches)
-          .where((candidate) => candidate.pathKey == current.pathKey)
-          .toList(growable: false);
-      final identityIsAmbiguous =
-          matches.length != 1 || idCandidates.length != 1;
-      String status;
-      _EvidenceDescriptor? descriptor;
-      if (current.normalizedPath == null) {
-        status = 'no_path';
-        unavailable++;
-      } else if (identityIsAmbiguous) {
-        status = idCandidates.isEmpty && pathCandidates.isEmpty
-            ? 'unavailable'
-            : 'conflicting';
-        if (status == 'conflicting') {
-          conflicting++;
-        } else {
-          unavailable++;
-        }
-      } else {
-        final descriptorCandidates =
-            descriptorsByPath[current.pathKey!] ?? const [];
-        final descriptorSignatures = descriptorCandidates
-            .map((candidate) => (candidate.length, candidate.sha256))
-            .toSet();
-        if (descriptorCandidates.isEmpty) {
-          status = 'unavailable';
-          unavailable++;
-        } else if (descriptorSignatures.length != 1) {
-          status = 'conflicting';
-          conflicting++;
-        } else {
-          descriptor = descriptorCandidates.first;
-          final live = File(path.join(root.path, current.normalizedPath!));
-          if (await live.exists()) {
-            final matchesArchive =
-                await live.length() == descriptor.length &&
-                await sha256FileRange(live) == descriptor.sha256;
-            if (matchesArchive) {
-              status = 'already_present';
-              alreadyPresent++;
-            } else {
-              status = 'conflicting';
-              conflicting++;
-            }
-          } else if (!plannedPaths.add(current.pathKey!)) {
-            status = 'recoverable_shared';
-          } else {
-            status = 'recoverable';
-            plan.add((
-              relative: current.normalizedPath!,
-              descriptor: descriptor,
-            ));
-          }
-        }
-      }
-      fingerprintRows.add({
-        'identity': current.toFingerprintMap(),
-        'archiveIds': idCandidates
-            .map((candidate) => candidate.toFingerprintMap())
-            .toList(growable: false),
-        'archivePaths': pathCandidates
-            .map((candidate) => candidate.toFingerprintMap())
-            .toList(growable: false),
-        'descriptor': descriptor == null
-            ? null
-            : {
-                'path': normalizeEvidencePath(descriptor.relativePath),
-                'length': descriptor.length,
-                'sha256': descriptor.sha256,
-              },
-        'status': status,
-      });
-    }
-
-    final descriptorFingerprint = package.evidence
-        .map(
-          (descriptor) => {
-            'path': normalizeEvidencePath(descriptor.relativePath),
-            'length': descriptor.length,
-            'sha256': descriptor.sha256,
-          },
-        )
-        .toList(growable: false);
-    final fingerprint = sha256Bytes(
-      utf8.encode(
-        jsonEncode({
-          'createdAt': package.manifest['createdAtUtc'],
-          'descriptors': descriptorFingerprint,
-          'rows': fingerprintRows,
-        }),
-      ),
-    );
-    return _EvidenceRecoveryAssessment(
-      recoverableCount: plan.length,
-      alreadyPresentCount: alreadyPresent,
-      conflictingCount: conflicting,
-      unavailableCount: unavailable,
-      unresolvedCount: conflicting + unavailable,
-      fingerprint: fingerprint,
-      plan: plan,
-      currentRelativePaths: currentRelativePaths,
-    );
-  }
-
-  Future<void> _validateEvidencePlan(
-    _BackupPackage package,
-    List<({String relative, _EvidenceDescriptor descriptor})> plan,
-  ) async {
-    for (final item in plan) {
-      final actualHash = await sha256FileRange(
-        package.file,
-        start: item.descriptor.offset,
-        endExclusive: item.descriptor.offset + item.descriptor.length,
-      );
-      if (actualHash != item.descriptor.sha256) {
-        throw const FormatException(
-          'Evidence integrity validation failed during recovery.',
-        );
-      }
-    }
-  }
-
-  Future<void> _assertEvidenceRecoveryState(Directory root) async {
-    await rejectEvidenceRoot(root);
-    final recoveryJournal = File('${root.path}.evidence-recovery-journal.json');
-    await rejectSymlinkedPath(recoveryJournal.path);
-    if (await recoveryJournal.exists()) {
-      throw StateError(
-        'Evidence recovery has an unresolved previous operation.',
-      );
-    }
-    final recoveryPrefix = '${path.basename(root.path)}.evidence-recovery-';
-    if (await root.parent.exists()) {
-      await for (final entity in root.parent.list(followLinks: false)) {
-        if (path.basename(entity.path).startsWith(recoveryPrefix)) {
-          throw StateError(
-            'Evidence recovery has unresolved private artifacts.',
-          );
-        }
-      }
-    }
-  }
-
-  _EvidenceIdentity? _archiveEvidenceIdentity(
-    Map<String, Object?> row,
-    Map<String, Map<String, Object?>> provenances,
-  ) {
-    final id = row['id'];
-    if (id is! String) return null;
-    final provenanceId = row['provenance_id'];
-    return _EvidenceIdentity(
-      id: id,
-      normalizedPath: _normalizeOptionalEvidencePath(row['local_file_name']),
-      fields: _evidenceFields(row),
-      provenance: provenanceId is String ? provenances[provenanceId] : null,
-    );
-  }
-
-  _EvidenceIdentity? _currentEvidenceIdentity(Map<String, Object?> row) {
-    final id = row['id'];
-    if (id is! String) return null;
-    final provenanceId = row['provenance_id'];
-    final provenance = provenanceId is String && row['p_id'] != null
-        ? <String, Object?>{
-            'id': row['p_id'],
-            'source_type': row['p_source_type'],
-            'captured_at': row['p_captured_at'],
-            'source_id': row['p_source_id'],
-            'original_representation': row['p_original_representation'],
-            'source_language': row['p_source_language'],
-          }
-        : null;
-    return _EvidenceIdentity(
-      id: id,
-      normalizedPath: _normalizeOptionalEvidencePath(row['local_file_name']),
-      fields: _evidenceFields(row),
-      provenance: provenance,
-    );
-  }
-
-  Map<String, Object?> _evidenceFields(Map<String, Object?> row) => {
-    for (final key in const [
-      'id',
-      'type',
-      'original_name',
-      'media_type',
-      'provenance_id',
-      'created_at',
-      'source_language',
-      'local_file_name',
-    ])
-      if (row.containsKey(key))
-        key: key == 'local_file_name'
-            ? _normalizeOptionalEvidencePath(row[key])
-            : row[key],
-  };
-
-  String? _normalizeOptionalEvidencePath(Object? value) {
-    if (value is! String || value.trim().isEmpty) return null;
-    return normalizeEvidencePath(value);
-  }
-
-  /// Completes or rolls back an interrupted explicit evidence recovery.
-  ///
-  /// The operation has no SQLite commit marker because it never writes
-  /// SQLite. The journal is therefore intentionally conservative: a prepared
-  /// swap with no live root restores the previous tree; a live root alongside
-  /// the previous tree means the verified staging tree was activated and the
-  /// new tree is retained.
-  Future<void> recoverInterruptedEvidenceRecovery() async {
-    final root = await localDataManager.evidenceDirectory();
-    final journal = File('${root.path}.evidence-recovery-journal.json');
-    await rejectEvidenceRoot(root);
-    await rejectSymlinkedPath(journal.path);
-    if (!await journal.exists()) return;
-
-    final decoded = jsonDecode(await journal.readAsString());
-    if (decoded is! Map) {
-      throw const FormatException('Evidence recovery journal is invalid.');
-    }
-    final data = decoded.cast<String, Object?>();
-    final operationId = data['operationId'] as String?;
-    final phase = data['phase'] as String?;
-    if (operationId == null ||
-        !RegExp(r'^[0-9]+$').hasMatch(operationId) ||
-        (phase != 'prepared' && phase != 'activated')) {
-      throw const FormatException('Evidence recovery journal is invalid.');
-    }
-    final staging = Directory('${root.path}.evidence-recovery-$operationId');
-    final previous = Directory(
-      '${root.path}.evidence-recovery-previous-$operationId',
-    );
-    if (data['stagingPath'] != staging.path ||
-        data['previousPath'] != previous.path) {
-      throw const FormatException('Evidence recovery journal path is invalid.');
-    }
-    await rejectSymlinkedPath(staging.path);
-    await rejectSymlinkedPath(previous.path);
-
-    final rootExists = await root.exists();
-    final stagingExists = await staging.exists();
-    final previousExists = await previous.exists();
-    if (phase == 'prepared' && !rootExists && previousExists) {
-      await previous.rename(root.path);
-    } else if ((phase == 'prepared' || phase == 'activated') &&
-        rootExists &&
-        previousExists) {
-      // The new root was activated before the journal could be finalized.
-      // It contains the original tree plus verified missing files.
-      await previous.delete(recursive: true);
-    } else if (!rootExists && !previousExists) {
-      throw StateError(
-        'Evidence recovery state cannot be proven safe after interruption.',
-      );
-    }
-
-    if (stagingExists) await staging.delete(recursive: true);
-    if (await journal.exists()) await journal.delete();
   }
 
   Future<LocalRestoreResult> restore(
@@ -1027,6 +490,7 @@ final class LocalBackupManager {
     ).toUtc();
     final tablePayload = <String, Object?>{...package.tables};
     _migratePaymentSettlementBackupPayload(tablePayload, sourceSchema);
+    _filterDerivedAnalysisRows(tablePayload);
     final durableUnresolvedDuplicateGroupIds =
         DuplicateGroupBackupPolicy.durableUnresolvedGroupIds(
           groups: _tableRows(tablePayload, 'duplicate_candidate_groups'),
@@ -1114,163 +578,199 @@ final class LocalBackupManager {
         previousDeleting: previousDeleting.path,
         mode: mode,
       );
-      await database.database.transaction((tx) async {
-        final durableGroupIdsToPreserve = mode == LocalRestoreMode.merge
-            ? {
-                ...durableUnresolvedDuplicateGroupIds,
-                ...await _durableUnresolvedDuplicateGroupIdsFromDatabase(tx),
-              }
-            : durableUnresolvedDuplicateGroupIds;
-        await _writeJournal(
-          journal,
-          operationId,
-          previous.path,
-          preparedEvidence.directory.path,
-          'dbWriting',
-          previousDeleting: previousDeleting.path,
-          mode: mode,
-        );
-
-        Set<String> protectedTransactions = const <String>{};
-        if (mode == LocalRestoreMode.replace) {
-          await _clearPortableState(tx);
-        } else {
-          // Generated workflow state is not authoritative. Purge it first, but
-          // keep the purge in this transaction so any later failure rolls it
-          // back together with the restore.
-          await _purgeGeneratedWorkflowState(
-            tx,
-            preserveDuplicateGroupIds: durableGroupIdsToPreserve,
+      // A backup can intentionally preserve an optional reference whose
+      // target is unavailable. SQLite's foreign-key enforcement must be
+      // suspended only for this restore transaction so those source rows can
+      // be kept for Data Integrity Reports; it is restored to its prior state
+      // before any later validation or operation continues.
+      final foreignKeysWereEnabled =
+          await _foreignKeysEnabled() &&
+          package.warnings.any(
+            (warning) => warning.code == 'missing_referenced_record',
           );
-          protectedTransactions = await _protectedTransactionIds(
-            tx,
-            tablePayload,
-            backupTime,
+      if (foreignKeysWereEnabled) {
+        await _setForeignKeys(false);
+      }
+      try {
+        await database.database.transaction((tx) async {
+          final durableGroupIdsToPreserve = mode == LocalRestoreMode.merge
+              ? {
+                  ...durableUnresolvedDuplicateGroupIds,
+                  ...await _durableUnresolvedDuplicateGroupIdsFromDatabase(tx),
+                }
+              : durableUnresolvedDuplicateGroupIds;
+          await _writeJournal(
+            journal,
+            operationId,
+            previous.path,
+            preparedEvidence.directory.path,
+            'dbWriting',
+            previousDeleting: previousDeleting.path,
+            mode: mode,
           );
 
-          // restore_context is strictly transaction-scoped. No user write can
-          // observe trigger suppression outside this SQLite writer transaction.
-          await tx.insert('restore_context', {
-            'id': 1,
-            'backup_time': backupTime.toIso8601String(),
-          }, conflictAlgorithm: ConflictAlgorithm.replace);
-        }
-
-        try {
-          if (mode == LocalRestoreMode.merge) {
-            keptNewer += await _applyBackupTombstones(
+          Set<String> protectedTransactions = const <String>{};
+          if (mode == LocalRestoreMode.replace) {
+            await _clearPortableState(tx);
+          } else {
+            // Generated workflow state is not authoritative. Purge it first, but
+            // keep the purge in this transaction so any later failure rolls it
+            // back together with the restore.
+            await _purgeGeneratedWorkflowState(
+              tx,
+              preserveDuplicateGroupIds: durableGroupIdsToPreserve,
+            );
+            protectedTransactions = await _protectedTransactionIds(
               tx,
               tablePayload,
               backupTime,
             );
+
+            // restore_context is strictly transaction-scoped. No user write can
+            // observe trigger suppression outside this SQLite writer transaction.
+            await tx.insert('restore_context', {
+              'id': 1,
+              'backup_time': backupTime.toIso8601String(),
+            }, conflictAlgorithm: ConflictAlgorithm.replace);
           }
-          for (final spec in _tables) {
-            var payload =
-                (tablePayload[spec.name] as List? ?? const <Object?>[])
-                    .cast<Map>()
-                    .map((row) => row.cast<String, Object?>());
-            if (spec.name == 'categories') {
-              payload = _orderCategories(payload.toList(growable: false));
-            }
-            for (final row in payload) {
-              if (await _isSystemOwned(tx, spec, row)) continue;
-              if (mode == LocalRestoreMode.merge) {
-                if (_referencesProtectedTransaction(
-                  spec,
-                  row,
-                  protectedTransactions,
-                )) {
-                  keptNewer++;
-                  continue;
-                }
-                if (spec.name == 'analysis_rule_definitions' &&
-                    await _localProvenanceConflictsWithDefinition(tx, row)) {
-                  // A local provenance row is part of the immutable rule
-                  // pair. Do not insert a backup definition that would make
-                  // that existing provenance describe the wrong rule.
-                  keptNewer++;
-                  continue;
-                }
-                if (spec.name == 'analysis_rule_provenance' &&
-                    await _localDefinitionConflictsWithProvenance(tx, row)) {
-                  // Rule definitions and their provenance are one immutable
-                  // pair. A merge must never combine the backup definition
-                  // with local provenance, or vice versa.
-                  keptNewer++;
-                  continue;
-                }
-                if (await _hasNewerLocalTombstone(tx, spec, row, backupTime)) {
-                  keptNewer++;
-                  continue;
-                }
-                final local = await _findRow(tx, spec, row);
-                if (local != null &&
-                    !_rowsEqual(local, row) &&
-                    (spec.preserveLocalOnMergeConflict ||
-                        _rowChangedAfter(local, spec, backupTime))) {
-                  keptNewer++;
-                  continue;
-                }
-              }
-              await _upsertRow(tx, spec, row);
-              await _clearTombstoneForRestoredRow(tx, spec, row);
-              restoredRows++;
-            }
-          }
-          if (mode == LocalRestoreMode.replace) {
-            final tombstones =
-                (tablePayload['entity_tombstones'] as List? ??
-                        const <Object?>[])
-                    .cast<Map>();
-            for (final raw in tombstones) {
-              final row = raw.cast<String, Object?>();
-              final entityType = row['entity_type'] as String?;
-              final entityId = row['entity_id'];
-              final spec = entityType == null ? null : _specByName[entityType];
-              if (spec == null || entityId == null) {
-                throw const FormatException('Invalid backup tombstone.');
-              }
-              final values = _keyValuesFromTombstone(spec, '$entityId');
-              if (values == null) {
-                throw const FormatException(
-                  'Invalid backup tombstone identity.',
-                );
-              }
-              final localRows = await _queryByKeys(tx, spec, values);
-              if (localRows.isNotEmpty &&
-                  await _isSystemOwned(tx, spec, localRows.single)) {
-                continue;
-              }
-              await tx.insert(
-                'entity_tombstones',
-                row,
-                conflictAlgorithm: ConflictAlgorithm.replace,
+
+          try {
+            if (mode == LocalRestoreMode.merge) {
+              keptNewer += await _applyBackupTombstones(
+                tx,
+                tablePayload,
+                backupTime,
               );
             }
+            for (final spec in _tables) {
+              var payload =
+                  (tablePayload[spec.name] as List? ?? const <Object?>[])
+                      .cast<Map>()
+                      .map((row) => row.cast<String, Object?>());
+              if (spec.name == 'categories') {
+                payload = _orderCategories(payload.toList(growable: false));
+              }
+              for (final row in payload) {
+                if (await _isSystemOwned(tx, spec, row)) continue;
+                if (mode == LocalRestoreMode.merge) {
+                  if (_referencesProtectedTransaction(
+                    spec,
+                    row,
+                    protectedTransactions,
+                  )) {
+                    keptNewer++;
+                    continue;
+                  }
+                  if (spec.name == 'analysis_rule_definitions' &&
+                      await _localProvenanceConflictsWithDefinition(tx, row)) {
+                    // A local provenance row is part of the immutable rule
+                    // pair. Do not insert a backup definition that would make
+                    // that existing provenance describe the wrong rule.
+                    keptNewer++;
+                    continue;
+                  }
+                  if (spec.name == 'analysis_rule_provenance' &&
+                      await _localDefinitionConflictsWithProvenance(tx, row)) {
+                    // Rule definitions and their provenance are one immutable
+                    // pair. A merge must never combine the backup definition
+                    // with local provenance, or vice versa.
+                    keptNewer++;
+                    continue;
+                  }
+                  if (await _hasNewerLocalTombstone(
+                    tx,
+                    spec,
+                    row,
+                    backupTime,
+                  )) {
+                    keptNewer++;
+                    continue;
+                  }
+                  final local = await _findRow(tx, spec, row);
+                  if (local != null &&
+                      !_rowsEqual(local, row) &&
+                      (spec.preserveLocalOnMergeConflict ||
+                          _rowChangedAfter(local, spec, backupTime))) {
+                    keptNewer++;
+                    continue;
+                  }
+                }
+                await _upsertRow(tx, spec, row);
+                await _clearTombstoneForRestoredRow(tx, spec, row);
+                restoredRows++;
+              }
+            }
+            if (mode == LocalRestoreMode.replace) {
+              final tombstones =
+                  (tablePayload['entity_tombstones'] as List? ??
+                          const <Object?>[])
+                      .cast<Map>();
+              for (final raw in tombstones) {
+                final row = raw.cast<String, Object?>();
+                final entityType = row['entity_type'] as String?;
+                final entityId = row['entity_id'];
+                final spec = entityType == null
+                    ? null
+                    : _specByName[entityType];
+                if (spec == null || entityId == null) {
+                  throw const FormatException('Invalid backup tombstone.');
+                }
+                final values = _keyValuesFromTombstone(spec, '$entityId');
+                if (values == null) {
+                  throw const FormatException(
+                    'Invalid backup tombstone identity.',
+                  );
+                }
+                final localRows = await _queryByKeys(tx, spec, values);
+                if (localRows.isNotEmpty &&
+                    await _isSystemOwned(tx, spec, localRows.single)) {
+                  continue;
+                }
+                await tx.insert(
+                  'entity_tombstones',
+                  row,
+                  conflictAlgorithm: ConflictAlgorithm.replace,
+                );
+              }
+            }
+          } finally {
+            if (mode == LocalRestoreMode.merge) {
+              await tx.delete('restore_context', where: 'id = 1');
+            }
           }
-        } finally {
-          if (mode == LocalRestoreMode.merge) {
-            await tx.delete('restore_context', where: 'id = 1');
-          }
-        }
 
-        // Older format-v2 packages may contain generated workflow rows. Purge
-        // again after restore_context is gone so trigger preservation cannot
-        // keep generated rows, while durable decisions remain intact.
-        await _purgeGeneratedWorkflowState(
-          tx,
-          preserveDuplicateGroupIds: durableGroupIdsToPreserve,
-        );
+          // Older format-v2 packages may contain generated workflow rows. Purge
+          // again after restore_context is gone so trigger preservation cannot
+          // keep generated rows, while durable decisions remain intact.
+          await _purgeGeneratedWorkflowState(
+            tx,
+            preserveDuplicateGroupIds: durableGroupIdsToPreserve,
+          );
 
-        for (final table in _derivedTables) {
-          await tx.delete(table);
-        }
-        await tx.insert('restore_commits', {
-          'operation_id': operationId,
-          'committed_at': DateTime.now().toUtc().toIso8601String(),
+          // Analysis results are recalculable output. Acknowledged and dismissed
+          // findings are the exception: their lifecycle is a user decision and
+          // must remain portable even though active/superseded findings are
+          // regenerated after restore.
+          await tx.delete('analysis_rule_results');
+          await tx.delete(
+            'analysis_findings',
+            where: "lifecycle NOT IN ('acknowledged', 'dismissed')",
+          );
+          await tx.insert('restore_commits', {
+            'operation_id': operationId,
+            'committed_at': DateTime.now().toUtc().toIso8601String(),
+          });
         });
-      });
-      databaseCommitted = true;
+        // A successful transaction has committed both the restored source data
+        // and the durable recovery marker. Any failure while restoring the
+        // connection's foreign-key mode is therefore post-commit and must not
+        // roll the live evidence tree back out of sync with SQLite.
+        databaseCommitted = true;
+      } finally {
+        if (foreignKeysWereEnabled) {
+          await _setForeignKeys(true);
+        }
+      }
       if (preparedTombstoneEvidence.isNotEmpty &&
           await previousDeleting.exists()) {
         await _markTombstoneEvidenceCommitted(
@@ -1309,6 +809,7 @@ final class LocalBackupManager {
           restoredRows: restoredRows,
           keptNewerLocalRows: keptNewer,
           restoredEvidence: preparedEvidence.addedCount,
+          warnings: package.warnings,
         );
       }
     } catch (_) {
@@ -1364,6 +865,7 @@ final class LocalBackupManager {
       restoredRows: restoredRows,
       keptNewerLocalRows: keptNewer,
       restoredEvidence: preparedEvidence.addedCount,
+      warnings: package.warnings,
     );
   }
 
@@ -1547,7 +1049,10 @@ final class LocalBackupManager {
     );
   }
 
-  Future<_BackupPackage> _readPackage(File file) async {
+  Future<_BackupPackage> _readPackage(
+    File file, {
+    bool verifyEvidenceHashes = false,
+  }) async {
     final raf = await file.open(mode: FileMode.read);
     try {
       final magic = await raf.read(_magic.length);
@@ -1598,7 +1103,258 @@ final class LocalBackupManager {
           'Backup schema is not supported by this Butlerly build.',
         );
       }
+      final evidenceTypeById = <String, String>{};
+      final rawEvidenceRows = tables['evidence_items'];
+      if (rawEvidenceRows is List) {
+        for (final raw in rawEvidenceRows) {
+          if (raw is Map && raw['id'] is String && raw['type'] is String) {
+            evidenceTypeById[raw['id']! as String] = raw['type']! as String;
+          }
+        }
+      }
+      final transactionsByEvidence = <String, Set<String>>{};
+      final rawAttachmentLinks = tables['attachment_links'];
+      if (rawAttachmentLinks is List) {
+        for (final raw in rawAttachmentLinks) {
+          if (raw is Map &&
+              raw['evidence_id'] is String &&
+              raw['transaction_id'] is String) {
+            transactionsByEvidence
+                .putIfAbsent(raw['evidence_id']! as String, () => <String>{})
+                .add(raw['transaction_id']! as String);
+          }
+        }
+      }
+      List<DataIntegrityRecordReference> recordsForEvidence(String evidenceId) {
+        final transactionIds = [
+          ...(transactionsByEvidence[evidenceId] ?? const <String>{}),
+        ]..sort();
+        return [
+          DataIntegrityRecordReference(type: 'evidence', id: evidenceId),
+          for (final transactionId in transactionIds)
+            DataIntegrityRecordReference(
+              type: 'transaction',
+              id: transactionId,
+            ),
+        ];
+      }
+
+      bool isMissingEvidenceWarning(String code) =>
+          code == 'missing_evidence' || code == 'missing_receipt';
+      String warningCodeForEvidence(String evidenceId) =>
+          (evidenceTypeById[evidenceId] ?? '').toLowerCase().contains('receipt')
+          ? 'missing_receipt'
+          : 'missing_evidence';
+      final warnings = <BackupWarning>[];
+      final rawWarnings = manifest['warnings'];
+      if (rawWarnings != null) {
+        if (rawWarnings is! List) {
+          throw const FormatException('Invalid backup warnings.');
+        }
+        for (final raw in rawWarnings) {
+          if (raw is! Map ||
+              raw['code'] is! String ||
+              raw['count'] is! int ||
+              (raw['count']! as int) < 1) {
+            throw const FormatException('Invalid backup warning.');
+          }
+          final rawRecords = raw['records'];
+          final records = <DataIntegrityRecordReference>[];
+          if (rawRecords != null) {
+            if (rawRecords is! List) {
+              throw const FormatException('Invalid backup warning records.');
+            }
+            for (final rawRecord in rawRecords) {
+              if (rawRecord is! Map ||
+                  rawRecord['type'] is! String ||
+                  rawRecord['id'] is! String) {
+                throw const FormatException('Invalid backup warning record.');
+              }
+              records.add(
+                DataIntegrityRecordReference(
+                  type: rawRecord['type']! as String,
+                  id: rawRecord['id']! as String,
+                ),
+              );
+            }
+          }
+          warnings.add(
+            BackupWarning(
+              code: raw['code']! as String,
+              count: raw['count']! as int,
+              affectedRecords: records,
+            ),
+          );
+        }
+      }
+      final rawMissingContent = manifest['missingContent'];
+      final missingContentCount = manifest['missingContentCount'] as int? ?? 0;
+      final missingContentRecords = <DataIntegrityRecordReference>[];
+      final missingContentEvidenceTypes = <String, String>{};
+      final missingContent = <_MissingContentDescriptor>[];
+      final missingContentIds = <String>{};
+      if (missingContentCount < 0) {
+        throw const FormatException('Invalid backup missing-content count.');
+      }
+      if (rawMissingContent != null) {
+        if (rawMissingContent is! List) {
+          throw const FormatException('Invalid backup missing-content list.');
+        }
+        for (final raw in rawMissingContent) {
+          if (raw is! Map ||
+              raw['evidenceId'] is! String ||
+              raw['status'] != 'missing') {
+            throw const FormatException('Invalid backup missing-content item.');
+          }
+          final evidenceId = raw['evidenceId']! as String;
+          if (!missingContentIds.add(evidenceId)) {
+            throw const FormatException(
+              'Backup missing-content list contains a duplicate evidence ID.',
+            );
+          }
+          missingContentRecords.add(
+            DataIntegrityRecordReference(type: 'evidence', id: evidenceId),
+          );
+          final rawEvidenceType = raw['evidenceType'];
+          if (rawEvidenceType != null && rawEvidenceType is! String) {
+            throw const FormatException(
+              'Invalid backup missing-content evidence type.',
+            );
+          }
+          if (rawEvidenceType is String) {
+            missingContentEvidenceTypes[evidenceId] = rawEvidenceType;
+          }
+          final rawPath = raw['path'];
+          String? normalizedPath;
+          if (rawPath != null) {
+            if (rawPath is! String || rawPath.trim().isEmpty) {
+              throw const FormatException(
+                'Invalid backup missing-content path.',
+              );
+            }
+            normalizedPath = normalizeEvidencePath(rawPath);
+          }
+          missingContent.add(
+            _MissingContentDescriptor(
+              evidenceId: evidenceId,
+              evidenceType: rawEvidenceType is String ? rawEvidenceType : null,
+              relativePath: normalizedPath,
+            ),
+          );
+        }
+        if (missingContentCount != rawMissingContent.length) {
+          throw const FormatException(
+            'Backup missing-content count does not match its manifest.',
+          );
+        }
+      } else if (missingContentCount != 0) {
+        throw const FormatException(
+          'Backup missing-content count has no manifest entries.',
+        );
+      }
+      if (missingContentCount > 0) {
+        final missingEvidenceIds = missingContentRecords
+            .where((record) => record.type == 'evidence')
+            .map((record) => record.id)
+            .toSet();
+        final existingMissingWarnings = warnings
+            .where((warning) => isMissingEvidenceWarning(warning.code))
+            .toList(growable: false);
+        if (existingMissingWarnings.isEmpty) {
+          final groupedIds = <String, List<String>>{};
+          for (final evidenceId in missingEvidenceIds) {
+            final evidenceType =
+                missingContentEvidenceTypes[evidenceId] ??
+                evidenceTypeById[evidenceId];
+            final code =
+                evidenceType is String &&
+                    evidenceType.toLowerCase().contains('receipt')
+                ? 'missing_receipt'
+                : warningCodeForEvidence(evidenceId);
+            groupedIds.putIfAbsent(code, () => []).add(evidenceId);
+          }
+          for (final entry in groupedIds.entries) {
+            final records = <DataIntegrityRecordReference>[];
+            for (final evidenceId in entry.value) {
+              for (final record in recordsForEvidence(evidenceId)) {
+                if (!records.any(
+                  (existing) =>
+                      existing.type == record.type && existing.id == record.id,
+                )) {
+                  records.add(record);
+                }
+              }
+            }
+            warnings.add(
+              BackupWarning(
+                code: entry.key,
+                count: entry.value.length,
+                affectedRecords: records,
+              ),
+            );
+          }
+        }
+      }
+      // Also enrich historical warning records that predate the explicit
+      // missing-content list. This keeps generic legacy warning codes intact
+      // while restoring the transaction context available in the snapshot.
+      final missingEvidenceIds = <String>{
+        ...missingContentRecords
+            .where((record) => record.type == 'evidence')
+            .map((record) => record.id),
+        for (final warning in warnings.where(
+          (warning) => isMissingEvidenceWarning(warning.code),
+        ))
+          ...warning.affectedRecords
+              .where((record) => record.type == 'evidence')
+              .map((record) => record.id),
+      };
+      if (warnings.any((warning) => isMissingEvidenceWarning(warning.code))) {
+        final enrichedWarnings = <BackupWarning>[];
+        for (final warning in warnings) {
+          if (!isMissingEvidenceWarning(warning.code)) {
+            enrichedWarnings.add(warning);
+            continue;
+          }
+          final records = [...warning.affectedRecords];
+          for (final evidenceId in missingEvidenceIds) {
+            for (final record in recordsForEvidence(evidenceId)) {
+              if (!records.any(
+                (existing) =>
+                    existing.type == record.type && existing.id == record.id,
+              )) {
+                records.add(record);
+              }
+            }
+          }
+          for (final evidenceId
+              in records
+                  .where((record) => record.type == 'evidence')
+                  .map((record) => record.id)
+                  .toSet()) {
+            for (final record in recordsForEvidence(evidenceId)) {
+              if (!records.any(
+                (existing) =>
+                    existing.type == record.type && existing.id == record.id,
+              )) {
+                records.add(record);
+              }
+            }
+          }
+          enrichedWarnings.add(
+            BackupWarning(
+              code: warning.code,
+              count: warning.count,
+              affectedRecords: records,
+            ),
+          );
+        }
+        warnings
+          ..clear()
+          ..addAll(enrichedWarnings);
+      }
       await _validateTablePayload(sourceSchema, tables);
+      _validateMissingContentManifest(tables, missingContent);
       var offset = _magic.length + 8 + 64 + metadataLength;
       final descriptors = <_EvidenceDescriptor>[];
       final normalizedPaths = <String>{};
@@ -1634,14 +1390,108 @@ final class LocalBackupManager {
           'Backup file length does not match its manifest.',
         );
       }
+      if (verifyEvidenceHashes) {
+        for (final descriptor in descriptors) {
+          final actualHash = await sha256FileRange(
+            file,
+            start: descriptor.offset,
+            endExclusive: descriptor.offset + descriptor.length,
+          );
+          if (actualHash != descriptor.sha256) {
+            throw const FormatException(
+              'Evidence integrity validation failed.',
+            );
+          }
+        }
+      }
+      final packagedEvidencePaths = descriptors
+          .map(
+            (descriptor) =>
+                evidencePathKey(normalizeEvidencePath(descriptor.relativePath)),
+          )
+          .toSet();
+      if (missingContent.any(
+        (item) =>
+            item.relativePath != null &&
+            packagedEvidencePaths.contains(evidencePathKey(item.relativePath!)),
+      )) {
+        throw const FormatException(
+          'Backup missing-content path is also packaged as evidence.',
+        );
+      }
       return _BackupPackage(
         file: file,
         manifest: manifest,
         tables: tables,
         evidence: descriptors,
+        warnings: warnings,
+        missingContentCount: missingContentCount,
+        missingContent: List.unmodifiable(missingContent),
       );
     } finally {
       await raf.close();
+    }
+  }
+
+  void _validateMissingContentManifest(
+    Map<String, Object?> tables,
+    List<_MissingContentDescriptor> missingContent,
+  ) {
+    if (missingContent.isEmpty) return;
+    final rawEvidenceRows = tables['evidence_items'];
+    if (rawEvidenceRows is! List) {
+      throw const FormatException(
+        'Backup missing-content entries require evidence metadata.',
+      );
+    }
+    final evidenceById = <String, Map>{};
+    for (final raw in rawEvidenceRows) {
+      if (raw is! Map || raw['id'] is! String) {
+        throw const FormatException('Invalid backup evidence metadata.');
+      }
+      final evidenceId = raw['id']! as String;
+      if (evidenceById.containsKey(evidenceId)) {
+        throw const FormatException(
+          'Backup evidence metadata contains a duplicate ID.',
+        );
+      }
+      evidenceById[evidenceId] = raw;
+    }
+
+    for (final item in missingContent) {
+      final evidence = evidenceById[item.evidenceId];
+      if (evidence == null) {
+        throw const FormatException(
+          'Backup missing-content entry references unknown evidence.',
+        );
+      }
+      if (item.evidenceType != null && evidence['type'] != item.evidenceType) {
+        throw const FormatException(
+          'Backup missing-content evidence type does not match its metadata.',
+        );
+      }
+
+      final storedPath = evidence['local_file_name'];
+      if (item.relativePath == null) {
+        if (storedPath is String && storedPath.trim().isNotEmpty) {
+          throw const FormatException(
+            'Backup missing-content entry omits a referenced evidence path.',
+          );
+        }
+        continue;
+      }
+      if (storedPath is! String || storedPath.trim().isEmpty) {
+        throw const FormatException(
+          'Backup missing-content entry has an unexpected evidence path.',
+        );
+      }
+      final normalizedStoredPath = normalizeEvidencePath(storedPath);
+      if (evidencePathKey(normalizedStoredPath) !=
+          evidencePathKey(item.relativePath!)) {
+        throw const FormatException(
+          'Backup missing-content path does not match its evidence metadata.',
+        );
+      }
     }
   }
 
@@ -1659,6 +1509,16 @@ final class LocalBackupManager {
     final remaps = <String, String>{};
     final expectedHashes = <String, String>{};
     final excludedEvidencePaths = <String>{};
+    final evidenceIdsByPath = <String, List<String>>{};
+    for (final row in _tableRows(tablePayload, 'evidence_items')) {
+      final evidenceId = row['id'];
+      final localFileName = row['local_file_name'];
+      if (evidenceId is! String || localFileName is! String) continue;
+      final normalized = normalizeEvidencePath(localFileName);
+      evidenceIdsByPath
+          .putIfAbsent(evidencePathKey(normalized), () => <String>[])
+          .add(evidenceId);
+    }
     try {
       if (await staging.exists()) await staging.delete(recursive: true);
       await staging.create(recursive: true);
@@ -1674,6 +1534,36 @@ final class LocalBackupManager {
             package.evidence,
           ),
         );
+
+        // A missing-content entry has no trusted archive hash. If merge copied
+        // a local file into that path, keep the unrelated local file for its
+        // existing owner but move the restored reference to an intentionally
+        // unresolved path. This prevents a missing backup attachment from
+        // silently binding to unrelated content on the destination device.
+        final packagedEvidencePaths = package.evidence
+            .map(
+              (descriptor) => evidencePathKey(
+                normalizeEvidencePath(descriptor.relativePath),
+              ),
+            )
+            .toSet();
+        var unresolvedIndex = 0;
+        for (final item in package.missingContent) {
+          final relative = item.relativePath;
+          if (relative == null) continue;
+          final pathKey = evidencePathKey(relative);
+          if (packagedEvidencePaths.contains(pathKey)) continue;
+          final localPath = File(path.join(staging.path, relative));
+          if (!await localPath.exists()) continue;
+          String replacement;
+          do {
+            replacement = path.posix.join(
+              'unresolved-content',
+              'missing-${unresolvedIndex++}.ref',
+            );
+          } while (await File(path.join(staging.path, replacement)).exists());
+          remaps[item.evidenceId] = replacement;
+        }
       }
       for (final item in package.evidence) {
         final normalized = normalizeEvidencePath(item.relativePath);
@@ -1716,7 +1606,11 @@ final class LocalBackupManager {
             }
             attempt++;
           }
-          remaps[evidencePathKey(normalized)] = relative;
+          for (final evidenceId
+              in evidenceIdsByPath[evidencePathKey(normalized)] ??
+                  const <String>[]) {
+            remaps[evidenceId] = relative;
+          }
           expectedHashes[evidencePathKey(relative)] = item.sha256;
           if (reuseExisting) continue;
         }
@@ -2033,10 +1927,9 @@ final class LocalBackupManager {
         .cast<Map>();
     for (final raw in rows) {
       final row = raw.cast<String, Object?>();
-      final current = row['local_file_name'] as String?;
-      if (current == null) continue;
-      final replacement =
-          remaps[evidencePathKey(normalizeEvidencePath(current))];
+      final evidenceId = row['id'] as String?;
+      if (evidenceId == null) continue;
+      final replacement = remaps[evidenceId];
       if (replacement != null) row['local_file_name'] = replacement;
     }
   }
@@ -2055,11 +1948,10 @@ final class LocalBackupManager {
         message: 'Unsafe evidence reference.',
       );
       final evidence = File(path.join(evidenceRoot.path, relative));
-      if (!await evidence.exists()) {
-        throw const FormatException(
-          'Backup evidence reference has no corresponding file.',
-        );
-      }
+      // The manifest may explicitly record that this optional source file was
+      // unavailable when the archive was created. Preserve the reference and
+      // let Data Integrity Reports explain it after restore.
+      if (!await evidence.exists()) continue;
       final expectedHash = expectedHashes[evidencePathKey(relative)];
       if (expectedHash != null &&
           await sha256FileRange(evidence) != expectedHash) {
@@ -2194,7 +2086,17 @@ final class LocalBackupManager {
   Future<Map<String, List<Map<String, Object?>>>> _portableLocalRows() async {
     final rowsByTable = <String, List<Map<String, Object?>>>{};
     for (final spec in _tables) {
-      rowsByTable[spec.name] = await database.database.query(spec.name);
+      var rows = await database.database.query(spec.name);
+      if (spec.name == 'analysis_findings') {
+        rows = rows
+            .where(
+              (row) =>
+                  row['lifecycle'] == 'acknowledged' ||
+                  row['lifecycle'] == 'dismissed',
+            )
+            .toList(growable: false);
+      }
+      rowsByTable[spec.name] = rows;
     }
 
     rowsByTable['review_issues'] = rowsByTable['review_issues']!
@@ -2244,6 +2146,19 @@ final class LocalBackupManager {
             .where((row) => portableDuplicateIds.contains(row['group_id']))
             .toList(growable: false);
     return rowsByTable;
+  }
+
+  void _filterDerivedAnalysisRows(Map<String, Object?> tablePayload) {
+    final rows = tablePayload['analysis_findings'];
+    if (rows is! List) return;
+    tablePayload['analysis_findings'] = rows
+        .cast<Map>()
+        .where(
+          (row) =>
+              row['lifecycle'] == 'acknowledged' ||
+              row['lifecycle'] == 'dismissed',
+        )
+        .toList(growable: false);
   }
 
   Future<void> _validateTablePayload(
@@ -2341,8 +2256,6 @@ final class LocalBackupManager {
         }
       }
     }
-    await _validateTableReferences(sourceSchema, tables);
-    _validateAnalysisTables(sourceSchema, tables);
   }
 
   Future<Set<String>> _schemaColumns(String table) async {
@@ -2503,17 +2416,6 @@ final class LocalBackupManager {
         );
       }
     }
-    if (table == 'budgets') {
-      final scope = raw['scope'];
-      final scopeId = raw['scope_id'];
-      if (scope == 'overall' && scopeId != null ||
-          scope != 'overall' && scopeId == null) {
-        throw FormatException(
-          'Backup schema $sourceSchema table "$table" row $index '
-          'contains an invalid scope identity.',
-        );
-      }
-    }
     if (table == 'financial_profiles') {
       _validateFinancialProfileRow(sourceSchema, raw, index);
     }
@@ -2653,733 +2555,6 @@ final class LocalBackupManager {
       );
     }
   }
-
-  Future<void> _validateTableReferences(
-    int sourceSchema,
-    Map<String, Object?> tables,
-  ) async {
-    // The snapshot intentionally omits catalog-owned rows; the installed
-    // database reseeds those before restored user rows are applied.
-    const omittedSystemTables = {
-      'categories',
-      'merchants',
-      'reference_data',
-      'tags',
-    };
-    final omittedSystemIds = <String, Set<String>>{
-      'categories': {
-        for (final row in await database.database.query(
-          'categories',
-          columns: ['id'],
-          where: "LOWER(origin) = 'system'",
-        ))
-          row['id']! as String,
-      },
-      'merchants': {
-        for (final row in await database.database.query(
-          'merchants',
-          columns: ['id'],
-          where: 'is_built_in = 1',
-        ))
-          row['id']! as String,
-      },
-      'reference_data': {
-        for (final row in await database.database.query(
-          'reference_data',
-          columns: ['id'],
-          where: "LOWER(origin) = 'system'",
-        ))
-          row['id']! as String,
-      },
-      'tags': _builtInTagIds,
-    };
-    const references = <String, Map<String, String>>{
-      'attachment_links': {
-        'transaction_id': 'transactions',
-        'evidence_id': 'evidence_items',
-      },
-      'categories': {'parent_id': 'categories'},
-      'category_translations': {'category_id': 'categories'},
-      'duplicate_candidate_group_transactions': {
-        'group_id': 'duplicate_candidate_groups',
-        'transaction_id': 'transactions',
-      },
-      'duplicate_candidate_groups': {'selected_transaction_id': 'transactions'},
-      'evidence_items': {'provenance_id': 'provenances'},
-      'extractions': {
-        'evidence_id': 'evidence_items',
-        'provenance_id': 'provenances',
-      },
-      'financial_statements': {
-        'evidence_id': 'evidence_items',
-        'payment_source_id': 'payment_sources',
-      },
-      'merchant_aliases': {'merchant_id': 'merchants'},
-      'merchant_normalization_patterns': {'merchant_id': 'merchants'},
-      'merchants': {
-        'default_category_id': 'categories',
-        'default_subcategory_id': 'categories',
-      },
-      'normalized_money': {
-        'transaction_id': 'transactions',
-        'exchange_rate_id': 'exchange_rates',
-      },
-      'payment_settlements': {'payment_source_id': 'payment_sources'},
-      'reconciliation_candidates': {
-        'receipt_transaction_id': 'transactions',
-        'payment_transaction_id': 'transactions',
-      },
-      'reconciliation_links': {
-        'candidate_id': 'reconciliation_candidates',
-        'receipt_transaction_id': 'transactions',
-        'payment_transaction_id': 'transactions',
-      },
-      'reference_data_translations': {'reference_data_id': 'reference_data'},
-      'review_issues': {'transaction_id': 'transactions'},
-      'statement_rows': {
-        'statement_id': 'financial_statements',
-        'transaction_id': 'transactions',
-        'merchant_id': 'merchants',
-        'category_id': 'categories',
-        'payment_source_id': 'payment_sources',
-        'subcategory_id': 'categories',
-      },
-      'suggestions': {
-        'transaction_id': 'transactions',
-        'provenance_id': 'provenances',
-      },
-      'tag_translations': {'tag_id': 'tags'},
-      'transaction_provenances': {
-        'transaction_id': 'transactions',
-        'provenance_id': 'provenances',
-      },
-      'transaction_rules': {
-        'merchant_id': 'merchants',
-        'category_id': 'categories',
-        'payment_source_id': 'payment_sources',
-        'tag_id': 'tags',
-        'assign_merchant_id': 'merchants',
-        'assign_category_id': 'categories',
-        'assign_payment_source_id': 'payment_sources',
-        'assign_tag_id': 'tags',
-        'assign_subcategory_id': 'categories',
-      },
-      'transaction_tags': {'transaction_id': 'transactions', 'tag_id': 'tags'},
-      'transactions': {
-        'payment_source_id': 'payment_sources',
-        'merchant_id': 'merchants',
-        'category_id': 'categories',
-        'subcategory_id': 'categories',
-      },
-    };
-    for (final entry in references.entries) {
-      final rows = (tables[entry.key] as List?)?.cast<Map>() ?? const <Map>[];
-      for (final raw in rows) {
-        for (final reference in entry.value.entries) {
-          final value = raw[reference.key];
-          if (value == null) continue;
-          final targetRows =
-              (tables[reference.value] as List?)?.cast<Map>() ?? const <Map>[];
-          if (!targetRows.any((target) => target['id'] == value)) {
-            if (omittedSystemTables.contains(reference.value) &&
-                omittedSystemIds[reference.value]!.contains(value)) {
-              continue;
-            }
-            throw FormatException(
-              'Backup schema $sourceSchema table "${entry.key}" references '
-              'missing ${reference.value} row "$value".',
-            );
-          }
-        }
-      }
-    }
-
-    final budgetRows =
-        (tables['budgets'] as List?)?.cast<Map>() ?? const <Map>[];
-    for (var index = 0; index < budgetRows.length; index++) {
-      final raw = budgetRows[index];
-      final scope = raw['scope'];
-      final scopeId = raw['scope_id'];
-      if (scope == 'overall') continue;
-      if (scopeId is! String || scopeId.isEmpty) {
-        throw FormatException(
-          'Backup schema $sourceSchema table "budgets" row $index '
-          'contains an invalid scope identity.',
-        );
-      }
-      final targetTable = scope == 'merchant' ? 'merchants' : 'categories';
-      final targetIds = <String>{
-        ...omittedSystemIds[targetTable]!,
-        for (final target
-            in (tables[targetTable] as List?)?.cast<Map>() ?? const <Map>[])
-          if (target['id'] is String) target['id']! as String,
-      };
-      if (!targetIds.contains(scopeId)) {
-        throw FormatException(
-          'Backup schema $sourceSchema table "budgets" row $index '
-          'references missing $targetTable row "$scopeId".',
-        );
-      }
-    }
-  }
-
-  void _validateAnalysisTables(int sourceSchema, Map<String, Object?> tables) {
-    // These tables were not portable before schema 16. Historical packages
-    // may therefore contain activations without the definitions that were
-    // installed locally when the package was created.
-    final hasDefinitionsTable = tables.containsKey('analysis_rule_definitions');
-    final hasFindingsTable = tables.containsKey('analysis_findings');
-    if (sourceSchema < schemaVersion &&
-        !hasDefinitionsTable &&
-        !hasFindingsTable) {
-      return;
-    }
-    // Validate newly present tables even when a package advertises an older
-    // schema. This keeps historical packages safe without making the
-    // validation depend solely on the manifest version.
-    final requireDefinitionReferences =
-        sourceSchema >= schemaVersion || hasDefinitionsTable;
-
-    final definitionRows = _tableRows(tables, 'analysis_rule_definitions');
-    final definitionsByKey = <String, Map>{};
-    final provenanceByKey = <String, Map>{};
-    final provenanceByRuleId = <String, List<Map>>{};
-    bool bundledProvenanceMatches(String key, String? definitionHash) {
-      final provenance = provenanceByKey[key];
-      return provenance != null &&
-          provenance['source_type'] == 'bundled' &&
-          (definitionHash == null ||
-              provenance['definition_hash'] == definitionHash);
-    }
-
-    bool ruleHasOnlyBundledProvenance(String ruleId) {
-      final provenance = provenanceByRuleId[ruleId];
-      return provenance != null &&
-          provenance.isNotEmpty &&
-          provenance.every((row) => row['source_type'] == 'bundled');
-    }
-
-    var canRepair = false;
-    try {
-      for (var index = 0; index < definitionRows.length; index++) {
-        canRepair = false;
-        final row = definitionRows[index];
-        final ruleId = row['rule_id'];
-        final ruleVersion = row['rule_version'];
-        if (ruleId is! String ||
-            ruleId.isEmpty ||
-            ruleVersion is! String ||
-            ruleVersion.isEmpty) {
-          throw FormatException(
-            'Backup schema $sourceSchema table "analysis_rule_definitions" '
-            'row $index contains an invalid rule identity.',
-          );
-        }
-        final key = '$ruleId:$ruleVersion';
-        definitionsByKey[key] = row;
-
-        final status = row['validation_status'];
-        if (status is! String || !{'valid', 'invalid'}.contains(status)) {
-          throw FormatException(
-            'Backup schema $sourceSchema table "analysis_rule_definitions" '
-            'row $index contains an invalid validation status.',
-          );
-        }
-        if (status != 'valid') continue;
-
-        final canonical = row['canonical_definition'];
-        if (canonical is! String || canonical.isEmpty) {
-          throw FormatException(
-            'Backup schema $sourceSchema table "analysis_rule_definitions" '
-            'row $index contains an invalid canonical definition.',
-          );
-        }
-        final values = _decodeRuleDefinition(canonical, sourceSchema, index);
-        final result = const RuleDefinitionValidator().validate(
-          ParsedRuleDocument(values),
-        );
-        if (result.definition == null) {
-          final diagnostic = result.diagnostics.isEmpty
-              ? 'definition could not be reconstructed'
-              : result.diagnostics.first.message;
-          throw FormatException(
-            'Backup schema $sourceSchema table "analysis_rule_definitions" '
-            'row $index is invalid: $diagnostic',
-          );
-        }
-        final definition = result.definition!;
-        if (canonicalize(values) != canonical ||
-            definition.identity.value != ruleId ||
-            definition.version.value != ruleVersion ||
-            definition.schemaVersion != row['schema_version'] ||
-            definition.definitionHash.value != row['definition_hash']) {
-          throw FormatException(
-            'Backup schema $sourceSchema table "analysis_rule_definitions" '
-            'row $index does not match its canonical identity or hash.',
-          );
-        }
-      }
-
-      final provenanceRows = _tableRows(tables, 'analysis_rule_provenance');
-      for (var index = 0; index < provenanceRows.length; index++) {
-        final row = provenanceRows[index];
-        final ruleId = row['rule_id'];
-        final ruleVersion = row['rule_version'];
-        final sourceType = row['source_type'];
-        final definitionHash = row['definition_hash'];
-        if (ruleId is! String ||
-            ruleId.isEmpty ||
-            ruleVersion is! String ||
-            ruleVersion.isEmpty ||
-            sourceType is! String ||
-            sourceType.isEmpty ||
-            definitionHash is! String ||
-            !RegExp(r'^[0-9a-fA-F]{64}$').hasMatch(definitionHash)) {
-          throw FormatException(
-            'Backup schema $sourceSchema table '
-            '"analysis_rule_provenance" row $index contains invalid '
-            'provenance.',
-          );
-        }
-        final key = '$ruleId:$ruleVersion';
-        provenanceByKey[key] = row;
-        provenanceByRuleId.putIfAbsent(ruleId, () => <Map>[]).add(row);
-        final definition = definitionsByKey['$ruleId:$ruleVersion'];
-        if (definition != null &&
-            definition['validation_status'] == 'valid' &&
-            (definition['definition_hash'] != definitionHash ||
-                definition['source_type'] != sourceType)) {
-          throw FormatException(
-            'Backup schema $sourceSchema table '
-            '"analysis_rule_provenance" row $index does not match its '
-            'definition hash.',
-          );
-        }
-      }
-
-      final activationRows = _tableRows(tables, 'analysis_rule_activations');
-      for (var index = 0; index < activationRows.length; index++) {
-        canRepair = false;
-        final row = activationRows[index];
-        final ruleId = row['rule_id'];
-        final ruleVersion = row['active_rule_version'];
-        final enabled = row['enabled'];
-        final definition = definitionsByKey['$ruleId:$ruleVersion'];
-        if (ruleId is! String ||
-            ruleId.isEmpty ||
-            ruleVersion is! String ||
-            ruleVersion.isEmpty ||
-            enabled is! int ||
-            (enabled != 0 && enabled != 1)) {
-          throw FormatException(
-            'Backup schema $sourceSchema table "analysis_rule_activations" '
-            'row $index contains an invalid activation.',
-          );
-        }
-        if (requireDefinitionReferences &&
-            (definition == null ||
-                definition['validation_status'] != 'valid')) {
-          if (definition == null &&
-              bundledProvenanceMatches('$ruleId:$ruleVersion', null) &&
-              ruleHasOnlyBundledProvenance(ruleId)) {
-            canRepair = true;
-          } else {
-            // A missing definition without exact bundled provenance cannot be
-            // distinguished from a user rule with a colliding identity.
-            canRepair = false;
-          }
-          throw FormatException(
-            'Backup schema $sourceSchema table "analysis_rule_activations" '
-            'row $index references a missing rule definition.',
-          );
-        }
-      }
-
-      final configurationRows = _tableRows(
-        tables,
-        'analysis_rule_configurations',
-      );
-      for (var index = 0; index < configurationRows.length; index++) {
-        canRepair = false;
-        final row = configurationRows[index];
-        final ruleId = row['rule_id'];
-        final configuration = row['configuration'];
-        if (ruleId is! String || ruleId.isEmpty || configuration is! String) {
-          throw FormatException(
-            'Backup schema $sourceSchema table '
-            '"analysis_rule_configurations" row $index contains an invalid '
-            'configuration.',
-          );
-        }
-        try {
-          final decoded = jsonDecode(configuration);
-          if (decoded is! Map) throw const FormatException();
-        } on Object {
-          throw FormatException(
-            'Backup schema $sourceSchema table '
-            '"analysis_rule_configurations" row $index contains invalid JSON.',
-          );
-        }
-        final hasValidDefinition = definitionsByKey.values.any(
-          (definition) =>
-              definition['rule_id'] == ruleId &&
-              definition['validation_status'] == 'valid',
-        );
-        final hasInvalidDefinition = definitionsByKey.values.any(
-          (definition) =>
-              definition['rule_id'] == ruleId &&
-              definition['validation_status'] != 'valid',
-        );
-        if (requireDefinitionReferences && !hasValidDefinition) {
-          if (!hasInvalidDefinition && ruleHasOnlyBundledProvenance(ruleId)) {
-            canRepair = true;
-          } else {
-            canRepair = false;
-          }
-          throw FormatException(
-            'Backup schema $sourceSchema table '
-            '"analysis_rule_configurations" row $index references a missing '
-            'rule definition.',
-          );
-        }
-      }
-    } on FormatException catch (error, stackTrace) {
-      Error.throwWithStackTrace(
-        BackupAnalysisRuleValidationException(
-          error.message,
-          canRepair: canRepair,
-        ),
-        stackTrace,
-      );
-    }
-
-    final transactionIds = _stringIds(tables, 'transactions', 'id');
-    final evidenceIds = _stringIds(tables, 'evidence_items', 'id');
-    final attachmentPairs = {
-      for (final row in _tableRows(tables, 'attachment_links'))
-        if (row['transaction_id'] is String && row['evidence_id'] is String)
-          '${row['transaction_id']}:${row['evidence_id']}',
-    };
-    final findingRows = _tableRows(tables, 'analysis_findings');
-    for (var index = 0; index < findingRows.length; index++) {
-      final row = findingRows[index];
-      final ruleId = row['rule_id'];
-      final ruleVersion = row['rule_version'];
-      final definitionHash = row['definition_hash'];
-      final lifecycle = row['lifecycle'];
-      if (ruleId is! String ||
-          ruleVersion is! String ||
-          definitionHash is! String ||
-          lifecycle is! String ||
-          !FindingLifecycle.values.any((value) => value.name == lifecycle)) {
-        throw FormatException(
-          'Backup schema $sourceSchema table "analysis_findings" row $index '
-          'contains an invalid rule identity or lifecycle.',
-        );
-      }
-      final definition = definitionsByKey['$ruleId:$ruleVersion'];
-      if (definition == null ||
-          definition['validation_status'] != 'valid' ||
-          definition['definition_hash'] != definitionHash) {
-        throw BackupAnalysisRuleValidationException(
-          'Backup schema $sourceSchema table "analysis_findings" row $index '
-          'references an unavailable or mismatched rule definition.',
-          canRepair:
-              definition == null &&
-              bundledProvenanceMatches(
-                '$ruleId:$ruleVersion',
-                definitionHash,
-              ) &&
-              ruleHasOnlyBundledProvenance(ruleId),
-        );
-      }
-      final periodStart = row['period_start'];
-      final periodEnd = row['period_end'];
-      final timeZoneId = row['time_zone_id'];
-      if (periodStart is! String ||
-          periodEnd is! String ||
-          timeZoneId is! String) {
-        throw FormatException(
-          'Backup schema $sourceSchema table "analysis_findings" row $index '
-          'contains an invalid analysis period.',
-        );
-      }
-      try {
-        final start = parseFinancialDateOnly(periodStart);
-        final end = parseFinancialDateOnly(periodEnd);
-        if (start.isAfter(end)) {
-          throw const FormatException('Analysis period is reversed.');
-        }
-        resolveFinancialTimeZone(timeZoneId);
-      } on Object {
-        throw FormatException(
-          'Backup schema $sourceSchema table "analysis_findings" row $index '
-          'contains an invalid analysis period or timezone.',
-        );
-      }
-      final payloadValue = row['payload'];
-      if (payloadValue is! String) {
-        throw FormatException(
-          'Backup schema $sourceSchema table "analysis_findings" row $index '
-          'contains an invalid payload.',
-        );
-      }
-      final payload = _decodeFindingPayload(payloadValue, sourceSchema, index);
-      _validateFindingPayload(
-        sourceSchema,
-        index,
-        payload,
-        allowMissingReferences: lifecycle != FindingLifecycle.active.name,
-        transactionIds: transactionIds,
-        evidenceIds: evidenceIds,
-        attachmentPairs: attachmentPairs,
-      );
-    }
-  }
-
-  Map<String, Object?> _decodeRuleDefinition(
-    String value,
-    int sourceSchema,
-    int index,
-  ) {
-    try {
-      final decoded = jsonDecode(value);
-      if (decoded is! Map) throw const FormatException();
-      return decoded.map<String, Object?>(
-        (key, value) => MapEntry(key.toString(), value),
-      );
-    } on Object {
-      throw FormatException(
-        'Backup schema $sourceSchema table "analysis_rule_definitions" '
-        'row $index contains invalid canonical JSON.',
-      );
-    }
-  }
-
-  Map<String, dynamic> _decodeFindingPayload(
-    String value,
-    int sourceSchema,
-    int index,
-  ) {
-    try {
-      final decoded = jsonDecode(value);
-      if (decoded is! Map) throw const FormatException();
-      return decoded.cast<String, dynamic>();
-    } on Object {
-      throw FormatException(
-        'Backup schema $sourceSchema table "analysis_findings" row $index '
-        'contains invalid JSON payload.',
-      );
-    }
-  }
-
-  void _validateFindingPayload(
-    int sourceSchema,
-    int index,
-    Map<String, dynamic> payload, {
-    required bool allowMissingReferences,
-    required Set<String> transactionIds,
-    required Set<String> evidenceIds,
-    required Set<String> attachmentPairs,
-  }) {
-    final severity = payload['severity'];
-    if (severity != null || payload.containsKey('severity')) {
-      if (severity is! String ||
-          !RuleSeverity.values.any((value) => value.name == severity)) {
-        throw FormatException(
-          'Backup schema $sourceSchema table "analysis_findings" row $index '
-          'contains an invalid severity.',
-        );
-      }
-    }
-    final datasetMode = payload['datasetMode'];
-    if (datasetMode != null &&
-        (datasetMode is! String ||
-            !DatasetMode.values.any((value) => value.name == datasetMode))) {
-      throw FormatException(
-        'Backup schema $sourceSchema table "analysis_findings" row $index '
-        'contains an invalid dataset mode.',
-      );
-    }
-    final currencyBasis = payload['currencyBasis'];
-    if (currencyBasis != null &&
-        (currencyBasis is! String ||
-            !CurrencyBasis.values.any(
-              (value) => value.name == currencyBasis,
-            ))) {
-      throw FormatException(
-        'Backup schema $sourceSchema table "analysis_findings" row $index '
-        'contains an invalid currency basis.',
-      );
-    }
-    final baseCurrency = payload['baseCurrency'];
-    if (baseCurrency != null &&
-        (baseCurrency is! String ||
-            !RegExp(r'^[A-Z]{3}$').hasMatch(baseCurrency))) {
-      throw FormatException(
-        'Backup schema $sourceSchema table "analysis_findings" row $index '
-        'contains an invalid base currency.',
-      );
-    }
-    if (payload['dimension'] != null && payload['dimension'] is! String) {
-      throw FormatException(
-        'Backup schema $sourceSchema table "analysis_findings" row $index '
-        'contains an invalid dimension.',
-      );
-    }
-    for (final field in const [
-      'currentValue',
-      'baselineValue',
-      'absoluteChange',
-      'percentageChange',
-    ]) {
-      final value = payload[field];
-      if (value == null) continue;
-      if (value is! String) {
-        throw FormatException(
-          'Backup schema $sourceSchema table "analysis_findings" row $index '
-          'contains a non-string $field.',
-        );
-      }
-      try {
-        DecimalValue.parse(value);
-      } on Object {
-        throw FormatException(
-          'Backup schema $sourceSchema table "analysis_findings" row $index '
-          'contains an invalid $field.',
-        );
-      }
-    }
-    final supportingMetrics = payload['supportingMetrics'];
-    if (supportingMetrics != null && supportingMetrics is! List) {
-      throw FormatException(
-        'Backup schema $sourceSchema table "analysis_findings" row $index '
-        'contains invalid supporting metrics.',
-      );
-    }
-    _validateFindingEvidence(
-      sourceSchema,
-      index,
-      payload['evidence'],
-      transactionIds: transactionIds,
-      evidenceIds: evidenceIds,
-      attachmentPairs: attachmentPairs,
-      field: 'evidence',
-      requireTransaction: true,
-      allowMissingReferences: allowMissingReferences,
-    );
-    _validateFindingEvidence(
-      sourceSchema,
-      index,
-      payload['qualityIssues'],
-      transactionIds: transactionIds,
-      evidenceIds: evidenceIds,
-      attachmentPairs: attachmentPairs,
-      field: 'qualityIssues',
-      requireTransaction: false,
-      allowMissingReferences: allowMissingReferences,
-    );
-  }
-
-  void _validateFindingEvidence(
-    int sourceSchema,
-    int index,
-    Object? raw, {
-    required Set<String> transactionIds,
-    required Set<String> evidenceIds,
-    required Set<String> attachmentPairs,
-    required String field,
-    required bool requireTransaction,
-    required bool allowMissingReferences,
-  }) {
-    if (raw == null) return;
-    if (raw is! List) {
-      throw FormatException(
-        'Backup schema $sourceSchema table "analysis_findings" row $index '
-        'contains invalid $field.',
-      );
-    }
-    for (final item in raw) {
-      if (item is! Map) {
-        throw FormatException(
-          'Backup schema $sourceSchema table "analysis_findings" row $index '
-          'contains invalid $field entries.',
-        );
-      }
-      final transactionId = item['transactionId'];
-      if (requireTransaction && transactionId is! String) {
-        throw FormatException(
-          'Backup schema $sourceSchema table "analysis_findings" row $index '
-          'references a missing transaction from $field.',
-        );
-      }
-      if (!requireTransaction &&
-          transactionId != null &&
-          transactionId is! String) {
-        throw FormatException(
-          'Backup schema $sourceSchema table "analysis_findings" row $index '
-          'references a missing transaction from $field.',
-        );
-      }
-      if (transactionId is String &&
-          !allowMissingReferences &&
-          !transactionIds.contains(transactionId)) {
-        throw FormatException(
-          'Backup schema $sourceSchema table "analysis_findings" row $index '
-          'references a missing transaction from $field.',
-        );
-      }
-      final evidenceId = item['evidenceId'];
-      if (evidenceId != null && evidenceId is! String) {
-        throw FormatException(
-          'Backup schema $sourceSchema table "analysis_findings" row $index '
-          'references missing evidence from $field.',
-        );
-      }
-      if (evidenceId is String &&
-          !allowMissingReferences &&
-          !evidenceIds.contains(evidenceId)) {
-        throw FormatException(
-          'Backup schema $sourceSchema table "analysis_findings" row $index '
-          'references missing evidence from $field.',
-        );
-      }
-      if (evidenceId is String && transactionId is! String) {
-        throw FormatException(
-          'Backup schema $sourceSchema table "analysis_findings" row $index '
-          'references an unlinked evidence item from $field.',
-        );
-      }
-      if (evidenceId is String) {
-        final referencesMissingEntity =
-            !transactionIds.contains(transactionId) ||
-            !evidenceIds.contains(evidenceId);
-        if ((!allowMissingReferences || !referencesMissingEntity) &&
-            !attachmentPairs.contains('$transactionId:$evidenceId')) {
-          throw FormatException(
-            'Backup schema $sourceSchema table "analysis_findings" row $index '
-            'references an unlinked evidence item from $field.',
-          );
-        }
-      }
-      if (field == 'qualityIssues' &&
-          (item['code'] is! String || item['detail'] is! String)) {
-        throw FormatException(
-          'Backup schema $sourceSchema table "analysis_findings" row $index '
-          'contains an invalid quality issue.',
-        );
-      }
-    }
-  }
-
-  Set<String> _stringIds(
-    Map<String, Object?> tables,
-    String table,
-    String field,
-  ) => {
-    for (final row in _tableRows(tables, table))
-      if (row[field] is String) row[field]! as String,
-  };
 
   void _validateTombstoneRow(int sourceSchema, Map raw, int index) {
     final entityType = raw['entity_type'];
@@ -3701,6 +2876,23 @@ final class LocalBackupManager {
     );
   }
 
+  Future<bool> _foreignKeysEnabled() async {
+    final rows = await database.database.rawQuery('PRAGMA foreign_keys');
+    final value = rows.isEmpty ? null : rows.first.values.firstOrNull;
+    return value == 1 || value == '1';
+  }
+
+  Future<void> _setForeignKeys(bool enabled) async {
+    final controller = _foreignKeysController;
+    if (controller != null) {
+      await controller(enabled);
+      return;
+    }
+    await database.database.execute(
+      'PRAGMA foreign_keys = ${enabled ? 'ON' : 'OFF'}',
+    );
+  }
+
   /// Historical snapshots ordered non-root categories by ID, which is not a
   /// valid insertion order for every multi-level hierarchy. Restore the
   /// payload topologically while leaving references to installed system
@@ -3886,6 +3078,14 @@ final class LocalBackupManager {
   }
 
   Future<void> _clearPortableState(Transaction tx) async {
+    // Integrity reports and operation diagnostics are workspace-local history,
+    // not portable user data. A replace restore must not leave findings from
+    // the previous workspace visible alongside the restored records. Delete
+    // child findings first because they reference the report rows.
+    await tx.delete('data_integrity_findings');
+    await tx.delete('data_integrity_reports');
+    await tx.delete('operation_diagnostics');
+
     // Translations and reference data are catalog children. Keep current
     // system-owned rows so a restore cannot pin an obsolete bundled catalog,
     // while removing all user-owned rows before restoring the backup payload.

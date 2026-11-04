@@ -104,30 +104,6 @@ void main() {
     expect(events, ['erase']);
   });
 
-  test('portable backup does not repair bundled rules', () async {
-    service = WorkspaceDataService(
-      gateway,
-      refreshSystemData: () async {},
-      repairAnalysisRulesCallback: () async => events.add('rules'),
-    );
-
-    await service.createPortableBackup('destination', password: 'password');
-
-    expect(events, ['portable']);
-  });
-
-  test('temporary backup does not repair bundled rules', () async {
-    service = WorkspaceDataService(
-      gateway,
-      refreshSystemData: () async {},
-      repairAnalysisRulesCallback: () async => events.add('rules'),
-    );
-
-    await service.createTemporaryBackup('temporary', password: 'password');
-
-    expect(events, ['temporary']);
-  });
-
   test(
     'publication warning dismissal does not trigger data operations',
     () async {
@@ -136,18 +112,6 @@ void main() {
       expect(events, ['dismiss-publication-warning']);
     },
   );
-
-  test('rule repair is a separate explicitly invoked operation', () async {
-    service = WorkspaceDataService(
-      gateway,
-      refreshSystemData: () async {},
-      repairAnalysisRulesCallback: () async => events.add('rules'),
-    );
-
-    await service.repairAnalysisRules();
-
-    expect(events, ['rules']);
-  });
 }
 
 class _Gateway implements LocalDataGateway {

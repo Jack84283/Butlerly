@@ -1,4 +1,23 @@
+import 'data_integrity_dto.dart';
+
 enum LocalRestoreMode { merge, replace }
+
+/// A privacy-safe condition observed while creating or restoring a backup.
+///
+/// These warnings describe source data that could not be copied or derived
+/// data that will be rebuilt. They never contain paths, exception text, or
+/// financial values.
+final class BackupWarning {
+  const BackupWarning({
+    required this.code,
+    required this.count,
+    this.affectedRecords = const [],
+  });
+
+  final String code;
+  final int count;
+  final List<DataIntegrityRecordReference> affectedRecords;
+}
 
 final class BackupChangeSummary {
   const BackupChangeSummary({
@@ -26,12 +45,16 @@ final class BackupInspection {
     required this.recordCount,
     required this.evidenceCount,
     required this.changes,
+    this.warnings = const [],
+    this.missingContentCount = 0,
   });
 
   final DateTime createdAtUtc;
   final int recordCount;
   final int evidenceCount;
   final BackupChangeSummary changes;
+  final List<BackupWarning> warnings;
+  final int missingContentCount;
 
   bool get hasNewerLocalData => changes.hasChanges;
 }
@@ -43,6 +66,8 @@ final class LocalRestoreResult {
     required this.keptNewerLocalRows,
     required this.restoredEvidence,
     this.presentationRefreshFailed = false,
+    this.analysisRebuildFailed = false,
+    this.warnings = const [],
   });
 
   final LocalRestoreMode mode;
@@ -53,58 +78,12 @@ final class LocalRestoreResult {
   /// The database restore succeeded, but the non-critical UI refresh failed.
   /// Do not report this as a failed data restore or try to restore again.
   final bool presentationRefreshFailed;
-}
 
-/// Result of an explicitly approved evidence-file recovery operation.
-///
-/// Recovery is deliberately scoped to files referenced by the current local
-/// database. It never changes SQLite rows or analysis state. Existing files
-/// are verified and left untouched; only missing files whose bytes are present
-/// and valid in the selected backup are added.
-final class EvidenceRecoveryResult {
-  const EvidenceRecoveryResult({
-    required this.recoveredCount,
-    required this.alreadyPresentCount,
-    required this.unresolvedCount,
-    this.conflictingCount = 0,
-    this.unavailableCount = 0,
-  });
+  /// The primary restore committed, but rebuilding derived analysis state
+  /// could not complete. Source data remains restored and is safe to inspect.
+  final bool analysisRebuildFailed;
 
-  final int recoveredCount;
-  final int alreadyPresentCount;
-  final int unresolvedCount;
-  final int conflictingCount;
-  final int unavailableCount;
-
-  bool get isComplete => unresolvedCount == 0;
-}
-
-/// Read-only evidence recovery assessment produced before any file is
-/// published. The fingerprint is opaque to presentation and binds the
-/// confirmation step to the exact current database/archive assessment.
-final class EvidenceRecoveryPreview {
-  const EvidenceRecoveryPreview({
-    required this.recoverableCount,
-    required this.alreadyPresentCount,
-    required this.conflictingCount,
-    required this.unavailableCount,
-    required this.unresolvedCount,
-    required this.fingerprint,
-  });
-
-  final int recoverableCount;
-  final int alreadyPresentCount;
-  final int conflictingCount;
-  final int unavailableCount;
-  final int unresolvedCount;
-  final String fingerprint;
-
-  bool get isComplete => unresolvedCount == 0;
-}
-
-/// The live evidence references changed after preview and before confirmation.
-final class EvidenceRecoveryPreviewStaleException implements Exception {
-  const EvidenceRecoveryPreviewStaleException();
+  final List<BackupWarning> warnings;
 }
 
 final class LocalDataExportResult {

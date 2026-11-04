@@ -346,6 +346,117 @@ void main() {
   );
 
   test(
+    'post-commit foreign-key restoration failure preserves evidence for controlled recovery',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      final timestamp = DateTime.utc(2025, 1, 1);
+      await fixture.insertTransaction('tx-post-commit-fk', timestamp);
+      await fixture.database.database.insert('provenances', {
+        'id': 'provenance-post-commit-fk',
+        'source_type': 'manual',
+        'captured_at': timestamp.toIso8601String(),
+      });
+      await fixture.database.database.insert('evidence_items', {
+        'id': 'evidence-post-commit-fk',
+        'type': 'receipt',
+        'original_name': 'post-commit.bin',
+        'media_type': 'application/octet-stream',
+        'provenance_id': 'provenance-post-commit-fk',
+        'created_at': timestamp.toIso8601String(),
+        'local_file_name': 'post-commit.bin',
+      });
+      final evidenceFile = File(
+        path.join(fixture.evidence.path, 'post-commit.bin'),
+      );
+      await evidenceFile.writeAsString('backup evidence', flush: true);
+      await fixture.database.database.execute('PRAGMA foreign_keys = OFF');
+      await fixture.database.database.insert('attachment_links', {
+        'id': 'attachment-post-commit-fk',
+        'transaction_id': 'tx-post-commit-fk',
+        'evidence_id': 'evidence-post-commit-missing',
+        'created_at': timestamp.toIso8601String(),
+      });
+      await fixture.database.database.execute('PRAGMA foreign_keys = ON');
+
+      final backup = File(
+        path.join(fixture.root.path, 'post-commit-fk.butlerlybackup'),
+      );
+      await fixture.manager.createBackup(backup);
+      await evidenceFile.writeAsString('live evidence', flush: true);
+
+      var enableCalls = 0;
+      Future<void> foreignKeysController(bool enabled) async {
+        if (enabled) {
+          enableCalls++;
+          if (enableCalls == 1) {
+            throw StateError('simulated post-commit FK restoration failure');
+          }
+        }
+        await fixture.database.database.execute(
+          'PRAGMA foreign_keys = ${enabled ? 'ON' : 'OFF'}',
+        );
+      }
+
+      final failingManager = LocalBackupManager(
+        fixture.database,
+        LocalDataManager(
+          fixture.database,
+          documentsDirectory: Directory(
+            path.join(fixture.root.path, 'documents'),
+          ),
+          localEvidenceDirectory: fixture.evidence,
+        ),
+        foreignKeysController: foreignKeysController,
+      );
+
+      await expectLater(
+        failingManager.restore(backup, mode: LocalRestoreMode.replace),
+        throwsA(isA<RestoreRecoveryRequiredException>()),
+      );
+
+      expect(enableCalls, 1);
+      expect(await evidenceFile.readAsString(), 'backup evidence');
+      final previousDirectories = await fixture.evidence.parent
+          .list(followLinks: false)
+          .where(
+            (entity) =>
+                entity is Directory &&
+                path
+                    .basename(entity.path)
+                    .startsWith(
+                      '${path.basename(fixture.evidence.path)}.restore-previous-',
+                    ),
+          )
+          .cast<Directory>()
+          .toList();
+      expect(previousDirectories, hasLength(1));
+      expect(
+        await File(
+          path.join(previousDirectories.single.path, 'post-commit.bin'),
+        ).readAsString(),
+        'live evidence',
+      );
+      expect(
+        await File('${fixture.evidence.path}.restore-journal.json').exists(),
+        isTrue,
+      );
+      expect(
+        await fixture.database.database.query('restore_commits'),
+        hasLength(1),
+      );
+      expect(
+        failingManager.recoveryState.incident?.reason,
+        'engine-restore-recovery-pending',
+      );
+
+      // The injected failure intentionally leaves the connection disabled; the
+      // next controlled recovery attempt will restore the connection state.
+      await fixture.database.database.execute('PRAGMA foreign_keys = ON');
+    },
+  );
+
+  test(
     'concurrent edit during evidence staging keeps timestamp and wins merge',
     () async {
       final fixture = await _Fixture.create();
