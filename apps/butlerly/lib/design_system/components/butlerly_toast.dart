@@ -14,17 +14,11 @@ abstract final class ButlerlyToast {
   static const successDuration = Duration(seconds: 5);
   static const _manualDismissDuration = Duration(days: 36500);
 
-  static void success(BuildContext context, String message) => _show(
-    context,
-    message: message,
-    status: _ToastStatus.success,
-  );
+  static void success(BuildContext context, String message) =>
+      _show(context, message: message, status: _ToastStatus.success);
 
-  static void info(BuildContext context, String message) => _show(
-    context,
-    message: message,
-    status: _ToastStatus.info,
-  );
+  static void info(BuildContext context, String message) =>
+      _show(context, message: message, status: _ToastStatus.info);
 
   static void error(
     BuildContext context,
@@ -72,14 +66,11 @@ abstract final class ButlerlyToast {
             : successDuration,
         content: Row(
           children: [
-            Icon(
-              switch (status) {
-                _ToastStatus.success => Icons.check_circle_outline_rounded,
-                _ToastStatus.error => Icons.error_outline_rounded,
-                _ToastStatus.info => Icons.info_outline_rounded,
-              },
-              color: foreground,
-            ),
+            Icon(switch (status) {
+              _ToastStatus.success => Icons.check_circle_outline_rounded,
+              _ToastStatus.error => Icons.error_outline_rounded,
+              _ToastStatus.info => Icons.info_outline_rounded,
+            }, color: foreground),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
