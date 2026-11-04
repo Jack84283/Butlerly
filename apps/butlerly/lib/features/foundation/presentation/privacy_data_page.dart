@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/service_locator.dart';
@@ -11,6 +13,8 @@ import 'package:butlerly/features/foundation/presentation/transaction_change_not
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/app_localizations_backup.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart'
+    show RepositoryException, RepositoryFailureCode;
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
@@ -20,6 +24,143 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as path;
 import 'package:share_plus/share_plus.dart' as share;
+
+/// User-facing failure classes, deliberately independent of exception text.
+/// Authentication failure cannot cryptographically distinguish a wrong password
+/// from modified ciphertext; never claim that either cause is proven.
+@visibleForTesting
+enum RestoreFailureKind {
+  authentication,
+  missingPassword,
+  unsupportedFormat,
+  damaged,
+  unsupportedSchema,
+  migration,
+  mergeConflict,
+  storage,
+  fileAccess,
+  databaseBusy,
+  recovery,
+  unknown,
+}
+
+@visibleForTesting
+RestoreFailureKind classifyRestoreFailure(Object error) {
+  if (error is BackupPasswordOrIntegrityException) {
+    return RestoreFailureKind.authentication;
+  }
+  if (error is BackupPasswordRequiredException) {
+    return RestoreFailureKind.missingPassword;
+  }
+  if (error is UnsupportedBackupSchemaException) {
+    return RestoreFailureKind.unsupportedSchema;
+  }
+  if (error is RepositoryException &&
+      error.code == RepositoryFailureCode.migration) {
+    return RestoreFailureKind.migration;
+  }
+  if (error is FormatException) {
+    final message = error.message.toLowerCase();
+    if (message.contains('unsupported') && message.contains('format') ||
+        message.contains('not an encrypted butlerly backup')) {
+      return RestoreFailureKind.unsupportedFormat;
+    }
+    if (message.contains('cannot merge') ||
+        message.contains('incompatible') ||
+        message.contains('deletion tracking') ||
+        message.contains('conflict') ||
+        message.contains('cannot safely merge')) {
+      return RestoreFailureKind.mergeConflict;
+    }
+    if (message.contains('migration') || message.contains('migrated')) {
+      return RestoreFailureKind.migration;
+    }
+    return RestoreFailureKind.damaged;
+  }
+  if (error is FileSystemException) {
+    if (error.osError?.errorCode == 28) {
+      return RestoreFailureKind.storage;
+    }
+    return RestoreFailureKind.fileAccess;
+  }
+  if (error is StateError) {
+    final message = error.message.toString().toLowerCase();
+    if (message.contains('recovery') ||
+        message.contains('previous restore') ||
+        message.contains('previous sqlite sidecar')) {
+      return RestoreFailureKind.recovery;
+    }
+    if (message.contains('active readers')) {
+      return RestoreFailureKind.databaseBusy;
+    }
+  }
+  return RestoreFailureKind.unknown;
+}
+
+/// Explain the specific known failure and a safe next step without exposing
+/// encrypted paths, passwords, database rows or raw exception stack traces.
+@visibleForTesting
+Future<void> showBackupRestoreFailureDialog(
+  BuildContext context, {
+  required Object error,
+}) async {
+  final kind = classifyRestoreFailure(error);
+  final suffix = switch (kind) {
+    RestoreFailureKind.authentication => 'Authentication',
+    RestoreFailureKind.missingPassword => 'MissingPassword',
+    RestoreFailureKind.unsupportedFormat => 'UnsupportedFormat',
+    RestoreFailureKind.damaged => 'Damaged',
+    RestoreFailureKind.unsupportedSchema => 'UnsupportedSchema',
+    RestoreFailureKind.migration => 'Migration',
+    RestoreFailureKind.mergeConflict => 'MergeConflict',
+    RestoreFailureKind.storage => 'Storage',
+    RestoreFailureKind.fileAccess => 'FileAccess',
+    RestoreFailureKind.databaseBusy => 'DatabaseBusy',
+    RestoreFailureKind.recovery => 'Recovery',
+    RestoreFailureKind.unknown => 'Unknown',
+  };
+  await showButlerlyBottomSheet<void>(
+    context: context,
+    builder: (sheetContext) {
+      final l10n = sheetContext.l10n;
+      return ButlerlySheet(
+        title: Text(l10n.backupText('restoreFailureTitle')),
+        content: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(sheetContext).height * .55,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  l10n.backupText('restoreFailureReasonLabel'),
+                  style: Theme.of(sheetContext).textTheme.titleSmall,
+                ),
+                const SizedBox(height: ButlerlySpacing.small),
+                Text(l10n.backupText('restoreFailure${suffix}Reason')),
+                const SizedBox(height: ButlerlySpacing.standard),
+                Text(
+                  l10n.backupText('restoreFailureNextStepLabel'),
+                  style: Theme.of(sheetContext).textTheme.titleSmall,
+                ),
+                const SizedBox(height: ButlerlySpacing.small),
+                Text(l10n.backupText('restoreFailure${suffix}Action')),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(sheetContext),
+            child: Text(l10n.backupText('upgradeAppDismiss')),
+          ),
+        ],
+      );
+    },
+  );
+}
 
 class PrivacyDataPage extends ConsumerStatefulWidget {
   const PrivacyDataPage({this.shareClient, super.key});
@@ -279,7 +420,10 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     try {
       if (!await manager.isEncryptedBackup(file)) {
         if (mounted) {
-          _message(context.l10n.backupText('encryptedBackupRequired'));
+          await showBackupRestoreFailureDialog(
+            context,
+            error: const FormatException('Not an encrypted Butlerly backup.'),
+          );
         }
         return;
       }
@@ -312,14 +456,6 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         '${context.l10n.backupText('restoreComplete')} $summary'
         '${result.presentationRefreshFailed ? ' ${context.l10n.text('restoreRefreshWarning')}' : ''}',
       );
-    } on BackupPasswordOrIntegrityException {
-      if (mounted) {
-        _message(context.l10n.backupText('passwordOrIntegrityFailed'));
-      }
-    } on BackupPasswordRequiredException {
-      if (mounted) {
-        _message(context.l10n.backupText('passwordOrIntegrityFailed'));
-      }
     } on NewerBackupSchemaException catch (error) {
       if (mounted) {
         await showBackupRequiresAppUpdateDialog(
@@ -328,15 +464,13 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           supportedVersion: error.supportedVersion,
         );
       }
-    } on UnsupportedBackupSchemaException {
-      if (mounted) {
-        _message(context.l10n.backupText('unsupportedBackupSchema'));
-      }
     } on RestoreRecoveryRequiredException {
       // RestoreRecoveryState immediately replaces normal navigation with the
-      // recovery-only surface. Do not add a competing generic snackbar here.
-    } catch (_) {
-      if (mounted) _message(context.l10n.backupText('restoreFailed'));
+      // recovery-only surface. Do not add a competing generic dialog here.
+    } catch (error) {
+      if (mounted) {
+        await showBackupRestoreFailureDialog(context, error: error);
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
