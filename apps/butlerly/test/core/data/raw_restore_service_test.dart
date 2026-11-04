@@ -560,6 +560,58 @@ void main() {
     },
   );
 
+  test(
+    'Merge preserves a committed write from a retained connection after fence',
+    () async {
+      await setProbe('archived-state');
+      final archive = File(path.join(root.path, 'late-after-fence.butlerly'));
+      await backups.createBackup(
+        archive,
+        password: 'correct horse battery staple',
+      );
+      await database.database.update(
+        'restore_probe',
+        {'value': 'newer-local'},
+        where: 'id = ?',
+        whereArgs: ['original'],
+      );
+      // Simulates code that had retained a direct sqflite connection before
+      // the Restore maintenance fence was enabled.
+      final retained = database.database;
+      var injected = false;
+      await expectLater(
+        RawMergeService(database, backups, restores).restoreMerge(
+          archive,
+          password: 'correct horse battery staple',
+          onStage: (stage) async {
+            if (stage == 'restore journal written') {
+              injected = true;
+              await retained.insert('restore_probe', {
+                'id': 'committed-after-final-revision',
+                'value': 'must-not-be-lost',
+              });
+            }
+          },
+        ),
+        throwsA(isA<StateError>()),
+      );
+      expect(injected, isTrue);
+      expect(await getProbe(), 'newer-local');
+      final late = await database.database.query(
+        'restore_probe',
+        where: 'id = ?',
+        whereArgs: ['committed-after-final-revision'],
+      );
+      expect(late.single['value'], 'must-not-be-lost');
+      expect(
+        await File(
+          path.join(databaseDirectory.path, '.raw-restore-journal.json'),
+        ).exists(),
+        isFalse,
+      );
+    },
+  );
+
   test('Merge respects local deletion tombstones', () async {
     await setProbe('archived-value');
     await database.database.insert('restore_probe', {
