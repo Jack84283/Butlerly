@@ -1,0 +1,351 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:butlerly/core/data/evidence_path_safety.dart';
+import 'package:butlerly/core/data/raw_backup_archive.dart';
+import 'package:butlerly/core/data/raw_backup_service.dart';
+import 'package:butlerly/core/database/local_database.dart';
+import 'package:butlerly/core/evidence/evidence_mutation_lock.dart';
+import 'package:butlerly_database/butlerly_database.dart'
+    show ButlerlyDatabase, sha256FileRange;
+import 'package:path/path.dart' as path;
+import 'package:sqflite_common/sqlite_api.dart';
+
+/// Physical Replace restore for an encrypted raw Butlerly archive.
+///
+/// Source data is never interpreted or repaired. A durable journal and
+/// same-filesystem previous copies make interrupted file activation reversible.
+/// The SQLite persistence object is reopened in place so existing repositories
+/// retain the same object after a successful restore.
+final class RawRestoreService {
+  RawRestoreService(this.database, this.backup);
+
+  final LocalDatabase database;
+  final RawBackupService backup;
+
+  static const _journalName = '.raw-restore-journal.json';
+  static final _operationIdPattern = RegExp(r'^[0-9]{13,20}$');
+
+  /// Reverses an interrupted activation. The normal app startup must call this
+  /// BEFORE opening SQLite. It does not accept arbitrary paths from the journal.
+  static Future<void> recoverInterruptedReplace({
+    required File liveDatabase,
+    required Directory evidenceDirectory,
+  }) async {
+    final journal = File(path.join(liveDatabase.parent.path, _journalName));
+    await rejectSymlinkedPath(journal.path);
+    if (!await journal.exists()) return;
+    final decoded = jsonDecode(await journal.readAsString());
+    if (decoded is! Map<String, dynamic> ||
+        decoded['format'] != 'butlerly-raw-restore' ||
+        decoded['operationId'] is! String ||
+        !_operationIdPattern.hasMatch(decoded['operationId'] as String) ||
+        decoded['hadEvidence'] is! bool) {
+      throw StateError('A previous restore requires manual recovery.');
+    }
+    final operationId = decoded['operationId'] as String;
+    final hadEvidence = decoded['hadEvidence'] as bool;
+    final oldDb = _oldDatabase(liveDatabase, operationId);
+    final oldEvidence = _oldEvidence(evidenceDirectory, operationId);
+    final incomingEvidence = _incomingEvidence(evidenceDirectory, operationId);
+    final working = _working(liveDatabase, operationId);
+
+    await rejectSymlinkedPath(liveDatabase.path);
+    await rejectSymlinkedPath(evidenceDirectory.path);
+    await rejectSymlinkedPath(oldDb.path);
+    await rejectSymlinkedPath(oldEvidence.path);
+    await rejectSymlinkedPath(incomingEvidence.path);
+    await rejectSymlinkedPath(working.path);
+
+    final databaseMoved = await oldDb.exists();
+    if (!databaseMoved && await oldEvidence.exists()) {
+      throw StateError('Incomplete restore recovery state; no data changed.');
+    }
+
+    // Preserve original WAL companions even if the process terminated between
+    // moving a sidecar and moving the main SQLite file.
+    if (databaseMoved) {
+      if (await oldEvidence.exists()) {
+        await rejectEvidenceTree(evidenceDirectory);
+        if (await evidenceDirectory.exists()) {
+          await evidenceDirectory.delete(recursive: true);
+        }
+        await oldEvidence.rename(evidenceDirectory.path);
+      } else if (!hadEvidence) {
+        await rejectEvidenceTree(evidenceDirectory);
+        if (await evidenceDirectory.exists()) {
+          await evidenceDirectory.delete(recursive: true);
+        }
+      } else if (!await evidenceDirectory.exists()) {
+        throw StateError('Original attachment directory is unavailable.');
+      }
+      // Restored DB sidecars may have been created by a failed reopen.
+      for (final extension in const ['-wal', '-shm', '-journal']) {
+        final sidecar = File('${liveDatabase.path}$extension');
+        await rejectSymlinkedPath(sidecar.path);
+        if (await sidecar.exists()) await sidecar.delete();
+      }
+      if (await liveDatabase.exists()) await liveDatabase.delete();
+      await oldDb.rename(liveDatabase.path);
+    } else if (!await liveDatabase.exists()) {
+      throw StateError('Original SQLite database is unavailable.');
+    }
+
+    for (final extension in const ['-wal', '-shm']) {
+      final previous = _oldSidecar(liveDatabase, extension, operationId);
+      final current = File('${liveDatabase.path}$extension');
+      await rejectSymlinkedPath(previous.path);
+      if (!await previous.exists()) continue;
+      if (await current.exists()) {
+        throw StateError('Conflicting SQLite sidecar during restore recovery.');
+      }
+      await previous.rename(current.path);
+    }
+
+    // Delete the marker only after original DB and evidence are back.
+    await journal.delete();
+    await _cleanupAfterRestore(
+      working: working,
+      incomingEvidence: incomingEvidence,
+    );
+  }
+
+  /// Restores exactly the saved SQLite snapshot and available attachments.
+  /// No analysis/business validation, migrations, or automatic data repair.
+  ///
+  /// [onStage] is a test/diagnostic hook. Errors before journal deletion trigger
+  /// rollback to the exact pre-activation files, not a best-effort merge.
+  Future<RawBackupInspection> restoreReplace(
+    File encryptedArchive, {
+    required String password,
+    Future<void> Function(String stage)? onStage,
+  }) => EvidenceMutationLock.runExclusive(() async {
+    final liveDatabase = File(database.persistenceDatabase.path);
+    final evidenceDirectory = await backup.data.evidenceDirectory();
+    final parent = liveDatabase.parent;
+    await rejectSymlinkedPath(parent.path);
+    await rejectSymlinkedPath(evidenceDirectory.path);
+    await recoverInterruptedReplace(
+      liveDatabase: liveDatabase,
+      evidenceDirectory: evidenceDirectory,
+    );
+    final operationId = DateTime.now().microsecondsSinceEpoch.toString();
+    final working = _working(liveDatabase, operationId);
+    final staging = Directory(path.join(working.path, 'staged'));
+    final incomingEvidence = _incomingEvidence(evidenceDirectory, operationId);
+    final oldDatabase = _oldDatabase(liveDatabase, operationId);
+    final oldEvidence = _oldEvidence(evidenceDirectory, operationId);
+    final journal = File(path.join(parent.path, _journalName));
+    var journalWritten = false;
+    var databaseClosed = false;
+    var committed = false;
+    await working.create(recursive: true);
+    try {
+      await onStage?.call('archive extraction');
+      final inspection = await backup.prepareRestore(
+        encryptedArchive,
+        password: password,
+        stagingDirectory: staging,
+      );
+      final snapshot = File(path.join(staging.path, 'butlerly.db'));
+      await _validatePhysicalSqlite(snapshot);
+
+      await onStage?.call('attachment staging');
+      await _stageEvidence(
+        Directory(path.join(staging.path, 'evidence')),
+        incomingEvidence,
+      );
+      // Fail cleanly if another restore left an unresolved conflict.
+      if (await oldDatabase.exists() || await oldEvidence.exists()) {
+        throw StateError('A previous restore copy must be reconciled.');
+      }
+      for (final extension in const ['-wal', '-shm']) {
+        if (await _oldSidecar(liveDatabase, extension, operationId).exists()) {
+          throw StateError('A previous SQLite sidecar must be reconciled.');
+        }
+      }
+
+      // Ensure committed WAL pages are in the primary SQLite file before
+      // moving it. Never confuse WAL from the old DB with a replacement file.
+      final checkpoint = await database.database.rawQuery(
+        'PRAGMA wal_checkpoint(TRUNCATE)',
+      );
+      if (checkpoint.isNotEmpty &&
+          checkpoint.first['busy'] is int &&
+          checkpoint.first['busy'] != 0) {
+        throw StateError('SQLite still has active readers; restore deferred.');
+      }
+
+      final markerTemp = File('${journal.path}.tmp');
+      await rejectSymlinkedPath(markerTemp.path);
+      await markerTemp.writeAsString(
+        jsonEncode({
+          'format': 'butlerly-raw-restore',
+          'operationId': operationId,
+          'hadEvidence': await evidenceDirectory.exists(),
+        }),
+        flush: true,
+      );
+      await markerTemp.rename(journal.path);
+      journalWritten = true;
+      await onStage?.call('database connection close');
+
+      // Do not replace a file while any Butlerly connection holds it open.
+      await database.persistenceDatabase.close();
+      databaseClosed = true;
+
+      for (final extension in const ['-wal', '-shm']) {
+        final current = File('${liveDatabase.path}$extension');
+        if (await current.exists()) {
+          await current.rename(
+            _oldSidecar(liveDatabase, extension, operationId).path,
+          );
+        }
+      }
+      await liveDatabase.rename(oldDatabase.path);
+      await onStage?.call('original SQLite preserved');
+      await rejectEvidenceRoot(evidenceDirectory);
+      if (await evidenceDirectory.exists()) {
+        await evidenceDirectory.rename(oldEvidence.path);
+      }
+      await incomingEvidence.rename(evidenceDirectory.path);
+      await snapshot.rename(liveDatabase.path);
+      await onStage?.call('replacement files activated');
+
+      // Reuse the same ButlerlyDatabase object held by app repositories.
+      // On open SQLite applies its normal schema setup, not semantic checks.
+      await database.reopenActiveConnection();
+      databaseClosed = false;
+      final check = await database.database.rawQuery('PRAGMA integrity_check');
+      if (check.length != 1 || check.single.values.single != 'ok') {
+        throw StateError('Restored SQLite file failed physical integrity.');
+      }
+      await onStage?.call('restored database reopened');
+      await journal.delete(); // durable success: rollback copies remain until then
+      journalWritten = false;
+      committed = true;
+      return inspection;
+    } catch (error, stack) {
+      if (journalWritten) {
+        try {
+          // If reopen partially succeeded, close it before file rollback.
+          await database.persistenceDatabase.close();
+          databaseClosed = true;
+          await recoverInterruptedReplace(
+            liveDatabase: liveDatabase,
+            evidenceDirectory: evidenceDirectory,
+          );
+          await database.reopenActiveConnection();
+          databaseClosed = false;
+          journalWritten = false;
+        } catch (_) {
+          // Never erase the durable journal on an uncertain rollback.
+          throw StateError(
+            'Restore recovery required; original files are retained.',
+          );
+        }
+      }
+      Error.throwWithStackTrace(error, stack);
+    } finally {
+      if (!journalWritten) {
+        await _cleanupAfterRestore(
+          working: working,
+          incomingEvidence: incomingEvidence,
+        );
+      }
+      if (committed) {
+        // Cleanup of committed previous copies is best effort, and must never
+        // change the result or prematurely erase rollback state.
+        try {
+          if (await oldDatabase.exists()) await oldDatabase.delete();
+          for (final extension in const ['-wal', '-shm']) {
+            final previous = _oldSidecar(liveDatabase, extension, operationId);
+            if (await previous.exists()) await previous.delete();
+          }
+          if (await oldEvidence.exists()) {
+            await rejectEvidenceTree(oldEvidence);
+            await oldEvidence.delete(recursive: true);
+          }
+        } on FileSystemException {
+          // Previous data remains private; never report a failed restore.
+        }
+      }
+    }
+  });
+
+  Future<void> _validatePhysicalSqlite(File snapshot) async {
+    final factory = database.persistenceDatabase.factory;
+    final open = await factory.openDatabase(
+      snapshot.path,
+      options: OpenDatabaseOptions(readOnly: true),
+    );
+    try {
+      final version = await open.rawQuery('PRAGMA user_version');
+      if (version.isEmpty ||
+          version.first.values.single != ButlerlyDatabase.databaseVersion) {
+        throw const FormatException(
+          'Backup database schema is not supported by this app.',
+        );
+      }
+      final integrity = await open.rawQuery('PRAGMA integrity_check');
+      if (integrity.length != 1 || integrity.single.values.single != 'ok') {
+        throw const FormatException('Backup SQLite snapshot is damaged.');
+      }
+    } finally {
+      await open.close();
+    }
+  }
+
+  Future<void> _stageEvidence(Directory source, Directory destination) async {
+    await rejectEvidenceTree(source);
+    await rejectSymlinkedPath(destination.path);
+    if (await destination.exists()) {
+      throw const FileSystemException('Evidence restore staging exists.');
+    }
+    await destination.create(recursive: true);
+    await for (final entity in source.list(recursive: true, followLinks: false)) {
+      await rejectEvidenceLink(entity);
+      if (entity is! File) continue;
+      final relative = await validateEvidencePath(
+        source,
+        path.relative(entity.path, from: source.path),
+      );
+      final target = File(path.join(destination.path, relative));
+      await target.parent.create(recursive: true);
+      await entity.copy(target.path);
+      if (await sha256FileRange(entity) != await sha256FileRange(target)) {
+        throw StateError('Attachment staging checksum mismatch.');
+      }
+    }
+  }
+
+  static File _oldDatabase(File live, String id) =>
+      File('${live.path}.raw-restore-previous-$id');
+
+  static File _oldSidecar(File live, String extension, String id) =>
+      File('${live.path}$extension.raw-restore-previous-$id');
+
+  static Directory _oldEvidence(Directory live, String id) =>
+      Directory('${live.path}.raw-restore-previous-$id');
+
+  static Directory _incomingEvidence(Directory live, String id) =>
+      Directory('${live.path}.raw-restore-incoming-$id');
+
+  static Directory _working(File live, String id) =>
+      Directory(path.join(live.parent.path, '.raw-restore-work-$id'));
+
+  static Future<void> _cleanupAfterRestore({
+    required Directory working,
+    required Directory incomingEvidence,
+  }) async {
+    try {
+      if (await working.exists()) await working.delete(recursive: true);
+      if (await incomingEvidence.exists()) {
+        await rejectEvidenceTree(incomingEvidence);
+        await incomingEvidence.delete(recursive: true);
+      }
+    } on FileSystemException {
+      // Cleanup is not permitted to obscure successful data recovery.
+    }
+  }
+}
