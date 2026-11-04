@@ -75,10 +75,10 @@ void main() {
         path.join(fixture.root.path, 'replace-source.butlerly'),
       );
       const password = 'correct horse battery staple';
-      await RawBackupService(fixture.database, fixture.data).createBackup(
-        backup,
-        password: password,
-      );
+      await RawBackupService(
+        fixture.database,
+        fixture.data,
+      ).createBackup(backup, password: password);
       final originalBytes = await backup.readAsBytes();
 
       await fixture.database.database.update(
