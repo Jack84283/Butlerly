@@ -347,6 +347,103 @@ void main() {
     },
   );
 
+  test(
+    'Merge refuses to attach imported children to conflicting local parents',
+    () async {
+      await database.database.execute(
+        'CREATE TABLE merge_parent (id TEXT PRIMARY KEY, label TEXT NOT NULL)',
+      );
+      await database.database.execute(
+        'CREATE TABLE merge_child (id TEXT PRIMARY KEY, '
+        'parent_id TEXT NOT NULL REFERENCES merge_parent(id))',
+      );
+      await database.database.insert('merge_parent', {
+        'id': 'same-parent-id',
+        'label': 'original-category',
+      });
+      await database.database.insert('merge_child', {
+        'id': 'backup-only-child',
+        'parent_id': 'same-parent-id',
+      });
+      final archive = File(path.join(root.path, 'parent-conflict.butlerly'));
+      await backups.createBackup(
+        archive,
+        password: 'correct horse battery staple',
+      );
+      await database.database.update(
+        'merge_parent',
+        {'label': 'different-local-category'},
+        where: 'id = ?',
+        whereArgs: ['same-parent-id'],
+      );
+      await database.database.delete('merge_child');
+
+      await expectLater(
+        RawMergeService(database, backups, restores).restoreMerge(
+          archive,
+          password: 'correct horse battery staple',
+        ),
+        throwsA(
+          isA<FormatException>().having(
+            (error) => error.message,
+            'message',
+            contains('referenced merge_parent identity differs'),
+          ),
+        ),
+      );
+      final parents = await database.database.query('merge_parent');
+      expect(parents.single['label'], 'different-local-category');
+      expect(await database.database.query('merge_child'), isEmpty);
+    },
+  );
+
+  test(
+    'Merge aborts when a direct SQLite write arrives during staging',
+    () async {
+      await setProbe('archived-value');
+      final archive = File(path.join(root.path, 'live-write.butlerly'));
+      await backups.createBackup(
+        archive,
+        password: 'correct horse battery staple',
+      );
+      await database.database.update(
+        'restore_probe',
+        {'value': 'local-value'},
+        where: 'id = ?',
+        whereArgs: ['original'],
+      );
+
+      await expectLater(
+        RawMergeService(database, backups, restores).restoreMerge(
+          archive,
+          password: 'correct horse battery staple',
+          onStage: (stage) async {
+            if (stage == 'attachment staging') {
+              await database.database.insert('restore_probe', {
+                'id': 'late-local-write',
+                'value': 'keep-this-value',
+              });
+            }
+          },
+        ),
+        throwsA(isA<StateError>()),
+      );
+      expect(await getProbe(), 'local-value');
+      final late = await database.database.query(
+        'restore_probe',
+        where: 'id = ?',
+        whereArgs: ['late-local-write'],
+      );
+      expect(late.single['value'], 'keep-this-value');
+      expect(
+        await File(
+          path.join(databaseDirectory.path, '.raw-restore-journal.json'),
+        ).exists(),
+        isFalse,
+      );
+    },
+  );
+
   test('Merge respects local deletion tombstones', () async {
     await setProbe('archived-value');
     await database.database.insert('restore_probe', {
