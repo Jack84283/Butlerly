@@ -17,7 +17,8 @@ final class UnsupportedBackupSchemaException extends FormatException {
 }
 
 /// A valid backup requires an app build that supports a newer SQLite schema.
-final class NewerBackupSchemaException extends UnsupportedBackupSchemaException {
+final class NewerBackupSchemaException
+    extends UnsupportedBackupSchemaException {
   const NewerBackupSchemaException({
     required this.backupVersion,
     required this.supportedVersion,
