@@ -892,19 +892,21 @@ void main() {
         throwsA(isA<Exception>()),
       );
 
-      // A fresh process can finish rollback after the transient journal
-      // failure is removed. The encrypted archive remains unchanged.
+      // A user-facing recovery retry can finish rollback after the transient
+      // journal failure is corrected; it must not use the old restore engine.
       expect(validJournal, isNotNull);
       await journal.writeAsString(validJournal!, flush: true);
-      await database.close();
-      await RawRestoreService.recoverInterruptedReplace(
-        liveDatabase: File(path.join(databaseDirectory.path, 'butlerly.db')),
-        evidenceDirectory: evidence,
+      await gateway.recoverControlledState(
+        postActivationRefresh: () async {},
       );
+      expect(await getProbe(), 'original-must-survive');
+      expect(manager.recoveryState.isRecoveryRequired, isFalse);
+      expect(await journal.exists(), isFalse);
+
+      // Simulate a fresh process to confirm recovery remained durable.
+      await database.close();
       await database.initialize();
       expect(await getProbe(), 'original-must-survive');
-      await manager.recoveryState.clear();
-      expect(manager.recoveryState.isRecoveryRequired, isFalse);
     },
   );
 
