@@ -1,7 +1,8 @@
 import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/service_locator.dart';
-import 'package:butlerly/core/data/raw_restore_service.dart' show UnsupportedBackupSchemaException;
+import 'package:butlerly/core/data/raw_restore_service.dart'
+    show UnsupportedBackupSchemaException;
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
