@@ -64,6 +64,28 @@ final class LocalDataExportResult {
   final int recordCount;
 }
 
+/// A backup SQLite schema is invalid or unsupported by the installed app.
+/// Restoring must stop before any live data is changed.
+final class UnsupportedBackupSchemaException extends FormatException {
+  const UnsupportedBackupSchemaException()
+    : super('Unsupported SQLite backup schema version.');
+}
+
+/// The backup was created with a newer database schema than this app supports.
+///
+/// This error belongs to the application contract so presentation never needs
+/// to depend on the SQLite adapter to explain an app-update requirement.
+final class NewerBackupSchemaException
+    extends UnsupportedBackupSchemaException {
+  const NewerBackupSchemaException({
+    required this.backupVersion,
+    required this.supportedVersion,
+  });
+
+  final int backupVersion;
+  final int supportedVersion;
+}
+
 final class BackupPasswordRequiredException implements Exception {
   const BackupPasswordRequiredException();
 }
