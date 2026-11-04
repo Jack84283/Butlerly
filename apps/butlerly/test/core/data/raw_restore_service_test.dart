@@ -379,10 +379,11 @@ void main() {
       await database.database.delete('merge_child');
 
       await expectLater(
-        RawMergeService(database, backups, restores).restoreMerge(
-          archive,
-          password: 'correct horse battery staple',
-        ),
+        RawMergeService(
+          database,
+          backups,
+          restores,
+        ).restoreMerge(archive, password: 'correct horse battery staple'),
         throwsA(
           isA<FormatException>().having(
             (error) => error.message,
