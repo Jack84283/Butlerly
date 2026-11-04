@@ -357,9 +357,11 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
               replace ? 'replaceBody' : 'mergeBody',
             );
             return ButlerlySheet(
-              title: Text(sheetContext.l10n.backupText(
-                replace ? 'replaceTitle' : 'mergeTitle',
-              )),
+              title: Text(
+                sheetContext.l10n.backupText(
+                  replace ? 'replaceTitle' : 'mergeTitle',
+                ),
+              ),
               content: ConstrainedBox(
                 constraints: BoxConstraints(
                   maxHeight: MediaQuery.sizeOf(sheetContext).height * .45,
