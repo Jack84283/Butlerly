@@ -11,6 +11,12 @@ import 'package:butlerly_database/butlerly_database.dart'
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common/sqlite_api.dart';
 
+/// An archive schema is newer than the app or is not a usable SQLite schema.
+final class UnsupportedBackupSchemaException extends FormatException {
+  const UnsupportedBackupSchemaException()
+      : super('Unsupported SQLite backup schema version.');
+}
+
 /// Physical Replace restore for an encrypted raw Butlerly archive.
 ///
 /// Source data is never interpreted or repaired. A durable journal and
@@ -301,9 +307,7 @@ final class RawRestoreService {
       }
       sourceVersion = result.single.values.single as int;
       if (sourceVersion < 1 || sourceVersion > template.targetVersion) {
-        throw const FormatException(
-          'Backup SQLite schema version is not supported by this app.',
-        );
+        throw const UnsupportedBackupSchemaException();
       }
       final integrity = await reader.rawQuery('PRAGMA integrity_check');
       if (integrity.length != 1 || integrity.single.values.single != 'ok') {
