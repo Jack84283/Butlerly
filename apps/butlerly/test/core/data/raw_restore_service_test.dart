@@ -896,9 +896,7 @@ void main() {
       // journal failure is corrected; it must not use the old restore engine.
       expect(validJournal, isNotNull);
       await journal.writeAsString(validJournal!, flush: true);
-      await gateway.recoverControlledState(
-        postActivationRefresh: () async {},
-      );
+      await gateway.recoverControlledState(postActivationRefresh: () async {});
       expect(await getProbe(), 'original-must-survive');
       expect(manager.recoveryState.isRecoveryRequired, isFalse);
       expect(await journal.exists(), isFalse);
