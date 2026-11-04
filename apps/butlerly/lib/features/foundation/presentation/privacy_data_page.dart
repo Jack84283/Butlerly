@@ -345,6 +345,32 @@ Future<void> showBackupCreationFailureDialog(
   );
 }
 
+@visibleForTesting
+Future<void> showBackupMissingEvidenceDialog(
+  BuildContext context, {
+  required int missingAttachmentCount,
+}) => showButlerlyBottomSheet<void>(
+  context: context,
+  builder: (sheetContext) {
+    final l10n = sheetContext.l10n;
+    return ButlerlySheet(
+      title: Text(l10n.backupText('backupMissingEvidenceTitle')),
+      content: Text(
+        l10n.backupText('backupMissingEvidenceBody').replaceAll(
+          '{count}',
+          '$missingAttachmentCount',
+        ),
+      ),
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.pop(sheetContext),
+          child: Text(l10n.backupText('upgradeAppDismiss')),
+        ),
+      ],
+    );
+  },
+);
+
 class PrivacyDataPage extends ConsumerStatefulWidget {
   const PrivacyDataPage({this.shareClient, super.key});
 
@@ -515,6 +541,20 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
 
   void _infoToast(String message) => ButlerlyToast.info(context, message);
 
+  Future<void> _warnAboutMissingAttachments(BackupCreationResult backup) async {
+    if (!mounted || !backup.hasMissingAttachments) return;
+    _infoToast(
+      context.l10n.backupText('backupMissingEvidenceToast').replaceAll(
+        '{count}',
+        '${backup.missingAttachmentCount}',
+      ),
+    );
+    await showBackupMissingEvidenceDialog(
+      context,
+      missingAttachmentCount: backup.missingAttachmentCount,
+    );
+  }
+
   void _backupErrorToast(Object error) {
     final l10n = context.l10n;
     final summary = l10n.backupText(
@@ -615,12 +655,16 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
 
     setState(() => _busy = true);
     try {
-      await services<WorkspaceDataService>().createPortableBackup(
+      final backup = await services<WorkspaceDataService>().createPortableBackup(
         location.path,
         password: password,
       );
       if (mounted) {
-        _successToast(context.l10n.backupText('backupSavedVerified'));
+        if (backup.hasMissingAttachments) {
+          await _warnAboutMissingAttachments(backup);
+        } else {
+          _successToast(context.l10n.backupText('backupSavedVerified'));
+        }
       }
     } catch (error) {
       if (mounted) {
@@ -639,10 +683,11 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     String? filePath;
     var sharingStarted = false;
     try {
-      filePath = await services<WorkspaceDataService>().createTemporaryBackup(
+      final temporary = await services<WorkspaceDataService>().createTemporaryBackup(
         fileName,
         password: password,
       );
+      filePath = temporary.filePath;
       if (!mounted) return;
 
       final renderBox = context.findRenderObject();
@@ -661,7 +706,11 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
             ),
           );
       if (mounted && result.status == share.ShareResultStatus.success) {
-        _successToast(context.l10n.backupText('backupSharedVerified'));
+        if (temporary.backup.hasMissingAttachments) {
+          await _warnAboutMissingAttachments(temporary.backup);
+        } else {
+          _successToast(context.l10n.backupText('backupSharedVerified'));
+        }
       } else if (mounted &&
           result.status == share.ShareResultStatus.dismissed) {
         _infoToast(context.l10n.backupText('backupShareDismissed'));
