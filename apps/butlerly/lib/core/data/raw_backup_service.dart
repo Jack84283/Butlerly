@@ -7,26 +7,10 @@ import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/data/raw_backup_archive.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/evidence/evidence_mutation_lock.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart'
+    show NewerBackupSchemaException, UnsupportedBackupSchemaException;
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common/sqlite_api.dart';
-
-/// The SQLite schema cannot be read by this Butlerly build.
-final class UnsupportedBackupSchemaException extends FormatException {
-  const UnsupportedBackupSchemaException()
-    : super('Unsupported SQLite backup schema version.');
-}
-
-/// A valid backup requires an app build that supports a newer SQLite schema.
-final class NewerBackupSchemaException
-    extends UnsupportedBackupSchemaException {
-  const NewerBackupSchemaException({
-    required this.backupVersion,
-    required this.supportedVersion,
-  });
-
-  final int backupVersion;
-  final int supportedVersion;
-}
 
 /// Business-agnostic backup workflow.
 ///
