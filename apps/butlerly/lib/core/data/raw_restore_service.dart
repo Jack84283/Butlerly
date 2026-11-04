@@ -14,7 +14,7 @@ import 'package:sqflite_common/sqlite_api.dart';
 /// An archive schema is newer than the app or is not a usable SQLite schema.
 final class UnsupportedBackupSchemaException extends FormatException {
   const UnsupportedBackupSchemaException()
-      : super('Unsupported SQLite backup schema version.');
+    : super('Unsupported SQLite backup schema version.');
 }
 
 /// Physical Replace restore for an encrypted raw Butlerly archive.
