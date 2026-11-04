@@ -55,7 +55,13 @@ final class RawBackupService {
             options: OpenDatabaseOptions(readOnly: true),
           );
       final references = <String>[];
+      var recordCount = 0;
       try {
+        // Preview metadata only; never validate or change financial rows.
+        final count = await snapshotDatabase.rawQuery(
+          'SELECT COUNT(*) AS total FROM transactions',
+        );
+        recordCount = count.single['total'] as int;
         final rows = await snapshotDatabase.query(
           'evidence_items',
           columns: ['local_file_name'],
@@ -73,6 +79,7 @@ final class RawBackupService {
         evidenceDirectory: await data.evidenceDirectory(),
         referencedEvidencePaths: references,
         destination: plain,
+        recordCount: recordCount,
       );
       await _encryption.encrypt(
         plain,
