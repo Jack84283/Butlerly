@@ -237,12 +237,25 @@ final class RawRestoreService {
       await onStage?.call('restore journal written');
       // Do not replace a file while any Butlerly connection holds it open.
       await database.persistenceDatabase.close();
-      if (preCloseFingerprint != null &&
-          preCloseFingerprint != await sha256FileRange(liveDatabase)) {
-        throw StateError(
-          'Live database changed during final Merge activation; '
-          'the original database was preserved.',
-        );
+      if (preCloseFingerprint != null) {
+        // A second SQLite connection may retain committed pages in its WAL,
+        // leaving the primary DB bytes unchanged. Never activate a Merge
+        // while such a write journal remains unresolved.
+        for (final suffix in const ['-wal', '-journal']) {
+          final pending = File('${liveDatabase.path}$suffix');
+          if (await pending.exists() && await pending.length() > 0) {
+            throw StateError(
+              'SQLite has an outstanding write journal; '
+              'Merge activation was canceled.',
+            );
+          }
+        }
+        if (preCloseFingerprint != await sha256FileRange(liveDatabase)) {
+          throw StateError(
+            'Live database changed during final Merge activation; '
+            'the original database was preserved.',
+          );
+        }
       }
 
       for (final extension in const ['-wal', '-shm']) {
