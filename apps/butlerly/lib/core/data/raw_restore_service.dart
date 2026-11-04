@@ -122,7 +122,8 @@ final class RawRestoreService {
     Future<RawBackupInspection> Function(
       Directory staging,
       RawBackupInspection inspection,
-    )? prepareStaging,
+    )?
+    prepareStaging,
   }) => EvidenceMutationLock.runExclusive(() async {
     final liveDatabase = File(database.persistenceDatabase.path);
     final evidenceDirectory = await backup.data.evidenceDirectory();
