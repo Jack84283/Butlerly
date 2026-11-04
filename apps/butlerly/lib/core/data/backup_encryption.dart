@@ -70,6 +70,7 @@ final class BackupEncryption {
     File source,
     File destination, {
     required String password,
+    String innerFormat = 'butlerly-backup-v2',
   }) async {
     if (password.length < minimumPasswordLength) {
       throw const BackupPasswordTooShortException();
@@ -92,7 +93,7 @@ final class BackupEncryption {
       'kdfParallelism': _argonParallelism,
       'salt': base64Encode(salt),
       'nonce': base64Encode(nonce),
-      'innerFormat': 'butlerly-backup-v2',
+      'innerFormat': innerFormat,
     };
     final headerBytes = utf8.encode(jsonEncode(header));
     final secretKey = await _kdf.deriveKeyFromPassword(
@@ -139,6 +140,7 @@ final class BackupEncryption {
     File source,
     File destination, {
     required String password,
+    Set<String> acceptedInnerFormats = const {'butlerly-backup-v2'},
   }) async {
     if (password.isEmpty) throw const BackupPasswordRequiredException();
 
@@ -178,7 +180,7 @@ final class BackupEncryption {
           header['version'] != version ||
           header['cipher'] != 'AES-256-GCM' ||
           header['kdf'] != 'Argon2id' ||
-          header['innerFormat'] != 'butlerly-backup-v2') {
+          !acceptedInnerFormats.contains(header['innerFormat'])) {
         throw const FormatException('Unsupported encrypted backup format.');
       }
 
