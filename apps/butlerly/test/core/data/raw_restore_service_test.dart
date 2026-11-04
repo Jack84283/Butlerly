@@ -65,40 +65,46 @@ void main() {
     if (await root.exists()) await root.delete(recursive: true);
   });
 
-  test('Replace restores original SQLite records and attachment bytes', () async {
-    final originalPersistence = database.persistenceDatabase;
-    await setProbe('saved');
-    final receipt = File(path.join(evidence.path, 'receipt.bin'));
-    await receipt.writeAsBytes([0, 11, 22, 33]);
-    final archive = File(path.join(root.path, 'original.butlerly'));
-    await backups.createBackup(
-      archive,
-      password: 'correct horse battery staple',
-    );
+  test(
+    'Replace restores original SQLite records and attachment bytes',
+    () async {
+      final originalPersistence = database.persistenceDatabase;
+      await setProbe('saved');
+      final receipt = File(path.join(evidence.path, 'receipt.bin'));
+      await receipt.writeAsBytes([0, 11, 22, 33]);
+      final archive = File(path.join(root.path, 'original.butlerly'));
+      await backups.createBackup(
+        archive,
+        password: 'correct horse battery staple',
+      );
 
-    await database.database.update(
-      'restore_probe',
-      {'value': 'newer-live-value'},
-      where: 'id = ?',
-      whereArgs: ['original'],
-    );
-    await receipt.writeAsBytes([9, 8, 7]);
-    final inspection = await restores.restoreReplace(
-      archive,
-      password: 'correct horse battery staple',
-    );
+      await database.database.update(
+        'restore_probe',
+        {'value': 'newer-live-value'},
+        where: 'id = ?',
+        whereArgs: ['original'],
+      );
+      await receipt.writeAsBytes([9, 8, 7]);
+      final inspection = await restores.restoreReplace(
+        archive,
+        password: 'correct horse battery staple',
+      );
 
-    expect(inspection.attachmentCount, 1);
-    expect(await getProbe(), 'saved');
-    expect(await receipt.readAsBytes(), [0, 11, 22, 33]);
-    expect(identical(originalPersistence, database.persistenceDatabase), isTrue);
-    expect(
-      await File(
-        path.join(databaseDirectory.path, '.raw-restore-journal.json'),
-      ).exists(),
-      isFalse,
-    );
-  });
+      expect(inspection.attachmentCount, 1);
+      expect(await getProbe(), 'saved');
+      expect(await receipt.readAsBytes(), [0, 11, 22, 33]);
+      expect(
+        identical(originalPersistence, database.persistenceDatabase),
+        isTrue,
+      );
+      expect(
+        await File(
+          path.join(databaseDirectory.path, '.raw-restore-journal.json'),
+        ).exists(),
+        isFalse,
+      );
+    },
+  );
 
   test('failure after old DB moved rolls back the exact live state', () async {
     await setProbe('saved');
@@ -153,42 +159,45 @@ void main() {
     expect(await getProbe(), 'local');
   });
 
-  test('startup recovery restores previous SQLite after interrupted switch',
-      () async {
-    await setProbe('existing');
-    final receipt = File(path.join(evidence.path, 'receipt.bin'));
-    await receipt.writeAsBytes([3, 1, 4]);
-    final currentDb = File(database.persistenceDatabase.path);
-    await database.close();
+  test(
+    'startup recovery restores previous SQLite after interrupted switch',
+    () async {
+      await setProbe('existing');
+      final receipt = File(path.join(evidence.path, 'receipt.bin'));
+      await receipt.writeAsBytes([3, 1, 4]);
+      final currentDb = File(database.persistenceDatabase.path);
+      await database.close();
 
-    const id = '1700000000000000';
-    final previous = File('${currentDb.path}.raw-restore-previous-$id');
-    final previousEvidence =
-        Directory('${evidence.path}.raw-restore-previous-$id');
-    await currentDb.rename(previous.path);
-    await evidence.rename(previousEvidence.path);
-    await currentDb.writeAsBytes([0, 0, 0, 0], flush: true);
-    await evidence.create();
-    await File(path.join(evidence.path, 'receipt.bin')).writeAsBytes([99]);
+      const id = '1700000000000000';
+      final previous = File('${currentDb.path}.raw-restore-previous-$id');
+      final previousEvidence = Directory(
+        '${evidence.path}.raw-restore-previous-$id',
+      );
+      await currentDb.rename(previous.path);
+      await evidence.rename(previousEvidence.path);
+      await currentDb.writeAsBytes([0, 0, 0, 0], flush: true);
+      await evidence.create();
+      await File(path.join(evidence.path, 'receipt.bin')).writeAsBytes([99]);
 
-    final journal = File(
-      path.join(databaseDirectory.path, '.raw-restore-journal.json'),
-    );
-    await journal.writeAsString(
-      jsonEncode({
-        'format': 'butlerly-raw-restore',
-        'operationId': id,
-        'hadEvidence': true,
-      }),
-      flush: true,
-    );
-    await RawRestoreService.recoverInterruptedReplace(
-      liveDatabase: currentDb,
-      evidenceDirectory: evidence,
-    );
-    await database.initialize();
-    expect(await getProbe(), 'existing');
-    expect(await receipt.readAsBytes(), [3, 1, 4]);
-    expect(await journal.exists(), isFalse);
-  });
+      final journal = File(
+        path.join(databaseDirectory.path, '.raw-restore-journal.json'),
+      );
+      await journal.writeAsString(
+        jsonEncode({
+          'format': 'butlerly-raw-restore',
+          'operationId': id,
+          'hadEvidence': true,
+        }),
+        flush: true,
+      );
+      await RawRestoreService.recoverInterruptedReplace(
+        liveDatabase: currentDb,
+        evidenceDirectory: evidence,
+      );
+      await database.initialize();
+      expect(await getProbe(), 'existing');
+      expect(await receipt.readAsBytes(), [3, 1, 4]);
+      expect(await journal.exists(), isFalse);
+    },
+  );
 }
