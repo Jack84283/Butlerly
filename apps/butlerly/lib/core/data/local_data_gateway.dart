@@ -73,7 +73,10 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
     if (password == null || password.isEmpty) {
       throw const BackupPasswordRequiredException();
     }
-    final result = await _rawBackups.inspect(File(filePath), password: password);
+    final result = await _rawBackups.inspect(
+      File(filePath),
+      password: password,
+    );
     return BackupInspection(
       createdAtUtc: result.createdAtUtc,
       recordCount: result.recordCount,
