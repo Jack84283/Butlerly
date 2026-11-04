@@ -334,37 +334,6 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     }
   }
 
-  String _changeDetails(BackupInspection inspection) {
-    if (!inspection.hasNewerLocalData) return '';
-    final changes = inspection.changes;
-    final lines = <String>[];
-    if (changes.transactionsAdded > 0) {
-      lines.add(
-        '• ${changes.transactionsAdded} '
-        '${context.l10n.backupText('addedTransactions')}',
-      );
-    }
-    if (changes.transactionsChanged > 0) {
-      lines.add(
-        '• ${changes.transactionsChanged} '
-        '${context.l10n.backupText('changedTransactions')}',
-      );
-    }
-    if (changes.masterDataChanged > 0) {
-      lines.add(
-        '• ${changes.masterDataChanged} '
-        '${context.l10n.backupText('changedMasterData')}',
-      );
-    }
-    if (changes.deletedEntities > 0) {
-      lines.add(
-        '• ${changes.deletedEntities} '
-        '${context.l10n.backupText('deletedItems')}',
-      );
-    }
-    return lines.join('\n');
-  }
-
   Future<LocalRestoreMode?> _chooseRestoreMode(BackupInspection inspection) =>
       showButlerlyBottomSheet<LocalRestoreMode>(
         context: context,
@@ -380,10 +349,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
                 '{date}',
                 formatBackupInspectionDate(context, created),
               );
-          final details = _changeDetails(inspection);
-          final body = inspection.hasNewerLocalData
-              ? '${context.l10n.backupText('newerData')}\n\n$details'
-              : context.l10n.backupText('noNewerData');
+          final body = context.l10n.backupText('replaceBody');
           return ButlerlySheet(
             title: Text(context.l10n.backupText('restoreTitle')),
             content: ConstrainedBox(
