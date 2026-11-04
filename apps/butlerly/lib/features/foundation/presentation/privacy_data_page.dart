@@ -168,6 +168,173 @@ Future<void> showBackupRestoreFailureDialog(
   );
 }
 
+/// Diagnostic categories for failed backup creation and publication.
+@visibleForTesting
+enum BackupFailureKind {
+  passwordPolicy,
+  databaseUnavailable,
+  databaseBusy,
+  databaseIntegrity,
+  storageFull,
+  fileAccess,
+  evidence,
+  evidenceChanged,
+  verification,
+  publication,
+  publicationRecovery,
+  shareFailure,
+  unknown,
+}
+
+@visibleForTesting
+BackupFailureKind classifyBackupFailure(Object error) {
+  if (error is BackupPasswordTooShortException) {
+    return BackupFailureKind.passwordPolicy;
+  }
+  if (error is BackupCreationException) {
+    if (error.recoveryRequired) return BackupFailureKind.publicationRecovery;
+    final cause = error.cause;
+    if (cause is FileSystemException) {
+      if (const {28, 112}.contains(cause.osError?.errorCode)) {
+        return BackupFailureKind.storageFull;
+      }
+      return BackupFailureKind.fileAccess;
+    }
+    if (cause is RepositoryException) {
+      return switch (cause.code) {
+        RepositoryFailureCode.busy => BackupFailureKind.databaseBusy,
+        RepositoryFailureCode.integrity => BackupFailureKind.databaseIntegrity,
+        RepositoryFailureCode.storageFull => BackupFailureKind.storageFull,
+        RepositoryFailureCode.permission => BackupFailureKind.fileAccess,
+        RepositoryFailureCode.unavailable => BackupFailureKind.databaseUnavailable,
+        _ => BackupFailureKind.unknown,
+      };
+    }
+    if (error.stage == BackupCreationStage.sharing) {
+      return BackupFailureKind.shareFailure;
+    }
+    if (error.stage == BackupCreationStage.verification) {
+      return BackupFailureKind.verification;
+    }
+    if (error.stage == BackupCreationStage.publication) {
+      return BackupFailureKind.publication;
+    }
+    if (error.stage == BackupCreationStage.packaging ||
+        error.stage == BackupCreationStage.inventory) {
+      if (cause is StateError &&
+          cause.message.toString().contains('changed during packaging')) {
+        return BackupFailureKind.evidenceChanged;
+      }
+      return BackupFailureKind.evidence;
+    }
+    if (error.stage == BackupCreationStage.snapshot) {
+      return BackupFailureKind.databaseUnavailable;
+    }
+    return BackupFailureKind.unknown;
+  }
+  if (error is FileSystemException) {
+    return const {28, 112}.contains(error.osError?.errorCode)
+        ? BackupFailureKind.storageFull
+        : BackupFailureKind.fileAccess;
+  }
+  if (error is RepositoryException) {
+    return switch (error.code) {
+      RepositoryFailureCode.busy => BackupFailureKind.databaseBusy,
+      RepositoryFailureCode.integrity => BackupFailureKind.databaseIntegrity,
+      RepositoryFailureCode.storageFull => BackupFailureKind.storageFull,
+      RepositoryFailureCode.permission => BackupFailureKind.fileAccess,
+      _ => BackupFailureKind.databaseUnavailable,
+    };
+  }
+  return BackupFailureKind.unknown;
+}
+
+/// The archive may be safely verified but not yet published. Only the stage
+/// and localized advice are shown, never raw exception text or private paths.
+@visibleForTesting
+Future<void> showBackupCreationFailureDialog(
+  BuildContext context, {
+  required Object error,
+}) async {
+  final kind = classifyBackupFailure(error);
+  final suffix = switch (kind) {
+    BackupFailureKind.passwordPolicy => 'PasswordPolicy',
+    BackupFailureKind.databaseUnavailable => 'DatabaseUnavailable',
+    BackupFailureKind.databaseBusy => 'DatabaseBusy',
+    BackupFailureKind.databaseIntegrity => 'DatabaseIntegrity',
+    BackupFailureKind.storageFull => 'StorageFull',
+    BackupFailureKind.fileAccess => 'FileAccess',
+    BackupFailureKind.evidence => 'Evidence',
+    BackupFailureKind.evidenceChanged => 'EvidenceChanged',
+    BackupFailureKind.verification => 'Verification',
+    BackupFailureKind.publication => 'Publication',
+    BackupFailureKind.publicationRecovery => 'PublicationRecovery',
+    BackupFailureKind.shareFailure => 'ShareFailure',
+    BackupFailureKind.unknown => 'Unknown',
+  };
+  final stage = error is BackupCreationException ? error.stage : null;
+  final stageKey = switch (stage) {
+    BackupCreationStage.snapshot => 'backupStageSnapshot',
+    BackupCreationStage.inventory => 'backupStageInventory',
+    BackupCreationStage.packaging => 'backupStagePackaging',
+    BackupCreationStage.encryption => 'backupStageEncryption',
+    BackupCreationStage.verification => 'backupStageVerification',
+    BackupCreationStage.publication => 'backupStagePublication',
+    BackupCreationStage.sharing => 'backupStageSharing',
+    null => null,
+  };
+  await showButlerlyBottomSheet<void>(
+    context: context,
+    builder: (sheetContext) {
+      final l10n = sheetContext.l10n;
+      return ButlerlySheet(
+        title: Text(l10n.backupText('backupFailureTitle')),
+        content: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(sheetContext).height * .55,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (stageKey != null) ...[
+                  Text(
+                    l10n.backupText('backupFailureStageLabel'),
+                    style: Theme.of(sheetContext).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: ButlerlySpacing.small),
+                  Text(l10n.backupText(stageKey)),
+                  const SizedBox(height: ButlerlySpacing.standard),
+                ],
+                Text(
+                  l10n.backupText('restoreFailureReasonLabel'),
+                  style: Theme.of(sheetContext).textTheme.titleSmall,
+                ),
+                const SizedBox(height: ButlerlySpacing.small),
+                Text(l10n.backupText('backupFailure${suffix}Reason')),
+                const SizedBox(height: ButlerlySpacing.standard),
+                Text(
+                  l10n.backupText('restoreFailureNextStepLabel'),
+                  style: Theme.of(sheetContext).textTheme.titleSmall,
+                ),
+                const SizedBox(height: ButlerlySpacing.small),
+                Text(l10n.backupText('backupFailure${suffix}Action')),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(sheetContext),
+            child: Text(l10n.backupText('upgradeAppDismiss')),
+          ),
+        ],
+      );
+    },
+  );
+}
+
 class PrivacyDataPage extends ConsumerStatefulWidget {
   const PrivacyDataPage({this.shareClient, super.key});
 
@@ -364,11 +531,11 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         location.path,
         password: password,
       );
-      if (mounted) _message(context.l10n.backupText('backupComplete'));
-    } on BackupPasswordTooShortException {
-      if (mounted) _message(context.l10n.backupText('backupPasswordTooShort'));
-    } catch (_) {
-      if (mounted) _message(context.l10n.backupText('backupFailed'));
+      if (mounted) _message(context.l10n.backupText('backupSavedVerified'));
+    } catch (error) {
+      if (mounted) {
+        await showBackupCreationFailureDialog(context, error: error);
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -380,6 +547,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
   ) async {
     setState(() => _busy = true);
     String? filePath;
+    var sharingStarted = false;
     try {
       filePath = await services<WorkspaceDataService>().createTemporaryBackup(
         fileName,
@@ -391,6 +559,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       final shareOrigin = renderBox is RenderBox
           ? renderBox.localToGlobal(Offset.zero) & renderBox.size
           : null;
+      sharingStarted = true;
       final result = await (widget.shareClient ?? share.SharePlus.instance)
           .share(
             share.ShareParams(
@@ -402,12 +571,31 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
             ),
           );
       if (mounted && result.status == share.ShareResultStatus.success) {
-        _message(context.l10n.backupText('backupComplete'));
+        _message(context.l10n.backupText('backupSharedVerified'));
+      } else if (mounted &&
+          result.status == share.ShareResultStatus.dismissed) {
+        _message(context.l10n.backupText('backupShareDismissed'));
+      } else if (mounted) {
+        await showBackupCreationFailureDialog(
+          context,
+          error: BackupCreationException(
+            stage: BackupCreationStage.sharing,
+            cause: StateError('Share operation did not complete.'),
+          ),
+        );
       }
-    } on BackupPasswordTooShortException {
-      if (mounted) _message(context.l10n.backupText('backupPasswordTooShort'));
-    } catch (_) {
-      if (mounted) _message(context.l10n.backupText('backupFailed'));
+    } catch (error) {
+      if (mounted) {
+        await showBackupCreationFailureDialog(
+          context,
+          error: sharingStarted
+              ? BackupCreationException(
+                  stage: BackupCreationStage.sharing,
+                  cause: error,
+                )
+              : error,
+        );
+      }
     } finally {
       if (filePath != null) {
         await services<WorkspaceDataService>().discardTemporaryBackup(filePath);
