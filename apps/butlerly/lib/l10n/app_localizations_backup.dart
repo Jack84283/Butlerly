@@ -193,7 +193,8 @@ const _backupStrings = <String, Map<String, String>>{
     'backupComplete': '加密备份创建成功。',
     'backupFailed': '无法创建备份。',
     'restoreFailed': '无法恢复备份。',
-    'unsupportedBackupSchema': '此备份使用当前 Butlerly 版本无法恢复的 SQLite 数据库结构。您的本机数据未被修改。',
+    'unsupportedBackupSchema':
+        '此备份使用当前 Butlerly 版本无法恢复的 SQLite 数据库结构。您的本机数据未被修改。',
     'restoreTitle': '恢复 Butlerly 备份？',
     'backupCreatedAt': '创建时间：{date}',
     'newerData': '此设备包含较新的本地数据。替换会丢弃当前 Butlerly 数据并准确恢复备份。',
