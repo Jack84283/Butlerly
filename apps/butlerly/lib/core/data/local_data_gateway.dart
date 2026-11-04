@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:butlerly/core/data/backup_destination_writer.dart';
 import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/data/raw_backup_service.dart';
@@ -27,13 +28,37 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
   bool get hasRecoverySafetyCopy =>
       backups.recoveryState.incident?.safetyBackupPath.isNotEmpty == true;
 
+  /// Adapt publication safety errors into the application-owned error contract,
+  /// without exposing internal recovery paths to the UI.
+  Future<void> _createRawBackup(File file, String password) async {
+    try {
+      await _rawBackups.createBackup(file, password: password);
+    } on BackupPublicationRecoveryRequiredException catch (error, stack) {
+      Error.throwWithStackTrace(
+        BackupCreationException(
+          stage: BackupCreationStage.publication,
+          cause: error,
+          recoveryRequired: true,
+        ),
+        stack,
+      );
+    } on BackupDestinationWriteException catch (error, stack) {
+      Error.throwWithStackTrace(
+        BackupCreationException(
+          stage: BackupCreationStage.publication,
+          cause: error,
+          recoveryRequired: true,
+        ),
+        stack,
+      );
+    }
+  }
+
   @override
   Future<void> createPortableBackup(
     String destination, {
     required String password,
-  }) async {
-    await _rawBackups.createBackup(File(destination), password: password);
-  }
+  }) => _createRawBackup(File(destination), password);
 
   @override
   Future<void> recoverPortableBackupPublication(String destination) =>
@@ -49,7 +74,7 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
     final directory = await getTemporaryDirectory();
     final file = File(path.join(directory.path, path.basename(fileName)));
     try {
-      await _rawBackups.createBackup(file, password: password);
+      await _createRawBackup(file, password);
       return file.path;
     } catch (_) {
       await discardTemporaryBackup(file.path);
