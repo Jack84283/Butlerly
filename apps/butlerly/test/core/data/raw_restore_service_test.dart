@@ -148,47 +148,49 @@ void main() {
     );
   });
 
-  test('production gateway uses raw backup and Replace without rule validation',
-      () async {
-    await setProbe('archived');
-    final manager = LocalDataManager(
-      database,
-      localEvidenceDirectory: evidence,
-    );
-    final gateway = LocalWorkspaceDataGateway(
-      LocalBackupManager(database, manager),
-      manager,
-    );
-    final archive = File(path.join(root.path, 'gateway.butlerly'));
-    await gateway.createPortableBackup(
-      archive.path,
-      password: 'correct horse battery staple',
-    );
-    final preview = await gateway.inspect(
-      archive.path,
-      password: 'correct horse battery staple',
-    );
-    expect(preview.createdAtUtc, isA<DateTime>());
-    await database.database.update(
-      'restore_probe',
-      {'value': 'changed-locally'},
-      where: 'id = ?',
-      whereArgs: ['original'],
-    );
-    var businessRefreshCalled = false;
-    final result = await gateway.restore(
-      archive.path,
-      mode: LocalRestoreMode.replace,
-      password: 'correct horse battery staple',
-      postActivationRefresh: () async {
-        businessRefreshCalled = true;
-        throw StateError('Business validation must not run during restore.');
-      },
-    );
-    expect(result.mode, LocalRestoreMode.replace);
-    expect(businessRefreshCalled, isFalse);
-    expect(await getProbe(), 'archived');
-  });
+  test(
+    'production gateway uses raw backup and Replace without rule validation',
+    () async {
+      await setProbe('archived');
+      final manager = LocalDataManager(
+        database,
+        localEvidenceDirectory: evidence,
+      );
+      final gateway = LocalWorkspaceDataGateway(
+        LocalBackupManager(database, manager),
+        manager,
+      );
+      final archive = File(path.join(root.path, 'gateway.butlerly'));
+      await gateway.createPortableBackup(
+        archive.path,
+        password: 'correct horse battery staple',
+      );
+      final preview = await gateway.inspect(
+        archive.path,
+        password: 'correct horse battery staple',
+      );
+      expect(preview.createdAtUtc, isA<DateTime>());
+      await database.database.update(
+        'restore_probe',
+        {'value': 'changed-locally'},
+        where: 'id = ?',
+        whereArgs: ['original'],
+      );
+      var businessRefreshCalled = false;
+      final result = await gateway.restore(
+        archive.path,
+        mode: LocalRestoreMode.replace,
+        password: 'correct horse battery staple',
+        postActivationRefresh: () async {
+          businessRefreshCalled = true;
+          throw StateError('Business validation must not run during restore.');
+        },
+      );
+      expect(result.mode, LocalRestoreMode.replace);
+      expect(businessRefreshCalled, isFalse);
+      expect(await getProbe(), 'archived');
+    },
+  );
 
   test('wrong password leaves live database and files untouched', () async {
     await setProbe('local');
