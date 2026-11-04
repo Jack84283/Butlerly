@@ -20,6 +20,7 @@ void main() {
   setUpAll(sqfliteFfiInit);
   const backupPassword = 'correct horse battery staple';
   late Directory root;
+  late Directory exportDirectory;
   late LocalDatabase database;
   late SqliteAnalysisRuleRepository rules;
   final messenger =
@@ -29,6 +30,9 @@ void main() {
   setUp(() async {
     await services.reset();
     root = await Directory.systemTemp.createTemp('butlerly-restore-rules-');
+    exportDirectory = await Directory.systemTemp.createTemp(
+      'butlerly-restore-rules-export-',
+    );
     messenger.setMockMethodCallHandler(channel, (_) async => root.path);
     final logger = AppLogger();
     database = LocalDatabase(
@@ -81,6 +85,9 @@ void main() {
     await database.close();
     messenger.setMockMethodCallHandler(channel, null);
     await root.delete(recursive: true);
+    if (await exportDirectory.exists()) {
+      await exportDirectory.delete(recursive: true);
+    }
   });
 
   Future<File> legacyBackup({bool disableCount = false}) async {
@@ -108,7 +115,7 @@ void main() {
         DateTime.now().toUtc(),
       );
     }
-    final backup = File('${root.path}/legacy.butlerlybackup');
+    final backup = File('${exportDirectory.path}/legacy.butlerlybackup');
     await services<WorkspaceDataService>().createPortableBackup(
       backup.path,
       password: backupPassword,
@@ -200,7 +207,7 @@ void main() {
           updatedAt: timestamp,
         ),
       );
-      final backup = File('${root.path}/duplicates.butlerlybackup');
+      final backup = File('${exportDirectory.path}/duplicates.butlerlybackup');
       await services<WorkspaceDataService>().createPortableBackup(
         backup.path,
         password: backupPassword,
@@ -265,7 +272,7 @@ void main() {
       group.id,
       DuplicateCandidateGroupStatus.keepBoth,
     );
-    final backup = File('${root.path}/resolved-duplicates.butlerlybackup');
+    final backup = File('${exportDirectory.path}/resolved-duplicates.butlerlybackup');
     await services<WorkspaceDataService>().createPortableBackup(
       backup.path,
       password: backupPassword,
@@ -325,7 +332,7 @@ void main() {
         where: 'id = ?',
         whereArgs: ['restored-expense'],
       )).single;
-      final backup = File('${root.path}/conflicting.butlerlybackup');
+      final backup = File('${exportDirectory.path}/conflicting.butlerlybackup');
       await services<WorkspaceDataService>().createPortableBackup(
         backup.path,
         password: backupPassword,
