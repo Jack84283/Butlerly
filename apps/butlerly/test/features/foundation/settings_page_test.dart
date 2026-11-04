@@ -194,6 +194,48 @@ void main() {
     expect(find.byType(FinancialProfilePage), findsOneWidget);
   });
 
+  testWidgets('compact More routes Privacy & data to the shared page', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    appRouter.go('/settings');
+    addTearDown(() => appRouter.go('/'));
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp.router(
+          routerConfig: appRouter,
+          locale: const Locale('en'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    for (var attempt = 0; attempt < 10; attempt++) {
+      if (find.text('Privacy & data').evaluate().length >= 2) break;
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -250));
+      await tester.pump();
+    }
+    expect(find.text('Backup & Restore'), findsNothing);
+    final privacyRow = find.ancestor(
+      of: find.text('Privacy & data').last,
+      matching: find.byType(InkWell),
+    );
+    await tester.ensureVisible(privacyRow.first);
+    await tester.tap(privacyRow.first);
+    await tester.pumpAndSettle();
+    expect(appRouter.routeInformationProvider.value.uri.path, '/privacy-data');
+    expect(find.byType(PrivacyDataPage), findsOneWidget);
+  });
+
   testWidgets('compact secondary settings destinations have back affordance', (
     tester,
   ) async {
