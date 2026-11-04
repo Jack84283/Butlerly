@@ -55,9 +55,15 @@ RestoreFailureKind classifyRestoreFailure(Object error) {
   if (error is UnsupportedBackupSchemaException) {
     return RestoreFailureKind.unsupportedSchema;
   }
-  if (error is RepositoryException &&
-      error.code == RepositoryFailureCode.migration) {
-    return RestoreFailureKind.migration;
+  if (error is RepositoryException) {
+    return switch (error.code) {
+      RepositoryFailureCode.migration => RestoreFailureKind.migration,
+      RepositoryFailureCode.integrity => RestoreFailureKind.damaged,
+      RepositoryFailureCode.storageFull => RestoreFailureKind.storage,
+      RepositoryFailureCode.permission => RestoreFailureKind.fileAccess,
+      RepositoryFailureCode.busy => RestoreFailureKind.databaseBusy,
+      _ => RestoreFailureKind.unknown,
+    };
   }
   if (error is FormatException) {
     final message = error.message.toLowerCase();
