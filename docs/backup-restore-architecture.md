@@ -30,6 +30,39 @@ rewrite and is not a claim that the replacement is production-ready.
   Reject future, unversioned, malformed, or un-migratable SQLite schemas.
   This applies to both Replace and Merge and is not business-rule repair.
 
+## Device-independent compatibility contract
+
+A backup is portable across Butlerly installations. Restore does not attempt to
+identify its original device or distinguish same-device recovery from transfer.
+The encrypted archive includes a full native SQLite snapshot, original evidence
+bytes, relative evidence paths, timestamps, archive format metadata, and
+checksums. It does **not** include any source device ID, hardware identifier,
+installation ID, source OS, or device fingerprint for compatibility decisions.
+SQLite's `PRAGMA user_version` within the snapshot is the authoritative
+database schema version; no duplicate device-specific field is necessary.
+
+Compatibility always compares the backup SQLite schema against the **installed
+destination app's supported SQLite schema**, regardless of where or when the
+backup was created:
+
+| Backup schema | Installed app supports | Restore behavior |
+| --- | --- | --- |
+| 17 | 17 | Restore without a schema migration |
+| 17 | 19 | Migrate staged SQLite 17→18→19, then Restore |
+| 19 | 17 | Reject before confirmation and explain how to update Butlerly |
+| 19 | 19 | Restore without a schema migration |
+
+These rules apply to both **Replace** and **Merge**, and to backups made before
+or after an app update on the *same* device. A backup from a newer schema must
+never downgrade or mutate the installed app's database. The original encrypted
+archive is never modified by restore or migration. After an app update,
+users may retry the same backup without recreating it.
+
+The update prompt provides Apple App Store, Google Play, Mac App Store, or
+trusted desktop source guidance, selected by the **destination platform only
+for presentation**. No listing URL is invented when Butlerly's official
+store destinations have not been configured.
+
 ## Modules
 
 - `raw_backup_archive.dart` — streaming container, manifest, checksums,
