@@ -6,6 +6,7 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -31,6 +32,13 @@ class _MasterDataPageState extends State<MasterDataPage> {
   void initState() {
     super.initState();
     _data = Future.value(const _MasterData([], [], [], {}, {}));
+    workspaceRestoreChanges.addListener(_refresh);
+  }
+
+  @override
+  void dispose() {
+    workspaceRestoreChanges.removeListener(_refresh);
+    super.dispose();
   }
 
   @override
