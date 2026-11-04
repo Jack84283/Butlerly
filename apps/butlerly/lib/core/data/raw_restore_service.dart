@@ -137,7 +137,6 @@ final class RawRestoreService {
     final oldEvidence = _oldEvidence(evidenceDirectory, operationId);
     final journal = File(path.join(parent.path, _journalName));
     var journalWritten = false;
-    var databaseClosed = false;
     var committed = false;
     await working.create(recursive: true);
     try {
@@ -192,7 +191,6 @@ final class RawRestoreService {
 
       // Do not replace a file while any Butlerly connection holds it open.
       await database.persistenceDatabase.close();
-      databaseClosed = true;
 
       for (final extension in const ['-wal', '-shm']) {
         final current = File('${liveDatabase.path}$extension');
@@ -215,7 +213,6 @@ final class RawRestoreService {
       // Reuse the same ButlerlyDatabase object held by app repositories.
       // On open SQLite applies its normal schema setup, not semantic checks.
       await database.reopenActiveConnection();
-      databaseClosed = false;
       final check = await database.database.rawQuery('PRAGMA integrity_check');
       if (check.length != 1 || check.single.values.single != 'ok') {
         throw StateError('Restored SQLite file failed physical integrity.');
@@ -231,14 +228,12 @@ final class RawRestoreService {
         try {
           // If reopen partially succeeded, close it before file rollback.
           await database.persistenceDatabase.close();
-          databaseClosed = true;
-          await recoverInterruptedReplace(
+              await recoverInterruptedReplace(
             liveDatabase: liveDatabase,
             evidenceDirectory: evidenceDirectory,
           );
           await database.reopenActiveConnection();
-          databaseClosed = false;
-          journalWritten = false;
+              journalWritten = false;
         } catch (_) {
           // Never erase the durable journal on an uncertain rollback.
           throw StateError(
