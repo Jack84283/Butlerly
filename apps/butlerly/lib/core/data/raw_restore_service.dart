@@ -228,12 +228,12 @@ final class RawRestoreService {
         try {
           // If reopen partially succeeded, close it before file rollback.
           await database.persistenceDatabase.close();
-              await recoverInterruptedReplace(
+          await recoverInterruptedReplace(
             liveDatabase: liveDatabase,
             evidenceDirectory: evidenceDirectory,
           );
           await database.reopenActiveConnection();
-              journalWritten = false;
+          journalWritten = false;
         } catch (_) {
           // Never erase the durable journal on an uncertain rollback.
           throw StateError(
