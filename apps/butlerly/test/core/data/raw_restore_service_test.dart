@@ -335,6 +335,13 @@ void main() {
         version: 18,
         label: 'older-replace',
       );
+      // Historical backups remain previewable, and migration only runs
+      // after the user confirms Replace or Merge.
+      final inspection = await backups.inspect(
+        oldArchive,
+        password: 'correct horse battery staple',
+      );
+      expect(inspection.recordCount, 1);
       final originalArchiveBytes = await oldArchive.readAsBytes();
       await database.database.update(
         'restore_probe',
@@ -445,12 +452,22 @@ void main() {
     final archive = await archivedSchema(version: 20, label: 'future-schema');
     final originalArchiveBytes = await archive.readAsBytes();
 
+    // The user sees an update-required prompt during the read-only preview,
+    // before any Replace or Merge confirmation and before activation.
+    await expectLater(
+      backups.inspect(archive, password: 'correct horse battery staple'),
+      throwsA(
+        isA<NewerBackupSchemaException>()
+            .having((error) => error.backupVersion, 'backupVersion', 20)
+            .having((error) => error.supportedVersion, 'supportedVersion', 19),
+      ),
+    );
     await expectLater(
       restores.restoreReplace(
         archive,
         password: 'correct horse battery staple',
       ),
-      throwsA(isA<FormatException>()),
+      throwsA(isA<NewerBackupSchemaException>()),
     );
     expect(await getProbe(), 'never-change-live');
     final version = await database.database.rawQuery('PRAGMA user_version');
