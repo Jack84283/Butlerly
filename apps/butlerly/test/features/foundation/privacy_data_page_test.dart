@@ -264,78 +264,85 @@ void main() {
     await dialog;
   });
 
-  testWidgets('Replace describes full data loss and requires explicit consent', (
-    tester,
-  ) async {
-    await tester.pumpWidget(app());
-    await tester.pumpAndSettle();
-    final context = tester.element(find.byType(PrivacyDataPage));
-    final confirmation = showBackupRestoreConfirmation(
-      context,
-      inspection: BackupInspection(
-        createdAtUtc: DateTime.utc(2026, 10, 31),
-        recordCount: 42,
-        evidenceCount: 6,
-        changes: const BackupChangeSummary(
-          transactionsAdded: 0,
-          transactionsChanged: 0,
-          masterDataChanged: 0,
-          deletedEntities: 0,
+  testWidgets(
+    'Replace describes full data loss and requires explicit consent',
+    (tester) async {
+      await tester.pumpWidget(app());
+      await tester.pumpAndSettle();
+      final context = tester.element(find.byType(PrivacyDataPage));
+      final confirmation = showBackupRestoreConfirmation(
+        context,
+        inspection: BackupInspection(
+          createdAtUtc: DateTime.utc(2026, 10, 31),
+          recordCount: 42,
+          evidenceCount: 6,
+          changes: const BackupChangeSummary(
+            transactionsAdded: 0,
+            transactionsChanged: 0,
+            masterDataChanged: 0,
+            deletedEntities: 0,
+          ),
         ),
-      ),
-      mode: LocalRestoreMode.replace,
-    );
-    await tester.pumpAndSettle();
+        mode: LocalRestoreMode.replace,
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.text('Replace all Butlerly data?'), findsOneWidget);
-    expect(find.textContaining('ENTIRE local Butlerly database'), findsOneWidget);
-    expect(find.textContaining('Master data:'), findsOneWidget);
-    expect(find.textContaining('Transactions,'), findsOneWidget);
-    expect(find.textContaining('Analysis rules,'), findsOneWidget);
-    expect(find.textContaining('in-app preferences/settings'), findsOneWidget);
-    expect(find.textContaining('Local attachments,'), findsOneWidget);
-    expect(find.textContaining('cannot be undone'), findsOneWidget);
-    expect(find.textContaining('42 records'), findsOneWidget);
+      expect(find.text('Replace all Butlerly data?'), findsOneWidget);
+      expect(
+        find.textContaining('ENTIRE local Butlerly database'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Master data:'), findsOneWidget);
+      expect(find.textContaining('Transactions,'), findsOneWidget);
+      expect(find.textContaining('Analysis rules,'), findsOneWidget);
+      expect(
+        find.textContaining('in-app preferences/settings'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Local attachments,'), findsOneWidget);
+      expect(find.textContaining('cannot be undone'), findsOneWidget);
+      expect(find.textContaining('42 records'), findsOneWidget);
 
-    final button = find.descendant(
-      of: find.byKey(const ValueKey('restore-replace-confirm')),
-      matching: find.byType(FilledButton),
-    );
-    expect(tester.widget<FilledButton>(button).onPressed, isNull);
-    final acknowledgement = find.byKey(
-      const ValueKey('restore-replace-acknowledgement'),
-    );
-    await tester.ensureVisible(acknowledgement);
-    await tester.tap(acknowledgement);
-    await tester.pumpAndSettle();
-    expect(tester.widget<FilledButton>(button).onPressed, isNotNull);
+      final button = find.descendant(
+        of: find.byKey(const ValueKey('restore-replace-confirm')),
+        matching: find.byType(FilledButton),
+      );
+      expect(tester.widget<FilledButton>(button).onPressed, isNull);
+      final acknowledgement = find.byKey(
+        const ValueKey('restore-replace-acknowledgement'),
+      );
+      await tester.ensureVisible(acknowledgement);
+      await tester.tap(acknowledgement);
+      await tester.pumpAndSettle();
+      expect(tester.widget<FilledButton>(button).onPressed, isNotNull);
 
-    await tester.tap(find.byKey(const ValueKey('restore-replace-confirm')));
-    await tester.pumpAndSettle();
-    expect(await confirmation, isTrue);
+      await tester.tap(find.byKey(const ValueKey('restore-replace-confirm')));
+      await tester.pumpAndSettle();
+      expect(await confirmation, isTrue);
 
-    // Every new Replace confirmation must require acknowledgement again.
-    final second = showBackupRestoreConfirmation(
-      context,
-      inspection: BackupInspection(
-        createdAtUtc: DateTime.utc(2026, 10, 31),
-        recordCount: 42,
-        evidenceCount: 6,
-        changes: const BackupChangeSummary(
-          transactionsAdded: 0,
-          transactionsChanged: 0,
-          masterDataChanged: 0,
-          deletedEntities: 0,
+      // Every new Replace confirmation must require acknowledgement again.
+      final second = showBackupRestoreConfirmation(
+        context,
+        inspection: BackupInspection(
+          createdAtUtc: DateTime.utc(2026, 10, 31),
+          recordCount: 42,
+          evidenceCount: 6,
+          changes: const BackupChangeSummary(
+            transactionsAdded: 0,
+            transactionsChanged: 0,
+            masterDataChanged: 0,
+            deletedEntities: 0,
+          ),
         ),
-      ),
-      mode: LocalRestoreMode.replace,
-    );
-    await tester.pumpAndSettle();
-    expect(tester.widget<FilledButton>(button).onPressed, isNull);
-    await tester.tap(find.text('Cancel'));
-    await tester.pumpAndSettle();
-    expect(await second, isFalse);
-  });
+        mode: LocalRestoreMode.replace,
+      );
+      await tester.pumpAndSettle();
+      expect(tester.widget<FilledButton>(button).onPressed, isNull);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(await second, isFalse);
+    },
+  );
 
   testWidgets('Merge confirmation never shows destructive Replace consent', (
     tester,
