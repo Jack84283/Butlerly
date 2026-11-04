@@ -6,7 +6,6 @@ import 'package:butlerly/core/data/backup_container_format.dart';
 import 'package:butlerly/core/data/duplicate_group_backup_policy.dart';
 import 'package:butlerly/core/data/evidence_path_safety.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
-import 'package:butlerly/core/data/persisted_analysis_rule_validation.dart';
 import 'package:butlerly_database/butlerly_database.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:path/path.dart' as path;
@@ -305,153 +304,6 @@ final class LocalBackupSnapshotWriter {
       }
     }
 
-    final definitions =
-        tables['analysis_rule_definitions']! as List<Map<String, Object?>>;
-    final sourceTypeByRule = <String, String>{};
-    for (final row in definitions) {
-      final ruleId = row['rule_id'];
-      final version = row['rule_version'];
-      if (ruleId is! String || version is! String) continue;
-      final sourceType = row['source_type'];
-      if (sourceType is String) {
-        sourceTypeByRule['$ruleId@$version'] = sourceType;
-      }
-      final valid = isSemanticallyValidPersistedAnalysisRule(row);
-      if (!valid && _isUserOwnedRuleSource(sourceType)) {
-        addWarning(
-          'invalid_custom_analysis_rule',
-          records: [
-            DataIntegrityRecordReference(
-              type: 'analysisRule',
-              id: '$ruleId@$version',
-            ),
-          ],
-        );
-      }
-    }
-    final configurations =
-        tables['analysis_rule_configurations']! as List<Map<String, Object?>>;
-    for (final row in configurations) {
-      final ruleId = row['rule_id'];
-      final configuration = row['configuration'];
-      if (ruleId is! String) continue;
-      final sourceType = sourceTypeByRule.entries
-          .where((entry) => entry.key.startsWith('$ruleId@'))
-          .map((entry) => entry.value)
-          .firstOrNull;
-      var valid = false;
-      if (configuration is String) {
-        try {
-          final decoded = jsonDecode(configuration);
-          valid = decoded is Map || decoded is List;
-        } on Object {
-          valid = false;
-        }
-      }
-      if (!valid &&
-          (sourceType == null || _isUserOwnedRuleSource(sourceType))) {
-        addWarning(
-          'invalid_custom_configuration',
-          records: [
-            DataIntegrityRecordReference(type: 'analysisRule', id: ruleId),
-          ],
-        );
-      }
-    }
-
-    // A backup is a faithful snapshot, not an integrity gate. Preserve rows
-    // with broken optional relationships and surface them as operation
-    // warnings so the standalone report can explain them after restore.
-    final foreignKeyViolations = await source.rawQuery(
-      'PRAGMA foreign_key_check',
-    );
-    for (final violation in foreignKeyViolations) {
-      final record = await _foreignKeyViolationRecord(source, violation);
-      addWarning('missing_referenced_record', records: [?record]);
-    }
-    final budgetRows = tables['budgets']! as List<Map<String, Object?>>;
-    final categoryRows = await source.query(
-      'categories',
-      columns: ['id', 'parent_id'],
-    );
-    final categoryParents = <String, Object?>{
-      for (final row in categoryRows)
-        if (row['id'] is String) row['id']! as String: row['parent_id'],
-    };
-    final merchantIds = (await source.query(
-      'merchants',
-      columns: ['id'],
-    )).map((row) => row['id']).whereType<String>().toSet();
-    const budgetScopes = {'category', 'subcategory', 'merchant', 'overall'};
-    for (final row in budgetRows) {
-      final scope = row['scope'];
-      final scopeId = row['scope_id'];
-      if (scope == 'overall' && scopeId == null) continue;
-      if (scope is! String ||
-          !budgetScopes.contains(scope) ||
-          (scope == 'overall' && scopeId != null) ||
-          (scope != 'overall' && scopeId is! String)) {
-        addWarning(
-          'relationship_inconsistency',
-          records: [
-            if (row['id'] is String)
-              DataIntegrityRecordReference(
-                type: 'budget',
-                id: row['id']! as String,
-              ),
-          ],
-        );
-        continue;
-      }
-      final targetIds = scope == 'merchant'
-          ? merchantIds
-          : categoryParents.keys;
-      if (!targetIds.contains(scopeId)) {
-        addWarning(
-          'missing_referenced_record',
-          records: [
-            if (row['id'] is String)
-              DataIntegrityRecordReference(
-                type: 'budget',
-                id: row['id']! as String,
-              ),
-            if (scopeId is String)
-              DataIntegrityRecordReference(
-                type: scope == 'merchant' ? 'merchant' : 'category',
-                id: scopeId,
-              ),
-          ],
-        );
-      } else if (scope != 'merchant') {
-        final parentId = categoryParents[scopeId];
-        final validHierarchy = switch (scope) {
-          'category' => parentId == null,
-          'subcategory' =>
-            parentId is String &&
-                parentId.isNotEmpty &&
-                categoryParents.containsKey(parentId) &&
-                categoryParents[parentId] == null,
-          _ => true,
-        };
-        if (!validHierarchy) {
-          addWarning(
-            'relationship_inconsistency',
-            records: [
-              if (row['id'] is String)
-                DataIntegrityRecordReference(
-                  type: 'budget',
-                  id: row['id']! as String,
-                ),
-              DataIntegrityRecordReference(
-                type: 'category',
-                id: scopeId as String,
-              ),
-            ],
-          );
-        }
-      }
-    }
-
     // Missing optional content is a warning, not a reason to discard the
     // database snapshot. Keep the original metadata row and record the
     // unavailable content explicitly in the manifest.
@@ -536,6 +388,11 @@ final class LocalBackupSnapshotWriter {
         'createdAtUtc': createdAtUtc.toUtc().toIso8601String(),
         'recordCount': recordCount,
         'evidenceCount': evidence.length,
+        // Backup creation preserves source rows even when optional references
+        // are unresolved. Comprehensive relationship validation belongs to
+        // DataIntegrityReportService, not this archive-safety path.
+        'referencePolicy':
+            BackupContainerFormat.preserveUnresolvedReferencesPolicy,
         'missingContentCount': missingContent.length,
         'missingContent': missingContent,
         'warnings': [
@@ -594,68 +451,11 @@ final class LocalBackupSnapshotWriter {
     return destination;
   }
 
-  Future<DataIntegrityRecordReference?> _foreignKeyViolationRecord(
-    DatabaseExecutor source,
-    Map<String, Object?> violation,
-  ) async {
-    final table = violation['table'];
-    final rowId = violation['rowid'];
-    if (table is! String || table.isEmpty || rowId == null) return null;
-
-    final recordType = _recordTypeForTable(table);
-    try {
-      final quotedTable = '"${table.replaceAll('"', '""')}"';
-      final columns = await source.rawQuery('PRAGMA table_info($quotedTable)');
-      final primaryKeys =
-          columns
-              .where(
-                (column) => column['pk'] is int && (column['pk']! as int) > 0,
-              )
-              .toList()
-            ..sort(
-              (left, right) =>
-                  (left['pk']! as int).compareTo(right['pk']! as int),
-            );
-      final rows = await source.rawQuery(
-        'SELECT * FROM $quotedTable WHERE rowid = ? LIMIT 1',
-        [rowId],
-      );
-      if (rows.isEmpty) {
-        return DataIntegrityRecordReference(type: recordType, id: 'row:$rowId');
-      }
-      final row = rows.single;
-      final keyColumns = primaryKeys.isEmpty
-          ? const <String>['rowid']
-          : [
-              for (final column in primaryKeys)
-                if (column['name'] is String) column['name']! as String,
-            ];
-      final id = keyColumns.length == 1 && keyColumns.single == 'rowid'
-          ? 'row:$rowId'
-          : keyColumns.map((column) => '${row[column]}').join('|');
-      return DataIntegrityRecordReference(type: recordType, id: id);
-    } on Object {
-      return DataIntegrityRecordReference(type: recordType, id: 'row:$rowId');
-    }
-  }
-
-  String _recordTypeForTable(String table) => switch (table) {
-    'transactions' => 'transaction',
-    'evidence_items' => 'evidence',
-    'attachment_links' => 'attachment',
-    'budgets' => 'budget',
-    'categories' => 'category',
-    'merchants' => 'merchant',
-    'analysis_rule_definitions' ||
-    'analysis_rule_activations' ||
-    'analysis_rule_configurations' ||
-    'analysis_rule_provenance' => 'analysisRule',
-    _ => 'relatedRecord',
-  };
-
   List<Map<String, Object?>> _orderCategoriesForBackup(
     List<Map<String, Object?>> rows,
   ) {
+    // This is archive-safety ordering for SQLite insertion. It does not
+    // validate category semantics or budget/merchant relationships.
     final pending = [...rows];
     final knownIds = rows.map((row) => row['id']).whereType<String>().toSet();
     final emitted = <String>{};
@@ -708,7 +508,4 @@ final class LocalBackupSnapshotWriter {
         '${text.substring(16, 20)}-'
         '${text.substring(20)}';
   }
-
-  bool _isUserOwnedRuleSource(Object? sourceType) =>
-      sourceType == 'custom' || sourceType == 'user';
 }

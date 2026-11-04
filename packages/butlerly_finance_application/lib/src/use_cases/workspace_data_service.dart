@@ -147,6 +147,7 @@ final class WorkspaceDataService {
         restoredRows: result.restoredRows,
         keptNewerLocalRows: result.keptNewerLocalRows,
         restoredEvidence: result.restoredEvidence,
+        preservesUnresolvedReferences: result.preservesUnresolvedReferences,
         presentationRefreshFailed: true,
         analysisRebuildFailed: result.analysisRebuildFailed,
         warnings: result.warnings,

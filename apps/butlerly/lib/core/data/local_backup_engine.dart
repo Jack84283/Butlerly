@@ -76,6 +76,7 @@ final class _BackupPackage {
     required this.warnings,
     required this.missingContentCount,
     required this.missingContent,
+    required this.preservesUnresolvedReferences,
   });
 
   final File file;
@@ -85,6 +86,7 @@ final class _BackupPackage {
   final List<BackupWarning> warnings;
   final int missingContentCount;
   final List<_MissingContentDescriptor> missingContent;
+  final bool preservesUnresolvedReferences;
 }
 
 final class _PreparedEvidence {
@@ -485,6 +487,11 @@ final class LocalBackupManager {
     // final staging tree all finish before the live database is mutated.
     final package = await _readPackage(file);
     final sourceSchema = package.manifest['schemaVersion']! as int;
+    final preservesUnresolvedReferences =
+        package.preservesUnresolvedReferences ||
+        package.warnings.any(
+          (warning) => warning.code == 'missing_referenced_record',
+        );
     final backupTime = DateTime.parse(
       package.manifest['createdAtUtc']! as String,
     ).toUtc();
@@ -584,10 +591,7 @@ final class LocalBackupManager {
       // be kept for Data Integrity Reports; it is restored to its prior state
       // before any later validation or operation continues.
       final foreignKeysWereEnabled =
-          await _foreignKeysEnabled() &&
-          package.warnings.any(
-            (warning) => warning.code == 'missing_referenced_record',
-          );
+          await _foreignKeysEnabled() && preservesUnresolvedReferences;
       if (foreignKeysWereEnabled) {
         await _setForeignKeys(false);
       }
@@ -810,6 +814,7 @@ final class LocalBackupManager {
           keptNewerLocalRows: keptNewer,
           restoredEvidence: preparedEvidence.addedCount,
           warnings: package.warnings,
+          preservesUnresolvedReferences: preservesUnresolvedReferences,
         );
       }
     } catch (_) {
@@ -866,6 +871,7 @@ final class LocalBackupManager {
       keptNewerLocalRows: keptNewer,
       restoredEvidence: preparedEvidence.addedCount,
       warnings: package.warnings,
+      preservesUnresolvedReferences: preservesUnresolvedReferences,
     );
   }
 
@@ -1094,6 +1100,14 @@ final class LocalBackupManager {
       if (manifest['format'] != format ||
           manifest['formatVersion'] != formatVersion) {
         throw const FormatException('Unsupported Butlerly backup format.');
+      }
+      final referencePolicy = manifest['referencePolicy'];
+      if (referencePolicy != null &&
+          referencePolicy !=
+              BackupContainerFormat.preserveUnresolvedReferencesPolicy) {
+        throw const FormatException(
+          'Invalid Butlerly backup reference policy.',
+        );
       }
       final sourceSchema = manifest['schemaVersion'] as int?;
       if (sourceSchema == null ||
@@ -1427,6 +1441,9 @@ final class LocalBackupManager {
         warnings: warnings,
         missingContentCount: missingContentCount,
         missingContent: List.unmodifiable(missingContent),
+        preservesUnresolvedReferences:
+            referencePolicy ==
+            BackupContainerFormat.preserveUnresolvedReferencesPolicy,
       );
     } finally {
       await raf.close();

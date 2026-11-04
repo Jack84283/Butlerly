@@ -65,6 +65,7 @@ final class LocalRestoreResult {
     required this.restoredRows,
     required this.keptNewerLocalRows,
     required this.restoredEvidence,
+    this.preservesUnresolvedReferences = false,
     this.presentationRefreshFailed = false,
     this.analysisRebuildFailed = false,
     this.warnings = const [],
@@ -74,6 +75,11 @@ final class LocalRestoreResult {
   final int restoredRows;
   final int keptNewerLocalRows;
   final int restoredEvidence;
+
+  /// The archive intentionally preserves source rows whose optional targets
+  /// are unavailable. The standalone data-integrity report remains the owner
+  /// of explaining those relationships.
+  final bool preservesUnresolvedReferences;
 
   /// The database restore succeeded, but the non-critical UI refresh failed.
   /// Do not report this as a failed data restore or try to restore again.

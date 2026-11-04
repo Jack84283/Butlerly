@@ -170,22 +170,24 @@ void main() {
         backupPath,
         password: password,
       );
-      expect(inspection.warnings, hasLength(2));
+      expect(inspection.warnings, hasLength(1));
       expect(
         inspection.warnings.map((warning) => warning.code),
-        containsAll(<String>[
-          'missing_receipt',
-          'invalid_custom_analysis_rule',
-        ]),
+        contains('missing_receipt'),
+      );
+      expect(
+        inspection.warnings.map((warning) => warning.code),
+        isNot(contains('invalid_custom_analysis_rule')),
       );
       final backupDiagnostics = await services<OperationDiagnosticsStore>()
           .recent();
       expect(
         backupDiagnostics.map((diagnostic) => diagnostic.finding.code),
-        containsAll(<String>[
-          'missing_receipt',
-          'invalid_custom_analysis_rule',
-        ]),
+        contains('missing_receipt'),
+      );
+      expect(
+        backupDiagnostics.map((diagnostic) => diagnostic.finding.code),
+        isNot(contains('invalid_custom_analysis_rule')),
       );
       final backupReceiptDiagnostic = backupDiagnostics.singleWhere(
         (diagnostic) => diagnostic.finding.code == 'missing_receipt',
@@ -204,6 +206,10 @@ void main() {
         ]),
       );
       expect(inspection.missingContentCount, 1);
+      expect(
+        await services<DataIntegrityReportService>().reportHistory(),
+        isEmpty,
+      );
       expect(await database.database.query('transactions'), beforeTransactions);
       expect(
         await database.database.query('analysis_findings'),
@@ -213,8 +219,17 @@ void main() {
       final report = await services<DataIntegrityReportService>().runReport();
       expect(report.findings, isNotEmpty);
       expect(
+        report.findings.map((finding) => finding.code),
+        contains('invalid_analysis_rule_definition'),
+      );
+      expect(
         await services<DataIntegrityReportService>().reportHistory(),
         hasLength(1),
+      );
+      expect(await database.database.query('transactions'), beforeTransactions);
+      expect(
+        await database.database.query('analysis_findings'),
+        beforeFindings,
       );
 
       final result = await workspace.restore(
@@ -225,10 +240,11 @@ void main() {
       expect(result.analysisRebuildFailed, isTrue);
       expect(
         result.warnings.map((warning) => warning.code),
-        containsAll(<String>[
-          'missing_receipt',
-          'invalid_custom_analysis_rule',
-        ]),
+        contains('missing_receipt'),
+      );
+      expect(
+        result.warnings.map((warning) => warning.code),
+        isNot(contains('invalid_custom_analysis_rule')),
       );
       final restoreDiagnostics =
           (await services<OperationDiagnosticsStore>().recent())
@@ -252,11 +268,11 @@ void main() {
       );
       expect(
         restoreDiagnostics.map((diagnostic) => diagnostic.finding.code),
-        containsAll(<String>[
-          'missing_receipt',
-          'invalid_custom_analysis_rule',
-          'analysis_rebuild_failed',
-        ]),
+        containsAll(<String>['missing_receipt', 'analysis_rebuild_failed']),
+      );
+      expect(
+        restoreDiagnostics.map((diagnostic) => diagnostic.finding.code),
+        isNot(contains('invalid_custom_analysis_rule')),
       );
       expect(
         (await services<OperationDiagnosticsStore>().recent()).every(
@@ -530,6 +546,35 @@ void main() {
         'updated_at': capturedAt,
       });
 
+      final beforeBudgets = await database.database.query(
+        'budgets',
+        orderBy: 'id',
+      );
+      final beforeCategories = await database.database.query(
+        'categories',
+        where: 'id LIKE ?',
+        whereArgs: ['backup-production-budget-%'],
+        orderBy: 'id',
+      );
+      final manager = LocalBackupManager(
+        database,
+        services<LocalDataManager>(),
+      );
+      final archive = File(
+        path.join(temporaryDirectory.path, 'invalid-budget-scopes.butlerly'),
+      );
+      await manager.createBackup(archive);
+      final inspection = await manager.inspect(archive);
+      expect(inspection.warnings, isEmpty);
+      expect(
+        inspection.warnings.map((warning) => warning.code),
+        isNot(contains('relationship_inconsistency')),
+      );
+      expect(
+        await services<DataIntegrityReportService>().reportHistory(),
+        isEmpty,
+      );
+
       final report = await services<DataIntegrityReportService>().runReport();
       final reportFindings = report.findings
           .where((finding) => finding.code == 'invalid_budget_scope_reference')
@@ -548,36 +593,24 @@ void main() {
           'category:backup-production-budget-nested',
         ]),
       );
-
-      final manager = LocalBackupManager(
-        database,
-        services<LocalDataManager>(),
-      );
-      final archive = File(
-        path.join(temporaryDirectory.path, 'invalid-budget-scopes.butlerly'),
-      );
-      await manager.createBackup(archive);
-      final inspection = await manager.inspect(archive);
-      final warning = inspection.warnings.singleWhere(
-        (value) => value.code == 'relationship_inconsistency',
-      );
-      expect(warning.count, 3);
       expect(
-        warning.affectedRecords.map((record) => '${record.type}:${record.id}'),
-        containsAll(<String>[
-          'budget:backup-production-invalid-subcategory-budget',
-          'budget:backup-production-invalid-category-budget',
-          'budget:backup-production-invalid-nested-subcategory-budget',
-          'category:backup-production-budget-parent',
-          'category:backup-production-budget-child',
-          'category:backup-production-budget-nested',
-        ]),
+        await database.database.query('budgets', orderBy: 'id'),
+        beforeBudgets,
+      );
+      expect(
+        await database.database.query(
+          'categories',
+          where: 'id LIKE ?',
+          whereArgs: ['backup-production-budget-%'],
+          orderBy: 'id',
+        ),
+        beforeCategories,
       );
     },
   );
 
   test(
-    'restore preserves a legacy archive with a known orphan relationship',
+    'backup and restore preserve an unresolved relationship without scanning',
     () async {
       final created = await finance.createTransaction(
         CreateTransactionCommand(
@@ -614,25 +647,44 @@ void main() {
       await manager.createBackup(archive);
 
       final inspection = await manager.inspect(archive);
-      final inspectionWarning = inspection.warnings.singleWhere(
-        (warning) => warning.code == 'missing_referenced_record',
+      expect(inspection.warnings, isEmpty);
+      expect(
+        inspection.warnings.map((warning) => warning.code),
+        isNot(contains('missing_referenced_record')),
       );
       expect(
-        inspectionWarning.affectedRecords.any(
-          (record) =>
-              record.type == 'attachment' &&
-              record.id == 'backup-production-orphan-attachment',
-        ),
-        isTrue,
+        await services<DataIntegrityReportService>().reportHistory(),
+        isEmpty,
       );
 
       final result = await manager.restore(
         archive,
         mode: LocalRestoreMode.replace,
       );
+      expect(result.warnings, isEmpty);
+      expect(result.preservesUnresolvedReferences, isTrue);
+      final beforeReport = await database.database.query(
+        'attachment_links',
+        where: 'id = ?',
+        whereArgs: ['backup-production-orphan-attachment'],
+      );
+      expect(beforeReport, hasLength(1));
       expect(
-        result.warnings.map((warning) => warning.code),
-        contains('missing_referenced_record'),
+        await database.database.rawQuery('PRAGMA foreign_key_check'),
+        isNotEmpty,
+      );
+
+      final report = await services<DataIntegrityReportService>().runReport();
+      final finding = report.findings.singleWhere(
+        (value) => value.code == 'missing_referenced_record',
+      );
+      expect(
+        finding.affectedRecords.any(
+          (record) =>
+              record.type == 'attachment' &&
+              record.id == 'backup-production-orphan-attachment',
+        ),
+        isTrue,
       );
       expect(
         await database.database.query(
@@ -640,11 +692,7 @@ void main() {
           where: 'id = ?',
           whereArgs: ['backup-production-orphan-attachment'],
         ),
-        hasLength(1),
-      );
-      expect(
-        await database.database.rawQuery('PRAGMA foreign_key_check'),
-        isNotEmpty,
+        beforeReport,
       );
     },
   );

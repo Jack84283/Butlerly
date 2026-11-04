@@ -568,9 +568,14 @@ final class LocalBackupManager {
       onStage?.call('staged database restore');
       final stagedResult = await stagedEngine.restore(file, mode: mode);
       onStage?.call('staged database validation');
+      final allowLegacyUnresolvedReferences =
+          _hasMissingReferencedRecordWarning(stagedResult);
       await _validateDatabase(
         staging.database.database,
         requireForeignKeys: !_allowsMissingReferencedRecords(stagedResult),
+        allowUnresolvedAttachmentReferences:
+            stagedResult.preservesUnresolvedReferences &&
+            !allowLegacyUnresolvedReferences,
       );
 
       onStage?.call('pre-restore safety backup');
@@ -589,9 +594,15 @@ final class LocalBackupManager {
       );
       liveActivated = true;
       onStage?.call('post-activation validation and refresh');
+      final allowLegacyLiveReferences = _hasMissingReferencedRecordWarning(
+        liveResult,
+      );
       await _validateDatabase(
         database.database,
         requireForeignKeys: !_allowsMissingReferencedRecords(liveResult),
+        allowUnresolvedAttachmentReferences:
+            liveResult.preservesUnresolvedReferences &&
+            !allowLegacyLiveReferences,
       );
       await _validateLiveEvidenceReferences();
       var analysisRebuildFailed = false;
@@ -618,6 +629,7 @@ final class LocalBackupManager {
         restoredRows: liveResult.restoredRows,
         keptNewerLocalRows: liveResult.keptNewerLocalRows,
         restoredEvidence: liveResult.restoredEvidence,
+        preservesUnresolvedReferences: liveResult.preservesUnresolvedReferences,
         warnings: liveResult.warnings,
         analysisRebuildFailed: analysisRebuildFailed,
       );
@@ -1064,6 +1076,7 @@ final class LocalBackupManager {
   Future<void> _validateDatabase(
     DatabaseExecutor db, {
     bool requireForeignKeys = true,
+    bool allowUnresolvedAttachmentReferences = false,
   }) async {
     final integrity = await db.rawQuery('PRAGMA integrity_check');
     final integrityValue = integrity.isEmpty
@@ -1073,18 +1086,35 @@ final class LocalBackupManager {
       throw StateError('Restored database failed SQLite integrity validation.');
     }
 
-    if (!requireForeignKeys) return;
+    if (!requireForeignKeys && !allowUnresolvedAttachmentReferences) return;
     final foreignKeys = await db.rawQuery('PRAGMA foreign_key_check');
-    if (foreignKeys.isNotEmpty) {
+    if (foreignKeys.isNotEmpty &&
+        (!allowUnresolvedAttachmentReferences ||
+            foreignKeys.any(
+              (violation) =>
+                  !_isAllowedUnresolvedAttachmentReference(violation),
+            ))) {
       throw StateError(
         'Restored database contains broken foreign-key relationships.',
       );
     }
   }
 
-  bool _allowsMissingReferencedRecords(LocalRestoreResult result) => result
+  bool _isAllowedUnresolvedAttachmentReference(Map<String, Object?> violation) {
+    // A current archive may preserve an attachment link whose optional
+    // evidence row is unavailable. This is the narrow restore-safety exception
+    // for the archive policy; all other broken foreign keys remain fatal.
+    return violation['table'] == 'attachment_links' &&
+        violation['parent'] == 'evidence_items';
+  }
+
+  bool _hasMissingReferencedRecordWarning(LocalRestoreResult result) => result
       .warnings
       .any((warning) => warning.code == 'missing_referenced_record');
+
+  bool _allowsMissingReferencedRecords(LocalRestoreResult result) =>
+      result.preservesUnresolvedReferences ||
+      _hasMissingReferencedRecordWarning(result);
 
   Future<void> _validateLiveEvidenceReferences() async {
     final root = await localDataManager.evidenceDirectory();

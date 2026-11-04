@@ -9,6 +9,7 @@ abstract final class BackupContainerFormat {
   // excludes recalculable analysis output from new archives. User-reviewed
   // acknowledged/dismissed finding decisions remain portable.
   static const schemaVersion = 18;
+  static const preserveUnresolvedReferencesPolicy = 'preserve-unresolved';
   static List<int> get magic => utf8.encode('BUTLERLYBACKUP2');
   static const appVersion = String.fromEnvironment(
     'BUTLERLY_APP_VERSION',

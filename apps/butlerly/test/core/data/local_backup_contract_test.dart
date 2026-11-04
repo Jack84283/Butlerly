@@ -35,10 +35,11 @@ void main() {
     expect(manifest['appVersion'], '1.0.0');
     expect(manifest['appBuild'], '1');
     expect(manifest['schemaVersion'], 18);
+    expect(manifest['referencePolicy'], 'preserve-unresolved');
   });
 
   test(
-    'backup warns when a correctly hashed custom rule is semantically malformed',
+    'backup preserves a correctly hashed malformed custom rule without scanning',
     () async {
       final fixture = await _Fixture.create();
       addTearDown(fixture.dispose);
@@ -62,15 +63,7 @@ void main() {
       await fixture.manager.createBackup(backup);
 
       final inspection = await fixture.manager.inspect(backup);
-      expect(
-        inspection.warnings
-            .where((warning) => warning.code == 'invalid_custom_analysis_rule')
-            .single
-            .affectedRecords
-            .single
-            .id,
-        'ANL-R997@1.0.0',
-      );
+      expect(inspection.warnings, isEmpty);
     },
   );
 
@@ -396,7 +389,7 @@ void main() {
   );
 
   test(
-    'invalid custom analysis data is preserved with a backup warning',
+    'invalid custom analysis data is preserved without a backup scan warning',
     () async {
       final fixture = await _Fixture.create();
       addTearDown(fixture.dispose);
@@ -425,13 +418,7 @@ void main() {
 
       await fixture.manager.createBackup(backup);
       final inspection = await fixture.manager.inspect(backup);
-      expect(
-        inspection.warnings.map((warning) => warning.code),
-        containsAll(<String>[
-          'invalid_custom_analysis_rule',
-          'invalid_custom_configuration',
-        ]),
-      );
+      expect(inspection.warnings, isEmpty);
 
       await fixture.database.database.delete(
         'analysis_rule_definitions',
@@ -447,10 +434,7 @@ void main() {
         backup,
         mode: LocalRestoreMode.replace,
       );
-      expect(
-        result.warnings.map((warning) => warning.code),
-        contains('invalid_custom_analysis_rule'),
-      );
+      expect(result.warnings.map((warning) => warning.code), isEmpty);
       expect(
         await fixture.database.database.query(
           'analysis_rule_definitions',
@@ -919,6 +903,60 @@ void main() {
       }
     },
   );
+
+  test('historical unresolved-reference warnings remain restorable', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    await fixture.insertTransaction('tx-historical-unresolved');
+    await fixture.database.database.execute('PRAGMA foreign_keys = OFF');
+    await fixture.database.database.insert('attachment_links', {
+      'id': 'historical-unresolved-attachment',
+      'transaction_id': 'tx-historical-unresolved',
+      'evidence_id': 'historical-missing-evidence',
+      'created_at': '2026-09-01T00:00:00.000Z',
+    });
+    await fixture.database.database.execute('PRAGMA foreign_keys = ON');
+
+    final backup = File(
+      path.join(fixture.root.path, 'historical-unresolved.butlerly'),
+    );
+    await fixture.manager.createBackup(backup);
+    await _rewriteBackupMetadata(backup, (metadata) {
+      final manifest = (metadata['manifest']! as Map).cast<String, Object?>();
+      manifest.remove('referencePolicy');
+      manifest['warnings'] = [
+        {
+          'code': 'missing_referenced_record',
+          'count': 1,
+          'records': [
+            {'type': 'attachment', 'id': 'historical-unresolved-attachment'},
+          ],
+        },
+      ];
+    });
+
+    final inspection = await fixture.manager.inspect(backup);
+    expect(
+      inspection.warnings.map((warning) => warning.code),
+      contains('missing_referenced_record'),
+    );
+    final result = await fixture.manager.restore(
+      backup,
+      mode: LocalRestoreMode.replace,
+    );
+    expect(
+      result.warnings.map((warning) => warning.code),
+      contains('missing_referenced_record'),
+    );
+    expect(
+      await fixture.database.database.query(
+        'attachment_links',
+        where: 'id = ?',
+        whereArgs: ['historical-unresolved-attachment'],
+      ),
+      hasLength(1),
+    );
+  });
 
   test(
     'merge remaps missing content by evidence identity, not only by path',
