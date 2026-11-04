@@ -130,7 +130,10 @@ void main() {
     expect(find.text('Reason'), findsOneWidget);
     expect(find.text('What to do next'), findsOneWidget);
     expect(find.textContaining('cannot tell which occurred'), findsOneWidget);
-    expect(find.textContaining('Check the exact backup password'), findsOneWidget);
+    expect(
+      find.textContaining('Check the exact backup password'),
+      findsOneWidget,
+    );
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
     await dialog;
