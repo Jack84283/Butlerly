@@ -1,4 +1,10 @@
+import 'dart:io';
+
+import 'package:butlerly/core/data/local_data_manager.dart';
+import 'package:butlerly/core/data/restore_recovery_state.dart';
+import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly/features/foundation/presentation/restore_recovery_required_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -18,18 +24,60 @@ void main() {
   });
   tearDown(() => services.reset());
 
-  Widget app() => const ProviderScope(
-    child: MaterialApp(
-      localizationsDelegates: [
-        AppLocalizations.delegate,
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: RestoreRecoveryRequiredPage(),
-    ),
-  );
+  Widget app({Future<void> Function(String diagnostic)? copyDiagnostic}) =>
+      ProviderScope(
+        child: MaterialApp(
+          localizationsDelegates: [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: RestoreRecoveryRequiredPage(copyDiagnostic: copyDiagnostic),
+        ),
+      );
+
+  testWidgets('shows and copies bounded recovery diagnostics', (tester) async {
+    final root = Directory(
+      '${Directory.current.path}/.butlerly-restore-recovery-diagnostic-'
+      '${DateTime.now().microsecondsSinceEpoch}',
+    )..createSync(recursive: true);
+    addTearDown(() async {
+      if (await root.exists()) await root.delete(recursive: true);
+    });
+    final recoveryState = RestoreRecoveryState(
+      LocalDataManager(
+        LocalDatabase(logger: AppLogger()),
+        localEvidenceDirectory: root,
+      ),
+    );
+    recoveryState.setDiagnostic(
+      const RestoreRecoveryDiagnostic(
+        stageCode: 'restore_validation',
+        errorCode: 'database',
+      ),
+    );
+    services.registerSingleton<RestoreRecoveryStatus>(recoveryState);
+
+    String? copiedDiagnostic;
+    await tester.pumpWidget(
+      app(copyDiagnostic: (value) async => copiedDiagnostic = value),
+    );
+    await tester.pump();
+
+    expect(find.text('Failure stage: restore validation'), findsOneWidget);
+    expect(find.text('Error category: database validation'), findsOneWidget);
+    await tester.tap(find.text('Copy diagnostic'));
+    await tester.pump();
+    expect(
+      copiedDiagnostic,
+      'operation=restore\n'
+      'stage_code=restore_validation\n'
+      'error_code=database\n'
+      'recovery_required=true',
+    );
+  });
 
   testWidgets('failed recovery remains visible and permits retry', (
     tester,

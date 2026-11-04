@@ -1,11 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:butlerly/core/application/restore_recovery_status.dart';
 import 'package:butlerly/core/data/evidence_path_safety.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as path;
 
+export 'package:butlerly/core/application/restore_recovery_status.dart'
+    show RestoreRecoveryDiagnostic, RestoreRecoveryStatus;
 export 'package:butlerly_finance_application/butlerly_finance_application.dart'
     show RestoreRecoveryRequiredException;
 
@@ -15,6 +18,7 @@ final class RestoreRecoveryIncident {
     required this.safetyBackupPath,
     required this.reason,
     required this.retryCurrentState,
+    this.diagnostic,
   });
 
   final String operationId;
@@ -26,22 +30,47 @@ final class RestoreRecoveryIncident {
   /// Recovery may validate and keep that live state before considering the
   /// safety snapshot.
   final bool retryCurrentState;
+
+  final RestoreRecoveryDiagnostic? diagnostic;
 }
 
 /// Persistent, process-visible gate for a restore whose final state has not yet
 /// been proven safe for ordinary application writes.
-final class RestoreRecoveryState extends ChangeNotifier {
+final class RestoreRecoveryState extends ChangeNotifier
+    implements RestoreRecoveryStatus {
   RestoreRecoveryState(this.localDataManager);
 
   final LocalDataManager localDataManager;
 
   RestoreRecoveryIncident? _incident;
+  RestoreRecoveryDiagnostic? _diagnostic;
 
   RestoreRecoveryIncident? get incident => _incident;
+  @override
   bool get isRecoveryRequired => _incident != null;
+  @override
+  RestoreRecoveryDiagnostic? get diagnostic => _diagnostic;
+
+  /// Updates transient bounded detail for the recovery surface without
+  /// changing the persistent recovery gate.
+  void setDiagnostic(RestoreRecoveryDiagnostic? diagnostic) {
+    _diagnostic = diagnostic?.sanitized;
+    final current = _incident;
+    if (current != null) {
+      _incident = RestoreRecoveryIncident(
+        operationId: current.operationId,
+        safetyBackupPath: current.safetyBackupPath,
+        reason: current.reason,
+        retryCurrentState: current.retryCurrentState,
+        diagnostic: _diagnostic,
+      );
+    }
+    notifyListeners();
+  }
 
   Future<void> initialize() async {
     _incident = null;
+    _diagnostic = null;
     final marker = await _markerFile();
     await rejectSymlinkedPath(marker.path);
     final temporary = File('${marker.path}.tmp');
@@ -87,12 +116,15 @@ final class RestoreRecoveryState extends ChangeNotifier {
         throw const FormatException('Incomplete recovery marker payload.');
       }
       await _validateSafetyBackupPath(safetyBackupPath);
+      final diagnostic = _readDiagnostic(data);
       _incident = RestoreRecoveryIncident(
         operationId: operationId,
         safetyBackupPath: safetyBackupPath,
         reason: reason,
         retryCurrentState: retryCurrentState as bool? ?? false,
+        diagnostic: diagnostic,
       );
+      _diagnostic = diagnostic;
       notifyListeners();
       if (previousExists) {
         try {
@@ -111,30 +143,42 @@ final class RestoreRecoveryState extends ChangeNotifier {
     required File safetyBackup,
     required String reason,
     bool retryCurrentState = false,
+    RestoreRecoveryDiagnostic? diagnostic,
   }) => _persistIncident(
     RestoreRecoveryIncident(
       operationId: operationId,
       safetyBackupPath: safetyBackup.path,
       reason: reason,
       retryCurrentState: retryCurrentState,
+      diagnostic: diagnostic?.sanitized,
     ),
   );
 
   Future<void> markUnknownRequired({
     required String operationId,
     required String reason,
+    RestoreRecoveryDiagnostic? diagnostic,
   }) => _persistIncident(
     RestoreRecoveryIncident(
       operationId: operationId.isEmpty ? 'unknown' : operationId,
       safetyBackupPath: '',
       reason: reason,
       retryCurrentState: false,
+      diagnostic: diagnostic?.sanitized,
     ),
   );
 
   Future<void> _persistIncident(RestoreRecoveryIncident incident) async {
-    await _validateSafetyBackupPath(incident.safetyBackupPath);
-    _incident = incident;
+    final safeIncident = RestoreRecoveryIncident(
+      operationId: incident.operationId,
+      safetyBackupPath: incident.safetyBackupPath,
+      reason: incident.reason,
+      retryCurrentState: incident.retryCurrentState,
+      diagnostic: incident.diagnostic?.sanitized,
+    );
+    await _validateSafetyBackupPath(safeIncident.safetyBackupPath);
+    _incident = safeIncident;
+    _diagnostic = safeIncident.diagnostic;
     notifyListeners();
 
     final marker = await _markerFile();
@@ -147,10 +191,14 @@ final class RestoreRecoveryState extends ChangeNotifier {
 
     await temporary.writeAsString(
       jsonEncode({
-        'operationId': incident.operationId,
-        'safetyBackupPath': incident.safetyBackupPath,
-        'reason': incident.reason,
-        'retryCurrentState': incident.retryCurrentState,
+        'operationId': safeIncident.operationId,
+        'safetyBackupPath': safeIncident.safetyBackupPath,
+        'reason': safeIncident.reason,
+        'retryCurrentState': safeIncident.retryCurrentState,
+        if (safeIncident.diagnostic != null)
+          'diagnosticStageCode': safeIncident.diagnostic!.stageCode,
+        if (safeIncident.diagnostic != null)
+          'diagnosticErrorCode': safeIncident.diagnostic!.errorCode,
       }),
       flush: true,
     );
@@ -177,6 +225,7 @@ final class RestoreRecoveryState extends ChangeNotifier {
       if (await file.exists()) await file.delete();
     }
     _incident = null;
+    _diagnostic = null;
     notifyListeners();
   }
 
@@ -187,7 +236,25 @@ final class RestoreRecoveryState extends ChangeNotifier {
       reason: reason,
       retryCurrentState: false,
     );
+    _diagnostic = null;
     notifyListeners();
+  }
+
+  RestoreRecoveryDiagnostic? _readDiagnostic(Map<String, Object?> data) {
+    final stageCode = data['diagnosticStageCode'];
+    final errorCode = data['diagnosticErrorCode'];
+    if (stageCode is! String || errorCode is! String) return null;
+    final diagnostic = RestoreRecoveryDiagnostic(
+      stageCode: stageCode,
+      errorCode: errorCode,
+    ).sanitized;
+    if (diagnostic.stageCode == 'unknown' && stageCode != 'unknown') {
+      return null;
+    }
+    if (diagnostic.errorCode == 'unknown' && errorCode != 'unknown') {
+      return null;
+    }
+    return diagnostic;
   }
 
   Future<File> _markerFile() async {

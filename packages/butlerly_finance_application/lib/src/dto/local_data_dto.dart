@@ -139,8 +139,18 @@ final class BackupPublicationRecoveryException implements Exception {
   const BackupPublicationRecoveryException();
 }
 
+/// Raised when restore entered controlled recovery with bounded diagnostics.
+///
+/// The optional metadata must contain only safe stage/category values; it must
+/// never carry paths, SQL text, financial data, or platform exception details.
 final class RestoreRecoveryRequiredException implements Exception {
-  const RestoreRecoveryRequiredException();
+  const RestoreRecoveryRequiredException({this.stage, this.errorCode});
+
+  /// Bounded restore stage, when the adapter can identify the failed phase.
+  final String? stage;
+
+  /// Bounded, privacy-safe failure category, when the adapter can identify it.
+  final String? errorCode;
 }
 
 /// Product-level portable-backup policy shared by application and adapters.

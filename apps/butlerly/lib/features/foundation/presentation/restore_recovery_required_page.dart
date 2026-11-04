@@ -1,4 +1,5 @@
 import 'package:butlerly/app/locale/locale_provider.dart';
+import 'package:butlerly/core/application/restore_recovery_status.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
@@ -9,12 +10,16 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/app_localizations_backup.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Recovery-only surface shown when Butlerly cannot yet prove one coherent
 /// database/evidence/runtime state.
 class RestoreRecoveryRequiredPage extends ConsumerStatefulWidget {
-  const RestoreRecoveryRequiredPage({super.key});
+  const RestoreRecoveryRequiredPage({this.copyDiagnostic, super.key});
+
+  @visibleForTesting
+  final Future<void> Function(String diagnostic)? copyDiagnostic;
 
   @override
   ConsumerState<RestoreRecoveryRequiredPage> createState() =>
@@ -73,23 +78,71 @@ class _RestoreRecoveryRequiredPageState
     }
   }
 
+  String _stageLabel(
+    BuildContext context,
+    RestoreRecoveryDiagnostic diagnostic,
+  ) => context.l10n.backupText(switch (diagnostic.stageCode) {
+    'restore_activation' => 'diagnosticStageRestoreActivation',
+    'restore_validation' => 'diagnosticStageRestoreValidation',
+    _ => 'diagnosticStageUnknown',
+  });
+
+  String _errorLabel(
+    BuildContext context,
+    RestoreRecoveryDiagnostic diagnostic,
+  ) => context.l10n.backupText(switch (diagnostic.errorCode) {
+    'backup_encryption_verification' => 'diagnosticErrorEncryption',
+    'backup_password_policy' ||
+    'restore_password_or_integrity' ||
+    'restore_password_required' => 'diagnosticErrorPassword',
+    'backup_publication_recovery_required' =>
+      'diagnosticErrorPublicationRecovery',
+    'backup_storage' || 'filesystem' => 'diagnosticErrorStorage',
+    'database' => 'diagnosticErrorDatabase',
+    'format' => 'diagnosticErrorFormat',
+    'invalid_argument' => 'diagnosticErrorInvalidArgument',
+    'restore_recovery_required' => 'diagnosticErrorRecovery',
+    'state' => 'diagnosticErrorState',
+    _ => 'diagnosticErrorUnknown',
+  });
+
+  String _diagnosticText(RestoreRecoveryDiagnostic diagnostic) =>
+      'operation=restore\n'
+      'stage_code=${diagnostic.stageCode}\n'
+      'error_code=${diagnostic.errorCode}\n'
+      'recovery_required=true';
+
+  Future<void> _copyDiagnostic(RestoreRecoveryDiagnostic diagnostic) async {
+    final text = _diagnosticText(diagnostic);
+    final copy = widget.copyDiagnostic;
+    if (copy == null) {
+      await Clipboard.setData(ClipboardData(text: text));
+    } else {
+      await copy(text);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final manager = services<WorkspaceDataService>();
     final hasSafetyCopy = manager.hasRecoverySafetyCopy;
+    final recoveryState = services.isRegistered<RestoreRecoveryStatus>()
+        ? services<RestoreRecoveryStatus>()
+        : null;
+    final diagnostic = recoveryState?.diagnostic;
 
     return Scaffold(
       body: SafeArea(
         child: ButlerlyResponsiveBody(
           contentKey: const ValueKey('restore-recovery-required-content'),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: ButlerlySize.contentGutter,
-                  vertical: ButlerlySpacing.section,
-                ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(
+              horizontal: ButlerlySize.contentGutter,
+              vertical: ButlerlySpacing.section,
+            ),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 520),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -114,6 +167,47 @@ class _RestoreRecoveryRequiredPageState
                       style: Theme.of(context).textTheme.bodyLarge,
                       textAlign: TextAlign.center,
                     ),
+                    if (diagnostic != null) ...[
+                      const SizedBox(height: 20),
+                      Card(
+                        key: const ValueKey('restore-recovery-diagnostic'),
+                        child: Padding(
+                          padding: const EdgeInsets.all(
+                            ButlerlySpacing.standard,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                '${context.l10n.backupText('diagnosticStage')}: '
+                                '${_stageLabel(context, diagnostic)}',
+                              ),
+                              Text(
+                                '${context.l10n.backupText('diagnosticErrorCode')}: '
+                                '${_errorLabel(context, diagnostic)}',
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                context.l10n.backupText(
+                                  'diagnosticExplanationRestoreRecovery',
+                                ),
+                              ),
+                              Align(
+                                alignment: Alignment.centerLeft,
+                                child: TextButton(
+                                  onPressed: _busy
+                                      ? null
+                                      : () => _copyDiagnostic(diagnostic),
+                                  child: Text(
+                                    context.l10n.backupText('copyDiagnostic'),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                     if (_failed) ...[
                       const SizedBox(height: 12),
                       Text(

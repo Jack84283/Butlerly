@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
+import 'package:butlerly/core/data/restore_recovery_state.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly_database/butlerly_database.dart';
@@ -279,6 +280,153 @@ void main() {
         .toList();
     expect(stageDirectories, isEmpty);
   });
+
+  test('backup inspection categorizes raw database failures safely', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    await fixture.insertTransaction(
+      'tx-inspection-database-diagnostic',
+      DateTime.utc(2026, 9, 6),
+    );
+    final backup = File(
+      path.join(
+        fixture.root.path,
+        'inspection-database-diagnostic.butlerlybackup',
+      ),
+    );
+    await fixture.manager.createBackup(backup);
+
+    final failingManager = LocalBackupManager(
+      fixture.database,
+      LocalDataManager(
+        fixture.database,
+        documentsDirectory: Directory(
+          path.join(fixture.root.path, 'documents'),
+        ),
+        localEvidenceDirectory: fixture.evidence,
+      ),
+      beforeArchiveInspection: () async {
+        await fixture.database.database.rawQuery(
+          'SELECT * FROM missing_inspection_diagnostic_table',
+        );
+      },
+    );
+
+    await expectLater(
+      failingManager.inspect(backup),
+      throwsA(
+        isA<BackupFailureException>()
+            .having((error) => error.stage, 'stage', 'archive inspection')
+            .having((error) => error.errorCode, 'error code', 'database'),
+      ),
+    );
+  });
+
+  test(
+    'post-activation recovery preserves bounded failure diagnostics',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.insertTransaction(
+        'tx-post-activation-diagnostic',
+        DateTime.utc(2026, 9, 7),
+      );
+      final backup = File(
+        path.join(
+          fixture.root.path,
+          'post-activation-diagnostic.butlerlybackup',
+        ),
+      );
+      await fixture.manager.createBackup(backup);
+
+      final failingManager = LocalBackupManager(
+        fixture.database,
+        LocalDataManager(
+          fixture.database,
+          documentsDirectory: Directory(
+            path.join(fixture.root.path, 'documents'),
+          ),
+          localEvidenceDirectory: fixture.evidence,
+        ),
+        beforePostActivationValidation: () async {
+          await fixture.database.database.rawQuery(
+            'SELECT * FROM missing_post_activation_diagnostic_table',
+          );
+        },
+      );
+
+      await expectLater(
+        failingManager.restore(backup, mode: LocalRestoreMode.replace),
+        throwsA(
+          isA<RestoreRecoveryRequiredException>()
+              .having(
+                (error) => error.stage,
+                'stage',
+                'post-activation validation and refresh',
+              )
+              .having((error) => error.errorCode, 'error code', 'database'),
+        ),
+      );
+      expect(failingManager.recoveryState.isRecoveryRequired, isTrue);
+      expect(
+        failingManager.recoveryState.incident?.reason,
+        'post-activation-validation-or-refresh-failed',
+      );
+      expect(
+        failingManager.recoveryState.diagnostic?.stageCode,
+        'restore_validation',
+      );
+      expect(failingManager.recoveryState.diagnostic?.errorCode, 'database');
+    },
+  );
+
+  test(
+    'post-activation recovery preserves a nested adapter failure category',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.insertTransaction(
+        'tx-nested-adapter-diagnostic',
+        DateTime.utc(2026, 9, 8),
+      );
+      final backup = File(
+        path.join(
+          fixture.root.path,
+          'nested-adapter-diagnostic.butlerlybackup',
+        ),
+      );
+      await fixture.manager.createBackup(backup);
+
+      final failingManager = LocalBackupManager(
+        fixture.database,
+        LocalDataManager(
+          fixture.database,
+          documentsDirectory: Directory(
+            path.join(fixture.root.path, 'documents'),
+          ),
+          localEvidenceDirectory: fixture.evidence,
+        ),
+        beforePostActivationValidation: () async {
+          throw const BackupFailureException(
+            stage: 'archive inspection',
+            errorCode: 'database',
+          );
+        },
+      );
+
+      await expectLater(
+        failingManager.restore(backup, mode: LocalRestoreMode.replace),
+        throwsA(
+          isA<RestoreRecoveryRequiredException>().having(
+            (error) => error.errorCode,
+            'error code',
+            'database',
+          ),
+        ),
+      );
+      expect(failingManager.recoveryState.diagnostic?.errorCode, 'database');
+    },
+  );
 
   test(
     'startup recovery keeps evidence when DB commit marker exists',
@@ -599,6 +747,34 @@ void main() {
     expect(inspection.changes.transactionsChanged, 1);
     expect(inspection.changes.masterDataChanged, greaterThanOrEqualTo(1));
     expect(inspection.hasNewerLocalData, isTrue);
+  });
+
+  test('recovery diagnostics persist as bounded marker metadata', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    final safetyDirectory = await fixture.manager.localDataManager
+        .safetyBackupDirectory();
+    final safety = File(
+      path.join(safetyDirectory.path, 'diagnostic.butlerlybackup'),
+    );
+    await fixture.manager.createBackup(safety);
+
+    await fixture.manager.recoveryState.markRequired(
+      operationId: 'diagnostic-persistence',
+      safetyBackup: safety,
+      reason: 'post-activation-validation-or-refresh-failed',
+      retryCurrentState: true,
+      diagnostic: const RestoreRecoveryDiagnostic(
+        stageCode: 'restore_validation',
+        errorCode: 'database',
+      ),
+    );
+
+    final reloaded = RestoreRecoveryState(fixture.manager.localDataManager);
+    await reloaded.initialize();
+    expect(reloaded.diagnostic?.stageCode, 'restore_validation');
+    expect(reloaded.diagnostic?.errorCode, 'database');
+    await reloaded.clear();
   });
 }
 

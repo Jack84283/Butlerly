@@ -88,13 +88,11 @@ final class LocalBackupSnapshotWriter {
       recordCount += rows.length;
     }
 
-    final categories = _orderCategoriesForBackup(
-      await source.query(
-        'categories',
-        where: 'LOWER(origin) != ?',
-        whereArgs: ['system'],
-        orderBy: 'id',
-      ),
+    final categories = await source.query(
+      'categories',
+      where: 'LOWER(origin) != ?',
+      whereArgs: ['system'],
+      orderBy: 'id',
     );
     tables['categories'] = categories;
     recordCount += categories.length;
@@ -455,10 +453,6 @@ final class LocalBackupSnapshotWriter {
     await temporary.rename(destination.path);
     return destination;
   }
-
-  List<Map<String, Object?>> _orderCategoriesForBackup(
-    List<Map<String, Object?>> rows,
-  ) => rows;
 
   Future<List<Map<String, Object?>>> _rowsForIds(
     DatabaseExecutor source, {

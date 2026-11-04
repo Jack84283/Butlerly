@@ -54,10 +54,14 @@ final class LocalBackupManager {
     Future<void> Function(Directory root)? afterStagingRootCreated,
     @visibleForTesting
     Future<void> Function(bool enabled)? foreignKeysController,
+    @visibleForTesting Future<void> Function()? beforeArchiveInspection,
+    @visibleForTesting Future<void> Function()? beforePostActivationValidation,
   }) : recoveryState = recoveryState ?? RestoreRecoveryState(localDataManager),
        publicationRecoveryState =
            publicationRecoveryState ?? BackupPublicationRecoveryState(),
        _afterStagingRootCreated = afterStagingRootCreated,
+       _beforeArchiveInspection = beforeArchiveInspection,
+       _beforePostActivationValidation = beforePostActivationValidation,
        _consistencyGate = consistencyGate,
        _operationDiagnostics = operationDiagnostics,
        _engine = engine.LocalBackupManager(
@@ -86,6 +90,8 @@ final class LocalBackupManager {
   final BackupPublicationRecoveryManager _publicationRecovery;
   final BackupDestinationWriter _destinationWriter;
   final Future<void> Function(Directory root)? _afterStagingRootCreated;
+  final Future<void> Function()? _beforeArchiveInspection;
+  final Future<void> Function()? _beforePostActivationValidation;
   final Future<void> Function()? _recoverStagedEvidenceDeletions;
   final AnalysisConsistencyGate? _consistencyGate;
   final OperationDiagnosticsStore? _operationDiagnostics;
@@ -402,6 +408,7 @@ final class LocalBackupManager {
         stage = 'archive schema validation';
         await _assertSupportedBackupSchema(readable.file);
         stage = 'archive inspection';
+        await _beforeArchiveInspection?.call();
         return await _engine.inspect(readable.file);
       } finally {
         await readable.dispose();
@@ -412,6 +419,12 @@ final class LocalBackupManager {
         error,
         stackTrace,
       );
+      if (error is DatabaseException) {
+        Error.throwWithStackTrace(
+          BackupFailureException(stage: stage, errorCode: 'database'),
+          stackTrace,
+        );
+      }
       rethrow;
     }
   }
@@ -596,6 +609,7 @@ final class LocalBackupManager {
       );
       liveActivated = true;
       onStage?.call('post-activation validation and refresh');
+      await _beforePostActivationValidation?.call();
       await _validateDatabase(
         database.database,
         requireForeignKeys: !_allowsMissingReferencedRecords(liveResult),
@@ -641,16 +655,33 @@ final class LocalBackupManager {
       return result;
     } catch (error, stack) {
       if (liveActivated && safetyBackup != null) {
+        final failureStage = error is RestoreFailureException
+            ? error.stage
+            : 'post-activation validation and refresh';
+        final failureCode = _boundedFailureCode(
+          error is RestoreFailureException
+              ? error.errorCode
+              : error is RestoreRecoveryRequiredException
+              ? error.errorCode ?? _safeFailureCode(error)
+              : _safeFailureCode(error),
+        );
         try {
           await recoveryState.markRequired(
             operationId: operationId,
             safetyBackup: safetyBackup,
             reason: 'post-activation-validation-or-refresh-failed',
             retryCurrentState: true,
+            diagnostic: _restoreRecoveryDiagnostic(
+              stage: failureStage,
+              errorCode: failureCode,
+            ),
           );
         } catch (_) {}
         Error.throwWithStackTrace(
-          const RestoreRecoveryRequiredException(),
+          RestoreRecoveryRequiredException(
+            stage: _boundedFailureStage(failureStage),
+            errorCode: failureCode,
+          ),
           stack,
         );
       }
@@ -708,10 +739,17 @@ final class LocalBackupManager {
           safetyBackup: safetyBackup,
           reason: 'engine-restore-recovery-pending',
           retryCurrentState: false,
+          diagnostic: _restoreRecoveryDiagnostic(
+            stage: 'live activation',
+            errorCode: _safeFailureCode(error),
+          ),
         );
       } catch (_) {}
       Error.throwWithStackTrace(
-        const RestoreRecoveryRequiredException(),
+        RestoreRecoveryRequiredException(
+          stage: 'live activation',
+          errorCode: _safeFailureCode(error),
+        ),
         stack,
       );
     }
@@ -1265,12 +1303,49 @@ final class LocalBackupManager {
 }
 
 String _safeFailureCode(Object error) {
+  if (error is BackupFailureException) {
+    return _boundedFailureCode(error.errorCode);
+  }
+  if (error is RestoreFailureException) {
+    return _boundedFailureCode(error.errorCode);
+  }
+  if (error is RestoreRecoveryRequiredException) {
+    return _boundedFailureCode(error.errorCode ?? 'restore_recovery_required');
+  }
   if (error is FileSystemException) return 'filesystem';
+  if (error is DatabaseException) return 'database';
   if (error is FormatException) return 'format';
   if (error is StateError) return 'state';
   if (error is ArgumentError) return 'invalid_argument';
   return 'unknown';
 }
+
+String _boundedFailureCode(String code) {
+  return RestoreRecoveryDiagnostic.errorCodes.contains(code) ? code : 'unknown';
+}
+
+String _boundedFailureStage(String stage) {
+  final value = stage.toLowerCase();
+  if (value.contains('database validation') ||
+      value.contains('post-activation validation')) {
+    return 'post-activation validation and refresh';
+  }
+  if (value.contains('restore activation') || value == 'live activation') {
+    return 'live activation';
+  }
+  return 'restore validation';
+}
+
+RestoreRecoveryDiagnostic _restoreRecoveryDiagnostic({
+  required String stage,
+  required String errorCode,
+}) => RestoreRecoveryDiagnostic(
+  stageCode: switch (_boundedFailureStage(stage)) {
+    'live activation' => 'restore_activation',
+    _ => 'restore_validation',
+  },
+  errorCode: _boundedFailureCode(errorCode),
+);
 
 final class _ReadableBackup {
   const _ReadableBackup(this.file, this.temporary);

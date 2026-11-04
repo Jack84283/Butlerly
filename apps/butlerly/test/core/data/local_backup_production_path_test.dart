@@ -922,11 +922,7 @@ void main() {
     },
   );
 
-  test('reports generic archive inspection failures accurately', () async {
-    // The database schema permits these legacy enum columns, while the
-    // portable-backup contract rejects unknown values. This reaches the
-    // production snapshot/decrypt/inspect path without manufacturing a
-    // malformed archive or changing the backup engine's integrity checks.
+  test('raw backup preserves unsupported legacy scalar values', () async {
     await database.database.insert('payment_sources', {
       'id': 'backup-production-invalid-payment-source',
       'name': 'Invalid fixture',
@@ -936,12 +932,7 @@ void main() {
       'updated_at': '2026-11-03T12:00:00.000Z',
     });
 
-    final diagnosticLogger = _RecordingLogger();
-    final diagnosticManager = LocalBackupManager(
-      database,
-      services<LocalDataManager>(),
-      logger: diagnosticLogger,
-    );
+    final manager = LocalBackupManager(database, services<LocalDataManager>());
     final destination = File(
       path.join(
         temporaryDirectory.path,
@@ -949,19 +940,33 @@ void main() {
       ),
     );
 
-    await expectLater(
-      diagnosticManager.createPortableBackup(
-        destination,
-        password: 'correct horse battery staple',
-      ),
-      throwsA(isA<FormatException>()),
+    await manager.createPortableBackup(
+      destination,
+      password: 'correct horse battery staple',
+    );
+    expect(await destination.exists(), isTrue);
+    await manager.restore(
+      destination,
+      mode: LocalRestoreMode.replace,
+      password: 'correct horse battery staple',
+      postActivationRefresh: () async {},
     );
     expect(
-      diagnosticLogger.stage,
-      'Portable backup failed at stage: backup archive inspection',
+      (await database.database.query(
+        'payment_sources',
+        where: 'id = ?',
+        whereArgs: ['backup-production-invalid-payment-source'],
+      )).single,
+      containsPair('type', 'unsupported-type'),
     );
-    expect(diagnosticLogger.exceptionType, 'FormatException');
-    expect(await destination.exists(), isFalse);
+    expect(
+      (await database.database.query(
+        'payment_sources',
+        where: 'id = ?',
+        whereArgs: ['backup-production-invalid-payment-source'],
+      )).single['status'],
+      'unsupported-status',
+    );
   });
 
   test('reports generic inspection failures accurately', () async {

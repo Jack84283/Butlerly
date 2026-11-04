@@ -80,6 +80,7 @@ Butlerly follows the accessibility expectations maintained in `DESIGN.md` and en
 ### Backup, restore, and data integrity
 
 - Portable backup and restore are source-data workflows, independent from integrity diagnostics. They do not run a comprehensive integrity scan or repair action.
+- Backup serialization is a raw SQLite snapshot exchange: it performs only archive-safety, encryption, checksum, and structural checks needed to package or stage records. It does not interpret rule definitions, activations, configurations, findings, categories, merchants, budgets, or other business relationships.
 - Backups include source records, user rules, configuration, settings, and available evidence metadata/files. Missing optional receipts, attachments, evidence, or references are preserved as unresolved metadata, reported as privacy-safe warnings, and do not block backup creation.
 - Derived analysis findings/results and caches are excluded from portable backups. Restore rebuilds derived analysis after source activation; if rebuilding fails, restore remains committed and the user is directed to Data Integrity Reports.
 - Settings exposes a standalone offline, read-only Data Integrity Reports surface. It scans local SQLite and app-owned evidence without changing source financial records, persists timestamped report history, groups findings by category/severity, and provides affected-record context and recommended next actions.

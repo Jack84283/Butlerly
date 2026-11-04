@@ -450,6 +450,10 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     if (value.contains('archive inspection')) return 'archive_inspection';
     if (value.contains('archive decryption')) return 'archive_decryption';
     if (value.contains('restore activation')) return 'restore_activation';
+    if (value.contains('database validation') ||
+        value.contains('post-activation validation')) {
+      return 'restore_validation';
+    }
     if (value.contains('restore')) return 'restore_validation';
     return 'unknown';
   }
@@ -575,6 +579,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       'backup_share_outcome_unavailable',
       'backup_share_sheet',
       'backup_storage',
+      'database',
       'filesystem',
       'format',
       'invalid_argument',
@@ -590,6 +595,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
   String _diagnosticErrorLabel(BuildContext context, String code) {
     final key = switch (_normalizeDiagnosticErrorCode(code)) {
       'backup_storage' || 'filesystem' => 'diagnosticErrorStorage',
+      'database' => 'diagnosticErrorDatabase',
       'backup_encryption_verification' => 'diagnosticErrorEncryption',
       'backup_password_policy' => 'diagnosticErrorPassword',
       'backup_publication_recovery_required' =>
@@ -796,8 +802,8 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       );
       _recordDiagnostic(
         operation: 'restore',
-        stage: stage,
-        errorCode: 'restore_recovery_required',
+        stage: error.stage ?? stage,
+        errorCode: error.errorCode ?? 'restore_recovery_required',
         explanationKey: 'diagnosticExplanationRestoreRecovery',
         mode: selectedMode,
         recoveryRequired: true,

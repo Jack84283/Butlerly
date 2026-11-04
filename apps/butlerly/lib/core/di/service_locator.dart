@@ -79,6 +79,7 @@ void configureDependencies({
     )
     ..registerSingleton<AnalysisConsistencyGate>(consistencyGate)
     ..registerSingleton<RestoreRecoveryState>(restoreRecoveryState)
+    ..registerSingleton<RestoreRecoveryStatus>(restoreRecoveryState)
     ..registerSingleton<BackupPublicationRecoveryState>(
       publicationRecoveryState,
     )

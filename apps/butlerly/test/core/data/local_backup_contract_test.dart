@@ -551,52 +551,55 @@ void main() {
     },
   );
 
-  test('restore rejects an unreconstructable financial profile enum', () async {
-    final fixture = await _Fixture.create();
-    addTearDown(fixture.dispose);
-    await fixture.database.database.insert('financial_profiles', {
-      'profile_id': 'financial-profile:default',
-      'schema_version': 1,
-      'survey_version': '1.0',
-      'household_size': 'two',
-      'dependents_count': null,
-      'housing_situation': null,
-      'primary_spending_categories': '[]',
-      'expense_predictability': null,
-      'categories_to_improve': '[]',
-      'primary_financial_goal': null,
-      'has_monthly_savings_target': null,
-      'monthly_savings_target': null,
-      'monthly_savings_target_currency': null,
-      'goal_timeframe': null,
-      'budgeting_preference': null,
-      'preferred_insight_types': '[]',
-      'survey_status': 'inProgress',
-      'created_at': '2026-10-28T00:00:00.000Z',
-      'updated_at': '2026-10-28T00:00:00.000Z',
-      'completed_at': null,
-    });
-    final backup = File(
-      path.join(fixture.root.path, 'invalid-financial-profile.butlerlybackup'),
-    );
-    await fixture.manager.createBackup(backup);
-    await _rewriteBackupMetadata(backup, (metadata) {
-      final tables = (metadata['tables']! as Map).cast<String, Object?>();
-      final rows = (tables['financial_profiles']! as List).cast<Map>();
-      rows.single['household_size'] = 'unknown';
-    });
+  test(
+    'restore preserves financial profile values without semantic validation',
+    () async {
+      final fixture = await _Fixture.create();
+      addTearDown(fixture.dispose);
+      await fixture.database.database.insert('financial_profiles', {
+        'profile_id': 'financial-profile:default',
+        'schema_version': 1,
+        'survey_version': '1.0',
+        'household_size': 'two',
+        'dependents_count': null,
+        'housing_situation': null,
+        'primary_spending_categories': '[]',
+        'expense_predictability': null,
+        'categories_to_improve': '[]',
+        'primary_financial_goal': null,
+        'has_monthly_savings_target': null,
+        'monthly_savings_target': null,
+        'monthly_savings_target_currency': null,
+        'goal_timeframe': null,
+        'budgeting_preference': null,
+        'preferred_insight_types': '[]',
+        'survey_status': 'inProgress',
+        'created_at': '2026-10-28T00:00:00.000Z',
+        'updated_at': '2026-10-28T00:00:00.000Z',
+        'completed_at': null,
+      });
+      final backup = File(
+        path.join(
+          fixture.root.path,
+          'invalid-financial-profile.butlerlybackup',
+        ),
+      );
+      await fixture.manager.createBackup(backup);
+      await _rewriteBackupMetadata(backup, (metadata) {
+        final tables = (metadata['tables']! as Map).cast<String, Object?>();
+        final rows = (tables['financial_profiles']! as List).cast<Map>();
+        rows.single['household_size'] = 'unknown';
+      });
 
-    await expectLater(
-      fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
-      throwsA(isA<FormatException>()),
-    );
-    final preserved = await fixture.database.database.query(
-      'financial_profiles',
-    );
-    expect(preserved.single['household_size'], 'two');
-  });
+      await fixture.manager.restore(backup, mode: LocalRestoreMode.replace);
+      final restored = await fixture.database.database.query(
+        'financial_profiles',
+      );
+      expect(restored.single['household_size'], 'unknown');
+    },
+  );
 
-  test('restore rejects malformed financial profile answer lists', () async {
+  test('restore preserves malformed financial profile answer lists', () async {
     final fixture = await _Fixture.create();
     addTearDown(fixture.dispose);
     await fixture.database.database.insert('financial_profiles', {
@@ -635,17 +638,17 @@ void main() {
           '["category.one","category.two","category.three","category.four"]';
     });
 
-    await expectLater(
-      fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
-      throwsA(isA<FormatException>()),
-    );
-    final preserved = await fixture.database.database.query(
+    await fixture.manager.restore(backup, mode: LocalRestoreMode.replace);
+    final restored = await fixture.database.database.query(
       'financial_profiles',
     );
-    expect(preserved.single['primary_spending_categories'], '[]');
+    expect(
+      restored.single['primary_spending_categories'],
+      '["category.one","category.two","category.three","category.four"]',
+    );
   });
 
-  test('restore rejects a target when the target choice is disabled', () async {
+  test('restore preserves an inconsistent savings target choice', () async {
     final fixture = await _Fixture.create();
     addTearDown(fixture.dispose);
     await fixture.database.database.insert('financial_profiles', {
@@ -685,14 +688,16 @@ void main() {
       rows.single['monthly_savings_target_currency'] = 'USD';
     });
 
-    await expectLater(
-      fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
-      throwsA(isA<FormatException>()),
-    );
+    await fixture.manager.restore(backup, mode: LocalRestoreMode.replace);
+    final restored = (await fixture.database.database.query(
+      'financial_profiles',
+    )).single;
+    expect(restored['has_monthly_savings_target'], 0);
+    expect(restored['monthly_savings_target'], '12.50');
   });
 
   test(
-    'restore rejects a financial profile with an orphan identifier',
+    'restore preserves a financial profile with an orphan identifier',
     () async {
       final fixture = await _Fixture.create();
       addTearDown(fixture.dispose);
@@ -731,59 +736,61 @@ void main() {
         rows.single['profile_id'] = 'financial-profile:orphan';
       });
 
-      await expectLater(
-        fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
-        throwsA(isA<FormatException>()),
+      await fixture.manager.restore(backup, mode: LocalRestoreMode.replace);
+      expect(
+        (await fixture.database.database.query(
+          'financial_profiles',
+        )).single['profile_id'],
+        'financial-profile:orphan',
       );
     },
   );
 
-  test(
-    'restore rejects a target when the target choice is unanswered',
-    () async {
-      final fixture = await _Fixture.create();
-      addTearDown(fixture.dispose);
-      await fixture.database.database.insert('financial_profiles', {
-        'profile_id': 'financial-profile:default',
-        'schema_version': 1,
-        'survey_version': '1.0',
-        'household_size': null,
-        'dependents_count': null,
-        'housing_situation': null,
-        'primary_spending_categories': '[]',
-        'expense_predictability': null,
-        'categories_to_improve': '[]',
-        'primary_financial_goal': null,
-        'has_monthly_savings_target': null,
-        'monthly_savings_target': '12.50',
-        'monthly_savings_target_currency': 'USD',
-        'goal_timeframe': null,
-        'budgeting_preference': null,
-        'preferred_insight_types': '[]',
-        'survey_status': 'inProgress',
-        'created_at': '2026-10-28T00:00:00.000Z',
-        'updated_at': '2026-10-28T00:00:00.000Z',
-        'completed_at': null,
-      });
-      final backup = File(
-        path.join(
-          fixture.root.path,
-          'invalid-financial-profile-unanswered.butlerlybackup',
-        ),
-      );
-      await fixture.manager.createBackup(backup);
-      await _rewriteBackupMetadata(backup, (metadata) {
-        final tables = (metadata['tables']! as Map).cast<String, Object?>();
-        final rows = (tables['financial_profiles']! as List).cast<Map>();
-        rows.single['has_monthly_savings_target'] = null;
-      });
+  test('restore preserves an unanswered savings target', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    await fixture.database.database.insert('financial_profiles', {
+      'profile_id': 'financial-profile:default',
+      'schema_version': 1,
+      'survey_version': '1.0',
+      'household_size': null,
+      'dependents_count': null,
+      'housing_situation': null,
+      'primary_spending_categories': '[]',
+      'expense_predictability': null,
+      'categories_to_improve': '[]',
+      'primary_financial_goal': null,
+      'has_monthly_savings_target': null,
+      'monthly_savings_target': '12.50',
+      'monthly_savings_target_currency': 'USD',
+      'goal_timeframe': null,
+      'budgeting_preference': null,
+      'preferred_insight_types': '[]',
+      'survey_status': 'inProgress',
+      'created_at': '2026-10-28T00:00:00.000Z',
+      'updated_at': '2026-10-28T00:00:00.000Z',
+      'completed_at': null,
+    });
+    final backup = File(
+      path.join(
+        fixture.root.path,
+        'invalid-financial-profile-unanswered.butlerlybackup',
+      ),
+    );
+    await fixture.manager.createBackup(backup);
+    await _rewriteBackupMetadata(backup, (metadata) {
+      final tables = (metadata['tables']! as Map).cast<String, Object?>();
+      final rows = (tables['financial_profiles']! as List).cast<Map>();
+      rows.single['has_monthly_savings_target'] = null;
+    });
 
-      await expectLater(
-        fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
-        throwsA(isA<FormatException>()),
-      );
-    },
-  );
+    await fixture.manager.restore(backup, mode: LocalRestoreMode.replace);
+    final restored = (await fixture.database.database.query(
+      'financial_profiles',
+    )).single;
+    expect(restored['has_monthly_savings_target'], isNull);
+    expect(restored['monthly_savings_target'], '12.50');
+  });
 
   test(
     'current-schema backups reject missing tables before replacing local data',
@@ -1691,74 +1698,62 @@ void main() {
   );
 
   test(
-    'restore rejects invalid row values and references before mutation',
+    'restore preserves malformed scalar values and unresolved references',
     () async {
       final fixture = await _Fixture.create();
       addTearDown(fixture.dispose);
       await fixture.insertTransaction('tx-invalid-row-shape');
-      final cases = <String, void Function(Map<String, Object?>)>{
-        'timestamp': (row) => row['created_at'] = 'not-a-date',
-        'decimal': (row) => row['amount_coefficient'] = 'not-a-number',
-        'reference': (row) => row['merchant_id'] = 'missing-merchant',
-      };
-
-      for (final entry in cases.entries) {
-        final backup = File(
-          path.join(fixture.root.path, 'invalid-${entry.key}.butlerly'),
-        );
-        await fixture.manager.createBackup(backup);
-        await _rewriteBackupMetadata(backup, (metadata) {
-          final tables = (metadata['tables']! as Map).cast<String, Object?>();
-          final rows = (tables['transactions']! as List).cast<Map>();
-          entry.value(rows.single.cast<String, Object?>());
-        }, preserveSourceHash: true);
-
-        await expectLater(
-          fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
-          throwsA(isA<FormatException>()),
-        );
-        expect(
-          await fixture.database.database.query(
-            'transactions',
-            where: 'id = ?',
-            whereArgs: ['tx-invalid-row-shape'],
-          ),
-          hasLength(1),
-        );
-      }
-    },
-  );
-
-  test(
-    'restore rejects invalid transaction enum values before mutation',
-    () async {
-      final fixture = await _Fixture.create();
-      addTearDown(fixture.dispose);
-      await fixture.insertTransaction('tx-invalid-enum');
       final backup = File(
-        path.join(fixture.root.path, 'invalid-enum.butlerlybackup'),
+        path.join(fixture.root.path, 'invalid-row-values.butlerly'),
       );
       await fixture.manager.createBackup(backup);
       await _rewriteBackupMetadata(backup, (metadata) {
         final tables = (metadata['tables']! as Map).cast<String, Object?>();
         final rows = (tables['transactions']! as List).cast<Map>();
-        rows.single['status'] = 'not-a-status';
+        final row = rows.single.cast<String, Object?>();
+        row['created_at'] = 'not-a-date';
+        row['amount_coefficient'] = 'not-a-number';
+        row['merchant_id'] = 'missing-merchant';
       });
 
-      await expectLater(
-        fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
-        throwsA(isA<FormatException>()),
-      );
-      expect(
-        await fixture.database.database.query(
-          'transactions',
-          where: 'id = ?',
-          whereArgs: ['tx-invalid-enum'],
-        ),
-        hasLength(1),
-      );
+      await fixture.manager.restore(backup, mode: LocalRestoreMode.replace);
+
+      final restored = (await fixture.database.database.query(
+        'transactions',
+        where: 'id = ?',
+        whereArgs: ['tx-invalid-row-shape'],
+      )).single;
+      expect(restored['created_at'], 'not-a-date');
+      expect(restored['amount_coefficient'], 'not-a-number');
+      expect(restored['merchant_id'], 'missing-merchant');
     },
   );
+
+  test('restore preserves unknown legacy enum values for reports', () async {
+    final fixture = await _Fixture.create();
+    addTearDown(fixture.dispose);
+    await fixture.insertTransaction('tx-invalid-enum');
+    final backup = File(
+      path.join(fixture.root.path, 'invalid-enum.butlerlybackup'),
+    );
+    await fixture.manager.createBackup(backup);
+    await _rewriteBackupMetadata(backup, (metadata) {
+      final tables = (metadata['tables']! as Map).cast<String, Object?>();
+      final rows = (tables['transactions']! as List).cast<Map>();
+      rows.single['status'] = 'not-a-status';
+    });
+
+    await fixture.manager.restore(backup, mode: LocalRestoreMode.replace);
+
+    expect(
+      (await fixture.database.database.query(
+        'transactions',
+        where: 'id = ?',
+        whereArgs: ['tx-invalid-enum'],
+      )).single['status'],
+      'not-a-status',
+    );
+  });
 
   test(
     'restore rejects unknown tombstone types before replacing local data',

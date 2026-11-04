@@ -516,6 +516,199 @@ void main() {
     expect(find.textContaining('Merge'), findsAtLeastNWidgets(1));
   });
 
+  testWidgets('restore reports database validation failures distinctly', (
+    tester,
+  ) async {
+    final gateway = _ShareGateway(Directory.systemTemp)
+      ..restoreFailure = const RestoreFailureException(
+        stage: 'staged database validation',
+        errorCode: 'database',
+      );
+    await services.reset();
+    addTearDown(() async => services.reset());
+    services.registerSingleton<WorkspaceDataService>(
+      WorkspaceDataService(gateway, refreshSystemData: () async {}),
+    );
+
+    String? copiedDiagnostic;
+    await tester.pumpWidget(
+      app(
+        selectRestoreFile: () async => XFile('/unused/backup.butlerly'),
+        copyDiagnostic: (value) async => copiedDiagnostic = value,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _openRestorePreview(tester);
+    await tester.tap(find.text('Merge'));
+    await tester.pumpAndSettle();
+
+    final viewDetails = find.descendant(
+      of: find.byKey(const ValueKey('privacy-diagnostic-banner')),
+      matching: find.text('View details'),
+    );
+    await tester.ensureVisible(viewDetails);
+    await tester.tap(viewDetails);
+    await tester.pumpAndSettle();
+    expect(find.text('Failure stage: restore validation'), findsOneWidget);
+    expect(find.text('Error category: database validation'), findsOneWidget);
+    await tester.tap(find.text('Copy diagnostic'));
+    await tester.pumpAndSettle();
+
+    expect(
+      copiedDiagnostic,
+      'operation=restore\n'
+      'stage_code=restore_validation\n'
+      'error_code=database\n'
+      'restore_mode=merge\n'
+      'recovery_required=false',
+    );
+  });
+
+  testWidgets('restore preview classifies database failures safely', (
+    tester,
+  ) async {
+    final gateway = _ShareGateway(Directory.systemTemp)
+      ..inspectionFailure = const BackupFailureException(
+        stage: 'archive inspection',
+        errorCode: 'database',
+      );
+    await services.reset();
+    addTearDown(() async => services.reset());
+    services.registerSingleton<WorkspaceDataService>(
+      WorkspaceDataService(gateway, refreshSystemData: () async {}),
+    );
+
+    String? copiedDiagnostic;
+    await tester.pumpWidget(
+      app(
+        selectRestoreFile: () async => XFile('/unused/backup.butlerly'),
+        copyDiagnostic: (value) async => copiedDiagnostic = value,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _openRestorePreview(tester);
+
+    final viewDetails = find.descendant(
+      of: find.byKey(const ValueKey('privacy-diagnostic-banner')),
+      matching: find.text('View details'),
+    );
+    await tester.ensureVisible(viewDetails);
+    await tester.tap(viewDetails);
+    await tester.pumpAndSettle();
+    expect(find.text('Failure stage: archive inspection'), findsOneWidget);
+    expect(find.text('Error category: database validation'), findsOneWidget);
+    await tester.tap(find.text('Copy diagnostic'));
+    await tester.pumpAndSettle();
+    expect(
+      copiedDiagnostic,
+      'operation=restore\n'
+      'stage_code=archive_inspection\n'
+      'error_code=database\n'
+      'recovery_required=false',
+    );
+  });
+
+  testWidgets('restore recovery diagnostics preserve failure details', (
+    tester,
+  ) async {
+    final gateway = _ShareGateway(Directory.systemTemp)
+      ..restoreFailure = const RestoreRecoveryRequiredException(
+        stage: 'post-activation validation and refresh',
+        errorCode: 'database',
+      );
+    await services.reset();
+    addTearDown(() async => services.reset());
+    services.registerSingleton<WorkspaceDataService>(
+      WorkspaceDataService(gateway, refreshSystemData: () async {}),
+    );
+
+    String? copiedDiagnostic;
+    await tester.pumpWidget(
+      app(
+        selectRestoreFile: () async => XFile('/unused/backup.butlerly'),
+        copyDiagnostic: (value) async => copiedDiagnostic = value,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _openRestorePreview(tester);
+    await tester.tap(find.text('Merge'));
+    await tester.pumpAndSettle();
+
+    final viewDetails = find.descendant(
+      of: find.byKey(const ValueKey('privacy-diagnostic-banner')),
+      matching: find.text('View details'),
+    );
+    await tester.ensureVisible(viewDetails);
+    await tester.tap(viewDetails);
+    await tester.pumpAndSettle();
+    expect(find.text('Failure stage: restore validation'), findsOneWidget);
+    expect(find.text('Error category: database validation'), findsOneWidget);
+    await tester.tap(find.text('Copy diagnostic'));
+    await tester.pumpAndSettle();
+
+    expect(
+      copiedDiagnostic,
+      'operation=restore\n'
+      'stage_code=restore_validation\n'
+      'error_code=database\n'
+      'restore_mode=merge\n'
+      'recovery_required=true',
+    );
+  });
+
+  testWidgets('restore diagnostics preserve the pre-restore evidence stage', (
+    tester,
+  ) async {
+    final gateway = _ShareGateway(Directory.systemTemp)
+      ..restoreFailure = const RestoreFailureException(
+        stage: 'pre-restore safety backup: evidence collection',
+        errorCode: 'filesystem',
+      );
+    await services.reset();
+    addTearDown(() async => services.reset());
+    services.registerSingleton<WorkspaceDataService>(
+      WorkspaceDataService(gateway, refreshSystemData: () async {}),
+    );
+
+    String? copiedDiagnostic;
+    await tester.pumpWidget(
+      app(
+        selectRestoreFile: () async => XFile('/unused/backup.butlerly'),
+        copyDiagnostic: (value) async => copiedDiagnostic = value,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _openRestorePreview(tester);
+    await tester.tap(find.text('Merge'));
+    await tester.pumpAndSettle();
+
+    final viewDetails = find.descendant(
+      of: find.byKey(const ValueKey('privacy-diagnostic-banner')),
+      matching: find.text('View details'),
+    );
+    await tester.ensureVisible(viewDetails);
+    await tester.tap(viewDetails);
+    await tester.pumpAndSettle();
+    expect(
+      find.text(
+        'Failure stage: pre-restore safety backup: evidence collection',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Error category: storage operation'), findsOneWidget);
+    await tester.tap(find.text('Copy diagnostic'));
+    await tester.pumpAndSettle();
+
+    expect(
+      copiedDiagnostic,
+      'operation=restore\n'
+      'stage_code=restore_preflight_safety_backup_evidence_collection\n'
+      'error_code=filesystem\n'
+      'restore_mode=merge\n'
+      'recovery_required=false',
+    );
+  });
+
   testWidgets('desktop backup reports destination storage failures', (
     tester,
   ) async {
@@ -882,6 +1075,7 @@ final class _ShareGateway implements LocalDataGateway {
   Object? createFailure;
   Object? discardFailure;
   Object? restoreFailure;
+  Object? inspectionFailure;
   LocalRestoreMode? selectedRestoreMode;
   bool encrypted = true;
   int inspectionCalls = 0;
@@ -926,6 +1120,7 @@ final class _ShareGateway implements LocalDataGateway {
     inspectionCalls++;
     inspectionPassword = password;
     inspectPassword = password;
+    if (inspectionFailure != null) throw inspectionFailure!;
     return BackupInspection(
       createdAtUtc: DateTime.utc(2026, 11, 1),
       recordCount: 8,

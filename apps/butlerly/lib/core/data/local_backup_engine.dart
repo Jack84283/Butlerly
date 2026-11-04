@@ -9,8 +9,6 @@ import 'package:butlerly/core/data/staged_evidence_restore_reconciliation.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly_database/butlerly_database.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
-import 'package:butlerly_finance_domain/butlerly_finance_domain.dart'
-    hide Transaction;
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common/sqlite_api.dart';
 
@@ -377,95 +375,6 @@ final class LocalBackupManager {
     for (final spec in _tables) spec.name: spec,
   };
 
-  static final _enumColumnsByTable = <String, Map<String, Set<String>>>{
-    'payment_sources': {
-      'type': _enumNames(PaymentSourceType.values),
-      'status': _enumNames(PaymentSourceStatus.values),
-    },
-    'categories': {
-      'origin': _enumNames(CategoryOrigin.values),
-      'status': _enumNames(CategoryStatus.values),
-    },
-    'merchants': {'status': _enumNames(MerchantStatus.values)},
-    'merchant_aliases': {'status': _enumNames(MerchantMatchingStatus.values)},
-    'merchant_normalization_patterns': {
-      'status': _enumNames(MerchantMatchingStatus.values),
-    },
-    'tags': {'status': _enumNames(TagStatus.values)},
-    'provenances': {
-      // `manual` was emitted by early local-first builds before provenance
-      // sources were split into the current enum values.
-      'source_type': {..._enumNames(ProvenanceSourceType.values), 'manual'},
-    },
-    'transactions': {
-      'direction': _enumNames(TransactionDirection.values),
-      'source_type': _enumNames(TransactionSourceType.values),
-      'status': _enumNames(TransactionStatus.values),
-    },
-    'payment_settlements': {
-      'status': _enumNames(PaymentSettlementStatus.values),
-    },
-    'normalized_money': {
-      // `manual` was the historical spelling for user-entered normalization.
-      'normalization_source': {
-        ..._enumNames(NormalizationSource.values),
-        'manual',
-      },
-    },
-    'evidence_items': {
-      // These are persisted reference-data values from the pre-enum schema.
-      'type': {..._enumNames(EvidenceType.values), 'receipt', 'statement'},
-    },
-    'financial_statements': {
-      'status': {..._enumNames(StatementStatus.values), 'processed'},
-    },
-    'statement_rows': {
-      'row_kind': {..._enumNames(StatementRowKind.values), 'transaction'},
-      'status': _enumNames(StatementRowStatus.values),
-      'status_before_skip': _enumNames(StatementRowStatus.values),
-    },
-    'suggestions': {
-      'target': _enumNames(SuggestionTarget.values),
-      // `local` is the historical spelling for the current localAi method.
-      'method': {..._enumNames(SuggestionMethod.values), 'local'},
-      'status': _enumNames(SuggestionStatus.values),
-    },
-    'review_issues': {
-      'reason': _enumNames(ReviewIssueReason.values),
-      'status': _enumNames(ReviewIssueStatus.values),
-    },
-    'reconciliation_candidates': {
-      'status': _enumNames(ReconciliationCandidateStatus.values),
-    },
-    'duplicate_candidate_groups': {
-      'status': _enumNames(DuplicateCandidateGroupStatus.values),
-    },
-    'recurring_pattern_decisions': {
-      'status': _enumNames(RecurringPatternDecisionStatus.values),
-      'cadence': _enumNames(RecurringPatternDecisionCadence.values),
-    },
-    'budgets': {
-      'scope': {'overall', 'category', 'subcategory', 'merchant'},
-    },
-    'financial_profiles': {
-      'household_size': _enumNames(HouseholdSize.values),
-      'dependents_count': _enumNames(DependentsCount.values),
-      'housing_situation': _enumNames(HousingSituation.values),
-      'expense_predictability': _enumNames(ExpensePredictability.values),
-      'primary_financial_goal': _enumNames(PrimaryFinancialGoal.values),
-      'goal_timeframe': _enumNames(GoalTimeframe.values),
-      'budgeting_preference': _enumNames(BudgetingPreference.values),
-      'survey_status': {'notStarted', 'inProgress', 'completed'},
-    },
-    'reference_data': {
-      'origin': _enumNames(ReferenceDataOrigin.values),
-      'status': _enumNames(ReferenceDataStatus.values),
-    },
-  };
-
-  static Set<String> _enumNames<T extends Enum>(List<T> values) =>
-      values.map((value) => value.name).toSet();
-
   Future<BackupInspection> inspect(File file) async {
     final package = await _readPackage(file, verifyEvidenceHashes: true);
     final createdAt = DateTime.parse(
@@ -666,22 +575,6 @@ final class LocalBackupManager {
                     row,
                     protectedTransactions,
                   )) {
-                    keptNewer++;
-                    continue;
-                  }
-                  if (spec.name == 'analysis_rule_definitions' &&
-                      await _localProvenanceConflictsWithDefinition(tx, row)) {
-                    // A local provenance row is part of the immutable rule
-                    // pair. Do not insert a backup definition that would make
-                    // that existing provenance describe the wrong rule.
-                    keptNewer++;
-                    continue;
-                  }
-                  if (spec.name == 'analysis_rule_provenance' &&
-                      await _localDefinitionConflictsWithProvenance(tx, row)) {
-                    // Rule definitions and their provenance are one immutable
-                    // pair. A merge must never combine the backup definition
-                    // with local provenance, or vice versa.
                     keptNewer++;
                     continue;
                   }
@@ -1429,7 +1322,7 @@ final class LocalBackupManager {
           ..clear()
           ..addAll(enrichedWarnings);
       }
-      await _validateTablePayload(sourceSchema, tables);
+      await _validateArchiveTables(sourceSchema, tables);
       _validateMissingContentManifest(tables, missingContent);
       var offset = _magic.length + 8 + 64 + metadataLength;
       final descriptors = <_EvidenceDescriptor>[];
@@ -2246,7 +2139,9 @@ final class LocalBackupManager {
         .toList(growable: false);
   }
 
-  Future<void> _validateTablePayload(
+  /// Validates only the archive contract needed to safely inspect and stage a
+  /// backup. Business meaning belongs to Data Integrity Reports, not backup.
+  Future<void> _validateArchiveTables(
     int sourceSchema,
     Map<String, Object?> tables,
   ) async {
@@ -2334,11 +2229,6 @@ final class LocalBackupManager {
             'identity at row $index.',
           );
         }
-        _validateRowValues(sourceSchema, table, raw, index);
-        _validateSemanticValues(sourceSchema, table, raw, index);
-        if (table == 'entity_tombstones') {
-          _validateTombstoneRow(sourceSchema, raw, index);
-        }
       }
     }
   }
@@ -2374,320 +2264,6 @@ final class LocalBackupManager {
     };
     required.addAll(protectedHistoricalFields[table] ?? const <String>{});
     return required.intersection(schemaColumns);
-  }
-
-  void _validateRowValues(int sourceSchema, String table, Map raw, int index) {
-    const timestampColumns = {
-      'captured_at',
-      'closed_at',
-      'created_at',
-      'decided_at',
-      'deleted_at',
-      'effective_at',
-      'generated_at',
-      'installed_at',
-      'recorded_at',
-      'occurred_at',
-      'updated_at',
-      'calculated_at',
-      'retired_at',
-    };
-    const dateColumns = {
-      'effective_date',
-      'payment_date',
-      'period_end',
-      'period_start',
-      'posting_date',
-      'statement_date',
-      'transaction_date',
-    };
-    const currencyColumns = {
-      'base_currency',
-      'currency',
-      'from_currency',
-      'payment_currency',
-      'statement_balance_currency',
-      'to_currency',
-    };
-    final coefficientPattern = RegExp(r'_coefficient$');
-    final scalePattern = RegExp(r'_scale$');
-    for (final entry in raw.entries) {
-      final key = entry.key;
-      final value = entry.value;
-      if (value == null) continue;
-      if (value is Map || value is List) {
-        throw FormatException(
-          'Backup schema $sourceSchema table "$table" row $index '
-          'contains a non-scalar value for "$key".',
-        );
-      }
-      if (table == 'evidence_items' &&
-          key == 'local_file_name' &&
-          value is! String) {
-        throw FormatException(
-          'Backup schema $sourceSchema table "$table" row $index '
-          'contains a non-string local evidence reference.',
-        );
-      }
-      if (timestampColumns.contains(key) || dateColumns.contains(key)) {
-        // Duplicate review records intentionally preserve malformed historical
-        // timestamps so the repository can surface them as repair context.
-        if (table == 'duplicate_candidate_groups' &&
-            (key == 'created_at' || key == 'updated_at')) {
-          continue;
-        }
-        if (value is! String || DateTime.tryParse(value) == null) {
-          throw FormatException(
-            'Backup schema $sourceSchema table "$table" row $index '
-            'contains an invalid date value for "$key".',
-          );
-        }
-      }
-      if (coefficientPattern.hasMatch(key)) {
-        if (value is! String) {
-          throw FormatException(
-            'Backup schema $sourceSchema table "$table" row $index '
-            'contains an invalid decimal coefficient for "$key".',
-          );
-        }
-        try {
-          BigInt.parse(value);
-        } on FormatException {
-          throw FormatException(
-            'Backup schema $sourceSchema table "$table" row $index '
-            'contains an invalid decimal coefficient for "$key".',
-          );
-        }
-      }
-      if (scalePattern.hasMatch(key) && (value is! int || value < 0)) {
-        throw FormatException(
-          'Backup schema $sourceSchema table "$table" row $index '
-          'contains an invalid decimal scale for "$key".',
-        );
-      }
-      if (currencyColumns.contains(key) || key.endsWith('_currency')) {
-        if (value is! String || !RegExp(r'^[A-Z]{3}$').hasMatch(value)) {
-          throw FormatException(
-            'Backup schema $sourceSchema table "$table" row $index '
-            'contains an invalid currency value for "$key".',
-          );
-        }
-      }
-      if (key == 'confidence' || key == 'score') {
-        if (value is! num || !value.isFinite || value < 0 || value > 1) {
-          throw FormatException(
-            'Backup schema $sourceSchema table "$table" row $index '
-            'contains an invalid normalized score for "$key".',
-          );
-        }
-      }
-    }
-    if (table == 'budgets') {
-      final amount = raw['amount'];
-      if (amount is! String) {
-        throw FormatException(
-          'Backup schema $sourceSchema table "$table" row $index '
-          'contains an invalid decimal value for "amount".',
-        );
-      }
-      try {
-        if (!DecimalValue.parse(amount).isPositive) {
-          throw const FormatException();
-        }
-      } on Object {
-        throw FormatException(
-          'Backup schema $sourceSchema table "$table" row $index '
-          'contains an invalid decimal value for "amount".',
-        );
-      }
-    }
-    if (table == 'financial_profiles') {
-      _validateFinancialProfileRow(sourceSchema, raw, index);
-    }
-  }
-
-  void _validateFinancialProfileRow(int sourceSchema, Map raw, int index) {
-    final profileId = raw['profile_id'];
-    if (profileId != FinancialProfile.defaultProfileId) {
-      throw FormatException(
-        'Backup schema $sourceSchema table "financial_profiles" row $index '
-        'contains an invalid profile identifier.',
-      );
-    }
-    final schemaValue = raw['schema_version'];
-    if (schemaValue is! int || schemaValue < 1) {
-      throw FormatException(
-        'Backup schema $sourceSchema table "financial_profiles" row $index '
-        'contains an invalid profile schema version.',
-      );
-    }
-    final surveyVersion = raw['survey_version'];
-    if (surveyVersion is! String || surveyVersion.trim().isEmpty) {
-      throw FormatException(
-        'Backup schema $sourceSchema table "financial_profiles" row $index '
-        'contains an invalid survey version.',
-      );
-    }
-    _validateFinancialProfileStringList(
-      sourceSchema,
-      raw,
-      index,
-      field: 'primary_spending_categories',
-      max: 3,
-    );
-    _validateFinancialProfileStringList(
-      sourceSchema,
-      raw,
-      index,
-      field: 'categories_to_improve',
-    );
-    final target = raw['monthly_savings_target'];
-    final targetCurrency = raw['monthly_savings_target_currency'];
-    if (target != null) {
-      if (target is! String) {
-        throw FormatException(
-          'Backup schema $sourceSchema table "financial_profiles" row $index '
-          'contains an invalid decimal value for "monthly_savings_target".',
-        );
-      }
-      try {
-        final amount = DecimalValue.parse(target);
-        if (amount.isNegative ||
-            amount.coefficient.abs().toString().length >
-                FinancialProfile.maxSavingsTargetDigits ||
-            amount.scale > FinancialProfile.maxSavingsTargetScale) {
-          throw const FormatException();
-        }
-      } on Object {
-        throw FormatException(
-          'Backup schema $sourceSchema table "financial_profiles" row $index '
-          'contains an invalid decimal value for "monthly_savings_target".',
-        );
-      }
-    }
-    if ((target == null) != (targetCurrency == null)) {
-      throw FormatException(
-        'Backup schema $sourceSchema table "financial_profiles" row $index '
-        'contains an invalid savings target relationship.',
-      );
-    }
-    final hasTarget = raw['has_monthly_savings_target'];
-    if (hasTarget != null &&
-        (hasTarget is! int || (hasTarget != 0 && hasTarget != 1))) {
-      throw FormatException(
-        'Backup schema $sourceSchema table "financial_profiles" row $index '
-        'contains an invalid savings target choice.',
-      );
-    }
-    if (target != null && hasTarget != 1) {
-      throw FormatException(
-        'Backup schema $sourceSchema table "financial_profiles" row $index '
-        'contains a target without an enabled target choice.',
-      );
-    }
-    final insightTypes = raw['preferred_insight_types'];
-    if (insightTypes is! String) {
-      throw FormatException(
-        'Backup schema $sourceSchema table "financial_profiles" row $index '
-        'contains invalid preferred insight types.',
-      );
-    }
-    try {
-      final decoded = jsonDecode(insightTypes);
-      if (decoded is! List || decoded.any((value) => value is! String)) {
-        throw const FormatException();
-      }
-      final allowed = _enumNames(FinancialInsightType.values);
-      if (decoded.any((value) => !allowed.contains(value))) {
-        throw const FormatException();
-      }
-    } on Object {
-      throw FormatException(
-        'Backup schema $sourceSchema table "financial_profiles" row $index '
-        'contains invalid preferred insight types.',
-      );
-    }
-  }
-
-  void _validateFinancialProfileStringList(
-    int sourceSchema,
-    Map raw,
-    int index, {
-    required String field,
-    int? max,
-  }) {
-    final value = raw[field];
-    if (value is! String) {
-      throw FormatException(
-        'Backup schema $sourceSchema table "financial_profiles" row $index '
-        'contains invalid "$field".',
-      );
-    }
-    try {
-      final decoded = jsonDecode(value);
-      if (decoded is! List || decoded.any((item) => item is! String)) {
-        throw const FormatException();
-      }
-      final values = decoded.cast<String>();
-      if (values.any((item) => item.trim().isEmpty) ||
-          (max != null && values.toSet().length > max)) {
-        throw const FormatException();
-      }
-    } on Object {
-      throw FormatException(
-        'Backup schema $sourceSchema table "financial_profiles" row $index '
-        'contains invalid "$field".',
-      );
-    }
-  }
-
-  void _validateTombstoneRow(int sourceSchema, Map raw, int index) {
-    final entityType = raw['entity_type'];
-    final entityId = raw['entity_id'];
-    final spec = entityType is String ? _specByName[entityType] : null;
-    if (spec == null ||
-        entityId == null ||
-        (entityId is String && entityId.isEmpty) ||
-        (entityId is! String && entityId is! num)) {
-      throw FormatException(
-        'Backup schema $sourceSchema table "entity_tombstones" row $index '
-        'contains an unknown or malformed entity identity.',
-      );
-    }
-    if (_keyValuesFromTombstone(spec, '$entityId') == null) {
-      throw FormatException(
-        'Backup schema $sourceSchema table "entity_tombstones" row $index '
-        'contains an invalid entity identity.',
-      );
-    }
-    try {
-      DateTime.parse(raw['deleted_at'] as String);
-    } on Object {
-      throw FormatException(
-        'Backup schema $sourceSchema table "entity_tombstones" row $index '
-        'contains an invalid deleted_at timestamp.',
-      );
-    }
-  }
-
-  void _validateSemanticValues(
-    int sourceSchema,
-    String table,
-    Map raw,
-    int index,
-  ) {
-    final columns = _enumColumnsByTable[table];
-    if (columns == null) return;
-    for (final entry in columns.entries) {
-      final value = raw[entry.key];
-      if (value == null) continue;
-      if (value is! String || !entry.value.contains(value)) {
-        throw FormatException(
-          'Backup schema $sourceSchema table "$table" row $index '
-          'contains invalid ${entry.key} value.',
-        );
-      }
-    }
   }
 
   List<String> _validationKeysForTable(String table) {
@@ -2815,69 +2391,6 @@ final class LocalBackupManager {
     final values = spec.keys.map((key) => row[key]).toList(growable: false);
     final rows = await _queryByKeys(tx, spec, values);
     return rows.isEmpty ? null : rows.single;
-  }
-
-  Future<bool> _localDefinitionConflictsWithProvenance(
-    Transaction tx,
-    Map<String, Object?> provenance,
-  ) async {
-    final ruleId = provenance['rule_id'];
-    final ruleVersion = provenance['rule_version'];
-    if (ruleId == null || ruleVersion == null) return true;
-    final definitions = await tx.query(
-      'analysis_rule_definitions',
-      columns: ['source_type', 'definition_hash'],
-      where: 'rule_id = ? AND rule_version = ?',
-      whereArgs: [ruleId, ruleVersion],
-      limit: 1,
-    );
-    if (definitions.isEmpty) return false;
-    final definition = definitions.single;
-    final localProvenance = await tx.query(
-      'analysis_rule_provenance',
-      columns: ['source_type', 'definition_hash'],
-      where: 'rule_id = ? AND rule_version = ?',
-      whereArgs: [ruleId, ruleVersion],
-      limit: 1,
-    );
-    if (localProvenance.isNotEmpty &&
-        (localProvenance.single['source_type'] != definition['source_type'] ||
-            localProvenance.single['definition_hash'] !=
-                definition['definition_hash'])) {
-      throw const FormatException(
-        'Local analysis rule definition and provenance disagree.',
-      );
-    }
-    final conflicts =
-        definition['source_type'] != provenance['source_type'] ||
-        definition['definition_hash'] != provenance['definition_hash'];
-    if (conflicts) {
-      if (localProvenance.isEmpty) {
-        throw const FormatException(
-          'Local analysis rule provenance is missing for a merge conflict.',
-        );
-      }
-    }
-    return conflicts;
-  }
-
-  Future<bool> _localProvenanceConflictsWithDefinition(
-    Transaction tx,
-    Map<String, Object?> definition,
-  ) async {
-    final ruleId = definition['rule_id'];
-    final ruleVersion = definition['rule_version'];
-    if (ruleId == null || ruleVersion == null) return true;
-    final provenance = await tx.query(
-      'analysis_rule_provenance',
-      columns: ['source_type', 'definition_hash'],
-      where: 'rule_id = ? AND rule_version = ?',
-      whereArgs: [ruleId, ruleVersion],
-      limit: 1,
-    );
-    if (provenance.isEmpty) return false;
-    return provenance.single['source_type'] != definition['source_type'] ||
-        provenance.single['definition_hash'] != definition['definition_hash'];
   }
 
   Future<List<Map<String, Object?>>> _queryByKeys(
