@@ -619,7 +619,8 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         location.path,
         password: password,
       );
-      if (mounted) _successToast(context.l10n.backupText('backupSavedVerified'));
+      if (mounted)
+        _successToast(context.l10n.backupText('backupSavedVerified'));
     } catch (error) {
       if (mounted) {
         _backupErrorToast(error);
