@@ -131,7 +131,7 @@ void main() {
       );
       expect(find.text('Budget Settings'), findsOneWidget);
       expect(find.text('Backup & Restore'), findsNothing);
-      expect(find.text('Privacy & data'), findsWidgets);
+      expect(find.text('Manage privacy & data'), findsOneWidget);
     },
   );
 
@@ -220,13 +220,13 @@ void main() {
     );
     await tester.pumpAndSettle();
     for (var attempt = 0; attempt < 10; attempt++) {
-      if (find.text('Privacy & data').evaluate().length >= 2) break;
+      if (find.text('Manage privacy & data').evaluate().isNotEmpty) break;
       await tester.drag(find.byType(CustomScrollView), const Offset(0, -250));
       await tester.pump();
     }
     expect(find.text('Backup & Restore'), findsNothing);
     final privacyRow = find.ancestor(
-      of: find.text('Privacy & data').last,
+      of: find.text('Manage privacy & data'),
       matching: find.byType(InkWell),
     );
     await tester.ensureVisible(privacyRow.first);
