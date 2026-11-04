@@ -24,6 +24,7 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
 
   final LocalBackupManager backups;
   final LocalDataManager data;
+
   /// Optional fault-injection / diagnostic hook; never set by the UI.
   final Future<void> Function(String stage)? restoreDiagnosticStage;
   late final RawBackupService _rawBackups;
