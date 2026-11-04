@@ -97,37 +97,42 @@ void main() {
     },
   );
 
-  test('publication failure identifies stage without reporting success', () async {
-    final destination = File(path.join(output.path, 'unpublished.butlerly'));
-    final failing = RawBackupService(
-      database,
-      LocalDataManager(database, localEvidenceDirectory: evidence),
-      destinationWriter: const _RejectingDestinationWriter(),
-    );
+  test(
+    'publication failure identifies stage without reporting success',
+    () async {
+      final destination = File(path.join(output.path, 'unpublished.butlerly'));
+      final failing = RawBackupService(
+        database,
+        LocalDataManager(database, localEvidenceDirectory: evidence),
+        destinationWriter: const _RejectingDestinationWriter(),
+      );
 
-    await expectLater(
-      failing.createBackup(
-        destination,
-        password: 'correct horse battery staple',
-      ),
-      throwsA(
-        isA<BackupCreationException>()
-            .having(
-              (error) => error.stage,
-              'stage',
-              BackupCreationStage.publication,
-            )
-            .having(
-              (error) => error.cause,
-              'cause',
-              isA<FileSystemException>(),
-            ),
-      ),
-    );
-    expect(await destination.exists(), isFalse);
-    final integrity = await database.database.rawQuery('PRAGMA integrity_check');
-    expect(integrity.single.values.single, 'ok');
-  });
+      await expectLater(
+        failing.createBackup(
+          destination,
+          password: 'correct horse battery staple',
+        ),
+        throwsA(
+          isA<BackupCreationException>()
+              .having(
+                (error) => error.stage,
+                'stage',
+                BackupCreationStage.publication,
+              )
+              .having(
+                (error) => error.cause,
+                'cause',
+                isA<FileSystemException>(),
+              ),
+        ),
+      );
+      expect(await destination.exists(), isFalse);
+      final integrity = await database.database.rawQuery(
+        'PRAGMA integrity_check',
+      );
+      expect(integrity.single.values.single, 'ok');
+    },
+  );
 
   test('incorrect password cannot produce staged files', () async {
     final destination = File(path.join(output.path, 'butlerly.butlerly'));
