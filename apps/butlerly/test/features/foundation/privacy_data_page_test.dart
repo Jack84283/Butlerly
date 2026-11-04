@@ -46,6 +46,141 @@ void main() {
     ),
   );
 
+  test('Backup messages distinguish phase, cause, and recovery risk', () {
+    expect(
+      classifyBackupFailure(const BackupPasswordTooShortException()),
+      BackupFailureKind.passwordPolicy,
+    );
+    expect(
+      classifyBackupFailure(
+        const BackupCreationException(
+          stage: BackupCreationStage.snapshot,
+          cause: RepositoryException(
+            RepositoryFailureCode.busy,
+            'snapshot database',
+          ),
+        ),
+      ),
+      BackupFailureKind.databaseBusy,
+    );
+    expect(
+      classifyBackupFailure(
+        const BackupCreationException(
+          stage: BackupCreationStage.packaging,
+          cause: FormatException('Evidence filenames are not portable.'),
+        ),
+      ),
+      BackupFailureKind.evidence,
+    );
+    expect(
+      classifyBackupFailure(
+        BackupCreationException(
+          stage: BackupCreationStage.packaging,
+          cause: StateError('Attachment changed during packaging.'),
+        ),
+      ),
+      BackupFailureKind.evidenceChanged,
+    );
+    expect(
+      classifyBackupFailure(
+        const BackupCreationException(
+          stage: BackupCreationStage.verification,
+          cause: FormatException('Encrypted backup verification failed.'),
+        ),
+      ),
+      BackupFailureKind.verification,
+    );
+    expect(
+      classifyBackupFailure(
+        const BackupCreationException(
+          stage: BackupCreationStage.publication,
+          cause: FileSystemException(
+            'Cannot write file',
+            '/private/secret/path',
+            OSError('No space left on device', 28),
+          ),
+        ),
+      ),
+      BackupFailureKind.storageFull,
+    );
+    expect(
+      classifyBackupFailure(
+        const BackupCreationException(
+          stage: BackupCreationStage.publication,
+          cause: FileSystemException('Permission denied', '/secret/file'),
+        ),
+      ),
+      BackupFailureKind.fileAccess,
+    );
+    expect(
+      classifyBackupFailure(
+        BackupCreationException(
+          stage: BackupCreationStage.publication,
+          cause: StateError('Rollback was interrupted.'),
+          recoveryRequired: true,
+        ),
+      ),
+      BackupFailureKind.publicationRecovery,
+    );
+    expect(
+      classifyBackupFailure(
+        BackupCreationException(
+          stage: BackupCreationStage.sharing,
+          cause: StateError('Share operation did not complete.'),
+        ),
+      ),
+      BackupFailureKind.shareFailure,
+    );
+  });
+
+  testWidgets('backup failure dialog explains stage and next step', (
+    tester,
+  ) async {
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    final context = tester.element(find.byType(PrivacyDataPage));
+    final dialog = showBackupCreationFailureDialog(
+      context,
+      error: const BackupCreationException(
+        stage: BackupCreationStage.verification,
+        cause: FormatException('Encrypted backup verification failed.'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Unable to create backup'), findsOneWidget);
+    expect(find.text('Step that failed'), findsOneWidget);
+    expect(find.text('Verify encrypted archive'), findsOneWidget);
+    expect(find.text('Reason'), findsOneWidget);
+    expect(find.text('What to do next'), findsOneWidget);
+    expect(find.textContaining('post-creation integrity'), findsOneWidget);
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    await dialog;
+  });
+
+  testWidgets('backup rollback warning does not leak private paths', (
+    tester,
+  ) async {
+    await tester.pumpWidget(app(locale: const Locale('zh')));
+    await tester.pumpAndSettle();
+    final context = tester.element(find.byType(PrivacyDataPage));
+    final dialog = showBackupCreationFailureDialog(
+      context,
+      error: const BackupCreationException(
+        stage: BackupCreationStage.publication,
+        cause: FileSystemException('Write failure', '/private/secret/path'),
+        recoveryRequired: true,
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('无法创建备份'), findsOneWidget);
+    expect(find.textContaining('恢复副本'), findsOneWidget);
+    expect(find.textContaining('/private/secret/path'), findsNothing);
+    await tester.tap(find.text('知道了'));
+    await tester.pumpAndSettle();
+    await dialog;
+  });
+
   test('Restore failures identify known categories without exposing paths', () {
     expect(
       classifyRestoreFailure(const BackupPasswordOrIntegrityException()),
