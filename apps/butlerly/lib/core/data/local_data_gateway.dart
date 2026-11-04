@@ -222,9 +222,10 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
       final activeConnection = persistence.isRestoreActivationActive
           ? persistence.restoreActivationConnection
           : persistence.connection;
-      final integrity = await activeConnection.rawQuery('PRAGMA integrity_check');
-      if (integrity.length != 1 ||
-          integrity.single.values.single != 'ok') {
+      final integrity = await activeConnection.rawQuery(
+        'PRAGMA integrity_check',
+      );
+      if (integrity.length != 1 || integrity.single.values.single != 'ok') {
         throw StateError('Recovered SQLite failed physical integrity.');
       }
       await backups.recoveryState.clear();
