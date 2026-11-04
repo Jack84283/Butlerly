@@ -54,9 +54,13 @@ void main() {
     await database.database.execute("VACUUM INTO '$quoted'");
     final connection = await databaseFactoryFfi.openDatabase(oldDb.path);
     try {
-      if (version == 18) {
-        // This is precisely the table introduced by deployment migration 19.
+      if (version == 17 || version == 18) {
+        // Deployment schema 19 introduces financial_profiles.
         await connection.execute('DROP TABLE financial_profiles');
+      }
+      if (version == 17) {
+        // Deployment schema 18 introduces budgets.
+        await connection.execute('DROP TABLE budgets');
       }
       await connection.execute('PRAGMA user_version = $version');
     } finally {
@@ -401,6 +405,41 @@ void main() {
       expect(version.single.values.single, 19);
     },
   );
+
+  test('Replace applies consecutive historical schema migrations', () async {
+    await setProbe('historical');
+    final archive = await archivedSchema(
+      version: 17,
+      label: 'older-multiple-migrations',
+    );
+    await database.database.update(
+      'restore_probe',
+      {'value': 'changed-after-backup'},
+      where: 'id = ?',
+      whereArgs: ['original'],
+    );
+
+    await restores.restoreReplace(
+      archive,
+      password: 'correct horse battery staple',
+    );
+    expect(await getProbe(), 'historical');
+    expect(
+      (await database.database.rawQuery('PRAGMA user_version'))
+          .single
+          .values
+          .single,
+      19,
+    );
+    final tables = await database.database.rawQuery(
+      "SELECT name FROM sqlite_master "
+      "WHERE name IN ('budgets', 'financial_profiles')",
+    );
+    expect(tables.map((table) => table['name']).toSet(), {
+      'budgets',
+      'financial_profiles',
+    });
+  });
 
   test('newer unsupported schema rejects without mutating live data', () async {
     await setProbe('never-change-live');
