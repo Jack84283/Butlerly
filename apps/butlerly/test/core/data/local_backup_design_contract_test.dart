@@ -71,9 +71,14 @@ void main() {
       addTearDown(fixture.dispose);
       final timestamp = DateTime.utc(2026, 1, 1);
       await fixture.insertTransaction('tx-1', timestamp, amount: '100');
-      final backup = File(
-        path.join(fixture.root.path, 'replace-source.butlerly'),
+      // Portable backups must be exported outside Butlerly private storage.
+      final exports = await Directory.systemTemp.createTemp(
+        'butlerly-raw-replace-export-',
       );
+      addTearDown(() async {
+        if (await exports.exists()) await exports.delete(recursive: true);
+      });
+      final backup = File(path.join(exports.path, 'replace-source.butlerly'));
       const password = 'correct horse battery staple';
       await RawBackupService(
         fixture.database,
