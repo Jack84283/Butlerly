@@ -29,9 +29,19 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
 
   /// Adapt publication safety errors into the application-owned error contract,
   /// without exposing internal recovery paths to the UI.
-  Future<void> _createRawBackup(File file, String password) async {
+  Future<BackupCreationResult> _createRawBackup(
+    File file,
+    String password,
+  ) async {
     try {
-      await _rawBackups.createBackup(file, password: password);
+      final inspection = await _rawBackups.createBackup(
+        file,
+        password: password,
+      );
+      return BackupCreationResult(
+        attachmentCount: inspection.attachmentCount,
+        missingAttachmentCount: inspection.missingAttachmentCount,
+      );
     } on BackupPublicationRecoveryRequiredException catch (error, stack) {
       Error.throwWithStackTrace(
         BackupCreationException(
@@ -54,7 +64,7 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
   }
 
   @override
-  Future<void> createPortableBackup(
+  Future<BackupCreationResult> createPortableBackup(
     String destination, {
     required String password,
   }) => _createRawBackup(File(destination), password);
@@ -66,15 +76,18 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
       );
 
   @override
-  Future<String> createTemporaryBackup(
+  Future<TemporaryBackupCreationResult> createTemporaryBackup(
     String fileName, {
     required String password,
   }) async {
     final directory = await getTemporaryDirectory();
     final file = File(path.join(directory.path, path.basename(fileName)));
     try {
-      await _createRawBackup(file, password);
-      return file.path;
+      final backup = await _createRawBackup(file, password);
+      return TemporaryBackupCreationResult(
+        filePath: file.path,
+        backup: backup,
+      );
     } catch (_) {
       await discardTemporaryBackup(file.path);
       rethrow;
