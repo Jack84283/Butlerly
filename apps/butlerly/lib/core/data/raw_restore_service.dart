@@ -151,6 +151,11 @@ final class RawRestoreService {
         password: password,
         stagingDirectory: staging,
       );
+      // Upgrade only the extracted, disposable database. The encrypted source
+      // archive and the active local database remain untouched until activation.
+      await _upgradeStagedSqlite(
+        File(path.join(staging.path, 'butlerly.db')),
+      );
       final result = prepareStaging == null
           ? inspection
           : await prepareStaging(staging, inspection);
@@ -276,6 +281,76 @@ final class RawRestoreService {
       }
     }
   });
+
+  /// Upgrade a staged SQLite file using exactly the same ordered migration
+  /// assets as normal Butlerly startup. Never seed catalogs or run analysis
+  /// validation: this step changes schema shape, not financial business rules.
+  ///
+  /// The archive stays encrypted and untouched; any migration failure occurs
+  /// before activation and therefore leaves the live SQLite files unchanged.
+  Future<void> _upgradeStagedSqlite(File snapshot) async {
+    final template = database.persistenceDatabase;
+    final factory = template.factory;
+    final reader = await factory.openDatabase(
+      snapshot.path,
+      options: OpenDatabaseOptions(readOnly: true),
+    );
+    int sourceVersion;
+    try {
+      final result = await reader.rawQuery('PRAGMA user_version');
+      if (result.length != 1 || result.single.values.single is! int) {
+        throw const FormatException('Backup has an invalid SQLite schema.');
+      }
+      sourceVersion = result.single.values.single as int;
+      if (sourceVersion < 1 || sourceVersion > template.targetVersion) {
+        throw const FormatException(
+          'Backup SQLite schema version is not supported by this app.',
+        );
+      }
+      final integrity = await reader.rawQuery('PRAGMA integrity_check');
+      if (integrity.length != 1 || integrity.single.values.single != 'ok') {
+        throw const FormatException('Backup SQLite snapshot is damaged.');
+      }
+    } finally {
+      await reader.close();
+    }
+    if (sourceVersion == template.targetVersion) return;
+
+    // A missing intermediate migration must fail closed; do not let the SQLite
+    // opening API create or silently recreate a partial database.
+    for (var version = sourceVersion + 1;
+        version <= template.targetVersion;
+        version++) {
+      if (!template.migrations.containsKey(version)) {
+        throw FormatException('Missing SQLite migration for schema $version.');
+      }
+    }
+
+    final migrator = ButlerlyDatabase(
+      factory: factory,
+      path: snapshot.path,
+      schemaSql: template.schemaSql,
+      migrations: template.migrations,
+      targetVersion: template.targetVersion,
+    );
+    try {
+      await migrator.open(seedSystemDataOnOpen: false);
+      final integrity = await migrator.connection.rawQuery(
+        'PRAGMA integrity_check',
+      );
+      final version = await migrator.connection.rawQuery(
+        'PRAGMA user_version',
+      );
+      if (integrity.length != 1 ||
+          integrity.single.values.single != 'ok' ||
+          version.length != 1 ||
+          version.single.values.single != template.targetVersion) {
+        throw const FormatException('Migrated SQLite snapshot is damaged.');
+      }
+    } finally {
+      await migrator.close();
+    }
+  }
 
   Future<void> _validatePhysicalSqlite(File snapshot) async {
     final factory = database.persistenceDatabase.factory;
