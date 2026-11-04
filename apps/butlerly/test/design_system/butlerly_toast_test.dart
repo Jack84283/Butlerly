@@ -67,7 +67,10 @@ void main() {
     final snackbar = tester.widget<SnackBar>(find.byType(SnackBar));
     expect(snackbar.backgroundColor, ButlerlySemanticColors.dark.error);
     expect(find.text('Backup could not be verified'), findsOneWidget);
-    expect(find.byKey(const ValueKey('butlerly-toast-details')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('butlerly-toast-details')),
+      findsOneWidget,
+    );
     expect(find.byKey(const ValueKey('butlerly-toast-close')), findsOneWidget);
 
     await tester.pump(const Duration(seconds: 30));
