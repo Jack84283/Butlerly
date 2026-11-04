@@ -446,12 +446,18 @@ Future<void> initializeButlerly(AppLogger logger) async {
     logger.info('Startup: opening local database');
     // Roll back an interrupted physical Replace before opening SQLite.
     // Web builds do not have an application support directory on disk.
+    var rawJournalRecovered = false;
     if (!kIsWeb) {
       final support = await getApplicationSupportDirectory();
+      final journal = File(
+        path.join(support.path, '.raw-restore-journal.json'),
+      );
+      final rawJournalPresent = await journal.exists();
       await RawRestoreService.recoverInterruptedReplace(
         liveDatabase: File(path.join(support.path, 'butlerly.db')),
         evidenceDirectory: Directory(path.join(support.path, 'evidence')),
       );
+      rawJournalRecovered = rawJournalPresent && !await journal.exists();
     }
     database = LocalDatabase(logger: logger);
     await initializeLocalDatabaseForStartup(database, logger);
@@ -470,6 +476,13 @@ Future<void> initializeButlerly(AppLogger logger) async {
         ? services<RestoreRecoveryState>()
         : null;
     await recoveryState?.initialize();
+    // A previous runtime restore may have persisted the recovery-only gate
+    // while the raw journal still existed. If startup successfully rolled
+    // that journal back to the original files, release only that exact gate.
+    if (rawJournalRecovered &&
+        recoveryState?.incident?.reason == 'raw-restore-rollback-incomplete') {
+      await recoveryState!.clear();
+    }
     logger.info('Startup: restore recovery checked');
 
     if (database.status == DatabaseStatus.ready &&
