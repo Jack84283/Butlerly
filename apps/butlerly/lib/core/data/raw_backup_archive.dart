@@ -118,17 +118,19 @@ final class RawBackupArchive {
         sink.add(ascii.encode(sha256Bytes(metadata)));
         sink.add(metadata);
         await sink.addStream(sqliteSnapshot.openRead());
-        if (await sqliteSnapshot.length() != sqliteLength ||
-            await sha256FileRange(sqliteSnapshot) != sqliteHash) {
+        if (await sqliteSnapshot.length() != sqliteLength) {
           throw StateError('SQLite snapshot changed during packaging.');
         }
         for (final file in files) {
           await sink.addStream(file.source!.openRead());
-          if (await file.source!.length() != file.length ||
-              await sha256FileRange(file.source!) != file.sha256) {
+          if (await file.source!.length() != file.length) {
             throw StateError('An attachment changed during packaging.');
           }
         }
+        // Each source's SHA-256 was captured in the manifest above. The
+        // complete *written archive* is independently hashed by inspect()
+        // below, including same-length source modifications. Re-reading all
+        // source files here adds I/O without improving what is verified.
         await sink.flush();
       } finally {
         await sink.close();
@@ -188,12 +190,15 @@ final class RawBackupArchive {
     required File archive,
     required Directory stagingDirectory,
   }) async {
-    final inspection = await inspect(archive);
+    // _readManifest authenticates the manifest and validates every payload
+    // boundary. _copyRange below checks each extracted file's SHA-256 against
+    // that manifest. Calling inspect(archive) first would hash the entire
+    // payload a second time, before these same bytes are extracted/verified.
+    final parsed = await _readManifest(archive);
     if (await stagingDirectory.exists()) {
       throw const FileSystemException('Restore staging directory exists.');
     }
     await rejectSymlinkedPath(stagingDirectory.path);
-    final parsed = await _readManifest(archive);
     await stagingDirectory.create(recursive: true);
     try {
       final sqlite = File(path.join(stagingDirectory.path, 'butlerly.db'));
@@ -220,7 +225,14 @@ final class RawBackupArchive {
         );
         offset += file.length;
       }
-      return inspection;
+      return RawBackupInspection(
+        createdAtUtc: parsed.createdAtUtc,
+        sqliteBytes: parsed.sqliteLength,
+        recordCount: parsed.recordCount,
+        attachmentCount: parsed.files.length,
+        missingAttachmentCount:
+            parsed.missingAttachmentPaths.length + parsed.unsafeReferenceCount,
+      );
     } catch (_) {
       if (await stagingDirectory.exists()) {
         await stagingDirectory.delete(recursive: true);
