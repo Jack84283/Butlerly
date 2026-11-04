@@ -134,6 +134,56 @@ void main() {
     },
   );
 
+  test('restore preview verifies every file but writes only SQLite', () async {
+    final manager = const RawBackupArchive();
+    await manager.write(
+      sqliteSnapshot: sqlite,
+      evidenceDirectory: evidence,
+      referencedEvidencePaths: const ['receipts/one.jpg'],
+      destination: archive,
+    );
+
+    final staged = File(path.join(working.path, 'inspection.sqlite'));
+    final preview = await manager.inspectAndStageSqlite(
+      archive: archive,
+      sqliteDestination: staged,
+    );
+    final regular = await manager.inspect(archive);
+    expect(preview.sqliteBytes, regular.sqliteBytes);
+    expect(preview.attachmentCount, regular.attachmentCount);
+    expect(preview.missingAttachmentCount, regular.missingAttachmentCount);
+    expect(await staged.readAsBytes(), await sqlite.readAsBytes());
+    expect(
+      await Directory(path.join(working.path, 'evidence-preview')).exists(),
+      isFalse,
+    );
+  });
+
+  test('restore preview rejects damaged evidence and cleans staged SQLite',
+      () async {
+    final manager = const RawBackupArchive();
+    await manager.write(
+      sqliteSnapshot: sqlite,
+      evidenceDirectory: evidence,
+      referencedEvidencePaths: const ['receipts/one.jpg'],
+      destination: archive,
+    );
+    final bytes = await archive.readAsBytes();
+    bytes[bytes.length - 1] ^= 0xff;
+    await archive.writeAsBytes(bytes);
+
+    final staged = File(path.join(working.path, 'failed-preview.sqlite'));
+    await expectLater(
+      manager.inspectAndStageSqlite(
+        archive: archive,
+        sqliteDestination: staged,
+      ),
+      throwsA(isA<FormatException>()),
+    );
+    expect(await staged.exists(), isFalse);
+    expect(await sqlite.exists(), isTrue);
+  });
+
   test('missing optional evidence does not fail backup', () async {
     final archiveManager = const RawBackupArchive();
     final result = await archiveManager.write(
