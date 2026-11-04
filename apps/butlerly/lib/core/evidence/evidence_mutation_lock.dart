@@ -22,7 +22,11 @@ final class EvidenceMutationLock {
 
   static Future<T> runExclusive<T>(Future<T> Function() action) {
     final completer = Completer<T>();
-    void start() => _start(action, completer);
+    // A waiting mutation can resume from a different caller's microtask.
+    // Preserve its original zone so nested analysis-consistency operations
+    // retain their ownership and cannot deadlock waiting on themselves.
+    final callerZone = Zone.current;
+    void start() => callerZone.run(() => _start(action, completer));
 
     if (!_locked) {
       _locked = true;
