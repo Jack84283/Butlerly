@@ -37,10 +37,7 @@ void main() {
     await database.initialize();
     service = RawBackupService(
       database,
-      LocalDataManager(
-        database,
-        localEvidenceDirectory: evidence,
-      ),
+      LocalDataManager(database, localEvidenceDirectory: evidence),
     );
   });
 
@@ -49,51 +46,53 @@ void main() {
     if (await root.exists()) await root.delete(recursive: true);
   });
 
-  test('creates an encrypted copy of actual SQLite data without changing source',
-      () async {
-    final before = await database.database.rawQuery(
-      'SELECT COUNT(*) AS total FROM sqlite_master',
-    );
-    final destination = File(path.join(output.path, 'butlerly.butlerly'));
-    final result = await service.createBackup(
-      destination,
-      password: 'correct horse battery staple',
-    );
-    expect(result.sqliteBytes, greaterThan(0));
-    expect(await destination.exists(), isTrue);
-    expect(
-      await service.inspect(
-        destination,
-        password: 'correct horse battery staple',
-      ),
-      isA<RawBackupInspection>(),
-    );
-    expect(
-      await database.database.rawQuery(
-        'SELECT COUNT(*) AS total FROM sqlite_master',
-      ),
-      before,
-    );
-
-    final staging = Directory(path.join(root.path, 'restore-staging'));
-    await service.prepareRestore(
-      destination,
-      password: 'correct horse battery staple',
-      stagingDirectory: staging,
-    );
-    final reopened = await databaseFactoryFfi.openDatabase(
-      path.join(staging.path, 'butlerly.db'),
-      options: OpenDatabaseOptions(readOnly: true),
-    );
-    try {
-      final count = await reopened.rawQuery(
+  test(
+    'creates an encrypted copy of actual SQLite data without changing source',
+    () async {
+      final before = await database.database.rawQuery(
         'SELECT COUNT(*) AS total FROM sqlite_master',
       );
-      expect(count, before);
-    } finally {
-      await reopened.close();
-    }
-  });
+      final destination = File(path.join(output.path, 'butlerly.butlerly'));
+      final result = await service.createBackup(
+        destination,
+        password: 'correct horse battery staple',
+      );
+      expect(result.sqliteBytes, greaterThan(0));
+      expect(await destination.exists(), isTrue);
+      expect(
+        await service.inspect(
+          destination,
+          password: 'correct horse battery staple',
+        ),
+        isA<RawBackupInspection>(),
+      );
+      expect(
+        await database.database.rawQuery(
+          'SELECT COUNT(*) AS total FROM sqlite_master',
+        ),
+        before,
+      );
+
+      final staging = Directory(path.join(root.path, 'restore-staging'));
+      await service.prepareRestore(
+        destination,
+        password: 'correct horse battery staple',
+        stagingDirectory: staging,
+      );
+      final reopened = await databaseFactoryFfi.openDatabase(
+        path.join(staging.path, 'butlerly.db'),
+        options: OpenDatabaseOptions(readOnly: true),
+      );
+      try {
+        final count = await reopened.rawQuery(
+          'SELECT COUNT(*) AS total FROM sqlite_master',
+        );
+        expect(count, before);
+      } finally {
+        await reopened.close();
+      }
+    },
+  );
 
   test('incorrect password cannot produce staged files', () async {
     final destination = File(path.join(output.path, 'butlerly.butlerly'));
