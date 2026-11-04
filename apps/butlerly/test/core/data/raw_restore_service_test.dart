@@ -11,6 +11,8 @@ import 'package:butlerly/core/data/raw_merge_service.dart';
 import 'package:butlerly/core/data/raw_restore_service.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart'
+    show NewerBackupSchemaException;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
