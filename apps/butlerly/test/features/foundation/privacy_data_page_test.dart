@@ -625,6 +625,7 @@ void main() {
         createdAtUtc: DateTime.utc(2026, 10, 31),
         recordCount: 2,
         evidenceCount: 1,
+        missingEvidenceCount: 2,
         changes: const BackupChangeSummary(
           transactionsAdded: 0,
           transactionsChanged: 0,
@@ -637,6 +638,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Merge Butlerly backup?'), findsOneWidget);
+    expect(
+      find.textContaining('2 referenced original attachments'),
+      findsOneWidget,
+    );
     expect(
       find.byKey(const ValueKey('restore-replace-acknowledgement')),
       findsNothing,
