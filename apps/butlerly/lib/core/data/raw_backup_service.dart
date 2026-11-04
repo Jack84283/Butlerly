@@ -10,6 +10,23 @@ import 'package:butlerly/core/evidence/evidence_mutation_lock.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common/sqlite_api.dart';
 
+/// The SQLite schema cannot be read by this Butlerly build.
+final class UnsupportedBackupSchemaException extends FormatException {
+  const UnsupportedBackupSchemaException()
+    : super('Unsupported SQLite backup schema version.');
+}
+
+/// A valid backup requires an app build that supports a newer SQLite schema.
+final class NewerBackupSchemaException extends UnsupportedBackupSchemaException {
+  const NewerBackupSchemaException({
+    required this.backupVersion,
+    required this.supportedVersion,
+  });
+
+  final int backupVersion;
+  final int supportedVersion;
+}
+
 /// Business-agnostic backup workflow.
 ///
 /// SQLite's VACUUM INTO produces a coherent database file without interpreting
@@ -139,9 +156,46 @@ final class RawBackupService {
         password: password,
         acceptedInnerFormats: const {_rawInnerFormat},
       );
-      return await _archive.inspect(plain);
+      // Validate schema compatibility before showing destructive Restore
+      // confirmation. Both encrypted archive and live DB remain unchanged.
+      final stage = Directory(path.join(temporary.path, 'inspection'));
+      final summary = await _archive.extract(
+        archive: plain,
+        stagingDirectory: stage,
+      );
+      await requireSupportedSchema(File(path.join(stage.path, 'butlerly.db')));
+      return summary;
     } finally {
       if (await temporary.exists()) await temporary.delete(recursive: true);
+    }
+  }
+
+  /// Read-only preflight shared by preview and the actual restore path.
+  /// An older valid schema may be migrated in staging. A newer schema requires
+  /// updating the installed app, never a live-database downgrade.
+  Future<void> requireSupportedSchema(File sqlite) async {
+    final current = database.persistenceDatabase;
+    final reader = await current.factory.openDatabase(
+      sqlite.path,
+      options: OpenDatabaseOptions(readOnly: true),
+    );
+    try {
+      final result = await reader.rawQuery('PRAGMA user_version');
+      if (result.length != 1 || result.single.values.single is! int) {
+        throw const UnsupportedBackupSchemaException();
+      }
+      final sourceVersion = result.single.values.single as int;
+      if (sourceVersion < 1) {
+        throw const UnsupportedBackupSchemaException();
+      }
+      if (sourceVersion > current.targetVersion) {
+        throw NewerBackupSchemaException(
+          backupVersion: sourceVersion,
+          supportedVersion: current.targetVersion,
+        );
+      }
+    } finally {
+      await reader.close();
     }
   }
 
