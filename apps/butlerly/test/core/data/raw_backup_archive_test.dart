@@ -159,30 +159,32 @@ void main() {
     );
   });
 
-  test('restore preview rejects damaged evidence and cleans staged SQLite',
-      () async {
-    final manager = const RawBackupArchive();
-    await manager.write(
-      sqliteSnapshot: sqlite,
-      evidenceDirectory: evidence,
-      referencedEvidencePaths: const ['receipts/one.jpg'],
-      destination: archive,
-    );
-    final bytes = await archive.readAsBytes();
-    bytes[bytes.length - 1] ^= 0xff;
-    await archive.writeAsBytes(bytes);
+  test(
+    'restore preview rejects damaged evidence and cleans staged SQLite',
+    () async {
+      final manager = const RawBackupArchive();
+      await manager.write(
+        sqliteSnapshot: sqlite,
+        evidenceDirectory: evidence,
+        referencedEvidencePaths: const ['receipts/one.jpg'],
+        destination: archive,
+      );
+      final bytes = await archive.readAsBytes();
+      bytes[bytes.length - 1] ^= 0xff;
+      await archive.writeAsBytes(bytes);
 
-    final staged = File(path.join(working.path, 'failed-preview.sqlite'));
-    await expectLater(
-      manager.inspectAndStageSqlite(
-        archive: archive,
-        sqliteDestination: staged,
-      ),
-      throwsA(isA<FormatException>()),
-    );
-    expect(await staged.exists(), isFalse);
-    expect(await sqlite.exists(), isTrue);
-  });
+      final staged = File(path.join(working.path, 'failed-preview.sqlite'));
+      await expectLater(
+        manager.inspectAndStageSqlite(
+          archive: archive,
+          sqliteDestination: staged,
+        ),
+        throwsA(isA<FormatException>()),
+      );
+      expect(await staged.exists(), isFalse);
+      expect(await sqlite.exists(), isTrue);
+    },
+  );
 
   test('missing optional evidence does not fail backup', () async {
     final archiveManager = const RawBackupArchive();
@@ -219,32 +221,35 @@ void main() {
     );
   });
 
-  test('extract verifies SQLite bytes without a preliminary full scan', () async {
-    final manager = const RawBackupArchive();
-    await manager.write(
-      sqliteSnapshot: sqlite,
-      evidenceDirectory: evidence,
-      referencedEvidencePaths: const ['receipts/one.jpg'],
-      destination: archive,
-    );
+  test(
+    'extract verifies SQLite bytes without a preliminary full scan',
+    () async {
+      final manager = const RawBackupArchive();
+      await manager.write(
+        sqliteSnapshot: sqlite,
+        evidenceDirectory: evidence,
+        referencedEvidencePaths: const ['receipts/one.jpg'],
+        destination: archive,
+      );
 
-    // Change a byte within the SQLite payload but preserve archive length and
-    // the manifest. The extraction itself must detect this corruption.
-    final bytes = await archive.readAsBytes();
-    const headerLength = 12 + 8 + 64;
-    final manifestLength = int64FromBytes(bytes.sublist(12, 20));
-    final payloadOffset = headerLength + manifestLength;
-    bytes[payloadOffset + 100] ^= 0xff;
-    await archive.writeAsBytes(bytes);
+      // Change a byte within the SQLite payload but preserve archive length and
+      // the manifest. The extraction itself must detect this corruption.
+      final bytes = await archive.readAsBytes();
+      const headerLength = 12 + 8 + 64;
+      final manifestLength = int64FromBytes(bytes.sublist(12, 20));
+      final payloadOffset = headerLength + manifestLength;
+      bytes[payloadOffset + 100] ^= 0xff;
+      await archive.writeAsBytes(bytes);
 
-    final staged = Directory(path.join(working.path, 'corrupt-sqlite'));
-    await expectLater(
-      manager.extract(archive: archive, stagingDirectory: staged),
-      throwsA(isA<FormatException>()),
-    );
-    expect(await staged.exists(), isFalse);
-    expect(await sqlite.exists(), isTrue);
-  });
+      final staged = Directory(path.join(working.path, 'corrupt-sqlite'));
+      await expectLater(
+        manager.extract(archive: archive, stagingDirectory: staged),
+        throwsA(isA<FormatException>()),
+      );
+      expect(await staged.exists(), isFalse);
+      expect(await sqlite.exists(), isTrue);
+    },
+  );
 
   test('extract verifies evidence bytes and cleans failed staging', () async {
     final manager = const RawBackupArchive();
