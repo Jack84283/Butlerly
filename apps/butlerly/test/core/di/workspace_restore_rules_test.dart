@@ -317,13 +317,19 @@ void main() {
         'conflicting.yaml': conflicting,
       });
       expect(installed.diagnostics, isEmpty);
+      final before = (await database.database.query(
+        'transactions',
+        where: 'id = ?',
+        whereArgs: ['restored-expense'],
+      )).single;
       final backup = File('${root.path}/conflicting.butlerlybackup');
       await services<WorkspaceDataService>().createPortableBackup(
         backup.path,
         password: backupPassword,
       );
-      await database.database.delete(
+      await database.database.update(
         'transactions',
+        {'amount_coefficient': '999999'},
         where: 'id = ?',
         whereArgs: ['restored-expense'],
       );
@@ -344,7 +350,13 @@ void main() {
         services<LocalBackupManager>().recoveryState.isRecoveryRequired,
         isFalse,
       );
-      expect(await database.database.query('transactions'), hasLength(1));
+      final restored = await database.database.query(
+        'transactions',
+        where: 'id = ?',
+        whereArgs: ['restored-expense'],
+      );
+      expect(restored, hasLength(1));
+      expect(restored.single['amount_coefficient'], before['amount_coefficient']);
       final persisted = (await rules.listDefinitions()).singleWhere(
         (rule) => rule.identity.value == 'ANL-R001',
       );
