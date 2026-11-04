@@ -75,6 +75,17 @@ class LocalDatabase {
     _logger.info('Local database initialized.');
   }
 
+  /// Reopens the same persistence object after a physical database replacement.
+  /// Repositories created by the dependency container retain this instance,
+  /// so constructing a new ButlerlyDatabase here would leave them stale.
+  Future<void> reopenActiveConnection() async {
+    final current = persistenceDatabase;
+    await current.close();
+    status = DatabaseStatus.notInitialized;
+    await current.open();
+    status = DatabaseStatus.ready;
+  }
+
   Future<void> reseedSystemData() => persistenceDatabase.seedSystemData();
 
   Future<void> close() async {
