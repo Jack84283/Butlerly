@@ -118,6 +118,7 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
       createdAtUtc: result.createdAtUtc,
       recordCount: result.recordCount,
       evidenceCount: result.attachmentCount,
+      missingEvidenceCount: result.missingAttachmentCount,
       // Raw snapshot inspection never interprets newer local financial rows.
       changes: const BackupChangeSummary(
         transactionsAdded: 0,
