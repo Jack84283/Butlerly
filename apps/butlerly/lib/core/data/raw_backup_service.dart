@@ -75,15 +75,12 @@ final class RawBackupService {
       );
       await _encryption.encrypt(plain, encrypted, password: password);
       final verification = File(path.join(working.path, 'verification'));
-      await _encryption.decrypt(
-        encrypted,
-        verification,
-        password: password,
-      );
+      await _encryption.decrypt(encrypted, verification, password: password);
       final verified = await _archive.inspect(verification);
       if (verified.sqliteBytes != inspection.sqliteBytes ||
           verified.attachmentCount != inspection.attachmentCount ||
-          verified.missingAttachmentCount != inspection.missingAttachmentCount) {
+          verified.missingAttachmentCount !=
+              inspection.missingAttachmentCount) {
         throw const FormatException('Encrypted backup verification failed.');
       }
       await _destinationWriter.publish(
