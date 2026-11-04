@@ -272,7 +272,9 @@ void main() {
       group.id,
       DuplicateCandidateGroupStatus.keepBoth,
     );
-    final backup = File('${exportDirectory.path}/resolved-duplicates.butlerlybackup');
+    final backup = File(
+      '${exportDirectory.path}/resolved-duplicates.butlerlybackup',
+    );
     await services<WorkspaceDataService>().createPortableBackup(
       backup.path,
       password: backupPassword,
