@@ -317,7 +317,7 @@ void main() {
         'conflicting.yaml': conflicting,
       });
       expect(installed.diagnostics, isEmpty);
-      final backup = File('\${root.path}/conflicting.butlerlybackup');
+      final backup = File('${root.path}/conflicting.butlerlybackup');
       await services<WorkspaceDataService>().createPortableBackup(
         backup.path,
         password: backupPassword,
