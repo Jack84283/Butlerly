@@ -46,6 +46,24 @@ void main() {
     ),
   );
 
+  testWidgets('missing attachments remain visible in a localized warning',
+      (tester) async {
+    await tester.pumpWidget(app(locale: const Locale('zh')));
+    await tester.pumpAndSettle();
+    final context = tester.element(find.byType(PrivacyDataPage));
+    final dialog = showBackupMissingEvidenceDialog(
+      context,
+      missingAttachmentCount: 2,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('备份缺少部分附件'), findsOneWidget);
+    expect(find.textContaining('2 个'), findsOneWidget);
+    expect(find.textContaining('无法找回'), findsOneWidget);
+    await tester.tap(find.text('知道了'));
+    await tester.pumpAndSettle();
+    await dialog;
+  });
+
   test('Backup messages distinguish phase, cause, and recovery risk', () {
     expect(
       classifyBackupFailure(const BackupPasswordTooShortException()),
