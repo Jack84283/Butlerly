@@ -356,10 +356,9 @@ Future<void> showBackupMissingEvidenceDialog(
     return ButlerlySheet(
       title: Text(l10n.backupText('backupMissingEvidenceTitle')),
       content: Text(
-        l10n.backupText('backupMissingEvidenceBody').replaceAll(
-          '{count}',
-          '$missingAttachmentCount',
-        ),
+        l10n
+            .backupText('backupMissingEvidenceBody')
+            .replaceAll('{count}', '$missingAttachmentCount'),
       ),
       actions: [
         FilledButton(
@@ -544,10 +543,9 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
   Future<void> _warnAboutMissingAttachments(BackupCreationResult backup) async {
     if (!mounted || !backup.hasMissingAttachments) return;
     _infoToast(
-      context.l10n.backupText('backupMissingEvidenceToast').replaceAll(
-        '{count}',
-        '${backup.missingAttachmentCount}',
-      ),
+      context.l10n
+          .backupText('backupMissingEvidenceToast')
+          .replaceAll('{count}', '${backup.missingAttachmentCount}'),
     );
     await showBackupMissingEvidenceDialog(
       context,
@@ -655,10 +653,8 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
 
     setState(() => _busy = true);
     try {
-      final backup = await services<WorkspaceDataService>().createPortableBackup(
-        location.path,
-        password: password,
-      );
+      final backup = await services<WorkspaceDataService>()
+          .createPortableBackup(location.path, password: password);
       if (mounted) {
         if (backup.hasMissingAttachments) {
           await _warnAboutMissingAttachments(backup);
@@ -683,10 +679,8 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     String? filePath;
     var sharingStarted = false;
     try {
-      final temporary = await services<WorkspaceDataService>().createTemporaryBackup(
-        fileName,
-        password: password,
-      );
+      final temporary = await services<WorkspaceDataService>()
+          .createTemporaryBackup(fileName, password: password);
       filePath = temporary.filePath;
       if (!mounted) return;
 
