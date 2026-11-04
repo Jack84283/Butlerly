@@ -804,10 +804,7 @@ void main() {
         where: 'id = ?',
         whereArgs: ['original'],
       );
-      final data = LocalDataManager(
-        database,
-        localEvidenceDirectory: evidence,
-      );
+      final data = LocalDataManager(database, localEvidenceDirectory: evidence);
       final manager = LocalBackupManager(database, data);
       final journal = File(
         path.join(databaseDirectory.path, '.raw-restore-journal.json'),
