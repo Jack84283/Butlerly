@@ -306,10 +306,7 @@ void main() {
         onStage: (stage) async {
           if (stage == 'restore write barrier entered') {
             sawFence = true;
-            expect(
-              () => database.database,
-              throwsA(isA<Exception>()),
-            );
+            expect(() => database.database, throwsA(isA<Exception>()));
             expect(
               () => database.persistenceDatabase.connection,
               throwsA(isA<Exception>()),
@@ -469,9 +466,11 @@ void main() {
           'id': 'orphan-in-source',
           'parent_id': 'shared-id',
         });
-        await source.delete('orphan_parent', where: 'id = ?', whereArgs: [
-          'shared-id',
-        ]);
+        await source.delete(
+          'orphan_parent',
+          where: 'id = ?',
+          whereArgs: ['shared-id'],
+        );
         final orphans = await source.rawQuery('PRAGMA foreign_key_check');
         expect(orphans, isNotEmpty);
       } finally {
@@ -493,10 +492,11 @@ void main() {
         innerFormat: 'butlerly-raw-backup',
       );
       await expectLater(
-        RawMergeService(database, backups, restores).restoreMerge(
-          encrypted,
-          password: 'correct horse battery staple',
-        ),
+        RawMergeService(
+          database,
+          backups,
+          restores,
+        ).restoreMerge(encrypted, password: 'correct horse battery staple'),
         throwsA(
           isA<FormatException>().having(
             (error) => error.message,
