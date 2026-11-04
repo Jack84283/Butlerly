@@ -5,6 +5,7 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -48,11 +49,24 @@ final class _FinancialProfilePageState
   void initState() {
     super.initState();
     _editing = widget.onboarding;
+    workspaceRestoreChanges.addListener(_onWorkspaceRestored);
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  void _onWorkspaceRestored() {
+    if (!mounted) return;
+    // A physical Replace or Merge can change the profile and every option
+    // cached by this page. Discard a stale draft before loading the new rows.
+    setState(() {
+      _editing = widget.onboarding;
+      _step = 0;
+    });
+    _load();
   }
 
   @override
   void dispose() {
+    workspaceRestoreChanges.removeListener(_onWorkspaceRestored);
     _targetController.dispose();
     super.dispose();
   }
