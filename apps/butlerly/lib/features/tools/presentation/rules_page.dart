@@ -8,6 +8,7 @@ import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/desktop/presentation/desktop_transaction_detail_split_view.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -28,6 +29,25 @@ class _RulesPageState extends State<RulesPage> {
   late Future<_RuleData> _data = _load();
   String? _selectedDesktopRuleId;
   bool _desktopEditing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    workspaceRestoreChanges.addListener(_onWorkspaceRestored);
+  }
+
+  @override
+  void dispose() {
+    workspaceRestoreChanges.removeListener(_onWorkspaceRestored);
+    super.dispose();
+  }
+
+  void _onWorkspaceRestored() {
+    if (!mounted) return;
+    _selectedDesktopRuleId = null;
+    _desktopEditing = false;
+    _refresh();
+  }
 
   bool get _isDesktop =>
       effectiveButlerlyLayoutMode(context, MediaQuery.sizeOf(context).width) ==
