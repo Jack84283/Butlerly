@@ -647,7 +647,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           children: [
             _SettingsRow(
               icon: Icons.privacy_tip_outlined,
-              title: context.l10n.text('privacyAndData'),
+              title: context.l10n.text('managePrivacyData'),
               subtitle: context.l10n.text('privacyAndDataBody'),
               onTap: () => context.go('/privacy-data'),
             ),
