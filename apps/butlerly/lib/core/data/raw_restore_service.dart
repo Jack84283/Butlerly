@@ -119,6 +119,10 @@ final class RawRestoreService {
     File encryptedArchive, {
     required String password,
     Future<void> Function(String stage)? onStage,
+    Future<RawBackupInspection> Function(
+      Directory staging,
+      RawBackupInspection inspection,
+    )? prepareStaging,
   }) => EvidenceMutationLock.runExclusive(() async {
     final liveDatabase = File(database.persistenceDatabase.path);
     final evidenceDirectory = await backup.data.evidenceDirectory();
@@ -146,6 +150,9 @@ final class RawRestoreService {
         password: password,
         stagingDirectory: staging,
       );
+      final result = prepareStaging == null
+          ? inspection
+          : await prepareStaging(staging, inspection);
       final snapshot = File(path.join(staging.path, 'butlerly.db'));
       await _validatePhysicalSqlite(snapshot);
 
@@ -222,7 +229,7 @@ final class RawRestoreService {
           .delete(); // durable success: rollback copies remain until then
       journalWritten = false;
       committed = true;
-      return inspection;
+      return result;
     } catch (error, stack) {
       if (journalWritten) {
         try {
