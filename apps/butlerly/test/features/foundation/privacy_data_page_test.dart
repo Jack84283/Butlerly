@@ -79,6 +79,16 @@ void main() {
       ]) {
         expect(find.byKey(ValueKey(key)), findsOneWidget);
       }
+      expect(
+        find.byKey(const ValueKey('desktop-privacy-restore-merge')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('desktop-privacy-restore-replace')),
+        findsOneWidget,
+      );
+      expect(find.text('Merge backup'), findsOneWidget);
+      expect(find.text('Replace from backup'), findsOneWidget);
       expect(find.text('Backup & Recovery'), findsOneWidget);
       expect(find.text('Data Export'), findsOneWidget);
       expect(find.text('Data Management'), findsOneWidget);
@@ -115,6 +125,14 @@ void main() {
       findsNothing,
     );
     expect(find.text('Local data controls'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('mobile-privacy-restore-merge')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('mobile-privacy-restore-replace')),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 
