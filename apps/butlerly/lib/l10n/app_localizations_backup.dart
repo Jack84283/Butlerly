@@ -47,6 +47,11 @@ const _backupStrings = <String, Map<String, String>>{
         'Encrypted backup created, decrypted for verification, and saved to the selected location. Keep your backup password separately; Butlerly cannot recover it.',
     'backupSharedVerified':
         'Encrypted backup created and verified. The share destination reported success; confirm the file was actually saved there. The temporary Butlerly copy is removed.',
+    'backupMissingEvidenceTitle': 'Some attachments are missing from this backup',
+    'backupMissingEvidenceToast':
+        'Backup saved with {count} missing attachments. Review the details.',
+    'backupMissingEvidenceBody':
+        'The encrypted backup was verified, but {count} referenced receipt or statement files were not available and are not in the archive. This backup cannot recover those files. Keep the current data and other copies of your evidence, and verify the saved backup destination. Do not delete older backups.',
     'backupShareDismissed':
         'Sharing was canceled. No saved backup was confirmed. The temporary copy was removed; start Backup again when ready.',
     'backupFailureTitle': 'Unable to create backup',
@@ -270,6 +275,11 @@ const _backupStrings = <String, Map<String, String>>{
         'Copia cifrada creada, descifrada para su verificación y guardada en la ubicación elegida. Guarda la contraseña por separado: Butlerly no puede recuperarla.',
     'backupSharedVerified':
         'Copia cifrada creada y verificada. El destino para compartir informó éxito; confirma que el archivo se guardó allí. La copia temporal se elimina.',
+    'backupMissingEvidenceTitle': 'Faltan archivos adjuntos en esta copia',
+    'backupMissingEvidenceToast':
+        'Copia guardada con {count} archivos adjuntos faltantes. Revise los detalles.',
+    'backupMissingEvidenceBody':
+        'La copia cifrada se verificó, pero {count} archivos de recibos o extractos referenciados no estaban disponibles y no se incluyeron. Esta copia no puede recuperarlos. Conserve sus datos actuales y otras copias de los documentos, verifique el destino y no elimine las copias anteriores.',
     'backupShareDismissed':
         'Se canceló el envío. No se confirmó ninguna copia guardada. Se eliminó la copia temporal; inicia una nueva copia cuando quieras.',
     'backupFailureTitle': 'No se pudo crear la copia',
@@ -492,6 +502,10 @@ const _backupStrings = <String, Map<String, String>>{
         '加密备份已创建，通过解密校验，并保存至所选位置。请另行妥善保存备份密码；Butlerly 无法找回密码。',
     'backupSharedVerified':
         '加密备份已创建并校验完成。分享目标报告成功；请自行确认文件已在目标位置保存。Butlerly 的临时副本将被清理。',
+    'backupMissingEvidenceTitle': '备份缺少部分附件',
+    'backupMissingEvidenceToast': '备份已保存，但有 {count} 个附件缺失。请查看详情。',
+    'backupMissingEvidenceBody':
+        '加密备份已通过验证，但有 {count} 个关联的收据或对账单文件无法读取，因此未包含在备份中。恢复此备份无法找回这些文件。请保留当前数据和其他原始附件副本，确认备份保存位置，并勿删除旧备份。',
     'backupShareDismissed': '分享已取消，无法确认备份已保存。临时副本已清理；需要时请重新执行备份。',
     'backupFailureTitle': '无法创建备份',
     'backupFailureStageLabel': '失败步骤',
