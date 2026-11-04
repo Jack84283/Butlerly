@@ -109,8 +109,9 @@ void main() {
     expect(stored?.answeredQuestionCount, 0);
   });
 
-  testWidgets('mounted profile refreshes when workspace restore completes',
-      (tester) async {
+  testWidgets('mounted profile refreshes when workspace restore completes', (
+    tester,
+  ) async {
     await tester.pumpWidget(app());
     await _pumpUntilVisible(
       tester,
