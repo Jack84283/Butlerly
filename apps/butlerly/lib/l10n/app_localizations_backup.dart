@@ -27,6 +27,12 @@ const _backupStrings = <String, Map<String, String>>{
     'backup': 'Back up Butlerly',
     'backupSubtitle': 'Create one encrypted portable local backup file.',
     'restoreBackup': 'Restore backup',
+    'restoreMerge': 'Merge backup',
+    'restoreReplace': 'Replace from backup',
+    'mergeSubtitle': 'Import missing records while keeping existing local records.',
+    'mergeTitle': 'Merge Butlerly backup?',
+    'mergeBody':
+        'Records already on this device are kept. Missing records and available attachments from the backup are added. If identities or attachment paths cannot be merged safely, no changes are applied. Test with a separate backup of your current data.',
     'restoreSubtitle': 'Replace local data from an encrypted Butlerly backup.',
     'backupComplete': 'Encrypted backup created successfully.',
     'backupFailed': 'Backup could not be created.',
@@ -95,6 +101,12 @@ const _backupStrings = <String, Map<String, String>>{
     'backup': 'Crear copia de Butlerly',
     'backupSubtitle': 'Crea un archivo de copia local portátil y cifrado.',
     'restoreBackup': 'Restaurar copia',
+    'restoreMerge': 'Combinar copia de seguridad',
+    'restoreReplace': 'Reemplazar desde una copia',
+    'mergeSubtitle': 'Importa registros faltantes y conserva los datos locales existentes.',
+    'mergeTitle': '¿Combinar la copia de Butlerly?',
+    'mergeBody':
+        'Se conservarán los registros existentes en este dispositivo. Se añadirán los registros faltantes y los archivos disponibles de la copia. Si hay conflictos que no se pueden resolver con seguridad, no se aplicarán cambios. Cree otra copia de sus datos actuales antes de probar.',
     'restoreSubtitle':
         'Reemplaza los datos locales desde una copia cifrada de Butlerly.',
     'backupComplete': 'La copia cifrada se creó correctamente.',
@@ -165,6 +177,12 @@ const _backupStrings = <String, Map<String, String>>{
     'backup': '备份 Butlerly',
     'backupSubtitle': '创建一个加密且可跨设备使用的本地备份文件。',
     'restoreBackup': '恢复备份',
+    'restoreMerge': '合并备份',
+    'restoreReplace': '从备份替换',
+    'mergeSubtitle': '导入缺失记录，同时保留本机已有记录。',
+    'mergeTitle': '合并 Butlerly 备份？',
+    'mergeBody':
+        '本机已有的记录将保留，并导入备份中的缺失记录及可用附件。如存在无法安全合并的记录或附件路径冲突，则不会应用更改。测试前请另外备份当前数据。',
     'restoreSubtitle': '从加密的 Butlerly 备份替换本地数据。',
     'backupComplete': '加密备份创建成功。',
     'backupFailed': '无法创建备份。',
