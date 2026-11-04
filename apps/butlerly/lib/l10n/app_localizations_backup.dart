@@ -37,6 +37,73 @@ const _backupStrings = <String, Map<String, String>>{
     'restoreSubtitle': 'Replace local data from an encrypted Butlerly backup.',
     'backupComplete': 'Encrypted backup created successfully.',
     'backupFailed': 'Backup could not be created.',
+    'backupSavedVerified':
+        'Encrypted backup created, decrypted for verification, and saved to the selected location. Keep your backup password separately; Butlerly cannot recover it.',
+    'backupSharedVerified':
+        'Encrypted backup created and verified. The share destination reported success; confirm the file was actually saved there. The temporary Butlerly copy is removed.',
+    'backupShareDismissed':
+        'Sharing was canceled. No saved backup was confirmed. The temporary copy was removed; start Backup again when ready.',
+    'backupFailureTitle': 'Unable to create backup',
+    'backupFailureStageLabel': 'Step that failed',
+    'backupStageSnapshot': 'SQLite snapshot',
+    'backupStageInventory': 'Read record and attachment references',
+    'backupStagePackaging': 'Package SQLite and attachment files',
+    'backupStageEncryption': 'Encrypt backup',
+    'backupStageVerification': 'Verify encrypted archive',
+    'backupStagePublication': 'Save backup to destination',
+    'backupStageSharing': 'Share temporary backup',
+    'backupFailurePasswordPolicyReason':
+        'The backup password does not meet the minimum length requirement.',
+    'backupFailurePasswordPolicyAction':
+        'Use at least 12 characters and confirm the same password in both fields.',
+    'backupFailureDatabaseUnavailableReason':
+        'Butlerly could not create or read a consistent local SQLite snapshot.',
+    'backupFailureDatabaseUnavailableAction':
+        'Keep the existing database. Close competing operations and retry; if it repeats, report the error without changing or deleting local data.',
+    'backupFailureDatabaseBusyReason':
+        'The local database is busy, so the backup snapshot could not be completed safely.',
+    'backupFailureDatabaseBusyAction':
+        'Finish any running imports or edits, close other Butlerly windows, then retry.',
+    'backupFailureDatabaseIntegrityReason':
+        'SQLite reported an integrity problem while creating the backup.',
+    'backupFailureDatabaseIntegrityAction':
+        'Do not overwrite any existing backup. Preserve the database and run a separate read-only integrity check before retrying.',
+    'backupFailureStorageFullReason':
+        'There was not enough free storage to prepare or save the encrypted backup.',
+    'backupFailureStorageFullAction':
+        'Free storage space without deleting Butlerly data or existing backups. Backup needs space for a snapshot and temporary encrypted files.',
+    'backupFailureFileAccessReason':
+        'Butlerly could not read a source file or write to the selected destination. Storage permissions or file availability may be responsible.',
+    'backupFailureFileAccessAction':
+        'Check the selected location and file permissions. Choose a writable local destination and retry; leave the original data and existing backups untouched.',
+    'backupFailureEvidenceReason':
+        'An attachment path, filename, or source file could not be packaged safely. The backup was not published.',
+    'backupFailureEvidenceAction':
+        'Preserve all attachments. Check for inaccessible or unsafe filenames and retry; do not remove receipts to force a backup.',
+    'backupFailureEvidenceChangedReason':
+        'A source database or attachment file changed while Butlerly was assembling the backup.',
+    'backupFailureEvidenceChangedAction':
+        'Finish imports, scans, or edits and retry when files are stable. Keep the source files unchanged.',
+    'backupFailureVerificationReason':
+        'The encrypted backup failed its post-creation integrity verification. It was not accepted as a valid completed backup.',
+    'backupFailureVerificationAction':
+        'Do not rely on the failed file. Keep the current database and retry at another local destination; report repeated failures.',
+    'backupFailurePublicationReason':
+        'The encrypted archive was prepared, but Butlerly could not confirm it was saved to the chosen destination.',
+    'backupFailurePublicationAction':
+        'Check destination permissions and available space. Preserve any existing backup at that location and retry using a different filename.',
+    'backupFailurePublicationRecoveryReason':
+        'Saving the backup or rolling back a previous destination did not finish safely. A recovery copy may be preserved, and the destination state needs review.',
+    'backupFailurePublicationRecoveryAction':
+        'Do not overwrite or delete the destination or Butlerly recovery files. Use the app\'s recovery flow or obtain help before retrying publication.',
+    'backupFailureShareFailureReason':
+        'Butlerly prepared the temporary encrypted backup, but the platform share operation failed or could not confirm delivery.',
+    'backupFailureShareFailureAction':
+        'Try another share destination or save to local Files if available. The temporary copy is removed after the attempt, so create a new backup.',
+    'backupFailureUnknownReason':
+        'An unexpected error prevented Butlerly from completing and confirming the backup. A saved backup must not be assumed.',
+    'backupFailureUnknownAction':
+        'Keep all existing data and backups. Check storage and file access, then retry with a different destination; report repeated failures.',
     'restoreFailed': 'Backup could not be restored.',
     'restoreFailureTitle': 'Unable to restore backup',
     'restoreFailureReasonLabel': 'Reason',
@@ -187,6 +254,73 @@ const _backupStrings = <String, Map<String, String>>{
         'Reemplaza los datos locales desde una copia cifrada de Butlerly.',
     'backupComplete': 'La copia cifrada se creó correctamente.',
     'backupFailed': 'No se pudo crear la copia.',
+    'backupSavedVerified':
+        'Copia cifrada creada, descifrada para su verificación y guardada en la ubicación elegida. Guarda la contraseña por separado: Butlerly no puede recuperarla.',
+    'backupSharedVerified':
+        'Copia cifrada creada y verificada. El destino para compartir informó éxito; confirma que el archivo se guardó allí. La copia temporal se elimina.',
+    'backupShareDismissed':
+        'Se canceló el envío. No se confirmó ninguna copia guardada. Se eliminó la copia temporal; inicia una nueva copia cuando quieras.',
+    'backupFailureTitle': 'No se pudo crear la copia',
+    'backupFailureStageLabel': 'Paso en el que falló',
+    'backupStageSnapshot': 'Instantánea de SQLite',
+    'backupStageInventory': 'Lectura de registros y referencias',
+    'backupStagePackaging': 'Empaquetado de SQLite y archivos',
+    'backupStageEncryption': 'Cifrado de la copia',
+    'backupStageVerification': 'Verificación de la copia cifrada',
+    'backupStagePublication': 'Guardado de la copia',
+    'backupStageSharing': 'Compartir la copia temporal',
+    'backupFailurePasswordPolicyReason':
+        'La contraseña de la copia no cumple la longitud mínima.',
+    'backupFailurePasswordPolicyAction':
+        'Usa al menos 12 caracteres y confirma la misma contraseña en ambos campos.',
+    'backupFailureDatabaseUnavailableReason':
+        'Butlerly no pudo crear o leer una instantánea SQLite consistente.',
+    'backupFailureDatabaseUnavailableAction':
+        'Conserva la base de datos actual. Cierra otras operaciones y vuelve a intentarlo; si persiste, informa del fallo sin borrar datos.',
+    'backupFailureDatabaseBusyReason':
+        'La base de datos está ocupada y no se pudo completar la instantánea de forma segura.',
+    'backupFailureDatabaseBusyAction':
+        'Termina las importaciones o ediciones y cierra otras ventanas de Butlerly antes de reintentar.',
+    'backupFailureDatabaseIntegrityReason':
+        'SQLite informó de un problema de integridad al crear la copia.',
+    'backupFailureDatabaseIntegrityAction':
+        'No sobrescribas ninguna copia. Conserva la base de datos y realiza una comprobación de integridad de solo lectura.',
+    'backupFailureStorageFullReason':
+        'No había espacio libre suficiente para preparar o guardar la copia cifrada.',
+    'backupFailureStorageFullAction':
+        'Libera espacio sin borrar datos ni copias existentes. La operación necesita espacio para la instantánea y archivos cifrados temporales.',
+    'backupFailureFileAccessReason':
+        'Butlerly no pudo leer un archivo de origen o escribir en el destino elegido. Puede deberse a permisos o disponibilidad.',
+    'backupFailureFileAccessAction':
+        'Comprueba la ubicación y los permisos. Elige una carpeta local con acceso de escritura y vuelve a intentarlo; conserva tus datos.',
+    'backupFailureEvidenceReason':
+        'No se pudo empaquetar con seguridad la ruta, nombre o archivo de un adjunto. La copia no se publicó.',
+    'backupFailureEvidenceAction':
+        'Conserva todos los adjuntos. Comprueba nombres o archivos inaccesibles y vuelve a intentar; no borres recibos para forzar la copia.',
+    'backupFailureEvidenceChangedReason':
+        'La base de datos o un adjunto cambió durante la preparación de la copia.',
+    'backupFailureEvidenceChangedAction':
+        'Termina importaciones, escaneos o ediciones y vuelve a intentar cuando los archivos estén estables.',
+    'backupFailureVerificationReason':
+        'La copia cifrada falló la comprobación de integridad posterior a su creación. No se consideró una copia válida.',
+    'backupFailureVerificationAction':
+        'No confíes en el archivo fallido. Conserva la base de datos e inténtalo en otra ubicación local; informa si se repite.',
+    'backupFailurePublicationReason':
+        'La copia cifrada se preparó, pero Butlerly no pudo confirmar que se guardó en el destino elegido.',
+    'backupFailurePublicationAction':
+        'Comprueba permisos y espacio disponible. Conserva cualquier copia existente y vuelve a intentarlo con otro nombre.',
+    'backupFailurePublicationRecoveryReason':
+        'El guardado o la reversión de la copia anterior no terminó con seguridad. Puede haber una copia de recuperación conservada.',
+    'backupFailurePublicationRecoveryAction':
+        'No sobrescribas ni borres el destino o los archivos de recuperación. Usa la recuperación de la app o busca ayuda antes de reintentar.',
+    'backupFailureShareFailureReason':
+        'Butlerly preparó la copia temporal cifrada, pero el sistema no pudo completar o confirmar el envío.',
+    'backupFailureShareFailureAction':
+        'Prueba otro destino o guarda en Archivos si está disponible. La copia temporal se elimina después; crea otra copia.',
+    'backupFailureUnknownReason':
+        'Un error inesperado impidió completar y confirmar la copia. No se debe suponer que se guardó.',
+    'backupFailureUnknownAction':
+        'Conserva los datos y las copias existentes. Comprueba almacenamiento y permisos, cambia de destino e informa si se repite.',
     'restoreFailed': 'No se pudo restaurar la copia.',
     'restoreFailureTitle': 'No se puede restaurar la copia',
     'restoreFailureReasonLabel': 'Motivo',
@@ -336,6 +470,52 @@ const _backupStrings = <String, Map<String, String>>{
     'restoreSubtitle': '从加密的 Butlerly 备份替换本地数据。',
     'backupComplete': '加密备份创建成功。',
     'backupFailed': '无法创建备份。',
+    'backupSavedVerified':
+        '加密备份已创建，通过解密校验，并保存至所选位置。请另行妥善保存备份密码；Butlerly 无法找回密码。',
+    'backupSharedVerified':
+        '加密备份已创建并校验完成。分享目标报告成功；请自行确认文件已在目标位置保存。Butlerly 的临时副本将被清理。',
+    'backupShareDismissed': '分享已取消，无法确认备份已保存。临时副本已清理；需要时请重新执行备份。',
+    'backupFailureTitle': '无法创建备份',
+    'backupFailureStageLabel': '失败步骤',
+    'backupStageSnapshot': 'SQLite 数据库快照',
+    'backupStageInventory': '读取记录与附件引用',
+    'backupStagePackaging': '打包 SQLite 与附件',
+    'backupStageEncryption': '加密备份',
+    'backupStageVerification': '验证加密归档',
+    'backupStagePublication': '将备份保存至目标位置',
+    'backupStageSharing': '分享临时备份',
+    'backupFailurePasswordPolicyReason': '备份密码未达到最低长度要求。',
+    'backupFailurePasswordPolicyAction': '请使用至少 12 个字符，并确保两次输入一致。',
+    'backupFailureDatabaseUnavailableReason':
+        'Butlerly 无法创建或读取一致的本地 SQLite 快照。',
+    'backupFailureDatabaseUnavailableAction':
+        '请保留现有数据库，关闭并行操作后重试。如持续失败，请报告问题，勿修改或删除本地数据。',
+    'backupFailureDatabaseBusyReason': '本地数据库正被占用，无法安全完成快照。',
+    'backupFailureDatabaseBusyAction': '完成正在运行的导入或编辑，关闭其他 Butlerly 窗口后重试。',
+    'backupFailureDatabaseIntegrityReason': '创建备份时 SQLite 报告数据库完整性问题。',
+    'backupFailureDatabaseIntegrityAction': '请勿覆盖已有备份。保留数据库，并先进行独立的只读完整性检查。',
+    'backupFailureStorageFullReason': '可用存储空间不足，无法准备或保存加密备份。',
+    'backupFailureStorageFullAction':
+        '请释放存储空间，但勿删除 Butlerly 数据或现有备份。备份需要快照和临时加密文件的空间。',
+    'backupFailureFileAccessReason': 'Butlerly 无法读取源文件或写入所选位置。可能是权限或文件可访问性问题。',
+    'backupFailureFileAccessAction': '请检查目标位置与文件权限，选择可写入的本地位置重试，并保留原始数据及已有备份。',
+    'backupFailureEvidenceReason': '某个附件的路径、文件名或源文件无法安全打包，备份未发布。',
+    'backupFailureEvidenceAction': '请保留全部附件，检查不可访问文件或不安全文件名后重试；不要通过删除收据来强制备份。',
+    'backupFailureEvidenceChangedReason': 'Butlerly 打包时源数据库或附件发生了变化。',
+    'backupFailureEvidenceChangedAction': '请完成导入、扫描或编辑，待文件稳定后重试。保留原始文件。',
+    'backupFailureVerificationReason': '新建加密备份未通过完成后的完整性验证，不能视为有效备份。',
+    'backupFailureVerificationAction': '请勿依赖失败文件。保留当前数据库，尝试其他本地位置；如多次失败，请报告。',
+    'backupFailurePublicationReason': '加密备份已准备好，但 Butlerly 无法确认是否成功保存至所选位置。',
+    'backupFailurePublicationAction': '请检查目标权限与存储空间。保留该位置的现有备份，并使用其他文件名重试。',
+    'backupFailurePublicationRecoveryReason':
+        '保存备份或回滚原目标文件未能安全完成。可能保留有恢复副本，需要检查目标状态。',
+    'backupFailurePublicationRecoveryAction':
+        '请勿覆盖或删除目标文件及 Butlerly 恢复文件。先使用应用内恢复流程或寻求帮助，再尝试保存。',
+    'backupFailureShareFailureReason': 'Butlerly 已准备临时加密备份，但系统分享操作失败或无法确认已交付。',
+    'backupFailureShareFailureAction':
+        '请尝试其他分享目标，或在可用时存储至本地“文件”。临时副本会在操作后删除，需要重新创建备份。',
+    'backupFailureUnknownReason': '发生意外错误，Butlerly 未能完成并确认备份。请勿假定文件已成功保存。',
+    'backupFailureUnknownAction': '请保留现有数据和备份，检查存储与权限，换个位置重试；如持续失败，请报告。',
     'restoreFailed': '无法恢复备份。',
     'restoreFailureTitle': '无法恢复备份',
     'restoreFailureReasonLabel': '失败原因',
