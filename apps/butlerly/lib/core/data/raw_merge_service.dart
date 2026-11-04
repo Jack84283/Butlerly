@@ -9,6 +9,12 @@ import 'package:butlerly_database/butlerly_database.dart' show sha256FileRange;
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common/sqlite_api.dart';
 
+typedef _DatabaseRevision = ({
+  int totalChanges,
+  int dataVersion,
+  int schemaVersion,
+});
+
 /// Non-destructive, local-wins import from a raw SQLite backup.
 ///
 /// Every mutation takes place on a disposable snapshot of the local database.
@@ -34,13 +40,46 @@ final class RawMergeService {
   Future<RawBackupInspection> restoreMerge(
     File encryptedArchive, {
     required String password,
-  }) => restores.restoreReplace(
-    encryptedArchive,
-    password: password,
-    // The callback runs inside the same exclusive evidence lock as activation.
-    prepareStaging: (staging, inspection) =>
-        _mergeIntoStaging(staging, inspection),
-  );
+    Future<void> Function(String stage)? onStage,
+  }) {
+    _DatabaseRevision? sourceRevision;
+    return restores.restoreReplace(
+      encryptedArchive,
+      password: password,
+      onStage: onStage,
+      // Take the baseline inside the exclusive operation, just before the
+      // disposable local snapshot is made, not before waiting for the lock.
+      prepareStaging: (staging, inspection) async {
+        sourceRevision = await _liveDatabaseRevision();
+        return _mergeIntoStaging(staging, inspection);
+      },
+      beforeActivation: () async {
+        if (sourceRevision == null ||
+            sourceRevision != await _liveDatabaseRevision()) {
+          throw StateError(
+            'Live database changed during Merge; retry with a new backup. '
+            'No local data was replaced.',
+          );
+        }
+      },
+    );
+  }
+
+  /// Detect commits on the application's existing connection (total_changes)
+  /// and on other SQLite connections (data_version), including schema edits.
+  /// The application consistency gate blocks normal use-case writes; this is
+  /// an additional fail-closed guard for uncoordinated writers during staging.
+  Future<_DatabaseRevision> _liveDatabaseRevision() async {
+    final live = database.database;
+    final changes = await live.rawQuery('SELECT total_changes() AS total');
+    final version = await live.rawQuery('PRAGMA data_version');
+    final schema = await live.rawQuery('PRAGMA schema_version');
+    return (
+      totalChanges: changes.single['total'] as int,
+      dataVersion: version.single.values.single as int,
+      schemaVersion: schema.single.values.single as int,
+    );
+  }
 
   Future<RawBackupInspection> _mergeIntoStaging(
     Directory staging,
