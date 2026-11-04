@@ -47,6 +47,8 @@ const _backupStrings = <String, Map<String, String>>{
         'Encrypted backup created, decrypted for verification, and saved to the selected location. Keep your backup password separately; Butlerly cannot recover it.',
     'backupSharedVerified':
         'Encrypted backup created and verified. The share destination reported success; confirm the file was actually saved there. The temporary Butlerly copy is removed.',
+    'restoreMissingEvidenceWarning':
+        'Warning: {count} referenced original attachments were missing when this backup was created. Merge or Replace cannot recover those files. Keep any separate original copies and older backups.',
     'backupMissingEvidenceTitle':
         'Some attachments are missing from this backup',
     'backupMissingEvidenceToast':
@@ -276,6 +278,8 @@ const _backupStrings = <String, Map<String, String>>{
         'Copia cifrada creada, descifrada para su verificación y guardada en la ubicación elegida. Guarda la contraseña por separado: Butlerly no puede recuperarla.',
     'backupSharedVerified':
         'Copia cifrada creada y verificada. El destino para compartir informó éxito; confirma que el archivo se guardó allí. La copia temporal se elimina.',
+    'restoreMissingEvidenceWarning':
+        'Aviso: faltaban {count} archivos adjuntos originales cuando se creó esta copia. Fusionar o reemplazar no puede recuperarlos. Conserve las copias originales separadas y las copias de seguridad anteriores.',
     'backupMissingEvidenceTitle': 'Faltan archivos adjuntos en esta copia',
     'backupMissingEvidenceToast':
         'Copia guardada con {count} archivos adjuntos faltantes. Revise los detalles.',
@@ -503,6 +507,8 @@ const _backupStrings = <String, Map<String, String>>{
         '加密备份已创建，通过解密校验，并保存至所选位置。请另行妥善保存备份密码；Butlerly 无法找回密码。',
     'backupSharedVerified':
         '加密备份已创建并校验完成。分享目标报告成功；请自行确认文件已在目标位置保存。Butlerly 的临时副本将被清理。',
+    'restoreMissingEvidenceWarning':
+        '注意：创建此备份时有 {count} 个原始附件缺失。合并或替换无法找回这些文件。请保留单独保存的原始附件和旧备份。',
     'backupMissingEvidenceTitle': '备份缺少部分附件',
     'backupMissingEvidenceToast': '备份已保存，但有 {count} 个附件缺失。请查看详情。',
     'backupMissingEvidenceBody':
