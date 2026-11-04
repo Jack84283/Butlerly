@@ -125,9 +125,8 @@ void main() {
       ),
     );
     expect(await destination.exists(), isFalse);
-    expect(await database.database.rawQuery('PRAGMA integrity_check'), [
-      {'integrity_check': 'ok'},
-    ]);
+    final integrity = await database.database.rawQuery('PRAGMA integrity_check');
+    expect(integrity.single.values.single, 'ok');
   });
 
   test('incorrect password cannot produce staged files', () async {
