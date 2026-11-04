@@ -2,15 +2,23 @@ import 'dart:io';
 
 import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
+import 'package:butlerly/core/data/raw_backup_service.dart';
+import 'package:butlerly/core/data/raw_restore_service.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
 /// Local adapter for application-owned privacy and recovery operations.
 final class LocalWorkspaceDataGateway implements LocalDataGateway {
-  const LocalWorkspaceDataGateway(this.backups, this.data);
+  LocalWorkspaceDataGateway(this.backups, this.data) {
+    _rawBackups = RawBackupService(data.database, data);
+    _rawRestores = RawRestoreService(data.database, _rawBackups);
+  }
+
   final LocalBackupManager backups;
   final LocalDataManager data;
+  late final RawBackupService _rawBackups;
+  late final RawRestoreService _rawRestores;
 
   @override
   bool get hasRecoverySafetyCopy =>
@@ -21,7 +29,7 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
     String destination, {
     required String password,
   }) async {
-    await backups.createPortableBackup(File(destination), password: password);
+    await _rawBackups.createBackup(File(destination), password: password);
   }
 
   @override
@@ -38,7 +46,7 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
     final directory = await getTemporaryDirectory();
     final file = File(path.join(directory.path, path.basename(fileName)));
     try {
-      await backups.createPortableBackup(file, password: password);
+      await _rawBackups.createBackup(file, password: password);
       return file.path;
     } catch (_) {
       await discardTemporaryBackup(file.path);
@@ -61,8 +69,24 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
       backups.isEncryptedBackup(File(filePath));
 
   @override
-  Future<BackupInspection> inspect(String filePath, {String? password}) =>
-      backups.inspect(File(filePath), password: password);
+  Future<BackupInspection> inspect(String filePath, {String? password}) async {
+    if (password == null || password.isEmpty) {
+      throw const BackupPasswordRequiredException();
+    }
+    final result = await _rawBackups.inspect(File(filePath), password: password);
+    return BackupInspection(
+      createdAtUtc: result.createdAtUtc,
+      recordCount: result.recordCount,
+      evidenceCount: result.attachmentCount,
+      // Raw snapshot inspection never interprets newer local financial rows.
+      changes: const BackupChangeSummary(
+        transactionsAdded: 0,
+        transactionsChanged: 0,
+        masterDataChanged: 0,
+        deletedEntities: 0,
+      ),
+    );
+  }
 
   @override
   Future<LocalRestoreResult> restore(
@@ -70,12 +94,27 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
     required LocalRestoreMode mode,
     String? password,
     required Future<void> Function() postActivationRefresh,
-  }) => backups.restore(
-    File(filePath),
-    mode: mode,
-    password: password,
-    postActivationRefresh: postActivationRefresh,
-  );
+  }) async {
+    if (mode != LocalRestoreMode.replace) {
+      throw UnsupportedError('Merge restore is not available.');
+    }
+    if (password == null || password.isEmpty) {
+      throw const BackupPasswordRequiredException();
+    }
+    final result = await _rawRestores.restoreReplace(
+      File(filePath),
+      password: password,
+    );
+    // The old postActivationRefresh callback installs and validates analysis
+    // rules. Do not run business validation as part of restoring raw files.
+    // WorkspaceDataService refreshes presentation state after this returns.
+    return LocalRestoreResult(
+      mode: mode,
+      restoredRows: result.recordCount,
+      keptNewerLocalRows: 0,
+      restoredEvidence: result.attachmentCount,
+    );
+  }
 
   @override
   Future<LocalDataExportResult> exportAll() async {
