@@ -55,11 +55,25 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byIcon(CupertinoIcons.archivebox), findsOneWidget);
+      // The additional Merge action may push later actions below the fold.
+      // Scroll until each action is built instead of assuming all are visible.
+      await tester.scrollUntilVisible(
+        find.byIcon(CupertinoIcons.arrow_counterclockwise),
+        180,
+      );
       expect(
         find.byIcon(CupertinoIcons.arrow_counterclockwise),
         findsOneWidget,
       );
+      await tester.scrollUntilVisible(
+        find.byIcon(CupertinoIcons.arrow_down_doc),
+        180,
+      );
       expect(find.byIcon(CupertinoIcons.arrow_down_doc), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.byIcon(CupertinoIcons.trash),
+        180,
+      );
       expect(find.byIcon(CupertinoIcons.trash), findsOneWidget);
       expect(find.byIcon(Icons.backup_outlined), findsNothing);
     },
