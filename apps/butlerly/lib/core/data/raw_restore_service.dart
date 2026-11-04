@@ -243,8 +243,10 @@ final class RawRestoreService {
       // Reuse the same ButlerlyDatabase object held by app repositories.
       // On open SQLite applies its normal schema setup, not semantic checks.
       await database.reopenActiveConnection();
-      final check = await database.persistenceDatabase
-          .restoreActivationConnection.rawQuery('PRAGMA integrity_check');
+      final check = await database
+          .persistenceDatabase
+          .restoreActivationConnection
+          .rawQuery('PRAGMA integrity_check');
       if (check.length != 1 || check.single.values.single != 'ok') {
         throw StateError('Restored SQLite file failed physical integrity.');
       }
