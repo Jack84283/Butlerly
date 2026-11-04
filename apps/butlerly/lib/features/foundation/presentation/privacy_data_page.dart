@@ -5,6 +5,7 @@ import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/components/butlerly_toast.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -103,15 +104,8 @@ RestoreFailureKind classifyRestoreFailure(Object error) {
   return RestoreFailureKind.unknown;
 }
 
-/// Explain the specific known failure and a safe next step without exposing
-/// encrypted paths, passwords, database rows or raw exception stack traces.
-@visibleForTesting
-Future<void> showBackupRestoreFailureDialog(
-  BuildContext context, {
-  required Object error,
-}) async {
-  final kind = classifyRestoreFailure(error);
-  final suffix = switch (kind) {
+String restoreFailureSuffix(RestoreFailureKind kind) {
+  return switch (kind) {
     RestoreFailureKind.authentication => 'Authentication',
     RestoreFailureKind.missingPassword => 'MissingPassword',
     RestoreFailureKind.unsupportedFormat => 'UnsupportedFormat',
@@ -125,6 +119,17 @@ Future<void> showBackupRestoreFailureDialog(
     RestoreFailureKind.recovery => 'Recovery',
     RestoreFailureKind.unknown => 'Unknown',
   };
+}
+
+/// Explain the specific known failure and a safe next step without exposing
+/// encrypted paths, passwords, database rows or raw exception stack traces.
+@visibleForTesting
+Future<void> showBackupRestoreFailureDialog(
+  BuildContext context, {
+  required Object error,
+}) async {
+  final kind = classifyRestoreFailure(error);
+  final suffix = restoreFailureSuffix(kind);
   await showButlerlyBottomSheet<void>(
     context: context,
     builder: (sheetContext) {
@@ -250,15 +255,8 @@ BackupFailureKind classifyBackupFailure(Object error) {
   return BackupFailureKind.unknown;
 }
 
-/// The archive may be safely verified but not yet published. Only the stage
-/// and localized advice are shown, never raw exception text or private paths.
-@visibleForTesting
-Future<void> showBackupCreationFailureDialog(
-  BuildContext context, {
-  required Object error,
-}) async {
-  final kind = classifyBackupFailure(error);
-  final suffix = switch (kind) {
+String backupFailureSuffix(BackupFailureKind kind) {
+  return switch (kind) {
     BackupFailureKind.passwordPolicy => 'PasswordPolicy',
     BackupFailureKind.databaseUnavailable => 'DatabaseUnavailable',
     BackupFailureKind.databaseBusy => 'DatabaseBusy',
@@ -273,6 +271,17 @@ Future<void> showBackupCreationFailureDialog(
     BackupFailureKind.shareFailure => 'ShareFailure',
     BackupFailureKind.unknown => 'Unknown',
   };
+}
+
+/// The archive may be safely verified but not yet published. Only the stage
+/// and localized advice are shown, never raw exception text or private paths.
+@visibleForTesting
+Future<void> showBackupCreationFailureDialog(
+  BuildContext context, {
+  required Object error,
+}) async {
+  final kind = classifyBackupFailure(error);
+  final suffix = backupFailureSuffix(kind);
   final stage = error is BackupCreationException ? error.stage : null;
   final stageKey = switch (stage) {
     BackupCreationStage.snapshot => 'backupStageSnapshot',
@@ -502,6 +511,84 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       (defaultTargetPlatform == TargetPlatform.iOS ||
           defaultTargetPlatform == TargetPlatform.android);
 
+  void _successToast(String message) => ButlerlyToast.success(context, message);
+
+  void _infoToast(String message) => ButlerlyToast.info(context, message);
+
+  void _backupErrorToast(Object error) {
+    final l10n = context.l10n;
+    final summary = l10n.backupText(
+      'backupFailure${backupFailureSuffix(classifyBackupFailure(error))}Reason',
+    );
+    ButlerlyToast.error(
+      context,
+      summary,
+      detailsLabel: l10n.backupText('toastDetails'),
+      closeLabel: l10n.backupText('toastClose'),
+      onDetails: () {
+        if (mounted) {
+          showBackupCreationFailureDialog(context, error: error);
+        }
+      },
+    );
+  }
+
+  void _restoreErrorToast(Object error) {
+    final l10n = context.l10n;
+    final summary = error is NewerBackupSchemaException
+        ? l10n
+              .backupText('upgradeAppRequiredBody')
+              .replaceAll('{backupVersion}', '${error.backupVersion}')
+              .replaceAll('{supportedVersion}', '${error.supportedVersion}')
+        : l10n.backupText(
+            'restoreFailure${restoreFailureSuffix(classifyRestoreFailure(error))}Reason',
+          );
+    ButlerlyToast.error(
+      context,
+      summary,
+      detailsLabel: l10n.backupText('toastDetails'),
+      closeLabel: l10n.backupText('toastClose'),
+      onDetails: () {
+        if (!mounted) return;
+        if (error is NewerBackupSchemaException) {
+          showBackupRequiresAppUpdateDialog(
+            context,
+            backupVersion: error.backupVersion,
+            supportedVersion: error.supportedVersion,
+          );
+        } else {
+          showBackupRestoreFailureDialog(context, error: error);
+        }
+      },
+    );
+  }
+
+  void _otherErrorToast(String message, String advice) {
+    final l10n = context.l10n;
+    ButlerlyToast.error(
+      context,
+      message,
+      detailsLabel: l10n.backupText('toastDetails'),
+      closeLabel: l10n.backupText('toastClose'),
+      onDetails: () {
+        if (!mounted) return;
+        showButlerlyBottomSheet<void>(
+          context: context,
+          builder: (sheetContext) => ButlerlySheet(
+            title: Text(message),
+            content: Text(advice),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.pop(sheetContext),
+                child: Text(sheetContext.l10n.backupText('toastClose')),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _backup() async {
     final timestamp = DateTime.now().toUtc().toIso8601String().replaceAll(
       ':',
@@ -532,10 +619,10 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         location.path,
         password: password,
       );
-      if (mounted) _message(context.l10n.backupText('backupSavedVerified'));
+      if (mounted) _successToast(context.l10n.backupText('backupSavedVerified'));
     } catch (error) {
       if (mounted) {
-        await showBackupCreationFailureDialog(context, error: error);
+        _backupErrorToast(error);
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -572,14 +659,13 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
             ),
           );
       if (mounted && result.status == share.ShareResultStatus.success) {
-        _message(context.l10n.backupText('backupSharedVerified'));
+        _successToast(context.l10n.backupText('backupSharedVerified'));
       } else if (mounted &&
           result.status == share.ShareResultStatus.dismissed) {
-        _message(context.l10n.backupText('backupShareDismissed'));
+        _infoToast(context.l10n.backupText('backupShareDismissed'));
       } else if (mounted) {
-        await showBackupCreationFailureDialog(
-          context,
-          error: BackupCreationException(
+        _backupErrorToast(
+          BackupCreationException(
             stage: BackupCreationStage.sharing,
             cause: StateError('Share operation did not complete.'),
           ),
@@ -587,9 +673,8 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       }
     } catch (error) {
       if (mounted) {
-        await showBackupCreationFailureDialog(
-          context,
-          error: sharingStarted
+        _backupErrorToast(
+          sharingStarted
               ? BackupCreationException(
                   stage: BackupCreationStage.sharing,
                   cause: error,
@@ -615,9 +700,8 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     try {
       if (!await manager.isEncryptedBackup(file)) {
         if (mounted) {
-          await showBackupRestoreFailureDialog(
-            context,
-            error: const FormatException('Not an encrypted Butlerly backup.'),
+          _restoreErrorToast(
+            const FormatException('Not an encrypted Butlerly backup.'),
           );
         }
         return;
@@ -647,24 +731,20 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       final summary = context.l10n
           .backupText('restoreResult')
           .replaceAll('{restored}', '${result.restoredRows}');
-      _message(
+      _successToast(
         '${context.l10n.backupText('restoreComplete')} $summary'
         '${result.presentationRefreshFailed ? ' ${context.l10n.text('restoreRefreshWarning')}' : ''}',
       );
     } on NewerBackupSchemaException catch (error) {
       if (mounted) {
-        await showBackupRequiresAppUpdateDialog(
-          context,
-          backupVersion: error.backupVersion,
-          supportedVersion: error.supportedVersion,
-        );
+        _restoreErrorToast(error);
       }
     } on RestoreRecoveryRequiredException {
       // RestoreRecoveryState immediately replaces normal navigation with the
       // recovery-only surface. Do not add a competing generic dialog here.
     } catch (error) {
       if (mounted) {
-        await showBackupRestoreFailureDialog(context, error: error);
+        _restoreErrorToast(error);
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -842,7 +922,12 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         ),
       );
     } catch (_) {
-      if (mounted) _message(context.l10n.text('exportFailed'));
+      if (mounted) {
+        _otherErrorToast(
+          context.l10n.text('exportFailed'),
+          context.l10n.backupText('toastExportFailedDetails'),
+        );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -876,17 +961,18 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           notifyTransactionChanged();
         },
       );
-      if (mounted) _message(context.l10n.text('eraseComplete'));
+      if (mounted) _successToast(context.l10n.text('eraseComplete'));
     } catch (_) {
-      if (mounted) _message(context.l10n.text('eraseFailed'));
+      if (mounted) {
+        _otherErrorToast(
+          context.l10n.text('eraseFailed'),
+          context.l10n.backupText('toastEraseFailedDetails'),
+        );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
-
-  void _message(String value) => ScaffoldMessenger.of(
-    context,
-  ).showSnackBar(SnackBar(content: Text(value)));
 
   Widget _desktopPrivacyPage(BuildContext context) {
     final l10n = context.l10n;
