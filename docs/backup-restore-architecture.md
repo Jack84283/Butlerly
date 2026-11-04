@@ -115,6 +115,34 @@ replacement passes functional tests. Do not preserve two competing engines
 in the completed implementation; do not delete shared components needed by
 other features.
 
+## Legacy-file dependency audit (PR #396)
+
+A legacy filename does **not** imply an unused file. The following files
+remain referenced by installed-app startup, publication rollback, or recovery
+logic, so their deletion is **blocked until recovery is migrated and proven**:
+
+| File | Current consumer / reason to retain | Action |
+| --- | --- | --- |
+| `local_backup_manager.dart` | Dependency injection, app startup recovery, portable publication recovery, and controlled restore recovery | Rewrite/split after recovery parity |
+| `local_backup_engine.dart` | Still called by `local_backup_manager.dart` for legacy backup inspection, safety-copy restore, and controlled recovery | Retain until no recovery dependency |
+| `local_backup_snapshot_writer.dart` | Still writes old-format pre-restore safety copies from the manager | Retain until safety-copy workflow migrated |
+| `backup_container_format.dart` | Old persisted-backup protocol used by manager/engine/writer | Retain until legacy recovery resolved |
+| `duplicate_group_backup_policy.dart` | Imported by engine and old snapshot writer | Retain with dependent files |
+| `local_restore_recovery.dart` | Rollback recovery for interrupted legacy restore | Retain until proven unnecessary |
+| `staged_evidence_restore_reconciliation.dart` | Used by restore recovery and legacy engine to preserve evidence | Retain |
+| `backup_destination_writer.dart`, `backup_encryption.dart`, `evidence_path_safety.dart` | Shared by new raw backup and existing publication/recovery paths | Keep |
+| `backup_publication_recovery_state.dart`, `restore_recovery_state.dart` | Active startup/UI recovery state | Keep |
+
+The new raw backup/restore services and their regression tests are active,
+not unused. Database schema/migration SQL and historical backup files are
+permanently protected from cleanup.
+
+**Safe retirement gate:** complete raw Replace/Merge and interrupted-operation
+tests on disposable data; preserve the ability to recover existing legacy
+safety copies; update all production imports and startup/UI recovery paths;
+then remove the superseded engine, snapshot writer, schema constants and tests
+*in one focused, verified change*. Do not drop tests merely to make CI green.
+
 ## Definition of done
 
 A new encrypted Butlerly backup restores all original financial records and
