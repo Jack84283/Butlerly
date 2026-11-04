@@ -299,7 +299,8 @@ void main() {
     expect(find.text('财务设置'), findsOneWidget);
     expect(find.text('预算设置'), findsOneWidget);
     expect(find.text('财务档案'), findsOneWidget);
-    expect(find.text('备份与恢复'), findsOneWidget);
+    expect(find.text('管理隐私和数据'), findsOneWidget);
+    expect(find.text('备份与恢复'), findsNothing);
   });
 
   testWidgets('display-name sheet saves and can reopen without crashing', (
