@@ -82,7 +82,7 @@ class LocalDatabase {
     final current = persistenceDatabase;
     await current.close();
     status = DatabaseStatus.notInitialized;
-    await current.open();
+    await current.open(seedSystemDataOnOpen: false);
     status = DatabaseStatus.ready;
   }
 
