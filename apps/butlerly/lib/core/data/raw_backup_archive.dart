@@ -159,7 +159,9 @@ final class RawBackupArchive {
   }) async {
     await rejectSymlinkedPath(sqliteDestination.path);
     if (await sqliteDestination.exists()) {
-      throw const FileSystemException('SQLite inspection target already exists.');
+      throw const FileSystemException(
+        'SQLite inspection target already exists.',
+      );
     }
     try {
       return await _inspect(archive, sqliteDestination: sqliteDestination);
