@@ -38,6 +38,8 @@ final class ButlerlyDatabase {
   Database? _database;
   bool _restoreActivationActive = false;
 
+  bool get isRestoreActivationActive => _restoreActivationActive;
+
   /// Fence application repositories while Restore physically swaps SQLite.
   /// This complements AnalysisConsistencyGate: normal callers must not begin
   /// additional work on the old database after its final revision check.
