@@ -470,6 +470,26 @@ Future<bool> showBackupRestoreConfirmation(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text('$summary\n$created'),
+                      if (inspection.hasMissingEvidence) ...[
+                        const SizedBox(height: ButlerlySpacing.small),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.warning_amber_rounded, size: 20),
+                            const SizedBox(width: ButlerlySpacing.small),
+                            Expanded(
+                              child: Text(
+                                l10n
+                                    .backupText('restoreMissingEvidenceWarning')
+                                    .replaceAll(
+                                      '{count}',
+                                      '${inspection.missingEvidenceCount}',
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: ButlerlySpacing.standard),
                       Text(explanation),
                       if (replace) ...[
