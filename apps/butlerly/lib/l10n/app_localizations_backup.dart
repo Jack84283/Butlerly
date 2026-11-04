@@ -38,6 +38,8 @@ const _backupStrings = <String, Map<String, String>>{
     'backupComplete': 'Encrypted backup created successfully.',
     'backupFailed': 'Backup could not be created.',
     'restoreFailed': 'Backup could not be restored.',
+    'unsupportedBackupSchema':
+        'This backup uses a SQLite schema that this Butlerly version cannot restore. Your data has not been changed.',
     'restoreTitle': 'Restore Butlerly backup?',
     'backupCreatedAt': 'Created {date}',
     'newerData':
@@ -114,6 +116,8 @@ const _backupStrings = <String, Map<String, String>>{
     'backupComplete': 'La copia cifrada se creó correctamente.',
     'backupFailed': 'No se pudo crear la copia.',
     'restoreFailed': 'No se pudo restaurar la copia.',
+    'unsupportedBackupSchema':
+        'Esta copia usa un esquema SQLite que esta versión de Butlerly no puede restaurar. Sus datos no se han modificado.',
     'restoreTitle': '¿Restaurar la copia de Butlerly?',
     'backupCreatedAt': 'Creada el {date}',
     'newerData':
@@ -189,6 +193,7 @@ const _backupStrings = <String, Map<String, String>>{
     'backupComplete': '加密备份创建成功。',
     'backupFailed': '无法创建备份。',
     'restoreFailed': '无法恢复备份。',
+    'unsupportedBackupSchema': '此备份使用当前 Butlerly 版本无法恢复的 SQLite 数据库结构。您的本机数据未被修改。'
     'restoreTitle': '恢复 Butlerly 备份？',
     'backupCreatedAt': '创建时间：{date}',
     'newerData': '此设备包含较新的本地数据。替换会丢弃当前 Butlerly 数据并准确恢复备份。',
