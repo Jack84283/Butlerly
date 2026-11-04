@@ -109,6 +109,12 @@ final class RawMergeService {
         }
       }
 
+      // Local-wins on primary keys is not sufficient for imported children:
+      // their backup foreign keys may now point to a different local entity.
+      // Reject those ambiguous joins rather than silently reassigning receipts,
+      // transactions, or statements to a changed merchant/category/source.
+      await _rejectConflictingReferencedIdentities(connection, tables);
+
       await connection.transaction((tx) async {
         // Defer physical foreign keys until all parent/child tables have been
         // imported. Unlike the previous engine, there is no rule validation.
@@ -242,6 +248,82 @@ final class RawMergeService {
       attachmentCount: newFiles,
       missingAttachmentCount: inspection.missingAttachmentCount,
     );
+  }
+
+  /// Check references of rows that will be imported, before any merge writes.
+  /// Comparing all parent columns is intentionally conservative: even a
+  /// changed timestamp forces the user to resolve an ambiguous identity
+  /// instead of silently attaching an imported row to different local data.
+  Future<void> _rejectConflictingReferencedIdentities(
+    Database db,
+    Set<String> tables,
+  ) async {
+    for (final table in tables) {
+      final childKeys = await _primaryKey(db, table);
+      if (childKeys.isEmpty) continue; // the merge loop rejects this table
+      final sameChild = childKeys
+          .map((key) => 'localChild.${_quote(key)} IS b.${_quote(key)}')
+          .join(' AND ');
+      final foreignKeys = await db.rawQuery(
+        'PRAGMA main.foreign_key_list(${_quote(table)})',
+      );
+      final byConstraint = <int, List<Map<String, Object?>>>{};
+      for (final reference in foreignKeys) {
+        final id = reference['id'] as int;
+        byConstraint.putIfAbsent(id, () => []).add(reference);
+      }
+      for (final references in byConstraint.values) {
+        if (references.length != 1) {
+          throw FormatException(
+            'Cannot merge $table with an unverified composite reference.',
+          );
+        }
+        final reference = references.single;
+        final parent = reference['table'] as String;
+        final from = reference['from'] as String;
+        if (!tables.contains(parent)) continue;
+        final specified = reference['to'] as String?;
+        final parentKeys = await _primaryKey(db, parent);
+        final to = specified != null && specified.isNotEmpty
+            ? specified
+            : (parentKeys.length == 1 ? parentKeys.single : null);
+        if (to == null) {
+          throw FormatException(
+            'Cannot merge $table: the referenced parent key is ambiguous.',
+          );
+        }
+        final localColumns = await _tableColumns(db, 'main', parent);
+        final sourceColumns = await _tableColumns(db, 'archived', parent);
+        if (localColumns.length != sourceColumns.length ||
+            !localColumns.every(sourceColumns.contains)) {
+          throw FormatException(
+            'Cannot merge $table: referenced parent columns differ.',
+          );
+        }
+        final changedParent = localColumns
+            .map(
+              (column) =>
+                  'NOT (localParent.${_quote(column)} IS '
+                  'backupParent.${_quote(column)})',
+            )
+            .join(' OR ');
+        final conflicting = await db.rawQuery(
+          'SELECT 1 FROM archived.${_quote(table)} b '
+          'JOIN archived.${_quote(parent)} backupParent '
+          'ON backupParent.${_quote(to)} IS b.${_quote(from)} '
+          'JOIN main.${_quote(parent)} localParent '
+          'ON localParent.${_quote(to)} IS backupParent.${_quote(to)} '
+          'WHERE NOT EXISTS (SELECT 1 FROM main.${_quote(table)} localChild '
+          'WHERE $sameChild) AND ($changedParent) LIMIT 1',
+        );
+        if (conflicting.isNotEmpty) {
+          throw FormatException(
+            'Cannot merge $table: a referenced $parent identity differs '
+            'between the backup and local data.',
+          );
+        }
+      }
+    }
   }
 
   Future<Set<String>> _loadTables(Database db) async {
