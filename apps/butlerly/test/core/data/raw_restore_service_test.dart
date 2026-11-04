@@ -169,8 +169,9 @@ void main() {
     // evidence directory. Nothing in the backup identifies the source device.
     final targetDirectory = Directory(path.join(root.path, 'destination-db'))
       ..createSync(recursive: true);
-    final targetEvidence = Directory(path.join(root.path, 'destination-evidence'))
-      ..createSync(recursive: true);
+    final targetEvidence = Directory(
+      path.join(root.path, 'destination-evidence'),
+    )..createSync(recursive: true);
     final target = LocalDatabase(
       logger: AppLogger(),
       factory: databaseFactoryFfi,
