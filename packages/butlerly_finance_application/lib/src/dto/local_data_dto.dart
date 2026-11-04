@@ -66,6 +66,7 @@ final class LocalRestoreResult {
     required this.keptNewerLocalRows,
     required this.restoredEvidence,
     this.preservesUnresolvedReferences = false,
+    this.unresolvedReferenceKeys = const [],
     this.presentationRefreshFailed = false,
     this.analysisRebuildFailed = false,
     this.warnings = const [],
@@ -80,6 +81,12 @@ final class LocalRestoreResult {
   /// are unavailable. The standalone data-integrity report remains the owner
   /// of explaining those relationships.
   final bool preservesUnresolvedReferences;
+
+  /// Foreign-key violations observed in the restored archive while its
+  /// unresolved-reference policy was active. Restore validation uses these
+  /// stable keys as the archive-backed allowlist; newly introduced violations
+  /// remain fatal.
+  final List<String> unresolvedReferenceKeys;
 
   /// The database restore succeeded, but the non-critical UI refresh failed.
   /// Do not report this as a failed data restore or try to restore again.

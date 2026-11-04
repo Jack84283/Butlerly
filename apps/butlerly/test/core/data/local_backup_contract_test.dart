@@ -35,6 +35,7 @@ void main() {
     expect(manifest['appVersion'], '1.0.0');
     expect(manifest['appBuild'], '1');
     expect(manifest['schemaVersion'], 18);
+    expect(manifest['sourceHash'], isA<String>());
     expect(manifest['referencePolicy'], 'preserve-unresolved');
   });
 
@@ -924,6 +925,7 @@ void main() {
     await _rewriteBackupMetadata(backup, (metadata) {
       final manifest = (metadata['manifest']! as Map).cast<String, Object?>();
       manifest.remove('referencePolicy');
+      manifest.remove('sourceHash');
       manifest['warnings'] = [
         {
           'code': 'missing_referenced_record',
@@ -1610,7 +1612,7 @@ void main() {
           final tables = (metadata['tables']! as Map).cast<String, Object?>();
           final rows = (tables['transactions']! as List).cast<Map>();
           entry.value(rows.single.cast<String, Object?>());
-        });
+        }, preserveSourceHash: true);
 
         await expectLater(
           fixture.manager.restore(backup, mode: LocalRestoreMode.replace),
@@ -2848,8 +2850,9 @@ Future<void> _writeHistoricalSchema13Backup(File backup) async {
 
 Future<void> _rewriteBackupMetadata(
   File backup,
-  void Function(Map<String, Object?> metadata) mutate,
-) async {
+  void Function(Map<String, Object?> metadata) mutate, {
+  bool preserveSourceHash = false,
+}) async {
   final bytes = await backup.readAsBytes();
   final magic = utf8.encode('BUTLERLYBACKUP2');
   final metadataLength = int64FromBytes(
@@ -2861,6 +2864,11 @@ Future<void> _rewriteBackupMetadata(
       jsonDecode(utf8.decode(bytes.sublist(metadataStart, metadataEnd)))
           as Map<String, Object?>;
   mutate(metadata);
+  if (!preserveSourceHash) {
+    final manifest = (metadata['manifest']! as Map).cast<String, Object?>();
+    final tables = (metadata['tables']! as Map).cast<String, Object?>();
+    manifest['sourceHash'] = sha256Bytes(utf8.encode(jsonEncode(tables)));
+  }
   final encoded = utf8.encode(jsonEncode(metadata));
   await backup.writeAsBytes([
     ...magic,

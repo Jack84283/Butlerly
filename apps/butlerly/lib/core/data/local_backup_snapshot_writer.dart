@@ -388,6 +388,11 @@ final class LocalBackupSnapshotWriter {
         'createdAtUtc': createdAtUtc.toUtc().toIso8601String(),
         'recordCount': recordCount,
         'evidenceCount': evidence.length,
+        // Keep an archive-safety digest over the source tables so restore can
+        // distinguish unresolved references captured from SQLite from a
+        // modified current archive. This is integrity metadata, not a semantic
+        // relationship scan.
+        'sourceHash': sha256Bytes(utf8.encode(jsonEncode(tables))),
         // Backup creation preserves source rows even when optional references
         // are unresolved. Comprehensive relationship validation belongs to
         // DataIntegrityReportService, not this archive-safety path.

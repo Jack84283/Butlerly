@@ -672,6 +672,9 @@ Future<void> _rewriteBackupMetadata(
       jsonDecode(utf8.decode(bytes.sublist(metadataStart, metadataEnd)))
           as Map<String, Object?>;
   mutate(metadata);
+  final manifest = (metadata['manifest']! as Map).cast<String, Object?>();
+  final tables = (metadata['tables']! as Map).cast<String, Object?>();
+  manifest['sourceHash'] = sha256Bytes(utf8.encode(jsonEncode(tables)));
   final encoded = utf8.encode(jsonEncode(metadata));
   await backup.writeAsBytes([
     ...magic,

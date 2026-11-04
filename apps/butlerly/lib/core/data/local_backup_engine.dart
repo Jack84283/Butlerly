@@ -564,6 +564,7 @@ final class LocalBackupManager {
     var deletingActivated = false;
     var stagedDeletionUnresolved = false;
     var databaseCommitted = false;
+    var unresolvedReferenceKeys = <String>[];
     try {
       await rejectEvidenceRoot(
         deleting,
@@ -770,6 +771,11 @@ final class LocalBackupManager {
         // connection's foreign-key mode is therefore post-commit and must not
         // roll the live evidence tree back out of sync with SQLite.
         databaseCommitted = true;
+        if (preservesUnresolvedReferences) {
+          unresolvedReferenceKeys = _foreignKeyViolationKeys(
+            await database.database.rawQuery('PRAGMA foreign_key_check'),
+          );
+        }
       } finally {
         if (foreignKeysWereEnabled) {
           await _setForeignKeys(true);
@@ -815,6 +821,7 @@ final class LocalBackupManager {
           restoredEvidence: preparedEvidence.addedCount,
           warnings: package.warnings,
           preservesUnresolvedReferences: preservesUnresolvedReferences,
+          unresolvedReferenceKeys: unresolvedReferenceKeys,
         );
       }
     } catch (_) {
@@ -872,7 +879,19 @@ final class LocalBackupManager {
       restoredEvidence: preparedEvidence.addedCount,
       warnings: package.warnings,
       preservesUnresolvedReferences: preservesUnresolvedReferences,
+      unresolvedReferenceKeys: unresolvedReferenceKeys,
     );
+  }
+
+  List<String> _foreignKeyViolationKeys(
+    Iterable<Map<String, Object?>> violations,
+  ) {
+    final keys = {
+      for (final violation in violations)
+        '${violation['table']}|${violation['rowid']}|'
+            '${violation['parent']}|${violation['fkid']}',
+    }.toList()..sort();
+    return List.unmodifiable(keys);
   }
 
   Future<List<_PreparedTombstoneEvidence>> _stageTombstoneEvidence(
@@ -1115,6 +1134,24 @@ final class LocalBackupManager {
           sourceSchema > schemaVersion) {
         throw const FormatException(
           'Backup schema is not supported by this Butlerly build.',
+        );
+      }
+      final sourceHash = manifest['sourceHash'];
+      if (sourceSchema == schemaVersion &&
+          referencePolicy ==
+              BackupContainerFormat.preserveUnresolvedReferencesPolicy) {
+        if (sourceHash is! String || sourceHash.isEmpty) {
+          throw const FormatException(
+            'Backup source integrity metadata is missing.',
+          );
+        }
+      }
+      if (sourceSchema == schemaVersion &&
+          sourceHash is String &&
+          sourceHash.isNotEmpty &&
+          sourceHash != sha256Bytes(utf8.encode(jsonEncode(tables)))) {
+        throw const FormatException(
+          'Backup source data integrity validation failed.',
         );
       }
       final evidenceTypeById = <String, String>{};

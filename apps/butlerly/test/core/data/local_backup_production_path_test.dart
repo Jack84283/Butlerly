@@ -418,6 +418,43 @@ void main() {
         await database.database.query('transactions', orderBy: 'id'),
         beforeTransactions,
       );
+
+      final restoredEvidence = await database.database.query(
+        'evidence_items',
+        where: 'id LIKE ?',
+        whereArgs: ['backup-77-missing-evidence-%'],
+        orderBy: 'id',
+      );
+      expect(restoredEvidence, hasLength(77));
+      expect(
+        restoredEvidence.every(
+          (row) =>
+              row['local_file_name'] is String &&
+              (row['local_file_name']! as String).startsWith(
+                'receipts/missing-',
+              ),
+        ),
+        isTrue,
+      );
+      final restoredLinks = await database.database.query(
+        'attachment_links',
+        where: 'id LIKE ?',
+        whereArgs: ['backup-77-missing-link-%'],
+        orderBy: 'id',
+      );
+      expect(restoredLinks, hasLength(77));
+
+      final report = await services<DataIntegrityReportService>().runReport();
+      final missingEvidenceFindings = report.findings
+          .where((finding) => finding.code == 'missing_evidence_file')
+          .toList();
+      expect(missingEvidenceFindings, hasLength(77));
+      expect(
+        missingEvidenceFindings
+            .expand((finding) => finding.affectedRecords)
+            .where((record) => record.type == 'evidence'),
+        hasLength(77),
+      );
     },
   );
 
@@ -629,6 +666,12 @@ void main() {
       expect(created, isA<ApplicationSuccess<TransactionDto>>());
 
       await database.database.execute('PRAGMA foreign_keys = OFF');
+      await database.database.update(
+        'transactions',
+        {'category_id': 'backup-production-missing-category'},
+        where: 'id = ?',
+        whereArgs: ['backup-production-orphan-transaction'],
+      );
       await database.database.insert('attachment_links', {
         'id': 'backup-production-orphan-attachment',
         'transaction_id': 'backup-production-orphan-transaction',
@@ -671,7 +714,7 @@ void main() {
       expect(beforeReport, hasLength(1));
       expect(
         await database.database.rawQuery('PRAGMA foreign_key_check'),
-        isNotEmpty,
+        hasLength(2),
       );
 
       final report = await services<DataIntegrityReportService>().runReport();
@@ -683,6 +726,14 @@ void main() {
           (record) =>
               record.type == 'attachment' &&
               record.id == 'backup-production-orphan-attachment',
+        ),
+        isTrue,
+      );
+      expect(
+        finding.affectedRecords.any(
+          (record) =>
+              record.type == 'transaction' &&
+              record.id == 'backup-production-orphan-transaction',
         ),
         isTrue,
       );

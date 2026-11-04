@@ -573,9 +573,11 @@ final class LocalBackupManager {
       await _validateDatabase(
         staging.database.database,
         requireForeignKeys: !_allowsMissingReferencedRecords(stagedResult),
-        allowUnresolvedAttachmentReferences:
+        allowedUnresolvedReferenceKeys:
             stagedResult.preservesUnresolvedReferences &&
-            !allowLegacyUnresolvedReferences,
+                !allowLegacyUnresolvedReferences
+            ? stagedResult.unresolvedReferenceKeys
+            : null,
       );
 
       onStage?.call('pre-restore safety backup');
@@ -594,15 +596,14 @@ final class LocalBackupManager {
       );
       liveActivated = true;
       onStage?.call('post-activation validation and refresh');
-      final allowLegacyLiveReferences = _hasMissingReferencedRecordWarning(
-        liveResult,
-      );
       await _validateDatabase(
         database.database,
         requireForeignKeys: !_allowsMissingReferencedRecords(liveResult),
-        allowUnresolvedAttachmentReferences:
-            liveResult.preservesUnresolvedReferences &&
-            !allowLegacyLiveReferences,
+        allowedUnresolvedReferenceKeys:
+            stagedResult.preservesUnresolvedReferences &&
+                !allowLegacyUnresolvedReferences
+            ? stagedResult.unresolvedReferenceKeys
+            : null,
       );
       await _validateLiveEvidenceReferences();
       var analysisRebuildFailed = false;
@@ -630,6 +631,7 @@ final class LocalBackupManager {
         keptNewerLocalRows: liveResult.keptNewerLocalRows,
         restoredEvidence: liveResult.restoredEvidence,
         preservesUnresolvedReferences: liveResult.preservesUnresolvedReferences,
+        unresolvedReferenceKeys: liveResult.unresolvedReferenceKeys,
         warnings: liveResult.warnings,
         analysisRebuildFailed: analysisRebuildFailed,
       );
@@ -946,6 +948,11 @@ final class LocalBackupManager {
       await _validateDatabase(
         database.database,
         requireForeignKeys: !_allowsMissingReferencedRecords(restored),
+        allowedUnresolvedReferenceKeys:
+            restored.preservesUnresolvedReferences &&
+                !_hasMissingReferencedRecordWarning(restored)
+            ? restored.unresolvedReferenceKeys
+            : null,
       );
       await _validateLiveEvidenceReferences();
       await _recoverStagedEvidenceBeforeClearing();
@@ -1076,7 +1083,7 @@ final class LocalBackupManager {
   Future<void> _validateDatabase(
     DatabaseExecutor db, {
     bool requireForeignKeys = true,
-    bool allowUnresolvedAttachmentReferences = false,
+    List<String>? allowedUnresolvedReferenceKeys,
   }) async {
     final integrity = await db.rawQuery('PRAGMA integrity_check');
     final integrityValue = integrity.isEmpty
@@ -1086,13 +1093,16 @@ final class LocalBackupManager {
       throw StateError('Restored database failed SQLite integrity validation.');
     }
 
-    if (!requireForeignKeys && !allowUnresolvedAttachmentReferences) return;
+    if (!requireForeignKeys && allowedUnresolvedReferenceKeys == null) return;
     final foreignKeys = await db.rawQuery('PRAGMA foreign_key_check');
     if (foreignKeys.isNotEmpty &&
-        (!allowUnresolvedAttachmentReferences ||
+        (requireForeignKeys ||
+            allowedUnresolvedReferenceKeys == null ||
             foreignKeys.any(
-              (violation) =>
-                  !_isAllowedUnresolvedAttachmentReference(violation),
+              (violation) => !_isAllowedUnresolvedReference(
+                violation,
+                allowedUnresolvedReferenceKeys,
+              ),
             ))) {
       throw StateError(
         'Restored database contains broken foreign-key relationships.',
@@ -1100,12 +1110,17 @@ final class LocalBackupManager {
     }
   }
 
-  bool _isAllowedUnresolvedAttachmentReference(Map<String, Object?> violation) {
-    // A current archive may preserve an attachment link whose optional
-    // evidence row is unavailable. This is the narrow restore-safety exception
-    // for the archive policy; all other broken foreign keys remain fatal.
-    return violation['table'] == 'attachment_links' &&
-        violation['parent'] == 'evidence_items';
+  bool _isAllowedUnresolvedReference(
+    Map<String, Object?> violation,
+    List<String> allowedKeys,
+  ) {
+    // Current archives may preserve any unresolved source relationship. Only
+    // violations observed in the isolated archive restore are allowed through
+    // live validation; a new or altered violation remains fatal.
+    final key =
+        '${violation['table']}|${violation['rowid']}|'
+        '${violation['parent']}|${violation['fkid']}';
+    return allowedKeys.contains(key);
   }
 
   bool _hasMissingReferencedRecordWarning(LocalRestoreResult result) => result
