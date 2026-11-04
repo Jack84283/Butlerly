@@ -350,7 +350,8 @@ final class RawRestoreService {
   }
 
   Future<void> _validatePhysicalSqlite(File snapshot) async {
-    final factory = database.persistenceDatabase.factory;
+    final template = database.persistenceDatabase;
+    final factory = template.factory;
     final open = await factory.openDatabase(
       snapshot.path,
       options: OpenDatabaseOptions(readOnly: true),
@@ -358,7 +359,7 @@ final class RawRestoreService {
     try {
       final version = await open.rawQuery('PRAGMA user_version');
       if (version.isEmpty ||
-          version.first.values.single != ButlerlyDatabase.databaseVersion) {
+          version.first.values.single != template.targetVersion) {
         throw const FormatException(
           'Backup database schema is not supported by this app.',
         );
