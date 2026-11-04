@@ -28,6 +28,7 @@ final class RawBackupService {
   final BackupDestinationWriter _destinationWriter;
   final RawBackupArchive _archive = const RawBackupArchive();
   final BackupEncryption _encryption = const BackupEncryption();
+  static const _rawInnerFormat = 'butlerly-raw-backup';
 
   /// Creates and verifies an encrypted archive, then safely publishes it.
   /// Missing evidence is a warning, never a reason to repair SQLite records.
@@ -73,7 +74,12 @@ final class RawBackupService {
         referencedEvidencePaths: references,
         destination: plain,
       );
-      await _encryption.encrypt(plain, encrypted, password: password);
+      await _encryption.encrypt(
+        plain,
+        encrypted,
+        password: password,
+        innerFormat: _rawInnerFormat,
+      );
       final verification = File(path.join(working.path, 'verification'));
       await _encryption.decrypt(encrypted, verification, password: password);
       final verified = await _archive.inspect(verification);
@@ -115,7 +121,12 @@ final class RawBackupService {
     final temporary = await _privateTemporaryDirectory();
     try {
       final plain = File(path.join(temporary.path, 'payload'));
-      await _encryption.decrypt(encryptedFile, plain, password: password);
+      await _encryption.decrypt(
+        encryptedFile,
+        plain,
+        password: password,
+        acceptedInnerFormats: const {_rawInnerFormat},
+      );
       return await _archive.inspect(plain);
     } finally {
       if (await temporary.exists()) await temporary.delete(recursive: true);
@@ -132,7 +143,12 @@ final class RawBackupService {
     final temporary = await _privateTemporaryDirectory();
     try {
       final plain = File(path.join(temporary.path, 'payload'));
-      await _encryption.decrypt(encryptedFile, plain, password: password);
+      await _encryption.decrypt(
+        encryptedFile,
+        plain,
+        password: password,
+        acceptedInnerFormats: const {_rawInnerFormat},
+      );
       return await _archive.extract(
         archive: plain,
         stagingDirectory: stagingDirectory,
