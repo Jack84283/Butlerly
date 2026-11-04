@@ -12,7 +12,7 @@ import 'package:butlerly/core/data/raw_restore_service.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart'
-    show NewerBackupSchemaException;
+    show NewerBackupSchemaException, RestoreRecoveryRequiredException;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -786,6 +786,76 @@ void main() {
         ).exists(),
         isFalse,
       );
+    },
+  );
+
+  test(
+    'uncertain physical rollback locks the workspace until restart recovery',
+    () async {
+      await setProbe('archived');
+      final archive = File(path.join(root.path, 'rollback-gate.butlerly'));
+      await backups.createBackup(
+        archive,
+        password: 'correct horse battery staple',
+      );
+      await database.database.update(
+        'restore_probe',
+        {'value': 'original-must-survive'},
+        where: 'id = ?',
+        whereArgs: ['original'],
+      );
+      final data = LocalDataManager(
+        database,
+        localEvidenceDirectory: evidence,
+      );
+      final manager = LocalBackupManager(database, data);
+      final journal = File(
+        path.join(databaseDirectory.path, '.raw-restore-journal.json'),
+      );
+      String? validJournal;
+      final gateway = LocalWorkspaceDataGateway(
+        manager,
+        data,
+        restoreDiagnosticStage: (stage) async {
+          if (stage == 'replacement files activated') {
+            validJournal = await journal.readAsString();
+            await journal.writeAsString(
+              '{invalid journal for injected recovery failure',
+              flush: true,
+            );
+            throw StateError('force rollback while journal is corrupt');
+          }
+        },
+      );
+      await expectLater(
+        gateway.restore(
+          archive.path,
+          mode: LocalRestoreMode.replace,
+          password: 'correct horse battery staple',
+          postActivationRefresh: () async {},
+        ),
+        throwsA(isA<RestoreRecoveryRequiredException>()),
+      );
+      expect(manager.recoveryState.isRecoveryRequired, isTrue);
+      expect(await journal.exists(), isTrue);
+      expect(
+        () => database.persistenceDatabase.connection,
+        throwsA(isA<Exception>()),
+      );
+
+      // A fresh process can finish rollback after the transient journal
+      // failure is removed. The encrypted archive remains unchanged.
+      expect(validJournal, isNotNull);
+      await journal.writeAsString(validJournal!, flush: true);
+      await database.close();
+      await RawRestoreService.recoverInterruptedReplace(
+        liveDatabase: File(path.join(databaseDirectory.path, 'butlerly.db')),
+        evidenceDirectory: evidence,
+      );
+      await database.initialize();
+      expect(await getProbe(), 'original-must-survive');
+      await manager.recoveryState.clear();
+      expect(manager.recoveryState.isRecoveryRequired, isFalse);
     },
   );
 
