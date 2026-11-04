@@ -1,11 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:butlerly/core/data/local_backup_manager.dart';
+import 'package:butlerly/core/data/local_data_gateway.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/data/raw_backup_service.dart';
 import 'package:butlerly/core/data/raw_restore_service.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -143,6 +146,48 @@ void main() {
       ).exists(),
       isFalse,
     );
+  });
+
+  test('production gateway uses raw backup and Replace without rule validation',
+      () async {
+    await setProbe('archived');
+    final manager = LocalDataManager(
+      database,
+      localEvidenceDirectory: evidence,
+    );
+    final gateway = LocalWorkspaceDataGateway(
+      LocalBackupManager(database, manager),
+      manager,
+    );
+    final archive = File(path.join(root.path, 'gateway.butlerly'));
+    await gateway.createPortableBackup(
+      archive.path,
+      password: 'correct horse battery staple',
+    );
+    final preview = await gateway.inspect(
+      archive.path,
+      password: 'correct horse battery staple',
+    );
+    expect(preview.createdAtUtc, isA<DateTime>());
+    await database.database.update(
+      'restore_probe',
+      {'value': 'changed-locally'},
+      where: 'id = ?',
+      whereArgs: ['original'],
+    );
+    var businessRefreshCalled = false;
+    final result = await gateway.restore(
+      archive.path,
+      mode: LocalRestoreMode.replace,
+      password: 'correct horse battery staple',
+      postActivationRefresh: () async {
+        businessRefreshCalled = true;
+        throw StateError('Business validation must not run during restore.');
+      },
+    );
+    expect(result.mode, LocalRestoreMode.replace);
+    expect(businessRefreshCalled, isFalse);
+    expect(await getProbe(), 'archived');
   });
 
   test('wrong password leaves live database and files untouched', () async {
