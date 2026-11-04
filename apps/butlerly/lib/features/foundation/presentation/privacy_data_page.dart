@@ -66,9 +66,7 @@ Future<void> showBackupRequiresAppUpdateDialog(
           .replaceAll('{supportedVersion}', '$supportedVersion');
       return ButlerlySheet(
         title: Text(l10n.backupText('upgradeAppRequiredTitle')),
-        content: Text(
-          '$message\\n\\n${l10n.backupText(instructionsKey)}',
-        ),
+        content: Text('$message\\n\\n${l10n.backupText(instructionsKey)}'),
         actions: [
           FilledButton(
             onPressed: () => Navigator.pop(sheetContext),
