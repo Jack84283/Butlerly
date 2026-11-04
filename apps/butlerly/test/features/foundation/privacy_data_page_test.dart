@@ -131,7 +131,7 @@ void main() {
     expect(find.text('失败原因'), findsOneWidget);
     expect(find.textContaining('完整性'), findsOneWidget);
     expect(find.textContaining('保留失败文件'), findsOneWidget);
-    await tester.tap(find.text('确定'));
+    await tester.tap(find.text('知道了'));
     await tester.pumpAndSettle();
     await dialog;
   });
