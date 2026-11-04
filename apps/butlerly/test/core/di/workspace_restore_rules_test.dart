@@ -10,6 +10,7 @@ import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly_database/butlerly_database.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart'
@@ -263,8 +264,10 @@ void main() {
         updatedAt: timestamp,
       ),
     );
+    debugPrint('CI diagnostic: resolved duplicates: start scan');
     final finance = services<FinanceServices>();
     final scanned = await finance.scanExistingTransactionsForDuplicates!();
+    debugPrint('CI diagnostic: resolved duplicates: scan done');
     final group = (scanned as ApplicationSuccess<List<DuplicateCandidateGroup>>)
         .value
         .single;
@@ -272,6 +275,7 @@ void main() {
       group.id,
       DuplicateCandidateGroupStatus.keepBoth,
     );
+    debugPrint('CI diagnostic: resolved duplicates: decision saved');
     final backup = File(
       '${exportDirectory.path}/resolved-duplicates.butlerlybackup',
     );
@@ -280,7 +284,9 @@ void main() {
       password: backupPassword,
     );
 
+    debugPrint('CI diagnostic: resolved duplicates: backup done');
     await finance.deleteTransactionPermanently('resolved-duplicate');
+    debugPrint('CI diagnostic: resolved duplicates: delete done');
 
     await services<WorkspaceDataService>().restore(
       backup.path,
@@ -288,6 +294,7 @@ void main() {
       password: backupPassword,
     );
 
+    debugPrint('CI diagnostic: resolved duplicates: restore done');
     final groups = await database.database.query(
       'duplicate_candidate_groups',
       where: 'status = ?',
