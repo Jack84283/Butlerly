@@ -60,9 +60,18 @@ const _backupStrings = <String, Map<String, String>>{
         'The backup is valid. Review the summary, then confirm replacement to restore it exactly.',
     'merge': 'Merge',
     'replace': 'Replace',
-    'replaceTitle': 'Replace current Butlerly data?',
+    'replaceTitle': 'Replace all Butlerly data?',
     'replaceBody':
-        'Current local Butlerly data will be replaced by the backup. This cannot be undone unless you have another backup.',
+        'This will replace the ENTIRE local Butlerly database with the backup, including:\n'
+        '• Master data: categories, subcategories, merchants, payment sources, tags and translations\n'
+        '• Transactions, payment settlements, imports and reconciliations\n'
+        '• Analysis rules, findings, results and saved analysis data\n'
+        '• Budgets, financial profiles and in-app preferences/settings\n'
+        '• Local attachments, including receipts and statements (only files available in the backup)\n\n'
+        'Any local data or attachments not present in this backup will be lost from Butlerly. This cannot be undone without a separate backup of your current data. Device/OS permissions and settings outside Butlerly are not restored.',
+    'replaceAcknowledgement':
+        'I understand that all current Butlerly database data and attachments will be replaced.',
+    'replaceAllData': 'Replace all data',
     'restoreComplete': 'Restore completed.',
     'restoreResult': '{restored} restored',
     'backupSummary': '{records} records • {evidence} evidence files',
@@ -150,9 +159,18 @@ const _backupStrings = <String, Map<String, String>>{
         'La copia es válida. Revise el resumen y confirme el reemplazo para restaurarla exactamente.',
     'merge': 'Combinar',
     'replace': 'Reemplazar',
-    'replaceTitle': '¿Reemplazar los datos actuales de Butlerly?',
+    'replaceTitle': '¿Reemplazar todos los datos de Butlerly?',
     'replaceBody':
-        'Los datos locales actuales de Butlerly serán reemplazados por la copia. No se puede deshacer salvo que tenga otra copia.',
+        'Esto reemplazará TODA la base de datos local de Butlerly y sus tablas con la copia, incluidos:\n'
+        '• Datos maestros: categorías, subcategorías, comercios, fuentes de pago, etiquetas y traducciones\n'
+        '• Transacciones, liquidaciones, importaciones y conciliaciones\n'
+        '• Reglas de análisis, hallazgos, resultados y análisis guardados\n'
+        '• Presupuestos, perfiles financieros y preferencias de la aplicación\n'
+        '• Archivos adjuntos, como recibos y extractos (solo los disponibles en la copia)\n\n'
+        'Los datos y archivos locales ausentes de la copia se perderán de Butlerly. Esto no se puede deshacer sin otra copia de los datos actuales. No se restauran los permisos ni los ajustes del sistema operativo.',
+    'replaceAcknowledgement':
+        'Entiendo que se reemplazarán todos los datos y archivos adjuntos actuales de Butlerly.',
+    'replaceAllData': 'Reemplazar todos los datos',
     'restoreComplete': 'Restauración completada.',
     'restoreResult': '{restored} restaurados',
     'backupSummary': '{records} registros • {evidence} archivos de evidencia',
@@ -237,8 +255,17 @@ const _backupStrings = <String, Map<String, String>>{
     'noNewerData': '备份有效。请查看摘要，然后确认替换以准确恢复备份。',
     'merge': '合并',
     'replace': '替换',
-    'replaceTitle': '替换当前 Butlerly 数据？',
-    'replaceBody': '当前本地 Butlerly 数据将被备份替换。除非您还有其他备份，否则此操作无法撤销。',
+    'replaceTitle': '替换全部 Butlerly 数据？',
+    'replaceBody':
+        '此操作将使用备份替换 Butlerly 的整个本地数据库及所有表，包括：\n'
+        '• 基础数据：类别、子类别、商户、付款来源、标签和翻译\n'
+        '• 交易、付款结算、导入及对账记录\n'
+        '• 分析规则、发现、结果和已保存的分析数据\n'
+        '• 预算、财务档案和应用内偏好设置\n'
+        '• 本地附件（如收据和对账单，仅恢复备份中实际包含的文件）\n\n'
+        '本机不在此备份中的数据及附件将从 Butlerly 中丢失。除非另有当前数据的备份，否则无法撤销。设备或操作系统级权限及设置不会恢复。',
+    'replaceAcknowledgement': '我了解：当前 Butlerly 的全部数据库数据和附件将被替换。',
+    'replaceAllData': '替换全部数据',
     'restoreComplete': '恢复完成。',
     'restoreResult': '已恢复 {restored} 条',
     'backupSummary': '{records} 条记录 • {evidence} 个凭证文件',
