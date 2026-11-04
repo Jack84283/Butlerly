@@ -79,6 +79,32 @@ store destinations have not been configured.
   Other screens with legacy inline SnackBars should adopt the shared helper
   separately to enforce the same app-wide policy.
 
+## Performance optimizations (PR #396)
+
+The raw archive is streamed, and financial/business rules never run during
+backup or restore. Performance improvements must retain authenticated encryption,
+byte-level SHA-256 verification, path containment, and rollback guarantees.
+
+- **Backup packaging:** source SQLite and attachments are each fingerprinted
+  for the manifest, and the *written archive* is independently verified.
+  The former extra full-source hash pass after copying has been eliminated;
+  same-size content changes still fail archive verification.
+- **Restore preview:** the encrypted archive is authenticated, every archived
+  attachment is hashed, but **only SQLite is written** to temporary storage for
+  the schema/version check. No temporary copies of receipt files are created
+  merely to display a confirmation prompt.
+- **Restore extraction:** the validated manifest guides direct extraction;
+  every resulting file is independently hashed against its manifest SHA-256.
+  A redundant preliminary full-archive inspection pass has been removed.
+- **Still intentionally retained:** SQLite `VACUUM INTO` for an atomic,
+  consistent snapshot; Argon2id + AES-GCM; safe destination publication;
+  staging/rollback; staged SQLite physical integrity and schema migration.
+
+Performance acceptance should compare elapsed Backup, Restore-preview, Replace,
+and Merge times on the **same disposable dataset**, including a collection with
+many receipt files, and should verify exact post-restore SQLite and attachment
+bytes. No percentage speed-up should be asserted without such measurements.
+
 ## Modules
 
 - `raw_backup_archive.dart` — streaming container, manifest, checksums,
