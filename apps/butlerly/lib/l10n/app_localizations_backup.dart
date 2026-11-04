@@ -29,7 +29,8 @@ const _backupStrings = <String, Map<String, String>>{
     'restoreBackup': 'Restore backup',
     'restoreMerge': 'Merge backup',
     'restoreReplace': 'Replace from backup',
-    'mergeSubtitle': 'Import missing records while keeping existing local records.',
+    'mergeSubtitle':
+        'Import missing records while keeping existing local records.',
     'mergeTitle': 'Merge Butlerly backup?',
     'mergeBody':
         'Records already on this device are kept. Missing records and available attachments from the backup are added. If identities or attachment paths cannot be merged safely, no changes are applied. Test with a separate backup of your current data.',
@@ -103,7 +104,8 @@ const _backupStrings = <String, Map<String, String>>{
     'restoreBackup': 'Restaurar copia',
     'restoreMerge': 'Combinar copia de seguridad',
     'restoreReplace': 'Reemplazar desde una copia',
-    'mergeSubtitle': 'Importa registros faltantes y conserva los datos locales existentes.',
+    'mergeSubtitle':
+        'Importa registros faltantes y conserva los datos locales existentes.',
     'mergeTitle': '¿Combinar la copia de Butlerly?',
     'mergeBody':
         'Se conservarán los registros existentes en este dispositivo. Se añadirán los registros faltantes y los archivos disponibles de la copia. Si hay conflictos que no se pueden resolver con seguridad, no se aplicarán cambios. Cree otra copia de sus datos actuales antes de probar.',
