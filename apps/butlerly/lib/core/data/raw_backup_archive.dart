@@ -147,16 +147,51 @@ final class RawBackupArchive {
   }
 
   /// Verifies byte lengths and hashes; does not validate business relationships.
-  Future<RawBackupInspection> inspect(File archive) async {
+  Future<RawBackupInspection> inspect(File archive) => _inspect(archive);
+
+  /// Verifies the whole archive but only materializes the SQLite snapshot.
+  /// Preview still authenticates every attachment; it no longer needs to write
+  /// all evidence bytes to disk merely to query the SQLite schema version.
+  /// The SQLite destination must be a new private, disposable file.
+  Future<RawBackupInspection> inspectAndStageSqlite({
+    required File archive,
+    required File sqliteDestination,
+  }) async {
+    await rejectSymlinkedPath(sqliteDestination.path);
+    if (await sqliteDestination.exists()) {
+      throw const FileSystemException('SQLite inspection target already exists.');
+    }
+    try {
+      return await _inspect(archive, sqliteDestination: sqliteDestination);
+    } catch (_) {
+      if (await sqliteDestination.exists()) await sqliteDestination.delete();
+      rethrow;
+    }
+  }
+
+  Future<RawBackupInspection> _inspect(
+    File archive, {
+    File? sqliteDestination,
+  }) async {
     final parsed = await _readManifest(archive);
     var offset = parsed.payloadOffset;
-    if (await sha256FileRange(
-          archive,
-          start: offset,
-          endExclusive: offset + parsed.sqliteLength,
-        ) !=
-        parsed.sqliteHash) {
-      throw const FormatException('Backup SQLite bytes are not intact.');
+    if (sqliteDestination == null) {
+      if (await sha256FileRange(
+            archive,
+            start: offset,
+            endExclusive: offset + parsed.sqliteLength,
+          ) !=
+          parsed.sqliteHash) {
+        throw const FormatException('Backup SQLite bytes are not intact.');
+      }
+    } else {
+      await _copyRange(
+        archive,
+        sqliteDestination,
+        offset,
+        parsed.sqliteLength,
+        parsed.sqliteHash,
+      );
     }
     offset += parsed.sqliteLength;
     for (final file in parsed.files) {
