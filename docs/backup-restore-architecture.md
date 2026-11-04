@@ -63,6 +63,22 @@ trusted desktop source guidance, selected by the **destination platform only
 for presentation**. No listing URL is invented when Butlerly's official
 store destinations have not been configured.
 
+## Backup & Restore status notifications
+
+- The shared `ButlerlyToast` component uses the app's semantic success
+  (green) and error (red) colors in both light and dark themes.
+- Successful Backup, Merge, Replace, and Privacy & Data operations show a green
+  toast with a five-second lifetime.
+- Failed operations show a red toast that does not time out during normal use.
+  **Details** opens the localized reason and corrective action without closing
+  the notification. **Close** is an explicit user action.
+- Restore/Backup failure details must never expose a backup password, private
+  SQLite records, local file paths, or raw stack traces.
+- Canceled platform sharing is informational, not a successful saved backup.
+- This PR wires the new shared toast component into the Privacy & Data screen.
+  Other screens with legacy inline SnackBars should adopt the shared helper
+  separately to enforce the same app-wide policy.
+
 ## Modules
 
 - `raw_backup_archive.dart` — streaming container, manifest, checksums,
