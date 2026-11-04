@@ -195,14 +195,14 @@ void main() {
       supportedVersion: 19,
     );
     await tester.pumpAndSettle();
-    expect(
-      find.text('Update Butlerly before restoring'),
-      findsOneWidget,
-    );
+    expect(find.text('Update Butlerly before restoring'), findsOneWidget);
     expect(find.textContaining('schema 20'), findsOneWidget);
     expect(find.textContaining('supports schema 19'), findsOneWidget);
     expect(find.textContaining('App Store'), findsOneWidget);
-    expect(find.textContaining('Nothing on this device was changed'), findsOneWidget);
+    expect(
+      find.textContaining('Nothing on this device was changed'),
+      findsOneWidget,
+    );
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
     await dialog;
