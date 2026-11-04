@@ -77,14 +77,17 @@ final class BackupInspection {
     required this.recordCount,
     required this.evidenceCount,
     required this.changes,
+    this.missingEvidenceCount = 0,
   });
 
   final DateTime createdAtUtc;
   final int recordCount;
   final int evidenceCount;
+  final int missingEvidenceCount;
   final BackupChangeSummary changes;
 
   bool get hasNewerLocalData => changes.hasChanges;
+  bool get hasMissingEvidence => missingEvidenceCount > 0;
 }
 
 final class LocalRestoreResult {
