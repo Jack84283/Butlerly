@@ -58,7 +58,6 @@ final class RawMergeService {
       ),
     );
     var importedRows = 0;
-    var existingRows = 0;
     final importedEvidenceNames = <String>{};
     try {
       final escaped = archived.path.replaceAll("'", "''");
@@ -140,12 +139,6 @@ final class RawMergeService {
           );
           final changes = await tx.rawQuery('SELECT changes() AS count');
           importedRows += (changes.single['count'] as int? ?? 0);
-          final duplicates = await tx.rawQuery(
-            'SELECT COUNT(*) AS count FROM archived.${_quote(table)} b '
-            'WHERE EXISTS (SELECT 1 FROM main.${_quote(table)} l '
-            'WHERE $sameIdentity)',
-          );
-          existingRows += (duplicates.single['count'] as int? ?? 0);
         }
         if (sourceTombstones) {
           // Import source deletion markers only when the corresponding entity
