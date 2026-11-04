@@ -119,7 +119,7 @@ void main() {
   });
 
   testWidgets(
-    'More exposes separate Budget Settings and Backup & Restore entries',
+    'More keeps a single Privacy & data destination alongside Budget Settings',
     (tester) async {
       await tester.pumpWidget(app());
       await tester.pumpAndSettle();
@@ -130,7 +130,8 @@ void main() {
         scrollable: find.byType(Scrollable).first,
       );
       expect(find.text('Budget Settings'), findsOneWidget);
-      expect(find.text('Backup & Restore'), findsOneWidget);
+      expect(find.text('Backup & Restore'), findsNothing);
+      expect(find.text('Privacy & data'), findsWidgets);
     },
   );
 
@@ -171,10 +172,10 @@ void main() {
 
     appRouter.go('/settings');
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Backup & Restore'));
+    await tester.ensureVisible(find.text('Manage privacy & data'));
     await tester.tap(
       find.ancestor(
-        of: find.text('Backup & Restore'),
+        of: find.text('Manage privacy & data'),
         matching: find.byType(InkWell),
       ),
     );
@@ -313,8 +314,9 @@ void main() {
     expect(find.text('Preferences'), findsOneWidget);
     expect(find.text('Privacy & data'), findsOneWidget);
     expect(find.text('Budget Settings'), findsOneWidget);
-    expect(find.text('Backup & Restore'), findsOneWidget);
-    for (final label in const ['Budget Settings', 'Backup & Restore']) {
+    expect(find.text('Backup & Restore'), findsNothing);
+    expect(find.text('Manage privacy & data'), findsOneWidget);
+    for (final label in const ['Budget Settings', 'Manage privacy & data']) {
       final row = find.ancestor(
         of: find.text(label),
         matching: find.byType(InkWell),
