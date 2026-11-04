@@ -67,6 +67,7 @@ final class LocalRestoreResult {
     required this.restoredEvidence,
     this.preservesUnresolvedReferences = false,
     this.unresolvedReferenceKeys = const [],
+    this.usesLegacyUnresolvedReferenceWarnings = false,
     this.presentationRefreshFailed = false,
     this.analysisRebuildFailed = false,
     this.warnings = const [],
@@ -87,6 +88,10 @@ final class LocalRestoreResult {
   /// stable keys as the archive-backed allowlist; newly introduced violations
   /// remain fatal.
   final List<String> unresolvedReferenceKeys;
+
+  /// The archive predates the unresolved-reference policy metadata and is
+  /// using its historical warning-based restore compatibility behavior.
+  final bool usesLegacyUnresolvedReferenceWarnings;
 
   /// The database restore succeeded, but the non-critical UI refresh failed.
   /// Do not report this as a failed data restore or try to restore again.

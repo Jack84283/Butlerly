@@ -935,7 +935,7 @@ void main() {
           ],
         },
       ];
-    });
+    }, preserveSourceHash: true);
 
     final inspection = await fixture.manager.inspect(backup);
     expect(

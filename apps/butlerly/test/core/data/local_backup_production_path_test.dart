@@ -749,6 +749,70 @@ void main() {
   );
 
   test(
+    'backup preserves cyclic user categories without relationship scanning',
+    () async {
+      const capturedAt = '2026-11-03T12:00:00.000Z';
+      await database.database.execute('PRAGMA foreign_keys = OFF');
+      await database.database.insert('categories', {
+        'id': 'backup-production-cycle-a',
+        'name': 'Cycle A',
+        'origin': 'user',
+        'parent_id': 'backup-production-cycle-b',
+        'status': 'active',
+        'created_at': capturedAt,
+        'updated_at': capturedAt,
+      });
+      await database.database.insert('categories', {
+        'id': 'backup-production-cycle-b',
+        'name': 'Cycle B',
+        'origin': 'user',
+        'parent_id': 'backup-production-cycle-a',
+        'status': 'active',
+        'created_at': capturedAt,
+        'updated_at': capturedAt,
+      });
+      await database.database.execute('PRAGMA foreign_keys = ON');
+
+      final before = await database.database.query(
+        'categories',
+        where: 'id LIKE ?',
+        whereArgs: ['backup-production-cycle-%'],
+        orderBy: 'id',
+      );
+      final manager = LocalBackupManager(
+        database,
+        services<LocalDataManager>(),
+      );
+      final archive = File(
+        path.join(temporaryDirectory.path, 'cyclic-categories.butlerly'),
+      );
+
+      await manager.createBackup(archive);
+      expect((await manager.inspect(archive)).warnings, isEmpty);
+      expect(
+        await database.database.query(
+          'categories',
+          where: 'id LIKE ?',
+          whereArgs: ['backup-production-cycle-%'],
+          orderBy: 'id',
+        ),
+        before,
+      );
+
+      await manager.restore(archive, mode: LocalRestoreMode.replace);
+      expect(
+        await database.database.query(
+          'categories',
+          where: 'id LIKE ?',
+          whereArgs: ['backup-production-cycle-%'],
+          orderBy: 'id',
+        ),
+        before,
+      );
+    },
+  );
+
+  test(
     'restore does not reject a user rule colliding with a bundled identity',
     () async {
       final workspace = services<WorkspaceDataService>();

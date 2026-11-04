@@ -149,6 +149,8 @@ final class WorkspaceDataService {
         restoredEvidence: result.restoredEvidence,
         preservesUnresolvedReferences: result.preservesUnresolvedReferences,
         unresolvedReferenceKeys: result.unresolvedReferenceKeys,
+        usesLegacyUnresolvedReferenceWarnings:
+            result.usesLegacyUnresolvedReferenceWarnings,
         presentationRefreshFailed: true,
         analysisRebuildFailed: result.analysisRebuildFailed,
         warnings: result.warnings,

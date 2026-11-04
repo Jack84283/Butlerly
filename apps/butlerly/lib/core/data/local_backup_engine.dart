@@ -77,6 +77,7 @@ final class _BackupPackage {
     required this.missingContentCount,
     required this.missingContent,
     required this.preservesUnresolvedReferences,
+    required this.usesLegacyUnresolvedReferenceWarnings,
   });
 
   final File file;
@@ -87,6 +88,7 @@ final class _BackupPackage {
   final int missingContentCount;
   final List<_MissingContentDescriptor> missingContent;
   final bool preservesUnresolvedReferences;
+  final bool usesLegacyUnresolvedReferenceWarnings;
 }
 
 final class _PreparedEvidence {
@@ -489,9 +491,7 @@ final class LocalBackupManager {
     final sourceSchema = package.manifest['schemaVersion']! as int;
     final preservesUnresolvedReferences =
         package.preservesUnresolvedReferences ||
-        package.warnings.any(
-          (warning) => warning.code == 'missing_referenced_record',
-        );
+        package.usesLegacyUnresolvedReferenceWarnings;
     final backupTime = DateTime.parse(
       package.manifest['createdAtUtc']! as String,
     ).toUtc();
@@ -653,7 +653,10 @@ final class LocalBackupManager {
                       .cast<Map>()
                       .map((row) => row.cast<String, Object?>());
               if (spec.name == 'categories') {
-                payload = _orderCategories(payload.toList(growable: false));
+                payload = _orderCategories(
+                  payload.toList(growable: false),
+                  allowUnresolvedReferences: preservesUnresolvedReferences,
+                );
               }
               for (final row in payload) {
                 if (await _isSystemOwned(tx, spec, row)) continue;
@@ -822,6 +825,8 @@ final class LocalBackupManager {
           warnings: package.warnings,
           preservesUnresolvedReferences: preservesUnresolvedReferences,
           unresolvedReferenceKeys: unresolvedReferenceKeys,
+          usesLegacyUnresolvedReferenceWarnings:
+              package.usesLegacyUnresolvedReferenceWarnings,
         );
       }
     } catch (_) {
@@ -880,6 +885,8 @@ final class LocalBackupManager {
       warnings: package.warnings,
       preservesUnresolvedReferences: preservesUnresolvedReferences,
       unresolvedReferenceKeys: unresolvedReferenceKeys,
+      usesLegacyUnresolvedReferenceWarnings:
+          package.usesLegacyUnresolvedReferenceWarnings,
     );
   }
 
@@ -1481,6 +1488,12 @@ final class LocalBackupManager {
         preservesUnresolvedReferences:
             referencePolicy ==
             BackupContainerFormat.preserveUnresolvedReferencesPolicy,
+        usesLegacyUnresolvedReferenceWarnings:
+            referencePolicy == null &&
+            manifest['sourceHash'] == null &&
+            warnings.any(
+              (warning) => warning.code == 'missing_referenced_record',
+            ),
       );
     } finally {
       await raf.close();
@@ -2951,7 +2964,10 @@ final class LocalBackupManager {
   /// valid insertion order for every multi-level hierarchy. Restore the
   /// payload topologically while leaving references to installed system
   /// categories ready to insert immediately.
-  List<Map<String, Object?>> _orderCategories(List<Map<String, Object?>> rows) {
+  List<Map<String, Object?>> _orderCategories(
+    List<Map<String, Object?>> rows, {
+    bool allowUnresolvedReferences = false,
+  }) {
     final byId = <String, Map<String, Object?>>{
       for (final row in rows)
         if (row['id'] is String) row['id']! as String: row,
@@ -2973,6 +2989,10 @@ final class LocalBackupManager {
         progressed = true;
       }
       if (!progressed) {
+        if (allowUnresolvedReferences) {
+          ordered.addAll(pending);
+          return ordered;
+        }
         throw const FormatException(
           'Backup contains a cyclic category hierarchy.',
         );

@@ -458,32 +458,7 @@ final class LocalBackupSnapshotWriter {
 
   List<Map<String, Object?>> _orderCategoriesForBackup(
     List<Map<String, Object?>> rows,
-  ) {
-    // This is archive-safety ordering for SQLite insertion. It does not
-    // validate category semantics or budget/merchant relationships.
-    final pending = [...rows];
-    final knownIds = rows.map((row) => row['id']).whereType<String>().toSet();
-    final emitted = <String>{};
-    final ordered = <Map<String, Object?>>[];
-    while (pending.isNotEmpty) {
-      final ready = pending.where((row) {
-        final parentId = row['parent_id'] as String?;
-        return parentId == null ||
-            !knownIds.contains(parentId) ||
-            emitted.contains(parentId);
-      }).toList();
-      if (ready.isEmpty) {
-        throw StateError('Category hierarchy contains a cycle.');
-      }
-      for (final row in ready) {
-        pending.remove(row);
-        ordered.add(row);
-        final id = row['id'];
-        if (id is String) emitted.add(id);
-      }
-    }
-    return ordered;
-  }
+  ) => rows;
 
   Future<List<Map<String, Object?>>> _rowsForIds(
     DatabaseExecutor source, {

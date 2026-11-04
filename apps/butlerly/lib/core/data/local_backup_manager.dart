@@ -569,7 +569,7 @@ final class LocalBackupManager {
       final stagedResult = await stagedEngine.restore(file, mode: mode);
       onStage?.call('staged database validation');
       final allowLegacyUnresolvedReferences =
-          _hasMissingReferencedRecordWarning(stagedResult);
+          stagedResult.usesLegacyUnresolvedReferenceWarnings;
       await _validateDatabase(
         staging.database.database,
         requireForeignKeys: !_allowsMissingReferencedRecords(stagedResult),
@@ -632,6 +632,8 @@ final class LocalBackupManager {
         restoredEvidence: liveResult.restoredEvidence,
         preservesUnresolvedReferences: liveResult.preservesUnresolvedReferences,
         unresolvedReferenceKeys: liveResult.unresolvedReferenceKeys,
+        usesLegacyUnresolvedReferenceWarnings:
+            liveResult.usesLegacyUnresolvedReferenceWarnings,
         warnings: liveResult.warnings,
         analysisRebuildFailed: analysisRebuildFailed,
       );
@@ -950,7 +952,7 @@ final class LocalBackupManager {
         requireForeignKeys: !_allowsMissingReferencedRecords(restored),
         allowedUnresolvedReferenceKeys:
             restored.preservesUnresolvedReferences &&
-                !_hasMissingReferencedRecordWarning(restored)
+                !restored.usesLegacyUnresolvedReferenceWarnings
             ? restored.unresolvedReferenceKeys
             : null,
       );
@@ -1123,13 +1125,9 @@ final class LocalBackupManager {
     return allowedKeys.contains(key);
   }
 
-  bool _hasMissingReferencedRecordWarning(LocalRestoreResult result) => result
-      .warnings
-      .any((warning) => warning.code == 'missing_referenced_record');
-
   bool _allowsMissingReferencedRecords(LocalRestoreResult result) =>
       result.preservesUnresolvedReferences ||
-      _hasMissingReferencedRecordWarning(result);
+      result.usesLegacyUnresolvedReferenceWarnings;
 
   Future<void> _validateLiveEvidenceReferences() async {
     final root = await localDataManager.evidenceDirectory();
