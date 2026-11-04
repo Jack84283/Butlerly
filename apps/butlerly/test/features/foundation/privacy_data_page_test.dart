@@ -70,10 +70,7 @@ void main() {
         180,
       );
       expect(find.byIcon(CupertinoIcons.arrow_down_doc), findsOneWidget);
-      await tester.scrollUntilVisible(
-        find.byIcon(CupertinoIcons.trash),
-        180,
-      );
+      await tester.scrollUntilVisible(find.byIcon(CupertinoIcons.trash), 180);
       expect(find.byIcon(CupertinoIcons.trash), findsOneWidget);
       expect(find.byIcon(Icons.backup_outlined), findsNothing);
     },
