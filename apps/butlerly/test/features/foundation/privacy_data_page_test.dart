@@ -180,6 +180,77 @@ void main() {
     expect(File(gateway.discardedPath!).existsSync(), isFalse);
   });
 
+  testWidgets('newer database prompts iPhone App Store update steps', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    final context = tester.element(find.byType(PrivacyDataPage));
+
+    final dialog = showBackupRequiresAppUpdateDialog(
+      context,
+      backupVersion: 20,
+      supportedVersion: 19,
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Update Butlerly before restoring'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('schema 20'), findsOneWidget);
+    expect(find.textContaining('supports schema 19'), findsOneWidget);
+    expect(find.textContaining('App Store'), findsOneWidget);
+    expect(find.textContaining('Nothing on this device was changed'), findsOneWidget);
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    await dialog;
+  });
+
+  testWidgets('newer database prompts Android Google Play update steps', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.android;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    final context = tester.element(find.byType(PrivacyDataPage));
+    final dialog = showBackupRequiresAppUpdateDialog(
+      context,
+      backupVersion: 21,
+      supportedVersion: 19,
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Google Play'), findsOneWidget);
+    expect(find.textContaining('schema 21'), findsOneWidget);
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    await dialog;
+  });
+
+  testWidgets('newer schema update guidance is translated to Chinese', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    await tester.pumpWidget(app(locale: const Locale('zh', 'CN')));
+    await tester.pumpAndSettle();
+    final context = tester.element(find.byType(PrivacyDataPage));
+    final dialog = showBackupRequiresAppUpdateDialog(
+      context,
+      backupVersion: 20,
+      supportedVersion: 19,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('请先更新 Butlerly 再恢复备份'), findsOneWidget);
+    expect(find.textContaining('App Store'), findsOneWidget);
+    expect(find.textContaining('版本 20'), findsOneWidget);
+    await tester.tap(find.text('知道了'));
+    await tester.pumpAndSettle();
+    await dialog;
+  });
+
   testWidgets('restore preview formats its creation date for each locale', (
     tester,
   ) async {
