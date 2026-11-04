@@ -28,8 +28,10 @@ void main() {
   Widget app({
     share_plus.SharePlus? shareClient,
     Locale locale = const Locale('en'),
+    TargetPlatform? platform,
   }) => ProviderScope(
     child: MaterialApp(
+      theme: platform == null ? null : ThemeData(platform: platform),
       locale: locale,
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: const [
@@ -45,7 +47,11 @@ void main() {
   testWidgets(
     'Privacy and data uses Cupertino symbols for native iOS actions',
     (tester) async {
-      await tester.pumpWidget(app());
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(app(platform: TargetPlatform.iOS));
       await tester.pumpAndSettle();
 
       expect(find.byIcon(CupertinoIcons.archivebox), findsOneWidget);
@@ -183,9 +189,7 @@ void main() {
   testWidgets('newer database prompts iPhone App Store update steps', (
     tester,
   ) async {
-    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
-    addTearDown(() => debugDefaultTargetPlatformOverride = null);
-    await tester.pumpWidget(app());
+    await tester.pumpWidget(app(platform: TargetPlatform.iOS));
     await tester.pumpAndSettle();
     final context = tester.element(find.byType(PrivacyDataPage));
 
@@ -211,9 +215,7 @@ void main() {
   testWidgets('newer database prompts Android Google Play update steps', (
     tester,
   ) async {
-    debugDefaultTargetPlatformOverride = TargetPlatform.android;
-    addTearDown(() => debugDefaultTargetPlatformOverride = null);
-    await tester.pumpWidget(app());
+    await tester.pumpWidget(app(platform: TargetPlatform.android));
     await tester.pumpAndSettle();
     final context = tester.element(find.byType(PrivacyDataPage));
     final dialog = showBackupRequiresAppUpdateDialog(
@@ -232,9 +234,9 @@ void main() {
   testWidgets('newer schema update guidance is translated to Chinese', (
     tester,
   ) async {
-    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
-    addTearDown(() => debugDefaultTargetPlatformOverride = null);
-    await tester.pumpWidget(app(locale: const Locale('zh', 'CN')));
+    await tester.pumpWidget(
+      app(locale: const Locale('zh', 'CN'), platform: TargetPlatform.iOS),
+    );
     await tester.pumpAndSettle();
     final context = tester.element(find.byType(PrivacyDataPage));
     final dialog = showBackupRequiresAppUpdateDialog(
