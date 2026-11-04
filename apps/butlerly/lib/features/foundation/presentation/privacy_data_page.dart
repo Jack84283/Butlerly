@@ -1,7 +1,7 @@
 import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/app/shell/adaptive_shell.dart';
-import 'package:butlerly/core/data/raw_restore_service.dart'
-    show UnsupportedBackupSchemaException;
+import 'package:butlerly/core/data/raw_backup_service.dart'
+    show NewerBackupSchemaException, UnsupportedBackupSchemaException;
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
@@ -37,6 +37,47 @@ class PrivacyDataPage extends ConsumerStatefulWidget {
 String formatBackupInspectionDate(BuildContext context, DateTime date) {
   final locale = Localizations.localeOf(context).toLanguageTag();
   return DateFormat.yMMMd(locale).add_jm().format(date);
+}
+
+/// Explains how to install a Butlerly build capable of reading this backup.
+///
+/// No guessed app-store listing URLs are used. Store-specific instructions are
+/// shown for mobile and macOS; sideloaded desktop/test builds are covered too.
+@visibleForTesting
+Future<void> showBackupRequiresAppUpdateDialog(
+  BuildContext context, {
+  required int backupVersion,
+  required int supportedVersion,
+}) async {
+  final platform = Theme.of(context).platform;
+  final instructionsKey = switch (platform) {
+    TargetPlatform.iOS => 'upgradeFromAppleStore',
+    TargetPlatform.android => 'upgradeFromGooglePlay',
+    TargetPlatform.macOS => 'upgradeFromMacStore',
+    _ => 'upgradeFromDesktopDistribution',
+  };
+  await showButlerlyBottomSheet<void>(
+    context: context,
+    builder: (sheetContext) {
+      final l10n = sheetContext.l10n;
+      final message = l10n
+          .backupText('upgradeAppRequiredBody')
+          .replaceAll('{backupVersion}', '$backupVersion')
+          .replaceAll('{supportedVersion}', '$supportedVersion');
+      return ButlerlySheet(
+        title: Text(l10n.backupText('upgradeAppRequiredTitle')),
+        content: Text(
+          '$message\\n\\n${l10n.backupText(instructionsKey)}',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(sheetContext),
+            child: Text(l10n.backupText('upgradeAppDismiss')),
+          ),
+        ],
+      );
+    },
+  );
 }
 
 class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
@@ -188,6 +229,14 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     } on BackupPasswordRequiredException {
       if (mounted) {
         _message(context.l10n.backupText('passwordOrIntegrityFailed'));
+      }
+    } on NewerBackupSchemaException catch (error) {
+      if (mounted) {
+        await showBackupRequiresAppUpdateDialog(
+          context,
+          backupVersion: error.backupVersion,
+          supportedVersion: error.supportedVersion,
+        );
       }
     } on UnsupportedBackupSchemaException {
       if (mounted) {
