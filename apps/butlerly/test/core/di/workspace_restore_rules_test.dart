@@ -368,4 +368,5 @@ void main() {
         installed.installed.single.definitionHash,
       );
     },
-  );}
+    );
+}
