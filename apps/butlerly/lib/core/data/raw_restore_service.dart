@@ -206,6 +206,13 @@ final class RawRestoreService {
       await beforeActivation?.call(
         database.persistenceDatabase.restoreActivationConnection,
       );
+      // A retained raw SQLite connection can bypass the repository accessor
+      // fence. For Merge, fingerprint the checkpointed source before closing
+      // it, then compare after close has drained queued SQLite operations.
+      // Any late commit forces rollback instead of discarding that write.
+      final preCloseFingerprint = prepareStaging == null
+          ? null
+          : await sha256FileRange(liveDatabase);
 
       final markerTemp = File('${journal.path}.tmp');
       await rejectSymlinkedPath(markerTemp.path);
@@ -219,8 +226,16 @@ final class RawRestoreService {
       );
       await markerTemp.rename(journal.path);
       journalWritten = true;
+      await onStage?.call('restore journal written');
       // Do not replace a file while any Butlerly connection holds it open.
       await database.persistenceDatabase.close();
+      if (preCloseFingerprint != null &&
+          preCloseFingerprint != await sha256FileRange(liveDatabase)) {
+        throw StateError(
+          'Live database changed during final Merge activation; '
+          'the original database was preserved.',
+        );
+      }
 
       for (final extension in const ['-wal', '-shm']) {
         final current = File('${liveDatabase.path}$extension');
