@@ -53,9 +53,9 @@ final class RawMergeService {
         sourceRevision = await _liveDatabaseRevision();
         return _mergeIntoStaging(staging, inspection);
       },
-      beforeActivation: () async {
+      beforeActivation: (liveConnection) async {
         if (sourceRevision == null ||
-            sourceRevision != await _liveDatabaseRevision()) {
+            sourceRevision != await _liveDatabaseRevision(liveConnection)) {
           throw StateError(
             'Live database changed during Merge; retry with a new backup. '
             'No local data was replaced.',
@@ -69,8 +69,10 @@ final class RawMergeService {
   /// and on other SQLite connections (data_version), including schema edits.
   /// The application consistency gate blocks normal use-case writes; this is
   /// an additional fail-closed guard for uncoordinated writers during staging.
-  Future<_DatabaseRevision> _liveDatabaseRevision() async {
-    final live = database.database;
+  Future<_DatabaseRevision> _liveDatabaseRevision([
+    Database? activeConnection,
+  ]) async {
+    final live = activeConnection ?? database.database;
     final changes = await live.rawQuery('SELECT total_changes() AS total');
     final version = await live.rawQuery('PRAGMA data_version');
     final schema = await live.rawQuery('PRAGMA schema_version');
