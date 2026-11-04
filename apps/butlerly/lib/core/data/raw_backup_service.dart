@@ -159,14 +159,15 @@ final class RawBackupService {
         password: password,
         acceptedInnerFormats: const {_rawInnerFormat},
       );
-      // Validate schema compatibility before showing destructive Restore
-      // confirmation. Both encrypted archive and live DB remain unchanged.
-      final stage = Directory(path.join(temporary.path, 'inspection'));
-      final summary = await _archive.extract(
+      // Read-only preview authenticates every archived byte, but only
+      // materializes SQLite. Extracting all attachments here would duplicate
+      // disk writes that the actual Restore performs after confirmation.
+      final sqlite = File(path.join(temporary.path, 'inspection.sqlite'));
+      final summary = await _archive.inspectAndStageSqlite(
         archive: plain,
-        stagingDirectory: stage,
+        sqliteDestination: sqlite,
       );
-      await requireSupportedSchema(File(path.join(stage.path, 'butlerly.db')));
+      await requireSupportedSchema(sqlite);
       return summary;
     } finally {
       if (await temporary.exists()) await temporary.delete(recursive: true);
