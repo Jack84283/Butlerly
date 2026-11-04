@@ -154,6 +154,58 @@ void main() {
     },
   );
 
+  test('a raw backup restores to an independent installation', () async {
+    await setProbe('portable-snapshot');
+    final sourceEvidence = File(path.join(evidence.path, 'receipt.bin'));
+    await sourceEvidence.writeAsBytes([2, 4, 6, 8]);
+    final archive = File(path.join(root.path, 'portable.butlerly'));
+    await backups.createBackup(
+      archive,
+      password: 'correct horse battery staple',
+    );
+    final originalBytes = await archive.readAsBytes();
+
+    // A second SQLite installation has a different app-support directory and
+    // evidence directory. Nothing in the backup identifies the source device.
+    final targetDirectory = Directory(path.join(root.path, 'destination-db'))
+      ..createSync(recursive: true);
+    final targetEvidence = Directory(path.join(root.path, 'destination-evidence'))
+      ..createSync(recursive: true);
+    final target = LocalDatabase(
+      logger: AppLogger(),
+      factory: databaseFactoryFfi,
+      databaseDirectory: targetDirectory.path,
+    );
+    await target.initialize();
+    try {
+      final targetData = LocalDataManager(
+        target,
+        localEvidenceDirectory: targetEvidence,
+      );
+      final targetBackups = RawBackupService(target, targetData);
+      final restore = RawRestoreService(target, targetBackups);
+      final preview = await targetBackups.inspect(
+        archive,
+        password: 'correct horse battery staple',
+      );
+      expect(preview.createdAtUtc, isA<DateTime>());
+      await restore.restoreReplace(
+        archive,
+        password: 'correct horse battery staple',
+      );
+
+      final sourceRows = await target.database.query('restore_probe');
+      expect(sourceRows.single['value'], 'portable-snapshot');
+      expect(
+        await File(path.join(targetEvidence.path, 'receipt.bin')).readAsBytes(),
+        [2, 4, 6, 8],
+      );
+      expect(await archive.readAsBytes(), originalBytes);
+    } finally {
+      await target.close();
+    }
+  });
+
   test('failure after old DB moved rolls back the exact live state', () async {
     await setProbe('saved');
     final receipt = File(path.join(evidence.path, 'receipt.bin'));
