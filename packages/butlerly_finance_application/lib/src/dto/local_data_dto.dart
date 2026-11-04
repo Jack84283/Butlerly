@@ -1,3 +1,30 @@
+/// The point at which an encrypted backup could not be created or delivered.
+/// A stage is diagnostic only, and never carries private paths or financial data.
+enum BackupCreationStage {
+  snapshot,
+  inventory,
+  packaging,
+  encryption,
+  verification,
+  publication,
+  sharing,
+}
+
+/// Exposes a safe creation stage without converting an underlying failure to a
+/// success. Only an explicitly identified unresolved publication/rollback
+/// state should set [recoveryRequired].
+final class BackupCreationException implements Exception {
+  const BackupCreationException({
+    required this.stage,
+    required this.cause,
+    this.recoveryRequired = false,
+  });
+
+  final BackupCreationStage stage;
+  final Object cause;
+  final bool recoveryRequired;
+}
+
 enum LocalRestoreMode { merge, replace }
 
 final class BackupChangeSummary {
