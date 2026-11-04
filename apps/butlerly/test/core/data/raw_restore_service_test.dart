@@ -291,6 +291,49 @@ void main() {
   );
 
   test(
+    'Restore fences direct repository writes in the final activation window',
+    () async {
+      await setProbe('snapshot-value');
+      final archive = File(path.join(root.path, 'activation-fence.butlerly'));
+      await backups.createBackup(
+        archive,
+        password: 'correct horse battery staple',
+      );
+      var sawFence = false;
+      await restores.restoreReplace(
+        archive,
+        password: 'correct horse battery staple',
+        onStage: (stage) async {
+          if (stage == 'restore write barrier entered') {
+            sawFence = true;
+            expect(
+              () => database.database,
+              throwsA(isA<Exception>()),
+            );
+            expect(
+              () => database.persistenceDatabase.connection,
+              throwsA(isA<Exception>()),
+            );
+          }
+        },
+      );
+      expect(sawFence, isTrue);
+      expect(await getProbe(), 'snapshot-value');
+      // Normal reads and writes are available again only after commit.
+      await database.database.insert('restore_probe', {
+        'id': 'post-restore',
+        'value': 'write-now-allowed',
+      });
+      final rows = await database.database.query(
+        'restore_probe',
+        where: 'id = ?',
+        whereArgs: ['post-restore'],
+      );
+      expect(rows.single['value'], 'write-now-allowed');
+    },
+  );
+
+  test(
     'Merge keeps local changes, imports missing rows and preserves files',
     () async {
       await setProbe('archived-value');
