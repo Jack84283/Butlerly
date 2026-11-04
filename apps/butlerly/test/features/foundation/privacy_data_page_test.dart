@@ -44,6 +44,98 @@ void main() {
     ),
   );
 
+  test('Restore failures identify known categories without exposing paths', () {
+    expect(
+      classifyRestoreFailure(const BackupPasswordOrIntegrityException()),
+      RestoreFailureKind.authentication,
+    );
+    expect(
+      classifyRestoreFailure(const BackupPasswordRequiredException()),
+      RestoreFailureKind.missingPassword,
+    );
+    expect(
+      classifyRestoreFailure(
+        const FormatException('Unsupported Butlerly backup format.'),
+      ),
+      RestoreFailureKind.unsupportedFormat,
+    );
+    expect(
+      classifyRestoreFailure(
+        const FormatException('Backup SQLite snapshot is damaged.'),
+      ),
+      RestoreFailureKind.damaged,
+    );
+    expect(
+      classifyRestoreFailure(const UnsupportedBackupSchemaException()),
+      RestoreFailureKind.unsupportedSchema,
+    );
+    expect(
+      classifyRestoreFailure(
+        const FormatException('Incompatible columns for table transactions.'),
+      ),
+      RestoreFailureKind.mergeConflict,
+    );
+    expect(
+      classifyRestoreFailure(
+        const FileSystemException(
+          'Restore staging failed',
+          '/private/storage/path',
+          OSError('No space left on device', 28),
+        ),
+      ),
+      RestoreFailureKind.storage,
+    );
+    expect(
+      classifyRestoreFailure(StateError('Restore recovery required')),
+      RestoreFailureKind.recovery,
+    );
+    expect(
+      classifyRestoreFailure(StateError('Other unclassified error')),
+      RestoreFailureKind.unknown,
+    );
+  });
+
+  testWidgets('authentication error explains password or encrypted damage', (
+    tester,
+  ) async {
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    final context = tester.element(find.byType(PrivacyDataPage));
+    final dialog = showBackupRestoreFailureDialog(
+      context,
+      error: const BackupPasswordOrIntegrityException(),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Unable to restore backup'), findsOneWidget);
+    expect(find.text('Reason'), findsOneWidget);
+    expect(find.text('What to do next'), findsOneWidget);
+    expect(find.textContaining('cannot tell which occurred'), findsOneWidget);
+    expect(find.textContaining('Check the exact backup password'), findsOneWidget);
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    await dialog;
+  });
+
+  testWidgets('corrupt archive errors have localized recovery guidance', (
+    tester,
+  ) async {
+    await tester.pumpWidget(app(locale: const Locale('zh')));
+    await tester.pumpAndSettle();
+    final context = tester.element(find.byType(PrivacyDataPage));
+    final dialog = showBackupRestoreFailureDialog(
+      context,
+      error: const FormatException('Backup manifest checksum mismatch.'),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('无法恢复备份'), findsOneWidget);
+    expect(find.text('失败原因'), findsOneWidget);
+    expect(find.textContaining('完整性'), findsOneWidget);
+    expect(find.textContaining('保留失败文件'), findsOneWidget);
+    await tester.tap(find.text('确定'));
+    await tester.pumpAndSettle();
+    await dialog;
+  });
+
   testWidgets(
     'Privacy and data uses Cupertino symbols for native iOS actions',
     (tester) async {
