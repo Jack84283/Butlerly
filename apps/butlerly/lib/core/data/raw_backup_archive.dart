@@ -27,6 +27,7 @@ final class RawBackupArchive {
     required Directory evidenceDirectory,
     required Iterable<String> referencedEvidencePaths,
     required File destination,
+    int recordCount = 0,
     DateTime? createdAtUtc,
   }) async {
     await rejectEvidenceRoot(evidenceDirectory);
@@ -89,6 +90,7 @@ final class RawBackupArchive {
           .toIso8601String(),
       'sqliteLength': sqliteLength,
       'sqliteSha256': sqliteHash,
+      'recordCount': recordCount,
       'attachments': [
         for (final file in files)
           {
@@ -172,6 +174,7 @@ final class RawBackupArchive {
     return RawBackupInspection(
       createdAtUtc: parsed.createdAtUtc,
       sqliteBytes: parsed.sqliteLength,
+      recordCount: parsed.recordCount,
       attachmentCount: parsed.files.length,
       missingAttachmentCount:
           parsed.missingAttachmentPaths.length + parsed.unsafeReferenceCount,
@@ -274,6 +277,7 @@ final class RawBackupArchive {
       final sqliteLength = decoded['sqliteLength'];
       final sqliteHash = decoded['sqliteSha256'];
       final date = decoded['createdAtUtc'];
+      final recordCount = decoded['recordCount'];
       final rawFiles = decoded['attachments'];
       final rawMissing = decoded['missingAttachmentPaths'];
       final unsafeCount = decoded['unsafeReferenceCount'];
@@ -282,6 +286,8 @@ final class RawBackupArchive {
           sqliteHash is! String ||
           !_shaPattern.hasMatch(sqliteHash) ||
           date is! String ||
+          recordCount is! int ||
+          recordCount < 0 ||
           rawFiles is! List ||
           rawMissing is! List ||
           unsafeCount is! int ||
@@ -332,6 +338,7 @@ final class RawBackupArchive {
         createdAt,
         sqliteLength,
         sqliteHash,
+        recordCount,
         files,
         missing,
         unsafeCount,
@@ -355,12 +362,14 @@ final class RawBackupInspection {
   const RawBackupInspection({
     required this.createdAtUtc,
     required this.sqliteBytes,
+    required this.recordCount,
     required this.attachmentCount,
     required this.missingAttachmentCount,
   });
 
   final DateTime createdAtUtc;
   final int sqliteBytes;
+  final int recordCount;
   final int attachmentCount;
   final int missingAttachmentCount;
   bool get hasWarnings => missingAttachmentCount > 0;
@@ -379,6 +388,7 @@ final class _RawManifest {
     this.createdAtUtc,
     this.sqliteLength,
     this.sqliteHash,
+    this.recordCount,
     this.files,
     this.missingAttachmentPaths,
     this.unsafeReferenceCount,
@@ -387,6 +397,7 @@ final class _RawManifest {
   final DateTime createdAtUtc;
   final int sqliteLength;
   final String sqliteHash;
+  final int recordCount;
   final List<_RawFile> files;
   final List<String> missingAttachmentPaths;
   final int unsafeReferenceCount;
