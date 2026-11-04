@@ -93,8 +93,8 @@ Future<bool> showBackupRestoreConfirmation(
             final l10n = sheetContext.l10n;
             final summary = l10n
                 .backupText('backupSummary')
-                .replaceAll('{records}', '\${inspection.recordCount}')
-                .replaceAll('{evidence}', '\${inspection.evidenceCount}');
+                .replaceAll('{records}', '${inspection.recordCount}')
+                .replaceAll('{evidence}', '${inspection.evidenceCount}');
             final created = l10n.backupText('backupCreatedAt').replaceAll(
               '{date}',
               formatBackupInspectionDate(
