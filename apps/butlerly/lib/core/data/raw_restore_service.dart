@@ -153,9 +153,7 @@ final class RawRestoreService {
       );
       // Upgrade only the extracted, disposable database. The encrypted source
       // archive and the active local database remain untouched until activation.
-      await _upgradeStagedSqlite(
-        File(path.join(staging.path, 'butlerly.db')),
-      );
+      await _upgradeStagedSqlite(File(path.join(staging.path, 'butlerly.db')));
       final result = prepareStaging == null
           ? inspection
           : await prepareStaging(staging, inspection);
@@ -318,9 +316,11 @@ final class RawRestoreService {
 
     // A missing intermediate migration must fail closed; do not let the SQLite
     // opening API create or silently recreate a partial database.
-    for (var version = sourceVersion + 1;
-        version <= template.targetVersion;
-        version++) {
+    for (
+      var version = sourceVersion + 1;
+      version <= template.targetVersion;
+      version++
+    ) {
       if (!template.migrations.containsKey(version)) {
         throw FormatException('Missing SQLite migration for schema $version.');
       }
@@ -338,9 +338,7 @@ final class RawRestoreService {
       final integrity = await migrator.connection.rawQuery(
         'PRAGMA integrity_check',
       );
-      final version = await migrator.connection.rawQuery(
-        'PRAGMA user_version',
-      );
+      final version = await migrator.connection.rawQuery('PRAGMA user_version');
       if (integrity.length != 1 ||
           integrity.single.values.single != 'ok' ||
           version.length != 1 ||
