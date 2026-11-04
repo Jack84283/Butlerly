@@ -47,7 +47,8 @@ const _backupStrings = <String, Map<String, String>>{
         'Encrypted backup created, decrypted for verification, and saved to the selected location. Keep your backup password separately; Butlerly cannot recover it.',
     'backupSharedVerified':
         'Encrypted backup created and verified. The share destination reported success; confirm the file was actually saved there. The temporary Butlerly copy is removed.',
-    'backupMissingEvidenceTitle': 'Some attachments are missing from this backup',
+    'backupMissingEvidenceTitle':
+        'Some attachments are missing from this backup',
     'backupMissingEvidenceToast':
         'Backup saved with {count} missing attachments. Review the details.',
     'backupMissingEvidenceBody':
