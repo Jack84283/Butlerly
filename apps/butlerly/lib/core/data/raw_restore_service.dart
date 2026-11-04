@@ -213,6 +213,14 @@ final class RawRestoreService {
       final preCloseFingerprint = prepareStaging == null
           ? null
           : await sha256FileRange(liveDatabase);
+      if (preCloseFingerprint != null) {
+        // A direct handle could have committed while hashing. Recheck the
+        // recorded live revision after hashing to catch such writes before
+        // the durable activation journal is written.
+        await beforeActivation?.call(
+          database.persistenceDatabase.restoreActivationConnection,
+        );
+      }
 
       final markerTemp = File('${journal.path}.tmp');
       await rejectSymlinkedPath(markerTemp.path);
