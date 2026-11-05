@@ -13,13 +13,36 @@ import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart'
     show NewerBackupSchemaException, RestoreRecoveryRequiredException;
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  setUpAll(sqfliteFfiInit);
+  setUpAll(() {
+    sqfliteFfiInit();
+    if (Platform.isMacOS) {
+      // flutter test does not register AppDelegate's native method channel.
+      // Exercise the same no-replace POSIX link semantics on the macOS host,
+      // while a separate native build verifies Swift channel compilation.
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+            const MethodChannel('butlerly/storage_capacity'),
+            (call) async {
+              if (call.method != 'publishNoReplace') return null;
+              final arguments = call.arguments as Map<Object?, Object?>;
+              final source = arguments['source'] as String;
+              final destination = arguments['destination'] as String;
+              final result = await Process.run('ln', [source, destination]);
+              if (result.exitCode != 0) {
+                throw PlatformException(code: 'publish_failed');
+              }
+              return null;
+            },
+          );
+    }
+  });
 
   late Directory root;
   late Directory databaseDirectory;
