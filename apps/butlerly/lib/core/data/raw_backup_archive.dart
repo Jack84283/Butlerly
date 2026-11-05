@@ -414,13 +414,21 @@ final class RawBackupInspection {
     required this.recordCount,
     required this.attachmentCount,
     required this.missingAttachmentCount,
+    this.keptLocalRowCount = 0,
   });
 
   final DateTime createdAtUtc;
   final int sqliteBytes;
+
+  /// Replace: transactions in the archive. Merge: newly imported domain rows
+  /// (excluding tombstone bookkeeping). These are distinct operations.
   final int recordCount;
   final int attachmentCount;
   final int missingAttachmentCount;
+
+  /// Merge only: existing local domain rows retained, including shared IDs
+  /// whose local values take precedence. Not a timestamp/newness claim.
+  final int keptLocalRowCount;
   bool get hasWarnings => missingAttachmentCount > 0;
 }
 
