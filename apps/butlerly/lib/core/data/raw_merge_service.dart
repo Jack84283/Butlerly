@@ -4,6 +4,7 @@ import 'package:butlerly/core/data/evidence_path_safety.dart';
 import 'package:butlerly/core/data/raw_backup_archive.dart';
 import 'package:butlerly/core/data/raw_backup_service.dart';
 import 'package:butlerly/core/data/raw_restore_service.dart';
+import 'package:butlerly/core/data/storage_space_preflight.dart';
 import 'package:butlerly/core/evidence/evidence_mutation_lock.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly_database/butlerly_database.dart' show sha256FileRange;
@@ -65,6 +66,14 @@ final class RawMergeService {
     final staging = Directory(path.join(working.path, 'staged'));
     final createdEvidence = <({File file, String hash})>[];
     var committed = false;
+    await StorageSpacePreflight.requireAvailable(
+      parent,
+      stagingBytes: StorageSpacePreflight.restoreStagingBytes(
+        archiveBytes: await encryptedArchive.length(),
+        databaseBytes: await liveFile.length(),
+        evidenceBytes: await StorageSpacePreflight.evidenceBytes(liveEvidence),
+      ),
+    );
     await working.create(recursive: true);
     try {
       await onStage?.call('archive extraction');
