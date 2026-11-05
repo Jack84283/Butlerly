@@ -105,35 +105,40 @@ final class BackupEncryption {
     final temporary = File(
       '${destination.path}.encrypting-${DateTime.now().microsecondsSinceEpoch}',
     );
-    final output = temporary.openWrite();
     try {
-      output.add(magic);
-      output.add(_encodeInt64(headerBytes.length));
-      output.add(headerBytes);
+      final output = temporary.openWrite();
+      try {
+        output.add(magic);
+        output.add(_encodeInt64(headerBytes.length));
+        output.add(headerBytes);
 
-      late Mac mac;
-      final encrypted = _cipher.encryptStream(
-        source.openRead(),
-        secretKey: secretKey,
-        nonce: nonce,
-        aad: headerBytes,
-        onMac: (value) => mac = value,
-      );
-      await output.addStream(encrypted);
-      output.add(mac.bytes);
-      await output.flush();
-    } finally {
-      await output.close();
-    }
+        late Mac mac;
+        final encrypted = _cipher.encryptStream(
+          source.openRead(),
+          secretKey: secretKey,
+          nonce: nonce,
+          aad: headerBytes,
+          onMac: (value) => mac = value,
+        );
+        await output.addStream(encrypted);
+        output.add(mac.bytes);
+        await output.flush();
+      } finally {
+        await output.close();
+      }
 
-    try {
       if (await destination.exists()) await destination.delete();
       await temporary.rename(destination.path);
-    } catch (_) {
-      if (await temporary.exists()) await temporary.delete();
-      rethrow;
+      return destination;
+    } finally {
+      // Both streaming errors and failed publication must reclaim partial
+      // ciphertext. A killed process is handled by startup orphan cleanup.
+      try {
+        if (await temporary.exists()) await temporary.delete();
+      } catch (_) {
+        // Preserve the primary encryption/publication outcome.
+      }
     }
-    return destination;
   }
 
   Future<File> decrypt(
