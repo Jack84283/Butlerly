@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:butlerly/app/bootstrap.dart';
 import 'package:butlerly/app/router/app_router.dart';
@@ -8,6 +9,7 @@ import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as path;
 
 void main() {
   final logger = AppLogger()..initialize();
@@ -234,6 +236,78 @@ void main() {
     );
     expect(database.status, DatabaseStatus.notInitialized);
   });
+
+  test(
+    'unreadable raw restore journal preserves original files at startup',
+    () async {
+      final root = await Directory.systemTemp.createTemp(
+        'butlerly-corrupt-raw-startup-',
+      );
+      addTearDown(() async {
+        if (await root.exists()) await root.delete(recursive: true);
+      });
+      final live = File(path.join(root.path, 'butlerly.db'));
+      final evidence = Directory(path.join(root.path, 'evidence'));
+      await evidence.create();
+      final original = <int>[11, 22, 33, 44];
+      await live.writeAsBytes(original, flush: true);
+      final journal = File(
+        path.join(root.path, '.raw-restore-journal.json'),
+      );
+      const damaged = '{malformed raw restore journal';
+      await journal.writeAsString(damaged, flush: true);
+      final receipt = File(path.join(evidence.path, 'receipt.bin'));
+      await receipt.writeAsBytes(<int>[1, 2, 3]);
+
+      await expectLater(
+        recoverRawJournalBeforeDatabaseOpen(
+          liveDatabase: live,
+          evidenceDirectory: evidence,
+        ),
+        throwsA(isA<RawRestoreStartupRecoveryRequiredException>()),
+      );
+      expect(await live.readAsBytes(), original);
+      expect(await receipt.readAsBytes(), <int>[1, 2, 3]);
+      expect(await journal.readAsString(), damaged);
+
+      // Retrying with the same journal must remain blocked, not initialize a
+      // new empty SQLite database or delete rollback material.
+      await expectLater(
+        recoverRawJournalBeforeDatabaseOpen(
+          liveDatabase: live,
+          evidenceDirectory: evidence,
+        ),
+        throwsA(isA<RawRestoreStartupRecoveryRequiredException>()),
+      );
+      expect(await journal.readAsString(), damaged);
+    },
+  );
+
+  testWidgets(
+    'unresolved raw journal gets a recovery-only startup screen',
+    (tester) async {
+      const error = RawRestoreStartupRecoveryRequiredException();
+      final failure = classifyStartupFailure('database initialization', error);
+      expect(failure.code, 'RECOVERY-RAW');
+
+      await tester.pumpWidget(
+        ButlerlyStartupGate(
+          logger: logger,
+          initialize: () async => throw failure,
+          minimumLaunchDuration: Duration.zero,
+          readyBuilder: (_) =>
+              const MaterialApp(home: Scaffold(body: Text('workspace ready'))),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text('Butlerly recovery is required'), findsOneWidget);
+      expect(find.text('Diagnostic: RECOVERY-RAW'), findsOneWidget);
+      expect(find.text('workspace ready'), findsNothing);
+      expect(find.byKey(const ValueKey('butlerly-startup-retry')), findsOneWidget);
+    },
+  );
 
   testWidgets('storage unavailable never falls through to the workspace', (
     tester,
