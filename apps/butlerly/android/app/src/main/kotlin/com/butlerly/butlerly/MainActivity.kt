@@ -18,5 +18,22 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "butlerly/storage_capacity")
+            .setMethodCallHandler { call, result ->
+                if (call.method != "availableBytes") {
+                    result.notImplemented()
+                } else {
+                    val storagePath = call.argument<String>("path")
+                    if (storagePath == null) {
+                        result.error("invalid_path", "Storage path required.", null)
+                    } else {
+                        try {
+                            result.success(android.os.StatFs(storagePath).availableBytes)
+                        } catch (error: Exception) {
+                            result.error("storage_unavailable", "Cannot read free capacity.", null)
+                        }
+                    }
+                }
+            }
     }
 }
