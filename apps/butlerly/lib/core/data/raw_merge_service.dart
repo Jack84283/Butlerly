@@ -215,17 +215,23 @@ final class RawMergeService {
             destination,
           );
         } on FileSystemException {
-          // An identical competing publication is safe to reuse; a different
-          // file, unsafe link, cross-volume target, or unsupported filesystem
-          // aborts without replacing any current evidence.
-          if (await FileSystemEntity.type(
-                    destination.path,
-                    followLinks: false,
-                  ) ==
-                  FileSystemEntityType.file &&
+          // An identical competing publication is safe to reuse. A different
+          // local file is a collision, not permission to overwrite it.
+          final type = await FileSystemEntity.type(
+            destination.path,
+            followLinks: false,
+          );
+          if (type == FileSystemEntityType.file &&
               await sha256FileRange(destination) == digest) {
             continue;
           }
+          if (type != FileSystemEntityType.notFound) {
+            throw const FormatException(
+              'Local evidence appeared during Merge; no file was replaced.',
+            );
+          }
+          // Unsupported/cross-volume hard links fail safely rather than
+          // exposing any partially written final attachment.
           rethrow;
         }
         if (await sha256FileRange(destination) != digest) {
