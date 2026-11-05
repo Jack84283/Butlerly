@@ -643,14 +643,16 @@ void main() {
                 'db.execute("INSERT INTO restore_probe (id,value) VALUES '
                 '(?,?)",("external-late","must-not-be-lost"))\n'
                 'db.commit()\n';
-            final process = await Process.run(
-              'python3',
-              ['-c', writer, backupFile.path],
-            );
+            final process = await Process.run('python3', [
+              '-c',
+              writer,
+              backupFile.path,
+            ]);
             expect(
               process.exitCode,
               isNot(0),
-              reason: 'An external SQLite writer committed during the '
+              reason:
+                  'An external SQLite writer committed during the '
                   'physically locked Merge activation window.',
             );
           }
