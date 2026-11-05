@@ -100,12 +100,15 @@ store destinations have not been configured.
   Normal application use-case writes are serialized by
   `AnalysisConsistencyGate` during Restore, but the revision check is an
   extra fail-closed safeguard for direct or external database writes.
-- **Remaining concurrency gate:** this optimistic check does not create a
-  database-wide write lock across the final check/connection-close/file-swap
-  interval. Before merge, audit background and direct writers, establish a
-  complete application-wide maintenance barrier, and exercise attempts to
-  write during the final activation window on disposable data. Do not
-  describe concurrent Merge as fully proven until that gate is complete.
+- **Final concurrency gate:** revision checks are supplemented by an
+  application repository-access fence and a POSIX exclusive SQLite file lock
+  after closing the live connection. SQLite writers in another process must
+  fail to obtain a conflicting lock during the physical Merge rename. The
+  final file fingerprint is read through the *locked descriptor*, never by
+  reopening the original path (which can release POSIX locks). On Windows,
+  physical Merge fails closed pending a Windows-compatible activation design.
+  This protects cooperating SQLite connections; independent tools using
+  nonstandard VFS/locking or directly modifying files remain unsupported.
 - **Post-Restore refresh:** the committed Restore emits
   `workspaceRestoreChanges`, also invalidating transaction and budget data.
   Mounted profile, master data, payment sources, budgets, rules and payment
@@ -131,11 +134,19 @@ store destinations have not been configured.
   gateway persists a recovery-only application state and leaves the raw journal
   and private original files intact; a subsequent successful startup journal
   rollback clears only the corresponding raw-restore recovery state.
-- **Scope:** the fence protects the active app's repositories; it is not an
-  operating-system lock against independent processes that directly open the
-  SQLite file. Final device acceptance must confirm Butlerly permits only one
-  active writer/installation per local workspace and test interrupted activation
-  on a disposable database.
+- **Unresolved journal at startup:** if the raw recovery journal is corrupt or
+  otherwise cannot be replayed, Butlerly does not open SQLite or expose normal
+  navigation. It shows a localized recovery-only startup screen with a retry
+  action and instructions to preserve the original journal and prior files.
+- **Recovery retry safety:** the app's restore fence remains active while the
+  persistence connection is closed *before* raw journaled files are moved.
+  Connection close failure stops recovery without deleting the marker.
+- **Independent SQLite writers:** the POSIX nonblocking exclusive database
+  lock is held through the swap, while normal writers use the application
+  consistency gate. A separate-process SQLite regression test verifies the
+  lock on CI Linux. This is not an authorization boundary against arbitrary
+  raw filesystem writes, nor a substitute for disposable macOS/iOS acceptance.
+  Windows Merge remains intentionally unsupported by this activation code.
 
 ## Performance optimizations (PR #396)
 
