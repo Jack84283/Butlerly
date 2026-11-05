@@ -612,6 +612,63 @@ void main() {
     },
   );
 
+  test(
+    'Merge blocks a second-process SQLite writer through the rename window',
+    () async {
+      if (!Platform.isLinux) return; // CI provides python3 + POSIX SQLite.
+      await setProbe('backup-value');
+      final archive = File(path.join(root.path, 'external-writer.butlerly'));
+      await backups.createBackup(
+        archive,
+        password: 'correct horse battery staple',
+      );
+      await database.database.update(
+        'restore_probe',
+        {'value': 'local-wins'},
+        where: 'id = ?',
+        whereArgs: ['original'],
+      );
+      var attempted = false;
+      final backupFile = File(database.persistenceDatabase.path);
+      await RawMergeService(database, backups, restores).restoreMerge(
+        archive,
+        password: 'correct horse battery staple',
+        onStage: (stage) async {
+          if (stage == 'exclusive merge activation lock acquired') {
+            attempted = true;
+            const writer =
+                'import sqlite3,sys\n'
+                'db=sqlite3.connect(sys.argv[1],timeout=0.1)\n'
+                'db.execute("BEGIN IMMEDIATE")\n'
+                'db.execute("INSERT INTO restore_probe (id,value) VALUES '
+                '(?,?)",("external-late","must-not-be-lost"))\n'
+                'db.commit()\n';
+            final process = await Process.run(
+              'python3',
+              ['-c', writer, backupFile.path],
+            );
+            expect(
+              process.exitCode,
+              isNot(0),
+              reason: 'An external SQLite writer committed during the '
+                  'physically locked Merge activation window.',
+            );
+          }
+        },
+      );
+      expect(attempted, isTrue);
+      expect(await getProbe(), 'local-wins');
+      expect(
+        await database.database.query(
+          'restore_probe',
+          where: 'id = ?',
+          whereArgs: ['external-late'],
+        ),
+        isEmpty,
+      );
+    },
+  );
+
   test('Merge respects local deletion tombstones', () async {
     await setProbe('archived-value');
     await database.database.insert('restore_probe', {
