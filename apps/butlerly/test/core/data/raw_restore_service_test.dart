@@ -527,7 +527,9 @@ void main() {
     'crash immediately after atomic link leaves complete immutable evidence',
     () async {
       await setProbe('backup-value');
-      final evidenceFile = File(path.join(evidence.path, 'complete-receipt.bin'));
+      final evidenceFile = File(
+        path.join(evidence.path, 'complete-receipt.bin'),
+      );
       final bytes = List<int>.generate(4096, (i) => i % 251);
       await evidenceFile.writeAsBytes(bytes);
       final archive = File(path.join(root.path, 'complete-receipt.butlerly'));
