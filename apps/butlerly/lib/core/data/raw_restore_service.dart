@@ -348,11 +348,15 @@ final class RawRestoreService {
       Error.throwWithStackTrace(error, stack);
     } finally {
       if (exclusiveMergeLock != null) {
+        // Releasing the activation handle is best effort. In particular,
+        // cleanup must not report a committed restore as failed or hide the
+        // original error just because OS lock release reports a close error.
         try {
           await exclusiveMergeLock.unlock();
-        } finally {
+        } catch (_) {}
+        try {
           await exclusiveMergeLock.close();
-        }
+        } catch (_) {}
       }
       if (activationFenced && !uncertainRecovery) {
         database.persistenceDatabase.finishRestoreActivation();
