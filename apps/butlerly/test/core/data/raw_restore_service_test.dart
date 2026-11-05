@@ -731,6 +731,19 @@ void main() {
     },
   );
 
+  test('retired physical Merge entry point fails closed', () async {
+    await setProbe('must-remain');
+    await expectLater(
+      restores.restoreReplace(
+        File(path.join(root.path, 'unused-archive.butlerly')),
+        password: 'unused password',
+        prepareStaging: (staging, inspection) async => inspection,
+      ),
+      throwsA(isA<UnsupportedError>()),
+    );
+    expect(await getProbe(), 'must-remain');
+  });
+
   test(
     'idle external SQLite connection resumes safely after in-place Merge',
     () async {
