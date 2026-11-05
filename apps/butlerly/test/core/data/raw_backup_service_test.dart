@@ -462,6 +462,75 @@ void main() {
     expect(await unrelated.readAsBytes(), [9, 8, 7]);
   });
 
+  test(
+    'startup cleanup never deletes a same-session active mobile share',
+    () async {
+      final data = LocalDataManager(database, localEvidenceDirectory: evidence);
+      final gateway = LocalWorkspaceDataGateway(
+        LocalBackupManager(database, data),
+        data,
+      );
+      final shared = await gateway.createTemporaryBackup(
+        'active.butlerly',
+        password: 'correct horse battery staple',
+        temporaryRoot: root,
+      );
+      final file = File(shared.filePath);
+      expect(await file.exists(), isTrue);
+
+      // Even with a deliberately permissive time cutoff, the held lease
+      // protects the active share until its OS share sheet has returned.
+      await LocalWorkspaceDataGateway.cleanupAbandonedTemporaryShareBackups(
+        temporaryRoot: root,
+        olderThanMicros:
+            DateTime.now().add(const Duration(days: 1)).microsecondsSinceEpoch,
+      );
+      expect(await file.exists(), isTrue);
+      await gateway.discardTemporaryBackup(shared.filePath);
+      expect(await file.exists(), isFalse);
+      expect(await file.parent.exists(), isFalse);
+    },
+  );
+
+  test(
+    'cleanup preserves a different live process holding a sharing lease',
+    () async {
+      if (!Platform.isLinux) return;
+      final shared = Directory(
+        path.join(root.path, '.butlerly-backup-share-1700000000000002'),
+      )..createSync();
+      final marker = File(path.join(shared.path, '.butlerly-share-active.lock'));
+      await marker.writeAsString('locked');
+      final archive = File(path.join(shared.path, 'backup.butlerly'));
+      await archive.writeAsBytes([1, 2, 3]);
+      const script =
+          'import fcntl,sys\n'
+          'f=open(sys.argv[1],"a+")\n'
+          'fcntl.lockf(f,fcntl.LOCK_EX)\n'
+          'print("READY",flush=True)\n'
+          'sys.stdin.readline()\n'
+          'fcntl.lockf(f,fcntl.LOCK_UN)\n'
+          'f.close()\n';
+      final process = await Process.start('python3', ['-u', '-c', script, marker.path]);
+      addTearDown(() => process.kill());
+      await expectLater(
+        process.stdout.transform(const SystemEncoding().decoder).first,
+        completion(contains('READY')),
+      );
+      await LocalWorkspaceDataGateway.cleanupAbandonedTemporaryShareBackups(
+        temporaryRoot: root,
+      );
+      expect(await archive.readAsBytes(), [1, 2, 3]);
+      process.stdin.writeln('CONTINUE');
+      await process.stdin.flush();
+      expect(await process.exitCode, 0);
+      await LocalWorkspaceDataGateway.cleanupAbandonedTemporaryShareBackups(
+        temporaryRoot: root,
+      );
+      expect(await shared.exists(), isFalse);
+    },
+  );
+
   test('temporary share cleanup refuses a linked directory', () async {
     if (Platform.isWindows) return;
     final external = File(path.join(output.path, 'keep-this-record'));
