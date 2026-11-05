@@ -45,6 +45,50 @@ void main() {
     );
   });
 
+  test('one filesystem must afford combined peak staging and export', () async {
+    final root = await Directory.systemTemp.createTemp('shared-capacity-');
+    addTearDown(() => root.delete(recursive: true));
+    final internal = Directory('${root.path}/internal')..createSync();
+    final external = Directory('${root.path}/external')..createSync();
+    const mib = 1024 * 1024;
+    await expectLater(
+      StorageSpacePreflight.requireBackupCapacity(
+        privateDirectory: internal,
+        destinationDirectory: external,
+        privateStagingBytes: 200 * mib,
+        destinationStagingBytes: 100 * mib,
+        identityProbe: (_) async => 'shared-device',
+        probe: (_) async => 280 * mib,
+      ),
+      throwsA(isA<FileSystemException>()),
+    );
+    await StorageSpacePreflight.requireBackupCapacity(
+      privateDirectory: internal,
+      destinationDirectory: external,
+      privateStagingBytes: 200 * mib,
+      destinationStagingBytes: 100 * mib,
+      identityProbe: (dir) async => dir.path,
+      probe: (dir) async => dir.path == internal.path ? 280 * mib : 170 * mib,
+    );
+  });
+
+  test('unknown filesystem identity must assume shared capacity', () async {
+    final root = await Directory.systemTemp.createTemp('unknown-capacity-');
+    addTearDown(() => root.delete(recursive: true));
+    const mib = 1024 * 1024;
+    await expectLater(
+      StorageSpacePreflight.requireBackupCapacity(
+        privateDirectory: root,
+        destinationDirectory: root,
+        privateStagingBytes: 200 * mib,
+        destinationStagingBytes: 100 * mib,
+        identityProbe: (_) async => null,
+        probe: (_) async => 280 * mib,
+      ),
+      throwsA(isA<FileSystemException>()),
+    );
+  });
+
   test('staging estimate includes copies and encryption verification', () {
     expect(
       StorageSpacePreflight.backupStagingBytes(
