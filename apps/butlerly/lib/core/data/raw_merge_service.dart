@@ -4,6 +4,7 @@ import 'package:butlerly/core/data/evidence_path_safety.dart';
 import 'package:butlerly/core/data/raw_backup_archive.dart';
 import 'package:butlerly/core/data/raw_backup_service.dart';
 import 'package:butlerly/core/data/raw_restore_service.dart';
+import 'package:butlerly/core/evidence/evidence_mutation_lock.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly_database/butlerly_database.dart' show sha256FileRange;
 import 'package:path/path.dart' as path;
@@ -37,32 +38,228 @@ final class RawMergeService {
     'entity_tombstones',
   };
 
+  /// Merge imports rows transactionally into the existing SQLite file.
+  /// Replacing the database pathname would strand idle external SQLite
+  /// connections on an obsolete inode, allowing later writes to disappear.
   Future<RawBackupInspection> restoreMerge(
     File encryptedArchive, {
     required String password,
     Future<void> Function(String stage)? onStage,
-  }) {
-    _DatabaseRevision? sourceRevision;
-    return restores.restoreReplace(
-      encryptedArchive,
-      password: password,
-      onStage: onStage,
-      // Take the baseline inside the exclusive operation, just before the
-      // disposable local snapshot is made, not before waiting for the lock.
-      prepareStaging: (staging, inspection) async {
-        sourceRevision = await _liveDatabaseRevision();
-        return _mergeIntoStaging(staging, inspection);
-      },
-      beforeActivation: (liveConnection) async {
-        if (sourceRevision == null ||
-            sourceRevision != await _liveDatabaseRevision(liveConnection)) {
-          throw StateError(
-            'Live database changed during Merge; retry with a new backup. '
-            'No local data was replaced.',
+  }) => EvidenceMutationLock.runExclusive(() async {
+    final liveFile = File(database.persistenceDatabase.path);
+    final parent = liveFile.parent;
+    final liveEvidence = await backup.data.evidenceDirectory();
+    await rejectSymlinkedPath(parent.path);
+    await rejectSymlinkedPath(liveEvidence.path);
+    for (final suffix in const ['', '.tmp']) {
+      final marker = path.join(parent.path, '.raw-restore-journal.json$suffix');
+      if (await FileSystemEntity.type(marker, followLinks: false) !=
+          FileSystemEntityType.notFound) {
+        throw StateError('Recover the interrupted Replace before Merge.');
+      }
+    }
+    final operationId = DateTime.now().microsecondsSinceEpoch.toString();
+    final working = Directory(
+      path.join(parent.path, '.raw-merge-work-$operationId'),
+    );
+    final staging = Directory(path.join(working.path, 'staged'));
+    final createdEvidence = <({File file, String hash})>[];
+    var committed = false;
+    await working.create(recursive: true);
+    try {
+      await onStage?.call('archive extraction');
+      final inspection = await backup.prepareRestore(
+        encryptedArchive,
+        password: password,
+        stagingDirectory: staging,
+      );
+      await restores.upgradeStagedSqlite(
+        File(path.join(staging.path, 'butlerly.db')),
+      );
+      final sourceRevision = await _liveDatabaseRevision();
+      final merged = await _mergeIntoStaging(staging, inspection);
+      await onStage?.call('attachment staging');
+      // New attachment bytes must be durable before the SQLite transaction
+      // commits any reference to them; never replace local attachment bytes.
+      await _publishNewEvidence(
+        Directory(path.join(staging.path, 'evidence')),
+        liveEvidence,
+        operationId,
+        createdEvidence,
+      );
+      await onStage?.call('before transactional merge');
+      final current = database.database;
+      final stagedPath = path.join(staging.path, 'butlerly.db');
+      final quoted = stagedPath.replaceAll("'", "''");
+      await current.execute("ATTACH DATABASE '$quoted' AS merge_stage");
+      try {
+        await current.transaction((tx) async {
+          // BEGIN EXCLUSIVE is enforced by SQLite itself even against idle,
+          // independently opened connections which resume writing later.
+          // Validate revision *inside* that transaction.
+          if (sourceRevision != await _liveDatabaseRevision(tx)) {
+            throw StateError(
+              'Live database changed during Merge; retry with a new backup. '
+              'No local data was replaced.',
+            );
+          }
+          await onStage?.call('transactional merge write lock acquired');
+          await _importStagedRows(tx);
+          await onStage?.call('original SQLite preserved');
+          final violations = await tx.rawQuery('PRAGMA foreign_key_check');
+          if (violations.isNotEmpty) {
+            throw const FormatException(
+              'Merged SQLite contains unresolved foreign-key references.',
+            );
+          }
+        }, exclusive: true);
+        committed = true;
+      } finally {
+        // A failed post-commit DETACH must never report a committed Merge as
+        // unsuccessful and encourage a second Restore.
+        try {
+          await current.execute('DETACH DATABASE merge_stage');
+        } catch (_) {
+          if (!committed) rethrow;
+        }
+      }
+      return merged;
+    } catch (error, stack) {
+      if (!committed) {
+        for (final created in createdEvidence.reversed) {
+          try {
+            if (await FileSystemEntity.type(
+                  created.file.path,
+                  followLinks: false,
+                ) == FileSystemEntityType.file &&
+                await sha256FileRange(created.file) == created.hash) {
+              await created.file.delete();
+            }
+          } catch (_) {
+            // Preserve modified/uncertain files rather than erasing late data.
+          }
+        }
+      }
+      Error.throwWithStackTrace(error, stack);
+    } finally {
+      try {
+        await rejectEvidenceTree(working);
+        if (await working.exists()) await working.delete(recursive: true);
+      } catch (_) {
+        // Crash or cleanup failure: later startup reclaims this stage.
+      }
+    }
+  });
+
+  Future<void> _publishNewEvidence(
+    Directory staged,
+    Directory live,
+    String id,
+    List<({File file, String hash})> created,
+  ) async {
+    await rejectEvidenceTree(staged);
+    await rejectEvidenceTree(live);
+    if (!await live.exists()) await live.create(recursive: true);
+    await for (final entry in staged.list(
+      recursive: true,
+      followLinks: false,
+    )) {
+      await rejectEvidenceLink(entry);
+      if (entry is! File) continue;
+      final relative = path.relative(entry.path, from: staged.path);
+      final safe = await validateEvidencePath(live, relative);
+      final destination = File(path.join(live.path, safe));
+      final existing = await FileSystemEntity.type(
+        destination.path,
+        followLinks: false,
+      );
+      if (existing != FileSystemEntityType.notFound) {
+        if (existing != FileSystemEntityType.file ||
+            await sha256FileRange(destination) != await sha256FileRange(entry)) {
+          throw const FormatException(
+            'Local evidence changed during Merge; no data was replaced.',
           );
         }
-      },
+        continue;
+      }
+      await destination.parent.create(recursive: true);
+      final temporary = File('${destination.path}.raw-merge-stage-$id');
+      await rejectSymlinkedPath(temporary.path);
+      try {
+        await entry.copy(temporary.path);
+        final digest = await sha256FileRange(entry);
+        if (await sha256FileRange(temporary) != digest) {
+          throw StateError('New evidence copy failed verification.');
+        }
+        await temporary.rename(destination.path);
+        created.add((file: destination, hash: digest));
+      } finally {
+        try {
+          if (await temporary.exists()) await temporary.delete();
+        } catch (_) {}
+      }
+    }
+  }
+
+  /// Staged rows are a verified local-wins union. Import only identities
+  /// absent from the live database; never modify existing local rows.
+  Future<void> _importStagedRows(DatabaseExecutor tx) async {
+    final mainTables = await _tablesFrom(tx, 'main');
+    final stageTables = await _tablesFrom(tx, 'merge_stage');
+    if (mainTables.length != stageTables.length ||
+        !mainTables.containsAll(stageTables)) {
+      throw const FormatException('Staged Merge schema differs from live data.');
+    }
+    final tables = mainTables.difference(_privateTables);
+    final ordered = await _orderTables(tx, tables);
+    await tx.execute('PRAGMA defer_foreign_keys = ON');
+    for (final table in ordered) {
+      final columns = await _tableColumns(tx, 'main', table);
+      final incoming = await _tableColumns(tx, 'merge_stage', table);
+      if (columns.length != incoming.length ||
+          !columns.every(incoming.contains)) {
+        throw FormatException('Incompatible staged columns for $table.');
+      }
+      final keys = await _primaryKey(tx, table);
+      if (keys.isEmpty) {
+        throw FormatException('Cannot merge $table without an identity key.');
+      }
+      final names = columns.map(_quote).join(', ');
+      final values = columns.map((c) => 's.${_quote(c)}').join(', ');
+      final same = keys
+          .map((k) => 'l.${_quote(k)} IS s.${_quote(k)}')
+          .join(' AND ');
+      await tx.execute(
+        'INSERT INTO main.${_quote(table)} ($names) '
+        'SELECT $values FROM merge_stage.${_quote(table)} s '
+        'WHERE NOT EXISTS (SELECT 1 FROM main.${_quote(table)} l '
+        'WHERE $same)',
+      );
+    }
+    if (mainTables.contains('entity_tombstones')) {
+      await tx.execute(
+        'INSERT OR IGNORE INTO main.entity_tombstones '
+        '(entity_type, entity_id, deleted_at) '
+        'SELECT entity_type, entity_id, deleted_at '
+        'FROM merge_stage.entity_tombstones',
+      );
+    }
+  }
+
+  Future<Set<String>> _tablesFrom(DatabaseExecutor tx, String schema) async {
+    final rows = await tx.rawQuery(
+      'SELECT name FROM $schema.sqlite_master '
+      "WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
     );
+    final tables = <String>{};
+    for (final row in rows) {
+      final name = row['name'];
+      if (name is! String || !_safeName.hasMatch(name)) {
+        throw const FormatException('Unsafe staged SQLite table identifier.');
+      }
+      tables.add(name);
+    }
+    return tables;
   }
 
   /// Detect commits on the application's existing connection (total_changes)
@@ -70,7 +267,7 @@ final class RawMergeService {
   /// The application consistency gate blocks normal use-case writes; this is
   /// an additional fail-closed guard for uncoordinated writers during staging.
   Future<_DatabaseRevision> _liveDatabaseRevision([
-    Database? activeConnection,
+    DatabaseExecutor? activeConnection,
   ]) async {
     final live = activeConnection ?? database.database;
     final changes = await live.rawQuery('SELECT total_changes() AS total');
@@ -448,7 +645,7 @@ final class RawMergeService {
     return result;
   }
 
-  Future<List<String>> _orderTables(Database db, Set<String> tables) async {
+  Future<List<String>> _orderTables(DatabaseExecutor db, Set<String> tables) async {
     final dependencies = <String, Set<String>>{};
     for (final table in tables) {
       final references = await db.rawQuery(
