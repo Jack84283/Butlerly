@@ -6,6 +6,7 @@ import 'package:butlerly/core/data/raw_backup_archive.dart';
 import 'package:butlerly/core/data/raw_backup_service.dart';
 import 'package:butlerly/core/data/raw_merge_service.dart';
 import 'package:butlerly/core/data/raw_restore_service.dart';
+import 'package:butlerly/core/evidence/evidence_mutation_lock.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
@@ -209,30 +210,35 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
   }) async {
     if (backups.recoveryState.incident?.reason ==
         'raw-restore-rollback-incomplete') {
-      final persistence = data.database.persistenceDatabase;
-      final live = File(persistence.path);
-      await RawRestoreService.recoverInterruptedReplace(
-        liveDatabase: live,
-        evidenceDirectory: await data.evidenceDirectory(),
-      );
-      // Reuse the repository-owned persistence object after physical
-      // recovery. Never replace it with a new object that would leave
-      // existing financial repositories referencing stale connections.
-      await data.database.reopenActiveConnection();
-      final activeConnection = persistence.isRestoreActivationActive
-          ? persistence.restoreActivationConnection
-          : persistence.connection;
-      final integrity = await activeConnection.rawQuery(
-        'PRAGMA integrity_check',
-      );
-      if (integrity.length != 1 || integrity.single.values.single != 'ok') {
-        throw StateError('Recovered SQLite failed physical integrity.');
-      }
-      await backups.recoveryState.clear();
-      persistence.finishRestoreActivation();
-      // Clearing the recovery-only state rebuilds normal navigation. Do not
-      // invoke legacy rule-installation or business validation while merely
-      // recovering original raw SQLite bytes.
+      await EvidenceMutationLock.runExclusive(() async {
+        final persistence = data.database.persistenceDatabase;
+        final live = File(persistence.path);
+        // A prior rollback may have left the connection open or partially
+        // reopened. Acquire the write fence and close it BEFORE touching
+        // journaled SQLite paths. A failed close leaves the journal and
+        // recovery gate in place; never rename live files in that state.
+        if (!persistence.isRestoreActivationActive) {
+          persistence.beginRestoreActivation();
+        }
+        await restoreDiagnosticStage?.call('recovery connection close');
+        await persistence.close();
+        await restoreDiagnosticStage?.call('recovery connection closed');
+        await RawRestoreService.recoverInterruptedReplace(
+          liveDatabase: live,
+          evidenceDirectory: await data.evidenceDirectory(),
+        );
+        // Reopen the same persistence object so injected repositories retain
+        // their original reference. Keep the gate held until integrity passes.
+        await data.database.reopenActiveConnection();
+        final integrity = await persistence.restoreActivationConnection
+            .rawQuery('PRAGMA integrity_check');
+        if (integrity.length != 1 || integrity.single.values.single != 'ok') {
+          throw StateError('Recovered SQLite failed physical integrity.');
+        }
+        await backups.recoveryState.clear();
+        persistence.finishRestoreActivation();
+        // No legacy rule seeding/business repair during raw journal rollback.
+      });
       return;
     }
     await backups.recoverControlledState(
