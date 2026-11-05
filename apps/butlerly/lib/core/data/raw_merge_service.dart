@@ -174,7 +174,8 @@ final class RawMergeService {
       );
       if (existing != FileSystemEntityType.notFound) {
         if (existing != FileSystemEntityType.file ||
-            await sha256FileRange(destination) != await sha256FileRange(entry)) {
+            await sha256FileRange(destination) !=
+                await sha256FileRange(entry)) {
           throw const FormatException(
             'Local evidence changed during Merge; no data was replaced.',
           );
@@ -209,7 +210,9 @@ final class RawMergeService {
     final stageTables = await _tablesFrom(tx, 'merge_stage');
     if (mainTables.length != stageTables.length ||
         !mainTables.containsAll(stageTables)) {
-      throw const FormatException('Staged Merge schema differs from live data.');
+      throw const FormatException(
+        'Staged Merge schema differs from live data.',
+      );
     }
     final tables = mainTables.difference(_privateTables);
     final ordered = await _orderTables(tx, tables);
@@ -646,7 +649,10 @@ final class RawMergeService {
     return result;
   }
 
-  Future<List<String>> _orderTables(DatabaseExecutor db, Set<String> tables) async {
+  Future<List<String>> _orderTables(
+    DatabaseExecutor db,
+    Set<String> tables,
+  ) async {
     final dependencies = <String, Set<String>>{};
     for (final table in tables) {
       final references = await db.rawQuery(
