@@ -214,8 +214,7 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
         // backup data. Keep them for a day to protect another process still
         // constructing its active share.
         final started = int.tryParse(pendingMatch.group(1)!);
-        if (started != null && started < before &&
-            started < legacyCutoff) {
+        if (started != null && started < before && started < legacyCutoff) {
           try {
             await rejectEvidenceTree(entry);
             await entry.delete(recursive: true);
