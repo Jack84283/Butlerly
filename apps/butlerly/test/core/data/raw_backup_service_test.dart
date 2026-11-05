@@ -191,7 +191,10 @@ void main() {
       final restoreWork = Directory(
         path.join(storage.path, '.raw-restore-work-$id'),
       )..createSync();
-      for (final directory in [backupWork, readWork, restoreWork]) {
+      final mergeWork = Directory(
+        path.join(storage.path, '.raw-merge-work-$id'),
+      )..createSync();
+      for (final directory in [backupWork, readWork, restoreWork, mergeWork]) {
         await File(
           path.join(directory.path, 'payload'),
         ).writeAsBytes([1, 2, 3]);
@@ -226,6 +229,7 @@ void main() {
       expect(await backupWork.exists(), isFalse);
       expect(await readWork.exists(), isFalse);
       expect(await restoreWork.exists(), isFalse);
+      expect(await mergeWork.exists(), isFalse);
       expect(await previousDb.exists(), isFalse);
       expect(await previousEvidence.exists(), isFalse);
       expect(await incomingEvidence.exists(), isFalse);
