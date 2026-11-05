@@ -539,6 +539,29 @@ void main() {
     },
   );
 
+  test('startup keeps fresh pending share setup, reclaims stale setup', () async {
+    final stale = Directory(
+      path.join(root.path, '.butlerly-share-pending-1700000000000007'),
+    )..createSync();
+    await File(path.join(stale.path, '.butlerly-share-active.lock'))
+        .writeAsString('abandoned');
+    final fresh = Directory(
+      path.join(
+        root.path,
+        '.butlerly-share-pending-${DateTime.now().microsecondsSinceEpoch}',
+      ),
+    )..createSync();
+    await File(path.join(fresh.path, '.butlerly-share-active.lock'))
+        .writeAsString('still-starting');
+    await LocalWorkspaceDataGateway.cleanupAbandonedTemporaryShareBackups(
+      temporaryRoot: root,
+      olderThanMicros:
+          DateTime.now().add(const Duration(days: 2)).microsecondsSinceEpoch,
+    );
+    expect(await stale.exists(), isFalse);
+    expect(await fresh.exists(), isTrue);
+  });
+
   test('temporary share cleanup refuses a linked directory', () async {
     if (Platform.isWindows) return;
     final external = File(path.join(output.path, 'keep-this-record'));
