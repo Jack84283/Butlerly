@@ -450,6 +450,35 @@ class _StartupFailureBody extends StatelessWidget {
   }
 }
 
+/// A failed raw restore must never allow a partially activated SQLite file to
+/// be opened by normal startup. Keep the journal and previous files on disk,
+/// and show a dedicated recovery-only startup screen instead.
+@visibleForTesting
+Future<bool> recoverRawJournalBeforeDatabaseOpen({
+  required File liveDatabase,
+  required Directory evidenceDirectory,
+}) async {
+  final journal = File(
+    path.join(liveDatabase.parent.path, '.raw-restore-journal.json'),
+  );
+  final journalPresent = await journal.exists();
+  try {
+    await RawRestoreService.recoverInterruptedReplace(
+      liveDatabase: liveDatabase,
+      evidenceDirectory: evidenceDirectory,
+    );
+  } catch (error, stack) {
+    if (journalPresent) {
+      Error.throwWithStackTrace(
+        const RawRestoreStartupRecoveryRequiredException(),
+        stack,
+      );
+    }
+    rethrow;
+  }
+  return journalPresent && !await journal.exists();
+}
+
 @visibleForTesting
 Future<void> initializeButlerly(AppLogger logger) async {
   LocalDatabase? database;
@@ -470,29 +499,10 @@ Future<void> initializeButlerly(AppLogger logger) async {
     var rawJournalRecovered = false;
     if (!kIsWeb) {
       final support = await getApplicationSupportDirectory();
-      final journal = File(
-        path.join(support.path, '.raw-restore-journal.json'),
+      rawJournalRecovered = await recoverRawJournalBeforeDatabaseOpen(
+        liveDatabase: File(path.join(support.path, 'butlerly.db')),
+        evidenceDirectory: Directory(path.join(support.path, 'evidence')),
       );
-      final rawJournalPresent = await journal.exists();
-      try {
-        await RawRestoreService.recoverInterruptedReplace(
-          liveDatabase: File(path.join(support.path, 'butlerly.db')),
-          evidenceDirectory: Directory(path.join(support.path, 'evidence')),
-        );
-      } catch (error, stack) {
-        // Never open SQLite or install normal repositories when an unresolved
-        // raw journal could describe a partially activated database.
-        // The startup gate presents a recovery-only retry/manual-support
-        // surface; the journal, evidence and prior database stay untouched.
-        if (rawJournalPresent) {
-          Error.throwWithStackTrace(
-            const RawRestoreStartupRecoveryRequiredException(),
-            stack,
-          );
-        }
-        rethrow;
-      }
-      rawJournalRecovered = rawJournalPresent && !await journal.exists();
     }
     database = LocalDatabase(logger: logger);
     await initializeLocalDatabaseForStartup(database, logger);
