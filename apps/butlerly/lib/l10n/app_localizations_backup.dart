@@ -228,6 +228,8 @@ const _backupStrings = <String, Map<String, String>>{
     'encryptedBackupRequired':
         'Only encrypted Butlerly backups can be restored from this screen.',
     'recoveryRequiredTitle': 'Butlerly recovery is required',
+    'rawStartupRecoveryBody':
+        'An interrupted Restore cannot be safely recovered yet. Normal access is disabled. The database, attachments and recovery files are preserved. Retry only after resolving a temporary storage problem; otherwise keep all files intact and seek recovery assistance. Do not erase or overwrite the recovery files.',
     'recoveryRequiredBody':
         'Butlerly has paused normal editing until the current restore state is validated. A pre-restore safety copy is available if the current state cannot be kept safely.',
     'recoveryUnavailableBody':
@@ -458,6 +460,8 @@ const _backupStrings = <String, Map<String, String>>{
     'encryptedBackupRequired':
         'Desde esta pantalla solo se pueden restaurar copias cifradas de Butlerly.',
     'recoveryRequiredTitle': 'Butlerly requiere recuperación',
+    'rawStartupRecoveryBody':
+        'Todavía no se puede recuperar de forma segura una restauración interrumpida. El acceso normal está deshabilitado. La base de datos, los archivos adjuntos y los archivos de recuperación se han conservado. Vuelva a intentarlo solo después de resolver un problema temporal de almacenamiento; de lo contrario, conserve todos los archivos y solicite ayuda. No borre ni sobrescriba los archivos de recuperación.',
     'recoveryRequiredBody':
         'Butlerly ha pausado la edición normal hasta validar el estado actual de restauración. Hay una copia de seguridad previa disponible si no es seguro conservar el estado actual.',
     'recoveryUnavailableBody':
@@ -645,6 +649,8 @@ const _backupStrings = <String, Map<String, String>>{
     'passwordOrIntegrityFailed': '密码不正确，或加密备份已损坏。',
     'encryptedBackupRequired': '此页面只能恢复加密的 Butlerly 备份。',
     'recoveryRequiredTitle': 'Butlerly 需要恢复',
+    'rawStartupRecoveryBody':
+        '先前中断的恢复操作目前无法安全完成，已暂停正常访问。本地数据库、附件和恢复文件均已保留。仅在解决临时存储故障后重试；否则请保留所有文件并寻求恢复支持。不要清除或覆盖恢复文件。',
     'recoveryRequiredBody':
         'Butlerly 已暂停正常编辑，直到当前恢复状态通过验证。如果无法安全保留当前状态，可以使用恢复前的安全副本。',
     'recoveryUnavailableBody':
