@@ -639,7 +639,7 @@ void main() {
           archive,
           password: 'correct horse battery staple',
           onStage: (stage) async {
-            if (stage == 'restore journal written') {
+            if (stage == 'before transactional merge') {
               injected = true;
               await retained.insert('restore_probe', {
                 'id': 'committed-after-final-revision',
@@ -668,7 +668,7 @@ void main() {
   );
 
   test(
-    'Merge blocks a second-process SQLite writer through the rename window',
+    'Merge SQLite transaction excludes a competing independent writer',
     () async {
       if (!Platform.isLinux) return; // CI provides python3 + POSIX SQLite.
       await setProbe('backup-value');
@@ -693,7 +693,7 @@ void main() {
           if (stage == 'original SQLite preserved') {
             pathStayedPresent = await backupFile.exists();
           }
-          if (stage == 'exclusive merge activation lock acquired') {
+          if (stage == 'transactional merge write lock acquired') {
             attempted = true;
             const writer =
                 'import sqlite3,sys\n'
@@ -712,7 +712,7 @@ void main() {
               isNot(0),
               reason:
                   'An external SQLite writer committed during the '
-                  'physically locked Merge activation window.',
+                  'transactionally locked Merge write window.',
             );
           }
         },
@@ -732,7 +732,65 @@ void main() {
   );
 
   test(
-    'Merge interrupted after verified original copy rolls back exact live DB',
+    'idle external SQLite connection resumes safely after in-place Merge',
+    () async {
+      if (!Platform.isLinux) return; // CI includes Python SQLite.
+      await setProbe('archived-value');
+      await database.database.insert('restore_probe', {
+        'id': 'backup-only',
+        'value': 'imported',
+      });
+      final archive = File(path.join(root.path, 'idle-reader.butlerly'));
+      await backups.createBackup(
+        archive,
+        password: 'correct horse battery staple',
+      );
+      await database.database.delete(
+        'restore_probe',
+        where: 'id = ?',
+        whereArgs: ['backup-only'],
+      );
+      // Keep a separate process's connection open across Merge. With the
+      // previous rename protocol it would retain an obsolete database inode.
+      const worker =
+          'import sqlite3,sys\n'
+          'db=sqlite3.connect(sys.argv[1],timeout=5)\n'
+          'db.execute("SELECT count(*) FROM restore_probe").fetchone()\n'
+          'print("READY",flush=True)\n'
+          'sys.stdin.readline()\n'
+          'db.execute("INSERT INTO restore_probe(id,value) VALUES(?,?)",'
+          '("external-after","committed-after-merge"))\n'
+          'db.commit()\n'
+          'print("DONE",flush=True)\n'
+          'db.close()\n';
+      final process = await Process.start('python3', [
+        '-u',
+        '-c',
+        worker,
+        database.persistenceDatabase.path,
+      ]);
+      addTearDown(() => process.kill());
+      final output = process.stdout
+          .transform(const SystemEncoding().decoder)
+          .asBroadcastStream();
+      await expectLater(output.first, completion(contains('READY')));
+      await RawMergeService(
+        database,
+        backups,
+        restores,
+      ).restoreMerge(archive, password: 'correct horse battery staple');
+      process.stdin.writeln('CONTINUE');
+      await process.stdin.flush();
+      expect(await process.exitCode, 0);
+      final ids = (await database.database.query('restore_probe'))
+          .map((row) => row['id'])
+          .toSet();
+      expect(ids, containsAll(['backup-only', 'external-after']));
+    },
+  );
+
+  test(
+    'Merge interruption rolls back SQL without replacing live DB file',
     () async {
       await setProbe('archived-value');
       final archive = File(path.join(root.path, 'atomic-rollback.butlerly'));
@@ -758,7 +816,7 @@ void main() {
                 await File(database.persistenceDatabase.path).exists(),
                 isTrue,
               );
-              throw StateError('injected failure before atomic Merge swap');
+              throw StateError('injected failure before transactional Merge commit');
             }
           },
         ),
