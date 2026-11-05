@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:butlerly/core/data/backup_encryption.dart';
 import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/data/local_data_gateway.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
@@ -136,6 +137,71 @@ void main() {
   );
 
   test(
+    'successful publication is not reported failed when private cleanup fails',
+    () async {
+      final destination = File(
+        path.join(output.path, 'published-cleanup-failure.butlerly'),
+      );
+      final failingCleanup = RawBackupService(
+        database,
+        LocalDataManager(database, localEvidenceDirectory: evidence),
+        cleanupWorking: (_) async {
+          throw const FileSystemException('injected cleanup failure');
+        },
+      );
+      final result = await failingCleanup.createBackup(
+        destination,
+        password: 'correct horse battery staple',
+      );
+      expect(result.sqliteBytes, greaterThan(0));
+      expect(await destination.exists(), isTrue);
+      final restored = await service.inspect(
+        destination,
+        password: 'correct horse battery staple',
+      );
+      expect(restored.sqliteBytes, result.sqliteBytes);
+
+      // A later launch reclaims the abandoned private work without touching
+      // the published encrypted backup in the user's destination.
+      final manager = LocalBackupManager(
+        database,
+        LocalDataManager(database, localEvidenceDirectory: evidence),
+      );
+      await manager.cleanupOrphanedPrivateArtifacts();
+      final abandoned = await storage
+          .list()
+          .where(
+            (entry) =>
+                entry is Directory &&
+                path.basename(entry.path).startsWith('.raw-backup-work-'),
+          )
+          .toList();
+      expect(abandoned, isEmpty);
+      expect(await destination.exists(), isTrue);
+    },
+  );
+
+  test('failed streaming encryption leaves no partial ciphertext', () async {
+    final source = File(path.join(storage.path, 'missing-source.raw'));
+    final destination = File(path.join(storage.path, 'failed.butlerly'));
+    await expectLater(
+      const BackupEncryption().encrypt(
+        source,
+        destination,
+        password: 'correct horse battery staple',
+      ),
+      throwsA(isA<Exception>()),
+    );
+    expect(await destination.exists(), isFalse);
+    expect(
+      (await storage.list().toList()).where(
+        (entry) => path.basename(entry.path).contains('.encrypting-'),
+      ),
+      isEmpty,
+    );
+  });
+
+  test(
     'published backup reports missing referenced evidence to the gateway',
     () async {
       final data = LocalDataManager(database, localEvidenceDirectory: evidence);
@@ -221,6 +287,10 @@ void main() {
         path.join(storage.path, '.raw-backup-$id.butlerly'),
       );
       await encryptedCandidate.writeAsBytes([11, 12]);
+      final abandonedEncryption = File(
+        '${encryptedCandidate.path}.encrypting-$id',
+      );
+      await abandonedEncryption.writeAsBytes([13, 14]);
       final arbitrary = File(path.join(storage.path, 'my-important.db'));
       await arbitrary.writeAsBytes([13, 14]);
 
@@ -234,6 +304,7 @@ void main() {
       expect(await previousEvidence.exists(), isFalse);
       expect(await incomingEvidence.exists(), isFalse);
       expect(await encryptedCandidate.readAsBytes(), [11, 12]);
+      expect(await abandonedEncryption.exists(), isFalse);
       expect(await arbitrary.readAsBytes(), [13, 14]);
       expect(
         (await database.database.rawQuery(
