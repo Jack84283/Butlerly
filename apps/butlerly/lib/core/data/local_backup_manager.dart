@@ -419,7 +419,8 @@ final class LocalBackupManager {
         if (entry is Directory &&
             (backupWork.hasMatch(name) ||
                 (canClearRawRestore &&
-                    (restoreWork.hasMatch(name) || mergeWork.hasMatch(name))))) {
+                    (restoreWork.hasMatch(name) ||
+                        mergeWork.hasMatch(name))))) {
           await _deleteAbandonedRawDirectory(entry);
         } else if (entry is File &&
             canClearRawRestore &&
