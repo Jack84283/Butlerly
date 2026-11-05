@@ -364,6 +364,53 @@ void main() {
     expect(await external.readAsBytes(), [1, 2, 3]);
   });
 
+  test('cold startup reclaims abandoned mobile share backups only', () async {
+    final disposable = Directory(
+      path.join(root.path, '.butlerly-backup-share-1700000000000000'),
+    )..createSync();
+    await File(
+      path.join(disposable.path, 'butlerly.butlerlybackup'),
+    ).writeAsBytes([1, 2, 3]);
+    final unrelated = File(path.join(root.path, 'other-backup.butlerlybackup'));
+    await unrelated.writeAsBytes([9, 8, 7]);
+
+    await LocalWorkspaceDataGateway.cleanupAbandonedTemporaryShareBackups(
+      temporaryRoot: root,
+      publicationRecoveryPending: true,
+    );
+    expect(await disposable.exists(), isTrue);
+
+    await LocalWorkspaceDataGateway.cleanupAbandonedTemporaryShareBackups(
+      temporaryRoot: root,
+    );
+    expect(await disposable.exists(), isFalse);
+    expect(await unrelated.readAsBytes(), [9, 8, 7]);
+  });
+
+  test('temporary share cleanup refuses a linked directory', () async {
+    if (Platform.isWindows) return;
+    final external = File(path.join(output.path, 'keep-this-record'));
+    await external.writeAsBytes([3, 2, 1]);
+    final disposable = Directory(
+      path.join(root.path, '.butlerly-backup-share-1700000000000001'),
+    )..createSync();
+    final link = Link(path.join(disposable.path, 'external'));
+    await link.create(output.path);
+
+    await LocalWorkspaceDataGateway.cleanupAbandonedTemporaryShareBackups(
+      temporaryRoot: root,
+    );
+    expect(await disposable.exists(), isTrue);
+    expect(await external.readAsBytes(), [3, 2, 1]);
+
+    await link.delete();
+    await LocalWorkspaceDataGateway.cleanupAbandonedTemporaryShareBackups(
+      temporaryRoot: root,
+    );
+    expect(await disposable.exists(), isFalse);
+    expect(await external.readAsBytes(), [3, 2, 1]);
+  });
+
   test('incorrect password cannot produce staged files', () async {
     final destination = File(path.join(output.path, 'butlerly.butlerly'));
     await service.createBackup(
