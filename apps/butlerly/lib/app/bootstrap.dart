@@ -419,9 +419,7 @@ class _StartupFailureBody extends StatelessWidget {
                     const SizedBox(height: 12),
                     Text(
                       rawRecoveryRequired
-                          ? context.l10n.backupText(
-                              'rawStartupRecoveryBody',
-                            )
+                          ? context.l10n.backupText('rawStartupRecoveryBody')
                           : context.l10n.text('dataPreserved'),
                       textAlign: TextAlign.center,
                     ),
