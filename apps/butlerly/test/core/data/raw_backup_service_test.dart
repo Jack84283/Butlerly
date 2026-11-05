@@ -482,8 +482,9 @@ void main() {
       // protects the active share until its OS share sheet has returned.
       await LocalWorkspaceDataGateway.cleanupAbandonedTemporaryShareBackups(
         temporaryRoot: root,
-        olderThanMicros:
-            DateTime.now().add(const Duration(days: 1)).microsecondsSinceEpoch,
+        olderThanMicros: DateTime.now()
+            .add(const Duration(days: 1))
+            .microsecondsSinceEpoch,
       );
       expect(await file.exists(), isTrue);
       await gateway.discardTemporaryBackup(shared.filePath);
@@ -499,7 +500,9 @@ void main() {
       final shared = Directory(
         path.join(root.path, '.butlerly-backup-share-1700000000000002'),
       )..createSync();
-      final marker = File(path.join(shared.path, '.butlerly-share-active.lock'));
+      final marker = File(
+        path.join(shared.path, '.butlerly-share-active.lock'),
+      );
       await marker.writeAsString('locked');
       final archive = File(path.join(shared.path, 'backup.butlerly'));
       await archive.writeAsBytes([1, 2, 3]);
@@ -511,7 +514,12 @@ void main() {
           'sys.stdin.readline()\n'
           'fcntl.lockf(f,fcntl.LOCK_UN)\n'
           'f.close()\n';
-      final process = await Process.start('python3', ['-u', '-c', script, marker.path]);
+      final process = await Process.start('python3', [
+        '-u',
+        '-c',
+        script,
+        marker.path,
+      ]);
       addTearDown(() => process.kill());
       await expectLater(
         process.stdout.transform(const SystemEncoding().decoder).first,
