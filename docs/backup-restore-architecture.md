@@ -147,12 +147,15 @@ store destinations have not been configured.
 - **Recovery retry safety:** the app's restore fence remains active while the
   persistence connection is closed *before* raw journaled files are moved.
   Connection close failure stops recovery without deleting the marker.
-- **Independent SQLite writers:** the POSIX nonblocking exclusive database
-  lock is held through the swap, while normal writers use the application
-  consistency gate. A separate-process SQLite regression test verifies the
-  lock on CI Linux. This is not an authorization boundary against arbitrary
-  raw filesystem writes, nor a substitute for disposable macOS/iOS acceptance.
-  Windows Merge remains intentionally unsupported by this activation code.
+- **Independent SQLite writers (OPEN P1):** the POSIX nonblocking exclusive
+  database lock protects active writers on the old database inode, while
+  normal writers use the application consistency gate. A separate-process
+  SQLite regression test verifies a competing write during lock acquisition.
+  However an idle external SQLite connection can resume after the database
+  pathname is atomically swapped, and the old-inode lock does NOT transfer
+  to the new file. An external-connection-safe Merge design remains necessary
+  before this PR is production-merge-ready. Windows Merge is intentionally
+  unsupported by the current activation code.
 
 ## Crash-abandoned private files and storage cleanup
 
@@ -175,7 +178,18 @@ store destinations have not been configured.
   including cases where a publication marker was lost. Preserve them.
 - Cleanup is serialized with the evidence mutation lock and best-effort.
   Failed validation or filesystem cleanup retains artifacts without blocking
-  normal startup.
+  normal startup. Nonessential work is deferred until after app initialization
+  so a large leftover database does not block the cold-launch window.
+- Mobile sharing now creates unique `.butlerly-backup-share-<timestamp>`
+  directories under the system temporary root. The share UI removes its own
+  file when sharing completes. Cold-launch maintenance also sweeps abandoned
+  directories, but skips the sweep while an interrupted portable backup
+  publication still requires recovery. Unrelated temporary files and any
+  directory containing a symlink are preserved.
+- Once the journal is deleted, successful Restore is committed. If a
+  post-commit rollback-copy cleanup fails (including evidence-tree symlink
+  validation), Restore must still return success and retain unsafe previous
+  files for a later recovery-aware cleanup.
 
 ## Performance optimizations (PR #396)
 
