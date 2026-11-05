@@ -111,6 +111,12 @@ store destinations have not been configured.
   Filesystem receipts are copied and hash-verified before SQL commit; a
   failed transaction may leave a harmless unreferenced receipt, which must
   not be blindly deleted when an external writer may have referenced it.
+  Evidence publication now reserves destination names with exclusive file
+  creation rather than renaming over existing files. A competing writer that
+  creates a different attachment between the initial check and publication
+  causes Merge to fail without overwriting that file. Existing identical
+  attachments are left untouched. An incomplete exclusive write can leave
+  an orphan that must be reconciled, not silently erased.
   The separate Replace operation retains its physical-activation journal.
 - **Post-Restore refresh:** the committed Restore emits
   `workspaceRestoreChanges`, also invalidating transaction and budget data.
@@ -182,6 +188,21 @@ store destinations have not been configured.
   post-commit rollback-copy cleanup fails (including evidence-tree symlink
   validation), Restore must still return success and retain unsafe previous
   files for a later recovery-aware cleanup.
+
+## Accurate Backup & Restore result counts
+
+- Replace reports the archived **transaction count**, as recorded when
+  creating the SQLite snapshot.
+- Merge reports the number of **imported domain rows** and separately the
+  number of **preexisting local domain rows retained**, including overlapping
+  identities whose local values win. Neither figure claims that a row is newer
+  based on timestamps.
+- Merge's restored-evidence count includes only newly published attachments,
+  not every file present in the archive. English, Spanish and Simplified
+  Chinese UI labels distinguish Merge imports from Replace transactions.
+- Successful publication or Restore cannot be converted to a failure by
+  noncritical temporary-file cleanup errors. Abandoned incomplete raw
+  encryption streams are reclaimed on the next safe cold launch.
 
 ## Storage capacity preflight
 
