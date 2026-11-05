@@ -6,6 +6,7 @@ import 'package:butlerly/core/data/evidence_path_safety.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/data/raw_backup_archive.dart';
 import 'package:butlerly/core/database/local_database.dart';
+import 'package:butlerly/core/data/storage_space_preflight.dart';
 import 'package:butlerly/core/evidence/evidence_mutation_lock.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart'
     show
@@ -50,6 +51,21 @@ final class RawBackupService {
     final encrypted = File(path.join(root.path, '.raw-backup-$id.butlerly'));
     var preserveEncrypted = false;
     var stage = BackupCreationStage.snapshot;
+    final databaseBytes = await File(database.persistenceDatabase.path).length();
+    final evidenceBytes = await StorageSpacePreflight.evidenceBytes(
+      await data.evidenceDirectory(),
+    );
+    await StorageSpacePreflight.requireAvailable(
+      root,
+      stagingBytes: StorageSpacePreflight.backupStagingBytes(
+        databaseBytes: databaseBytes,
+        evidenceBytes: evidenceBytes,
+      ),
+    );
+    await StorageSpacePreflight.requireAvailable(
+      destination.parent,
+      stagingBytes: databaseBytes + evidenceBytes,
+    );
     await working.create();
     try {
       final snapshot = File(path.join(working.path, 'butlerly.db'));
