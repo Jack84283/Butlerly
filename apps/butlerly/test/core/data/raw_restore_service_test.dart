@@ -680,6 +680,18 @@ void main() {
       where: 'id = ?',
       whereArgs: ['provenance-imported-evidence'],
     );
+    // This test models a missing identity, not a deliberately deleted one.
+    // Real deletion tombstones must continue to prevent resurrection.
+    await database.database.delete(
+      'entity_tombstones',
+      where: 'entity_type IN (?, ?) AND entity_id IN (?, ?)',
+      whereArgs: [
+        'evidence_items',
+        'provenances',
+        'imported-evidence',
+        'provenance-imported-evidence',
+      ],
+    );
     await wanted.delete();
     await orphan.delete();
 
