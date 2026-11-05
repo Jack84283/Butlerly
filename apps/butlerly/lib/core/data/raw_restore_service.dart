@@ -423,6 +423,11 @@ final class RawRestoreService {
   ///
   /// The archive stays encrypted and untouched; any migration failure occurs
   /// before activation and therefore leaves the live SQLite files unchanged.
+  /// Schema-upgrade an extracted, disposable archive before a transactional
+  /// in-place Merge. Never run migrations against the live database here.
+  Future<void> upgradeStagedSqlite(File snapshot) =>
+      _upgradeStagedSqlite(snapshot);
+
   Future<void> _upgradeStagedSqlite(File snapshot) async {
     // The same read-only check is performed during the user-facing preview,
     // but recheck here in case the supplied archive changed between actions.
