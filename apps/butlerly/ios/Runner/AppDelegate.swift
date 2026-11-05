@@ -15,22 +15,9 @@ import Vision
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
-    guard let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "ButlerlyLocalOcr") else { return }
-    let channel = FlutterMethodChannel(name: "butlerly/local_ocr", binaryMessenger: registrar.messenger())
-    channel.setMethodCallHandler { call, result in
-      if call.method == "availability" {
-        result(true)
-        return
-      }
-      guard call.method == "recognizeText" else { result(FlutterMethodNotImplemented); return }
-      guard let arguments = call.arguments as? [String: Any], let path = arguments["path"] as? String else {
-        result(FlutterError(code: "invalid_arguments", message: "A local image path is required.", details: nil)); return
-      }
-      Self.recognizeText(at: path, result: result)
-    }
     let storageChannel = FlutterMethodChannel(
       name: "butlerly/storage_capacity",
-      binaryMessenger: registrar.messenger()
+      binaryMessenger: engineBridge.applicationRegistrar.messenger()
     )
     storageChannel.setMethodCallHandler { call, result in
       guard call.method == "availableBytes" else {
@@ -48,6 +35,19 @@ import Vision
       } catch {
         result(FlutterError(code: "storage_unavailable", message: "Cannot read free capacity.", details: nil))
       }
+    }
+    guard let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "ButlerlyLocalOcr") else { return }
+    let channel = FlutterMethodChannel(name: "butlerly/local_ocr", binaryMessenger: registrar.messenger())
+    channel.setMethodCallHandler { call, result in
+      if call.method == "availability" {
+        result(true)
+        return
+      }
+      guard call.method == "recognizeText" else { result(FlutterMethodNotImplemented); return }
+      guard let arguments = call.arguments as? [String: Any], let path = arguments["path"] as? String else {
+        result(FlutterError(code: "invalid_arguments", message: "A local image path is required.", details: nil)); return
+      }
+      Self.recognizeText(at: path, result: result)
     }
   }
 
