@@ -158,7 +158,9 @@ final class RawRestoreService {
       stagingBytes: StorageSpacePreflight.restoreStagingBytes(
         archiveBytes: await encryptedArchive.length(),
         databaseBytes: await liveDatabase.length(),
-        evidenceBytes: await StorageSpacePreflight.evidenceBytes(evidenceDirectory),
+        evidenceBytes: await StorageSpacePreflight.evidenceBytes(
+          evidenceDirectory,
+        ),
       ),
     );
     await working.create(recursive: true);
