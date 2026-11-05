@@ -18,6 +18,11 @@ typedef _DatabaseRevision = ({
   int schemaVersion,
 });
 
+typedef _PreparedMerge = ({
+  RawBackupInspection inspection,
+  Set<String> eligibleEvidencePaths,
+});
+
 /// Non-destructive, local-wins import from a raw SQLite backup.
 ///
 /// A disposable staging database validates the local-wins union first.
@@ -87,14 +92,12 @@ final class RawMergeService {
         File(path.join(staging.path, 'butlerly.db')),
       );
       final sourceRevision = await _liveDatabaseRevision();
-      final merged = await _mergeIntoStaging(staging, inspection);
+      final prepared = await _mergeIntoStaging(staging, inspection);
+      final merged = prepared.inspection;
       await onStage?.call('attachment staging');
-      // Publish only evidence referenced by the verified local-wins snapshot.
-      // An archived file whose identity lost to a local row must not leak into
-      // the live evidence directory or inflate the restored attachment count.
-      final referencedPaths = await _referencedStagedEvidencePaths(
-        File(path.join(staging.path, 'butlerly.db')),
-      );
+      // Only archive evidence whose identity AND filename survive the
+      // local-wins Merge may be published. Filename matching alone could
+      // misattribute an unreferenced archive file to a local evidence row.
       // New attachment bytes must be durable before the SQLite transaction
       // commits any reference to them; never replace local attachment bytes.
       await _publishNewEvidence(
@@ -102,7 +105,7 @@ final class RawMergeService {
         liveEvidence,
         working,
         createdEvidence,
-        referencedPaths: referencedPaths,
+        referencedPaths: prepared.eligibleEvidencePaths,
         onStage: onStage,
       );
       await onStage?.call('before transactional merge');
@@ -166,31 +169,6 @@ final class RawMergeService {
       }
     }
   });
-
-  /// The staged SQLite database, not the archive's directory listing, is
-  /// authoritative for which files survive local-wins identity resolution.
-  Future<Set<String>> _referencedStagedEvidencePaths(File snapshot) async {
-    final connection = await database.persistenceDatabase.factory.openDatabase(
-      snapshot.path,
-      options: OpenDatabaseOptions(readOnly: true),
-    );
-    try {
-      final rows = await connection.query(
-        'evidence_items',
-        columns: ['local_file_name'],
-      );
-      final paths = <String>{};
-      for (final row in rows) {
-        final name = row['local_file_name'];
-        if (name is String && name.trim().isNotEmpty) {
-          paths.add(evidencePathKey(normalizeEvidencePath(name)));
-        }
-      }
-      return paths;
-    } finally {
-      await connection.close();
-    }
-  }
 
   Future<void> _publishNewEvidence(
     Directory staged,
@@ -371,7 +349,7 @@ final class RawMergeService {
     );
   }
 
-  Future<RawBackupInspection> _mergeIntoStaging(
+  Future<_PreparedMerge> _mergeIntoStaging(
     Directory staging,
     RawBackupInspection inspection,
   ) async {
@@ -389,6 +367,7 @@ final class RawMergeService {
     var importedRows = 0;
     var keptLocalRows = 0;
     final importedEvidenceNames = <String>{};
+    final eligibleEvidencePaths = <String>{};
     try {
       final escaped = archived.path.replaceAll("'", "''");
       await connection.execute("ATTACH DATABASE '$escaped' AS archived");
@@ -530,6 +509,26 @@ final class RawMergeService {
           }
         }
       });
+      if (tables.contains('evidence_items')) {
+        // Both databases must assign the same original filename to the same
+        // evidence identity. Merely finding a filename in the merged database
+        // could publish unrelated archived bytes under a local file reference.
+        final matched = await connection.rawQuery(
+          'SELECT b.local_file_name FROM archived.evidence_items b '
+          'JOIN main.evidence_items m ON m.id = b.id '
+          'AND m.local_file_name IS b.local_file_name',
+        );
+        for (final row in matched) {
+          final value = row['local_file_name'];
+          if (value is String && value.trim().isNotEmpty) {
+            eligibleEvidencePaths.add(
+              evidencePathKey(normalizeEvidencePath(value)),
+            );
+          }
+        }
+        // A local tombstone may have removed an initially eligible import.
+        importedEvidenceNames.retainAll(eligibleEvidencePaths);
+      }
       await connection.execute('DETACH DATABASE archived');
     } finally {
       await connection.close();
@@ -591,13 +590,16 @@ final class RawMergeService {
     // Replace the extracted backup with the complete merged local snapshot.
     if (await archived.exists()) await archived.delete();
     await working.rename(archived.path);
-    return RawBackupInspection(
-      createdAtUtc: inspection.createdAtUtc,
-      sqliteBytes: await archived.length(),
-      recordCount: importedRows,
-      attachmentCount: newFiles,
-      missingAttachmentCount: inspection.missingAttachmentCount,
-      keptLocalRowCount: keptLocalRows,
+    return (
+      inspection: RawBackupInspection(
+        createdAtUtc: inspection.createdAtUtc,
+        sqliteBytes: await archived.length(),
+        recordCount: importedRows,
+        attachmentCount: newFiles,
+        missingAttachmentCount: inspection.missingAttachmentCount,
+        keptLocalRowCount: keptLocalRows,
+      ),
+      eligibleEvidencePaths: eligibleEvidencePaths,
     );
   }
 
