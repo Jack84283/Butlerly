@@ -89,6 +89,12 @@ final class RawMergeService {
       final sourceRevision = await _liveDatabaseRevision();
       final merged = await _mergeIntoStaging(staging, inspection);
       await onStage?.call('attachment staging');
+      // Publish only evidence referenced by the verified local-wins snapshot.
+      // An archived file whose identity lost to a local row must not leak into
+      // the live evidence directory or inflate the restored attachment count.
+      final referencedPaths = await _referencedStagedEvidencePaths(
+        File(path.join(staging.path, 'butlerly.db')),
+      );
       // New attachment bytes must be durable before the SQLite transaction
       // commits any reference to them; never replace local attachment bytes.
       await _publishNewEvidence(
@@ -96,6 +102,7 @@ final class RawMergeService {
         liveEvidence,
         working,
         createdEvidence,
+        referencedPaths: referencedPaths,
         onStage: onStage,
       );
       await onStage?.call('before transactional merge');
@@ -160,11 +167,37 @@ final class RawMergeService {
     }
   });
 
+  /// The staged SQLite database, not the archive's directory listing, is
+  /// authoritative for which files survive local-wins identity resolution.
+  Future<Set<String>> _referencedStagedEvidencePaths(File snapshot) async {
+    final connection = await database.persistenceDatabase.factory.openDatabase(
+      snapshot.path,
+      options: OpenDatabaseOptions(readOnly: true),
+    );
+    try {
+      final rows = await connection.query(
+        'evidence_items',
+        columns: ['local_file_name'],
+      );
+      final paths = <String>{};
+      for (final row in rows) {
+        final name = row['local_file_name'];
+        if (name is String && name.trim().isNotEmpty) {
+          paths.add(evidencePathKey(normalizeEvidencePath(name)));
+        }
+      }
+      return paths;
+    } finally {
+      await connection.close();
+    }
+  }
+
   Future<void> _publishNewEvidence(
     Directory staged,
     Directory live,
     Directory working,
     List<({File file, String hash})> created, {
+    required Set<String> referencedPaths,
     Future<void> Function(String stage)? onStage,
   }) async {
     await rejectEvidenceTree(staged);
@@ -178,6 +211,7 @@ final class RawMergeService {
       if (entry is! File) continue;
       final relative = path.relative(entry.path, from: staged.path);
       final safe = await validateEvidencePath(live, relative);
+      if (!referencedPaths.contains(evidencePathKey(safe))) continue;
       final destination = File(path.join(live.path, safe));
       final digest = await sha256FileRange(entry);
       final existing = await FileSystemEntity.type(
