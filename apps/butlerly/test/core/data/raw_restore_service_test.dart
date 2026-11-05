@@ -782,9 +782,9 @@ void main() {
       process.stdin.writeln('CONTINUE');
       await process.stdin.flush();
       expect(await process.exitCode, 0);
-      final ids = (await database.database.query('restore_probe'))
-          .map((row) => row['id'])
-          .toSet();
+      final ids = (await database.database.query(
+        'restore_probe',
+      )).map((row) => row['id']).toSet();
       expect(ids, containsAll(['backup-only', 'external-after']));
     },
   );
@@ -816,7 +816,9 @@ void main() {
                 await File(database.persistenceDatabase.path).exists(),
                 isTrue,
               );
-              throw StateError('injected failure before transactional Merge commit');
+              throw StateError(
+                'injected failure before transactional Merge commit',
+              );
             }
           },
         ),
