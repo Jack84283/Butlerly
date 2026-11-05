@@ -155,10 +155,21 @@ final class RawBackupService {
         stack,
       );
     } finally {
-      // Do not retain a plaintext backup, even after a publication failure.
-      if (await working.exists()) await working.delete(recursive: true);
-      if (!preserveEncrypted && await encrypted.exists()) {
-        await encrypted.delete();
+      // Publication has already completed (or the original error is in
+      // flight). Cleanup failures must never make a saved backup look failed.
+      // A crash/unremovable work directory is handled by startup maintenance.
+      try {
+        if (await working.exists()) await working.delete(recursive: true);
+      } catch (_) {
+        // Best effort; never mask successful publication.
+      }
+      if (!preserveEncrypted) {
+        try {
+          if (await encrypted.exists()) await encrypted.delete();
+        } catch (_) {
+          // Preserve the original result; the encrypted private candidate
+          // remains recoverable rather than risking deletion of a user file.
+        }
       }
     }
   });
