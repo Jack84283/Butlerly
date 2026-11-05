@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:butlerly/core/data/atomic_evidence_publication.dart';
 import 'package:butlerly/core/data/evidence_path_safety.dart';
 import 'package:butlerly/core/data/raw_backup_archive.dart';
 import 'package:butlerly/core/data/raw_backup_service.dart';
@@ -203,34 +204,29 @@ final class RawMergeService {
           throw StateError('New evidence copy failed verification.');
         }
 
-        // A competing writer can publish this pathname after the first
-        // existence check. Never rename over its data: File.rename replaces
-        // destinations on POSIX. Exclusive creation fails instead.
-        await onStage?.call('before exclusive evidence publish');
+        // The staged inode is fully written and hash-verified *before*
+        // publication. Hard-link creation is atomic and fails if the name
+        // exists; unlike exclusive-create-then-openWrite, a process kill can
+        // never expose a partial final evidence file.
+        await onStage?.call('before atomic evidence publish');
         try {
-          await destination.create(exclusive: true);
-        } on PathExistsException {
+          await AtomicEvidencePublication.publishNoReplace(
+            temporary,
+            destination,
+          );
+        } on FileSystemException {
+          // An identical competing publication is safe to reuse; a different
+          // file, unsafe link, cross-volume target, or unsupported filesystem
+          // aborts without replacing any current evidence.
           if (await FileSystemEntity.type(
                     destination.path,
                     followLinks: false,
                   ) ==
                   FileSystemEntityType.file &&
               await sha256FileRange(destination) == digest) {
-            continue; // An identical file won the race; keep its bytes.
+            continue;
           }
-          throw const FormatException(
-            'Local evidence appeared during Merge; no file was replaced.',
-          );
-        }
-        // Verify the complete bytes before the DB transaction can commit
-        // a reference. If I/O fails, keep any ambiguous partial file; another
-        // process may have observed the new pathname in the meantime.
-        final output = destination.openWrite();
-        try {
-          await output.addStream(temporary.openRead());
-          await output.flush();
-        } finally {
-          await output.close();
+          rethrow;
         }
         if (await sha256FileRange(destination) != digest) {
           throw StateError('Published evidence failed verification.');
