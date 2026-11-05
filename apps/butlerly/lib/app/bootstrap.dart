@@ -7,6 +7,7 @@ import 'package:butlerly/app/session/butlerly_session_guard.dart';
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/core/config/app_configuration.dart';
 import 'package:butlerly/core/data/local_backup_manager.dart';
+import 'package:butlerly/core/data/local_data_gateway.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/data/raw_restore_service.dart';
 import 'package:butlerly/core/data/restore_recovery_state.dart';
@@ -480,6 +481,8 @@ Future<bool> recoverRawJournalBeforeDatabaseOpen({
 @visibleForTesting
 Future<void> initializeButlerly(AppLogger logger) async {
   LocalDatabase? database;
+  LocalBackupManager? startupBackupManager;
+  var portablePublicationRecovered = false;
   var phase = 'locale initialization';
 
   try {
@@ -549,10 +552,12 @@ Future<void> initializeButlerly(AppLogger logger) async {
       final backupManager = services.isRegistered<LocalBackupManager>()
           ? services<LocalBackupManager>()
           : null;
+      startupBackupManager = backupManager;
       phase = 'interrupted portable backup recovery';
       if (backupManager != null) {
         try {
           await backupManager.recoverInterruptedPortableBackupPublications();
+          portablePublicationRecovered = true;
           logger.info('Startup: portable backup recovery checked');
         } catch (error, stackTrace) {
           logger.severe(
@@ -564,22 +569,6 @@ Future<void> initializeButlerly(AppLogger logger) async {
         }
       }
 
-      phase = 'private artifact cleanup';
-      final incident = recoveryState?.incident;
-      final recoveryIsUnknown =
-          incident != null && incident.safetyBackupPath.isEmpty;
-      if (!recoveryIsUnknown && backupManager != null) {
-        try {
-          await backupManager.cleanupOrphanedPrivateArtifacts();
-          logger.info('Startup: private artifact cleanup complete');
-        } catch (error, stackTrace) {
-          logger.severe(
-            'Startup maintenance cleanup failed; continuing',
-            error,
-            stackTrace,
-          );
-        }
-      }
     }
 
     if (services.isRegistered<FinanceServices>() &&
@@ -694,6 +683,40 @@ Future<void> initializeButlerly(AppLogger logger) async {
     }
 
     logger.info('Startup: application ready');
+    // Recovery gates run before the app opens. Orphan cleanup is maintenance:
+    // defer potentially expensive integrity checks until the workspace is
+    // usable, and serialize it with normal evidence/backup mutations.
+    final maintenance = startupBackupManager;
+    if (maintenance != null && !(recoveryState?.isRecoveryRequired ?? false)) {
+      unawaited(
+        Future<void>.delayed(Duration.zero, () async {
+          try {
+            await maintenance.cleanupOrphanedPrivateArtifacts();
+            logger.info('Startup: private artifact cleanup complete');
+          } catch (error, stackTrace) {
+            logger.severe(
+              'Startup maintenance cleanup failed; continuing',
+              error,
+              stackTrace,
+            );
+          }
+          if (portablePublicationRecovered &&
+              !maintenance.publicationRecoveryState.isRecoveryRequired) {
+            try {
+              await LocalWorkspaceDataGateway
+                  .cleanupAbandonedTemporaryShareBackups();
+              logger.info('Startup: temporary sharing cleanup complete');
+            } catch (error, stackTrace) {
+              logger.severe(
+                'Temporary backup sharing cleanup failed; continuing',
+                error,
+                stackTrace,
+              );
+            }
+          }
+        }),
+      );
+    }
   } catch (error, stackTrace) {
     final failure = classifyStartupFailure(phase, error);
     logger.severe(
