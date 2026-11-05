@@ -694,6 +694,38 @@ void main() {
   });
 
   test(
+    'Merge does not adopt unreferenced archived bytes for a local-only ID',
+    () async {
+      await setProbe('backup-value');
+      final orphan = File(path.join(evidence.path, 'same-name.bin'));
+      await orphan.writeAsBytes([1, 2, 3]);
+      final archive = File(path.join(root.path, 'unreferenced-name.butlerly'));
+      await backups.createBackup(
+        archive,
+        password: 'correct horse battery staple',
+      );
+      await orphan.delete();
+      // This local-only evidence row references the same filename, but the
+      // archive did not contain the corresponding evidence identity.
+      await referenceEvidence('local-only-evidence', 'same-name.bin');
+
+      final merged = await RawMergeService(
+        database,
+        backups,
+        restores,
+      ).restoreMerge(archive, password: 'correct horse battery staple');
+      expect(merged.attachmentCount, 0);
+      expect(await orphan.exists(), isFalse);
+      final rows = await database.database.query(
+        'evidence_items',
+        where: 'id = ?',
+        whereArgs: ['local-only-evidence'],
+      );
+      expect(rows.single['local_file_name'], 'same-name.bin');
+    },
+  );
+
+  test(
     'Merge counts imported rows and all preexisting local domain rows',
     () async {
       await setProbe('backup-value');
