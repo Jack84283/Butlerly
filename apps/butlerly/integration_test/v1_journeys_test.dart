@@ -2168,6 +2168,14 @@ void main() {
       expect(acknowledgment, findsOneWidget);
       expect(confirm, findsOneWidget);
       expect(tester.widget<CheckboxListTile>(acknowledgment).value, isFalse);
+      // The confirmation sheet scrolls independently of its fixed actions.
+      // Center the acknowledgement inside its viewport before tapping it.
+      await Scrollable.ensureVisible(
+        tester.element(acknowledgment),
+        alignment: 0.5,
+        duration: const Duration(milliseconds: 200),
+      );
+      await tester.pumpAndSettle();
       await tester.tap(acknowledgment);
       await tester.pumpAndSettle();
       expect(tester.widget<CheckboxListTile>(acknowledgment).value, isTrue);
