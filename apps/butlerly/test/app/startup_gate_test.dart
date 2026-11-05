@@ -251,9 +251,7 @@ void main() {
       await evidence.create();
       final original = <int>[11, 22, 33, 44];
       await live.writeAsBytes(original, flush: true);
-      final journal = File(
-        path.join(root.path, '.raw-restore-journal.json'),
-      );
+      final journal = File(path.join(root.path, '.raw-restore-journal.json'));
       const damaged = '{malformed raw restore journal';
       await journal.writeAsString(damaged, flush: true);
       final receipt = File(path.join(evidence.path, 'receipt.bin'));
@@ -283,31 +281,33 @@ void main() {
     },
   );
 
-  testWidgets(
-    'unresolved raw journal gets a recovery-only startup screen',
-    (tester) async {
-      const error = RawRestoreStartupRecoveryRequiredException();
-      final failure = classifyStartupFailure('database initialization', error);
-      expect(failure.code, 'RECOVERY-RAW');
+  testWidgets('unresolved raw journal gets a recovery-only startup screen', (
+    tester,
+  ) async {
+    const error = RawRestoreStartupRecoveryRequiredException();
+    final failure = classifyStartupFailure('database initialization', error);
+    expect(failure.code, 'RECOVERY-RAW');
 
-      await tester.pumpWidget(
-        ButlerlyStartupGate(
-          logger: logger,
-          initialize: () async => throw failure,
-          minimumLaunchDuration: Duration.zero,
-          readyBuilder: (_) =>
-              const MaterialApp(home: Scaffold(body: Text('workspace ready'))),
-        ),
-      );
-      await tester.pump();
-      await tester.pump();
+    await tester.pumpWidget(
+      ButlerlyStartupGate(
+        logger: logger,
+        initialize: () async => throw failure,
+        minimumLaunchDuration: Duration.zero,
+        readyBuilder: (_) =>
+            const MaterialApp(home: Scaffold(body: Text('workspace ready'))),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
 
-      expect(find.text('Butlerly recovery is required'), findsOneWidget);
-      expect(find.text('Diagnostic: RECOVERY-RAW'), findsOneWidget);
-      expect(find.text('workspace ready'), findsNothing);
-      expect(find.byKey(const ValueKey('butlerly-startup-retry')), findsOneWidget);
-    },
-  );
+    expect(find.text('Butlerly recovery is required'), findsOneWidget);
+    expect(find.text('Diagnostic: RECOVERY-RAW'), findsOneWidget);
+    expect(find.text('workspace ready'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('butlerly-startup-retry')),
+      findsOneWidget,
+    );
+  });
 
   testWidgets('storage unavailable never falls through to the workspace', (
     tester,
