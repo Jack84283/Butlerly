@@ -568,7 +568,6 @@ Future<void> initializeButlerly(AppLogger logger) async {
           );
         }
       }
-
     }
 
     if (services.isRegistered<FinanceServices>() &&
@@ -703,8 +702,7 @@ Future<void> initializeButlerly(AppLogger logger) async {
           if (portablePublicationRecovered &&
               !maintenance.publicationRecoveryState.isRecoveryRequired) {
             try {
-              await LocalWorkspaceDataGateway
-                  .cleanupAbandonedTemporaryShareBackups();
+              await LocalWorkspaceDataGateway.cleanupAbandonedTemporaryShareBackups();
               logger.info('Startup: temporary sharing cleanup complete');
             } catch (error, stackTrace) {
               logger.severe(
