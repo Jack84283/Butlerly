@@ -226,7 +226,11 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
     return LocalRestoreResult(
       mode: mode,
       restoredRows: result.recordCount,
-      keptNewerLocalRows: 0,
+      // Existing local domain rows survive Merge. Replace has no retained
+      // local rows; its count comes from archived transactions.
+      keptNewerLocalRows: mode == LocalRestoreMode.merge
+          ? result.keptLocalRowCount
+          : 0,
       restoredEvidence: result.attachmentCount,
     );
   }
