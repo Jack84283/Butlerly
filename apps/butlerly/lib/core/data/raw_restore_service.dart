@@ -132,6 +132,14 @@ final class RawRestoreService {
     )?
     prepareStaging,
   }) => EvidenceMutationLock.runExclusive(() async {
+    // Fail closed for any callers of the retired physical-Merge entry point.
+    // Only RawMergeService's in-place SQLite transaction can Merge safely
+    // while an independent idle SQLite connection remains open.
+    if (prepareStaging != null || beforeActivation != null) {
+      throw UnsupportedError(
+        'Physical database Merge is disabled; use transactional Merge.',
+      );
+    }
     final liveDatabase = File(database.persistenceDatabase.path);
     final evidenceDirectory = await backup.data.evidenceDirectory();
     final parent = liveDatabase.parent;
