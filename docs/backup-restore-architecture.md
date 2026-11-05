@@ -105,8 +105,14 @@ store destinations have not been configured.
   after closing the live connection. SQLite writers in another process must
   fail to obtain a conflicting lock during the physical Merge rename. The
   final file fingerprint is read through the *locked descriptor*, never by
-  reopening the original path (which can release POSIX locks). On Windows,
-  physical Merge fails closed pending a Windows-compatible activation design.
+  reopening the original path (which can release POSIX locks). For Merge,
+  the original is copied from that locked descriptor into a temporary file,
+  SHA-256-verified, then published as the rollback copy. A POSIX rename
+  atomically replaces the still-present live database path, eliminating the
+  gap where another process could create a new SQLite file. An incomplete
+  rollback copy is never published and is cleaned up during recovery. This
+  uses extra temporary disk space roughly equal to the local SQLite file.
+  On Windows, physical Merge fails closed pending a compatible design.
   This protects cooperating SQLite connections; independent tools using
   nonstandard VFS/locking or directly modifying files remain unsupported.
 - **Post-Restore refresh:** the committed Restore emits
