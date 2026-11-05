@@ -111,8 +111,9 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
     final file = File(path.join(shareDirectory.path, path.basename(fileName)));
     RandomAccessFile? lease;
     try {
-      lease = await File(path.join(shareDirectory.path, _shareLeaseName))
-          .open(mode: FileMode.write);
+      lease = await File(
+        path.join(shareDirectory.path, _shareLeaseName),
+      ).open(mode: FileMode.write);
       await lease.lock(FileLock.exclusive);
       _activeShareLeases[shareDirectory.path] = lease;
       final backup = await _createRawBackup(file, password);
@@ -120,7 +121,8 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
     } catch (_) {
       // If lease acquisition fails, do not share an unprotected temporary
       // file. This cleanup also covers errors before map registration.
-      if (lease != null && !_activeShareLeases.containsKey(shareDirectory.path)) {
+      if (lease != null &&
+          !_activeShareLeases.containsKey(shareDirectory.path)) {
         try {
           await lease.close();
         } catch (_) {}
@@ -151,10 +153,8 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
       if (owned) {
         await rejectSymlinkedPath(parent.path);
         final marker = File(path.join(parent.path, _shareLeaseName));
-        if (await FileSystemEntity.type(
-              marker.path,
-              followLinks: false,
-            ) == FileSystemEntityType.file) {
+        if (await FileSystemEntity.type(marker.path, followLinks: false) ==
+            FileSystemEntityType.file) {
           await marker.delete();
         }
         if (await parent.exists()) await parent.delete();
@@ -183,15 +183,17 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
     if (!await root.exists()) return;
     final current = now ?? DateTime.now();
     final before = olderThanMicros ?? current.microsecondsSinceEpoch;
-    final legacyCutoff =
-        current.subtract(const Duration(days: 1)).microsecondsSinceEpoch;
+    final legacyCutoff = current
+        .subtract(const Duration(days: 1))
+        .microsecondsSinceEpoch;
     await for (final entry in root.list(followLinks: false)) {
       if (entry is! Directory) continue;
       final name = path.basename(entry.path);
       final match = _shareDirectoryName.firstMatch(name);
       if (match == null) continue;
       final createdAt = int.tryParse(match.group(1)!);
-      if (createdAt == null || createdAt >= before ||
+      if (createdAt == null ||
+          createdAt >= before ||
           _activeShareLeases.containsKey(entry.path)) {
         continue;
       }
