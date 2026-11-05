@@ -862,10 +862,23 @@ void main() {
         path.join(databaseDirectory.path, '.raw-restore-journal.json'),
       );
       String? validJournal;
+      var failRecoveryCloseOnce = true;
+      var connectionConfirmedClosed = false;
       final gateway = LocalWorkspaceDataGateway(
         manager,
         data,
         restoreDiagnosticStage: (stage) async {
+          if (stage == 'recovery connection close' && failRecoveryCloseOnce) {
+            failRecoveryCloseOnce = false;
+            throw StateError('injected SQLite close failure');
+          }
+          if (stage == 'recovery connection closed') {
+            connectionConfirmedClosed = true;
+            expect(
+              () => database.persistenceDatabase.connection,
+              throwsA(isA<Exception>()),
+            );
+          }
           if (stage == 'replacement files activated') {
             validJournal = await journal.readAsString();
             await journal.writeAsString(
@@ -896,7 +909,18 @@ void main() {
       // journal failure is corrected; it must not use the old restore engine.
       expect(validJournal, isNotNull);
       await journal.writeAsString(validJournal!, flush: true);
+      await expectLater(
+        gateway.recoverControlledState(postActivationRefresh: () async {}),
+        throwsA(isA<StateError>()),
+      );
+      expect(manager.recoveryState.isRecoveryRequired, isTrue);
+      expect(await journal.exists(), isTrue);
+      expect(
+        () => database.persistenceDatabase.connection,
+        throwsA(isA<Exception>()),
+      );
       await gateway.recoverControlledState(postActivationRefresh: () async {});
+      expect(connectionConfirmedClosed, isTrue);
       expect(await getProbe(), 'original-must-survive');
       expect(manager.recoveryState.isRecoveryRequired, isFalse);
       expect(await journal.exists(), isFalse);
