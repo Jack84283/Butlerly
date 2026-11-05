@@ -133,7 +133,15 @@ final class RawMergeService {
           if (!committed) rethrow;
         }
       }
-      return merged;
+      return RawBackupInspection(
+        createdAtUtc: merged.createdAtUtc,
+        sqliteBytes: merged.sqliteBytes,
+        recordCount: merged.recordCount,
+        // Only newly published attachments count as restored by Merge.
+        attachmentCount: createdEvidence.length,
+        missingAttachmentCount: merged.missingAttachmentCount,
+        keptLocalRowCount: merged.keptLocalRowCount,
+      );
     } catch (error, stack) {
       // Files already published under their canonical evidence names are
       // immutable. Do not delete them after a failed DB transaction: an
@@ -333,6 +341,7 @@ final class RawMergeService {
       ),
     );
     var importedRows = 0;
+    var keptLocalRows = 0;
     final importedEvidenceNames = <String>{};
     try {
       final escaped = archived.path.replaceAll("'", "''");
@@ -363,6 +372,14 @@ final class RawMergeService {
         );
       }
       final ordered = await _orderTables(connection, tables);
+      // All current local domain rows survive Merge, including overlapping
+      // identities where the local value wins. Count them before importing.
+      for (final table in ordered) {
+        final count = await connection.rawQuery(
+          'SELECT COUNT(*) AS total FROM main.${_quote(table)}',
+        );
+        keptLocalRows += count.single['total'] as int;
+      }
       final sourceTombstones = await _hasTable(
         connection,
         'archived',
@@ -534,6 +551,7 @@ final class RawMergeService {
       recordCount: importedRows,
       attachmentCount: newFiles,
       missingAttachmentCount: inspection.missingAttachmentCount,
+      keptLocalRowCount: keptLocalRows,
     );
   }
 
