@@ -19,11 +19,11 @@ typedef _DatabaseRevision = ({
 
 /// Non-destructive, local-wins import from a raw SQLite backup.
 ///
-/// Every mutation takes place on a disposable snapshot of the local database.
-/// After an all-or-nothing SQLite transaction and evidence copy succeed, the
-/// existing journaled Replace activation installs that merged snapshot.
-/// Current local rows always win identity conflicts; tombstones protect
-/// intentional deletions. This service never evaluates analysis rules.
+/// A disposable staging database validates the local-wins union first.
+/// Missing rows are then inserted through an exclusive transaction on the
+/// existing live SQLite inode, not through physical database replacement.
+/// Existing local rows win identity conflicts; tombstones protect intentional
+/// deletions. Analysis rules are never evaluated.
 final class RawMergeService {
   RawMergeService(this.database, this.backup, this.restores);
 
