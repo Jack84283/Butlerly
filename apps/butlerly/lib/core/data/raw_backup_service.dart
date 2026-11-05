@@ -28,12 +28,17 @@ final class RawBackupService {
     this.database,
     this.data, {
     BackupDestinationWriter? destinationWriter,
+    Future<void> Function(Directory)? cleanupWorking,
   }) : _destinationWriter =
-           destinationWriter ?? const SandboxedBackupDestinationWriter();
+           destinationWriter ?? const SandboxedBackupDestinationWriter(),
+       _cleanupWorking = cleanupWorking;
 
   final LocalDatabase database;
   final LocalDataManager data;
   final BackupDestinationWriter _destinationWriter;
+
+  /// Test seam to simulate storage cleanup errors after publication.
+  final Future<void> Function(Directory)? _cleanupWorking;
   final RawBackupArchive _archive = const RawBackupArchive();
   final BackupEncryption _encryption = const BackupEncryption();
   static const _rawInnerFormat = 'butlerly-raw-backup';
@@ -159,7 +164,13 @@ final class RawBackupService {
       // flight). Cleanup failures must never make a saved backup look failed.
       // A crash/unremovable work directory is handled by startup maintenance.
       try {
-        if (await working.exists()) await working.delete(recursive: true);
+        if (await working.exists()) {
+          if (_cleanupWorking != null) {
+            await _cleanupWorking(working);
+          } else {
+            await working.delete(recursive: true);
+          }
+        }
       } catch (_) {
         // Best effort; never mask successful publication.
       }
