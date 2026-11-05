@@ -269,8 +269,7 @@ final class RawRestoreService {
             );
           }
         }
-        if (preCloseFingerprint !=
-            await sha256OpenFile(exclusiveMergeLock)) {
+        if (preCloseFingerprint != await sha256OpenFile(exclusiveMergeLock)) {
           throw StateError(
             'Live database changed during final Merge activation; '
             'the original database was preserved.',
