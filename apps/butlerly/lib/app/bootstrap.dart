@@ -404,13 +404,13 @@ class _StartupFailureBody extends StatelessWidget {
                     const Icon(Icons.error_outline_rounded, size: 48),
                     const SizedBox(height: 20),
                     Text(
-                      context.l10n.text(
-                        rawRecoveryRequired
-                            ? 'recoveryRequiredTitle'
-                            : storageUnavailable
-                            ? 'localStorageUnavailable'
-                            : 'pageUnavailable',
-                      ),
+                      rawRecoveryRequired
+                          ? context.l10n.backupText('recoveryRequiredTitle')
+                          : context.l10n.text(
+                              storageUnavailable
+                                  ? 'localStorageUnavailable'
+                                  : 'pageUnavailable',
+                            ),
                       key: const ValueKey('butlerly-startup-error'),
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.headlineSmall,
