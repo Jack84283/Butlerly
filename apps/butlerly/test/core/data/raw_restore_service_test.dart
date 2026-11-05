@@ -154,6 +154,57 @@ void main() {
     },
   );
 
+  test('committed Replace succeeds when prior-evidence cleanup is unsafe', () async {
+    if (Platform.isWindows) return;
+    await setProbe('from-archive');
+    final archive = File(path.join(root.path, 'postcommit-cleanup.butlerly'));
+    await backups.createBackup(
+      archive,
+      password: 'correct horse battery staple',
+    );
+    await database.database.update(
+      'restore_probe',
+      {'value': 'before-replace'},
+      where: 'id = ?',
+      whereArgs: ['original'],
+    );
+    final external = File(path.join(root.path, 'protected-external.txt'));
+    await external.writeAsString('do not remove');
+    Directory? oldEvidence;
+    final result = await restores.restoreReplace(
+      archive,
+      password: 'correct horse battery staple',
+      onStage: (stage) async {
+        if (stage == 'restored database reopened') {
+          final dirs = await evidence.parent
+              .list(followLinks: false)
+              .where(
+                (entry) =>
+                    entry is Directory &&
+                    path.basename(entry.path).startsWith(
+                      'evidence.raw-restore-previous-',
+                    ),
+              )
+              .toList();
+          expect(dirs, hasLength(1));
+          oldEvidence = dirs.single as Directory;
+          await Link(path.join(oldEvidence!.path, 'untrusted-link'))
+              .create(external.path);
+        }
+      },
+    );
+    expect(result.recordCount, greaterThanOrEqualTo(0));
+    expect(await getProbe(), 'from-archive');
+    expect(await external.readAsString(), 'do not remove');
+    expect(await oldEvidence!.exists(), isTrue);
+    expect(
+      await File(
+        path.join(databaseDirectory.path, '.raw-restore-journal.json'),
+      ).exists(),
+      isFalse,
+    );
+  });
+
   test('a raw backup restores to an independent installation', () async {
     await setProbe('portable-snapshot');
     final sourceEvidence = File(path.join(evidence.path, 'receipt.bin'));
