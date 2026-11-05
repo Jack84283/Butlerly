@@ -7,7 +7,7 @@ import 'package:butlerly/core/data/raw_backup_service.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/evidence/evidence_mutation_lock.dart';
 import 'package:butlerly_database/butlerly_database.dart'
-    show ButlerlyDatabase, sha256FileRange;
+    show ButlerlyDatabase, sha256FileRange, sha256OpenFile;
 import 'package:butlerly_finance_application/butlerly_finance_application.dart'
     show RestoreRecoveryRequiredException;
 import 'package:path/path.dart' as path;
@@ -151,8 +151,18 @@ final class RawRestoreService {
     var committed = false;
     var activationFenced = false;
     var uncertainRecovery = false;
+    RandomAccessFile? exclusiveMergeLock;
     await working.create(recursive: true);
     try {
+      // On Windows, a locked file cannot be atomically renamed with the
+      // POSIX activation protocol. Fail closed instead of running an unsafe
+      // physical Merge while a second SQLite writer could be active.
+      if (prepareStaging != null && Platform.isWindows) {
+        throw StateError(
+          'Merge activation requires an exclusive SQLite workspace lock '
+          'that is not supported by this Windows restore path.',
+        );
+      }
       await onStage?.call('archive extraction');
       final inspection = await backup.prepareRestore(
         encryptedArchive,
@@ -238,6 +248,15 @@ final class RawRestoreService {
       // Do not replace a file while any Butlerly connection holds it open.
       await database.persistenceDatabase.close();
       if (preCloseFingerprint != null) {
+        // POSIX SQLite uses advisory byte-range locks on the DB file. Take
+        // a nonblocking whole-file exclusive lock after the app connection
+        // closes; if another process still owns the SQLite workspace, abort
+        // without replacing its database. Keep this handle open through the
+        // file swap and never reopen/close another descriptor of the same DB
+        // while the lock is held (POSIX close() can release all such locks).
+        exclusiveMergeLock = await liveDatabase.open(mode: FileMode.append);
+        await exclusiveMergeLock.lock(FileLock.exclusive);
+        await onStage?.call('exclusive merge activation lock acquired');
         // A second SQLite connection may retain committed pages in its WAL,
         // leaving the primary DB bytes unchanged. Never activate a Merge
         // while such a write journal remains unresolved.
@@ -250,7 +269,8 @@ final class RawRestoreService {
             );
           }
         }
-        if (preCloseFingerprint != await sha256FileRange(liveDatabase)) {
+        if (preCloseFingerprint !=
+            await sha256OpenFile(exclusiveMergeLock)) {
           throw StateError(
             'Live database changed during final Merge activation; '
             'the original database was preserved.',
@@ -312,6 +332,13 @@ final class RawRestoreService {
       }
       Error.throwWithStackTrace(error, stack);
     } finally {
+      if (exclusiveMergeLock != null) {
+        try {
+          await exclusiveMergeLock.unlock();
+        } finally {
+          await exclusiveMergeLock.close();
+        }
+      }
       if (activationFenced && !uncertainRecovery) {
         database.persistenceDatabase.finishRestoreActivation();
       }
