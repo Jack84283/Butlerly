@@ -95,6 +95,7 @@ final class RawMergeService {
         liveEvidence,
         working,
         createdEvidence,
+        onStage: onStage,
       );
       await onStage?.call('before transactional merge');
       final current = database.database;
@@ -154,8 +155,9 @@ final class RawMergeService {
     Directory staged,
     Directory live,
     Directory working,
-    List<({File file, String hash})> created,
-  ) async {
+    List<({File file, String hash})> created, {
+    Future<void> Function(String stage)? onStage,
+  }) async {
     await rejectEvidenceTree(staged);
     await rejectEvidenceTree(live);
     if (!await live.exists()) await live.create(recursive: true);
@@ -168,14 +170,14 @@ final class RawMergeService {
       final relative = path.relative(entry.path, from: staged.path);
       final safe = await validateEvidencePath(live, relative);
       final destination = File(path.join(live.path, safe));
+      final digest = await sha256FileRange(entry);
       final existing = await FileSystemEntity.type(
         destination.path,
         followLinks: false,
       );
       if (existing != FileSystemEntityType.notFound) {
         if (existing != FileSystemEntityType.file ||
-            await sha256FileRange(destination) !=
-                await sha256FileRange(entry)) {
+            await sha256FileRange(destination) != digest) {
           throw const FormatException(
             'Local evidence changed during Merge; no data was replaced.',
           );
@@ -189,11 +191,42 @@ final class RawMergeService {
       await rejectSymlinkedPath(temporary.path);
       try {
         await entry.copy(temporary.path);
-        final digest = await sha256FileRange(entry);
         if (await sha256FileRange(temporary) != digest) {
           throw StateError('New evidence copy failed verification.');
         }
-        await temporary.rename(destination.path);
+
+        // A competing writer can publish this pathname after the first
+        // existence check. Never rename over its data: File.rename replaces
+        // destinations on POSIX. Exclusive creation fails instead.
+        await onStage?.call('before exclusive evidence publish');
+        try {
+          await destination.create(exclusive: true);
+        } on PathExistsException {
+          if (await FileSystemEntity.type(
+                    destination.path,
+                    followLinks: false,
+                  ) ==
+                  FileSystemEntityType.file &&
+              await sha256FileRange(destination) == digest) {
+            continue; // An identical file won the race; keep its bytes.
+          }
+          throw const FormatException(
+            'Local evidence appeared during Merge; no file was replaced.',
+          );
+        }
+        // Verify the complete bytes before the DB transaction can commit
+        // a reference. If I/O fails, keep any ambiguous partial file; another
+        // process may have observed the new pathname in the meantime.
+        final output = destination.openWrite();
+        try {
+          await output.addStream(temporary.openRead());
+          await output.flush();
+        } finally {
+          await output.close();
+        }
+        if (await sha256FileRange(destination) != digest) {
+          throw StateError('Published evidence failed verification.');
+        }
         created.add((file: destination, hash: digest));
       } finally {
         try {
