@@ -629,11 +629,15 @@ void main() {
         whereArgs: ['original'],
       );
       var attempted = false;
+      var pathStayedPresent = false;
       final backupFile = File(database.persistenceDatabase.path);
       await RawMergeService(database, backups, restores).restoreMerge(
         archive,
         password: 'correct horse battery staple',
         onStage: (stage) async {
+          if (stage == 'original SQLite preserved') {
+            pathStayedPresent = await backupFile.exists();
+          }
           if (stage == 'exclusive merge activation lock acquired') {
             attempted = true;
             const writer =
@@ -659,6 +663,7 @@ void main() {
         },
       );
       expect(attempted, isTrue);
+      expect(pathStayedPresent, isTrue);
       expect(await getProbe(), 'local-wins');
       expect(
         await database.database.query(
@@ -667,6 +672,50 @@ void main() {
           whereArgs: ['external-late'],
         ),
         isEmpty,
+      );
+    },
+  );
+
+  test(
+    'Merge interrupted after verified original copy rolls back exact live DB',
+    () async {
+      await setProbe('archived-value');
+      final archive = File(path.join(root.path, 'atomic-rollback.butlerly'));
+      await backups.createBackup(
+        archive,
+        password: 'correct horse battery staple',
+      );
+      await database.database.update(
+        'restore_probe',
+        {'value': 'must-stay-live'},
+        where: 'id = ?',
+        whereArgs: ['original'],
+      );
+      var preserved = false;
+      await expectLater(
+        RawMergeService(database, backups, restores).restoreMerge(
+          archive,
+          password: 'correct horse battery staple',
+          onStage: (stage) async {
+            if (stage == 'original SQLite preserved') {
+              preserved = true;
+              expect(
+                await File(database.persistenceDatabase.path).exists(),
+                isTrue,
+              );
+              throw StateError('injected failure before atomic Merge swap');
+            }
+          },
+        ),
+        throwsA(isA<StateError>()),
+      );
+      expect(preserved, isTrue);
+      expect(await getProbe(), 'must-stay-live');
+      expect(
+        await File(
+          path.join(databaseDirectory.path, '.raw-restore-journal.json'),
+        ).exists(),
+        isFalse,
       );
     },
   );
