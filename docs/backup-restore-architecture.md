@@ -111,12 +111,17 @@ store destinations have not been configured.
   Filesystem receipts are copied and hash-verified before SQL commit; a
   failed transaction may leave a harmless unreferenced receipt, which must
   not be blindly deleted when an external writer may have referenced it.
-  Evidence publication now reserves destination names with exclusive file
-  creation rather than renaming over existing files. A competing writer that
-  creates a different attachment between the initial check and publication
-  causes Merge to fail without overwriting that file. Existing identical
-  attachments are left untouched. An incomplete exclusive write can leave
-  an orphan that must be reconciled, not silently erased.
+  Evidence publication now creates and verifies an immutable private
+  staging file, then atomically adds its inode to the live evidence namespace
+  with a hard link that **cannot replace** an existing destination. A process
+  interruption before linking leaves no final pathname; afterward the final
+  pathname always refers to the complete staged bytes. A conflicting writer
+  fails closed, while identical existing bytes are reused. Atomic hard links
+  are supported through native Apple/Android/Windows APIs and the POSIX Linux
+  link command; a filesystem that cannot hard-link the source and target
+  fails safely instead of falling back to an unsafe copy. Failed SQL commits
+  can leave fully formed unreferenced evidence, which is retained rather than
+  potentially deleting bytes another process has referenced.
   The separate Replace operation retains its physical-activation journal.
 - **Post-Restore refresh:** the committed Restore emits
   `workspaceRestoreChanges`, also invalidating transaction and budget data.
@@ -204,6 +209,21 @@ store destinations have not been configured.
   noncritical temporary-file cleanup errors. Abandoned incomplete raw
   encryption streams are reclaimed on the next safe cold launch.
 
+## Mobile sharing lifetime and cleanup
+
+- Every share operation creates a private per-operation directory and holds
+  a nonblocking advisory lease through the operating system's share sheet.
+  Directory cleanup is restricted to operations created before the current
+  app launch, and skips any lease still held by an active process (including
+  another Butlerly instance). The process also tracks its own active leases
+  to handle POSIX per-process lock semantics.
+- Legacy unleased share directories are retained until at least one day old
+  to avoid deleting an active share from an older app version. A process kill
+  releases the operating-system lease; a subsequent cold launch can reclaim
+  its abandoned share bytes safely.
+- No sweep ever recursively deletes an unexpected symbolic link or unrelated
+  temporary backup; errors leave the candidate in place for later inspection.
+
 ## Storage capacity preflight
 
 - Backup, Replace and Merge estimate peak private staging usage based on
@@ -216,7 +236,11 @@ store destinations have not been configured.
   inventing a storage number. These estimates are conservative and cannot
   prevent another process from consuming space after the preflight.
 - The private filesystem is checked before any large snapshot or unpacking.
-  Backup also checks the destination filesystem before publishing its archive.
+  Backup checks the destination volume as well. When both directories report
+  the same filesystem identity, private staging and destination capacity are
+  **summed** for a single peak-space preflight. On different volumes each
+  capacity pool is checked individually; an unknown filesystem identity is
+  treated conservatively as shared space.
   Insufficient capacity yields a structured `FileSystemException` with
   operating-system error code 28, without moving live SQLite/evidence.
   Filesystem capacity details are diagnostics, not public financial data.
