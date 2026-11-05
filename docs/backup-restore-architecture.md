@@ -281,9 +281,12 @@ bytes. No percentage speed-up should be asserted without such measurements.
 - `raw_restore_service.dart` — decrypts, verifies, migrates staged SQLite
   snapshots using native database deployment SQL, then activates Replace with
   a restore journal, previous-data copies, and connection reopen.
-- `raw_merge_service.dart` — runs a local-wins SQL merge on disposable staged
-  SQLite, then uses the same guarded activation path as Replace. Tombstones and
-  unresolved evidence conflicts must be respected. Not byte concatenation.
+- `raw_merge_service.dart` — builds a local-wins SQL merge on disposable
+  staged SQLite, then imports missing identities using an exclusive transaction
+  on the existing live SQLite inode (not Replace's file activation). Only
+  archived attachments whose evidence ID and filename match the final merged
+  database can be published, using an atomic no-replace hard link. Tombstones
+  and unresolved evidence conflicts must be respected. Not byte concatenation.
 
 ## Implementation sequence
 
@@ -334,6 +337,40 @@ tests on disposable data; preserve the ability to recover existing legacy
 safety copies; update all production imports and startup/UI recovery paths;
 then remove the superseded engine, snapshot writer, schema constants and tests
 *in one focused, verified change*. Do not drop tests merely to make CI green.
+
+## PR #396 native acceptance gate (disposable data only)
+
+CI for this PR runs the canonical `tool/validate.sh macos_backup` target on
+macOS, the iOS simulator compile target, and existing iOS integration journeys.
+The macOS Flutter unit-test channel adapter uses host POSIX hard links; it
+**does not** validate AppDelegate/Flutter engine channel registration at runtime.
+The native macOS build and iOS simulator compilation test that separately.
+A green CI result is necessary but is **not** physical-device acceptance.
+
+Before merge, complete and record these checks using **disposable** Mac and
+iPhone datasets, with original app data backed up and never overwritten:
+
+1. Create a password-encrypted backup containing transactions, master data,
+   analysis rules, and actual receipt/statement bytes. Verify desktop save
+   location and mobile share destination. Canceling Share must not claim success.
+2. Restore the archive to an independent installation/device in **Replace**
+   mode. Verify original SQLite rows, attachment bytes, and normal app reopen.
+   Verify the destructive confirmation checkbox and Cancel behavior.
+3. Restore to a populated installation in **Merge** mode. Verify local-ID wins,
+   import of new rows, unchanged existing receipt bytes, deletion tombstones,
+   absence of orphaned archive files, and accurate restored-attachment count.
+4. Test incorrect password, tampered archive, unsupported/newer schema, missing
+   attachment, full destination storage, and unavailable filesystem permission.
+   Every rejection must leave the live dataset and archive intact.
+5. Terminate the app during staging, immediately before and after atomic
+   attachment publication, and during Replace activation. Relaunch and verify
+   journal recovery, no partial published attachment, and no unguarded writes
+   while recovery is required.
+6. Keep a second SQLite connection open across Merge and verify that later
+   writes from it are still visible, without database-inode replacement.
+7. Record platform, OS/app build, exact procedure, expected/actual outcome, and
+   evidence for each check. **Do not merge** until Mac and iPhone outcomes are
+   confirmed, including any limitations of simulator-only testing.
 
 ## Definition of done
 
