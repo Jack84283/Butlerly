@@ -466,7 +466,7 @@ void main() {
           archive,
           password: 'correct horse battery staple',
           onStage: (stage) async {
-            if (stage == 'before exclusive evidence publish') {
+            if (stage == 'before atomic evidence publish') {
               injected = true;
               // Mimics another process writing after the first exists check.
               await receipt.writeAsBytes([9, 8, 7]);
@@ -479,6 +479,47 @@ void main() {
       expect(await receipt.readAsBytes(), [9, 8, 7]);
       expect(await getProbe(), 'local-wins');
       expect(await archive.exists(), isTrue);
+    },
+  );
+
+  test(
+    'interrupted Merge leaves no partial attachment at its final pathname',
+    () async {
+      await setProbe('archived');
+      final receipt = File(path.join(evidence.path, 'atomic-receipt.bin'));
+      await receipt.writeAsBytes([1, 2, 3, 4]);
+      final archive = File(path.join(root.path, 'atomic-receipt.butlerly'));
+      await backups.createBackup(
+        archive,
+        password: 'correct horse battery staple',
+      );
+      await receipt.delete();
+      var reached = false;
+      await expectLater(
+        RawMergeService(database, backups, restores).restoreMerge(
+          archive,
+          password: 'correct horse battery staple',
+          onStage: (stage) async {
+            if (stage == 'before atomic evidence publish') {
+              reached = true;
+              throw StateError('simulated process interruption before link');
+            }
+          },
+        ),
+        throwsA(isA<StateError>()),
+      );
+      expect(reached, isTrue);
+      expect(await receipt.exists(), isFalse);
+      expect(await getProbe(), 'archived');
+
+      // The intact staged archive remains safe to retry. A successful retry
+      // makes the complete attachment visible, never half a stream.
+      await RawMergeService(
+        database,
+        backups,
+        restores,
+      ).restoreMerge(archive, password: 'correct horse battery staple');
+      expect(await receipt.readAsBytes(), [1, 2, 3, 4]);
     },
   );
 
