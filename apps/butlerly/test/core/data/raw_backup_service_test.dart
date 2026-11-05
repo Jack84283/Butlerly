@@ -347,9 +347,8 @@ void main() {
       database,
       LocalDataManager(database, localEvidenceDirectory: evidence),
     );
-    final work = Directory(
-      path.join(storage.path, '.raw-backup-work-$id'),
-    )..createSync();
+    final work = Directory(path.join(storage.path, '.raw-backup-work-$id'))
+      ..createSync();
     final external = File(path.join(output.path, 'protected-receipt'));
     await external.writeAsBytes([1, 2, 3]);
     final link = Link(path.join(work.path, 'external'));
