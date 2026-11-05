@@ -668,8 +668,7 @@ void main() {
     expect(merged.attachmentCount, 1);
     expect(await wanted.readAsBytes(), [1, 3, 5]);
     expect(await orphan.exists(), isFalse);
-    },
-  );
+  });
 
   test(
     'Merge counts imported rows and all preexisting local domain rows',
