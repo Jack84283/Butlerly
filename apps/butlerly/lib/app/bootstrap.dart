@@ -37,6 +37,11 @@ final class ButlerlyStorageUnavailableException implements Exception {
 }
 
 @visibleForTesting
+final class RawRestoreStartupRecoveryRequiredException implements Exception {
+  const RawRestoreStartupRecoveryRequiredException();
+}
+
+@visibleForTesting
 final class ButlerlyStartupFailure implements Exception {
   const ButlerlyStartupFailure({
     required this.code,
@@ -55,6 +60,14 @@ final class ButlerlyStartupFailure implements Exception {
 @visibleForTesting
 ButlerlyStartupFailure classifyStartupFailure(String phase, Object error) {
   if (error is ButlerlyStartupFailure) return error;
+
+  if (error is RawRestoreStartupRecoveryRequiredException) {
+    return ButlerlyStartupFailure(
+      code: 'RECOVERY-RAW',
+      phase: phase,
+      cause: error,
+    );
+  }
 
   if (error is ButlerlyStorageUnavailableException) {
     return ButlerlyStartupFailure(
@@ -374,6 +387,7 @@ class _StartupFailureBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final diagnosticCode = startupDiagnosticCode(error);
     final storageUnavailable = diagnosticCode == 'DB-UNAVAILABLE';
+    final rawRecoveryRequired = diagnosticCode == 'RECOVERY-RAW';
     return Scaffold(
       key: const ValueKey('butlerly-startup-screen'),
       body: SafeArea(
@@ -391,7 +405,9 @@ class _StartupFailureBody extends StatelessWidget {
                     const SizedBox(height: 20),
                     Text(
                       context.l10n.text(
-                        storageUnavailable
+                        rawRecoveryRequired
+                            ? 'recoveryRequiredTitle'
+                            : storageUnavailable
                             ? 'localStorageUnavailable'
                             : 'pageUnavailable',
                       ),
@@ -401,7 +417,11 @@ class _StartupFailureBody extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      context.l10n.text('dataPreserved'),
+                      rawRecoveryRequired
+                          ? context.l10n.backupText(
+                              'restoreFailureRecoveryAction',
+                            )
+                          : context.l10n.text('dataPreserved'),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 12),
@@ -453,10 +473,24 @@ Future<void> initializeButlerly(AppLogger logger) async {
         path.join(support.path, '.raw-restore-journal.json'),
       );
       final rawJournalPresent = await journal.exists();
-      await RawRestoreService.recoverInterruptedReplace(
-        liveDatabase: File(path.join(support.path, 'butlerly.db')),
-        evidenceDirectory: Directory(path.join(support.path, 'evidence')),
-      );
+      try {
+        await RawRestoreService.recoverInterruptedReplace(
+          liveDatabase: File(path.join(support.path, 'butlerly.db')),
+          evidenceDirectory: Directory(path.join(support.path, 'evidence')),
+        );
+      } catch (error, stack) {
+        // Never open SQLite or install normal repositories when an unresolved
+        // raw journal could describe a partially activated database.
+        // The startup gate presents a recovery-only retry/manual-support
+        // surface; the journal, evidence and prior database stay untouched.
+        if (rawJournalPresent) {
+          Error.throwWithStackTrace(
+            const RawRestoreStartupRecoveryRequiredException(),
+            stack,
+          );
+        }
+        rethrow;
+      }
       rawJournalRecovered = rawJournalPresent && !await journal.exists();
     }
     database = LocalDatabase(logger: logger);
