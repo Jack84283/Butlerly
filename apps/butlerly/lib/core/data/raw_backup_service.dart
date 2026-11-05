@@ -62,16 +62,14 @@ final class RawBackupService {
     final evidenceBytes = await StorageSpacePreflight.evidenceBytes(
       await data.evidenceDirectory(),
     );
-    await StorageSpacePreflight.requireAvailable(
-      root,
-      stagingBytes: StorageSpacePreflight.backupStagingBytes(
+    await StorageSpacePreflight.requireBackupCapacity(
+      privateDirectory: root,
+      destinationDirectory: destination.parent,
+      privateStagingBytes: StorageSpacePreflight.backupStagingBytes(
         databaseBytes: databaseBytes,
         evidenceBytes: evidenceBytes,
       ),
-    );
-    await StorageSpacePreflight.requireAvailable(
-      destination.parent,
-      stagingBytes: databaseBytes + evidenceBytes,
+      destinationStagingBytes: databaseBytes + evidenceBytes,
     );
     await working.create();
     try {
