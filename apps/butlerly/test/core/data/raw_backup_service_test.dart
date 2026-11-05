@@ -340,6 +340,31 @@ void main() {
     expect(manager.recoveryState.isRecoveryRequired, isTrue);
   });
 
+  test('raw orphan cleanup never follows a symbolic link', () async {
+    if (Platform.isWindows) return;
+    const id = '1700000000000004';
+    final manager = LocalBackupManager(
+      database,
+      LocalDataManager(database, localEvidenceDirectory: evidence),
+    );
+    final work = Directory(
+      path.join(storage.path, '.raw-backup-work-$id'),
+    )..createSync();
+    final external = File(path.join(output.path, 'protected-receipt'));
+    await external.writeAsBytes([1, 2, 3]);
+    final link = Link(path.join(work.path, 'external'));
+    await link.create(output.path);
+
+    await manager.cleanupOrphanedPrivateArtifacts();
+    expect(await work.exists(), isTrue);
+    expect(await external.readAsBytes(), [1, 2, 3]);
+
+    await link.delete();
+    await manager.cleanupOrphanedPrivateArtifacts();
+    expect(await work.exists(), isFalse);
+    expect(await external.readAsBytes(), [1, 2, 3]);
+  });
+
   test('incorrect password cannot produce staged files', () async {
     final destination = File(path.join(output.path, 'butlerly.butlerly'));
     await service.createBackup(
