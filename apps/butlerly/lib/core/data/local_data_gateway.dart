@@ -107,24 +107,39 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
     final shareDirectory = Directory(
       path.join(temporary.path, '.butlerly-backup-share-$operationId'),
     );
-    await shareDirectory.create();
+    // Never expose a sweep-matching directory until its cross-process lease
+    // is locked. Another running app may start cleanup during this interval.
+    final pending = Directory(
+      path.join(temporary.path, '.butlerly-share-pending-$operationId'),
+    );
+    await pending.create();
     final file = File(path.join(shareDirectory.path, path.basename(fileName)));
     RandomAccessFile? lease;
     try {
       lease = await File(
-        path.join(shareDirectory.path, _shareLeaseName),
+        path.join(pending.path, _shareLeaseName),
       ).open(mode: FileMode.write);
       await lease.lock(FileLock.exclusive);
+      await pending.rename(shareDirectory.path);
       _activeShareLeases[shareDirectory.path] = lease;
       final backup = await _createRawBackup(file, password);
       return TemporaryBackupCreationResult(filePath: file.path, backup: backup);
     } catch (_) {
-      // If lease acquisition fails, do not share an unprotected temporary
-      // file. This cleanup also covers errors before map registration.
+      // An unregistered lease belongs to an invisible pending directory.
+      // Release and delete it without exposing a partially created share.
       if (lease != null &&
           !_activeShareLeases.containsKey(shareDirectory.path)) {
         try {
+          await lease.unlock();
+        } catch (_) {}
+        try {
           await lease.close();
+        } catch (_) {}
+      }
+      if (await pending.exists()) {
+        try {
+          await rejectEvidenceTree(pending);
+          await pending.delete(recursive: true);
         } catch (_) {}
       }
       await discardTemporaryBackup(file.path);
