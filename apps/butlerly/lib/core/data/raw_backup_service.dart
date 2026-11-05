@@ -51,7 +51,9 @@ final class RawBackupService {
     final encrypted = File(path.join(root.path, '.raw-backup-$id.butlerly'));
     var preserveEncrypted = false;
     var stage = BackupCreationStage.snapshot;
-    final databaseBytes = await File(database.persistenceDatabase.path).length();
+    final databaseBytes = await File(
+      database.persistenceDatabase.path,
+    ).length();
     final evidenceBytes = await StorageSpacePreflight.evidenceBytes(
       await data.evidenceDirectory(),
     );
