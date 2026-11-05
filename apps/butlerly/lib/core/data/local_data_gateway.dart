@@ -88,6 +88,9 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
   static final _shareDirectoryName = RegExp(
     r'^\.butlerly-backup-share-([0-9]{13,20})$',
   );
+  static final _pendingShareName = RegExp(
+    r'^\.butlerly-share-pending-([0-9]{13,20})$',
+  );
   static const _shareLeaseName = '.butlerly-share-active.lock';
   // Leases remain held through the OS share sheet, not merely the backup
   // creation call. In-memory lookup also covers same-process POSIX locks.
@@ -204,6 +207,21 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
     await for (final entry in root.list(followLinks: false)) {
       if (entry is! Directory) continue;
       final name = path.basename(entry.path);
+      final pendingMatch = _pendingShareName.firstMatch(name);
+      if (pendingMatch != null) {
+        // Pending directories contain only a lease marker, never financial
+        // backup data. Keep them for a day to protect another process still
+        // constructing its active share.
+        final started = int.tryParse(pendingMatch.group(1)!);
+        if (started != null && started < before &&
+            started < legacyCutoff) {
+          try {
+            await rejectEvidenceTree(entry);
+            await entry.delete(recursive: true);
+          } catch (_) {}
+        }
+        continue;
+      }
       final match = _shareDirectoryName.firstMatch(name);
       if (match == null) continue;
       final createdAt = int.tryParse(match.group(1)!);
