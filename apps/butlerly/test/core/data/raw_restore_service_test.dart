@@ -546,9 +546,9 @@ void main() {
       expect(result.keptNewerLocalRows, expectedKept);
       expect(result.restoredEvidence, 1);
       expect(await getProbe(), 'backup-value');
-      final ids = (await database.database.query('restore_probe'))
-          .map((row) => row['id'])
-          .toSet();
+      final ids = (await database.database.query(
+        'restore_probe',
+      )).map((row) => row['id']).toSet();
       expect(ids, containsAll(['local-only', 'import-only']));
     },
   );
