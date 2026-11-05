@@ -134,21 +134,11 @@ final class RawMergeService {
       }
       return merged;
     } catch (error, stack) {
-      if (!committed) {
-        for (final created in createdEvidence.reversed) {
-          try {
-            if (await FileSystemEntity.type(
-                  created.file.path,
-                  followLinks: false,
-                ) == FileSystemEntityType.file &&
-                await sha256FileRange(created.file) == created.hash) {
-              await created.file.delete();
-            }
-          } catch (_) {
-            // Preserve modified/uncertain files rather than erasing late data.
-          }
-        }
-      }
+      // Files already published under their canonical evidence names are
+      // immutable. Do not delete them after a failed DB transaction: an
+      // independent SQLite writer could have referenced one meanwhile.
+      // Unreferenced files are safer than deleting an externally referenced
+      // receipt; a later Merge can reuse these exact verified bytes.
       Error.throwWithStackTrace(error, stack);
     } finally {
       try {
