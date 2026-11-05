@@ -380,8 +380,10 @@ final class RawRestoreService {
             await rejectEvidenceTree(oldEvidence);
             await oldEvidence.delete(recursive: true);
           }
-        } on FileSystemException {
-          // Previous data remains private; never report a failed restore.
+        } catch (_) {
+          // The journal was already deleted: Restore committed successfully.
+          // Retain anything not safely removable for a later cleanup pass.
+          // In particular rejectEvidenceTree may throw FormatException.
         }
       }
     }
@@ -558,8 +560,9 @@ final class RawRestoreService {
         await rejectEvidenceTree(incomingEvidence);
         await incomingEvidence.delete(recursive: true);
       }
-    } on FileSystemException {
-      // Cleanup is not permitted to obscure successful data recovery.
+    } catch (_) {
+      // Working-file cleanup must never mask a successful restore or rollback.
+      // A symlink/invalid tree stays in place for recovery-aware maintenance.
     }
   }
 }
