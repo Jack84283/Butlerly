@@ -5,6 +5,7 @@ import 'package:butlerly/core/data/evidence_path_safety.dart';
 import 'package:butlerly/core/data/raw_backup_archive.dart';
 import 'package:butlerly/core/data/raw_backup_service.dart';
 import 'package:butlerly/core/database/local_database.dart';
+import 'package:butlerly/core/data/storage_space_preflight.dart';
 import 'package:butlerly/core/evidence/evidence_mutation_lock.dart';
 import 'package:butlerly_database/butlerly_database.dart'
     show ButlerlyDatabase, sha256FileRange, sha256OpenFile;
@@ -152,6 +153,14 @@ final class RawRestoreService {
     var activationFenced = false;
     var uncertainRecovery = false;
     RandomAccessFile? exclusiveMergeLock;
+    await StorageSpacePreflight.requireAvailable(
+      parent,
+      stagingBytes: StorageSpacePreflight.restoreStagingBytes(
+        archiveBytes: await encryptedArchive.length(),
+        databaseBytes: await liveDatabase.length(),
+        evidenceBytes: await StorageSpacePreflight.evidenceBytes(evidenceDirectory),
+      ),
+    );
     await working.create(recursive: true);
     try {
       // On Windows, a locked file cannot be atomically renamed with the
