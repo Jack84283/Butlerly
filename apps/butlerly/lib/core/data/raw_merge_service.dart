@@ -200,6 +200,15 @@ final class RawMergeService {
       await rejectSymlinkedPath(temporary.path);
       try {
         await entry.copy(temporary.path);
+        // Flush staged bytes before publishing an additional persistent name
+        // for this inode. A normal process crash cannot expose a partial
+        // destination; flush also narrows the sudden-power-loss window.
+        final stagedHandle = await temporary.open(mode: FileMode.append);
+        try {
+          await stagedHandle.flush();
+        } finally {
+          await stagedHandle.close();
+        }
         if (await sha256FileRange(temporary) != digest) {
           throw StateError('New evidence copy failed verification.');
         }
@@ -238,6 +247,7 @@ final class RawMergeService {
           throw StateError('Published evidence failed verification.');
         }
         created.add((file: destination, hash: digest));
+        await onStage?.call('after atomic evidence publish');
       } finally {
         try {
           if (await temporary.exists()) await temporary.delete();
