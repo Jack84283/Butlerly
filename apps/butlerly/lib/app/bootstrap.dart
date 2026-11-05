@@ -420,7 +420,7 @@ class _StartupFailureBody extends StatelessWidget {
                     Text(
                       rawRecoveryRequired
                           ? context.l10n.backupText(
-                              'restoreFailureRecoveryAction',
+                              'rawStartupRecoveryBody',
                             )
                           : context.l10n.text('dataPreserved'),
                       textAlign: TextAlign.center,
