@@ -480,6 +480,9 @@ Future<bool> recoverRawJournalBeforeDatabaseOpen({
 
 @visibleForTesting
 Future<void> initializeButlerly(AppLogger logger) async {
+  // Only previous-process temporary shares are candidates for this launch's
+  // maintenance; any share started after this point must be preserved.
+  final launchEpochMicros = DateTime.now().microsecondsSinceEpoch;
   LocalDatabase? database;
   LocalBackupManager? startupBackupManager;
   var portablePublicationRecovered = false;
@@ -702,7 +705,9 @@ Future<void> initializeButlerly(AppLogger logger) async {
           if (portablePublicationRecovered &&
               !maintenance.publicationRecoveryState.isRecoveryRequired) {
             try {
-              await LocalWorkspaceDataGateway.cleanupAbandonedTemporaryShareBackups();
+              await LocalWorkspaceDataGateway.cleanupAbandonedTemporaryShareBackups(
+                olderThanMicros: launchEpochMicros,
+              );
               logger.info('Startup: temporary sharing cleanup complete');
             } catch (error, stackTrace) {
               logger.severe(
