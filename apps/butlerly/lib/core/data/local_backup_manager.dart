@@ -342,7 +342,9 @@ final class LocalBackupManager {
   /// Deletes only names owned by this app. Never delete encrypted backup
   /// candidates: even an unmarked one may be the only copy following a
   /// failed portable-publication operation.
-  Future<void> _cleanupAbandonedRawArtifacts(Directory databaseDirectory) async {
+  Future<void> _cleanupAbandonedRawArtifacts(
+    Directory databaseDirectory,
+  ) async {
     if (recoveryState.isRecoveryRequired) return;
     await rejectSymlinkedPath(databaseDirectory.path);
     final evidence = await localDataManager.evidenceDirectory();
@@ -364,14 +366,17 @@ final class LocalBackupManager {
       path.basename(database.persistenceDatabase.path),
     );
     final previousDb = RegExp(
-      '^$dbName' r'(-wal|-shm)?\.raw-restore-previous-[0-9]{13,20}$',
+      '^$dbName'
+      r'(-wal|-shm)?\.raw-restore-previous-[0-9]{13,20}$',
     );
     final evidenceName = RegExp.escape(path.basename(evidence.path));
     final previousEvidence = RegExp(
-      '^$evidenceName' r'\.raw-restore-previous-[0-9]{13,20}$',
+      '^$evidenceName'
+      r'\.raw-restore-previous-[0-9]{13,20}$',
     );
     final incomingEvidence = RegExp(
-      '^$evidenceName' r'\.raw-restore-incoming-[0-9]{13,20}$',
+      '^$evidenceName'
+      r'\.raw-restore-incoming-[0-9]{13,20}$',
     );
 
     var hasPreviousCopies = false;
