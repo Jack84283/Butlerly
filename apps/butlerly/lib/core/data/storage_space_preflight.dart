@@ -44,6 +44,68 @@ final class StorageSpacePreflight {
     }
   }
 
+  /// A filesystem identity, not a path prefix: different directories and
+  /// symlink-free mount points can still share the same capacity pool.
+  static Future<String?> filesystemId(Directory directory) async {
+    if (kIsWeb) return null;
+    try {
+      final id = await _channel.invokeMethod<String>('filesystemId', {
+        'path': directory.path,
+      });
+      if (id != null && id.isNotEmpty) return id;
+    } on MissingPluginException {
+      // Tests and older platform embedders may lack this API.
+    } on PlatformException {
+      // Fail conservative below rather than assuming separate volumes.
+    }
+    if (!Platform.isLinux) return null;
+    try {
+      final result = await Process.run('stat', [
+        '-c',
+        '%d',
+        '--',
+        directory.path,
+      ]);
+      if (result.exitCode == 0) {
+        return (result.stdout as String).trim();
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Check both peak requirements against a shared free-space pool whenever
+  /// directories use one filesystem. If identity cannot be established,
+  /// conservatively assume they share capacity. Separate volumes are checked
+  /// individually, avoiding an unnecessarily high requirement on either.
+  static Future<void> requireBackupCapacity({
+    required Directory privateDirectory,
+    required Directory destinationDirectory,
+    required int privateStagingBytes,
+    required int destinationStagingBytes,
+    Future<int?> Function(Directory)? probe,
+    Future<String?> Function(Directory)? identityProbe,
+  }) async {
+    final identity = identityProbe ?? filesystemId;
+    final internalId = await identity(privateDirectory);
+    final externalId = await identity(destinationDirectory);
+    final definitelyDifferent =
+        internalId != null &&
+        externalId != null &&
+        internalId != externalId;
+
+    await requireAvailable(
+      privateDirectory,
+      stagingBytes: privateStagingBytes +
+          (definitelyDifferent ? 0 : destinationStagingBytes),
+      probe: probe,
+    );
+    await requireAvailable(
+      destinationDirectory,
+      stagingBytes: destinationStagingBytes,
+      probe: probe,
+    );
+  }
+
   /// Includes a fixed reserve so small untracked WAL/metadata writes remain
   /// possible. Null capacity means the platform cannot provide a trustworthy
   /// measurement; actual writes must still fail safely on insufficient space.
