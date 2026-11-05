@@ -89,13 +89,12 @@ final class StorageSpacePreflight {
     final internalId = await identity(privateDirectory);
     final externalId = await identity(destinationDirectory);
     final definitelyDifferent =
-        internalId != null &&
-        externalId != null &&
-        internalId != externalId;
+        internalId != null && externalId != null && internalId != externalId;
 
     await requireAvailable(
       privateDirectory,
-      stagingBytes: privateStagingBytes +
+      stagingBytes:
+          privateStagingBytes +
           (definitelyDifferent ? 0 : destinationStagingBytes),
       probe: probe,
     );
