@@ -287,6 +287,9 @@ final class LocalBackupManager {
       EvidenceMutationLock.runExclusive(_cleanupOrphanedPrivateArtifacts);
 
   Future<void> _cleanupOrphanedPrivateArtifacts() async {
+    // Even legacy staging files may still be forensic/recovery material when
+    // an incident is known. Cleanup resumes only after recovery is cleared.
+    if (recoveryState.isRecoveryRequired) return;
     final databaseDirectory = Directory(
       path.dirname(database.persistenceDatabase.path),
     );
