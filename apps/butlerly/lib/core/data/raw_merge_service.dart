@@ -84,7 +84,7 @@ final class RawMergeService {
       await _publishNewEvidence(
         Directory(path.join(staging.path, 'evidence')),
         liveEvidence,
-        operationId,
+        working,
         createdEvidence,
       );
       await onStage?.call('before transactional merge');
@@ -154,7 +154,7 @@ final class RawMergeService {
   Future<void> _publishNewEvidence(
     Directory staged,
     Directory live,
-    String id,
+    Directory working,
     List<({File file, String hash})> created,
   ) async {
     await rejectEvidenceTree(staged);
@@ -183,7 +183,9 @@ final class RawMergeService {
         continue;
       }
       await destination.parent.create(recursive: true);
-      final temporary = File('${destination.path}.raw-merge-stage-$id');
+      final temporary = File(
+        path.join(working.path, '.new-evidence-${created.length}'),
+      );
       await rejectSymlinkedPath(temporary.path);
       try {
         await entry.copy(temporary.path);
