@@ -443,6 +443,117 @@ void main() {
   );
 
   test(
+    'Merge cannot overwrite an attachment created at the publish boundary',
+    () async {
+      await setProbe('archived');
+      final receipt = File(path.join(evidence.path, 'race-receipt.bin'));
+      await receipt.writeAsBytes([1, 2, 3]);
+      final archive = File(path.join(root.path, 'race-evidence.butlerly'));
+      await backups.createBackup(
+        archive,
+        password: 'correct horse battery staple',
+      );
+      await receipt.delete();
+      await database.database.update(
+        'restore_probe',
+        {'value': 'local-wins'},
+        where: 'id = ?',
+        whereArgs: ['original'],
+      );
+      var injected = false;
+      await expectLater(
+        RawMergeService(database, backups, restores).restoreMerge(
+          archive,
+          password: 'correct horse battery staple',
+          onStage: (stage) async {
+            if (stage == 'before exclusive evidence publish') {
+              injected = true;
+              // Mimics another process writing after the first exists check.
+              await receipt.writeAsBytes([9, 8, 7]);
+            }
+          },
+        ),
+        throwsA(isA<FormatException>()),
+      );
+      expect(injected, isTrue);
+      expect(await receipt.readAsBytes(), [9, 8, 7]);
+      expect(await getProbe(), 'local-wins');
+      expect(await archive.exists(), isTrue);
+    },
+  );
+
+  test(
+    'Merge counts imported rows and all preexisting local domain rows',
+    () async {
+      await setProbe('backup-value');
+      await database.database.insert('restore_probe', {
+        'id': 'import-only',
+        'value': 'backup-row',
+      });
+      final file = File(path.join(evidence.path, 'imported-receipt.bin'));
+      await file.writeAsBytes([1, 2, 3]);
+      final archive = File(path.join(root.path, 'counts.butlerly'));
+      await backups.createBackup(
+        archive,
+        password: 'correct horse battery staple',
+      );
+      await database.database.delete(
+        'restore_probe',
+        where: 'id = ?',
+        whereArgs: ['import-only'],
+      );
+      await database.database.insert('restore_probe', {
+        'id': 'local-only',
+        'value': 'keep-row',
+      });
+      await file.delete();
+
+      final allTables = await database.database.rawQuery(
+        'SELECT name FROM sqlite_master WHERE type = ? '
+        "AND name NOT LIKE 'sqlite_%'",
+        ['table'],
+      );
+      const nonDomain = {
+        'restore_context',
+        'restore_commits',
+        'entity_tombstones',
+      };
+      var expectedKept = 0;
+      for (final row in allTables) {
+        final table = row['name'] as String;
+        if (nonDomain.contains(table)) continue;
+        final query = await database.database.rawQuery(
+          'SELECT COUNT(*) AS total FROM "$table"',
+        );
+        expectedKept += query.single['total'] as int;
+      }
+
+      final manager = LocalBackupManager(
+        database,
+        LocalDataManager(database, localEvidenceDirectory: evidence),
+      );
+      final gateway = LocalWorkspaceDataGateway(
+        manager,
+        LocalDataManager(database, localEvidenceDirectory: evidence),
+      );
+      final result = await gateway.restore(
+        archive.path,
+        mode: LocalRestoreMode.merge,
+        password: 'correct horse battery staple',
+        postActivationRefresh: () async {},
+      );
+      expect(result.restoredRows, greaterThan(0));
+      expect(result.keptNewerLocalRows, expectedKept);
+      expect(result.restoredEvidence, 1);
+      expect(await getProbe(), 'backup-value');
+      final ids = (await database.database.query('restore_probe'))
+          .map((row) => row['id'])
+          .toSet();
+      expect(ids, containsAll(['local-only', 'import-only']));
+    },
+  );
+
+  test(
     'Merge refuses to attach imported children to conflicting local parents',
     () async {
       await database.database.execute(
