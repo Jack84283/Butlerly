@@ -596,7 +596,9 @@ void main() {
       final unreferenced = File(path.join(evidence.path, 'orphan.bin'));
       await archivedFile.writeAsBytes([1, 2, 3]);
       await unreferenced.writeAsBytes([7, 7, 7]);
-      final archive = File(path.join(root.path, 'local-wins-evidence.butlerly'));
+      final archive = File(
+        path.join(root.path, 'local-wins-evidence.butlerly'),
+      );
       await backups.createBackup(
         archive,
         password: 'correct horse battery staple',
@@ -633,41 +635,39 @@ void main() {
     },
   );
 
-  test(
-    'Merge publishes only referenced imported backup evidence',
-    () async {
-      await setProbe('archived');
-      await referenceEvidence('imported-evidence', 'wanted.bin');
-      final wanted = File(path.join(evidence.path, 'wanted.bin'));
-      final orphan = File(path.join(evidence.path, 'unreferenced.bin'));
-      await wanted.writeAsBytes([1, 3, 5]);
-      await orphan.writeAsBytes([2, 4, 6]);
-      final archive = File(path.join(root.path, 'referenced-only.butlerly'));
-      await backups.createBackup(
-        archive,
-        password: 'correct horse battery staple',
-      );
-      await database.database.delete(
-        'evidence_items',
-        where: 'id = ?',
-        whereArgs: ['imported-evidence'],
-      );
-      await database.database.delete(
-        'provenances',
-        where: 'id = ?',
-        whereArgs: ['provenance-imported-evidence'],
-      );
-      await wanted.delete();
-      await orphan.delete();
+  test('Merge publishes only referenced imported backup evidence', () async {
+    await setProbe('archived');
+    await referenceEvidence('imported-evidence', 'wanted.bin');
+    final wanted = File(path.join(evidence.path, 'wanted.bin'));
+    final orphan = File(path.join(evidence.path, 'unreferenced.bin'));
+    await wanted.writeAsBytes([1, 3, 5]);
+    await orphan.writeAsBytes([2, 4, 6]);
+    final archive = File(path.join(root.path, 'referenced-only.butlerly'));
+    await backups.createBackup(
+      archive,
+      password: 'correct horse battery staple',
+    );
+    await database.database.delete(
+      'evidence_items',
+      where: 'id = ?',
+      whereArgs: ['imported-evidence'],
+    );
+    await database.database.delete(
+      'provenances',
+      where: 'id = ?',
+      whereArgs: ['provenance-imported-evidence'],
+    );
+    await wanted.delete();
+    await orphan.delete();
 
-      final merged = await RawMergeService(
-        database,
-        backups,
-        restores,
-      ).restoreMerge(archive, password: 'correct horse battery staple');
-      expect(merged.attachmentCount, 1);
-      expect(await wanted.readAsBytes(), [1, 3, 5]);
-      expect(await orphan.exists(), isFalse);
+    final merged = await RawMergeService(
+      database,
+      backups,
+      restores,
+    ).restoreMerge(archive, password: 'correct horse battery staple');
+    expect(merged.attachmentCount, 1);
+    expect(await wanted.readAsBytes(), [1, 3, 5]);
+    expect(await orphan.exists(), isFalse);
     },
   );
 
