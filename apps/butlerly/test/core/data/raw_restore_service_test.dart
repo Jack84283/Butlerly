@@ -524,6 +524,45 @@ void main() {
   );
 
   test(
+    'crash immediately after atomic link leaves complete immutable evidence',
+    () async {
+      await setProbe('backup-value');
+      final evidenceFile = File(path.join(evidence.path, 'complete-receipt.bin'));
+      final bytes = List<int>.generate(4096, (i) => i % 251);
+      await evidenceFile.writeAsBytes(bytes);
+      final archive = File(path.join(root.path, 'complete-receipt.butlerly'));
+      await backups.createBackup(
+        archive,
+        password: 'correct horse battery staple',
+      );
+      await evidenceFile.delete();
+      var linked = false;
+      await expectLater(
+        RawMergeService(database, backups, restores).restoreMerge(
+          archive,
+          password: 'correct horse battery staple',
+          onStage: (stage) async {
+            if (stage == 'after atomic evidence publish') {
+              linked = true;
+              throw StateError('crash after link, before SQL commit');
+            }
+          },
+        ),
+        throwsA(isA<StateError>()),
+      );
+      expect(linked, isTrue);
+      expect(await evidenceFile.readAsBytes(), bytes);
+      expect(await getProbe(), 'backup-value');
+      await RawMergeService(
+        database,
+        backups,
+        restores,
+      ).restoreMerge(archive, password: 'correct horse battery staple');
+      expect(await evidenceFile.readAsBytes(), bytes);
+    },
+  );
+
+  test(
     'Merge counts imported rows and all preexisting local domain rows',
     () async {
       await setProbe('backup-value');
