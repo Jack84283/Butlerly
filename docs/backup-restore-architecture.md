@@ -100,21 +100,18 @@ store destinations have not been configured.
   Normal application use-case writes are serialized by
   `AnalysisConsistencyGate` during Restore, but the revision check is an
   extra fail-closed safeguard for direct or external database writes.
-- **Final concurrency gate:** revision checks are supplemented by an
-  application repository-access fence and a POSIX exclusive SQLite file lock
-  after closing the live connection. SQLite writers in another process must
-  fail to obtain a conflicting lock during the physical Merge rename. The
-  final file fingerprint is read through the *locked descriptor*, never by
-  reopening the original path (which can release POSIX locks). For Merge,
-  the original is copied from that locked descriptor into a temporary file,
-  SHA-256-verified, then published as the rollback copy. A POSIX rename
-  atomically replaces the still-present live database path, eliminating the
-  gap where another process could create a new SQLite file. An incomplete
-  rollback copy is never published and is cleaned up during recovery. This
-  uses extra temporary disk space roughly equal to the local SQLite file.
-  On Windows, physical Merge fails closed pending a compatible design.
-  This protects cooperating SQLite connections; independent tools using
-  nonstandard VFS/locking or directly modifying files remain unsupported.
+- **Merge concurrency gate:** Merge never replaces the live SQLite file or
+  its inode. It builds and verifies a complete local-wins staging snapshot,
+  then ATTACHes that snapshot to the current SQLite connection and inserts
+  only missing identities in one exclusive SQLite transaction. A second
+  process with an idle SQLite connection can resume and write safely after
+  Merge because the live database pathname and inode remain unchanged.
+  SQLite arbitrates other concurrent writes; a changed live revision
+  aborts before inserts. No physical Merge rename or POSIX-only lock exists.
+  Filesystem receipts are copied and hash-verified before SQL commit; a
+  failed transaction may leave a harmless unreferenced receipt, which must
+  not be blindly deleted when an external writer may have referenced it.
+  The separate Replace operation retains its physical-activation journal.
 - **Post-Restore refresh:** the committed Restore emits
   `workspaceRestoreChanges`, also invalidating transaction and budget data.
   Mounted profile, master data, payment sources, budgets, rules and payment
@@ -127,14 +124,11 @@ store destinations have not been configured.
   SQLite database's own foreign-key constraints. An orphaned source child
   cannot borrow an unrelated destination parent merely because the IDs match.
   Reject the entire merge with no live mutation and keep the archive unchanged.
-- **Final activation fence:** normal repository SQLite connection access is
-  suspended before the last live revision check and remains suspended until
-  activation succeeds or rollback completes. The workspace consistency gate
-  continues to serialize regular financial mutations. A Merge additionally
-  fingerprints the checkpointed live SQLite file before close and again after
-  close to detect commits from a raw handle retained before the fence. If the
-  file changed, abort activation and recover the original database, retaining
-  the committed late write.
+- **Final activation fence (Replace):** normal repository SQLite access
+  is suspended during physical Replace activation until the journal is
+  committed or rollback completes. Merge no longer closes or renames the live
+  database; instead it obtains a SQLite transaction-level write lock and
+  rechecks the live database revision inside the transaction.
 - **Uncertain rollback:** a failed journal recovery keeps normal repository
   access fenced and raises RestoreRecoveryRequiredException. The production
   gateway persists a recovery-only application state and leaves the raw journal
@@ -147,15 +141,12 @@ store destinations have not been configured.
 - **Recovery retry safety:** the app's restore fence remains active while the
   persistence connection is closed *before* raw journaled files are moved.
   Connection close failure stops recovery without deleting the marker.
-- **Independent SQLite writers (OPEN P1):** the POSIX nonblocking exclusive
-  database lock protects active writers on the old database inode, while
-  normal writers use the application consistency gate. A separate-process
-  SQLite regression test verifies a competing write during lock acquisition.
-  However an idle external SQLite connection can resume after the database
-  pathname is atomically swapped, and the old-inode lock does NOT transfer
-  to the new file. An external-connection-safe Merge design remains necessary
-  before this PR is production-merge-ready. Windows Merge is intentionally
-  unsupported by the current activation code.
+- **Independent SQLite writers:** Merge now uses SQLite's own exclusive
+  transaction on the persistent database inode. A regression test holds an
+  independent SQLite connection open through Merge and commits another write
+  afterward; both the imported row and the independent write remain visible.
+  SQLite integrity and foreign-key validation remain mandatory. Replace is
+  explicitly destructive and continues to use journaled file activation.
 
 ## Crash-abandoned private files and storage cleanup
 
@@ -163,7 +154,8 @@ store destinations have not been configured.
   plaintext snapshots, decrypted archives, verification copies and staged
   attachments. A forced termination cannot execute these handlers.
 - After startup journal replay, the private cleanup pass removes abandoned
-  `.raw-backup-work-*`, `.raw-backup-read-*`, `.raw-restore-work-*` and
+  `.raw-backup-work-*`, `.raw-backup-read-*`, `.raw-restore-work-*`,
+  `.raw-merge-work-*` and
   `evidence.raw-restore-incoming-*` directories with strict app-owned names.
   Directories containing symbolic links are retained instead of recursively
   followed/deleted. Cleanup never traverses user-selected export folders.
@@ -190,6 +182,23 @@ store destinations have not been configured.
   post-commit rollback-copy cleanup fails (including evidence-tree symlink
   validation), Restore must still return success and retain unsafe previous
   files for a later recovery-aware cleanup.
+
+## Storage capacity preflight
+
+- Backup, Replace and Merge estimate peak private staging usage based on
+  the current SQLite file, available evidence bytes and encrypted archive.
+  The estimate reserves additional space for snapshots, plaintext staging,
+  encryption verification, recovery copies and a 64 MiB safety margin.
+- Native capacity channels report free bytes on iOS, Android and macOS.
+  Linux uses a filesystem-scoped `df` fallback. If the OS cannot report a
+  capacity value, existing ENOSPC handling remains authoritative rather than
+  inventing a storage number. These estimates are conservative and cannot
+  prevent another process from consuming space after the preflight.
+- The private filesystem is checked before any large snapshot or unpacking.
+  Backup also checks the destination filesystem before publishing its archive.
+  Insufficient capacity yields a structured `FileSystemException` with
+  operating-system error code 28, without moving live SQLite/evidence.
+  Filesystem capacity details are diagnostics, not public financial data.
 
 ## Performance optimizations (PR #396)
 
