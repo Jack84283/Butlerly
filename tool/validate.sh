@@ -46,6 +46,17 @@ validate_integration_test() (
   flutter test -d "${BUTLERLY_IOS_DEVICE_ID:-macos}" integration_test/v1_journeys_test.dart
 )
 
+validate_ios_simulator() (
+  cd apps/butlerly
+  flutter build ios --simulator --no-codesign
+)
+
+validate_macos_backup() (
+  cd apps/butlerly
+  flutter test test/core/data/raw_restore_service_test.dart test/core/data/atomic_evidence_publication_test.dart
+  flutter build macos --debug
+)
+
 validate_android_smoke() (
   cd apps/butlerly/android
   ./gradlew :app:testDebugUnitTest
@@ -79,8 +90,14 @@ case "${1:-all}" in
   android_smoke)
     validate_android_smoke
     ;;
+  ios_simulator)
+    validate_ios_simulator
+    ;;
+  macos_backup)
+    validate_macos_backup
+    ;;
   *)
-    echo "Usage: $0 [all|finance_domain|database|finance_application|flutter_application|integration_test|android_smoke]" >&2
+    echo "Usage: $0 [all|finance_domain|database|finance_application|flutter_application|integration_test|android_smoke|ios_simulator|macos_backup]" >&2
     exit 2
     ;;
 esac
