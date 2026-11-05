@@ -793,9 +793,11 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         },
       );
       if (!mounted) return;
-      final summary = context.l10n
-          .backupText('restoreResult')
-          .replaceAll('{restored}', '${result.restoredRows}');
+      final summary = (mode == LocalRestoreMode.merge
+              ? context.l10n.backupText('mergeResult')
+              : context.l10n.backupText('restoreResult'))
+          .replaceAll('{restored}', '${result.restoredRows}')
+          .replaceAll('{kept}', '${result.keptNewerLocalRows}');
       _successToast(
         '${context.l10n.backupText('restoreComplete')} $summary'
         '${result.presentationRefreshFailed ? ' ${context.l10n.text('restoreRefreshWarning')}' : ''}',
