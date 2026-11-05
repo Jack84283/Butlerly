@@ -180,21 +180,21 @@ void main() {
     'startup removes abandoned raw work and verified prior copies',
     () async {
       const id = '1700000000000000';
-      final data = LocalDataManager(
-        database,
-        localEvidenceDirectory: evidence,
-      );
+      final data = LocalDataManager(database, localEvidenceDirectory: evidence);
       final manager = LocalBackupManager(database, data);
-      final backupWork = Directory(path.join(storage.path, '.raw-backup-work-$id'))
-        ..createSync();
-      final readWork = Directory(path.join(storage.path, '.raw-backup-read-$id'))
-        ..createSync();
+      final backupWork = Directory(
+        path.join(storage.path, '.raw-backup-work-$id'),
+      )..createSync();
+      final readWork = Directory(
+        path.join(storage.path, '.raw-backup-read-$id'),
+      )..createSync();
       final restoreWork = Directory(
         path.join(storage.path, '.raw-restore-work-$id'),
       )..createSync();
       for (final directory in [backupWork, readWork, restoreWork]) {
-        await File(path.join(directory.path, 'payload'))
-            .writeAsBytes([1, 2, 3]);
+        await File(
+          path.join(directory.path, 'payload'),
+        ).writeAsBytes([1, 2, 3]);
       }
       final previousDb = File(
         path.join(storage.path, 'butlerly.db.raw-restore-previous-$id'),
@@ -204,13 +204,15 @@ void main() {
       final previousEvidence = Directory(
         path.join(evidence.parent.path, 'evidence.raw-restore-previous-$id'),
       )..createSync();
-      await File(path.join(previousEvidence.path, 'old-receipt'))
-          .writeAsBytes([4, 5, 6]);
+      await File(
+        path.join(previousEvidence.path, 'old-receipt'),
+      ).writeAsBytes([4, 5, 6]);
       final incomingEvidence = Directory(
         path.join(evidence.parent.path, 'evidence.raw-restore-incoming-$id'),
       )..createSync();
-      await File(path.join(incomingEvidence.path, 'staged-receipt'))
-          .writeAsBytes([7, 8, 9]);
+      await File(
+        path.join(incomingEvidence.path, 'staged-receipt'),
+      ).writeAsBytes([7, 8, 9]);
       // This may be the sole recovery source for interrupted publication.
       final encryptedCandidate = File(
         path.join(storage.path, '.raw-backup-$id.butlerly'),
@@ -230,8 +232,9 @@ void main() {
       expect(await encryptedCandidate.readAsBytes(), [11, 12]);
       expect(await arbitrary.readAsBytes(), [13, 14]);
       expect(
-        (await database.database.rawQuery('PRAGMA integrity_check'))
-            .single.values.single,
+        (await database.database.rawQuery(
+          'PRAGMA integrity_check',
+        )).single.values.single,
         'ok',
       );
     },
@@ -241,13 +244,11 @@ void main() {
     'torn raw restore journal protects rollback and staging files',
     () async {
       const id = '1700000000000001';
-      final data = LocalDataManager(
-        database,
-        localEvidenceDirectory: evidence,
-      );
+      final data = LocalDataManager(database, localEvidenceDirectory: evidence);
       final manager = LocalBackupManager(database, data);
-      final backupWork = Directory(path.join(storage.path, '.raw-backup-work-$id'))
-        ..createSync();
+      final backupWork = Directory(
+        path.join(storage.path, '.raw-backup-work-$id'),
+      )..createSync();
       final restoreWork = Directory(
         path.join(storage.path, '.raw-restore-work-$id'),
       )..createSync();
@@ -281,10 +282,7 @@ void main() {
     'old rollback copies survive until live referenced evidence validates',
     () async {
       const id = '1700000000000002';
-      final data = LocalDataManager(
-        database,
-        localEvidenceDirectory: evidence,
-      );
+      final data = LocalDataManager(database, localEvidenceDirectory: evidence);
       final manager = LocalBackupManager(database, data);
       await database.database.insert('provenances', {
         'id': 'cleanup-evidence-provenance',
@@ -307,16 +305,18 @@ void main() {
       final previousEvidence = Directory(
         path.join(evidence.parent.path, 'evidence.raw-restore-previous-$id'),
       )..createSync();
-      await File(path.join(previousEvidence.path, 'receipt.pdf'))
-          .writeAsBytes([7, 7, 7]);
+      await File(
+        path.join(previousEvidence.path, 'receipt.pdf'),
+      ).writeAsBytes([7, 7, 7]);
 
       await manager.cleanupOrphanedPrivateArtifacts();
       expect(await previousDb.exists(), isTrue);
       expect(await previousEvidence.exists(), isTrue);
 
       // Only after the live evidence is restored can the old copies go.
-      await File(path.join(evidence.path, 'receipt.pdf'))
-          .writeAsBytes([7, 7, 7]);
+      await File(
+        path.join(evidence.path, 'receipt.pdf'),
+      ).writeAsBytes([7, 7, 7]);
       await manager.cleanupOrphanedPrivateArtifacts();
       expect(await previousDb.exists(), isFalse);
       expect(await previousEvidence.exists(), isFalse);
@@ -325,10 +325,7 @@ void main() {
 
   test('active recovery marker prevents all raw staging cleanup', () async {
     const id = '1700000000000003';
-    final data = LocalDataManager(
-      database,
-      localEvidenceDirectory: evidence,
-    );
+    final data = LocalDataManager(database, localEvidenceDirectory: evidence);
     final manager = LocalBackupManager(database, data);
     final work = Directory(path.join(storage.path, '.raw-backup-read-$id'))
       ..createSync();
