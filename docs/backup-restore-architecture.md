@@ -154,6 +154,29 @@ store destinations have not been configured.
   raw filesystem writes, nor a substitute for disposable macOS/iOS acceptance.
   Windows Merge remains intentionally unsupported by this activation code.
 
+## Crash-abandoned private files and storage cleanup
+
+- Normal Backup, preview and Restore use `finally` cleanup for disposable
+  plaintext snapshots, decrypted archives, verification copies and staged
+  attachments. A forced termination cannot execute these handlers.
+- After startup journal replay, the private cleanup pass removes abandoned
+  `.raw-backup-work-*`, `.raw-backup-read-*`, `.raw-restore-work-*` and
+  `evidence.raw-restore-incoming-*` directories with strict app-owned names.
+  Directories containing symbolic links are retained instead of recursively
+  followed/deleted. Cleanup never traverses user-selected export folders.
+- A raw journal, including a torn `.raw-restore-journal.json.tmp`, protects
+  raw Restore work, incoming evidence and previous copies; an unresolved
+  `RestoreRecoveryState` disables the entire private orphan cleanup pass.
+- Previous SQLite/WAL and evidence copies are deleted only when there is no
+  raw journal or recovery incident and SQLite `integrity_check`,
+  `foreign_key_check` and every referenced live evidence file validate.
+- Private encrypted `.raw-backup-<operation>.butlerly` candidates are NOT cache:
+  they could be the only recovery copy after failed external publication,
+  including cases where a publication marker was lost. Preserve them.
+- Cleanup is serialized with the evidence mutation lock and best-effort.
+  Failed validation or filesystem cleanup retains artifacts without blocking
+  normal startup.
+
 ## Performance optimizations (PR #396)
 
 The raw archive is streamed, and financial/business rules never run during
