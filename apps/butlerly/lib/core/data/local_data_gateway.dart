@@ -86,10 +86,10 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
       );
 
   static final _shareDirectoryName = RegExp(
-    r'^\.butlerly-backup-share-([0-9]{13,20})$',
+    r'^\.butlerly-backup-share-([0-9]{13,20})(?:-[A-Za-z0-9_-]+)?$',
   );
   static final _pendingShareName = RegExp(
-    r'^\.butlerly-share-pending-([0-9]{13,20})$',
+    r'^\.butlerly-share-pending-([0-9]{13,20})(?:-[A-Za-z0-9_-]+)?$',
   );
   static const _shareLeaseName = '.butlerly-share-active.lock';
   // Leases remain held through the OS share sheet, not merely the backup
@@ -107,15 +107,16 @@ final class LocalWorkspaceDataGateway implements LocalDataGateway {
     final temporary = temporaryRoot ?? await getTemporaryDirectory();
     await rejectSymlinkedPath(temporary.path);
     final operationId = DateTime.now().microsecondsSinceEpoch;
+    // createTemp atomically chooses a unique suffix even if two app processes
+    // start sharing in the same microsecond. Never reuse another live lease.
+    final pendingPrefix = '.butlerly-share-pending-$operationId-';
+    final pending = await temporary.createTemp(pendingPrefix);
+    final nonce = path.basename(pending.path).substring(pendingPrefix.length);
     final shareDirectory = Directory(
-      path.join(temporary.path, '.butlerly-backup-share-$operationId'),
+      path.join(temporary.path, '.butlerly-backup-share-$operationId-$nonce'),
     );
-    // Never expose a sweep-matching directory until its cross-process lease
-    // is locked. Another running app may start cleanup during this interval.
-    final pending = Directory(
-      path.join(temporary.path, '.butlerly-share-pending-$operationId'),
-    );
-    await pending.create();
+    // Never expose this sweep-matching directory until its cross-process
+    // lease has been acquired in the hidden pending directory.
     final file = File(path.join(shareDirectory.path, path.basename(fileName)));
     RandomAccessFile? lease;
     try {
