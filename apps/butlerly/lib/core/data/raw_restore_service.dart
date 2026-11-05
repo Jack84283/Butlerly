@@ -275,6 +275,17 @@ final class RawRestoreService {
             'the original database was preserved.',
           );
         }
+        // Preserve the *locked* original through a verified, fully written
+        // temporary copy. Publishing it to oldDatabase only after the hash
+        // matches makes interrupted-copy recovery unambiguous. This permits
+        // the staged database to atomically replace the still-present path,
+        // avoiding a window where another process might create a new DB.
+        await _preserveLockedPrevious(
+          exclusiveMergeLock,
+          File(path.join(working.path, 'original-db-copy')),
+          oldDatabase,
+          preCloseFingerprint,
+        );
       }
 
       for (final extension in const ['-wal', '-shm']) {
@@ -285,7 +296,12 @@ final class RawRestoreService {
           );
         }
       }
-      await liveDatabase.rename(oldDatabase.path);
+      if (preCloseFingerprint == null) {
+        // Replace keeps its original journaled move behavior. Merge instead
+        // has an already-verified oldDatabase copy and keeps the live path
+        // occupied until one atomic POSIX rename installs the merged snapshot.
+        await liveDatabase.rename(oldDatabase.path);
+      }
       await onStage?.call('original SQLite preserved');
       await rejectEvidenceRoot(evidenceDirectory);
       if (await evidenceDirectory.exists()) {
@@ -366,6 +382,34 @@ final class RawRestoreService {
       }
     }
   });
+
+  /// Copy the locked, checkpointed original to a temporary file on the same
+  /// filesystem without opening an additional descriptor of the source DB.
+  /// POSIX releases process-wide SQLite advisory locks when *any* descriptor
+  /// for that inode is closed, hence File.copy() is unsafe while locked.
+  static Future<void> _preserveLockedPrevious(
+    RandomAccessFile lockedSource,
+    File stagingCopy,
+    File previous,
+    String expectedHash,
+  ) async {
+    final output = await stagingCopy.open(mode: FileMode.write);
+    try {
+      await lockedSource.setPosition(0);
+      while (true) {
+        final chunk = await lockedSource.read(64 * 1024);
+        if (chunk.isEmpty) break;
+        await output.writeFrom(chunk);
+      }
+      await output.flush();
+    } finally {
+      await output.close();
+    }
+    if (await sha256FileRange(stagingCopy) != expectedHash) {
+      throw StateError('Locked original SQLite copy did not verify.');
+    }
+    await stagingCopy.rename(previous.path);
+  }
 
   /// Upgrade a staged SQLite file using exactly the same ordered migration
   /// assets as normal Butlerly startup. Never seed catalogs or run analysis
