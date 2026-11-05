@@ -45,11 +45,12 @@ jobs:
       - run: ./tool/setup.sh
       - run: ./tool/validate.sh flutter_application
 
-  # macOS checks remain post-merge main checks for now to conserve limited
-  # GitHub-hosted macOS capacity and avoid PRs waiting on scarce runners.
+  # Keep macOS runner usage low for ordinary PRs. Backup/Restore PR #396
+  # also needs native Apple checks before merge because it modifies the
+  # Flutter method channels and filesystem publication implementation.
   ios_simulator:
     name: iOS Simulator
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.number == 396)
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -60,7 +61,7 @@ jobs:
 
   ios_integration:
     name: iOS Integration Journeys
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.number == 396)
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -82,6 +83,21 @@ jobs:
             echo "Initial iOS integration run failed; retrying once for transient Xcode/simulator startup failures."
             ./tool/validate.sh integration_test
           fi
+
+  macos_backup_smoke:
+    name: macOS Backup & Restore Smoke Build
+    if: github.event_name == 'pull_request' && github.event.pull_request.number == 396
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-toolchain
+      - run: ./tool/setup.sh
+      - name: Run raw Backup/Restore regression tests on macOS
+        run: flutter test test/core/data/raw_restore_service_test.dart test/core/data/atomic_evidence_publication_test.dart
+        working-directory: apps/butlerly
+      - name: Compile native macOS application
+        run: flutter build macos --debug
+        working-directory: apps/butlerly
 
   android_smoke:
     name: Android Smoke Build
