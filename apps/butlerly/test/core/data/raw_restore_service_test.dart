@@ -45,6 +45,23 @@ void main() {
     return rows.single['value']! as String;
   }
 
+  Future<void> referenceEvidence(String id, String fileName) async {
+    await database.database.insert('provenances', {
+      'id': 'provenance-$id',
+      'source_type': 'manual',
+      'captured_at': '2026-11-05T00:00:00Z',
+    });
+    await database.database.insert('evidence_items', {
+      'id': id,
+      'type': 'receipt',
+      'original_name': fileName,
+      'media_type': 'application/octet-stream',
+      'provenance_id': 'provenance-$id',
+      'created_at': '2026-11-05T00:00:00Z',
+      'local_file_name': fileName,
+    });
+  }
+
   /// Build a genuine encrypted raw archive containing a prior SQLite schema.
   /// The archived database is made from real app tables, not a mocked schema.
   Future<File> archivedSchema({
@@ -397,6 +414,9 @@ void main() {
       final fromBackup = File(path.join(evidence.path, 'from-backup.bin'));
       await shared.writeAsBytes([1, 2, 3]);
       await fromBackup.writeAsBytes([4, 5, 6]);
+      await referenceEvidence('shared', 'shared.bin');
+      await referenceEvidence('from-backup', 'from-backup.bin');
+
       final archive = File(path.join(root.path, 'merge-source.butlerly'));
       await backups.createBackup(
         archive,
@@ -448,6 +468,7 @@ void main() {
       await setProbe('archived');
       final receipt = File(path.join(evidence.path, 'race-receipt.bin'));
       await receipt.writeAsBytes([1, 2, 3]);
+      await referenceEvidence('race', 'race-receipt.bin');
       final archive = File(path.join(root.path, 'race-evidence.butlerly'));
       await backups.createBackup(
         archive,
@@ -488,6 +509,7 @@ void main() {
       await setProbe('archived');
       final receipt = File(path.join(evidence.path, 'atomic-receipt.bin'));
       await receipt.writeAsBytes([1, 2, 3, 4]);
+      await referenceEvidence('atomic', 'atomic-receipt.bin');
       final archive = File(path.join(root.path, 'atomic-receipt.butlerly'));
       await backups.createBackup(
         archive,
@@ -532,6 +554,7 @@ void main() {
       );
       final bytes = List<int>.generate(4096, (i) => i % 251);
       await evidenceFile.writeAsBytes(bytes);
+      await referenceEvidence('complete', 'complete-receipt.bin');
       final archive = File(path.join(root.path, 'complete-receipt.butlerly'));
       await backups.createBackup(
         archive,
@@ -565,6 +588,90 @@ void main() {
   );
 
   test(
+    'Merge skips unreferenced backup files and local-wins evidence paths',
+    () async {
+      await setProbe('archived');
+      await referenceEvidence('shared-id', 'backup-name.bin');
+      final archivedFile = File(path.join(evidence.path, 'backup-name.bin'));
+      final unreferenced = File(path.join(evidence.path, 'orphan.bin'));
+      await archivedFile.writeAsBytes([1, 2, 3]);
+      await unreferenced.writeAsBytes([7, 7, 7]);
+      final archive = File(path.join(root.path, 'local-wins-evidence.butlerly'));
+      await backups.createBackup(
+        archive,
+        password: 'correct horse battery staple',
+      );
+
+      // Same evidence identity now points to another original local file.
+      await database.database.update(
+        'evidence_items',
+        {'local_file_name': 'local-name.bin'},
+        where: 'id = ?',
+        whereArgs: ['shared-id'],
+      );
+      await archivedFile.delete();
+      await unreferenced.delete();
+      final localFile = File(path.join(evidence.path, 'local-name.bin'));
+      await localFile.writeAsBytes([9, 8, 7]);
+
+      final merged = await RawMergeService(
+        database,
+        backups,
+        restores,
+      ).restoreMerge(archive, password: 'correct horse battery staple');
+      expect(merged.attachmentCount, 0);
+      expect(await archivedFile.exists(), isFalse);
+      expect(await unreferenced.exists(), isFalse);
+      expect(await localFile.readAsBytes(), [9, 8, 7]);
+      final stored = await database.database.query(
+        'evidence_items',
+        where: 'id = ?',
+        whereArgs: ['shared-id'],
+      );
+      expect(stored.single['local_file_name'], 'local-name.bin');
+      expect(await archive.exists(), isTrue);
+    },
+  );
+
+  test(
+    'Merge publishes only referenced imported backup evidence',
+    () async {
+      await setProbe('archived');
+      await referenceEvidence('imported-evidence', 'wanted.bin');
+      final wanted = File(path.join(evidence.path, 'wanted.bin'));
+      final orphan = File(path.join(evidence.path, 'unreferenced.bin'));
+      await wanted.writeAsBytes([1, 3, 5]);
+      await orphan.writeAsBytes([2, 4, 6]);
+      final archive = File(path.join(root.path, 'referenced-only.butlerly'));
+      await backups.createBackup(
+        archive,
+        password: 'correct horse battery staple',
+      );
+      await database.database.delete(
+        'evidence_items',
+        where: 'id = ?',
+        whereArgs: ['imported-evidence'],
+      );
+      await database.database.delete(
+        'provenances',
+        where: 'id = ?',
+        whereArgs: ['provenance-imported-evidence'],
+      );
+      await wanted.delete();
+      await orphan.delete();
+
+      final merged = await RawMergeService(
+        database,
+        backups,
+        restores,
+      ).restoreMerge(archive, password: 'correct horse battery staple');
+      expect(merged.attachmentCount, 1);
+      expect(await wanted.readAsBytes(), [1, 3, 5]);
+      expect(await orphan.exists(), isFalse);
+    },
+  );
+
+  test(
     'Merge counts imported rows and all preexisting local domain rows',
     () async {
       await setProbe('backup-value');
@@ -574,6 +681,7 @@ void main() {
       });
       final file = File(path.join(evidence.path, 'imported-receipt.bin'));
       await file.writeAsBytes([1, 2, 3]);
+      await referenceEvidence('counts', 'imported-receipt.bin');
       final archive = File(path.join(root.path, 'counts.butlerly'));
       await backups.createBackup(
         archive,
