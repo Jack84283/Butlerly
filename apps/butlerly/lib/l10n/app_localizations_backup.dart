@@ -439,7 +439,8 @@ const _backupStrings = <String, Map<String, String>>{
     'replaceAllData': 'Reemplazar todos los datos',
     'restoreComplete': 'Restauración completada.',
     'restoreResult': '{restored} transacciones restauradas',
-    'mergeResult': '{restored} filas importadas; {kept} filas locales conservadas',
+    'mergeResult':
+        '{restored} filas importadas; {kept} filas locales conservadas',
     'backupSummary': '{records} registros • {evidence} archivos de evidencia',
     'addedTransactions': 'transacciones añadidas después de la copia',
     'changedTransactions': 'transacciones modificadas después de la copia',
