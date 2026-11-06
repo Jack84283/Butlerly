@@ -113,7 +113,7 @@ void main() {
     );
   });
 
-  testWidgets('responsive body keeps the desktop canvas consistent with content', (
+  testWidgets('responsive body matches the desktop canvas and content', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1200, 800);
