@@ -7,6 +7,7 @@ final class ButlerlySoundFeedback {
   ButlerlySoundFeedback._();
 
   static final AudioPlayer _player = AudioPlayer();
+  static bool _configured = false;
 
   @visibleForTesting
   static Future<void> Function()? playbackForTesting;
@@ -18,8 +19,12 @@ final class ButlerlySoundFeedback {
       return;
     }
     try {
-      // Reuse one player so rapid interactions do not overlap multiple chimes.
-      await _player.stop();
+      // Keep the short local sound buffered across interactions. AudioPlayer
+      // replaces an active source before starting the next one.
+      if (!_configured) {
+        await _player.setReleaseMode(ReleaseMode.stop);
+        _configured = true;
+      }
       await _player.play(
         AssetSource('audio/transaction_confirmation.wav'),
         volume: 0.65,
