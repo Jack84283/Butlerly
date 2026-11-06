@@ -37,9 +37,13 @@ final class ButlerlySoundFeedback {
         AssetSource('audio/transaction_confirmation.wav'),
         volume: 0.65,
       );
-    } catch (_) {
+    } catch (error, stackTrace) {
       // Sound is optional feedback. Never fail an already-committed save or
       // setting change because the device cannot play audio.
+      if (kDebugMode) {
+        debugPrint('Butlerly sound feedback failed: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      }
     }
   }
 }
