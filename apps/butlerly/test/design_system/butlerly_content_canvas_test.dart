@@ -21,6 +21,7 @@ void main() {
             ),
           ),
         );
+        await tester.pumpAndSettle();
         final canvas = tester.widget<ColoredBox>(
           find.byKey(const ValueKey('butlerly-responsive-body-canvas')),
         );
