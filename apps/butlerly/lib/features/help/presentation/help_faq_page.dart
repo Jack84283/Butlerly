@@ -26,7 +26,7 @@ class _HelpFaqPageState extends State<HelpFaqPage> {
     super.initState();
     _catalog = widget.preloadedCatalog == null
         ? HelpCatalog.load()
-        : Future<HelpCatalog>.value(widget.preloadedCatalog);
+        : Future<HelpCatalog>.value(widget.preloadedCatalog!);
   }
 
   @override
