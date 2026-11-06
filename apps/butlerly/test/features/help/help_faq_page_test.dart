@@ -24,6 +24,12 @@ void main() {
     home: HelpFaqPage(preloadedCatalog: catalog),
   );
 
+  Future<void> enterHelpQuery(WidgetTester tester, String query) async {
+    await tester.enterText(find.byKey(const ValueKey('help-search')), query);
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+  }
+
   testWidgets('Help searches locally and opens FAQ to full guide chapter', (
     tester,
   ) async {
@@ -33,11 +39,7 @@ void main() {
     expect(find.text('Help & FAQ'), findsOneWidget);
     expect(find.byKey(const ValueKey('help-full-guide')), findsOneWidget);
 
-    await tester.enterText(
-      find.byKey(const ValueKey('help-search')),
-      'merge replace',
-    );
-    await tester.pumpAndSettle();
+    await enterHelpQuery(tester, 'merge replace');
     final result = find.byKey(const ValueKey('help-hit-FAQ-022'));
     expect(result, findsOneWidget);
     await tester.ensureVisible(result);
@@ -54,11 +56,15 @@ void main() {
   testWidgets('Help no results has a way back to browse', (tester) async {
     await tester.pumpWidget(app(const Locale('en')));
     await tester.pumpAndSettle();
-    await tester.enterText(
-      find.byKey(const ValueKey('help-search')),
-      'thiscannotpossiblymatchanyhelp',
+    await enterHelpQuery(tester, 'thiscannotpossiblymatchanyhelp');
+    expect(
+      find.byKey(const ValueKey('help-no-results-topic-Backup & Recovery')),
+      findsOneWidget,
     );
-    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('help-no-results-support')),
+      findsOneWidget,
+    );
     expect(find.text('No matching help topics'), findsOneWidget);
     await tester.tap(find.text('All topics'));
     await tester.pumpAndSettle();
@@ -73,12 +79,81 @@ void main() {
       await tester.pumpWidget(app(locale));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('help-search')), findsOneWidget);
-      await tester.enterText(
-        find.byKey(const ValueKey('help-search')),
+      await enterHelpQuery(
+        tester,
         locale.languageCode == 'zh' ? '同步' : 'sincronizar',
       );
-      await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey('help-hit-FAQ-009')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('Help debounces rapid typing and cancels pending search', (
+    tester,
+  ) async {
+    await tester.pumpWidget(app(const Locale('en')));
+    await tester.pumpAndSettle();
+
+    final input = find.byKey(const ValueKey('help-search'));
+    await tester.enterText(input, 'unmatched string');
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byKey(const ValueKey('help-hit-FAQ-022')), findsNothing);
+
+    await tester.enterText(input, 'merge replace');
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byKey(const ValueKey('help-hit-FAQ-022')), findsNothing);
+
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('help-hit-FAQ-022')), findsOneWidget);
+
+    await tester.enterText(input, 'another pending query');
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tap(find.byTooltip('Clear search'));
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('help-full-guide')), findsOneWidget);
+    expect(find.byKey(const ValueKey('help-hit-FAQ-022')), findsNothing);
+  });
+
+  for (final locale in [
+    const Locale('en'),
+    const Locale('zh', 'CN'),
+    const Locale('es'),
+  ]) {
+    testWidgets('no-results topics and safe support for ${locale.languageCode}', (
+      tester,
+    ) async {
+      await tester.pumpWidget(app(locale));
+      await tester.pumpAndSettle();
+      await enterHelpQuery(tester, 'zzzzunknownhelpterm');
+      expect(find.byKey(const ValueKey('help-no-results-support')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('help-no-results-topic-Backup & Recovery')),
+        findsOneWidget,
+      );
+
+      final support = find.byKey(const ValueKey('help-no-results-support'));
+      await tester.ensureVisible(support);
+      await tester.tap(support);
+      await tester.pumpAndSettle();
+      expect(find.byType(HelpFaqDetailPage), findsOneWidget);
+      expect(
+        find.text(
+          catalog.faqById('FAQ-030')!.translation(locale.languageCode).question,
+        ),
+        findsOneWidget,
+      );
+      Navigator.of(tester.element(find.byType(HelpFaqDetailPage))).pop();
+      await tester.pumpAndSettle();
+
+      final topic = find.byKey(
+        const ValueKey('help-no-results-topic-Backup & Recovery'),
+      );
+      await tester.ensureVisible(topic);
+      await tester.tap(topic);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('help-faq-FAQ-022')), findsWidgets);
       expect(tester.takeException(), isNull);
     });
   }

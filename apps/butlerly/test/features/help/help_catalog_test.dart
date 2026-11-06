@@ -101,6 +101,61 @@ void main() {
     },
   );
 
+  test('natural-language Chinese and Spanish questions find answers', () async {
+    final catalog = await HelpCatalog.load();
+    for (final query in ['如何恢复备份', '备份和恢复']) {
+      expect(
+        catalog.search(query, languageCode: 'zh').map((hit) => hit.id),
+        contains('FAQ-022'),
+        reason: 'Chinese recovery query: $query',
+      );
+    }
+    expect(
+      catalog.search('忘记备份密码怎么办', languageCode: 'zh').map((hit) => hit.id),
+      contains('FAQ-023'),
+    );
+    expect(
+      catalog.search('同步云端文件', languageCode: 'zh').map((hit) => hit.id),
+      contains('FAQ-009'),
+    );
+    expect(
+      catalog
+          .search('¿Cómo restauro una copia de seguridad?', languageCode: 'es')
+          .map((hit) => hit.id),
+      contains('FAQ-022'),
+    );
+    expect(
+      catalog
+          .search('¿Cómo importo archivos?', languageCode: 'es')
+          .map((hit) => hit.id),
+      contains('ch-10'),
+    );
+    expect(
+      catalog.search('contraseña', languageCode: 'es').map((hit) => hit.id),
+      contains('FAQ-023'),
+    );
+    expect(catalog.search('如何', languageCode: 'zh'), isEmpty);
+    expect(catalog.search('¿Cómo?', languageCode: 'es'), isEmpty);
+  });
+
+  test('repeated offline queries remain stable', () async {
+    final catalog = await HelpCatalog.load();
+    final previous = catalog
+        .search('¿Cómo restauro una copia de seguridad?', languageCode: 'es')
+        .map((hit) => hit.id)
+        .toList();
+    expect(previous, isNotEmpty);
+    for (var attempt = 0; attempt < 20; attempt++) {
+      expect(
+        catalog
+            .search('¿Cómo restauro una copia de seguridad?', languageCode: 'es')
+            .map((hit) => hit.id)
+            .toList(),
+        previous,
+      );
+    }
+  });
+
   test('every Help presentation label has English, Chinese and Spanish', () {
     expect(HelpCopy.missingKeysFor('zh'), isEmpty);
     expect(HelpCopy.missingKeysFor('es'), isEmpty);
