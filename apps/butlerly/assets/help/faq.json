@@ -210,19 +210,20 @@
         "cloud",
         "sync",
         "download",
-        "sync",
-        "cloud",
         "Google Drive",
         "iCloud",
         "OneDrive",
         "Dropbox",
-        "download",
         "import",
         "bank statement",
         "同步",
         "云端",
         "descargar",
-        "sincronizar"
+        "sincronizar",
+        "云端文件",
+        "同步文件",
+        "sincronización",
+        "documentos"
       ],
       "guideId": "ch-10",
       "translations": {
@@ -271,7 +272,9 @@
         "csv",
         "template",
         "columns",
-        "header"
+        "header",
+        "importar archivos",
+        "importo archivos"
       ],
       "guideId": "ch-10",
       "translations": {
@@ -541,7 +544,16 @@
         "restore",
         "merge",
         "replace",
-        "cancel"
+        "cancel",
+        "restaurar",
+        "restauro",
+        "restauración",
+        "copia de seguridad",
+        "recuperación",
+        "恢复",
+        "备份",
+        "合并",
+        "替换"
       ],
       "guideId": "ch-19",
       "translations": {
@@ -564,7 +576,18 @@
       "category": "Backup & Recovery",
       "keywords": [
         "lost password",
-        "recovery"
+        "recovery",
+        "忘记",
+        "忘了",
+        "丢失",
+        "找回",
+        "备份",
+        "密码",
+        "olvidé",
+        "perdí",
+        "contrasena",
+        "contraseña",
+        "recuperar contraseña"
       ],
       "guideId": "ch-18",
       "translations": {
