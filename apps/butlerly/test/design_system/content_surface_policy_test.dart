@@ -39,7 +39,7 @@ void main() {
       find.byKey(const ValueKey('butlerly-page-content-surface')),
     );
     final colors = AppTheme.light.extension<ButlerlySemanticColors>()!;
-    expect(canvas.color, colors.subtleSurface);
+    expect(canvas.color, colors.background);
     expect((surface.decoration as BoxDecoration).color, colors.background);
 
     final childRect = tester.getRect(
@@ -113,7 +113,7 @@ void main() {
     );
   });
 
-  testWidgets('responsive body distinguishes content from outside canvas', (
+  testWidgets('responsive body keeps the desktop canvas consistent with content', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1200, 800);
@@ -139,7 +139,7 @@ void main() {
       find.byKey(const ValueKey('butlerly-responsive-body-content-surface')),
     );
     final colors = AppTheme.light.extension<ButlerlySemanticColors>()!;
-    expect(canvas.color, colors.subtleSurface);
+    expect(canvas.color, colors.background);
     expect(surface.color, colors.background);
     expect(
       tester

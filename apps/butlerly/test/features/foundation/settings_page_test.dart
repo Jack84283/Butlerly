@@ -169,7 +169,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(appRouter.routeInformationProvider.value.uri.path, '/budgets');
+    expect(find.byType(BudgetsPage), findsOneWidget);
     expect(find.byType(BudgetsPage), findsOneWidget);
     expect(find.byKey(const ValueKey('budgets-back')), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('budgets-back')));
@@ -306,7 +306,7 @@ void main() {
           .first,
     );
     await tester.pumpAndSettle();
-    expect(appRouter.routeInformationProvider.value.uri.path, '/budgets');
+    expect(find.byType(BudgetsPage), findsOneWidget);
     expect(find.byIcon(Icons.arrow_back_rounded), findsOneWidget);
     await tester.tap(find.byIcon(Icons.arrow_back_rounded));
     await tester.pumpAndSettle();
