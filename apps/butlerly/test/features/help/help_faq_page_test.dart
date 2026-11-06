@@ -77,28 +77,30 @@ void main() {
   }
 
   for (final locale in [const Locale('zh', 'CN'), const Locale('es')]) {
-    testWidgets('full guide uses the selected language: ${locale.languageCode}', (
-      tester,
-    ) async {
-      await tester.pumpWidget(app(locale));
-      await tester.pumpAndSettle();
-      final guide = find.byKey(const ValueKey('help-full-guide'));
-      await tester.ensureVisible(guide);
-      await tester.tap(guide);
-      await tester.pumpAndSettle();
-      final chapter = find.byKey(const ValueKey('help-article-ch-19'));
-      await tester.ensureVisible(chapter);
-      final tile = find.ancestor(of: chapter, matching: find.byType(ListTile));
-      expect(tile, findsOneWidget);
-      final title = tester.widget<ListTile>(tile).title! as Text;
-      expect(
-        title.data,
-        locale.languageCode == 'zh'
-            ? contains('恢复')
-            : contains('RESTAURAR'),
-      );
-      expect(tester.takeException(), isNull);
-    });
+    testWidgets(
+      'full guide uses the selected language: ${locale.languageCode}',
+      (tester) async {
+        await tester.pumpWidget(app(locale));
+        await tester.pumpAndSettle();
+        final guide = find.byKey(const ValueKey('help-full-guide'));
+        await tester.ensureVisible(guide);
+        await tester.tap(guide);
+        await tester.pumpAndSettle();
+        final chapter = find.byKey(const ValueKey('help-article-ch-19'));
+        await tester.ensureVisible(chapter);
+        final tile = find.ancestor(
+          of: chapter,
+          matching: find.byType(ListTile),
+        );
+        expect(tile, findsOneWidget);
+        final title = tester.widget<ListTile>(tile).title! as Text;
+        expect(
+          title.data,
+          locale.languageCode == 'zh' ? contains('恢复') : contains('RESTAURAR'),
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
   }
 
   testWidgets('full User Guide is browsable on a wide layout', (tester) async {

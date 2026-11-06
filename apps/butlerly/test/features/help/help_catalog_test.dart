@@ -21,18 +21,24 @@ void main() {
     for (final locale in ['en', 'zh', 'es']) {
       final translated = catalog.guideForLanguage(locale);
       expect(translated.map((article) => article.id).toList(), englishIds);
-      expect(translated.where((article) => article.id.startsWith('ch-')), hasLength(25));
+      expect(
+        translated.where((article) => article.id.startsWith('ch-')),
+        hasLength(25),
+      );
       expect(
         translated.where((article) => article.id.startsWith('appendix-')),
         hasLength(4),
       );
-      expect(
-        catalog.articleById('ch-19', languageCode: locale),
-        isNotNull,
-      );
+      expect(catalog.articleById('ch-19', languageCode: locale), isNotNull);
     }
-    expect(catalog.articleById('ch-19', languageCode: 'zh')!.title, contains('恢复'));
-    expect(catalog.articleById('ch-19', languageCode: 'es')!.title, contains('RESTAURAR'));
+    expect(
+      catalog.articleById('ch-19', languageCode: 'zh')!.title,
+      contains('恢复'),
+    );
+    expect(
+      catalog.articleById('ch-19', languageCode: 'es')!.title,
+      contains('RESTAURAR'),
+    );
     for (final faq in catalog.faqs) {
       expect(catalog.articleById(faq.guideId), isNotNull);
       for (final language in ['en', 'zh', 'es']) {

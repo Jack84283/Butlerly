@@ -111,10 +111,7 @@ class HelpCatalog {
   List<HelpGuideArticle> guideForLanguage(String languageCode) =>
       localizedGuides[languageCode] ?? guide;
 
-  HelpGuideArticle? articleById(
-    String id, {
-    String languageCode = 'en',
-  }) {
+  HelpGuideArticle? articleById(String id, {String languageCode = 'en'}) {
     for (final article in guideForLanguage(languageCode)) {
       if (article.id == id) return article;
     }
@@ -147,7 +144,9 @@ class HelpCatalog {
     List<HelpGuideArticle> decodeGuide(String value) {
       final data = jsonDecode(value) as Map<String, dynamic>;
       return (data['articles'] as List<dynamic>)
-          .map((entry) => HelpGuideArticle.fromJson(entry as Map<String, dynamic>))
+          .map(
+            (entry) => HelpGuideArticle.fromJson(entry as Map<String, dynamic>),
+          )
           .toList(growable: false);
     }
 
