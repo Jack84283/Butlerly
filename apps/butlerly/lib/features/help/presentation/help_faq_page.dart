@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/help/data/help_catalog.dart';
@@ -19,6 +21,8 @@ class HelpFaqPage extends StatefulWidget {
 class _HelpFaqPageState extends State<HelpFaqPage> {
   final TextEditingController _searchController = TextEditingController();
   late Future<HelpCatalog> _catalog;
+  Timer? _searchDebounce;
+  String _debouncedQuery = '';
   String? _selectedCategory;
 
   @override
@@ -31,8 +35,37 @@ class _HelpFaqPageState extends State<HelpFaqPage> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _handleSearchChanged(String value) {
+    _searchDebounce?.cancel();
+    final trimmed = value.trim();
+    setState(() {
+      if (trimmed.isEmpty) _debouncedQuery = '';
+    });
+    if (trimmed.isEmpty) return;
+    _searchDebounce = Timer(const Duration(milliseconds: 250), () {
+      if (mounted) {
+        setState(() => _debouncedQuery = _searchController.text.trim());
+      }
+    });
+  }
+
+  void _submitSearch(String value) {
+    _searchDebounce?.cancel();
+    setState(() => _debouncedQuery = value.trim());
+  }
+
+  void _clearSearch({String? category}) {
+    _searchDebounce?.cancel();
+    _searchController.clear();
+    setState(() {
+      _debouncedQuery = '';
+      _selectedCategory = category;
+    });
   }
 
   void _openHelp(HelpCatalog catalog, HelpSearchHit hit) {
@@ -45,7 +78,8 @@ class _HelpFaqPageState extends State<HelpFaqPage> {
 
   @override
   Widget build(BuildContext context) {
-    final query = _searchController.text.trim();
+    final draftQuery = _searchController.text.trim();
+    final query = _debouncedQuery;
     return Material(
       type: MaterialType.transparency,
       child: FutureBuilder<HelpCatalog>(
@@ -65,18 +99,16 @@ class _HelpFaqPageState extends State<HelpFaqPage> {
                   labelText: HelpCopy.text(context, 'search'),
                   prefixIcon: const Icon(Icons.search_rounded),
                   border: const OutlineInputBorder(),
-                  suffixIcon: query.isEmpty
+                  suffixIcon: draftQuery.isEmpty
                       ? null
                       : IconButton(
                           tooltip: HelpCopy.text(context, 'clear'),
                           icon: const Icon(Icons.close_rounded),
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() {});
-                          },
+                          onPressed: _clearSearch,
                         ),
                 ),
-                onChanged: (_) => setState(() {}),
+                onChanged: _handleSearchChanged,
+                onSubmitted: _submitSearch,
               ),
               const SizedBox(height: ButlerlySpacing.section),
               if (snapshot.hasError) ...[
@@ -97,7 +129,9 @@ class _HelpFaqPageState extends State<HelpFaqPage> {
               ] else if (catalog == null) ...[
                 const Center(child: CircularProgressIndicator()),
               ] else ...[
-                if (query.isNotEmpty)
+                if (draftQuery.isNotEmpty && draftQuery != query)
+                  const Center(child: CircularProgressIndicator())
+                else if (query.isNotEmpty)
                   ..._searchResults(context, catalog, query)
                 else
                   ..._browseContent(context, catalog),
@@ -117,6 +151,13 @@ class _HelpFaqPageState extends State<HelpFaqPage> {
     final language = Localizations.localeOf(context).languageCode;
     final hits = catalog.search(query, languageCode: language);
     if (hits.isEmpty) {
+      const suggestedCategories = <String>[
+        'Backup & Recovery',
+        'Imports',
+        'Review',
+        'Troubleshooting',
+      ];
+      final supportFaq = catalog.faqById('FAQ-030');
       return [
         ButlerlyCard(
           child: Column(
@@ -128,12 +169,36 @@ class _HelpFaqPageState extends State<HelpFaqPage> {
               ),
               const SizedBox(height: ButlerlySpacing.small),
               Text(HelpCopy.text(context, 'noResultsBody')),
+              const SizedBox(height: ButlerlySpacing.section),
+              Text(
+                HelpCopy.text(context, 'suggestedTopics'),
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
               const SizedBox(height: ButlerlySpacing.small),
+              Wrap(
+                spacing: ButlerlySpacing.small,
+                runSpacing: ButlerlySpacing.small,
+                children: [
+                  for (final category in suggestedCategories)
+                    if (catalog.categories.contains(category))
+                      ActionChip(
+                        key: ValueKey('help-no-results-topic-$category'),
+                        label: Text(HelpCopy.category(context, category)),
+                        onPressed: () => _clearSearch(category: category),
+                      ),
+                ],
+              ),
+              const SizedBox(height: ButlerlySpacing.standard),
+              if (supportFaq != null)
+                TextButton.icon(
+                  key: const ValueKey('help-no-results-support'),
+                  onPressed: () => _openFaq(context, catalog, supportFaq),
+                  icon: const Icon(Icons.help_outline_rounded),
+                  label: Text(HelpCopy.text(context, 'reportProblem')),
+                ),
               TextButton(
-                onPressed: () {
-                  _searchController.clear();
-                  setState(() {});
-                },
+                key: const ValueKey('help-no-results-all'),
+                onPressed: _clearSearch,
                 child: Text(HelpCopy.text(context, 'all')),
               ),
             ],
