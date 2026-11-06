@@ -121,41 +121,48 @@ void main() {
     const Locale('zh', 'CN'),
     const Locale('es'),
   ]) {
-    testWidgets('no-results topics and safe support for ${locale.languageCode}', (
-      tester,
-    ) async {
-      await tester.pumpWidget(app(locale));
-      await tester.pumpAndSettle();
-      await enterHelpQuery(tester, 'zzzzunknownhelpterm');
-      expect(find.byKey(const ValueKey('help-no-results-support')), findsOneWidget);
-      expect(
-        find.byKey(const ValueKey('help-no-results-topic-Backup & Recovery')),
-        findsOneWidget,
-      );
+    testWidgets(
+      'no-results topics and safe support for ${locale.languageCode}',
+      (tester) async {
+        await tester.pumpWidget(app(locale));
+        await tester.pumpAndSettle();
+        await enterHelpQuery(tester, 'zzzzunknownhelpterm');
+        expect(
+          find.byKey(const ValueKey('help-no-results-support')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('help-no-results-topic-Backup & Recovery')),
+          findsOneWidget,
+        );
 
-      final support = find.byKey(const ValueKey('help-no-results-support'));
-      await tester.ensureVisible(support);
-      await tester.tap(support);
-      await tester.pumpAndSettle();
-      expect(find.byType(HelpFaqDetailPage), findsOneWidget);
-      expect(
-        find.text(
-          catalog.faqById('FAQ-030')!.translation(locale.languageCode).question,
-        ),
-        findsOneWidget,
-      );
-      Navigator.of(tester.element(find.byType(HelpFaqDetailPage))).pop();
-      await tester.pumpAndSettle();
+        final support = find.byKey(const ValueKey('help-no-results-support'));
+        await tester.ensureVisible(support);
+        await tester.tap(support);
+        await tester.pumpAndSettle();
+        expect(find.byType(HelpFaqDetailPage), findsOneWidget);
+        expect(
+          find.text(
+            catalog
+                .faqById('FAQ-030')!
+                .translation(locale.languageCode)
+                .question,
+          ),
+          findsOneWidget,
+        );
+        Navigator.of(tester.element(find.byType(HelpFaqDetailPage))).pop();
+        await tester.pumpAndSettle();
 
-      final topic = find.byKey(
-        const ValueKey('help-no-results-topic-Backup & Recovery'),
-      );
-      await tester.ensureVisible(topic);
-      await tester.tap(topic);
-      await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('help-faq-FAQ-022')), findsWidgets);
-      expect(tester.takeException(), isNull);
-    });
+        final topic = find.byKey(
+          const ValueKey('help-no-results-topic-Backup & Recovery'),
+        );
+        await tester.ensureVisible(topic);
+        await tester.tap(topic);
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('help-faq-FAQ-022')), findsWidgets);
+        expect(tester.takeException(), isNull);
+      },
+    );
   }
 
   for (final locale in [const Locale('zh', 'CN'), const Locale('es')]) {

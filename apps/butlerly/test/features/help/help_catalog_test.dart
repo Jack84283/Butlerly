@@ -148,7 +148,10 @@ void main() {
     for (var attempt = 0; attempt < 20; attempt++) {
       expect(
         catalog
-            .search('¿Cómo restauro una copia de seguridad?', languageCode: 'es')
+            .search(
+              '¿Cómo restauro una copia de seguridad?',
+              languageCode: 'es',
+            )
             .map((hit) => hit.id)
             .toList(),
         previous,

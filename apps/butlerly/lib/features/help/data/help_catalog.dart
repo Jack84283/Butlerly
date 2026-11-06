@@ -315,12 +315,12 @@ class _HelpSearchIndex {
 
 class _IndexedHelpFaq {
   _IndexedHelpFaq(this.faq, String locale)
-      : translation = faq.translation(locale),
-        title = _helpIndexField(faq.translation(locale).question, locale),
-        englishTitle = _helpIndexField(faq.translation('en').question, locale),
-        keywords = _helpIndexField(faq.keywords.join(' '), locale),
-        category = _helpIndexField(faq.category, locale),
-        body = _helpIndexField(faq.translation(locale).answer, locale);
+    : translation = faq.translation(locale),
+      title = _helpIndexField(faq.translation(locale).question, locale),
+      englishTitle = _helpIndexField(faq.translation('en').question, locale),
+      keywords = _helpIndexField(faq.keywords.join(' '), locale),
+      category = _helpIndexField(faq.category, locale),
+      body = _helpIndexField(faq.translation(locale).answer, locale);
 
   final HelpFaqEntry faq;
   final HelpFaqTranslation translation;
@@ -333,9 +333,9 @@ class _IndexedHelpFaq {
 
 class _IndexedHelpArticle {
   _IndexedHelpArticle(this.article, String locale)
-      : title = _helpIndexField(article.title, locale),
-        body = _helpIndexField(article.body, locale),
-        snippet = article.body.replaceAll(RegExp(r'\s+'), ' ').trim();
+    : title = _helpIndexField(article.title, locale),
+      body = _helpIndexField(article.body, locale),
+      snippet = article.body.replaceAll(RegExp(r'\s+'), ' ').trim();
 
   final HelpGuideArticle article;
   final String title;
@@ -368,10 +368,7 @@ String _helpIndexField(String value, String locale) {
       .replaceAll(RegExp(r'\s+'), ' ')
       .trim();
   if (locale != 'es' || normalized.isEmpty) return normalized;
-  return normalized
-      .split(' ')
-      .map(_helpSpanishRoot)
-      .join(' ');
+  return normalized.split(' ').map(_helpSpanishRoot).join(' ');
 }
 
 /// Small predictable Spanish inflection normalization for local Help only.
@@ -410,35 +407,145 @@ String _helpSpanishRoot(String term) {
 }
 
 const _helpStopWords = <String>{
-  'how', 'do', 'i', 'a', 'an', 'the', 'to', 'my', 'is', 'are',
-  'what', 'does', 'can', 'for', 'of', 'where', 'why', 'and',
-  'or', 'me', 'vs', 'versus',
-  'como', 'puedo', 'de', 'la', 'el', 'una', 'un', 'los',
-  'las', 'que', 'por', 'en', 'del', 'para', 'mi', 'mis',
-  'se', 'es', 'yo', 'y', 'o', 'hago', 'hacer',
+  'how',
+  'do',
+  'i',
+  'a',
+  'an',
+  'the',
+  'to',
+  'my',
+  'is',
+  'are',
+  'what',
+  'does',
+  'can',
+  'for',
+  'of',
+  'where',
+  'why',
+  'and',
+  'or',
+  'me',
+  'vs',
+  'versus',
+  'como',
+  'puedo',
+  'de',
+  'la',
+  'el',
+  'una',
+  'un',
+  'los',
+  'las',
+  'que',
+  'por',
+  'en',
+  'del',
+  'para',
+  'mi',
+  'mis',
+  'se',
+  'es',
+  'yo',
+  'y',
+  'o',
+  'hago',
+  'hacer',
 };
 
 /// The explicit vocabulary avoids treating a Chinese sentence with no spaces
 /// as an impossible whole-string match. Unknown multi-character terms are
 /// retained to avoid returning unrelated results.
 const _helpChineseTerms = <String>[
-  '支付来源', '找不到', '未分类', '重复交易', '银行卡',
-  '加密', '备份', '密码', '忘记', '忘了', '丢失', '找回',
-  '恢复', '还原', '合并', '替换', '数据', '删除', '导出',
-  '交易', '记录', '重复', '金额', '商家', '收据',
-  '账单', '同步', '云端', '云盘', '文件', '导入',
-  '分类', '类别', '分析', '预算', '设置', '语言',
-  '币种', '时区', '支付', '来源', '报表', '账户',
-  '账号', '搜索', '帮助', '修改', '编辑', '添加',
-  '查看', '确认', '离线', '联网', '网络', '购买',
-  '错误', '失败', '问题', '安全', '导入', '存储',
+  '支付来源',
+  '找不到',
+  '未分类',
+  '重复交易',
+  '银行卡',
+  '加密',
+  '备份',
+  '密码',
+  '忘记',
+  '忘了',
+  '丢失',
+  '找回',
+  '恢复',
+  '还原',
+  '合并',
+  '替换',
+  '数据',
+  '删除',
+  '导出',
+  '交易',
+  '记录',
+  '重复',
+  '金额',
+  '商家',
+  '收据',
+  '账单',
+  '同步',
+  '云端',
+  '云盘',
+  '文件',
+  '导入',
+  '分类',
+  '类别',
+  '分析',
+  '预算',
+  '设置',
+  '语言',
+  '币种',
+  '时区',
+  '支付',
+  '来源',
+  '报表',
+  '账户',
+  '账号',
+  '搜索',
+  '帮助',
+  '修改',
+  '编辑',
+  '添加',
+  '查看',
+  '确认',
+  '离线',
+  '联网',
+  '网络',
+  '购买',
+  '错误',
+  '失败',
+  '问题',
+  '安全',
+  '导入',
+  '存储',
 ];
 
 const _helpChineseStopPhrases = <String>[
-  '怎么办', '怎么样', '如何', '怎么', '怎样', '请问',
-  '我想', '是否', '可以', '能够', '能否', '一下',
-  '我的', '为什么', '什么', '无法', '不能', '请',
-  '我', '吗', '呢', '的', '了', '是',
+  '怎么办',
+  '怎么样',
+  '如何',
+  '怎么',
+  '怎样',
+  '请问',
+  '我想',
+  '是否',
+  '可以',
+  '能够',
+  '能否',
+  '一下',
+  '我的',
+  '为什么',
+  '什么',
+  '无法',
+  '不能',
+  '请',
+  '我',
+  '吗',
+  '呢',
+  '的',
+  '了',
+  '是',
 ];
 
 List<String> _helpQueryTerms(String normalized, String locale) {
@@ -455,8 +562,9 @@ List<String> _helpQueryTerms(String normalized, String locale) {
     remaining = remaining.replaceAll(phrase, ' ');
   }
   final terms = <String>[];
-  for (final match in RegExp(r'[\u3400-\u9fff]+|[a-z0-9]+')
-      .allMatches(remaining)) {
+  for (final match in RegExp(
+    r'[\u3400-\u9fff]+|[a-z0-9]+',
+  ).allMatches(remaining)) {
     final chunk = match.group(0)!;
     if (!RegExp(r'^[\u3400-\u9fff]').hasMatch(chunk)) {
       if (!_helpStopWords.contains(chunk)) terms.add(chunk);
@@ -497,4 +605,3 @@ List<String> _helpQueryTerms(String normalized, String locale) {
   }
   return terms.toSet().toList(growable: false);
 }
-
