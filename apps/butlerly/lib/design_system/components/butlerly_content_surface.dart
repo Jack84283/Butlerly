@@ -15,13 +15,13 @@ class ButlerlyContentCanvas extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ColoredBox(
     key: canvasKey,
-    // Medium layouts keep a centered readable content column, but the page
-    // background itself must extend to both edges of the viewport.
+    // Keep readable-width surfaces and the surrounding canvas identical on
+    // medium/wide screens, so future secondary pages inherit this behavior.
     color:
         ButlerlyLayout.modeForWidth(MediaQuery.sizeOf(context).width) ==
-            ButlerlyLayoutMode.medium
-        ? context.colors.background
-        : context.colors.subtleSurface,
+            ButlerlyLayoutMode.compact
+        ? context.colors.subtleSurface
+        : context.colors.background,
     child: child,
   );
 }
