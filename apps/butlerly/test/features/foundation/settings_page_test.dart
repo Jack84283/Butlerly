@@ -196,15 +196,14 @@ void main() {
 
     appRouter.go('/settings');
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Help & FAQ'));
-    await tester.tap(
-      find.ancestor(
-        of: find.text('Help & FAQ'),
-        matching: find.byType(InkWell),
-      ),
-    );
-    // GoRouter.push displays the destination above Settings while the
-    // route-information URI can remain '/settings'. Verify the actual page.
+    final helpLabel = find.text('Help & FAQ');
+    await tester.ensureVisible(helpLabel);
+    await tester.pumpAndSettle();
+    // Tap the visible label. The wider InkWell center may be below the
+    // viewport after a bottom-of-page ensureVisible scroll.
+    await tester.tap(helpLabel);
+    // The asset reader may still be loading; the destination widget should
+    // appear immediately after navigation.
     await tester.pump(const Duration(milliseconds: 600));
     expect(find.byType(HelpFaqPage), findsOneWidget);
     expect(find.text('Help & FAQ'), findsWidgets);
