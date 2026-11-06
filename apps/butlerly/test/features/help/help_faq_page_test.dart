@@ -162,7 +162,13 @@ void main() {
         // The selected topic can be below the fold after returning from
         // the support article. Scroll to the actual FAQ before asserting.
         final faq = find.byKey(const ValueKey('help-faq-FAQ-022'));
-        await tester.scrollUntilVisible(faq, 200);
+        // Explicitly use the page's outer scroll view. TextField adds an
+        // inner Scrollable, making the default finder ambiguous.
+        await tester.scrollUntilVisible(
+          faq,
+          200,
+          scrollable: find.byType(Scrollable).first,
+        );
         expect(faq, findsOneWidget);
         await tester.tap(faq);
         await tester.pumpAndSettle();
