@@ -170,7 +170,6 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.byType(BudgetsPage), findsOneWidget);
-    expect(find.byType(BudgetsPage), findsOneWidget);
     expect(find.byKey(const ValueKey('budgets-back')), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('budgets-back')));
     await tester.pumpAndSettle();
@@ -385,6 +384,9 @@ void main() {
     var tile = tester.widget<SwitchListTile>(setting);
     expect(tile.value, isTrue);
     tile.onChanged!(false);
+    // A second tap before the first write completes must be ignored.
+    // Reordered writes must never result in a stale enable chime.
+    tile.onChanged!(true);
     await tester.pumpAndSettle();
     expect(playbackCount, 0);
 
