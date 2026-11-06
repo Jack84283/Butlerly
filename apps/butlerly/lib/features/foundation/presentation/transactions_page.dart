@@ -1009,14 +1009,16 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
     if (result case ApplicationSuccess<TransactionDto>(value: final saved)) {
       // Standalone editor tests and embedded hosts may not install a
       // ProviderScope. Treat feedback as optional, never a save dependency.
-      var soundEnabled = true;
+      // Do not play feedback until an enabled preference has actually loaded.
+      // A missing ProviderScope, pending load, or read failure must be silent.
+      var soundEnabled = false;
       try {
         soundEnabled =
             ProviderScope.containerOf(
               context,
               listen: false,
             ).read(userPreferenceProvider).value?.transactionSaveSoundEnabled ??
-            true;
+            false;
       } catch (_) {
         // The transaction has already been saved successfully.
       }
