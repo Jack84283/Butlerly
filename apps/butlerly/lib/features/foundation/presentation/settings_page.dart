@@ -199,15 +199,21 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         preference == null || _savingTransactionSound
             ? null
             : () => _chooseDesktopValue<bool>(
-          label: l10n.text('transactionSaveSound'),
-          value: preference.transactionSaveSoundEnabled,
-          options: [
-            DropdownMenuItem(value: true, child: Text(l10n.text('enabled'))),
-            DropdownMenuItem(value: false, child: Text(l10n.text('disabled'))),
-          ],
-          onChanged: (value) =>
-              unawaited(_setTransactionSaveSoundEnabled(value)),
-        ),
+                label: l10n.text('transactionSaveSound'),
+                value: preference.transactionSaveSoundEnabled,
+                options: [
+                  DropdownMenuItem(
+                    value: true,
+                    child: Text(l10n.text('enabled')),
+                  ),
+                  DropdownMenuItem(
+                    value: false,
+                    child: Text(l10n.text('disabled')),
+                  ),
+                ],
+                onChanged: (value) =>
+                    unawaited(_setTransactionSaveSoundEnabled(value)),
+              ),
       ),
       tile(
         Icons.person_outline_rounded,
