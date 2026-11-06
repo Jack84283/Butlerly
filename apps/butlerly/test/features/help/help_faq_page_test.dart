@@ -109,7 +109,9 @@ void main() {
         expect(find.byType(HelpGuideArticlePage), findsOneWidget);
         expect(
           find.text(
-            catalog.articleById('ch-19', languageCode: locale.languageCode)!.title,
+            catalog
+                .articleById('ch-19', languageCode: locale.languageCode)!
+                .title,
           ),
           findsWidgets,
         );
