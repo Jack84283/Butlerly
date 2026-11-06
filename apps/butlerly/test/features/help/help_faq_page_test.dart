@@ -169,6 +169,15 @@ void main() {
           200,
           scrollable: find.byType(Scrollable).first,
         );
+        // scrollUntilVisible builds the lazy row but can leave its center
+        // outside the hit-testable viewport, particularly in Chinese.
+        // Align the row well inside the outer page before tapping it.
+        await Scrollable.ensureVisible(
+          tester.element(faq),
+          alignment: 0.35,
+          duration: const Duration(milliseconds: 150),
+        );
+        await tester.pumpAndSettle();
         expect(faq, findsOneWidget);
         await tester.tap(faq);
         await tester.pumpAndSettle();
