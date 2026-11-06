@@ -399,7 +399,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
                     _DesktopMoreRow(
                       title: l10n.text('budgetSettings'),
-                      onTap: () => context.go('/budgets'),
+                      onTap: () => context.push('/budgets'),
                     ),
                   ],
                 ),
@@ -685,7 +685,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               icon: Icons.savings_outlined,
               title: context.l10n.text('budgetSettings'),
               subtitle: context.l10n.text('budgetSettingsBody'),
-              onTap: () => context.go('/budgets'),
+              onTap: () => context.push('/budgets'),
             ),
             _SettingsRow(
               icon: Icons.person_search_outlined,
