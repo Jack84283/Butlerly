@@ -34,6 +34,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   final _appearanceKey = GlobalKey();
   final _aboutKey = GlobalKey();
   String? _scheduledSection;
+  bool _savingTransactionSound = false;
   late final Future<String> _desktopVersion = rootBundle
       .loadString('pubspec.yaml')
       .then((contents) {
@@ -120,15 +121,28 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _setTransactionSaveSoundEnabled(bool value) async {
+    // Disable both controls until persistence completes, preventing
+    // overlapping sound writes and stale confirmation playback.
+    if (_savingTransactionSound) return;
     final current = ref.read(userPreferenceProvider).value;
     if (current == null || current.transactionSaveSoundEnabled == value) {
       return;
     }
-    final saved = await ref
-        .read(userPreferenceProvider.notifier)
-        .saveChanges(transactionSaveSoundEnabled: value);
-    if (saved && value && mounted) {
-      // Play once after enabling succeeds; the off transition is silent.
+    setState(() => _savingTransactionSound = true);
+    var saved = false;
+    try {
+      saved = await ref
+          .read(userPreferenceProvider.notifier)
+          .saveChanges(transactionSaveSoundEnabled: value);
+    } finally {
+      if (mounted) setState(() => _savingTransactionSound = false);
+    }
+    if (saved &&
+        value &&
+        mounted &&
+        ref.read(userPreferenceProvider).value?.transactionSaveSoundEnabled ==
+            true) {
+      // Preview only the committed, still-enabled preference.
       unawaited(ButlerlySoundFeedback.play());
     }
   }
@@ -166,7 +180,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       IconData icon,
       String label,
       String value,
-      VoidCallback onTap,
+      VoidCallback? onTap,
     ) => _DesktopMoreRow(icon: icon, title: label, value: value, onTap: onTap);
 
     final preferences = <Widget>[
@@ -174,13 +188,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         Icons.volume_up_outlined,
         l10n.text('transactionSaveSound'),
         l10n.text(
-          preference?.transactionSaveSoundEnabled ?? true
+          preference == null
+              ? 'loading'
+              : preference.transactionSaveSoundEnabled
               ? 'enabled'
               : 'disabled',
         ),
-        () => _chooseDesktopValue<bool>(
+        preference == null || _savingTransactionSound
+            ? null
+            : () => _chooseDesktopValue<bool>(
           label: l10n.text('transactionSaveSound'),
-          value: preference?.transactionSaveSoundEnabled ?? true,
+          value: preference.transactionSaveSoundEnabled,
           options: [
             DropdownMenuItem(value: true, child: Text(l10n.text('enabled'))),
             DropdownMenuItem(value: false, child: Text(l10n.text('disabled'))),
@@ -496,7 +514,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 style: _settingsSubtitleStyle(context),
               ),
               value: preference?.transactionSaveSoundEnabled ?? true,
-              onChanged: preference == null
+              onChanged: preference == null || _savingTransactionSound
                   ? null
                   : (value) =>
                         unawaited(_setTransactionSaveSoundEnabled(value)),
