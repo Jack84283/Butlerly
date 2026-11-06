@@ -161,12 +161,21 @@ class HelpCatalog {
   /// Search is deterministic, locale-aware, and performed in memory.
   /// FAQ titles rank ahead of keyword matches, which rank ahead of bodies.
   List<HelpSearchHit> search(String query, {String languageCode = 'en'}) {
-    final normalized = _fold(query).trim();
+    final normalized = _fold(query)
+        .replaceAll(RegExp(r'[^a-z0-9\u00c0-\uffff\s]+'), ' ')
+        .trim();
     if (normalized.isEmpty) return const [];
+    const commonWords = <String>{
+      'how', 'do', 'i', 'a', 'an', 'the', 'to', 'my', 'is', 'are',
+      'what', 'does', 'can', 'for', 'of', 'where', 'why', 'and',
+      'or', 'me', 'como', 'puedo', 'de', 'la', 'el', 'una', 'un',
+      'los', 'las', 'que', 'por',
+    };
     final tokens = normalized
         .split(RegExp(r'\s+'))
-        .where((token) => token.isNotEmpty)
+        .where((token) => token.isNotEmpty && !commonWords.contains(token))
         .toList(growable: false);
+    if (tokens.isEmpty) return const [];
     final results = <HelpSearchHit>[];
 
     for (final faq in faqs) {

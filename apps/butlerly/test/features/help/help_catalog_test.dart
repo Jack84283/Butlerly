@@ -45,6 +45,10 @@ void main() {
     () async {
       final catalog = await HelpCatalog.load();
       expect(catalog.search('MERGE replace').first.id, 'FAQ-022');
+    expect(
+      catalog.search('How do I restore a backup?').map((hit) => hit.id),
+      contains('FAQ-022'),
+    );
       expect(
         catalog.search('Google Drive').map((hit) => hit.id),
         contains('FAQ-009'),

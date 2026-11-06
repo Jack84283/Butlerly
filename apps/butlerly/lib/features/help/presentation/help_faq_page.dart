@@ -35,7 +35,9 @@ class _HelpFaqPageState extends State<HelpFaqPage> {
   @override
   Widget build(BuildContext context) {
     final query = _searchController.text.trim();
-    return FutureBuilder<HelpCatalog>(
+    return Material(
+      type: MaterialType.transparency,
+      child: FutureBuilder<HelpCatalog>(
       future: _catalog,
       builder: (context, snapshot) {
         final catalog = snapshot.data;
@@ -92,6 +94,7 @@ class _HelpFaqPageState extends State<HelpFaqPage> {
           ],
         );
       },
+      ),
     );
   }
 
@@ -173,6 +176,25 @@ class _HelpFaqPageState extends State<HelpFaqPage> {
               .toList(growable: false);
     final language = Localizations.localeOf(context).languageCode;
     return [
+      ButlerlyCard(
+        child: ListTile(
+          key: const ValueKey('help-full-guide'),
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.menu_book_outlined),
+          title: Text(HelpCopy.text(context, 'fullGuide')),
+          subtitle: Text(HelpCopy.text(context, 'guideSubtitle')),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => Material(
+                type: MaterialType.transparency,
+                child: HelpGuideIndexPage(catalog: catalog),
+              ),
+            ),
+          ),
+        ),
+      ),
+      const SizedBox(height: ButlerlySpacing.section),
       _heading(context, HelpCopy.text(context, 'topics')),
       const SizedBox(height: ButlerlySpacing.small),
       Wrap(
@@ -217,21 +239,7 @@ class _HelpFaqPageState extends State<HelpFaqPage> {
         ),
       ),
       const SizedBox(height: ButlerlySpacing.section),
-      ButlerlyCard(
-        child: ListTile(
-          key: const ValueKey('help-full-guide'),
-          contentPadding: EdgeInsets.zero,
-          leading: const Icon(Icons.menu_book_outlined),
-          title: Text(HelpCopy.text(context, 'fullGuide')),
-          subtitle: Text(HelpCopy.text(context, 'guideSubtitle')),
-          trailing: const Icon(Icons.chevron_right_rounded),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => HelpGuideIndexPage(catalog: catalog),
-            ),
-          ),
-        ),
-      ),
+
     ];
   }
 }
@@ -269,7 +277,10 @@ Widget _helpBackButton(BuildContext context) => IconButton(
 void _openFaq(BuildContext context, HelpCatalog catalog, HelpFaqEntry faq) {
   Navigator.of(context).push(
     MaterialPageRoute<void>(
-      builder: (_) => HelpFaqDetailPage(catalog: catalog, faq: faq),
+      builder: (_) => Material(
+        type: MaterialType.transparency,
+        child: HelpFaqDetailPage(catalog: catalog, faq: faq),
+      ),
     ),
   );
 }
@@ -277,7 +288,10 @@ void _openFaq(BuildContext context, HelpCatalog catalog, HelpFaqEntry faq) {
 void _openArticle(BuildContext context, HelpGuideArticle article) {
   Navigator.of(context).push(
     MaterialPageRoute<void>(
-      builder: (_) => HelpGuideArticlePage(article: article),
+      builder: (_) => Material(
+        type: MaterialType.transparency,
+        child: HelpGuideArticlePage(article: article),
+      ),
     ),
   );
 }
