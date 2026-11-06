@@ -203,7 +203,9 @@ void main() {
         matching: find.byType(InkWell),
       ),
     );
-    await tester.pumpAndSettle();
+    // The asset reader can show an animated loading indicator while opening.
+    // The route assertion does not require its animation to settle.
+    await tester.pump(const Duration(milliseconds: 600));
     expect(appRouter.routeInformationProvider.value.uri.path, '/help');
     expect(find.byType(HelpFaqPage), findsOneWidget);
   });

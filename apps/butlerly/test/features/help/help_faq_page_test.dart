@@ -87,7 +87,7 @@ void main() {
         await tester.tap(guide);
         await tester.pumpAndSettle();
         final chapter = find.byKey(const ValueKey('help-article-ch-19'));
-        await tester.ensureVisible(chapter);
+        await tester.scrollUntilVisible(chapter, 300);
         final tile = find.ancestor(
           of: chapter,
           matching: find.byType(ListTile),
