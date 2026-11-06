@@ -5,6 +5,7 @@ import 'package:butlerly/features/budgets/presentation/budgets_page.dart';
 import 'package:butlerly/features/financial_profile/presentation/financial_profile_page.dart';
 import 'package:butlerly/features/foundation/presentation/privacy_data_page.dart';
 import 'package:butlerly/features/foundation/presentation/settings_page.dart';
+import 'package:butlerly/features/help/presentation/help_faq_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -192,6 +193,24 @@ void main() {
       '/financial-profile',
     );
     expect(find.byType(FinancialProfilePage), findsOneWidget);
+
+    appRouter.go('/settings');
+    await tester.pumpAndSettle();
+    final helpLabel = find.text('Help & FAQ');
+    await tester.ensureVisible(helpLabel);
+    await tester.pumpAndSettle();
+    // Tap the visible label. The wider InkWell center may be below the
+    // viewport after a bottom-of-page ensureVisible scroll.
+    await tester.tap(helpLabel);
+    // The app shell and router can schedule an additional frame after
+    // navigation. Do not wait for the Help loading spinner to settle.
+    for (var attempt = 0; attempt < 10; attempt++) {
+      await tester.pump(const Duration(milliseconds: 100));
+      if (find.byType(HelpFaqPage).evaluate().isNotEmpty) break;
+    }
+    expect(appRouter.routeInformationProvider.value.uri.path, '/help');
+    expect(find.byType(HelpFaqPage), findsOneWidget);
+    expect(find.text('Help & FAQ'), findsWidgets);
   });
 
   testWidgets('compact More routes Privacy & data to the shared page', (

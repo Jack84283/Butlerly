@@ -8,6 +8,7 @@ import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/legal_licenses_page.dart';
 import 'package:butlerly/features/foundation/presentation/time_zone_catalog.dart';
+import 'package:butlerly/features/help/presentation/help_copy.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -397,6 +398,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   icon: Icons.info_outline_rounded,
                   children: [
                     _DesktopMoreRow(
+                      title: HelpCopy.text(context, 'title'),
+                      onTap: () => context.go('/help'),
+                    ),
+                    _DesktopMoreRow(
                       title: l10n.text('legalLicenses'),
                       onTap: () => context.push('/legal-licenses'),
                     ),
@@ -704,6 +709,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ),
         _SettingsSectionCard(
           children: [
+            _SettingsRow(
+              icon: Icons.help_outline_rounded,
+              title: HelpCopy.text(context, 'title'),
+              subtitle: HelpCopy.text(context, 'subtitle'),
+              onTap: () => context.go('/help'),
+            ),
             _SettingsRow(
               icon: Icons.gavel_outlined,
               title: context.l10n.text('legalLicenses'),

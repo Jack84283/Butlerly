@@ -50,6 +50,7 @@ flutter:
   assets:
     - pubspec.yaml
     - assets/legal/
+    - assets/help/
     - assets/analysis_rules/
     - assets/analysis_rules/metrics/
     - assets/analysis_rules/insights/
