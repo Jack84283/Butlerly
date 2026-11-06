@@ -38,62 +38,62 @@ class _HelpFaqPageState extends State<HelpFaqPage> {
     return Material(
       type: MaterialType.transparency,
       child: FutureBuilder<HelpCatalog>(
-      future: _catalog,
-      builder: (context, snapshot) {
-        final catalog = snapshot.data;
-        return ButlerlyPage(
-          title: HelpCopy.text(context, 'title'),
-          subtitle: HelpCopy.text(context, 'subtitle'),
-          leading: _helpBackButton(context),
-          children: [
-            TextField(
-              key: const ValueKey('help-search'),
-              controller: _searchController,
-              textInputAction: TextInputAction.search,
-              decoration: InputDecoration(
-                labelText: HelpCopy.text(context, 'search'),
-                prefixIcon: const Icon(Icons.search_rounded),
-                border: const OutlineInputBorder(),
-                suffixIcon: query.isEmpty
-                    ? null
-                    : IconButton(
-                        tooltip: HelpCopy.text(context, 'clear'),
-                        icon: const Icon(Icons.close_rounded),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() {});
-                        },
-                      ),
-              ),
-              onChanged: (_) => setState(() {}),
-            ),
-            const SizedBox(height: ButlerlySpacing.section),
-            if (snapshot.hasError) ...[
-              ButlerlyCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(HelpCopy.text(context, 'loadFailed')),
-                    TextButton(
-                      onPressed: () {
-                        setState(() => _catalog = HelpCatalog.load());
-                      },
-                      child: Text(HelpCopy.text(context, 'retry')),
-                    ),
-                  ],
+        future: _catalog,
+        builder: (context, snapshot) {
+          final catalog = snapshot.data;
+          return ButlerlyPage(
+            title: HelpCopy.text(context, 'title'),
+            subtitle: HelpCopy.text(context, 'subtitle'),
+            leading: _helpBackButton(context),
+            children: [
+              TextField(
+                key: const ValueKey('help-search'),
+                controller: _searchController,
+                textInputAction: TextInputAction.search,
+                decoration: InputDecoration(
+                  labelText: HelpCopy.text(context, 'search'),
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  border: const OutlineInputBorder(),
+                  suffixIcon: query.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: HelpCopy.text(context, 'clear'),
+                          icon: const Icon(Icons.close_rounded),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {});
+                          },
+                        ),
                 ),
+                onChanged: (_) => setState(() {}),
               ),
-            ] else if (catalog == null) ...[
-              const Center(child: CircularProgressIndicator()),
-            ] else ...[
-              if (query.isNotEmpty)
-                ..._searchResults(context, catalog, query)
-              else
-                ..._browseContent(context, catalog),
+              const SizedBox(height: ButlerlySpacing.section),
+              if (snapshot.hasError) ...[
+                ButlerlyCard(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(HelpCopy.text(context, 'loadFailed')),
+                      TextButton(
+                        onPressed: () {
+                          setState(() => _catalog = HelpCatalog.load());
+                        },
+                        child: Text(HelpCopy.text(context, 'retry')),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else if (catalog == null) ...[
+                const Center(child: CircularProgressIndicator()),
+              ] else ...[
+                if (query.isNotEmpty)
+                  ..._searchResults(context, catalog, query)
+                else
+                  ..._browseContent(context, catalog),
+              ],
             ],
-          ],
-        );
-      },
+          );
+        },
       ),
     );
   }
@@ -239,7 +239,6 @@ class _HelpFaqPageState extends State<HelpFaqPage> {
         ),
       ),
       const SizedBox(height: ButlerlySpacing.section),
-
     ];
   }
 }
