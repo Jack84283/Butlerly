@@ -499,7 +499,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               onChanged: preference == null
                   ? null
                   : (value) =>
-                      unawaited(_setTransactionSaveSoundEnabled(value)),
+                        unawaited(_setTransactionSaveSoundEnabled(value)),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: ButlerlySpacing.standard,
               ),
