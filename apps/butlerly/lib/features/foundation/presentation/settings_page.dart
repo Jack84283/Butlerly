@@ -399,7 +399,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   children: [
                     _DesktopMoreRow(
                       title: HelpCopy.text(context, 'title'),
-                      onTap: () => context.push('/help'),
+                      onTap: () => context.go('/help'),
                     ),
                     _DesktopMoreRow(
                       title: l10n.text('legalLicenses'),
@@ -713,7 +713,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               icon: Icons.help_outline_rounded,
               title: HelpCopy.text(context, 'title'),
               subtitle: HelpCopy.text(context, 'subtitle'),
-              onTap: () => context.push('/help'),
+              onTap: () => context.go('/help'),
             ),
             _SettingsRow(
               icon: Icons.gavel_outlined,

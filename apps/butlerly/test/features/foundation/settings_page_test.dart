@@ -202,9 +202,13 @@ void main() {
     // Tap the visible label. The wider InkWell center may be below the
     // viewport after a bottom-of-page ensureVisible scroll.
     await tester.tap(helpLabel);
-    // The asset reader may still be loading; the destination widget should
-    // appear immediately after navigation.
-    await tester.pump(const Duration(milliseconds: 600));
+    // The app shell and router can schedule an additional frame after
+    // navigation. Do not wait for the Help loading spinner to settle.
+    for (var attempt = 0; attempt < 10; attempt++) {
+      await tester.pump(const Duration(milliseconds: 100));
+      if (find.byType(HelpFaqPage).evaluate().isNotEmpty) break;
+    }
+    expect(appRouter.routeInformationProvider.value.uri.path, '/help');
     expect(find.byType(HelpFaqPage), findsOneWidget);
     expect(find.text('Help & FAQ'), findsWidgets);
   });
