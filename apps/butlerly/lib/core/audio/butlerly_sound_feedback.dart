@@ -22,10 +22,14 @@ final class ButlerlySoundFeedback {
       // Keep the short local sound buffered across interactions. AudioPlayer
       // replaces an active source before starting the next one.
       if (!_configured) {
-        // iOS confirmation feedback must honor the Ring/Silent switch.
-        await _player.setAudioContext(
-          AudioContextConfig(respectSilence: true).build(),
-        );
+        // Only iOS needs an explicit ambient audio session so feedback
+        // honors the Ring/Silent switch. Other platforms keep their default
+        // routing and do not depend on session APIs being implemented.
+        if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+          await _player.setAudioContext(
+            AudioContextConfig(respectSilence: true).build(),
+          );
+        }
         await _player.setReleaseMode(ReleaseMode.stop);
         _configured = true;
       }
