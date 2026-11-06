@@ -3,6 +3,7 @@ import 'package:butlerly/design_system/components/butlerly_brand_icon.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/budgets/presentation/budgets_page.dart';
 import 'package:butlerly/features/financial_profile/presentation/financial_profile_page.dart';
+import 'package:butlerly/features/help/presentation/help_faq_page.dart';
 import 'package:butlerly/features/foundation/presentation/privacy_data_page.dart';
 import 'package:butlerly/features/foundation/presentation/settings_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -192,6 +193,19 @@ void main() {
       '/financial-profile',
     );
     expect(find.byType(FinancialProfilePage), findsOneWidget);
+
+    appRouter.go('/settings');
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Help & FAQ'));
+    await tester.tap(
+      find.ancestor(
+        of: find.text('Help & FAQ'),
+        matching: find.byType(InkWell),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(appRouter.routeInformationProvider.value.uri.path, '/help');
+    expect(find.byType(HelpFaqPage), findsOneWidget);
   });
 
   testWidgets('compact More routes Privacy & data to the shared page', (

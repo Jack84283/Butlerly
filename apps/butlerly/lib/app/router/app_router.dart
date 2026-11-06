@@ -25,6 +25,7 @@ import 'package:butlerly/features/foundation/presentation/statement_capture_page
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/features/insights/presentation/insights_page.dart';
+import 'package:butlerly/features/help/presentation/help_faq_page.dart';
 import 'package:butlerly/features/tools/presentation/payment_settlements_page.dart';
 import 'package:butlerly/features/tools/presentation/rules_page.dart';
 import 'package:butlerly/features/tools/presentation/tools_page.dart';
@@ -153,6 +154,10 @@ final appRouter = GoRouter(
         GoRoute(
           path: '/legal-licenses',
           builder: (_, _) => const LegalLicensesPage(),
+        ),
+        GoRoute(
+          path: '/help',
+          builder: (_, _) => const HelpFaqPage(),
         ),
         GoRoute(
           path: '/review',

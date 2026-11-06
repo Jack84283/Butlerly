@@ -1,0 +1,97 @@
+import 'package:butlerly/features/help/presentation/help_faq_page.dart';
+import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  Widget app(Locale locale) => MaterialApp(
+        locale: locale,
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: const HelpFaqPage(),
+      );
+
+  testWidgets('Help searches locally and opens FAQ to full guide chapter', (
+    tester,
+  ) async {
+    await tester.pumpWidget(app(const Locale('en')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Help & FAQ'), findsOneWidget);
+    expect(find.byKey(const ValueKey('help-full-guide')), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const ValueKey('help-search')),
+      'merge replace',
+    );
+    await tester.pumpAndSettle();
+    final result = find.byKey(const ValueKey('help-hit-FAQ-022'));
+    expect(result, findsOneWidget);
+    await tester.ensureVisible(result);
+    await tester.tap(result);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Read detailed guide'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('help-read-guide')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('19. RESTORE'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Help no results has a way back to browse', (tester) async {
+    await tester.pumpWidget(app(const Locale('en')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const ValueKey('help-search')),
+      'thiscannotpossiblymatchanyhelp',
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('No matching help topics'), findsOneWidget);
+    await tester.tap(find.text('All topics'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('help-full-guide')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final locale in [const Locale('zh', 'CN'), const Locale('es')]) {
+    testWidgets('Help displays localized FAQ at ' + locale.languageCode, (
+      tester,
+    ) async {
+      await tester.pumpWidget(app(locale));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('help-search')), findsOneWidget);
+      await tester.enterText(
+        find.byKey(const ValueKey('help-search')),
+        locale.languageCode == 'zh' ? '同步' : 'sincronizar',
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('help-hit-FAQ-009')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('full User Guide is browsable on a wide layout', (tester) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(app(const Locale('en')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('help-full-guide')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('User Guide'), findsOneWidget);
+    expect(find.byKey(const ValueKey('help-article-ch-1')), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+}

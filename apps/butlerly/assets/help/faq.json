@@ -1,0 +1,759 @@
+{
+  "version": "2026-11-06",
+  "faqs": [
+    {
+      "id": "FAQ-001",
+      "category": "Getting Started",
+      "keywords": [
+        "account",
+        "sign in",
+        "login",
+        "offline"
+      ],
+      "guideId": "ch-1",
+      "translations": {
+        "en": {
+          "question": "Do I need an account?",
+          "answer": "No Butlerly account is required for core Alpha finance work. Your financial records are designed to stay on your device. See Guide §1–2."
+        },
+        "zh": {
+          "question": "需要注册账户吗？",
+          "answer": "Alpha 版的核心财务功能无需 Butlerly 账户。财务记录设计为保存在您的设备上。参见指南第 1–2 章。"
+        },
+        "es": {
+          "question": "¿Necesito una cuenta?",
+          "answer": "No necesitas una cuenta de Butlerly para las funciones financieras básicas de Alpha. Los datos están diseñados para permanecer en tu dispositivo. Consulta los capítulos 1–2."
+        }
+      }
+    },
+    {
+      "id": "FAQ-002",
+      "category": "Getting Started",
+      "keywords": [
+        "internet",
+        "wifi",
+        "airplane",
+        "offline"
+      ],
+      "guideId": "ch-1",
+      "translations": {
+        "en": {
+          "question": "Does Butlerly work without internet?",
+          "answer": "Yes. Core finance features work without Internet access. Download files from other services before importing them. See Guide Chapter 1 and Appendix C."
+        },
+        "zh": {
+          "question": "没有网络也能使用吗？",
+          "answer": "可以。核心财务功能可离线使用。请先在其他应用中下载需要导入的文件。参见指南第 1 章和附录 C。"
+        },
+        "es": {
+          "question": "¿Funciona sin Internet?",
+          "answer": "Sí. Las funciones financieras principales funcionan sin Internet. Descarga los documentos antes de importarlos. Consulta el capítulo 1 y el apéndice C."
+        }
+      }
+    },
+    {
+      "id": "FAQ-003",
+      "category": "Getting Started",
+      "keywords": [
+        "language",
+        "spanish",
+        "chinese",
+        "english"
+      ],
+      "guideId": "ch-17",
+      "translations": {
+        "en": {
+          "question": "How can I change the language?",
+          "answer": "Open Settings/More → Language and select English, Español or 简体中文. Your imported notes and original merchant names are not automatically translated. See Guide §17."
+        },
+        "zh": {
+          "question": "怎样切换语言？",
+          "answer": "打开“设置/更多”→“语言”，选择英语、西班牙语或简体中文。导入的备注和商家原始名称不会自动翻译。参见第 17 章。"
+        },
+        "es": {
+          "question": "¿Cómo cambio el idioma?",
+          "answer": "Abre Ajustes/Más → Idioma y elige inglés, español o chino simplificado. Las notas y los nombres originales de los comercios no se traducen automáticamente. Consulta el capítulo 17."
+        }
+      }
+    },
+    {
+      "id": "FAQ-004",
+      "category": "Getting Started",
+      "keywords": [
+        "currency",
+        "base",
+        "timezone",
+        "financial day"
+      ],
+      "guideId": "ch-2",
+      "translations": {
+        "en": {
+          "question": "Where do I set currency and time zone?",
+          "answer": "Use Settings/More → Base Currency and Time Zone. These affect reference reporting and financial periods; they do not rewrite original transaction currencies. See Guide §2 and §17."
+        },
+        "zh": {
+          "question": "在哪里设置本位币和时区？",
+          "answer": "在“设置/更多”中选择“本位币”和“时区”。这些设置影响报表参考币种及财务期间，不会改写交易原始币种。参见第 2、17 章。"
+        },
+        "es": {
+          "question": "¿Dónde configuro la moneda y la zona horaria?",
+          "answer": "En Ajustes/Más, cambia la moneda base y la zona horaria. Afectan los informes y períodos, no la moneda original de la transacción. Consulta los capítulos 2 y 17."
+        }
+      }
+    },
+    {
+      "id": "FAQ-005",
+      "category": "Transactions",
+      "keywords": [
+        "add",
+        "manual",
+        "expense",
+        "income"
+      ],
+      "guideId": "ch-5",
+      "translations": {
+        "en": {
+          "question": "How do I add a transaction?",
+          "answer": "Choose Add → Add Transaction Manually. Enter amount, currency, direction and date, add optional details, then select Save Locally. Verify it in Transactions. See Guide §5."
+        },
+        "zh": {
+          "question": "如何手动添加交易？",
+          "answer": "选择“添加”→“手动添加交易”，输入金额、币种、收支类型和日期，可补充其他信息，然后选择“本地保存”。请在交易列表核对。参见第 5 章。"
+        },
+        "es": {
+          "question": "¿Cómo añado una transacción?",
+          "answer": "Elige Añadir → Añadir transacción manualmente. Indica importe, moneda, tipo y fecha; añade detalles y pulsa Guardar localmente. Compruébala en Transacciones. Consulta el capítulo 5."
+        }
+      }
+    },
+    {
+      "id": "FAQ-006",
+      "category": "Transactions",
+      "keywords": [
+        "edit",
+        "correct",
+        "wrong amount",
+        "merchant"
+      ],
+      "guideId": "ch-5",
+      "translations": {
+        "en": {
+          "question": "How do I fix a wrong amount or category?",
+          "answer": "Open Transactions, select the record and choose Edit. Save the corrected amount or classification, then recheck Review and Analysis if applicable. See Guide §5 and §11."
+        },
+        "zh": {
+          "question": "如何修改错误的金额或类别？",
+          "answer": "在“交易”中打开记录并选择“编辑”，修正金额或类别后保存。必要时重新查看“审核”和“分析”。参见第 5、11 章。"
+        },
+        "es": {
+          "question": "¿Cómo corrijo un importe o categoría?",
+          "answer": "Abre Transacciones, selecciona el registro y pulsa Editar. Guarda el cambio y revisa Revisión y Análisis si corresponde. Consulta los capítulos 5 y 11."
+        }
+      }
+    },
+    {
+      "id": "FAQ-007",
+      "category": "Transactions",
+      "keywords": [
+        "archive",
+        "restore",
+        "history",
+        "delete"
+      ],
+      "guideId": "ch-6",
+      "translations": {
+        "en": {
+          "question": "Is archiving the same as deleting?",
+          "answer": "No. Archived transactions remain in historical finance calculations. Permanent deletion is a different action and can remove linked evidence. Back up before deleting. See Guide §6."
+        },
+        "zh": {
+          "question": "归档与删除一样吗？",
+          "answer": "不一样。归档交易仍计入历史财务分析；永久删除可能同时清除关联凭证。删除前请先备份。参见第 6 章。"
+        },
+        "es": {
+          "question": "¿Archivar equivale a eliminar?",
+          "answer": "No. Las transacciones archivadas siguen contando en el historial financiero. La eliminación permanente es distinta y puede borrar justificantes vinculados. Haz una copia antes. Consulta el capítulo 6."
+        }
+      }
+    },
+    {
+      "id": "FAQ-008",
+      "category": "Transactions",
+      "keywords": [
+        "payment source",
+        "card",
+        "bank account"
+      ],
+      "guideId": "ch-7",
+      "translations": {
+        "en": {
+          "question": "Do payment sources connect to my bank?",
+          "answer": "No. A payment source is a local description of a card, account, cash or wallet. It does not sign in to or fetch data from your bank. See Guide §7."
+        },
+        "zh": {
+          "question": "支付来源会连接银行吗？",
+          "answer": "不会。支付来源只是本地记录的卡、账户、现金或钱包信息，不会登录银行或自动获取数据。参见第 7 章。"
+        },
+        "es": {
+          "question": "¿Las fuentes de pago se conectan al banco?",
+          "answer": "No. Son referencias locales a tarjeta, cuenta, efectivo o cartera; no inician sesión ni descargan datos del banco. Consulta el capítulo 7."
+        }
+      }
+    },
+    {
+      "id": "FAQ-009",
+      "category": "Imports",
+      "keywords": [
+        "google drive",
+        "icloud",
+        "onedrive",
+        "cloud",
+        "sync",
+        "download",
+        "sync",
+        "cloud",
+        "Google Drive",
+        "iCloud",
+        "OneDrive",
+        "Dropbox",
+        "download",
+        "import",
+        "bank statement",
+        "同步",
+        "云端",
+        "descargar",
+        "sincronizar"
+      ],
+      "guideId": "ch-10",
+      "translations": {
+        "en": {
+          "question": "Can Butlerly sync documents from Google Drive or iCloud?",
+          "answer": "Not directly. Download/export the document outside Butlerly to a supported local file, choose Import, review it and confirm. Butlerly does not keep the cloud source synchronized. See Guide §10 and Appendix C."
+        },
+        "zh": {
+          "question": "能同步 Google Drive 或 iCloud 文件吗？",
+          "answer": "不能直接同步。请先在 Butlerly 以外下载或导出为受支持的本地文件，再导入、审核并确认。Butlerly 不会自动同步云端源文件。参见第 10 章和附录 C。"
+        },
+        "es": {
+          "question": "¿Puede sincronizar documentos de Google Drive o iCloud?",
+          "answer": "No directamente. Descarga o exporta el documento fuera de Butlerly a un archivo local compatible; impórtalo, revísalo y confírmalo. No se mantiene sincronizado. Consulta el capítulo 10 y el apéndice C."
+        }
+      }
+    },
+    {
+      "id": "FAQ-010",
+      "category": "Imports",
+      "keywords": [
+        "bank",
+        "online statement",
+        "download"
+      ],
+      "guideId": "ch-10",
+      "translations": {
+        "en": {
+          "question": "Can Butlerly download my bank statements automatically?",
+          "answer": "No in Alpha. Export a statement yourself from your bank website or app, then use the matching local CSV or statement import workflow. Never enter your bank password in Butlerly. See Guide §10."
+        },
+        "zh": {
+          "question": "能自动下载银行流水吗？",
+          "answer": "Alpha 版不支持。请从银行网站或应用自行导出流水，再使用相应的本地 CSV 或账单导入流程。不要在 Butlerly 中输入网银密码。参见第 10 章。"
+        },
+        "es": {
+          "question": "¿Descarga extractos bancarios automáticamente?",
+          "answer": "No en Alpha. Exporta el extracto desde tu banco y usa el flujo de importación local compatible. Nunca introduzcas tu contraseña bancaria en Butlerly. Consulta el capítulo 10."
+        }
+      }
+    },
+    {
+      "id": "FAQ-011",
+      "category": "Imports",
+      "keywords": [
+        "csv",
+        "template",
+        "columns",
+        "header"
+      ],
+      "guideId": "ch-10",
+      "translations": {
+        "en": {
+          "question": "What CSV file format is supported?",
+          "answer": "Use Butlerly's downloaded Transactions or Receipts V1 template. The importer recognizes supported English, Chinese and Spanish headers; unrelated bank layouts may need conversion. See Guide §10 and Appendix A."
+        },
+        "zh": {
+          "question": "支持什么 CSV 格式？",
+          "answer": "请使用 Butlerly 下载的交易或收据 V1 模板。导入器支持英语、中文和西班牙语模板表头；其他银行格式可能需要转换。参见第 10 章和附录 A。"
+        },
+        "es": {
+          "question": "¿Qué formato CSV admite?",
+          "answer": "Usa la plantilla V1 de Transacciones o Recibos descargada desde Butlerly. Admite encabezados en inglés, chino y español; otros formatos bancarios quizá deban adaptarse. Consulta el capítulo 10 y el apéndice A."
+        }
+      }
+    },
+    {
+      "id": "FAQ-012",
+      "category": "Imports",
+      "keywords": [
+        "failed",
+        "invalid row",
+        "error"
+      ],
+      "guideId": "ch-10",
+      "translations": {
+        "en": {
+          "question": "Why did my CSV import fail?",
+          "answer": "Check the template headers, required values, date, currency, direction and errors displayed in validation. Correct the CSV locally and retry; don't ignore validation. See Guide §10 and §21."
+        },
+        "zh": {
+          "question": "为什么 CSV 导入失败？",
+          "answer": "请检查模板表头、必填字段、日期、币种、交易类型及校验错误。先在本地修正 CSV 后重试，不要忽略错误提示。参见第 10、21 章。"
+        },
+        "es": {
+          "question": "¿Por qué falló la importación CSV?",
+          "answer": "Revisa encabezados, campos, fecha, moneda, tipo y errores de validación. Corrige el archivo localmente y vuelve a intentarlo. Consulta los capítulos 10 y 21."
+        }
+      }
+    },
+    {
+      "id": "FAQ-013",
+      "category": "Imports",
+      "keywords": [
+        "pdf",
+        "google docs",
+        "xlsx",
+        "format",
+        "unsupported"
+      ],
+      "guideId": "ch-10",
+      "translations": {
+        "en": {
+          "question": "Can I import an online Google Doc or any bank spreadsheet?",
+          "answer": "Not as a live link. Export the online document first, and convert it to the supported Butlerly format where necessary. Do not assume arbitrary XLSX/PDF/CSV structures are understood. See Guide §10."
+        },
+        "zh": {
+          "question": "可以直接导入在线 Google 文档或任意银行表格吗？",
+          "answer": "不能通过在线链接直接导入。请先导出文件，必要时转换为 Butlerly 支持的格式。不能假定所有 XLSX、PDF 或 CSV 结构都能识别。参见第 10 章。"
+        },
+        "es": {
+          "question": "¿Puedo importar un Google Doc en línea o cualquier hoja bancaria?",
+          "answer": "No mediante un enlace activo. Primero exporta el documento y conviértelo al formato compatible cuando sea necesario. No se admite automáticamente cualquier estructura XLSX, PDF o CSV. Consulta el capítulo 10."
+        }
+      }
+    },
+    {
+      "id": "FAQ-014",
+      "category": "Receipts",
+      "keywords": [
+        "receipt",
+        "photo",
+        "ocr",
+        "scan",
+        "attach"
+      ],
+      "guideId": "ch-9",
+      "translations": {
+        "en": {
+          "question": "Does adding a receipt create an expense automatically?",
+          "answer": "No. Review the extracted information and save a transaction explicitly or link the receipt to an existing payment. Attaching a file and confirming an expense are separate actions. See Guide §9."
+        },
+        "zh": {
+          "question": "添加收据会自动生成支出吗？",
+          "answer": "不会。请先审核提取结果，再明确保存交易或将收据关联到已有付款。附件保存和支出确认是不同操作。参见第 9 章。"
+        },
+        "es": {
+          "question": "¿Añadir un recibo crea un gasto automáticamente?",
+          "answer": "No. Revisa la extracción y confirma una transacción o vincula el recibo a un pago existente. Adjuntar un archivo no equivale a confirmar un gasto. Consulta el capítulo 9."
+        }
+      }
+    },
+    {
+      "id": "FAQ-015",
+      "category": "Review",
+      "keywords": [
+        "duplicate",
+        "keep both"
+      ],
+      "guideId": "ch-11",
+      "translations": {
+        "en": {
+          "question": "What does Keep Both mean?",
+          "answer": "Use Keep Both when two candidate records are genuinely separate financial events. Both surviving transactions remain countable. Check evidence first. See Guide §11."
+        },
+        "zh": {
+          "question": "“保留两笔”是什么意思？",
+          "answer": "当两条候选记录确实代表两笔不同交易时，选择“保留两笔”。两笔交易都会计入计算。请先核对凭证。参见第 11 章。"
+        },
+        "es": {
+          "question": "¿Qué significa Conservar ambas?",
+          "answer": "Úsalo cuando dos registros candidatos representan operaciones distintas. Ambas transacciones cuentan; verifica las pruebas antes. Consulta el capítulo 11."
+        }
+      }
+    },
+    {
+      "id": "FAQ-016",
+      "category": "Review",
+      "keywords": [
+        "duplicate",
+        "consolidate",
+        "use one"
+      ],
+      "guideId": "ch-11",
+      "translations": {
+        "en": {
+          "question": "What does Consolidate / Use One mean?",
+          "answer": "Use it when candidates describe the same real-world event. Butlerly counts one selected representative for financial analysis, preserving relevant source context. See Guide §11."
+        },
+        "zh": {
+          "question": "“合并/采用一笔”是什么意思？",
+          "answer": "当候选记录描述同一实际交易时使用。财务分析只计入选定的代表记录，同时保留相关来源信息。参见第 11 章。"
+        },
+        "es": {
+          "question": "¿Qué significa Consolidar / Usar una?",
+          "answer": "Úsalo si varios registros corresponden a la misma operación. El análisis cuenta un registro representativo y conserva el contexto de origen pertinente. Consulta el capítulo 11."
+        }
+      }
+    },
+    {
+      "id": "FAQ-017",
+      "category": "Review",
+      "keywords": [
+        "needs review",
+        "uncategorized",
+        "stale"
+      ],
+      "guideId": "ch-11",
+      "translations": {
+        "en": {
+          "question": "Why is a record marked Needs Review?",
+          "answer": "It may have incomplete fields, uncertain extraction, a duplicate/conflict, missing normalization or outdated duplicate evidence. Open Review, inspect the source and correct the issue. See Guide §11."
+        },
+        "zh": {
+          "question": "为什么记录显示“需要审核”？",
+          "answer": "可能存在信息不完整、识别不确定、重复或冲突、缺少汇率转换数据或过期的重复记录关系。请在“审核”中核对并修正。参见第 11 章。"
+        },
+        "es": {
+          "question": "¿Por qué aparece Necesita revisión?",
+          "answer": "Puede faltar información, haber extracción incierta, duplicados, conflictos o datos de conversión. Abre Revisión y corrige según la fuente. Consulta el capítulo 11."
+        }
+      }
+    },
+    {
+      "id": "FAQ-018",
+      "category": "Analysis",
+      "keywords": [
+        "missing fx",
+        "currency",
+        "unavailable",
+        "zero"
+      ],
+      "guideId": "ch-14",
+      "translations": {
+        "en": {
+          "question": "Why is a total unavailable instead of zero?",
+          "answer": "Different currencies may lack valid conversion data, or a comparison may lack sufficient history. Unavailable does not mean that there was no spending. See Guide §14."
+        },
+        "zh": {
+          "question": "为什么总额显示不可用而不是零？",
+          "answer": "不同币种可能缺少有效汇率数据，或者缺少可比较的历史记录。“不可用”不代表没有支出。参见第 14 章。"
+        },
+        "es": {
+          "question": "¿Por qué un total aparece no disponible y no como cero?",
+          "answer": "Puede faltar una conversión válida entre monedas o historial suficiente para comparar. No disponible no significa que no hubo gastos. Consulta el capítulo 14."
+        }
+      }
+    },
+    {
+      "id": "FAQ-019",
+      "category": "Analysis",
+      "keywords": [
+        "drill down",
+        "transactions",
+        "chart"
+      ],
+      "guideId": "ch-13",
+      "translations": {
+        "en": {
+          "question": "How do I see the transactions behind a chart?",
+          "answer": "Select an actionable Analysis or Insights breakdown to open its supporting transaction view. Check the active period and filters before comparing totals. See Guide §13–14."
+        },
+        "zh": {
+          "question": "如何查看图表背后的交易？",
+          "answer": "选择“分析”或“洞察”中可点击的明细项，打开对应交易列表。比较金额前请检查当前期间和筛选条件。参见第 13–14 章。"
+        },
+        "es": {
+          "question": "¿Cómo veo las transacciones de un gráfico?",
+          "answer": "Selecciona un desglose interactivo en Análisis o Información para abrir los registros relacionados. Comprueba período y filtros. Consulta los capítulos 13–14."
+        }
+      }
+    },
+    {
+      "id": "FAQ-020",
+      "category": "Budgets",
+      "keywords": [
+        "budget",
+        "category",
+        "monthly",
+        "suggest"
+      ],
+      "guideId": "ch-15",
+      "translations": {
+        "en": {
+          "question": "How do I make a monthly budget?",
+          "answer": "Open Budgets, choose Add, select Overall/Category/Subcategory/Merchant scope, enter amount and currency, and save. Review any suggestion before accepting it. See Guide §15."
+        },
+        "zh": {
+          "question": "如何设置月度预算？",
+          "answer": "打开“预算”，选择“添加”，设置总体、类别、子类别或商家范围，输入金额与币种并保存。采用建议前请先核对。参见第 15 章。"
+        },
+        "es": {
+          "question": "¿Cómo creo un presupuesto mensual?",
+          "answer": "Abre Presupuestos, elige Añadir, define alcance general/categoría/subcategoría/comercio, importe y moneda, y guarda. Revisa las sugerencias. Consulta el capítulo 15."
+        }
+      }
+    },
+    {
+      "id": "FAQ-021",
+      "category": "Backup & Recovery",
+      "keywords": [
+        "backup",
+        "password",
+        "encrypted"
+      ],
+      "guideId": "ch-18",
+      "translations": {
+        "en": {
+          "question": "How do I create an encrypted backup?",
+          "answer": "Settings/More → Privacy & Data → Backup. Create and confirm a strong password, save to a protected destination, then verify the file exists. See Guide §18."
+        },
+        "zh": {
+          "question": "如何创建加密备份？",
+          "answer": "打开“设置/更多”→“隐私与数据”→“备份”，设置并确认强密码，将文件保存到安全位置，并确认文件确实存在。参见第 18 章。"
+        },
+        "es": {
+          "question": "¿Cómo creo una copia cifrada?",
+          "answer": "Ajustes/Más → Privacidad y datos → Copia de seguridad. Define y confirma una contraseña segura, guarda el archivo y comprueba que existe. Consulta el capítulo 18."
+        }
+      }
+    },
+    {
+      "id": "FAQ-022",
+      "category": "Backup & Recovery",
+      "keywords": [
+        "restore",
+        "merge",
+        "replace",
+        "cancel"
+      ],
+      "guideId": "ch-19",
+      "translations": {
+        "en": {
+          "question": "What is the difference between Merge and Replace?",
+          "answer": "Merge adds eligible information from the backup while preserving local records; an unsafe conflict can stop the operation. Replace swaps the current information for the backup and can discard newer changes. Back up first and read the summary. See Guide Chapter 19."
+        },
+        "zh": {
+          "question": "“合并恢复”和“替换恢复”有什么区别？",
+          "answer": "“合并”会在保留现有记录的同时加入符合条件的备份内容；遇到无法安全处理的冲突时可能停止。“替换”将当前数据换成备份内容，可能丢失较新的更改。请先备份并仔细阅读摘要。参见指南第 19 章。"
+        },
+        "es": {
+          "question": "¿Cuál es la diferencia entre Combinar y Reemplazar?",
+          "answer": "Combinar añade información compatible de la copia y conserva los registros locales; puede detenerse ante un conflicto inseguro. Reemplazar sustituye los datos actuales y puede perder cambios recientes. Haz una copia primero y revisa el resumen. Consulta el capítulo 19."
+        }
+      }
+    },
+    {
+      "id": "FAQ-023",
+      "category": "Backup & Recovery",
+      "keywords": [
+        "lost password",
+        "recovery"
+      ],
+      "guideId": "ch-18",
+      "translations": {
+        "en": {
+          "question": "Can Butlerly recover a lost backup password?",
+          "answer": "Do not assume so. Keep the backup password in a secure place independent of the file. Wrong password or integrity errors should stop the restore without replacing existing data. See Guide §18–19."
+        },
+        "zh": {
+          "question": "忘记备份密码还能恢复吗？",
+          "answer": "不要假定可以。请将密码单独安全保存。密码错误或文件完整性失败时，应停止恢复并保留现有数据。参见第 18–19 章。"
+        },
+        "es": {
+          "question": "¿Se puede recuperar una contraseña de copia perdida?",
+          "answer": "No cuentes con ello. Guarda la contraseña por separado y de forma segura. Un fallo de contraseña o integridad debe detener la restauración sin reemplazar datos. Consulta los capítulos 18–19."
+        }
+      }
+    },
+    {
+      "id": "FAQ-024",
+      "category": "Backup & Recovery",
+      "keywords": [
+        "new phone",
+        "move devices",
+        "transfer"
+      ],
+      "guideId": "ch-19",
+      "translations": {
+        "en": {
+          "question": "How do I move Butlerly data to another device?",
+          "answer": "Back up on the original device, transfer the encrypted file using your chosen method, then Restore on the destination and verify the records. No automatic cross-device sync is provided in Alpha. See Guide §19."
+        },
+        "zh": {
+          "question": "如何把数据转到另一台设备？",
+          "answer": "在旧设备创建加密备份，自行传输备份文件，在新设备恢复并核对记录。Alpha 版没有自动跨设备同步。参见第 19 章。"
+        },
+        "es": {
+          "question": "¿Cómo traslado datos a otro dispositivo?",
+          "answer": "Crea una copia cifrada en el dispositivo anterior, transfiere el archivo por tu cuenta, restaura en el nuevo y verifica los registros. No hay sincronización automática en Alpha. Consulta el capítulo 19."
+        }
+      }
+    },
+    {
+      "id": "FAQ-025",
+      "category": "Privacy",
+      "keywords": [
+        "export",
+        "share",
+        "erase",
+        "delete"
+      ],
+      "guideId": "ch-20",
+      "translations": {
+        "en": {
+          "question": "How do I export or erase my data?",
+          "answer": "Open Settings/More → Privacy & Data. Export To File creates user-accessible files; Reset All Data is destructive and requires confirmation. Back up before erasing. See Guide §20."
+        },
+        "zh": {
+          "question": "如何导出或清除数据？",
+          "answer": "打开“设置/更多”→“隐私与数据”。“导出到文件”生成可访问的文件；“重置全部数据”是需确认的破坏性操作。清除前先备份。参见第 20 章。"
+        },
+        "es": {
+          "question": "¿Cómo exporto o borro mis datos?",
+          "answer": "En Ajustes/Más → Privacidad y datos, Exportar a archivo crea archivos accesibles; Restablecer todos los datos es destructivo y pide confirmación. Haz una copia antes. Consulta el capítulo 20."
+        }
+      }
+    },
+    {
+      "id": "FAQ-026",
+      "category": "Privacy",
+      "keywords": [
+        "where stored",
+        "cloud",
+        "privacy"
+      ],
+      "guideId": "ch-1",
+      "translations": {
+        "en": {
+          "question": "Where is my financial data stored?",
+          "answer": "Your financial records and saved attachments are kept in Butlerly's private storage on your device. Files you choose to export or share may be stored wherever you save them. See Guide Chapters 1 and 20."
+        },
+        "zh": {
+          "question": "财务数据保存在哪里？",
+          "answer": "您的财务记录和保存的附件位于设备上 Butlerly 的专用存储空间。您主动导出或分享的文件可能保存在所选位置。参见指南第 1、20 章。"
+        },
+        "es": {
+          "question": "¿Dónde se guardan mis datos financieros?",
+          "answer": "Tus registros financieros y archivos adjuntos se guardan en el espacio privado de Butlerly en tu dispositivo. Los archivos exportados o compartidos pueden quedar donde decidas guardarlos. Consulta los capítulos 1 y 20."
+        }
+      }
+    },
+    {
+      "id": "FAQ-027",
+      "category": "Plans",
+      "keywords": [
+        "pro",
+        "family",
+        "purchase",
+        "subscription"
+      ],
+      "guideId": "ch-1",
+      "translations": {
+        "en": {
+          "question": "Is Pro or Family licensing available in Alpha?",
+          "answer": "No. Purchases, entitlement management and Family Pro licensing are deferred until after Alpha. Core Alpha finance features are not behind a paywall. See Guide §1 and §25."
+        },
+        "zh": {
+          "question": "Alpha 版有 Pro 或家庭授权吗？",
+          "answer": "没有。购买、权益管理和家庭 Pro 授权推迟到 Alpha 之后。核心 Alpha 财务功能不设付费墙。参见第 1、25 章。"
+        },
+        "es": {
+          "question": "¿Hay licencias Pro o Familia en Alpha?",
+          "answer": "No. Las compras, los derechos de acceso y Familia Pro quedan para después de Alpha. Las funciones financieras básicas no tienen muro de pago. Consulta los capítulos 1 y 25."
+        }
+      }
+    },
+    {
+      "id": "FAQ-028",
+      "category": "Help",
+      "keywords": [
+        "faq",
+        "help",
+        "search",
+        "online assistant"
+      ],
+      "guideId": "ch-3",
+      "translations": {
+        "en": {
+          "question": "Does Help Search send questions online?",
+          "answer": "No. Help searches articles included with Butlerly on your device; it does not send your search words or financial records to an online service. See Guide Chapter 3."
+        },
+        "zh": {
+          "question": "帮助搜索会把问题发到网上吗？",
+          "answer": "不会。帮助功能只搜索设备上 Butlerly 随附的文章，不会把搜索词或财务记录发送到网络服务。参见指南第 3 章。"
+        },
+        "es": {
+          "question": "¿La búsqueda de ayuda envía preguntas a Internet?",
+          "answer": "No. La ayuda busca en los artículos incluidos en Butlerly y guardados en tu dispositivo. No envía tus búsquedas ni datos financieros a ningún servicio en línea. Consulta el capítulo 3."
+        }
+      }
+    },
+    {
+      "id": "FAQ-029",
+      "category": "Troubleshooting",
+      "keywords": [
+        "not found",
+        "filter",
+        "archive",
+        "missing"
+      ],
+      "guideId": "ch-6",
+      "translations": {
+        "en": {
+          "question": "Why can't I find a saved transaction?",
+          "answer": "Clear search and filters; check date, archived status, payment source and financial period. If you restored a backup, check its date and restore mode. See Guide §6, §13 and §21."
+        },
+        "zh": {
+          "question": "为什么找不到已保存交易？",
+          "answer": "清除搜索词和筛选条件；检查日期、归档状态、支付来源和财务期间。如曾恢复备份，请核对备份日期和恢复方式。参见第 6、13、21 章。"
+        },
+        "es": {
+          "question": "¿Por qué no encuentro una transacción guardada?",
+          "answer": "Borra búsqueda y filtros; revisa fecha, archivo, fuente de pago y período. Si restauraste una copia, comprueba su fecha y el modo elegido. Consulta los capítulos 6, 13 y 21."
+        }
+      }
+    },
+    {
+      "id": "FAQ-030",
+      "category": "Troubleshooting",
+      "keywords": [
+        "report",
+        "bug",
+        "support",
+        "alpha"
+      ],
+      "guideId": "ch-21",
+      "translations": {
+        "en": {
+          "question": "How do I report an Alpha problem safely?",
+          "answer": "Record app build, platform, screen, steps and error text. Redact private financial information and never share backup passwords. Use only the support channel officially provided with the Alpha build. See Guide §21 and §25."
+        },
+        "zh": {
+          "question": "如何安全反馈 Alpha 问题？",
+          "answer": "记录应用版本、设备平台、页面、复现步骤和错误提示。请遮盖私人财务信息，切勿分享备份密码。仅使用 Alpha 发布方正式提供的渠道。参见第 21、25 章。"
+        },
+        "es": {
+          "question": "¿Cómo informo de un problema de Alpha sin revelar datos?",
+          "answer": "Anota versión, plataforma, pantalla, pasos y error. Oculta información financiera privada y nunca compartas contraseñas de copias. Usa solo el canal oficial de Alpha. Consulta los capítulos 21 y 25."
+        }
+      }
+    }
+  ]
+}
