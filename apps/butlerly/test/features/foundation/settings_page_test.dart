@@ -1,4 +1,5 @@
 import 'package:butlerly/app/router/app_router.dart';
+import 'package:butlerly/core/audio/butlerly_sound_feedback.dart';
 import 'package:butlerly/design_system/components/butlerly_brand_icon.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/budgets/presentation/budgets_page.dart';
@@ -168,8 +169,11 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(appRouter.routeInformationProvider.value.uri.path, '/budgets');
     expect(find.byType(BudgetsPage), findsOneWidget);
+    expect(find.byKey(const ValueKey('budgets-back')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('budgets-back')));
+    await tester.pumpAndSettle();
+    expect(appRouter.routeInformationProvider.value.uri.path, '/settings');
 
     appRouter.go('/settings');
     await tester.pumpAndSettle();
@@ -301,7 +305,7 @@ void main() {
           .first,
     );
     await tester.pumpAndSettle();
-    expect(appRouter.routeInformationProvider.value.uri.path, '/budgets');
+    expect(find.byType(BudgetsPage), findsOneWidget);
     expect(find.byIcon(Icons.arrow_back_rounded), findsOneWidget);
     await tester.tap(find.byIcon(Icons.arrow_back_rounded));
     await tester.pumpAndSettle();
@@ -363,7 +367,38 @@ void main() {
     expect(find.byIcon(CupertinoIcons.chevron_down), findsNWidgets(5));
   }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
-  testWidgets('desktop More follows the two-column card mockup', (
+  testWidgets('More sound preview plays only on an enabled transition', (
+    tester,
+  ) async {
+    var playbackCount = 0;
+    ButlerlySoundFeedback.playbackForTesting = () async {
+      playbackCount += 1;
+    };
+    addTearDown(() => ButlerlySoundFeedback.playbackForTesting = null);
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    final setting = find.byKey(
+      const ValueKey('transaction-save-sound-setting'),
+    );
+    var tile = tester.widget<SwitchListTile>(setting);
+    expect(tile.value, isTrue);
+    tile.onChanged!(false);
+    // A second tap before the first write completes must be ignored.
+    // Reordered writes must never result in a stale enable chime.
+    tile.onChanged!(true);
+    await tester.pumpAndSettle();
+    expect(playbackCount, 0);
+
+    tile = tester.widget<SwitchListTile>(setting);
+    expect(tile.value, isFalse);
+    tile.onChanged!(true);
+    await tester.pumpAndSettle();
+    expect(playbackCount, 1);
+    expect(tester.widget<SwitchListTile>(setting).value, isTrue);
+  });
+
+  testWidgets('desktop More stacks the requested independent columns', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(1440, 900);
@@ -389,7 +424,7 @@ void main() {
       );
       expect(tester.getSize(row).height, ButlerlySize.minimumTarget);
     }
-    expect(find.text('Optional features'), findsOneWidget);
+    expect(find.text('Operation features'), findsOneWidget);
     expect(find.text('About Butlerly'), findsOneWidget);
     expect(find.text('Display name'), findsOneWidget);
     expect(find.text('Base currency'), findsOneWidget);
@@ -419,8 +454,16 @@ void main() {
 
     final preferences = tester.getRect(find.text('Preferences'));
     final privacy = tester.getRect(find.text('Privacy & data'));
-    expect(preferences.left, lessThan(privacy.left));
-    expect(preferences.top, closeTo(privacy.top, 1));
+    final about = tester.getRect(find.text('About Butlerly'));
+    final financial = tester.getRect(find.text('Financial settings'));
+    final operational = tester.getRect(find.text('Operation features'));
+    expect(preferences.left, closeTo(privacy.left, 1));
+    expect(privacy.top, greaterThan(preferences.top));
+    expect(about.left, greaterThan(preferences.left));
+    expect(financial.left, closeTo(about.left, 1));
+    expect(operational.left, closeTo(about.left, 1));
+    expect(financial.top, greaterThan(about.top));
+    expect(operational.top, greaterThan(financial.top));
     expect(tester.takeException(), isNull);
   });
 

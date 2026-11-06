@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/app/theme/theme_mode_provider.dart';
+import 'package:butlerly/core/audio/butlerly_sound_feedback.dart';
 import 'package:butlerly/design_system/components/butlerly_brand_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
@@ -31,6 +34,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   final _appearanceKey = GlobalKey();
   final _aboutKey = GlobalKey();
   String? _scheduledSection;
+  bool _savingTransactionSound = false;
   late final Future<String> _desktopVersion = rootBundle
       .loadString('pubspec.yaml')
       .then((contents) {
@@ -116,6 +120,33 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     }
   }
 
+  Future<void> _setTransactionSaveSoundEnabled(bool value) async {
+    // Disable both controls until persistence completes, preventing
+    // overlapping sound writes and stale confirmation playback.
+    if (_savingTransactionSound) return;
+    final current = ref.read(userPreferenceProvider).value;
+    if (current == null || current.transactionSaveSoundEnabled == value) {
+      return;
+    }
+    setState(() => _savingTransactionSound = true);
+    var saved = false;
+    try {
+      saved = await ref
+          .read(userPreferenceProvider.notifier)
+          .saveChanges(transactionSaveSoundEnabled: value);
+    } finally {
+      if (mounted) setState(() => _savingTransactionSound = false);
+    }
+    if (saved &&
+        value &&
+        mounted &&
+        ref.read(userPreferenceProvider).value?.transactionSaveSoundEnabled ==
+            true) {
+      // Preview only the committed, still-enabled preference.
+      unawaited(ButlerlySoundFeedback.play());
+    }
+  }
+
   Future<void> _chooseDesktopValue<T>({
     required String label,
     required T value,
@@ -149,7 +180,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       IconData icon,
       String label,
       String value,
-      VoidCallback onTap,
+      VoidCallback? onTap,
     ) => _DesktopMoreRow(icon: icon, title: label, value: value, onTap: onTap);
 
     final preferences = <Widget>[
@@ -157,21 +188,32 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         Icons.volume_up_outlined,
         l10n.text('transactionSaveSound'),
         l10n.text(
-          preference?.transactionSaveSoundEnabled ?? true
+          preference == null
+              ? 'loading'
+              : _savingTransactionSound
+              ? 'saving'
+              : preference.transactionSaveSoundEnabled
               ? 'enabled'
               : 'disabled',
         ),
-        () => _chooseDesktopValue<bool>(
-          label: l10n.text('transactionSaveSound'),
-          value: preference?.transactionSaveSoundEnabled ?? true,
-          options: [
-            DropdownMenuItem(value: true, child: Text(l10n.text('enabled'))),
-            DropdownMenuItem(value: false, child: Text(l10n.text('disabled'))),
-          ],
-          onChanged: (value) => ref
-              .read(userPreferenceProvider.notifier)
-              .saveChanges(transactionSaveSoundEnabled: value),
-        ),
+        preference == null || _savingTransactionSound
+            ? null
+            : () => _chooseDesktopValue<bool>(
+                label: l10n.text('transactionSaveSound'),
+                value: preference.transactionSaveSoundEnabled,
+                options: [
+                  DropdownMenuItem(
+                    value: true,
+                    child: Text(l10n.text('enabled')),
+                  ),
+                  DropdownMenuItem(
+                    value: false,
+                    child: Text(l10n.text('disabled')),
+                  ),
+                ],
+                onChanged: (value) =>
+                    unawaited(_setTransactionSaveSoundEnabled(value)),
+              ),
       ),
       tile(
         Icons.person_outline_rounded,
@@ -320,15 +362,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         const SizedBox(height: ButlerlySpacing.standard),
         LayoutBuilder(
           builder: (context, constraints) {
-            final left = _DesktopMoreCard(
-              key: _appearanceKey,
-              title: l10n.text('preferences'),
-              icon: Icons.tune_rounded,
-              children: preferences,
-            );
-            final right = Column(
+            final left = Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                _DesktopMoreCard(
+                  key: _appearanceKey,
+                  title: l10n.text('preferences'),
+                  icon: Icons.tune_rounded,
+                  children: preferences,
+                ),
+                const SizedBox(height: ButlerlySpacing.small),
                 _DesktopMoreCard(
                   title: l10n.text('privacyAndData'),
                   icon: Icons.shield_outlined,
@@ -337,6 +380,37 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     _DesktopMoreRow(
                       title: l10n.text('managePrivacyData'),
                       onTap: () => context.go('/privacy-data'),
+                    ),
+                  ],
+                ),
+              ],
+            );
+            final right = Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _DesktopMoreCard(
+                  key: _aboutKey,
+                  title: l10n.text('about'),
+                  icon: Icons.info_outline_rounded,
+                  children: [
+                    _DesktopMoreRow(
+                      title: HelpCopy.text(context, 'title'),
+                      onTap: () => context.go('/help'),
+                    ),
+                    _DesktopMoreRow(
+                      title: l10n.text('legalLicenses'),
+                      onTap: () => context.push('/legal-licenses'),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        top: ButlerlySpacing.small,
+                      ),
+                      child: ButlerlyBrandVersionTile(
+                        centered: true,
+                        appName: l10n.text('appName'),
+                        versionLabel: l10n.text('appVersionLabel'),
+                        version: _desktopVersion,
+                      ),
                     ),
                   ],
                 ),
@@ -351,13 +425,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
                     _DesktopMoreRow(
                       title: l10n.text('budgetSettings'),
-                      onTap: () => context.go('/budgets'),
+                      onTap: () => context.push('/budgets'),
                     ),
                   ],
                 ),
                 const SizedBox(height: ButlerlySpacing.small),
                 _DesktopMoreCard(
-                  title: l10n.text('optionalFeatures'),
+                  title: l10n.text('operationFeatures'),
                   icon: Icons.auto_awesome_outlined,
                   children: [
                     _DesktopMoreRow(
@@ -388,33 +462,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     _DesktopMoreRow(
                       title: l10n.text('assistant'),
                       onTap: () => context.push('/assistant'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: ButlerlySpacing.small),
-                _DesktopMoreCard(
-                  key: _aboutKey,
-                  title: l10n.text('about'),
-                  icon: Icons.info_outline_rounded,
-                  children: [
-                    _DesktopMoreRow(
-                      title: HelpCopy.text(context, 'title'),
-                      onTap: () => context.go('/help'),
-                    ),
-                    _DesktopMoreRow(
-                      title: l10n.text('legalLicenses'),
-                      onTap: () => context.push('/legal-licenses'),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(
-                        top: ButlerlySpacing.small,
-                      ),
-                      child: ButlerlyBrandVersionTile(
-                        centered: true,
-                        appName: l10n.text('appName'),
-                        versionLabel: l10n.text('appVersionLabel'),
-                        version: _desktopVersion,
-                      ),
                     ),
                   ],
                 ),
@@ -475,11 +522,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 style: _settingsSubtitleStyle(context),
               ),
               value: preference?.transactionSaveSoundEnabled ?? true,
-              onChanged: preference == null
+              onChanged: preference == null || _savingTransactionSound
                   ? null
-                  : (value) => ref
-                        .read(userPreferenceProvider.notifier)
-                        .saveChanges(transactionSaveSoundEnabled: value),
+                  : (value) =>
+                        unawaited(_setTransactionSaveSoundEnabled(value)),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: ButlerlySpacing.standard,
               ),
@@ -665,7 +711,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               icon: Icons.savings_outlined,
               title: context.l10n.text('budgetSettings'),
               subtitle: context.l10n.text('budgetSettingsBody'),
-              onTap: () => context.go('/budgets'),
+              onTap: () => context.push('/budgets'),
             ),
             _SettingsRow(
               icon: Icons.person_search_outlined,

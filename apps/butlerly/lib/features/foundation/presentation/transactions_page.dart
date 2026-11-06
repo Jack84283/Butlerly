@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/app/shell/adaptive_shell.dart';
+import 'package:butlerly/core/audio/butlerly_sound_feedback.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
@@ -23,7 +24,6 @@ import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -1009,23 +1009,22 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
     if (result case ApplicationSuccess<TransactionDto>(value: final saved)) {
       // Standalone editor tests and embedded hosts may not install a
       // ProviderScope. Treat feedback as optional, never a save dependency.
-      var soundEnabled = true;
+      // Do not play feedback until an enabled preference has actually loaded.
+      // A missing ProviderScope, pending load, or read failure must be silent.
+      var soundEnabled = false;
       try {
         soundEnabled =
             ProviderScope.containerOf(
               context,
               listen: false,
             ).read(userPreferenceProvider).value?.transactionSaveSoundEnabled ??
-            true;
+            false;
       } catch (_) {
         // The transaction has already been saved successfully.
       }
       if (soundEnabled) {
-        // Audio is noncritical feedback: never roll back a persisted save if
-        // the host does not support system sounds.
-        unawaited(
-          SystemSound.play(SystemSoundType.click).catchError((Object _) {}),
-        );
+        // Feedback is noncritical and never changes the committed result.
+        unawaited(ButlerlySoundFeedback.play());
       }
       _complete(TransactionEditorResult.saved(saved));
     }

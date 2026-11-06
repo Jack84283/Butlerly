@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:butlerly/app/locale/locale_provider.dart';
+import 'package:butlerly/core/audio/butlerly_sound_feedback.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_compact_section_selector.dart';
@@ -26,6 +28,7 @@ import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -83,6 +86,86 @@ void main() {
   });
 
   tearDown(() => services.reset());
+
+  for (final enabled in [false, true]) {
+    for (final updating in [false, true]) {
+      testWidgets(
+        'transaction ${updating ? 'update' : 'create'} feedback enabled=$enabled',
+        (tester) async {
+          final finance = services<FinanceServices>();
+          await finance.saveUserPreference(
+            UserPreference(
+              locale: 'en',
+              formattingLocale: 'en-US',
+              regionCode: 'US',
+              baseCurrency: CurrencyCode('USD'),
+              timeZoneId: 'UTC',
+              transactionSaveSoundEnabled: enabled,
+              firstUseCompleted: true,
+            ),
+          );
+          TransactionDto? existing;
+          if (updating) {
+            final created = await finance.createTransaction(
+              CreateTransactionCommand(
+                id: 'feedback-original',
+                provenanceId: 'feedback-original-provenance',
+                timing: KnownTransactionTime(DateTime.utc(2026, 11, 6, 12)),
+                money: Money(
+                  amount: DecimalValue.parse('20.00'),
+                  currency: CurrencyCode('USD'),
+                ),
+                direction: TransactionDirection.expense,
+                description: 'Original',
+              ),
+            );
+            expect(created, isA<ApplicationSuccess<TransactionDto>>());
+            existing = (created as ApplicationSuccess<TransactionDto>).value;
+          }
+          var playCount = 0;
+          ButlerlySoundFeedback.playbackForTesting = () async {
+            playCount += 1;
+          };
+          addTearDown(() => ButlerlySoundFeedback.playbackForTesting = null);
+          // Ensure the preference is loaded before the editor reads it.
+          final container = ProviderContainer();
+          addTearDown(container.dispose);
+          await container.read(userPreferenceProvider.future);
+          var completed = false;
+          await tester.pumpWidget(
+            UncontrolledProviderScope(
+              container: container,
+              child: MaterialApp(
+                home: Scaffold(
+                  body: TransactionEditorPage(
+                    finance: finance,
+                    existing: existing,
+                    onComplete: (result) =>
+                        completed = result is TransactionEditorSaved,
+                  ),
+                ),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+          if (!updating) {
+            await tester.enterText(
+              find.byKey(const ValueKey('transaction-amount-field')),
+              '17.00',
+            );
+          }
+          await _scrollEditorToSave(tester);
+          await tester.tap(
+            find.byKey(const ValueKey('transaction-save-locally')),
+          );
+          await tester.pumpAndSettle();
+          expect(completed, isTrue);
+          expect(playCount, enabled ? 1 : 0);
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+  }
 
   testWidgets('Wide Transactions opens the existing detail in a side panel', (
     tester,

@@ -1543,7 +1543,7 @@ void main() {
     );
     expect(find.text('Preferences'), findsOneWidget);
     expect(find.text('Privacy & data'), findsOneWidget);
-    expect(find.text('Optional features'), findsOneWidget);
+    expect(find.text('Operation features'), findsOneWidget);
     expect(find.text('About Butlerly'), findsOneWidget);
     expect(find.text('Manage privacy & data'), findsOneWidget);
     expect(
