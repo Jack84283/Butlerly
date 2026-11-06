@@ -112,7 +112,7 @@ class HelpCopy {
   }
 
   static String category(BuildContext context, String name) =>
-      text(context, 'category:' + name);
+      text(context, 'category:$name');
 
   static Set<String> missingKeysFor(String languageCode) =>
       _labels['en']!.keys.toSet().difference(

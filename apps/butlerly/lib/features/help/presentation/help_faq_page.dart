@@ -134,7 +134,7 @@ class _HelpFaqPageState extends State<HelpFaqPage> {
           child: ButlerlyCard(
             padding: EdgeInsets.zero,
             child: ListTile(
-              key: ValueKey('help-hit-' + hit.id),
+              key: ValueKey('help-hit-${hit.id}'),
               leading: Icon(
                 hit.isFaq
                     ? Icons.help_outline_rounded
@@ -142,11 +142,7 @@ class _HelpFaqPageState extends State<HelpFaqPage> {
               ),
               title: Text(hit.title),
               subtitle: Text(
-                (hit.isFaq
-                        ? HelpCopy.category(context, hit.category)
-                        : HelpCopy.text(context, 'guideArticle')) +
-                    ' • ' +
-                    _preview(hit.snippet),
+                _hitSummary(context, hit),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -211,7 +207,7 @@ class _HelpFaqPageState extends State<HelpFaqPage> {
             for (var i = 0; i < faqs.length; i++) ...[
               if (i > 0) const Divider(height: 1),
               ListTile(
-                key: ValueKey('help-faq-' + faqs[i].id),
+                key: ValueKey('help-faq-${faqs[i].id}'),
                 title: Text(faqs[i].translation(language).question),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => _openFaq(context, catalog, faqs[i]),
@@ -240,12 +236,19 @@ class _HelpFaqPageState extends State<HelpFaqPage> {
   }
 }
 
+String _hitSummary(BuildContext context, HelpSearchHit hit) {
+  final type = hit.isFaq
+      ? HelpCopy.category(context, hit.category)
+      : HelpCopy.text(context, 'guideArticle');
+  return '$type • ${_preview(hit.snippet)}';
+}
+
 String _preview(String body) {
   final flattened = body
       .replaceAll(RegExp(r'##\s*'), '')
       .replaceAll(RegExp(r'\s+'), ' ')
       .trim();
-  return flattened.length > 190 ? flattened.substring(0, 190) + '…' : flattened;
+  return flattened.length > 190 ? '${flattened.substring(0, 190)}…' : flattened;
 }
 
 Widget _heading(BuildContext context, String text) =>
@@ -347,7 +350,7 @@ class HelpGuideIndexPage extends StatelessWidget {
           child: ButlerlyCard(
             padding: EdgeInsets.zero,
             child: ListTile(
-              key: ValueKey('help-article-' + article.id),
+              key: ValueKey('help-article-${article.id}'),
               title: Text(article.title),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => _openArticle(context, article),

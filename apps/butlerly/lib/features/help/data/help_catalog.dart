@@ -12,11 +12,6 @@ class HelpGuideArticle {
     required this.body,
   });
 
-  final String id;
-  final String title;
-  final String part;
-  final String body;
-
   factory HelpGuideArticle.fromJson(Map<String, dynamic> json) =>
       HelpGuideArticle(
         id: json['id'] as String,
@@ -24,19 +19,24 @@ class HelpGuideArticle {
         part: json['part'] as String,
         body: json['body'] as String,
       );
+
+  final String id;
+  final String title;
+  final String part;
+  final String body;
 }
 
 class HelpFaqTranslation {
   const HelpFaqTranslation({required this.question, required this.answer});
-
-  final String question;
-  final String answer;
 
   factory HelpFaqTranslation.fromJson(Map<String, dynamic> json) =>
       HelpFaqTranslation(
         question: json['question'] as String,
         answer: json['answer'] as String,
       );
+
+  final String question;
+  final String answer;
 }
 
 class HelpFaqEntry {
@@ -47,15 +47,6 @@ class HelpFaqEntry {
     required this.guideId,
     required this.translations,
   });
-
-  final String id;
-  final String category;
-  final List<String> keywords;
-  final String guideId;
-  final Map<String, HelpFaqTranslation> translations;
-
-  HelpFaqTranslation translation(String languageCode) =>
-      translations[languageCode] ?? translations['en']!;
 
   factory HelpFaqEntry.fromJson(Map<String, dynamic> json) {
     final rawTranslations = json['translations'] as Map<String, dynamic>;
@@ -72,6 +63,16 @@ class HelpFaqEntry {
       ),
     );
   }
+
+  final String id;
+  final String category;
+  final List<String> keywords;
+  final String guideId;
+  final Map<String, HelpFaqTranslation> translations;
+
+  HelpFaqTranslation translation(String languageCode) =>
+      translations[languageCode] ?? translations['en']!;
+
 }
 
 class HelpSearchHit {

@@ -60,7 +60,7 @@ void main() {
   });
 
   for (final locale in [const Locale('zh', 'CN'), const Locale('es')]) {
-    testWidgets('Help displays localized FAQ at ' + locale.languageCode, (
+    testWidgets('Help displays localized FAQ at ${locale.languageCode}', (
       tester,
     ) async {
       await tester.pumpWidget(app(locale));
