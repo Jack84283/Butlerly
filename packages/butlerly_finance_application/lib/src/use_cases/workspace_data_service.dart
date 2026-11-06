@@ -5,12 +5,12 @@ import '../analysis/invalidation.dart';
 /// adapter; presentation exchanges selected paths and immutable result values.
 abstract interface class LocalDataGateway {
   bool get hasRecoverySafetyCopy;
-  Future<void> createPortableBackup(
+  Future<BackupCreationResult> createPortableBackup(
     String destination, {
     required String password,
   });
   Future<void> recoverPortableBackupPublication(String destination);
-  Future<String> createTemporaryBackup(
+  Future<TemporaryBackupCreationResult> createTemporaryBackup(
     String fileName, {
     required String password,
   });
@@ -48,13 +48,13 @@ final class WorkspaceDataService {
 
   bool get hasRecoverySafetyCopy => gateway.hasRecoverySafetyCopy;
 
-  Future<void> createPortableBackup(
+  Future<BackupCreationResult> createPortableBackup(
     String destination, {
     required String password,
   }) => gateway.createPortableBackup(destination, password: password);
   Future<void> recoverPortableBackupPublication(String destination) =>
       gateway.recoverPortableBackupPublication(destination);
-  Future<String> createTemporaryBackup(
+  Future<TemporaryBackupCreationResult> createTemporaryBackup(
     String fileName, {
     required String password,
   }) => gateway.createTemporaryBackup(fileName, password: password);

@@ -36,8 +36,43 @@ final class ButlerlyDatabase {
   /// lowering the schema Butlerly opens.
   final int targetVersion;
   Database? _database;
+  bool _restoreActivationActive = false;
+
+  bool get isRestoreActivationActive => _restoreActivationActive;
+
+  /// Fence application repositories while Restore physically swaps SQLite.
+  /// This complements AnalysisConsistencyGate: normal callers must not begin
+  /// additional work on the old database after its final revision check.
+  void beginRestoreActivation() {
+    if (_restoreActivationActive) {
+      throw StateError('Restore activation already owns the database.');
+    }
+    if (_database == null) {
+      throw StateError('Cannot activate Restore without an open database.');
+    }
+    _restoreActivationActive = true;
+  }
+
+  void finishRestoreActivation() {
+    _restoreActivationActive = false;
+  }
+
+  /// Only the restore coordinator may use this existing connection while
+  /// normal repository access is fenced. Never expose it to UI or use cases.
+  Database get restoreActivationConnection {
+    if (!_restoreActivationActive || _database == null) {
+      throw StateError('Restore activation has no live SQLite connection.');
+    }
+    return _database!;
+  }
 
   Database get connection {
+    if (_restoreActivationActive) {
+      throw const RepositoryException(
+        RepositoryFailureCode.busy,
+        'SQLite access suspended for restore activation',
+      );
+    }
     final database = _database;
     if (database == null) {
       throw const RepositoryException(
@@ -48,7 +83,7 @@ final class ButlerlyDatabase {
     return database;
   }
 
-  Future<void> open() async {
+  Future<void> open({bool seedSystemDataOnOpen = true}) async {
     try {
       if (_isDebugBuild) {
         developer.log('Butlerly DB: opening target v$targetVersion');
@@ -100,9 +135,11 @@ final class ButlerlyDatabase {
           },
         ),
       );
-      if (_isDebugBuild) developer.log('Butlerly DB: seeding catalog');
-      await seedSystemData();
-      if (_isDebugBuild) developer.log('Butlerly DB: catalog complete');
+      if (seedSystemDataOnOpen) {
+        if (_isDebugBuild) developer.log('Butlerly DB: seeding catalog');
+        await seedSystemData();
+        if (_isDebugBuild) developer.log('Butlerly DB: catalog complete');
+      }
     } on DatabaseException catch (error) {
       if (_isDebugBuild) {
         final reason = error.toString().split(" sql '").first;

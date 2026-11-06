@@ -70,6 +70,7 @@ final class BackupEncryption {
     File source,
     File destination, {
     required String password,
+    String innerFormat = 'butlerly-backup-v2',
   }) async {
     if (password.length < minimumPasswordLength) {
       throw const BackupPasswordTooShortException();
@@ -92,7 +93,7 @@ final class BackupEncryption {
       'kdfParallelism': _argonParallelism,
       'salt': base64Encode(salt),
       'nonce': base64Encode(nonce),
-      'innerFormat': 'butlerly-backup-v2',
+      'innerFormat': innerFormat,
     };
     final headerBytes = utf8.encode(jsonEncode(header));
     final secretKey = await _kdf.deriveKeyFromPassword(
@@ -104,41 +105,47 @@ final class BackupEncryption {
     final temporary = File(
       '${destination.path}.encrypting-${DateTime.now().microsecondsSinceEpoch}',
     );
-    final output = temporary.openWrite();
     try {
-      output.add(magic);
-      output.add(_encodeInt64(headerBytes.length));
-      output.add(headerBytes);
+      final output = temporary.openWrite();
+      try {
+        output.add(magic);
+        output.add(_encodeInt64(headerBytes.length));
+        output.add(headerBytes);
 
-      late Mac mac;
-      final encrypted = _cipher.encryptStream(
-        source.openRead(),
-        secretKey: secretKey,
-        nonce: nonce,
-        aad: headerBytes,
-        onMac: (value) => mac = value,
-      );
-      await output.addStream(encrypted);
-      output.add(mac.bytes);
-      await output.flush();
-    } finally {
-      await output.close();
-    }
+        late Mac mac;
+        final encrypted = _cipher.encryptStream(
+          source.openRead(),
+          secretKey: secretKey,
+          nonce: nonce,
+          aad: headerBytes,
+          onMac: (value) => mac = value,
+        );
+        await output.addStream(encrypted);
+        output.add(mac.bytes);
+        await output.flush();
+      } finally {
+        await output.close();
+      }
 
-    try {
       if (await destination.exists()) await destination.delete();
       await temporary.rename(destination.path);
-    } catch (_) {
-      if (await temporary.exists()) await temporary.delete();
-      rethrow;
+      return destination;
+    } finally {
+      // Both streaming errors and failed publication must reclaim partial
+      // ciphertext. A killed process is handled by startup orphan cleanup.
+      try {
+        if (await temporary.exists()) await temporary.delete();
+      } catch (_) {
+        // Preserve the primary encryption/publication outcome.
+      }
     }
-    return destination;
   }
 
   Future<File> decrypt(
     File source,
     File destination, {
     required String password,
+    Set<String> acceptedInnerFormats = const {'butlerly-backup-v2'},
   }) async {
     if (password.isEmpty) throw const BackupPasswordRequiredException();
 
@@ -178,7 +185,7 @@ final class BackupEncryption {
           header['version'] != version ||
           header['cipher'] != 'AES-256-GCM' ||
           header['kdf'] != 'Argon2id' ||
-          header['innerFormat'] != 'butlerly-backup-v2') {
+          !acceptedInnerFormats.contains(header['innerFormat'])) {
         throw const FormatException('Unsupported encrypted backup format.');
       }
 

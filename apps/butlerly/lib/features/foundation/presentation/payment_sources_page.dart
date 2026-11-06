@@ -9,6 +9,7 @@ import 'package:butlerly/design_system/components/butlerly_transaction_inner_car
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/payment_source_display.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -56,12 +57,33 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
   @override
   void initState() {
     super.initState();
+    workspaceRestoreChanges.addListener(_onWorkspaceRestored);
     _sources = _load();
     if (widget.openCreateOnStart) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _add();
       });
     }
+  }
+
+  @override
+  void dispose() {
+    workspaceRestoreChanges.removeListener(_onWorkspaceRestored);
+    super.dispose();
+  }
+
+  void _onWorkspaceRestored() {
+    if (!mounted) return;
+    // A previously selected payment source or open editor may contain stale
+    // values from the pre-Restore database. Reload instead of saving that
+    // object back over restored rows.
+    setState(() {
+      _desktopEditorOpen = false;
+      _desktopSelected = null;
+      _desktopScanned = null;
+      _editorRevision++;
+      _sources = _load();
+    });
   }
 
   Future<List<PaymentSource>> _load() async {

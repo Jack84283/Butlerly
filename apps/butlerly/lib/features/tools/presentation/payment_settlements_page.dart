@@ -9,6 +9,7 @@ import 'package:butlerly/design_system/components/butlerly_transaction_inner_car
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/payment_source_display.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_row.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
@@ -32,6 +33,23 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
       : null;
 
   late Future<_SettlementListData> _data = _load();
+
+  @override
+  void initState() {
+    super.initState();
+    workspaceRestoreChanges.addListener(_onWorkspaceRestored);
+  }
+
+  @override
+  void dispose() {
+    workspaceRestoreChanges.removeListener(_onWorkspaceRestored);
+    super.dispose();
+  }
+
+  void _onWorkspaceRestored() {
+    if (!mounted) return;
+    setState(() => _data = _load());
+  }
 
   Future<_SettlementListData> _load() async {
     final finance = _finance;

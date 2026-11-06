@@ -18,6 +18,20 @@ Future<String> sha256FileRange(
   return digest.close();
 }
 
+/// Hashes the bytes of an already-open file descriptor. In particular,
+/// callers holding a POSIX advisory lock must not re-open/close this path:
+/// closing another descriptor can silently release the process's file locks.
+Future<String> sha256OpenFile(RandomAccessFile opened) async {
+  final digest = _Sha256Accumulator();
+  await opened.setPosition(0);
+  while (true) {
+    final chunk = await opened.read(64 * 1024);
+    if (chunk.isEmpty) break;
+    digest.add(chunk);
+  }
+  return digest.close();
+}
+
 Uint8List int64Bytes(int value) {
   final data = ByteData(8)..setInt64(0, value, Endian.big);
   return data.buffer.asUint8List();

@@ -1,3 +1,54 @@
+/// The point at which an encrypted backup could not be created or delivered.
+/// A stage is diagnostic only, and never carries private paths or financial data.
+enum BackupCreationStage {
+  snapshot,
+  inventory,
+  packaging,
+  encryption,
+  verification,
+  publication,
+  sharing,
+}
+
+/// Exposes a safe creation stage without converting an underlying failure to a
+/// success. Only an explicitly identified unresolved publication/rollback
+/// state should set [recoveryRequired].
+final class BackupCreationException implements Exception {
+  const BackupCreationException({
+    required this.stage,
+    required this.cause,
+    this.recoveryRequired = false,
+  });
+
+  final BackupCreationStage stage;
+  final Object cause;
+  final bool recoveryRequired;
+}
+
+/// Result of a published encrypted backup. Missing optional evidence never
+/// makes the snapshot invalid, but must be disclosed to the user.
+final class BackupCreationResult {
+  const BackupCreationResult({
+    required this.attachmentCount,
+    required this.missingAttachmentCount,
+  });
+
+  final int attachmentCount;
+  final int missingAttachmentCount;
+  bool get hasMissingAttachments => missingAttachmentCount > 0;
+}
+
+/// A temporary encrypted backup and its verified attachment inventory.
+final class TemporaryBackupCreationResult {
+  const TemporaryBackupCreationResult({
+    required this.filePath,
+    required this.backup,
+  });
+
+  final String filePath;
+  final BackupCreationResult backup;
+}
+
 enum LocalRestoreMode { merge, replace }
 
 final class BackupChangeSummary {
@@ -26,14 +77,17 @@ final class BackupInspection {
     required this.recordCount,
     required this.evidenceCount,
     required this.changes,
+    this.missingEvidenceCount = 0,
   });
 
   final DateTime createdAtUtc;
   final int recordCount;
   final int evidenceCount;
+  final int missingEvidenceCount;
   final BackupChangeSummary changes;
 
   bool get hasNewerLocalData => changes.hasChanges;
+  bool get hasMissingEvidence => missingEvidenceCount > 0;
 }
 
 final class LocalRestoreResult {
@@ -62,6 +116,28 @@ final class LocalDataExportResult {
   });
   final String directoryPath;
   final int recordCount;
+}
+
+/// A backup SQLite schema is invalid or unsupported by the installed app.
+/// Restoring must stop before any live data is changed.
+final class UnsupportedBackupSchemaException extends FormatException {
+  const UnsupportedBackupSchemaException()
+    : super('Unsupported SQLite backup schema version.');
+}
+
+/// The backup was created with a newer database schema than this app supports.
+///
+/// This error belongs to the application contract so presentation never needs
+/// to depend on the SQLite adapter to explain an app-update requirement.
+final class NewerBackupSchemaException
+    extends UnsupportedBackupSchemaException {
+  const NewerBackupSchemaException({
+    required this.backupVersion,
+    required this.supportedVersion,
+  });
+
+  final int backupVersion;
+  final int supportedVersion;
 }
 
 final class BackupPasswordRequiredException implements Exception {

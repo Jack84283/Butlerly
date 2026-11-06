@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
+import 'package:butlerly/design_system/components/butlerly_toast.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/budgets/application/budget_change_notifier.dart';
@@ -11,6 +14,8 @@ import 'package:butlerly/features/foundation/presentation/transaction_change_not
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/app_localizations_backup.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart'
+    show RepositoryException, RepositoryFailureCode;
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
@@ -20,6 +25,350 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as path;
 import 'package:share_plus/share_plus.dart' as share;
+
+/// User-facing failure classes, deliberately independent of exception text.
+/// Authentication failure cannot cryptographically distinguish a wrong password
+/// from modified ciphertext; never claim that either cause is proven.
+@visibleForTesting
+enum RestoreFailureKind {
+  authentication,
+  missingPassword,
+  unsupportedFormat,
+  damaged,
+  unsupportedSchema,
+  migration,
+  mergeConflict,
+  storage,
+  fileAccess,
+  databaseBusy,
+  recovery,
+  unknown,
+}
+
+@visibleForTesting
+RestoreFailureKind classifyRestoreFailure(Object error) {
+  if (error is BackupPasswordOrIntegrityException) {
+    return RestoreFailureKind.authentication;
+  }
+  if (error is BackupPasswordRequiredException) {
+    return RestoreFailureKind.missingPassword;
+  }
+  if (error is UnsupportedBackupSchemaException) {
+    return RestoreFailureKind.unsupportedSchema;
+  }
+  if (error is RepositoryException) {
+    return switch (error.code) {
+      RepositoryFailureCode.migration => RestoreFailureKind.migration,
+      RepositoryFailureCode.integrity => RestoreFailureKind.damaged,
+      RepositoryFailureCode.storageFull => RestoreFailureKind.storage,
+      RepositoryFailureCode.permission => RestoreFailureKind.fileAccess,
+      RepositoryFailureCode.busy => RestoreFailureKind.databaseBusy,
+      _ => RestoreFailureKind.unknown,
+    };
+  }
+  if (error is FormatException) {
+    final message = error.message.toLowerCase();
+    if (message.contains('unsupported') && message.contains('format') ||
+        message.contains('not an encrypted butlerly backup')) {
+      return RestoreFailureKind.unsupportedFormat;
+    }
+    if (message.contains('cannot merge') ||
+        message.contains('incompatible') ||
+        message.contains('deletion tracking') ||
+        message.contains('conflict') ||
+        message.contains('cannot safely merge')) {
+      return RestoreFailureKind.mergeConflict;
+    }
+    if (message.contains('migration') || message.contains('migrated')) {
+      return RestoreFailureKind.migration;
+    }
+    return RestoreFailureKind.damaged;
+  }
+  if (error is FileSystemException) {
+    if (error.osError?.errorCode == 28) {
+      return RestoreFailureKind.storage;
+    }
+    return RestoreFailureKind.fileAccess;
+  }
+  if (error is StateError) {
+    final message = error.message.toString().toLowerCase();
+    if (message.contains('recovery') ||
+        message.contains('previous restore') ||
+        message.contains('previous sqlite sidecar')) {
+      return RestoreFailureKind.recovery;
+    }
+    if (message.contains('active readers')) {
+      return RestoreFailureKind.databaseBusy;
+    }
+  }
+  return RestoreFailureKind.unknown;
+}
+
+String restoreFailureSuffix(RestoreFailureKind kind) {
+  return switch (kind) {
+    RestoreFailureKind.authentication => 'Authentication',
+    RestoreFailureKind.missingPassword => 'MissingPassword',
+    RestoreFailureKind.unsupportedFormat => 'UnsupportedFormat',
+    RestoreFailureKind.damaged => 'Damaged',
+    RestoreFailureKind.unsupportedSchema => 'UnsupportedSchema',
+    RestoreFailureKind.migration => 'Migration',
+    RestoreFailureKind.mergeConflict => 'MergeConflict',
+    RestoreFailureKind.storage => 'Storage',
+    RestoreFailureKind.fileAccess => 'FileAccess',
+    RestoreFailureKind.databaseBusy => 'DatabaseBusy',
+    RestoreFailureKind.recovery => 'Recovery',
+    RestoreFailureKind.unknown => 'Unknown',
+  };
+}
+
+/// Explain the specific known failure and a safe next step without exposing
+/// encrypted paths, passwords, database rows or raw exception stack traces.
+@visibleForTesting
+Future<void> showBackupRestoreFailureDialog(
+  BuildContext context, {
+  required Object error,
+}) async {
+  final kind = classifyRestoreFailure(error);
+  final suffix = restoreFailureSuffix(kind);
+  await showButlerlyBottomSheet<void>(
+    context: context,
+    builder: (sheetContext) {
+      final l10n = sheetContext.l10n;
+      return ButlerlySheet(
+        title: Text(l10n.backupText('restoreFailureTitle')),
+        content: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(sheetContext).height * .55,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  l10n.backupText('restoreFailureReasonLabel'),
+                  style: Theme.of(sheetContext).textTheme.titleSmall,
+                ),
+                const SizedBox(height: ButlerlySpacing.small),
+                Text(l10n.backupText('restoreFailure${suffix}Reason')),
+                const SizedBox(height: ButlerlySpacing.standard),
+                Text(
+                  l10n.backupText('restoreFailureNextStepLabel'),
+                  style: Theme.of(sheetContext).textTheme.titleSmall,
+                ),
+                const SizedBox(height: ButlerlySpacing.small),
+                Text(l10n.backupText('restoreFailure${suffix}Action')),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(sheetContext),
+            child: Text(l10n.backupText('upgradeAppDismiss')),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+/// Diagnostic categories for failed backup creation and publication.
+@visibleForTesting
+enum BackupFailureKind {
+  passwordPolicy,
+  databaseUnavailable,
+  databaseBusy,
+  databaseIntegrity,
+  storageFull,
+  fileAccess,
+  evidence,
+  evidenceChanged,
+  verification,
+  publication,
+  publicationRecovery,
+  shareFailure,
+  unknown,
+}
+
+@visibleForTesting
+BackupFailureKind classifyBackupFailure(Object error) {
+  if (error is BackupPasswordTooShortException) {
+    return BackupFailureKind.passwordPolicy;
+  }
+  if (error is BackupCreationException) {
+    if (error.recoveryRequired) return BackupFailureKind.publicationRecovery;
+    final cause = error.cause;
+    if (cause is FileSystemException) {
+      if (const {28, 112}.contains(cause.osError?.errorCode)) {
+        return BackupFailureKind.storageFull;
+      }
+      return BackupFailureKind.fileAccess;
+    }
+    if (cause is RepositoryException) {
+      return switch (cause.code) {
+        RepositoryFailureCode.busy => BackupFailureKind.databaseBusy,
+        RepositoryFailureCode.integrity => BackupFailureKind.databaseIntegrity,
+        RepositoryFailureCode.storageFull => BackupFailureKind.storageFull,
+        RepositoryFailureCode.permission => BackupFailureKind.fileAccess,
+        RepositoryFailureCode.unavailable =>
+          BackupFailureKind.databaseUnavailable,
+        _ => BackupFailureKind.unknown,
+      };
+    }
+    if (error.stage == BackupCreationStage.sharing) {
+      return BackupFailureKind.shareFailure;
+    }
+    if (error.stage == BackupCreationStage.verification) {
+      return BackupFailureKind.verification;
+    }
+    if (error.stage == BackupCreationStage.publication) {
+      return BackupFailureKind.publication;
+    }
+    if (error.stage == BackupCreationStage.packaging ||
+        error.stage == BackupCreationStage.inventory) {
+      if (cause is StateError &&
+          cause.message.toString().contains('changed during packaging')) {
+        return BackupFailureKind.evidenceChanged;
+      }
+      return BackupFailureKind.evidence;
+    }
+    if (error.stage == BackupCreationStage.snapshot) {
+      return BackupFailureKind.databaseUnavailable;
+    }
+    return BackupFailureKind.unknown;
+  }
+  if (error is FileSystemException) {
+    return const {28, 112}.contains(error.osError?.errorCode)
+        ? BackupFailureKind.storageFull
+        : BackupFailureKind.fileAccess;
+  }
+  if (error is RepositoryException) {
+    return switch (error.code) {
+      RepositoryFailureCode.busy => BackupFailureKind.databaseBusy,
+      RepositoryFailureCode.integrity => BackupFailureKind.databaseIntegrity,
+      RepositoryFailureCode.storageFull => BackupFailureKind.storageFull,
+      RepositoryFailureCode.permission => BackupFailureKind.fileAccess,
+      _ => BackupFailureKind.databaseUnavailable,
+    };
+  }
+  return BackupFailureKind.unknown;
+}
+
+String backupFailureSuffix(BackupFailureKind kind) {
+  return switch (kind) {
+    BackupFailureKind.passwordPolicy => 'PasswordPolicy',
+    BackupFailureKind.databaseUnavailable => 'DatabaseUnavailable',
+    BackupFailureKind.databaseBusy => 'DatabaseBusy',
+    BackupFailureKind.databaseIntegrity => 'DatabaseIntegrity',
+    BackupFailureKind.storageFull => 'StorageFull',
+    BackupFailureKind.fileAccess => 'FileAccess',
+    BackupFailureKind.evidence => 'Evidence',
+    BackupFailureKind.evidenceChanged => 'EvidenceChanged',
+    BackupFailureKind.verification => 'Verification',
+    BackupFailureKind.publication => 'Publication',
+    BackupFailureKind.publicationRecovery => 'PublicationRecovery',
+    BackupFailureKind.shareFailure => 'ShareFailure',
+    BackupFailureKind.unknown => 'Unknown',
+  };
+}
+
+/// The archive may be safely verified but not yet published. Only the stage
+/// and localized advice are shown, never raw exception text or private paths.
+@visibleForTesting
+Future<void> showBackupCreationFailureDialog(
+  BuildContext context, {
+  required Object error,
+}) async {
+  final kind = classifyBackupFailure(error);
+  final suffix = backupFailureSuffix(kind);
+  final stage = error is BackupCreationException ? error.stage : null;
+  final stageKey = switch (stage) {
+    BackupCreationStage.snapshot => 'backupStageSnapshot',
+    BackupCreationStage.inventory => 'backupStageInventory',
+    BackupCreationStage.packaging => 'backupStagePackaging',
+    BackupCreationStage.encryption => 'backupStageEncryption',
+    BackupCreationStage.verification => 'backupStageVerification',
+    BackupCreationStage.publication => 'backupStagePublication',
+    BackupCreationStage.sharing => 'backupStageSharing',
+    null => null,
+  };
+  await showButlerlyBottomSheet<void>(
+    context: context,
+    builder: (sheetContext) {
+      final l10n = sheetContext.l10n;
+      return ButlerlySheet(
+        title: Text(l10n.backupText('backupFailureTitle')),
+        content: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(sheetContext).height * .55,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (stageKey != null) ...[
+                  Text(
+                    l10n.backupText('backupFailureStageLabel'),
+                    style: Theme.of(sheetContext).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: ButlerlySpacing.small),
+                  Text(l10n.backupText(stageKey)),
+                  const SizedBox(height: ButlerlySpacing.standard),
+                ],
+                Text(
+                  l10n.backupText('restoreFailureReasonLabel'),
+                  style: Theme.of(sheetContext).textTheme.titleSmall,
+                ),
+                const SizedBox(height: ButlerlySpacing.small),
+                Text(l10n.backupText('backupFailure${suffix}Reason')),
+                const SizedBox(height: ButlerlySpacing.standard),
+                Text(
+                  l10n.backupText('restoreFailureNextStepLabel'),
+                  style: Theme.of(sheetContext).textTheme.titleSmall,
+                ),
+                const SizedBox(height: ButlerlySpacing.small),
+                Text(l10n.backupText('backupFailure${suffix}Action')),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(sheetContext),
+            child: Text(l10n.backupText('upgradeAppDismiss')),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+@visibleForTesting
+Future<void> showBackupMissingEvidenceDialog(
+  BuildContext context, {
+  required int missingAttachmentCount,
+}) => showButlerlyBottomSheet<void>(
+  context: context,
+  builder: (sheetContext) {
+    final l10n = sheetContext.l10n;
+    return ButlerlySheet(
+      title: Text(l10n.backupText('backupMissingEvidenceTitle')),
+      content: Text(
+        l10n
+            .backupText('backupMissingEvidenceBody')
+            .replaceAll('{count}', '$missingAttachmentCount'),
+      ),
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.pop(sheetContext),
+          child: Text(l10n.backupText('upgradeAppDismiss')),
+        ),
+      ],
+    );
+  },
+);
 
 class PrivacyDataPage extends ConsumerStatefulWidget {
   const PrivacyDataPage({this.shareClient, super.key});
@@ -35,6 +384,159 @@ class PrivacyDataPage extends ConsumerStatefulWidget {
 String formatBackupInspectionDate(BuildContext context, DateTime date) {
   final locale = Localizations.localeOf(context).toLanguageTag();
   return DateFormat.yMMMd(locale).add_jm().format(date);
+}
+
+/// Explains how to install a Butlerly build capable of reading this backup.
+///
+/// No guessed app-store listing URLs are used. Store-specific instructions are
+/// shown for mobile and macOS; sideloaded desktop/test builds are covered too.
+@visibleForTesting
+Future<void> showBackupRequiresAppUpdateDialog(
+  BuildContext context, {
+  required int backupVersion,
+  required int supportedVersion,
+}) async {
+  final platform = Theme.of(context).platform;
+  final instructionsKey = switch (platform) {
+    TargetPlatform.iOS => 'upgradeFromAppleStore',
+    TargetPlatform.android => 'upgradeFromGooglePlay',
+    TargetPlatform.macOS => 'upgradeFromMacStore',
+    _ => 'upgradeFromDesktopDistribution',
+  };
+  await showButlerlyBottomSheet<void>(
+    context: context,
+    builder: (sheetContext) {
+      final l10n = sheetContext.l10n;
+      final message = l10n
+          .backupText('upgradeAppRequiredBody')
+          .replaceAll('{backupVersion}', '$backupVersion')
+          .replaceAll('{supportedVersion}', '$supportedVersion');
+      return ButlerlySheet(
+        title: Text(l10n.backupText('upgradeAppRequiredTitle')),
+        content: Text('$message\\n\\n${l10n.backupText(instructionsKey)}'),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(sheetContext),
+            child: Text(l10n.backupText('upgradeAppDismiss')),
+          ),
+        ],
+      );
+    },
+  );
+}
+
+/// Requires explicit acknowledgement before replacing the entire local database.
+/// Merge retains its separate, non-destructive confirmation.
+@visibleForTesting
+Future<bool> showBackupRestoreConfirmation(
+  BuildContext context, {
+  required BackupInspection inspection,
+  required LocalRestoreMode mode,
+}) async {
+  final replace = mode == LocalRestoreMode.replace;
+  var acknowledgedReplace = false;
+  return (await showButlerlyBottomSheet<bool>(
+        context: context,
+        builder: (sheetContext) => StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            final l10n = sheetContext.l10n;
+            final summary = l10n
+                .backupText('backupSummary')
+                .replaceAll('{records}', '${inspection.recordCount}')
+                .replaceAll('{evidence}', '${inspection.evidenceCount}');
+            final created = l10n
+                .backupText('backupCreatedAt')
+                .replaceAll(
+                  '{date}',
+                  formatBackupInspectionDate(
+                    sheetContext,
+                    inspection.createdAtUtc.toLocal(),
+                  ),
+                );
+            final explanation = l10n.backupText(
+              replace ? 'replaceBody' : 'mergeBody',
+            );
+            return ButlerlySheet(
+              title: Text(
+                l10n.backupText(replace ? 'replaceTitle' : 'mergeTitle'),
+              ),
+              content: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(sheetContext).height * .55,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('$summary\n$created'),
+                      if (inspection.hasMissingEvidence) ...[
+                        const SizedBox(height: ButlerlySpacing.small),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.warning_amber_rounded, size: 20),
+                            const SizedBox(width: ButlerlySpacing.small),
+                            Expanded(
+                              child: Text(
+                                l10n
+                                    .backupText('restoreMissingEvidenceWarning')
+                                    .replaceAll(
+                                      '{count}',
+                                      '${inspection.missingEvidenceCount}',
+                                    ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      const SizedBox(height: ButlerlySpacing.standard),
+                      Text(explanation),
+                      if (replace) ...[
+                        const SizedBox(height: ButlerlySpacing.small),
+                        CheckboxListTile(
+                          key: const ValueKey(
+                            'restore-replace-acknowledgement',
+                          ),
+                          value: acknowledgedReplace,
+                          onChanged: (value) => setSheetState(
+                            () => acknowledgedReplace = value ?? false,
+                          ),
+                          controlAffinity: ListTileControlAffinity.leading,
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(
+                            l10n.backupText('replaceAcknowledgement'),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                ButlerlyCancelButton(
+                  onPressed: () => Navigator.pop(sheetContext, false),
+                  child: Text(l10n.text('cancel')),
+                ),
+                if (replace)
+                  ButlerlyDestructiveButton(
+                    key: const ValueKey('restore-replace-confirm'),
+                    onPressed: acknowledgedReplace
+                        ? () => Navigator.pop(sheetContext, true)
+                        : null,
+                    child: Text(l10n.backupText('replaceAllData')),
+                  )
+                else
+                  FilledButton(
+                    onPressed: () => Navigator.pop(sheetContext, true),
+                    child: Text(l10n.backupText('merge')),
+                  ),
+              ],
+            );
+          },
+        ),
+      )) ==
+      true;
 }
 
 class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
@@ -53,6 +555,97 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       !kIsWeb &&
       (defaultTargetPlatform == TargetPlatform.iOS ||
           defaultTargetPlatform == TargetPlatform.android);
+
+  void _successToast(String message) => ButlerlyToast.success(context, message);
+
+  void _infoToast(String message) => ButlerlyToast.info(context, message);
+
+  Future<void> _warnAboutMissingAttachments(BackupCreationResult backup) async {
+    if (!mounted || !backup.hasMissingAttachments) return;
+    _infoToast(
+      context.l10n
+          .backupText('backupMissingEvidenceToast')
+          .replaceAll('{count}', '${backup.missingAttachmentCount}'),
+    );
+    await showBackupMissingEvidenceDialog(
+      context,
+      missingAttachmentCount: backup.missingAttachmentCount,
+    );
+  }
+
+  void _backupErrorToast(Object error) {
+    final l10n = context.l10n;
+    final summary = l10n.backupText(
+      'backupFailure${backupFailureSuffix(classifyBackupFailure(error))}Reason',
+    );
+    ButlerlyToast.error(
+      context,
+      summary,
+      detailsLabel: l10n.backupText('toastDetails'),
+      closeLabel: l10n.backupText('toastClose'),
+      onDetails: () {
+        if (mounted) {
+          showBackupCreationFailureDialog(context, error: error);
+        }
+      },
+    );
+  }
+
+  void _restoreErrorToast(Object error) {
+    final l10n = context.l10n;
+    final summary = error is NewerBackupSchemaException
+        ? l10n
+              .backupText('upgradeAppRequiredBody')
+              .replaceAll('{backupVersion}', '${error.backupVersion}')
+              .replaceAll('{supportedVersion}', '${error.supportedVersion}')
+        : l10n.backupText(
+            'restoreFailure${restoreFailureSuffix(classifyRestoreFailure(error))}Reason',
+          );
+    ButlerlyToast.error(
+      context,
+      summary,
+      detailsLabel: l10n.backupText('toastDetails'),
+      closeLabel: l10n.backupText('toastClose'),
+      onDetails: () {
+        if (!mounted) return;
+        if (error is NewerBackupSchemaException) {
+          showBackupRequiresAppUpdateDialog(
+            context,
+            backupVersion: error.backupVersion,
+            supportedVersion: error.supportedVersion,
+          );
+        } else {
+          showBackupRestoreFailureDialog(context, error: error);
+        }
+      },
+    );
+  }
+
+  void _otherErrorToast(String message, String advice) {
+    final l10n = context.l10n;
+    ButlerlyToast.error(
+      context,
+      message,
+      detailsLabel: l10n.backupText('toastDetails'),
+      closeLabel: l10n.backupText('toastClose'),
+      onDetails: () {
+        if (!mounted) return;
+        showButlerlyBottomSheet<void>(
+          context: context,
+          builder: (sheetContext) => ButlerlySheet(
+            title: Text(message),
+            content: Text(advice),
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.pop(sheetContext),
+                child: Text(sheetContext.l10n.backupText('toastClose')),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   Future<void> _backup() async {
     final timestamp = DateTime.now().toUtc().toIso8601String().replaceAll(
@@ -80,15 +673,19 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
 
     setState(() => _busy = true);
     try {
-      await services<WorkspaceDataService>().createPortableBackup(
-        location.path,
-        password: password,
-      );
-      if (mounted) _message(context.l10n.backupText('backupComplete'));
-    } on BackupPasswordTooShortException {
-      if (mounted) _message(context.l10n.backupText('backupPasswordTooShort'));
-    } catch (_) {
-      if (mounted) _message(context.l10n.backupText('backupFailed'));
+      final backup = await services<WorkspaceDataService>()
+          .createPortableBackup(location.path, password: password);
+      if (mounted) {
+        if (backup.hasMissingAttachments) {
+          await _warnAboutMissingAttachments(backup);
+        } else {
+          _successToast(context.l10n.backupText('backupSavedVerified'));
+        }
+      }
+    } catch (error) {
+      if (mounted) {
+        _backupErrorToast(error);
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -100,17 +697,18 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
   ) async {
     setState(() => _busy = true);
     String? filePath;
+    var sharingStarted = false;
     try {
-      filePath = await services<WorkspaceDataService>().createTemporaryBackup(
-        fileName,
-        password: password,
-      );
+      final temporary = await services<WorkspaceDataService>()
+          .createTemporaryBackup(fileName, password: password);
+      filePath = temporary.filePath;
       if (!mounted) return;
 
       final renderBox = context.findRenderObject();
       final shareOrigin = renderBox is RenderBox
           ? renderBox.localToGlobal(Offset.zero) & renderBox.size
           : null;
+      sharingStarted = true;
       final result = await (widget.shareClient ?? share.SharePlus.instance)
           .share(
             share.ShareParams(
@@ -122,12 +720,33 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
             ),
           );
       if (mounted && result.status == share.ShareResultStatus.success) {
-        _message(context.l10n.backupText('backupComplete'));
+        if (temporary.backup.hasMissingAttachments) {
+          await _warnAboutMissingAttachments(temporary.backup);
+        } else {
+          _successToast(context.l10n.backupText('backupSharedVerified'));
+        }
+      } else if (mounted &&
+          result.status == share.ShareResultStatus.dismissed) {
+        _infoToast(context.l10n.backupText('backupShareDismissed'));
+      } else if (mounted) {
+        _backupErrorToast(
+          BackupCreationException(
+            stage: BackupCreationStage.sharing,
+            cause: StateError('Share operation did not complete.'),
+          ),
+        );
       }
-    } on BackupPasswordTooShortException {
-      if (mounted) _message(context.l10n.backupText('backupPasswordTooShort'));
-    } catch (_) {
-      if (mounted) _message(context.l10n.backupText('backupFailed'));
+    } catch (error) {
+      if (mounted) {
+        _backupErrorToast(
+          sharingStarted
+              ? BackupCreationException(
+                  stage: BackupCreationStage.sharing,
+                  cause: error,
+                )
+              : error,
+        );
+      }
     } finally {
       if (filePath != null) {
         await services<WorkspaceDataService>().discardTemporaryBackup(filePath);
@@ -136,7 +755,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     }
   }
 
-  Future<void> _restore() async {
+  Future<void> _restore(LocalRestoreMode mode) async {
     final selected = await openFile(acceptedTypeGroups: const [_backupType]);
     if (selected == null) return;
 
@@ -146,7 +765,9 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     try {
       if (!await manager.isEncryptedBackup(file)) {
         if (mounted) {
-          _message(context.l10n.backupText('encryptedBackupRequired'));
+          _restoreErrorToast(
+            const FormatException('Not an encrypted Butlerly backup.'),
+          );
         }
         return;
       }
@@ -158,9 +779,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       final inspection = await manager.inspect(file, password: password);
       if (!mounted) return;
       setState(() => _busy = false);
-      final mode = await _chooseRestoreMode(inspection);
-      if (mode == null) return;
-      if (mode == LocalRestoreMode.replace && !await _confirmReplace()) return;
+      if (!await _confirmRestore(inspection, mode)) return;
       if (!mounted) return;
       setState(() => _busy = true);
       final result = await manager.restore(
@@ -169,31 +788,32 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         password: password,
         refreshPresentation: () async {
           ref.invalidate(userPreferenceProvider);
-          notifyTransactionChanged();
+          notifyWorkspaceRestored();
           notifyBudgetsChanged();
         },
       );
       if (!mounted) return;
-      final summary = context.l10n
-          .backupText('restoreResult')
-          .replaceAll('{restored}', '${result.restoredRows}');
-      _message(
+      final summary =
+          (mode == LocalRestoreMode.merge
+                  ? context.l10n.backupText('mergeResult')
+                  : context.l10n.backupText('restoreResult'))
+              .replaceAll('{restored}', '${result.restoredRows}')
+              .replaceAll('{kept}', '${result.keptNewerLocalRows}');
+      _successToast(
         '${context.l10n.backupText('restoreComplete')} $summary'
         '${result.presentationRefreshFailed ? ' ${context.l10n.text('restoreRefreshWarning')}' : ''}',
       );
-    } on BackupPasswordOrIntegrityException {
+    } on NewerBackupSchemaException catch (error) {
       if (mounted) {
-        _message(context.l10n.backupText('passwordOrIntegrityFailed'));
-      }
-    } on BackupPasswordRequiredException {
-      if (mounted) {
-        _message(context.l10n.backupText('passwordOrIntegrityFailed'));
+        _restoreErrorToast(error);
       }
     } on RestoreRecoveryRequiredException {
       // RestoreRecoveryState immediately replaces normal navigation with the
-      // recovery-only surface. Do not add a competing generic snackbar here.
-    } catch (_) {
-      if (mounted) _message(context.l10n.backupText('restoreFailed'));
+      // recovery-only surface. Do not add a competing generic dialog here.
+    } catch (error) {
+      if (mounted) {
+        _restoreErrorToast(error);
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -334,101 +954,14 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     }
   }
 
-  String _changeDetails(BackupInspection inspection) {
-    if (!inspection.hasNewerLocalData) return '';
-    final changes = inspection.changes;
-    final lines = <String>[];
-    if (changes.transactionsAdded > 0) {
-      lines.add(
-        '• ${changes.transactionsAdded} '
-        '${context.l10n.backupText('addedTransactions')}',
-      );
-    }
-    if (changes.transactionsChanged > 0) {
-      lines.add(
-        '• ${changes.transactionsChanged} '
-        '${context.l10n.backupText('changedTransactions')}',
-      );
-    }
-    if (changes.masterDataChanged > 0) {
-      lines.add(
-        '• ${changes.masterDataChanged} '
-        '${context.l10n.backupText('changedMasterData')}',
-      );
-    }
-    if (changes.deletedEntities > 0) {
-      lines.add(
-        '• ${changes.deletedEntities} '
-        '${context.l10n.backupText('deletedItems')}',
-      );
-    }
-    return lines.join('\n');
-  }
-
-  Future<LocalRestoreMode?> _chooseRestoreMode(BackupInspection inspection) =>
-      showButlerlyBottomSheet<LocalRestoreMode>(
-        context: context,
-        builder: (context) {
-          final summary = context.l10n
-              .backupText('backupSummary')
-              .replaceAll('{records}', '${inspection.recordCount}')
-              .replaceAll('{evidence}', '${inspection.evidenceCount}');
-          final created = inspection.createdAtUtc.toLocal();
-          final createdLabel = context.l10n
-              .backupText('backupCreatedAt')
-              .replaceAll(
-                '{date}',
-                formatBackupInspectionDate(context, created),
-              );
-          final details = _changeDetails(inspection);
-          final body = inspection.hasNewerLocalData
-              ? '${context.l10n.backupText('newerData')}\n\n$details'
-              : context.l10n.backupText('noNewerData');
-          return ButlerlySheet(
-            title: Text(context.l10n.backupText('restoreTitle')),
-            content: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: MediaQuery.sizeOf(context).height * .45,
-              ),
-              child: SingleChildScrollView(
-                child: Text('$summary\n$createdLabel\n\n$body'),
-              ),
-            ),
-            actions: [
-              ButlerlyCancelButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text(context.l10n.text('cancel')),
-              ),
-              TextButton(
-                onPressed: () =>
-                    Navigator.pop(context, LocalRestoreMode.replace),
-                child: Text(context.l10n.backupText('replace')),
-              ),
-            ],
-          );
-        },
-      );
-
-  Future<bool> _confirmReplace() async =>
-      (await showButlerlyBottomSheet<bool>(
-        context: context,
-        builder: (context) => ButlerlySheet(
-          title: Text(context.l10n.backupText('replaceTitle')),
-          content: Text(context.l10n.backupText('replaceBody')),
-          actions: [
-            ButlerlyCancelButton(
-              autofocus: true,
-              onPressed: () => Navigator.pop(context, false),
-              child: Text(context.l10n.text('cancel')),
-            ),
-            ButlerlyDestructiveButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text(context.l10n.backupText('replace')),
-            ),
-          ],
-        ),
-      )) ==
-      true;
+  Future<bool> _confirmRestore(
+    BackupInspection inspection,
+    LocalRestoreMode mode,
+  ) => showBackupRestoreConfirmation(
+    context,
+    inspection: inspection,
+    mode: mode,
+  );
 
   Future<void> _export() async {
     setState(() => _busy = true);
@@ -457,7 +990,12 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         ),
       );
     } catch (_) {
-      if (mounted) _message(context.l10n.text('exportFailed'));
+      if (mounted) {
+        _otherErrorToast(
+          context.l10n.text('exportFailed'),
+          context.l10n.backupText('toastExportFailedDetails'),
+        );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -491,17 +1029,18 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           notifyTransactionChanged();
         },
       );
-      if (mounted) _message(context.l10n.text('eraseComplete'));
+      if (mounted) _successToast(context.l10n.text('eraseComplete'));
     } catch (_) {
-      if (mounted) _message(context.l10n.text('eraseFailed'));
+      if (mounted) {
+        _otherErrorToast(
+          context.l10n.text('eraseFailed'),
+          context.l10n.backupText('toastEraseFailedDetails'),
+        );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
-
-  void _message(String value) => ScaffoldMessenger.of(
-    context,
-  ).showSnackBar(SnackBar(content: Text(value)));
 
   Widget _desktopPrivacyPage(BuildContext context) {
     final l10n = context.l10n;
@@ -519,10 +1058,18 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           onTap: _busy ? null : _backup,
         ),
         _DesktopPrivacyAction(
+          key: const ValueKey('desktop-privacy-restore-merge'),
+          icon: Icons.merge_type_outlined,
+          label: l10n.backupText('restoreMerge'),
+          description: l10n.backupText('mergeSubtitle'),
+          onTap: _busy ? null : () => _restore(LocalRestoreMode.merge),
+        ),
+        _DesktopPrivacyAction(
+          key: const ValueKey('desktop-privacy-restore-replace'),
           icon: Icons.restore_outlined,
-          label: l10n.backupText('restoreBackup'),
+          label: l10n.backupText('restoreReplace'),
           description: l10n.backupText('restoreSubtitle'),
-          onTap: _busy ? null : _restore,
+          onTap: _busy ? null : () => _restore(LocalRestoreMode.replace),
         ),
       ],
     );
@@ -716,15 +1263,29 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
             ),
             const Divider(),
             ListTile(
+              key: const ValueKey('mobile-privacy-restore-merge'),
+              enabled: !_busy,
+              leading: Icon(_privacyIcon(context, Icons.merge_type_outlined)),
+              title: Text(context.l10n.backupText('restoreMerge')),
+              subtitle: Text(
+                context.l10n.backupText('mergeSubtitle'),
+                style: _subtitleStyle(context),
+              ),
+              trailing: Icon(_privacyIcon(context, Icons.chevron_right)),
+              onTap: () => _restore(LocalRestoreMode.merge),
+            ),
+            const Divider(),
+            ListTile(
+              key: const ValueKey('mobile-privacy-restore-replace'),
               enabled: !_busy,
               leading: Icon(_privacyIcon(context, Icons.restore_outlined)),
-              title: Text(context.l10n.backupText('restoreBackup')),
+              title: Text(context.l10n.backupText('restoreReplace')),
               subtitle: Text(
                 context.l10n.backupText('restoreSubtitle'),
                 style: _subtitleStyle(context),
               ),
               trailing: Icon(_privacyIcon(context, Icons.chevron_right)),
-              onTap: _restore,
+              onTap: () => _restore(LocalRestoreMode.replace),
             ),
             const Divider(),
             ListTile(
@@ -832,6 +1393,7 @@ class _DesktopPrivacyAction extends StatelessWidget {
     required this.description,
     required this.onTap,
     this.danger = false,
+    super.key,
   });
 
   final IconData icon;

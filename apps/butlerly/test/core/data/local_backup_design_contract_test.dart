@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:butlerly/core/data/local_backup_manager.dart';
 import 'package:butlerly/core/data/local_data_gateway.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
+import 'package:butlerly/core/data/raw_backup_service.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -64,16 +65,26 @@ void main() {
   });
 
   test(
-    'refresh failure preserves activated state and retries in recovery',
+    'raw Replace commits exact source rows without business refresh gating',
     () async {
       final fixture = await _Fixture.create();
       addTearDown(fixture.dispose);
       final timestamp = DateTime.utc(2026, 1, 1);
       await fixture.insertTransaction('tx-1', timestamp, amount: '100');
-      final backup = File(
-        path.join(fixture.root.path, 'replace-source.butlerlybackup'),
+      // Portable backups must be exported outside Butlerly private storage.
+      final exports = await Directory.systemTemp.createTemp(
+        'butlerly-raw-replace-export-',
       );
-      await fixture.manager.createBackup(backup);
+      addTearDown(() async {
+        if (await exports.exists()) await exports.delete(recursive: true);
+      });
+      final backup = File(path.join(exports.path, 'replace-source.butlerly'));
+      const password = 'correct horse battery staple';
+      await RawBackupService(
+        fixture.database,
+        fixture.data,
+      ).createBackup(backup, password: password);
+      final originalBytes = await backup.readAsBytes();
 
       await fixture.database.database.update(
         'transactions',
@@ -88,20 +99,32 @@ void main() {
         whereArgs: ['tx-1'],
       );
 
-      var refreshCalls = 0;
-      var failRefresh = true;
+      var businessRefreshCalls = 0;
+      var presentationRefreshCalls = 0;
       final workspace = WorkspaceDataService(
         LocalWorkspaceDataGateway(fixture.manager, fixture.data),
         refreshSystemData: () async {
-          refreshCalls++;
-          if (failRefresh) throw StateError('synthetic refresh failure');
+          businessRefreshCalls++;
+          throw StateError('business validation must not gate raw restore');
         },
       );
-      await expectLater(
-        workspace.restore(backup.path, mode: LocalRestoreMode.replace),
-        throwsA(isA<RestoreRecoveryRequiredException>()),
+      final result = await workspace.restore(
+        backup.path,
+        mode: LocalRestoreMode.replace,
+        password: password,
+        refreshPresentation: () async {
+          presentationRefreshCalls++;
+          throw StateError('synthetic presentation refresh failure');
+        },
       );
 
+      // A failed presentation refresh cannot undo or misreport a committed
+      // physical SQLite Replace. The restore must not run business validation.
+      expect(result.mode, LocalRestoreMode.replace);
+      expect(result.presentationRefreshFailed, isTrue);
+      expect(businessRefreshCalls, 0);
+      expect(presentationRefreshCalls, 1);
+      expect(fixture.manager.recoveryState.isRecoveryRequired, isFalse);
       final activated = await fixture.database.database.query(
         'transactions',
         where: 'id = ?',
@@ -109,30 +132,7 @@ void main() {
       );
       expect(activated, hasLength(1));
       expect(activated.single['amount_coefficient'], '100');
-      expect(refreshCalls, 1);
-      expect(fixture.manager.recoveryState.isRecoveryRequired, isTrue);
-      expect(fixture.manager.recoveryState.incident?.retryCurrentState, isTrue);
-      expect(
-        fixture.manager.recoveryState.incident?.reason,
-        'post-activation-validation-or-refresh-failed',
-      );
-      expect(
-        fixture.manager.recoveryState.incident?.safetyBackupPath,
-        isNotEmpty,
-      );
-
-      failRefresh = false;
-      expect(workspace.hasRecoverySafetyCopy, isTrue);
-      await workspace.recoverControlledState();
-
-      expect(refreshCalls, 2);
-      expect(fixture.manager.recoveryState.isRecoveryRequired, isFalse);
-      final recovered = await fixture.database.database.query(
-        'transactions',
-        where: 'id = ?',
-        whereArgs: ['tx-1'],
-      );
-      expect(recovered.single['amount_coefficient'], '100');
+      expect(await backup.readAsBytes(), originalBytes);
     },
   );
 

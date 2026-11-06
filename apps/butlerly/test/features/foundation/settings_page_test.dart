@@ -119,7 +119,7 @@ void main() {
   });
 
   testWidgets(
-    'More exposes separate Budget Settings and Backup & Restore entries',
+    'More keeps a single Privacy & data destination alongside Budget Settings',
     (tester) async {
       await tester.pumpWidget(app());
       await tester.pumpAndSettle();
@@ -130,7 +130,8 @@ void main() {
         scrollable: find.byType(Scrollable).first,
       );
       expect(find.text('Budget Settings'), findsOneWidget);
-      expect(find.text('Backup & Restore'), findsOneWidget);
+      expect(find.text('Backup & Restore'), findsNothing);
+      expect(find.text('Manage privacy & data'), findsOneWidget);
     },
   );
 
@@ -171,10 +172,10 @@ void main() {
 
     appRouter.go('/settings');
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Backup & Restore'));
+    await tester.ensureVisible(find.text('Manage privacy & data'));
     await tester.tap(
       find.ancestor(
-        of: find.text('Backup & Restore'),
+        of: find.text('Manage privacy & data'),
         matching: find.byType(InkWell),
       ),
     );
@@ -191,6 +192,48 @@ void main() {
       '/financial-profile',
     );
     expect(find.byType(FinancialProfilePage), findsOneWidget);
+  });
+
+  testWidgets('compact More routes Privacy & data to the shared page', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    appRouter.go('/settings');
+    addTearDown(() => appRouter.go('/'));
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp.router(
+          routerConfig: appRouter,
+          locale: const Locale('en'),
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    for (var attempt = 0; attempt < 10; attempt++) {
+      if (find.text('Manage privacy & data').evaluate().isNotEmpty) break;
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -250));
+      await tester.pump();
+    }
+    expect(find.text('Backup & Restore'), findsNothing);
+    final privacyRow = find.ancestor(
+      of: find.text('Manage privacy & data'),
+      matching: find.byType(InkWell),
+    );
+    await tester.ensureVisible(privacyRow.first);
+    await tester.tap(privacyRow.first);
+    await tester.pumpAndSettle();
+    expect(appRouter.routeInformationProvider.value.uri.path, '/privacy-data');
+    expect(find.byType(PrivacyDataPage), findsOneWidget);
   });
 
   testWidgets('compact secondary settings destinations have back affordance', (
@@ -226,6 +269,10 @@ void main() {
       await tester.pump();
     }
     expect(find.text('Budget Settings'), findsOneWidget);
+    // A built sliver child can still be below the visible viewport. Ensure
+    // the target is actually hittable before testing its navigation.
+    await tester.ensureVisible(find.text('Budget Settings'));
+    await tester.pumpAndSettle();
     await tester.tap(
       find
           .ancestor(
@@ -256,7 +303,8 @@ void main() {
     expect(find.text('财务设置'), findsOneWidget);
     expect(find.text('预算设置'), findsOneWidget);
     expect(find.text('财务档案'), findsOneWidget);
-    expect(find.text('备份与恢复'), findsOneWidget);
+    expect(find.text('管理隐私和数据'), findsOneWidget);
+    expect(find.text('备份与恢复'), findsNothing);
   });
 
   testWidgets('display-name sheet saves and can reopen without crashing', (
@@ -313,8 +361,9 @@ void main() {
     expect(find.text('Preferences'), findsOneWidget);
     expect(find.text('Privacy & data'), findsOneWidget);
     expect(find.text('Budget Settings'), findsOneWidget);
-    expect(find.text('Backup & Restore'), findsOneWidget);
-    for (final label in const ['Budget Settings', 'Backup & Restore']) {
+    expect(find.text('Backup & Restore'), findsNothing);
+    expect(find.text('Manage privacy & data'), findsOneWidget);
+    for (final label in const ['Budget Settings', 'Manage privacy & data']) {
       final row = find.ancestor(
         of: find.text(label),
         matching: find.byType(InkWell),

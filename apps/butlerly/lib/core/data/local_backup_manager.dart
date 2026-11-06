@@ -283,7 +283,13 @@ final class LocalBackupManager {
     }
   }
 
-  Future<void> cleanupOrphanedPrivateArtifacts() async {
+  Future<void> cleanupOrphanedPrivateArtifacts() =>
+      EvidenceMutationLock.runExclusive(_cleanupOrphanedPrivateArtifacts);
+
+  Future<void> _cleanupOrphanedPrivateArtifacts() async {
+    // Even legacy staging files may still be forensic/recovery material when
+    // an incident is known. Cleanup resumes only after recovery is cleared.
+    if (recoveryState.isRecoveryRequired) return;
     final databaseDirectory = Directory(
       path.dirname(database.persistenceDatabase.path),
     );
@@ -323,9 +329,146 @@ final class LocalBackupManager {
       }
     }
 
+    // Remove the new engine's abandoned private staging files only when
+    // startup has established that no raw restore recovery is pending.
+    await _cleanupAbandonedRawArtifacts(databaseDirectory);
+
     await _pruneSafetyBackupsBestEffort(
       preservePath: recoveryState.incident?.safetyBackupPath,
     );
+  }
+
+  /// Called after startup raw-journal replay, under EvidenceMutationLock.
+  /// Deletes only names owned by this app. Never delete encrypted backup
+  /// candidates: even an unmarked one may be the only copy following a
+  /// failed portable-publication operation.
+  Future<void> _cleanupAbandonedRawArtifacts(
+    Directory databaseDirectory,
+  ) async {
+    if (recoveryState.isRecoveryRequired) return;
+    await rejectSymlinkedPath(databaseDirectory.path);
+    final evidence = await localDataManager.evidenceDirectory();
+    await rejectSymlinkedPath(evidence.parent.path);
+    final journal = path.join(
+      databaseDirectory.path,
+      '.raw-restore-journal.json',
+    );
+    // A .tmp marker could be the beginning of an interrupted activation.
+    final unresolvedRawJournal =
+        await FileSystemEntity.type(journal, followLinks: false) !=
+            FileSystemEntityType.notFound ||
+        await FileSystemEntity.type('$journal.tmp', followLinks: false) !=
+            FileSystemEntityType.notFound;
+    final canClearRawRestore = !unresolvedRawJournal;
+    final backupWork = RegExp(r'^\.raw-backup-(work|read)-[0-9]{13,20}$');
+    final restoreWork = RegExp(r'^\.raw-restore-work-[0-9]{13,20}$');
+    final mergeWork = RegExp(r'^\.raw-merge-work-[0-9]{13,20}$');
+    final incompleteEncryption = RegExp(
+      r'^\.raw-backup-[0-9]{13,20}\.butlerly\.encrypting-[0-9]{13,20}$',
+    );
+    final dbName = RegExp.escape(
+      path.basename(database.persistenceDatabase.path),
+    );
+    final previousDb = RegExp(
+      '^$dbName'
+      r'(-wal|-shm)?\.raw-restore-previous-[0-9]{13,20}$',
+    );
+    final evidenceName = RegExp.escape(path.basename(evidence.path));
+    final previousEvidence = RegExp(
+      '^$evidenceName'
+      r'\.raw-restore-previous-[0-9]{13,20}$',
+    );
+    final incomingEvidence = RegExp(
+      '^$evidenceName'
+      r'\.raw-restore-incoming-[0-9]{13,20}$',
+    );
+
+    var hasPreviousCopies = false;
+    if (canClearRawRestore && await databaseDirectory.exists()) {
+      await for (final entry in databaseDirectory.list(followLinks: false)) {
+        if (entry is File && previousDb.hasMatch(path.basename(entry.path))) {
+          hasPreviousCopies = true;
+          break;
+        }
+      }
+    }
+    if (canClearRawRestore && await evidence.parent.exists()) {
+      await for (final entry in evidence.parent.list(followLinks: false)) {
+        if (entry is Directory &&
+            previousEvidence.hasMatch(path.basename(entry.path))) {
+          hasPreviousCopies = true;
+          break;
+        }
+      }
+    }
+
+    // Never discard the previous SQLite/evidence copies based only on a
+    // missing journal. The current DB and every referenced evidence file
+    // must validate before the previous copies are considered expendable.
+    var safeToDeletePrevious = false;
+    if (hasPreviousCopies) {
+      try {
+        await _validateDatabase(database.database);
+        await _validateLiveEvidenceReferences();
+        safeToDeletePrevious = true;
+      } catch (_) {
+        // Keep recovery copies until the live data can be validated.
+      }
+    }
+
+    if (await databaseDirectory.exists()) {
+      await for (final entry in databaseDirectory.list(followLinks: false)) {
+        final name = path.basename(entry.path);
+        if (entry is Directory &&
+            (backupWork.hasMatch(name) ||
+                (canClearRawRestore &&
+                    (restoreWork.hasMatch(name) ||
+                        mergeWork.hasMatch(name))))) {
+          await _deleteAbandonedRawDirectory(entry);
+        } else if (entry is File && incompleteEncryption.hasMatch(name)) {
+          // A streaming-encryption temp file is never a recoverable backup.
+          // Publication candidates without ".encrypting-" remain protected.
+          await _deleteAbandonedRawFile(entry);
+        } else if (entry is File &&
+            canClearRawRestore &&
+            safeToDeletePrevious &&
+            previousDb.hasMatch(name)) {
+          await _deleteAbandonedRawFile(entry);
+        }
+      }
+    }
+
+    if (canClearRawRestore && await evidence.parent.exists()) {
+      await for (final entry in evidence.parent.list(followLinks: false)) {
+        if (entry is! Directory) continue;
+        final name = path.basename(entry.path);
+        if (incomingEvidence.hasMatch(name) ||
+            (safeToDeletePrevious && previousEvidence.hasMatch(name))) {
+          await _deleteAbandonedRawDirectory(entry);
+        }
+      }
+    }
+  }
+
+  Future<void> _deleteAbandonedRawDirectory(Directory directory) async {
+    try {
+      await rejectEvidenceTree(directory);
+      await directory.delete(recursive: true);
+    } catch (_) {
+      // Fail closed for symbolic links, path changes, and filesystem errors.
+    }
+  }
+
+  Future<void> _deleteAbandonedRawFile(File file) async {
+    try {
+      await rejectSymlinkedPath(file.path);
+      if (await FileSystemEntity.type(file.path, followLinks: false) ==
+          FileSystemEntityType.file) {
+        await file.delete();
+      }
+    } catch (_) {
+      // Retain any rollback copy whose deletion cannot be proven safe.
+    }
   }
 
   Future<void> recoverInterruptedRestore() =>

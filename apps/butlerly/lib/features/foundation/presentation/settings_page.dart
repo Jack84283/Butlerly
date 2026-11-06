@@ -334,10 +334,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   description: l10n.text('desktopPrivacyDescription'),
                   children: [
                     _DesktopMoreRow(
-                      title: l10n.text('backupRestoreSettings'),
-                      onTap: () => context.go('/privacy-data'),
-                    ),
-                    _DesktopMoreRow(
                       title: l10n.text('managePrivacyData'),
                       onTap: () => context.go('/privacy-data'),
                     ),
@@ -650,14 +646,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         _SettingsSectionCard(
           children: [
             _SettingsRow(
-              icon: Icons.backup_outlined,
-              title: context.l10n.text('backupRestoreSettings'),
-              subtitle: context.l10n.text('backupRestoreSettingsBody'),
-              onTap: () => context.go('/privacy-data'),
-            ),
-            _SettingsRow(
               icon: Icons.privacy_tip_outlined,
-              title: context.l10n.text('privacyAndData'),
+              title: context.l10n.text('managePrivacyData'),
               subtitle: context.l10n.text('privacyAndDataBody'),
               onTap: () => context.go('/privacy-data'),
             ),

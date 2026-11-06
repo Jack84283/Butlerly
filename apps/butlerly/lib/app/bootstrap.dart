@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:butlerly/app/butlerly_app.dart';
 import 'package:butlerly/app/router/app_router.dart';
@@ -6,7 +7,9 @@ import 'package:butlerly/app/session/butlerly_session_guard.dart';
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/core/config/app_configuration.dart';
 import 'package:butlerly/core/data/local_backup_manager.dart';
+import 'package:butlerly/core/data/local_data_gateway.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
+import 'package:butlerly/core/data/raw_restore_service.dart';
 import 'package:butlerly/core/data/restore_recovery_state.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/di/finance_services.dart';
@@ -17,6 +20,7 @@ import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/features/foundation/presentation/butlerly_launch_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly/l10n/app_localizations_backup.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/foundation.dart';
@@ -24,12 +28,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
 
 @visibleForTesting
 final class ButlerlyStorageUnavailableException implements Exception {
   const ButlerlyStorageUnavailableException([this.cause]);
 
   final Object? cause;
+}
+
+@visibleForTesting
+final class RawRestoreStartupRecoveryRequiredException implements Exception {
+  const RawRestoreStartupRecoveryRequiredException();
 }
 
 @visibleForTesting
@@ -51,6 +62,14 @@ final class ButlerlyStartupFailure implements Exception {
 @visibleForTesting
 ButlerlyStartupFailure classifyStartupFailure(String phase, Object error) {
   if (error is ButlerlyStartupFailure) return error;
+
+  if (error is RawRestoreStartupRecoveryRequiredException) {
+    return ButlerlyStartupFailure(
+      code: 'RECOVERY-RAW',
+      phase: phase,
+      cause: error,
+    );
+  }
 
   if (error is ButlerlyStorageUnavailableException) {
     return ButlerlyStartupFailure(
@@ -370,6 +389,7 @@ class _StartupFailureBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final diagnosticCode = startupDiagnosticCode(error);
     final storageUnavailable = diagnosticCode == 'DB-UNAVAILABLE';
+    final rawRecoveryRequired = diagnosticCode == 'RECOVERY-RAW';
     return Scaffold(
       key: const ValueKey('butlerly-startup-screen'),
       body: SafeArea(
@@ -386,18 +406,22 @@ class _StartupFailureBody extends StatelessWidget {
                     const Icon(Icons.error_outline_rounded, size: 48),
                     const SizedBox(height: 20),
                     Text(
-                      context.l10n.text(
-                        storageUnavailable
-                            ? 'localStorageUnavailable'
-                            : 'pageUnavailable',
-                      ),
+                      rawRecoveryRequired
+                          ? context.l10n.backupText('recoveryRequiredTitle')
+                          : context.l10n.text(
+                              storageUnavailable
+                                  ? 'localStorageUnavailable'
+                                  : 'pageUnavailable',
+                            ),
                       key: const ValueKey('butlerly-startup-error'),
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.headlineSmall,
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      context.l10n.text('dataPreserved'),
+                      rawRecoveryRequired
+                          ? context.l10n.backupText('rawStartupRecoveryBody')
+                          : context.l10n.text('dataPreserved'),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 12),
@@ -425,9 +449,43 @@ class _StartupFailureBody extends StatelessWidget {
   }
 }
 
+/// A failed raw restore must never allow a partially activated SQLite file to
+/// be opened by normal startup. Keep the journal and previous files on disk,
+/// and show a dedicated recovery-only startup screen instead.
+@visibleForTesting
+Future<bool> recoverRawJournalBeforeDatabaseOpen({
+  required File liveDatabase,
+  required Directory evidenceDirectory,
+}) async {
+  final journal = File(
+    path.join(liveDatabase.parent.path, '.raw-restore-journal.json'),
+  );
+  final journalPresent = await journal.exists();
+  try {
+    await RawRestoreService.recoverInterruptedReplace(
+      liveDatabase: liveDatabase,
+      evidenceDirectory: evidenceDirectory,
+    );
+  } catch (error, stack) {
+    if (journalPresent) {
+      Error.throwWithStackTrace(
+        const RawRestoreStartupRecoveryRequiredException(),
+        stack,
+      );
+    }
+    rethrow;
+  }
+  return journalPresent && !await journal.exists();
+}
+
 @visibleForTesting
 Future<void> initializeButlerly(AppLogger logger) async {
+  // Only previous-process temporary shares are candidates for this launch's
+  // maintenance; any share started after this point must be preserved.
+  final launchEpochMicros = DateTime.now().microsecondsSinceEpoch;
   LocalDatabase? database;
+  LocalBackupManager? startupBackupManager;
+  var portablePublicationRecovered = false;
   var phase = 'locale initialization';
 
   try {
@@ -440,6 +498,16 @@ Future<void> initializeButlerly(AppLogger logger) async {
 
     phase = 'database initialization';
     logger.info('Startup: opening local database');
+    // Roll back an interrupted physical Replace before opening SQLite.
+    // Web builds do not have an application support directory on disk.
+    var rawJournalRecovered = false;
+    if (!kIsWeb) {
+      final support = await getApplicationSupportDirectory();
+      rawJournalRecovered = await recoverRawJournalBeforeDatabaseOpen(
+        liveDatabase: File(path.join(support.path, 'butlerly.db')),
+        evidenceDirectory: Directory(path.join(support.path, 'evidence')),
+      );
+    }
     database = LocalDatabase(logger: logger);
     await initializeLocalDatabaseForStartup(database, logger);
     logger.info('Startup: local database ready');
@@ -457,6 +525,13 @@ Future<void> initializeButlerly(AppLogger logger) async {
         ? services<RestoreRecoveryState>()
         : null;
     await recoveryState?.initialize();
+    // A previous runtime restore may have persisted the recovery-only gate
+    // while the raw journal still existed. If startup successfully rolled
+    // that journal back to the original files, release only that exact gate.
+    if (rawJournalRecovered &&
+        recoveryState?.incident?.reason == 'raw-restore-rollback-incomplete') {
+      await recoveryState!.clear();
+    }
     logger.info('Startup: restore recovery checked');
 
     if (database.status == DatabaseStatus.ready &&
@@ -480,32 +555,17 @@ Future<void> initializeButlerly(AppLogger logger) async {
       final backupManager = services.isRegistered<LocalBackupManager>()
           ? services<LocalBackupManager>()
           : null;
+      startupBackupManager = backupManager;
       phase = 'interrupted portable backup recovery';
       if (backupManager != null) {
         try {
           await backupManager.recoverInterruptedPortableBackupPublications();
+          portablePublicationRecovered = true;
           logger.info('Startup: portable backup recovery checked');
         } catch (error, stackTrace) {
           logger.severe(
             'Portable backup recovery requires user action; recovery artifacts '
             'were retained',
-            error,
-            stackTrace,
-          );
-        }
-      }
-
-      phase = 'private artifact cleanup';
-      final incident = recoveryState?.incident;
-      final recoveryIsUnknown =
-          incident != null && incident.safetyBackupPath.isEmpty;
-      if (!recoveryIsUnknown && backupManager != null) {
-        try {
-          await backupManager.cleanupOrphanedPrivateArtifacts();
-          logger.info('Startup: private artifact cleanup complete');
-        } catch (error, stackTrace) {
-          logger.severe(
-            'Startup maintenance cleanup failed; continuing',
             error,
             stackTrace,
           );
@@ -625,6 +685,41 @@ Future<void> initializeButlerly(AppLogger logger) async {
     }
 
     logger.info('Startup: application ready');
+    // Recovery gates run before the app opens. Orphan cleanup is maintenance:
+    // defer potentially expensive integrity checks until the workspace is
+    // usable, and serialize it with normal evidence/backup mutations.
+    final maintenance = startupBackupManager;
+    if (maintenance != null && !(recoveryState?.isRecoveryRequired ?? false)) {
+      unawaited(
+        Future<void>.delayed(Duration.zero, () async {
+          try {
+            await maintenance.cleanupOrphanedPrivateArtifacts();
+            logger.info('Startup: private artifact cleanup complete');
+          } catch (error, stackTrace) {
+            logger.severe(
+              'Startup maintenance cleanup failed; continuing',
+              error,
+              stackTrace,
+            );
+          }
+          if (portablePublicationRecovered &&
+              !maintenance.publicationRecoveryState.isRecoveryRequired) {
+            try {
+              await LocalWorkspaceDataGateway.cleanupAbandonedTemporaryShareBackups(
+                olderThanMicros: launchEpochMicros,
+              );
+              logger.info('Startup: temporary sharing cleanup complete');
+            } catch (error, stackTrace) {
+              logger.severe(
+                'Temporary backup sharing cleanup failed; continuing',
+                error,
+                stackTrace,
+              );
+            }
+          }
+        }),
+      );
+    }
   } catch (error, stackTrace) {
     final failure = classifyStartupFailure(phase, error);
     logger.severe(

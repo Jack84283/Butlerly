@@ -929,16 +929,18 @@ void main() {
         expect(find.byType(SettingsPage), findsOneWidget);
 
         for (var attempt = 0; attempt < 12; attempt++) {
-          if (find.text('Backup & Restore').evaluate().isNotEmpty) break;
+          if (find.text('Manage privacy & data').evaluate().isNotEmpty) {
+            break;
+          }
           final scrollable = find.byType(CustomScrollView);
           if (scrollable.evaluate().isEmpty) break;
           await tester.drag(scrollable.first, const Offset(0, -300));
           await tester.pump();
         }
-        expect(find.text('Backup & Restore'), findsOneWidget);
-        await tester.ensureVisible(find.text('Backup & Restore'));
+        expect(find.text('Manage privacy & data'), findsOneWidget);
+        await tester.ensureVisible(find.text('Manage privacy & data'));
         await tester.pump();
-        await tester.tap(find.text('Backup & Restore'));
+        await tester.tap(find.text('Manage privacy & data'));
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 100));
         expect(find.byType(PrivacyDataPage), findsOneWidget);
@@ -2149,7 +2151,9 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      await tester.tap(find.text('Restore backup'));
+      await tester.tap(
+        find.byKey(const ValueKey('mobile-privacy-restore-replace')),
+      );
       await tester.pumpAndSettle();
       expect(find.byType(TextField), findsOneWidget);
       await tester.enterText(find.byType(TextField), password);
@@ -2157,12 +2161,25 @@ void main() {
       await tester.pump();
       await tester.tap(find.text('Unlock').last);
       await tester.pumpAndSettle();
-      expect(find.text('Replace'), findsOneWidget);
-      expect(find.text('Merge'), findsNothing);
-      await tester.tap(find.text('Replace').first);
+      final acknowledgment = find.byKey(
+        const ValueKey('restore-replace-acknowledgement'),
+      );
+      final confirm = find.byKey(const ValueKey('restore-replace-confirm'));
+      expect(acknowledgment, findsOneWidget);
+      expect(confirm, findsOneWidget);
+      expect(tester.widget<CheckboxListTile>(acknowledgment).value, isFalse);
+      // The confirmation sheet scrolls independently of its fixed actions.
+      // Center the acknowledgement inside its viewport before tapping it.
+      await Scrollable.ensureVisible(
+        tester.element(acknowledgment),
+        alignment: 0.5,
+        duration: const Duration(milliseconds: 200),
+      );
       await tester.pumpAndSettle();
-      expect(find.text('Replace'), findsOneWidget);
-      await tester.tap(find.text('Replace').last);
+      await tester.tap(acknowledgment);
+      await tester.pumpAndSettle();
+      expect(tester.widget<CheckboxListTile>(acknowledgment).value, isTrue);
+      await tester.tap(confirm);
       await tester.pumpAndSettle();
 
       expect(

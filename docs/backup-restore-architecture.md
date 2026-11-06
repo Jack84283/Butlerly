@@ -1,0 +1,381 @@
+# Backup & Restore — Simplified Architecture
+
+This document records the approved replacement for Butlerly's previous
+validation-oriented backup implementation. It applies to the draft clean-branch
+rewrite and is not a claim that the replacement is production-ready.
+
+## Contract
+
+- **Backup copies source data.** Capture a consistent, byte-for-byte SQLite
+  snapshot with SQLite's native snapshot operation. Package all available
+  original attachment files. Record unavailable attachments as warnings.
+- **Restore recovers source data.** Authenticate the archive, extract to a new
+  private staging directory, verify checksums and physical SQLite integrity,
+  and activate only with a separately tested rollback/restart strategy.
+- **Reports diagnose data.** No analysis-rule, merchant, category, budget,
+  generated-finding, or other business-rule validation runs in backup/restore.
+  Data Integrity Reports must remain read-only and independent.
+- **No automatic repair.** Never rewrite original financial records to make an
+  archive pass; never reconstruct an absent receipt from unrelated data.
+- **Privacy and safety.** Encrypt and authenticate the exported package; keep
+  cryptographic verification, path containment, crash consistency, and safe
+  destination publication.
+- **Legacy formats.** New backups need not support old archive formats. Existing
+  backup files must not be removed or modified. An older unsupported archive
+  must be rejected with a clear explanation, not called corrupt.
+- **Historical SQLite schemas.** Before activation, read the decrypted SQLite
+  source version and physical integrity. If the source schema is older, apply
+  the app's ordered database migrations on the extracted *staging database*,
+  with catalog seeding disabled. The encrypted archive stays unchanged.
+  Reject future, unversioned, malformed, or un-migratable SQLite schemas.
+  This applies to both Replace and Merge and is not business-rule repair.
+
+## Device-independent compatibility contract
+
+A backup is portable across Butlerly installations. Restore does not attempt to
+identify its original device or distinguish same-device recovery from transfer.
+The encrypted archive includes a full native SQLite snapshot, original evidence
+bytes, relative evidence paths, timestamps, archive format metadata, and
+checksums. It does **not** include any source device ID, hardware identifier,
+installation ID, source OS, or device fingerprint for compatibility decisions.
+SQLite's `PRAGMA user_version` within the snapshot is the authoritative
+database schema version; no duplicate device-specific field is necessary.
+
+Compatibility always compares the backup SQLite schema against the **installed
+destination app's supported SQLite schema**, regardless of where or when the
+backup was created:
+
+| Backup schema | Installed app supports | Restore behavior |
+| --- | --- | --- |
+| 17 | 17 | Restore without a schema migration |
+| 17 | 19 | Migrate staged SQLite 17→18→19, then Restore |
+| 19 | 17 | Reject before confirmation and explain how to update Butlerly |
+| 19 | 19 | Restore without a schema migration |
+
+These rules apply to both **Replace** and **Merge**, and to backups made before
+or after an app update on the *same* device. A backup from a newer schema must
+never downgrade or mutate the installed app's database. The original encrypted
+archive is never modified by restore or migration. After an app update,
+users may retry the same backup without recreating it.
+
+The update prompt provides Apple App Store, Google Play, Mac App Store, or
+trusted desktop source guidance, selected by the **destination platform only
+for presentation**. No listing URL is invented when Butlerly's official
+store destinations have not been configured.
+
+## Backup & Restore status notifications
+
+- The shared `ButlerlyToast` component uses the app's semantic success
+  (green) and error (red) colors in both light and dark themes.
+- Successful Backup, Merge, Replace, and Privacy & Data operations show a green
+  toast with a five-second lifetime.
+- Failed operations show a red toast that does not time out during normal use.
+  **Details** opens the localized reason and corrective action without closing
+  the notification. **Close** is an explicit user action.
+- Restore/Backup failure details must never expose a backup password, private
+  SQLite records, local file paths, or raw stack traces.
+- Canceled platform sharing is informational, not a successful saved backup.
+- This PR wires the new shared toast component into the Privacy & Data screen.
+  Other screens with legacy inline SnackBars should adopt the shared helper
+  separately to enforce the same app-wide policy.
+
+## Review hardening — missing evidence, Merge identity, and UI refresh
+
+- **Verified export warnings:** raw archive packaging records missing referenced
+  evidence. The application gateway returns the count to desktop and mobile
+  callers without a second expensive decrypt/inspection pass. A published
+  backup with missing attachments triggers a localized, persistent warning
+  dialog; it must not be represented as a complete evidence backup.
+- **Foreign-key identity preflight:** before staging SQL writes, Merge compares
+  referenced parent rows in the backup and live database for each child row
+  being imported. If matching parent keys contain different values, it
+  conservatively rejects the entire Merge rather than reassign the imported
+  child to a potentially different category, merchant, or payment source.
+  This can reject a valid merge when only timestamps differ; resolving these
+  conflicts safely requires an explicit reconciliation policy, not guessing.
+- **Staging write detection:** a Merge records the live connection's
+  `total_changes()`, SQLite `PRAGMA data_version`, and schema version before
+  the local snapshot. After staging and WAL checkpoint, it rechecks all three.
+  A change aborts without moving original database or evidence files.
+  Normal application use-case writes are serialized by
+  `AnalysisConsistencyGate` during Restore, but the revision check is an
+  extra fail-closed safeguard for direct or external database writes.
+- **Merge concurrency gate:** Merge never replaces the live SQLite file or
+  its inode. It builds and verifies a complete local-wins staging snapshot,
+  then ATTACHes that snapshot to the current SQLite connection and inserts
+  only missing identities in one exclusive SQLite transaction. A second
+  process with an idle SQLite connection can resume and write safely after
+  Merge because the live database pathname and inode remain unchanged.
+  SQLite arbitrates other concurrent writes; a changed live revision
+  aborts before inserts. No physical Merge rename or POSIX-only lock exists.
+  Filesystem receipts are copied and hash-verified before SQL commit; a
+  failed transaction may leave a harmless unreferenced receipt, which must
+  not be blindly deleted when an external writer may have referenced it.
+  Evidence publication now creates and verifies an immutable private
+  staging file, then atomically adds its inode to the live evidence namespace
+  with a hard link that **cannot replace** an existing destination. A process
+  interruption before linking leaves no final pathname; afterward the final
+  pathname always refers to the complete staged bytes. A conflicting writer
+  fails closed, while identical existing bytes are reused. Atomic hard links
+  are supported through native Apple/Android/Windows APIs and the POSIX Linux
+  link command; a filesystem that cannot hard-link the source and target
+  fails safely instead of falling back to an unsafe copy. Failed SQL commits
+  can leave fully formed unreferenced evidence, which is retained rather than
+  potentially deleting bytes another process has referenced.
+  The separate Replace operation retains its physical-activation journal.
+- **Post-Restore refresh:** the committed Restore emits
+  `workspaceRestoreChanges`, also invalidating transaction and budget data.
+  Mounted profile, master data, payment sources, budgets, rules and payment
+  settlement pages refresh their cached snapshots; stale editors are reset
+  rather than allowed to overwrite restored records.
+
+## P1 data-safety hardening (follow-up review)
+
+- **Source foreign keys:** before merging anything, validate the archived
+  SQLite database's own foreign-key constraints. An orphaned source child
+  cannot borrow an unrelated destination parent merely because the IDs match.
+  Reject the entire merge with no live mutation and keep the archive unchanged.
+- **Final activation fence (Replace):** normal repository SQLite access
+  is suspended during physical Replace activation until the journal is
+  committed or rollback completes. Merge no longer closes or renames the live
+  database; instead it obtains a SQLite transaction-level write lock and
+  rechecks the live database revision inside the transaction.
+- **Uncertain rollback:** a failed journal recovery keeps normal repository
+  access fenced and raises RestoreRecoveryRequiredException. The production
+  gateway persists a recovery-only application state and leaves the raw journal
+  and private original files intact; a subsequent successful startup journal
+  rollback clears only the corresponding raw-restore recovery state.
+- **Unresolved journal at startup:** if the raw recovery journal is corrupt or
+  otherwise cannot be replayed, Butlerly does not open SQLite or expose normal
+  navigation. It shows a localized recovery-only startup screen with a retry
+  action and instructions to preserve the original journal and prior files.
+- **Recovery retry safety:** the app's restore fence remains active while the
+  persistence connection is closed *before* raw journaled files are moved.
+  Connection close failure stops recovery without deleting the marker.
+- **Independent SQLite writers:** Merge now uses SQLite's own exclusive
+  transaction on the persistent database inode. A regression test holds an
+  independent SQLite connection open through Merge and commits another write
+  afterward; both the imported row and the independent write remain visible.
+  SQLite integrity and foreign-key validation remain mandatory. Replace is
+  explicitly destructive and continues to use journaled file activation.
+
+## Crash-abandoned private files and storage cleanup
+
+- Normal Backup, preview and Restore use `finally` cleanup for disposable
+  plaintext snapshots, decrypted archives, verification copies and staged
+  attachments. A forced termination cannot execute these handlers.
+- After startup journal replay, the private cleanup pass removes abandoned
+  `.raw-backup-work-*`, `.raw-backup-read-*`, `.raw-restore-work-*`,
+  `.raw-merge-work-*` and
+  `evidence.raw-restore-incoming-*` directories with strict app-owned names.
+  Directories containing symbolic links are retained instead of recursively
+  followed/deleted. Cleanup never traverses user-selected export folders.
+- A raw journal, including a torn `.raw-restore-journal.json.tmp`, protects
+  raw Restore work, incoming evidence and previous copies; an unresolved
+  `RestoreRecoveryState` disables the entire private orphan cleanup pass.
+- Previous SQLite/WAL and evidence copies are deleted only when there is no
+  raw journal or recovery incident and SQLite `integrity_check`,
+  `foreign_key_check` and every referenced live evidence file validate.
+- Private encrypted `.raw-backup-<operation>.butlerly` candidates are NOT cache:
+  they could be the only recovery copy after failed external publication,
+  including cases where a publication marker was lost. Preserve them.
+- Cleanup is serialized with the evidence mutation lock and best-effort.
+  Failed validation or filesystem cleanup retains artifacts without blocking
+  normal startup. Nonessential work is deferred until after app initialization
+  so a large leftover database does not block the cold-launch window.
+- Mobile sharing now creates unique `.butlerly-backup-share-<timestamp>`
+  directories under the system temporary root. The share UI removes its own
+  file when sharing completes. Cold-launch maintenance also sweeps abandoned
+  directories, but skips the sweep while an interrupted portable backup
+  publication still requires recovery. Unrelated temporary files and any
+  directory containing a symlink are preserved.
+- Once the journal is deleted, successful Restore is committed. If a
+  post-commit rollback-copy cleanup fails (including evidence-tree symlink
+  validation), Restore must still return success and retain unsafe previous
+  files for a later recovery-aware cleanup.
+
+## Accurate Backup & Restore result counts
+
+- Replace reports the archived **transaction count**, as recorded when
+  creating the SQLite snapshot.
+- Merge reports the number of **imported domain rows** and separately the
+  number of **preexisting local domain rows retained**, including overlapping
+  identities whose local values win. Neither figure claims that a row is newer
+  based on timestamps.
+- Merge's restored-evidence count includes only newly published attachments,
+  not every file present in the archive. English, Spanish and Simplified
+  Chinese UI labels distinguish Merge imports from Replace transactions.
+- Successful publication or Restore cannot be converted to a failure by
+  noncritical temporary-file cleanup errors. Abandoned incomplete raw
+  encryption streams are reclaimed on the next safe cold launch.
+
+## Mobile sharing lifetime and cleanup
+
+- Every share operation creates a private per-operation directory and holds
+  a nonblocking advisory lease through the operating system's share sheet.
+  Directory cleanup is restricted to operations created before the current
+  app launch, and skips any lease still held by an active process (including
+  another Butlerly instance). The process also tracks its own active leases
+  to handle POSIX per-process lock semantics.
+- Legacy unleased share directories are retained until at least one day old
+  to avoid deleting an active share from an older app version. A process kill
+  releases the operating-system lease; a subsequent cold launch can reclaim
+  its abandoned share bytes safely.
+- No sweep ever recursively deletes an unexpected symbolic link or unrelated
+  temporary backup; errors leave the candidate in place for later inspection.
+
+## Storage capacity preflight
+
+- Backup, Replace and Merge estimate peak private staging usage based on
+  the current SQLite file, available evidence bytes and encrypted archive.
+  The estimate reserves additional space for snapshots, plaintext staging,
+  encryption verification, recovery copies and a 64 MiB safety margin.
+- Native capacity channels report free bytes on iOS, Android and macOS.
+  Linux uses a filesystem-scoped `df` fallback. If the OS cannot report a
+  capacity value, existing ENOSPC handling remains authoritative rather than
+  inventing a storage number. These estimates are conservative and cannot
+  prevent another process from consuming space after the preflight.
+- The private filesystem is checked before any large snapshot or unpacking.
+  Backup checks the destination volume as well. When both directories report
+  the same filesystem identity, private staging and destination capacity are
+  **summed** for a single peak-space preflight. On different volumes each
+  capacity pool is checked individually; an unknown filesystem identity is
+  treated conservatively as shared space.
+  Insufficient capacity yields a structured `FileSystemException` with
+  operating-system error code 28, without moving live SQLite/evidence.
+  Filesystem capacity details are diagnostics, not public financial data.
+
+## Performance optimizations (PR #396)
+
+The raw archive is streamed, and financial/business rules never run during
+backup or restore. Performance improvements must retain authenticated encryption,
+byte-level SHA-256 verification, path containment, and rollback guarantees.
+
+- **Backup packaging:** source SQLite and attachments are each fingerprinted
+  for the manifest, and the *written archive* is independently verified.
+  The former extra full-source hash pass after copying has been eliminated;
+  same-size content changes still fail archive verification.
+- **Restore preview:** the encrypted archive is authenticated, every archived
+  attachment is hashed, but **only SQLite is written** to temporary storage for
+  the schema/version check. No temporary copies of receipt files are created
+  merely to display a confirmation prompt.
+- **Restore extraction:** the validated manifest guides direct extraction;
+  every resulting file is independently hashed against its manifest SHA-256.
+  A redundant preliminary full-archive inspection pass has been removed.
+- **Still intentionally retained:** SQLite `VACUUM INTO` for an atomic,
+  consistent snapshot; Argon2id + AES-GCM; safe destination publication;
+  staging/rollback; staged SQLite physical integrity and schema migration.
+
+Performance acceptance should compare elapsed Backup, Restore-preview, Replace,
+and Merge times on the **same disposable dataset**, including a collection with
+many receipt files, and should verify exact post-restore SQLite and attachment
+bytes. No percentage speed-up should be asserted without such measurements.
+
+## Modules
+
+- `raw_backup_archive.dart` — streaming container, manifest, checksums,
+  optional attachment warnings, isolated extraction. Knows nothing about
+  Butlerly financial tables.
+- `raw_backup_service.dart` — SQLite `VACUUM INTO` snapshot, attachment
+  reference collection, encryption, publication, and read-only staging.
+- `raw_restore_service.dart` — decrypts, verifies, migrates staged SQLite
+  snapshots using native database deployment SQL, then activates Replace with
+  a restore journal, previous-data copies, and connection reopen.
+- `raw_merge_service.dart` — builds a local-wins SQL merge on disposable
+  staged SQLite, then imports missing identities using an exclusive transaction
+  on the existing live SQLite inode (not Replace's file activation). Only
+  archived attachments whose evidence ID and filename match the final merged
+  database can be published, using an atomic no-replace hard link. Tombstones
+  and unresolved evidence conflicts must be respected. Not byte concatenation.
+
+## Implementation sequence
+
+1. Prove archive codec round-trips a real SQLite file and optional attachments.
+2. Prove encrypted backup and read-only restore staging on macOS.
+3. Implement Replace activation with rollback, restart/reopen, and interruption
+   tests; verify on a disposable populated installation.
+4. Wire the new implementation to the existing Backup & Restore UI.
+5. Remove superseded engine/serializer and obsolete semantic validator code,
+   together with unused DTOs, dependencies, tests, UI routes, and localization.
+6. Preserve shared evidence safety, database migration history, existing user
+   databases, original attachments, and historical backup files.
+7. Keep the draft PR unmerged until actual Mac backup/save/decrypt/restore and
+   automated CI acceptance are complete.
+
+## File cleanup rule
+
+Classify each old backup file as **keep**, **rewrite**, **consolidate**, or
+**delete**. Delete after all production imports have been replaced and the
+replacement passes functional tests. Do not preserve two competing engines
+in the completed implementation; do not delete shared components needed by
+other features.
+
+## Legacy-file dependency audit (PR #396)
+
+A legacy filename does **not** imply an unused file. The following files
+remain referenced by installed-app startup, publication rollback, or recovery
+logic, so their deletion is **blocked until recovery is migrated and proven**:
+
+| File | Current consumer / reason to retain | Action |
+| --- | --- | --- |
+| `local_backup_manager.dart` | Dependency injection, app startup recovery, portable publication recovery, and controlled restore recovery | Rewrite/split after recovery parity |
+| `local_backup_engine.dart` | Still called by `local_backup_manager.dart` for legacy backup inspection, safety-copy restore, and controlled recovery | Retain until no recovery dependency |
+| `local_backup_snapshot_writer.dart` | Still writes old-format pre-restore safety copies from the manager | Retain until safety-copy workflow migrated |
+| `backup_container_format.dart` | Old persisted-backup protocol used by manager/engine/writer | Retain until legacy recovery resolved |
+| `duplicate_group_backup_policy.dart` | Imported by engine and old snapshot writer | Retain with dependent files |
+| `local_restore_recovery.dart` | Rollback recovery for interrupted legacy restore | Retain until proven unnecessary |
+| `staged_evidence_restore_reconciliation.dart` | Used by restore recovery and legacy engine to preserve evidence | Retain |
+| `backup_destination_writer.dart`, `backup_encryption.dart`, `evidence_path_safety.dart` | Shared by new raw backup and existing publication/recovery paths | Keep |
+| `backup_publication_recovery_state.dart`, `restore_recovery_state.dart` | Active startup/UI recovery state | Keep |
+
+The new raw backup/restore services and their regression tests are active,
+not unused. Database schema/migration SQL and historical backup files are
+permanently protected from cleanup.
+
+**Safe retirement gate:** complete raw Replace/Merge and interrupted-operation
+tests on disposable data; preserve the ability to recover existing legacy
+safety copies; update all production imports and startup/UI recovery paths;
+then remove the superseded engine, snapshot writer, schema constants and tests
+*in one focused, verified change*. Do not drop tests merely to make CI green.
+
+## PR #396 native acceptance gate (disposable data only)
+
+CI for this PR runs the canonical `tool/validate.sh macos_backup` target on
+macOS, the iOS simulator compile target, and existing iOS integration journeys.
+The macOS Flutter unit-test channel adapter uses host POSIX hard links; it
+**does not** validate AppDelegate/Flutter engine channel registration at runtime.
+The native macOS build and iOS simulator compilation test that separately.
+A green CI result is necessary but is **not** physical-device acceptance.
+
+Before merge, complete and record these checks using **disposable** Mac and
+iPhone datasets, with original app data backed up and never overwritten:
+
+1. Create a password-encrypted backup containing transactions, master data,
+   analysis rules, and actual receipt/statement bytes. Verify desktop save
+   location and mobile share destination. Canceling Share must not claim success.
+2. Restore the archive to an independent installation/device in **Replace**
+   mode. Verify original SQLite rows, attachment bytes, and normal app reopen.
+   Verify the destructive confirmation checkbox and Cancel behavior.
+3. Restore to a populated installation in **Merge** mode. Verify local-ID wins,
+   import of new rows, unchanged existing receipt bytes, deletion tombstones,
+   absence of orphaned archive files, and accurate restored-attachment count.
+4. Test incorrect password, tampered archive, unsupported/newer schema, missing
+   attachment, full destination storage, and unavailable filesystem permission.
+   Every rejection must leave the live dataset and archive intact.
+5. Terminate the app during staging, immediately before and after atomic
+   attachment publication, and during Replace activation. Relaunch and verify
+   journal recovery, no partial published attachment, and no unguarded writes
+   while recovery is required.
+6. Keep a second SQLite connection open across Merge and verify that later
+   writes from it are still visible, without database-inode replacement.
+7. Record platform, OS/app build, exact procedure, expected/actual outcome, and
+   evidence for each check. **Do not merge** until Mac and iPhone outcomes are
+   confirmed, including any limitations of simulator-only testing.
+
+## Definition of done
+
+A new encrypted Butlerly backup restores all original financial records and
+available attachment bytes to a disposable installation. The restored
+application reopens normally. Missing optional evidence is reported, not
+repaired or used as a backup/restore gate. No old business-rule validation or
+superseded backup implementation remains in the production path.
