@@ -95,15 +95,23 @@ void main() {
         await tester.pumpAndSettle();
         final chapter = find.byKey(const ValueKey('help-article-ch-19'));
         await tester.scrollUntilVisible(chapter, 300);
-        final tile = find.ancestor(
-          of: chapter,
-          matching: find.byType(ListTile),
-        );
-        expect(tile, findsOneWidget);
-        final title = tester.widget<ListTile>(tile).title! as Text;
+        // The ValueKey is attached directly to the ListTile, not a child.
+        // An ancestor lookup therefore incorrectly returns zero matches.
+        expect(chapter, findsOneWidget);
+        final title = tester.widget<ListTile>(chapter).title! as Text;
         expect(
           title.data,
           locale.languageCode == 'zh' ? contains('恢复') : contains('RESTAURAR'),
+        );
+        // Open the localized article, not just its table-of-contents entry.
+        await tester.tap(chapter);
+        await tester.pumpAndSettle();
+        expect(find.byType(HelpGuideArticlePage), findsOneWidget);
+        expect(
+          find.text(
+            catalog.articleById('ch-19', languageCode: locale.languageCode)!.title,
+          ),
+          findsWidgets,
         );
         expect(tester.takeException(), isNull);
       },

@@ -203,11 +203,11 @@ void main() {
         matching: find.byType(InkWell),
       ),
     );
-    // The asset reader can show an animated loading indicator while opening.
-    // The route assertion does not require its animation to settle.
+    // GoRouter.push displays the destination above Settings while the
+    // route-information URI can remain '/settings'. Verify the actual page.
     await tester.pump(const Duration(milliseconds: 600));
-    expect(appRouter.routeInformationProvider.value.uri.path, '/help');
     expect(find.byType(HelpFaqPage), findsOneWidget);
+    expect(find.text('Help & FAQ'), findsWidgets);
   });
 
   testWidgets('compact More routes Privacy & data to the shared page', (
