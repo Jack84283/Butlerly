@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:butlerly/core/di/finance_services.dart';
@@ -23,6 +24,8 @@ final formattingLocaleProvider = Provider<String?>((ref) {
 });
 
 final class UserPreferenceController extends AsyncNotifier<UserPreference> {
+  Future<void> _pendingSave = Future<void>.value();
+
   FinanceServices? get _services => services.isRegistered<FinanceServices>()
       ? services<FinanceServices>()
       : null;
@@ -69,6 +72,45 @@ final class UserPreferenceController extends AsyncNotifier<UserPreference> {
   }
 
   Future<bool> saveChanges({
+    String? locale,
+    String? formattingLocale,
+    String? regionCode,
+    String? baseCurrency,
+    String? timeZoneId,
+    bool? externalAiEnabled,
+    bool? transactionSaveSoundEnabled,
+    bool? firstUseCompleted,
+    String? appearance,
+    String? colorTheme,
+    String? displayName,
+  }) async {
+    // Serialize all preference writes, not just the sound toggle. Construct
+    // each snapshot after the previous write has finished so concurrent
+    // changes to different fields cannot overwrite one another.
+    final previousSave = _pendingSave;
+    final completion = Completer<void>();
+    _pendingSave = completion.future;
+    await previousSave;
+    try {
+      return await _persistChanges(
+        locale: locale,
+        formattingLocale: formattingLocale,
+        regionCode: regionCode,
+        baseCurrency: baseCurrency,
+        timeZoneId: timeZoneId,
+        externalAiEnabled: externalAiEnabled,
+        transactionSaveSoundEnabled: transactionSaveSoundEnabled,
+        firstUseCompleted: firstUseCompleted,
+        appearance: appearance,
+        colorTheme: colorTheme,
+        displayName: displayName,
+      );
+    } finally {
+      completion.complete();
+    }
+  }
+
+  Future<bool> _persistChanges({
     String? locale,
     String? formattingLocale,
     String? regionCode,
