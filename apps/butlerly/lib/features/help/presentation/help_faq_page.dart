@@ -309,7 +309,7 @@ class HelpFaqDetailPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final language = Localizations.localeOf(context).languageCode;
     final translation = faq.translation(language);
-    final linked = catalog.articleById(faq.guideId);
+    final linked = catalog.articleById(faq.guideId, languageCode: language);
     return ButlerlyPage(
       title: HelpCopy.text(context, 'faq'),
       subtitle: HelpCopy.category(context, faq.category),
@@ -329,10 +329,6 @@ class HelpFaqDetailPage extends StatelessWidget {
             icon: const Icon(Icons.menu_book_outlined),
             label: Text(HelpCopy.text(context, 'readMore')),
           ),
-          if (language != 'en') ...[
-            const SizedBox(height: ButlerlySpacing.small),
-            Text(HelpCopy.text(context, 'englishOnly')),
-          ],
         ],
       ],
     );
@@ -347,11 +343,9 @@ class HelpGuideIndexPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     String? part;
-    final widgets = <Widget>[
-      Text(HelpCopy.text(context, 'englishOnly')),
-      const SizedBox(height: ButlerlySpacing.section),
-    ];
-    for (final article in catalog.guide) {
+    final language = Localizations.localeOf(context).languageCode;
+    final widgets = <Widget>[];
+    for (final article in catalog.guideForLanguage(language)) {
       if (part != article.part) {
         part = article.part;
         widgets.add(_heading(context, article.part));
@@ -392,7 +386,6 @@ class HelpGuideArticlePage extends StatelessWidget {
         .where((section) => section.trim().isNotEmpty);
     return ButlerlyPage(
       title: HelpCopy.text(context, 'guide'),
-      subtitle: HelpCopy.text(context, 'englishOnly'),
       leading: _helpBackButton(context),
       children: [
         Text(article.title, style: Theme.of(context).textTheme.titleLarge),

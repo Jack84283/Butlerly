@@ -97,13 +97,25 @@ class HelpSearchHit {
 }
 
 class HelpCatalog {
-  const HelpCatalog({required this.guide, required this.faqs});
+  const HelpCatalog({
+    required this.guide,
+    required this.faqs,
+    required this.localizedGuides,
+  });
 
+  /// English reference edition, retained for backwards compatibility.
   final List<HelpGuideArticle> guide;
   final List<HelpFaqEntry> faqs;
+  final Map<String, List<HelpGuideArticle>> localizedGuides;
 
-  HelpGuideArticle? articleById(String id) {
-    for (final article in guide) {
+  List<HelpGuideArticle> guideForLanguage(String languageCode) =>
+      localizedGuides[languageCode] ?? guide;
+
+  HelpGuideArticle? articleById(
+    String id, {
+    String languageCode = 'en',
+  }) {
+    for (final article in guideForLanguage(languageCode)) {
       if (article.id == id) return article;
     }
     return null;
@@ -128,15 +140,24 @@ class HelpCatalog {
     final localBundle = bundle ?? rootBundle;
     final values = await Future.wait([
       localBundle.loadString('assets/help/guide_en.json'),
+      localBundle.loadString('assets/help/guide_zh.json'),
+      localBundle.loadString('assets/help/guide_es.json'),
       localBundle.loadString('assets/help/faq.json'),
     ]);
-    final guideData = jsonDecode(values[0]) as Map<String, dynamic>;
-    final faqData = jsonDecode(values[1]) as Map<String, dynamic>;
-    final guide = (guideData['articles'] as List<dynamic>)
-        .map(
-          (entry) => HelpGuideArticle.fromJson(entry as Map<String, dynamic>),
-        )
-        .toList(growable: false);
+    List<HelpGuideArticle> decodeGuide(String value) {
+      final data = jsonDecode(value) as Map<String, dynamic>;
+      return (data['articles'] as List<dynamic>)
+          .map((entry) => HelpGuideArticle.fromJson(entry as Map<String, dynamic>))
+          .toList(growable: false);
+    }
+
+    final guides = <String, List<HelpGuideArticle>>{
+      'en': decodeGuide(values[0]),
+      'zh': decodeGuide(values[1]),
+      'es': decodeGuide(values[2]),
+    };
+    final guide = guides['en']!;
+    final faqData = jsonDecode(values[3]) as Map<String, dynamic>;
     final faqs = (faqData['faqs'] as List<dynamic>)
         .map((entry) => HelpFaqEntry.fromJson(entry as Map<String, dynamic>))
         .toList(growable: false);
@@ -144,6 +165,18 @@ class HelpCatalog {
     final faqIds = faqs.map((entry) => entry.id).toSet();
     if (articleIds.length != guide.length ||
         faqIds.length != faqs.length ||
+        guides.values.any(
+          (localized) =>
+              localized.length != guide.length ||
+              localized.any(
+                (article) =>
+                    !articleIds.contains(article.id) ||
+                    article.title.trim().isEmpty ||
+                    article.body.trim().isEmpty,
+              ) ||
+              localized.map((article) => article.id).toSet().length !=
+                  guide.length,
+        ) ||
         faqs.any(
           (faq) =>
               !articleIds.contains(faq.guideId) ||
@@ -155,7 +188,7 @@ class HelpCatalog {
         )) {
       throw const FormatException('Invalid bundled Help references or locales');
     }
-    return HelpCatalog(guide: guide, faqs: faqs);
+    return HelpCatalog(guide: guide, faqs: faqs, localizedGuides: guides);
   }
 
   /// Search is deterministic, locale-aware, and performed in memory.
@@ -242,7 +275,7 @@ class HelpCatalog {
       );
     }
 
-    for (final article in guide) {
+    for (final article in guideForLanguage(languageCode)) {
       final title = _fold(article.title);
       final body = _fold(article.body);
       if (!tokens.every(

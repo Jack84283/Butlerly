@@ -17,6 +17,22 @@ void main() {
     );
     expect(catalog.faqs, hasLength(30));
     expect(catalog.articleById('ch-19'), isNotNull);
+    final englishIds = catalog.guide.map((article) => article.id).toList();
+    for (final locale in ['en', 'zh', 'es']) {
+      final translated = catalog.guideForLanguage(locale);
+      expect(translated.map((article) => article.id).toList(), englishIds);
+      expect(translated.where((article) => article.id.startsWith('ch-')), hasLength(25));
+      expect(
+        translated.where((article) => article.id.startsWith('appendix-')),
+        hasLength(4),
+      );
+      expect(
+        catalog.articleById('ch-19', languageCode: locale),
+        isNotNull,
+      );
+    }
+    expect(catalog.articleById('ch-19', languageCode: 'zh')!.title, contains('恢复'));
+    expect(catalog.articleById('ch-19', languageCode: 'es')!.title, contains('RESTAURAR'));
     for (final faq in catalog.faqs) {
       expect(catalog.articleById(faq.guideId), isNotNull);
       for (final language in ['en', 'zh', 'es']) {
@@ -28,7 +44,8 @@ void main() {
 
   test('guide contains no developer-only issue or code references', () async {
     final catalog = await HelpCatalog.load();
-    final guideText = catalog.guide
+    final guideText = ['en', 'zh', 'es']
+        .expand((locale) => catalog.guideForLanguage(locale))
         .map((article) => article.title + article.body)
         .join('\n');
     expect(
@@ -45,6 +62,14 @@ void main() {
     () async {
       final catalog = await HelpCatalog.load();
       expect(catalog.search('MERGE replace').first.id, 'FAQ-022');
+      expect(
+        catalog.search('加密备份', languageCode: 'zh').map((hit) => hit.id),
+        contains('ch-18'),
+      );
+      expect(
+        catalog.search('PRESUPUESTOS', languageCode: 'es').map((hit) => hit.id),
+        contains('ch-15'),
+      );
       expect(
         catalog.search('How do I restore a backup?').map((hit) => hit.id),
         contains('FAQ-022'),
