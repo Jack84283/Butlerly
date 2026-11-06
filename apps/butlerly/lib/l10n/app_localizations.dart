@@ -779,6 +779,7 @@ class AppLocalizations {
       'importExport': 'Import & export',
       'importExportBody': 'Move supported records in or out of this device.',
       'optionalFeatures': 'Optional features',
+      'operationFeatures': 'Operation features',
       'insights': 'Insights',
       'analysis': 'Analysis',
       'analysisPeriod': 'Analysis period',
@@ -1852,6 +1853,7 @@ class AppLocalizations {
       'importExport': '导入与导出',
       'importExportBody': '将支持的记录移入或移出此设备。',
       'optionalFeatures': '可选功能',
+      'operationFeatures': '操作功能',
       'insights': '洞察',
       'analysis': '分析',
       'analysisPeriod': '分析期间',
@@ -2952,6 +2954,7 @@ class AppLocalizations {
       'importExportBody':
           'Mueve registros compatibles dentro o fuera del dispositivo.',
       'optionalFeatures': 'Funciones opcionales',
+      'operationFeatures': 'Funciones operativas',
       'insights': 'Información',
       'analysis': 'Análisis',
       'analysisPeriod': 'Período de análisis',
