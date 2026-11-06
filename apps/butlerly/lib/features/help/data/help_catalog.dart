@@ -72,7 +72,6 @@ class HelpFaqEntry {
 
   HelpFaqTranslation translation(String languageCode) =>
       translations[languageCode] ?? translations['en']!;
-
 }
 
 class HelpSearchHit {
