@@ -159,7 +159,14 @@ void main() {
         await tester.ensureVisible(topic);
         await tester.tap(topic);
         await tester.pumpAndSettle();
-        expect(find.byKey(const ValueKey('help-faq-FAQ-022')), findsWidgets);
+        // The selected topic can be below the fold after returning from
+        // the support article. Scroll to the actual FAQ before asserting.
+        final faq = find.byKey(const ValueKey('help-faq-FAQ-022'));
+        await tester.scrollUntilVisible(faq, 200);
+        expect(faq, findsOneWidget);
+        await tester.tap(faq);
+        await tester.pumpAndSettle();
+        expect(find.byType(HelpFaqDetailPage), findsOneWidget);
         expect(tester.takeException(), isNull);
       },
     );
