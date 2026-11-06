@@ -97,11 +97,15 @@ class HelpSearchHit {
 }
 
 class HelpCatalog {
-  const HelpCatalog({
+  HelpCatalog({
     required this.guide,
     required this.faqs,
     required this.localizedGuides,
-  });
+  }) : _searchIndexes = _buildSearchIndexes(localizedGuides, faqs);
+
+  /// Normalized once when the bundled catalog is loaded; never reprocess
+  /// article bodies while the user types.
+  final Map<String, _HelpSearchIndex> _searchIndexes;
 
   /// English reference edition, retained for backwards compatibility.
   final List<HelpGuideArticle> guide;
@@ -190,110 +194,68 @@ class HelpCatalog {
     return HelpCatalog(guide: guide, faqs: faqs, localizedGuides: guides);
   }
 
-  /// Search is deterministic, locale-aware, and performed in memory.
-  /// FAQ titles rank ahead of keyword matches, which rank ahead of bodies.
+  /// Searches the precomputed in-memory index; never reads data over a network.
+  /// FAQ question matches rank ahead of body matches and guide text.
   List<HelpSearchHit> search(String query, {String languageCode = 'en'}) {
-    final normalized = _fold(
-      query,
-    ).replaceAll(RegExp(r'[^a-z0-9\u00c0-\uffff\s]+'), ' ').trim();
-    if (normalized.isEmpty) return const [];
-    const commonWords = <String>{
-      'how',
-      'do',
-      'i',
-      'a',
-      'an',
-      'the',
-      'to',
-      'my',
-      'is',
-      'are',
-      'what',
-      'does',
-      'can',
-      'for',
-      'of',
-      'where',
-      'why',
-      'and',
-      'or',
-      'me',
-      'como',
-      'puedo',
-      'de',
-      'la',
-      'el',
-      'una',
-      'un',
-      'los',
-      'las',
-      'que',
-      'por',
-    };
-    final tokens = normalized
-        .split(RegExp(r'\s+'))
-        .where((token) => token.isNotEmpty && !commonWords.contains(token))
-        .toList(growable: false);
+    final locale = _searchIndexes.containsKey(languageCode)
+        ? languageCode
+        : 'en';
+    final normalized = _helpIndexField(query, locale);
+    final tokens = _helpQueryTerms(normalized, locale);
     if (tokens.isEmpty) return const [];
-    final results = <HelpSearchHit>[];
 
-    for (final faq in faqs) {
-      final translated = faq.translation(languageCode);
-      final title = _fold(translated.question);
-      final englishTitle = _fold(faq.translation('en').question);
-      final keywords = _fold(faq.keywords.join(' '));
-      final category = _fold(faq.category);
-      final body = _fold(translated.answer);
+    final index = _searchIndexes[locale]!;
+    final results = <HelpSearchHit>[];
+    for (final entry in index.faqs) {
       if (!tokens.every(
         (token) =>
-            title.contains(token) ||
-            englishTitle.contains(token) ||
-            keywords.contains(token) ||
-            category.contains(token) ||
-            body.contains(token),
+            entry.title.contains(token) ||
+            entry.englishTitle.contains(token) ||
+            entry.keywords.contains(token) ||
+            entry.category.contains(token) ||
+            entry.body.contains(token),
       )) {
         continue;
       }
+
       final score =
-          (title.contains(normalized) ? 120 : 0) +
-          (englishTitle.contains(normalized) ? 45 : 0) +
-          (keywords.contains(normalized) ? 40 : 0) +
-          tokens.where(title.contains).length * 25 +
-          tokens.where(keywords.contains).length * 12 +
-          tokens.where(body.contains).length * 2 +
+          (entry.title.contains(normalized) ? 120 : 0) +
+          (entry.englishTitle.contains(normalized) ? 45 : 0) +
+          (entry.keywords.contains(normalized) ? 40 : 0) +
+          tokens.where(entry.title.contains).length * 25 +
+          tokens.where(entry.keywords.contains).length * 12 +
+          tokens.where(entry.body.contains).length * 2 +
           5;
       results.add(
         HelpSearchHit(
-          id: faq.id,
-          title: translated.question,
-          snippet: translated.answer,
-          category: faq.category,
+          id: entry.faq.id,
+          title: entry.translation.question,
+          snippet: entry.translation.answer,
+          category: entry.faq.category,
           score: score,
-          faq: faq,
+          faq: entry.faq,
         ),
       );
     }
 
-    for (final article in guideForLanguage(languageCode)) {
-      final title = _fold(article.title);
-      final body = _fold(article.body);
+    for (final entry in index.articles) {
       if (!tokens.every(
-        (token) => title.contains(token) || body.contains(token),
+        (token) => entry.title.contains(token) || entry.body.contains(token),
       )) {
         continue;
       }
       final score =
-          (title.contains(normalized) ? 65 : 0) +
-          tokens.where(title.contains).length * 14 +
-          tokens.where(body.contains).length;
+          (entry.title.contains(normalized) ? 65 : 0) +
+          tokens.where(entry.title.contains).length * 14 +
+          tokens.where(entry.body.contains).length;
       results.add(
         HelpSearchHit(
-          id: article.id,
-          title: article.title,
-          snippet: article.body.replaceAll(RegExp(r'\s+'), ' ').trim(),
-          category: article.part,
+          id: entry.article.id,
+          title: entry.article.title,
+          snippet: entry.snippet,
+          category: entry.article.part,
           score: score,
-          article: article,
+          article: entry.article,
         ),
       );
     }
@@ -341,3 +303,198 @@ class HelpCatalog {
     return text;
   }
 }
+
+/// A fixed search index for one locale. Only immutable bundled content is
+/// indexed; user transactions and other private records are never inspected.
+class _HelpSearchIndex {
+  const _HelpSearchIndex({required this.faqs, required this.articles});
+
+  final List<_IndexedHelpFaq> faqs;
+  final List<_IndexedHelpArticle> articles;
+}
+
+class _IndexedHelpFaq {
+  _IndexedHelpFaq(this.faq, String locale)
+      : translation = faq.translation(locale),
+        title = _helpIndexField(faq.translation(locale).question, locale),
+        englishTitle = _helpIndexField(faq.translation('en').question, locale),
+        keywords = _helpIndexField(faq.keywords.join(' '), locale),
+        category = _helpIndexField(faq.category, locale),
+        body = _helpIndexField(faq.translation(locale).answer, locale);
+
+  final HelpFaqEntry faq;
+  final HelpFaqTranslation translation;
+  final String title;
+  final String englishTitle;
+  final String keywords;
+  final String category;
+  final String body;
+}
+
+class _IndexedHelpArticle {
+  _IndexedHelpArticle(this.article, String locale)
+      : title = _helpIndexField(article.title, locale),
+        body = _helpIndexField(article.body, locale),
+        snippet = article.body.replaceAll(RegExp(r'\s+'), ' ').trim();
+
+  final HelpGuideArticle article;
+  final String title;
+  final String body;
+  final String snippet;
+}
+
+Map<String, _HelpSearchIndex> _buildSearchIndexes(
+  Map<String, List<HelpGuideArticle>> guides,
+  List<HelpFaqEntry> faqs,
+) {
+  return {
+    for (final locale in ['en', 'zh', 'es'])
+      locale: _HelpSearchIndex(
+        faqs: List.unmodifiable(
+          faqs.map((faq) => _IndexedHelpFaq(faq, locale)),
+        ),
+        articles: List.unmodifiable(
+          (guides[locale] ?? guides['en']!).map(
+            (article) => _IndexedHelpArticle(article, locale),
+          ),
+        ),
+      ),
+  };
+}
+
+String _helpIndexField(String value, String locale) {
+  final normalized = HelpCatalog._fold(value)
+      .replaceAll(RegExp(r'[^a-z0-9\u3400-\u9fff\s]'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+  if (locale != 'es' || normalized.isEmpty) return normalized;
+  return normalized
+      .split(' ')
+      .map(_helpSpanishRoot)
+      .join(' ');
+}
+
+/// Small predictable Spanish inflection normalization for local Help only.
+/// No online translation, user-data processing or external dependency.
+String _helpSpanishRoot(String term) {
+  if (term.length < 5) return term;
+  for (final ending in [
+    'aciones',
+    'adores',
+    'adoras',
+    'acion',
+    'mente',
+    'ando',
+    'iendo',
+    'ados',
+    'adas',
+    'idos',
+    'idas',
+    'ando',
+    'ando',
+    'ar',
+    'er',
+    'ir',
+    'os',
+    'as',
+    'es',
+  ]) {
+    if (term.endsWith(ending) && term.length - ending.length >= 4) {
+      return term.substring(0, term.length - ending.length);
+    }
+  }
+  if (term.endsWith('o') || term.endsWith('a') || term.endsWith('s')) {
+    return term.substring(0, term.length - 1);
+  }
+  return term;
+}
+
+const _helpStopWords = <String>{
+  'how', 'do', 'i', 'a', 'an', 'the', 'to', 'my', 'is', 'are',
+  'what', 'does', 'can', 'for', 'of', 'where', 'why', 'and',
+  'or', 'me', 'vs', 'versus',
+  'como', 'puedo', 'de', 'la', 'el', 'una', 'un', 'los',
+  'las', 'que', 'por', 'en', 'del', 'para', 'mi', 'mis',
+  'se', 'es', 'yo', 'y', 'o', 'hago', 'hacer',
+};
+
+/// The explicit vocabulary avoids treating a Chinese sentence with no spaces
+/// as an impossible whole-string match. Unknown multi-character terms are
+/// retained to avoid returning unrelated results.
+const _helpChineseTerms = <String>[
+  '支付来源', '找不到', '未分类', '重复交易', '银行卡',
+  '加密', '备份', '密码', '忘记', '忘了', '丢失', '找回',
+  '恢复', '还原', '合并', '替换', '数据', '删除', '导出',
+  '交易', '记录', '重复', '金额', '商家', '收据',
+  '账单', '同步', '云端', '云盘', '文件', '导入',
+  '分类', '类别', '分析', '预算', '设置', '语言',
+  '币种', '时区', '支付', '来源', '报表', '账户',
+  '账号', '搜索', '帮助', '修改', '编辑', '添加',
+  '查看', '确认', '离线', '联网', '网络', '购买',
+  '错误', '失败', '问题', '安全', '导入', '存储',
+];
+
+const _helpChineseStopPhrases = <String>[
+  '怎么办', '怎么样', '如何', '怎么', '怎样', '请问',
+  '我想', '是否', '可以', '能够', '能否', '一下',
+  '我的', '为什么', '什么', '无法', '不能', '请',
+  '我', '吗', '呢', '的', '了', '是',
+];
+
+List<String> _helpQueryTerms(String normalized, String locale) {
+  if (locale != 'zh') {
+    return normalized
+        .split(RegExp(r'\s+'))
+        .where((token) => token.isNotEmpty && !_helpStopWords.contains(token))
+        .toSet()
+        .toList(growable: false);
+  }
+
+  var remaining = normalized;
+  for (final phrase in _helpChineseStopPhrases) {
+    remaining = remaining.replaceAll(phrase, ' ');
+  }
+  final terms = <String>[];
+  for (final match in RegExp(r'[\u3400-\u9fff]+|[a-z0-9]+')
+      .allMatches(remaining)) {
+    final chunk = match.group(0)!;
+    if (!RegExp(r'^[\u3400-\u9fff]').hasMatch(chunk)) {
+      if (!_helpStopWords.contains(chunk)) terms.add(chunk);
+      continue;
+    }
+
+    final unknown = StringBuffer();
+    var offset = 0;
+    void flushUnknown() {
+      final residue = unknown.toString();
+      if (residue.length >= 2) terms.add(residue);
+      unknown.clear();
+    }
+
+    while (offset < chunk.length) {
+      String? found;
+      for (final word in _helpChineseTerms) {
+        if (chunk.startsWith(word, offset) &&
+            (found == null || word.length > found.length)) {
+          found = word;
+        }
+      }
+      if (found == null) {
+        unknown.write(chunk[offset]);
+        offset++;
+      } else {
+        flushUnknown();
+        terms.add(switch (found) {
+          '还原' || '找回' => '恢复',
+          '云盘' => '云端',
+          '忘了' => '忘记',
+          _ => found,
+        });
+        offset += found.length;
+      }
+    }
+    flushUnknown();
+  }
+  return terms.toSet().toList(growable: false);
+}
+
