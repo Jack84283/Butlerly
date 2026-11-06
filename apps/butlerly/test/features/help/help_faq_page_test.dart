@@ -1,3 +1,4 @@
+import 'package:butlerly/features/help/data/help_catalog.dart';
 import 'package:butlerly/features/help/presentation/help_faq_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -5,6 +6,12 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  late HelpCatalog catalog;
+
+  setUpAll(() async {
+    catalog = await HelpCatalog.load();
+  });
+
   Widget app(Locale locale) => MaterialApp(
     locale: locale,
     supportedLocales: AppLocalizations.supportedLocales,
@@ -14,7 +21,7 @@ void main() {
       GlobalWidgetsLocalizations.delegate,
       GlobalCupertinoLocalizations.delegate,
     ],
-    home: const HelpFaqPage(),
+    home: HelpFaqPage(preloadedCatalog: catalog),
   );
 
   testWidgets('Help searches locally and opens FAQ to full guide chapter', (

@@ -7,7 +7,10 @@ import 'package:go_router/go_router.dart';
 
 /// Bundled, fully offline Help. No user queries or records leave the device.
 class HelpFaqPage extends StatefulWidget {
-  const HelpFaqPage({super.key});
+  const HelpFaqPage({this.preloadedCatalog, super.key});
+
+  /// Optional preloaded catalog for deterministic widget tests and previews.
+  final HelpCatalog? preloadedCatalog;
 
   @override
   State<HelpFaqPage> createState() => _HelpFaqPageState();
@@ -15,8 +18,16 @@ class HelpFaqPage extends StatefulWidget {
 
 class _HelpFaqPageState extends State<HelpFaqPage> {
   final TextEditingController _searchController = TextEditingController();
-  late Future<HelpCatalog> _catalog = HelpCatalog.load();
+  late Future<HelpCatalog> _catalog;
   String? _selectedCategory;
+
+  @override
+  void initState() {
+    super.initState();
+    _catalog = widget.preloadedCatalog == null
+        ? HelpCatalog.load()
+        : Future<HelpCatalog>.value(widget.preloadedCatalog);
+  }
 
   @override
   void dispose() {
