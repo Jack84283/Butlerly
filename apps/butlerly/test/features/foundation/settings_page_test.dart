@@ -379,7 +379,9 @@ void main() {
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
 
-    final setting = find.byKey(const ValueKey('transaction-save-sound-setting'));
+    final setting = find.byKey(
+      const ValueKey('transaction-save-sound-setting'),
+    );
     var tile = tester.widget<SwitchListTile>(setting);
     expect(tile.value, isTrue);
     tile.onChanged!(false);
