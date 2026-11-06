@@ -190,6 +190,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         l10n.text(
           preference == null
               ? 'loading'
+              : _savingTransactionSound
+              ? 'saving'
               : preference.transactionSaveSoundEnabled
               ? 'enabled'
               : 'disabled',
