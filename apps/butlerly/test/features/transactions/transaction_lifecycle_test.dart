@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/core/audio/butlerly_sound_feedback.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
@@ -126,9 +127,14 @@ void main() {
             playCount += 1;
           };
           addTearDown(() => ButlerlySoundFeedback.playbackForTesting = null);
+          // Ensure the preference is loaded before the editor reads it.
+          final container = ProviderContainer();
+          addTearDown(container.dispose);
+          await container.read(userPreferenceProvider.future);
           var completed = false;
           await tester.pumpWidget(
-            ProviderScope(
+            UncontrolledProviderScope(
+              container: container,
               child: MaterialApp(
                 home: Scaffold(
                   body: TransactionEditorPage(
