@@ -133,7 +133,9 @@ class HelpCatalog {
     final guideData = jsonDecode(values[0]) as Map<String, dynamic>;
     final faqData = jsonDecode(values[1]) as Map<String, dynamic>;
     final guide = (guideData['articles'] as List<dynamic>)
-        .map((entry) => HelpGuideArticle.fromJson(entry as Map<String, dynamic>))
+        .map(
+          (entry) => HelpGuideArticle.fromJson(entry as Map<String, dynamic>),
+        )
         .toList(growable: false);
     final faqs = (faqData['faqs'] as List<dynamic>)
         .map((entry) => HelpFaqEntry.fromJson(entry as Map<String, dynamic>))
@@ -142,11 +144,15 @@ class HelpCatalog {
     final faqIds = faqs.map((entry) => entry.id).toSet();
     if (articleIds.length != guide.length ||
         faqIds.length != faqs.length ||
-        faqs.any((faq) =>
-            !articleIds.contains(faq.guideId) ||
-            !{'en', 'zh', 'es'}.every((locale) =>
-                faq.translations[locale]?.question.isNotEmpty == true &&
-                faq.translations[locale]?.answer.isNotEmpty == true))) {
+        faqs.any(
+          (faq) =>
+              !articleIds.contains(faq.guideId) ||
+              !{'en', 'zh', 'es'}.every(
+                (locale) =>
+                    faq.translations[locale]?.question.isNotEmpty == true &&
+                    faq.translations[locale]?.answer.isNotEmpty == true,
+              ),
+        )) {
       throw const FormatException('Invalid bundled Help references or locales');
     }
     return HelpCatalog(guide: guide, faqs: faqs);
@@ -154,10 +160,7 @@ class HelpCatalog {
 
   /// Search is deterministic, locale-aware, and performed in memory.
   /// FAQ titles rank ahead of keyword matches, which rank ahead of bodies.
-  List<HelpSearchHit> search(
-    String query, {
-    String languageCode = 'en',
-  }) {
+  List<HelpSearchHit> search(String query, {String languageCode = 'en'}) {
     final normalized = _fold(query).trim();
     if (normalized.isEmpty) return const [];
     final tokens = normalized
@@ -173,49 +176,58 @@ class HelpCatalog {
       final keywords = _fold(faq.keywords.join(' '));
       final category = _fold(faq.category);
       final body = _fold(translated.answer);
-      if (!tokens.every((token) =>
-          title.contains(token) ||
-          englishTitle.contains(token) ||
-          keywords.contains(token) ||
-          category.contains(token) ||
-          body.contains(token))) {
+      if (!tokens.every(
+        (token) =>
+            title.contains(token) ||
+            englishTitle.contains(token) ||
+            keywords.contains(token) ||
+            category.contains(token) ||
+            body.contains(token),
+      )) {
         continue;
       }
-      final score = (title.contains(normalized) ? 120 : 0) +
+      final score =
+          (title.contains(normalized) ? 120 : 0) +
           (englishTitle.contains(normalized) ? 45 : 0) +
           (keywords.contains(normalized) ? 40 : 0) +
           tokens.where(title.contains).length * 25 +
           tokens.where(keywords.contains).length * 12 +
           tokens.where(body.contains).length * 2 +
           5;
-      results.add(HelpSearchHit(
-        id: faq.id,
-        title: translated.question,
-        snippet: translated.answer,
-        category: faq.category,
-        score: score,
-        faq: faq,
-      ));
+      results.add(
+        HelpSearchHit(
+          id: faq.id,
+          title: translated.question,
+          snippet: translated.answer,
+          category: faq.category,
+          score: score,
+          faq: faq,
+        ),
+      );
     }
 
     for (final article in guide) {
       final title = _fold(article.title);
       final body = _fold(article.body);
-      if (!tokens.every((token) =>
-          title.contains(token) || body.contains(token))) {
+      if (!tokens.every(
+        (token) => title.contains(token) || body.contains(token),
+      )) {
         continue;
       }
-      final score = (title.contains(normalized) ? 65 : 0) +
+      final score =
+          (title.contains(normalized) ? 65 : 0) +
           tokens.where(title.contains).length * 14 +
           tokens.where(body.contains).length;
-      results.add(HelpSearchHit(
-        id: article.id,
-        title: article.title,
-        snippet: article.body.replaceAll(RegExp(r'\s+'), ' ').trim(),
-        category: article.part,
-        score: score,
-        article: article,
-      ));
+      results.add(
+        HelpSearchHit(
+          id: article.id,
+          title: article.title,
+          snippet: article.body.replaceAll(RegExp(r'\s+'), ' ').trim(),
+          category: article.part,
+          score: score,
+          article: article,
+        ),
+      );
     }
 
     results.sort((a, b) {
@@ -230,12 +242,30 @@ class HelpCatalog {
   static String _fold(String value) {
     var text = value.toLowerCase();
     const marks = <String, String>{
-      'á': 'a', 'à': 'a', 'â': 'a', 'ä': 'a', 'ã': 'a',
-      'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e',
-      'í': 'i', 'ì': 'i', 'î': 'i', 'ï': 'i',
-      'ó': 'o', 'ò': 'o', 'ô': 'o', 'ö': 'o', 'õ': 'o',
-      'ú': 'u', 'ù': 'u', 'û': 'u', 'ü': 'u',
-      'ñ': 'n', 'ç': 'c',
+      'á': 'a',
+      'à': 'a',
+      'â': 'a',
+      'ä': 'a',
+      'ã': 'a',
+      'é': 'e',
+      'è': 'e',
+      'ê': 'e',
+      'ë': 'e',
+      'í': 'i',
+      'ì': 'i',
+      'î': 'i',
+      'ï': 'i',
+      'ó': 'o',
+      'ò': 'o',
+      'ô': 'o',
+      'ö': 'o',
+      'õ': 'o',
+      'ú': 'u',
+      'ù': 'u',
+      'û': 'u',
+      'ü': 'u',
+      'ñ': 'n',
+      'ç': 'c',
     };
     for (final mark in marks.entries) {
       text = text.replaceAll(mark.key, mark.value);

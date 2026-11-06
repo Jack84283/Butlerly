@@ -135,9 +135,11 @@ class _HelpFaqPageState extends State<HelpFaqPage> {
             padding: EdgeInsets.zero,
             child: ListTile(
               key: ValueKey('help-hit-' + hit.id),
-              leading: Icon(hit.isFaq
-                  ? Icons.help_outline_rounded
-                  : Icons.menu_book_outlined),
+              leading: Icon(
+                hit.isFaq
+                    ? Icons.help_outline_rounded
+                    : Icons.menu_book_outlined,
+              ),
               title: Text(hit.title),
               subtitle: Text(
                 (hit.isFaq
@@ -160,17 +162,19 @@ class _HelpFaqPageState extends State<HelpFaqPage> {
     final selected = _selectedCategory;
     final faqs = selected == null
         ? catalog.faqs
-            .where((faq) => const {
+              .where(
+                (faq) => const {
                   'FAQ-022',
                   'FAQ-021',
                   'FAQ-009',
                   'FAQ-015',
                   'FAQ-012',
-                }.contains(faq.id))
-            .toList(growable: false)
+                }.contains(faq.id),
+              )
+              .toList(growable: false)
         : catalog.faqs
-            .where((faq) => faq.category == selected)
-            .toList(growable: false);
+              .where((faq) => faq.category == selected)
+              .toList(growable: false);
     final language = Localizations.localeOf(context).languageCode;
     return [
       _heading(context, HelpCopy.text(context, 'topics')),
@@ -188,8 +192,7 @@ class _HelpFaqPageState extends State<HelpFaqPage> {
             ChoiceChip(
               label: Text(HelpCopy.category(context, category)),
               selected: selected == category,
-              onSelected: (_) =>
-                  setState(() => _selectedCategory = category),
+              onSelected: (_) => setState(() => _selectedCategory = category),
             ),
         ],
       ),
@@ -242,33 +245,25 @@ String _preview(String body) {
       .replaceAll(RegExp(r'##\s*'), '')
       .replaceAll(RegExp(r'\s+'), ' ')
       .trim();
-  return flattened.length > 190
-      ? flattened.substring(0, 190) + '…'
-      : flattened;
+  return flattened.length > 190 ? flattened.substring(0, 190) + '…' : flattened;
 }
 
-Widget _heading(BuildContext context, String text) => Text(
-      text,
-      style: Theme.of(context).textTheme.titleMedium,
-    );
+Widget _heading(BuildContext context, String text) =>
+    Text(text, style: Theme.of(context).textTheme.titleMedium);
 
 Widget _helpBackButton(BuildContext context) => IconButton(
-      tooltip: HelpCopy.text(context, 'back'),
-      icon: const Icon(Icons.arrow_back_rounded),
-      onPressed: () {
-        if (Navigator.of(context).canPop()) {
-          Navigator.of(context).pop();
-        } else {
-          context.go('/settings');
-        }
-      },
-    );
+  tooltip: HelpCopy.text(context, 'back'),
+  icon: const Icon(Icons.arrow_back_rounded),
+  onPressed: () {
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      context.go('/settings');
+    }
+  },
+);
 
-void _openFaq(
-  BuildContext context,
-  HelpCatalog catalog,
-  HelpFaqEntry faq,
-) {
+void _openFaq(BuildContext context, HelpCatalog catalog, HelpFaqEntry faq) {
   Navigator.of(context).push(
     MaterialPageRoute<void>(
       builder: (_) => HelpFaqDetailPage(catalog: catalog, faq: faq),
@@ -346,18 +341,20 @@ class HelpGuideIndexPage extends StatelessWidget {
         widgets.add(_heading(context, article.part));
         widgets.add(const SizedBox(height: ButlerlySpacing.small));
       }
-      widgets.add(Padding(
-        padding: const EdgeInsets.only(bottom: ButlerlySpacing.small),
-        child: ButlerlyCard(
-          padding: EdgeInsets.zero,
-          child: ListTile(
-            key: ValueKey('help-article-' + article.id),
-            title: Text(article.title),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => _openArticle(context, article),
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: ButlerlySpacing.small),
+          child: ButlerlyCard(
+            padding: EdgeInsets.zero,
+            child: ListTile(
+              key: ValueKey('help-article-' + article.id),
+              title: Text(article.title),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => _openArticle(context, article),
+            ),
           ),
         ),
-      ));
+      );
     }
     return ButlerlyPage(
       title: HelpCopy.text(context, 'guide'),
@@ -382,22 +379,36 @@ class HelpGuideArticlePage extends StatelessWidget {
       subtitle: HelpCopy.text(context, 'englishOnly'),
       leading: _helpBackButton(context),
       children: [
-        Text(
-          article.title,
-          style: Theme.of(context).textTheme.titleLarge,
-        ),
+        Text(article.title, style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: ButlerlySpacing.section),
         for (final section in sections) ...[
-          if (section.trim().startsWith('## '))
-            Text(
-              section.trim().substring(3),
-              style: Theme.of(context).textTheme.titleMedium,
-            )
-          else
-            SelectableText(section.trim()),
+          _guideSection(context, section),
           const SizedBox(height: ButlerlySpacing.standard),
         ],
       ],
     );
   }
+}
+
+Widget _guideSection(BuildContext context, String section) {
+  final text = section.trim();
+  if (!text.startsWith('## ')) return SelectableText(text);
+  final breakAt = text.indexOf('\n');
+  if (breakAt == -1) {
+    return Text(
+      text.substring(3),
+      style: Theme.of(context).textTheme.titleMedium,
+    );
+  }
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        text.substring(3, breakAt),
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+      const SizedBox(height: ButlerlySpacing.small),
+      SelectableText(text.substring(breakAt + 1).trim()),
+    ],
+  );
 }

@@ -6,16 +6,16 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   Widget app(Locale locale) => MaterialApp(
-        locale: locale,
-        supportedLocales: AppLocalizations.supportedLocales,
-        localizationsDelegates: const [
-          AppLocalizations.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        home: const HelpFaqPage(),
-      );
+    locale: locale,
+    supportedLocales: AppLocalizations.supportedLocales,
+    localizationsDelegates: const [
+      AppLocalizations.delegate,
+      GlobalMaterialLocalizations.delegate,
+      GlobalWidgetsLocalizations.delegate,
+      GlobalCupertinoLocalizations.delegate,
+    ],
+    home: const HelpFaqPage(),
+  );
 
   testWidgets('Help searches locally and opens FAQ to full guide chapter', (
     tester,
@@ -71,10 +71,7 @@ void main() {
         locale.languageCode == 'zh' ? '同步' : 'sincronizar',
       );
       await tester.pumpAndSettle();
-      expect(
-        find.byKey(const ValueKey('help-hit-FAQ-009')),
-        findsOneWidget,
-      );
+      expect(find.byKey(const ValueKey('help-hit-FAQ-009')), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }
