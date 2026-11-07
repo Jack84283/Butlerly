@@ -834,27 +834,20 @@ class _HomeHeader extends StatelessWidget {
           label: compactMonthLabel,
           semanticLabel: selectorMonthLabel,
           onPressed: onMonthTap,
-          alignVisualEnd: true,
+          centerVisual: true,
           denseSurface: true,
           transparent: true,
         );
         final hasHelp = GoRouter.maybeOf(context) != null;
+        // A shared 44px cross-axis center aligns the visible brand mark,
+        // month pill, and Help circle. Do not offset their hit boxes.
         final monthAndHelp = hasHelp
             ? Row(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Flexible(
-                    child: Transform.translate(
-                      key: const ValueKey('home-month-vertical-offset'),
-                      offset: const Offset(0, 6),
-                      child: monthButton,
-                    ),
-                  ),
-                  Transform.translate(
-                    key: const ValueKey('home-help-vertical-offset'),
-                    offset: const Offset(0, -6),
-                    child: const ButlerlyContextHelpButton(articleId: 'ch-12'),
-                  ),
+                  Flexible(child: monthButton),
+                  const ButlerlyContextHelpButton(articleId: 'ch-12'),
                 ],
               )
             : monthButton;
@@ -875,10 +868,12 @@ class _HomeHeader extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Expanded(
-                    child: Transform.translate(
-                      key: const ValueKey('home-brand-title-optical-adjustment'),
-                      offset: const Offset(0, 6),
-                      child: brand,
+                    child: SizedBox(
+                      height: ButlerlySize.minimumTarget,
+                      child: Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: brand,
+                      ),
                     ),
                   ),
                   const SizedBox(width: ButlerlySpacing.compact),
