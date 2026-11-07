@@ -428,7 +428,6 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
             ),
           ],
         ),
-      ),
     );
     final saved = useEditorPage
         ? await Navigator.of(context).push<bool>(
