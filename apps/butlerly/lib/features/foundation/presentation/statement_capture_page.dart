@@ -2221,6 +2221,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
     appBar: AppBar(
       title: Text(context.l10n.text('reviewStatementImport')),
       actions: [
+        const ButlerlyContextHelpButton(articleId: 'ch-10'),
         IconButton(
           onPressed: _abandonImport,
           tooltip: context.l10n.text('abandonStatementImport'),

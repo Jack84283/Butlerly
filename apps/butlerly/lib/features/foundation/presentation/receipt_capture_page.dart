@@ -6,6 +6,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/core/evidence/local_ocr_service.dart';
 import 'package:butlerly/core/evidence/platform_ocr_recognizer.dart';
+import 'package:butlerly/design_system/components/butlerly_context_help.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
@@ -1499,7 +1500,10 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     return PopScope(
       canPop: !_saving && !_processing && !_captureInFlight,
       child: Scaffold(
-        appBar: AppBar(title: Text(context.l10n.text('captureReceipt'))),
+        appBar: AppBar(
+          title: Text(context.l10n.text('captureReceipt')),
+          actions: const [ButlerlyContextHelpButton(articleId: 'ch-9')],
+        ),
         body: SafeArea(
           child: ButlerlyResponsiveBody(
             contentKey: const ValueKey('receipt-capture-content'),

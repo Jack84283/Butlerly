@@ -693,7 +693,9 @@ double _homeHeaderExtent(
         brandWidth,
         maxLines: largeText ? null : 1,
       );
-  final monthHeight = monthButtonHeight(monthWidth);
+  final monthHeight = monthButtonHeight(
+    math.max(1.0, monthWidth - ButlerlySize.minimumTarget),
+  );
   final topRowHeight = stackedTopRow
       ? brandHeight + ButlerlySpacing.small + monthHeight
       : brandHeight > monthHeight
@@ -847,26 +849,23 @@ class _HomeHeader extends StatelessWidget {
           denseSurface: true,
           transparent: true,
         );
+        final monthAndHelp = Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(child: monthButton),
+            const ButlerlyContextHelpButton(articleId: 'ch-12'),
+          ],
+        );
         final topRow = stackedTopRow
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   brand,
                   const SizedBox(height: ButlerlySpacing.small),
-                  if (MediaQuery.textScalerOf(context).scale(14) > 18)
-                    Align(
-                      alignment: AlignmentDirectional.centerEnd,
-                      child: monthButton,
-                    )
-                  else
-                    Align(
-                      alignment: AlignmentDirectional.centerEnd,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: AlignmentDirectional.centerEnd,
-                        child: monthButton,
-                      ),
-                    ),
+                  Align(
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: monthAndHelp,
+                  ),
                 ],
               )
             : Row(
@@ -878,7 +877,7 @@ class _HomeHeader extends StatelessWidget {
                     flex: 4,
                     child: Align(
                       alignment: AlignmentDirectional.topEnd,
-                      child: monthButton,
+                      child: monthAndHelp,
                     ),
                   ),
                 ],

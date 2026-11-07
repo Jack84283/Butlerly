@@ -320,7 +320,10 @@ class _LegalDocumentPageState extends State<LegalDocumentPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(context.l10n.text(widget.document.titleKey))),
+    appBar: AppBar(
+      title: Text(context.l10n.text(widget.document.titleKey)),
+      actions: const [ButlerlyContextHelpButton(articleId: 'ch-17')],
+    ),
     body: SafeArea(
       child: ButlerlyResponsiveBody(
         contentKey: const ValueKey('legal-document-content'),

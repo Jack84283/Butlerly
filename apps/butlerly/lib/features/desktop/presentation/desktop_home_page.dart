@@ -415,6 +415,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                           ),
                         ),
                       if (!compactToolbar) const SizedBox(width: 8),
+                      const ButlerlyContextHelpButton(articleId: 'ch-12'),
                       if (compactToolbar)
                         IconButton(
                           tooltip: context.l10n.text('add'),
