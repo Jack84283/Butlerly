@@ -65,6 +65,7 @@ class ButlerlyPage extends StatelessWidget {
     this.onRefresh,
     this.refreshKey,
     this.fullWidth = false,
+    this.showContextHelp = true,
     super.key,
   });
 
@@ -84,6 +85,9 @@ class ButlerlyPage extends StatelessWidget {
   /// Use the available page width instead of the standard readable-width cap.
   /// Only opt in from layouts designed for full-width content.
   final bool fullWidth;
+
+  /// Help readers suppress their own contextual Help action.
+  final bool showContextHelp;
 
   @override
   Widget build(BuildContext context) {
@@ -128,8 +132,9 @@ class ButlerlyPage extends StatelessWidget {
               leading: leading,
               actions: [
                 ...actions,
-                if (ButlerlyContextHelpButton.articleForContext(context) !=
-                    null)
+                if (showContextHelp &&
+                    ButlerlyContextHelpButton.articleForContext(context) !=
+                        null)
                   const ButlerlyContextHelpButton(),
               ],
               bottom: pinnedSpacing.headerBottomGap > ButlerlySpacing.none

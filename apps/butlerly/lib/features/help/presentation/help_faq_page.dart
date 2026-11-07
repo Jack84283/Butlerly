@@ -98,6 +98,7 @@ class _HelpFaqPageState extends State<HelpFaqPage> {
             if (article != null) return HelpGuideArticlePage(article: article);
           }
           return ButlerlyPage(
+            showContextHelp: false,
             title: HelpCopy.text(context, 'title'),
             subtitle: HelpCopy.text(context, 'subtitle'),
             leading: _helpBackButton(context),
@@ -398,6 +399,7 @@ class HelpFaqDetailPage extends StatelessWidget {
     final translation = faq.translation(language);
     final linked = catalog.articleById(faq.guideId, languageCode: language);
     return ButlerlyPage(
+      showContextHelp: false,
       title: HelpCopy.text(context, 'faq'),
       subtitle: HelpCopy.category(context, faq.category),
       leading: _helpBackButton(context),
@@ -454,6 +456,7 @@ class HelpGuideIndexPage extends StatelessWidget {
       );
     }
     return ButlerlyPage(
+      showContextHelp: false,
       title: HelpCopy.text(context, 'guide'),
       leading: _helpBackButton(context),
       children: widgets,
@@ -472,6 +475,7 @@ class HelpGuideArticlePage extends StatelessWidget {
         .split(RegExp(r'\n\s*\n'))
         .where((section) => section.trim().isNotEmpty);
     return ButlerlyPage(
+      showContextHelp: false,
       title: HelpCopy.text(context, 'guide'),
       leading: _helpBackButton(context),
       children: [
