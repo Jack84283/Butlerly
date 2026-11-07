@@ -116,6 +116,15 @@ void main() {
         expect(find.byType(ButlerlySheet), findsOneWidget);
         expect(find.byType(PaymentSourcesPage), findsNothing);
         expect(find.text('Add payment settlement'), findsAtLeastNWidgets(1));
+        await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+        await tester.pumpAndSettle();
+        // A validation failure must be visible in the sheet's fixed action
+        // area, even when the relevant form field has been scrolled away.
+        expect(
+          find.byKey(const ValueKey('payment-settlement-submit-error')),
+          findsOneWidget,
+        );
+        expect(find.text('Enter a valid amount.'), findsAtLeastNWidgets(1));
         final source = find.byType(ButlerlySelectField<String>);
         expect(source, findsOneWidget);
         expect(
