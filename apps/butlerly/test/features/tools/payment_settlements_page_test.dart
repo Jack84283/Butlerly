@@ -125,6 +125,7 @@ void main() {
         expect(tester.takeException(), isNull);
       },
     );
+  }
 
   testWidgets(
     'creating a prerequisite credit card resumes the settlement editor',
@@ -138,9 +139,7 @@ void main() {
 
       await tester.pumpWidget(app());
       await tester.pumpAndSettle();
-      await tester.tap(
-        find.byKey(const ValueKey('payment-settlements-add')),
-      );
+      await tester.tap(find.byKey(const ValueKey('payment-settlements-add')));
       await tester.pumpAndSettle();
       expect(find.byType(PaymentSourcesPage), findsOneWidget);
 
@@ -166,7 +165,6 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
-  }
 }
 
 class _TestSources extends Fake implements PaymentSourceRepository {
