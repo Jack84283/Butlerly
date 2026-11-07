@@ -143,7 +143,7 @@ class ButlerlyPage extends StatelessWidget {
                             actions.last is ButlerlyHeaderAddButton &&
                             (actions.last as ButlerlyHeaderAddButton)
                                 .closeToHelp
-                        ? ButlerlySpacing.md
+                        ? ButlerlySpacing.small
                         : null,
                   ),
               ],
