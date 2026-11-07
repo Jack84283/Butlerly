@@ -99,6 +99,21 @@ void main() {
       final help = find.byKey(const ValueKey('page-context-help'));
       expect(help, findsOneWidget);
       expect(find.byTooltip('Help for this page'), findsOneWidget);
+      final helpButton = tester.widget<IconButton>(help);
+      final helpIcon = helpButton.icon as Icon;
+      expect(helpIcon.icon, Icons.question_mark_rounded);
+      expect(helpIcon.size, 28);
+      expect(tester.getSize(help).width, greaterThanOrEqualTo(44));
+      expect(tester.getSize(help).height, greaterThanOrEqualTo(44));
+      final colors = Theme.of(tester.element(help)).colorScheme;
+      expect(
+        helpButton.style!.backgroundColor!.resolve(<WidgetState>{}),
+        colors.primary,
+      );
+      expect(
+        helpButton.style!.foregroundColor!.resolve(<WidgetState>{}),
+        colors.onPrimary,
+      );
       await tester.tap(help);
       await tester.pumpAndSettle();
       // GoRouter's imperative push can retain the source public URI.
