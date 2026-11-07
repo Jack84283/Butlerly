@@ -68,7 +68,7 @@ class ButlerlyContextHelpButton extends StatelessWidget {
         tooltip: context.l10n.text('contextHelp'),
         icon: SizedBox.square(
           key: const ValueKey('page-context-help-visual'),
-          dimension: 38,
+          dimension: 32,
           child: DecoratedBox(
             decoration: BoxDecoration(
               color: scheme.primary,
@@ -77,7 +77,7 @@ class ButlerlyContextHelpButton extends StatelessWidget {
             child: Center(
               child: Icon(
                 Icons.question_mark_rounded,
-                size: 28,
+                size: 16,
                 color: scheme.onPrimary,
               ),
             ),
