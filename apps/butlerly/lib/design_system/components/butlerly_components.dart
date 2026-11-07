@@ -408,6 +408,7 @@ class ButlerlyHeaderAddButton extends StatelessWidget {
     required this.label,
     required this.onPressed,
     this.buttonKey,
+    this.closeToHelp = false,
     super.key,
   });
 
@@ -415,10 +416,16 @@ class ButlerlyHeaderAddButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final Key? buttonKey;
 
+  /// Omits the extra trailing padding when the Add action is directly
+  /// followed by the contextual Help control in a page header.
+  final bool closeToHelp;
+
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsetsDirectional.only(
-      end: ButlerlySpacing.headerActionTrailing,
+    padding: EdgeInsetsDirectional.only(
+      end: closeToHelp
+          ? ButlerlySpacing.none
+          : ButlerlySpacing.headerActionTrailing,
     ),
     child: IconButton.filled(
       key: buttonKey,
