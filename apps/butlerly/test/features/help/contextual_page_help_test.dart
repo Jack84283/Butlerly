@@ -99,21 +99,37 @@ void main() {
       final help = find.byKey(const ValueKey('page-context-help'));
       expect(help, findsOneWidget);
       expect(find.byTooltip('Help for this page'), findsOneWidget);
-      final helpButton = tester.widget<IconButton>(help);
-      final helpIcon = helpButton.icon as Icon;
-      expect(helpIcon.icon, Icons.question_mark_rounded);
+      final visual = find.byKey(const ValueKey('page-context-help-visual'));
+      expect(visual, findsOneWidget);
+      expect(tester.getSize(visual), const Size.square(38));
+      // The 12px leading inset is separate from the 44px touch target.
+      expect(
+        find.ancestor(
+          of: help,
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is Padding &&
+                widget.padding == const EdgeInsets.only(left: 12),
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(tester.getSize(help), const Size.square(44));
+      final helpIcon = tester.widget<Icon>(
+        find.descendant(
+          of: visual,
+          matching: find.byIcon(Icons.question_mark_rounded),
+        ),
+      );
       expect(helpIcon.size, 28);
-      expect(tester.getSize(help).width, greaterThanOrEqualTo(44));
-      expect(tester.getSize(help).height, greaterThanOrEqualTo(44));
       final colors = Theme.of(tester.element(help)).colorScheme;
-      expect(
-        helpButton.style!.backgroundColor!.resolve(<WidgetState>{}),
-        colors.primary,
+      expect(helpIcon.color, colors.onPrimary);
+      final paintedCircle = tester.widget<DecoratedBox>(
+        find.descendant(of: visual, matching: find.byType(DecoratedBox)),
       );
-      expect(
-        helpButton.style!.foregroundColor!.resolve(<WidgetState>{}),
-        colors.onPrimary,
-      );
+      final decoration = paintedCircle.decoration as BoxDecoration;
+      expect(decoration.color, colors.primary);
+      expect(decoration.shape, BoxShape.circle);
       await tester.tap(help);
       await tester.pumpAndSettle();
       // GoRouter's imperative push can retain the source public URI.
