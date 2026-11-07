@@ -84,10 +84,8 @@ class ButlerlyRouterlessRecoveryHost extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Navigator(
-    onGenerateRoute: (settings) => MaterialPageRoute<void>(
-      settings: settings,
-      builder: (_) => child,
-    ),
+    onGenerateRoute: (settings) =>
+        MaterialPageRoute<void>(settings: settings, builder: (_) => child),
   );
 }
 
@@ -178,9 +176,7 @@ class _StandaloneHelpReader extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const SizedBox(height: 16),
-                for (final paragraph in article.body.split(
-                  RegExp(r'\n\s*\n'),
-                ))
+                for (final paragraph in article.body.split(RegExp(r'\n\s*\n')))
                   if (paragraph.trim().isNotEmpty) ...[
                     helpGuideSection(context, paragraph),
                     const SizedBox(height: 12),
