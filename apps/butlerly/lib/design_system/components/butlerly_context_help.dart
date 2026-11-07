@@ -32,7 +32,8 @@ String? contextualHelpArticleForPath(String path) => switch (path) {
 };
 
 /// Small page-header action, shared by regular pages and custom AppBars.
-/// Router-backed pages navigate to Help; setup/recovery screens use an offline\n/// overlay when no router is available. The Help reader hides its own action.
+/// Router-backed pages navigate to Help; setup/recovery screens use an offline
+/// overlay when no router is available. The Help reader hides its own action.
 class ButlerlyContextHelpButton extends StatelessWidget {
   const ButlerlyContextHelpButton({this.articleId, super.key});
 
