@@ -31,7 +31,7 @@ String? contextualHelpArticleForPath(String path) => switch (path) {
   _ => 'ch-3',
 };
 
-/// Small page-header action, shared by regular pages and custom AppBars.
+/// Prominent page-header action, shared by regular pages and custom AppBars.
 /// Router-backed pages navigate to Help; setup/recovery screens use an offline
 /// overlay when no router is available. The Help reader hides its own action.
 class ButlerlyContextHelpButton extends StatelessWidget {
@@ -57,10 +57,19 @@ class ButlerlyContextHelpButton extends StatelessWidget {
     final router = GoRouter.maybeOf(context);
     final target = articleId ?? articleForContext(context);
     if (target == null) return const SizedBox.shrink();
-    return IconButton(
+    final scheme = Theme.of(context).colorScheme;
+    return IconButton.filled(
       key: const ValueKey('page-context-help'),
       tooltip: context.l10n.text('contextHelp'),
-      icon: const Icon(Icons.help_outline_rounded),
+      icon: const Icon(Icons.question_mark_rounded, size: 28),
+      style: IconButton.styleFrom(
+        backgroundColor: scheme.primary,
+        foregroundColor: scheme.onPrimary,
+        minimumSize: const Size.square(44),
+        maximumSize: const Size.square(44),
+        padding: EdgeInsets.zero,
+        shape: const CircleBorder(),
+      ),
       onPressed: () {
         if (router == null) {
           _openStandaloneHelp(context, target);
