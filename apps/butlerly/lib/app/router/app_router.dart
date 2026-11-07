@@ -157,9 +157,8 @@ final appRouter = GoRouter(
         ),
         GoRoute(
           path: '/help',
-          builder: (_, state) => HelpFaqPage(
-            articleId: state.uri.queryParameters['article'],
-          ),
+          builder: (_, state) =>
+              HelpFaqPage(articleId: state.uri.queryParameters['article']),
         ),
         GoRoute(
           path: '/review',

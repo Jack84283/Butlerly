@@ -52,9 +52,8 @@ class ButlerlyContextHelpButton extends StatelessWidget {
       key: const ValueKey('page-context-help'),
       tooltip: context.l10n.text('contextHelp'),
       icon: const Icon(Icons.help_outline_rounded),
-      onPressed: () => context.push(
-        '/help?article=${Uri.encodeComponent(target)}',
-      ),
+      onPressed: () =>
+          context.push('/help?article=${Uri.encodeComponent(target)}'),
     );
   }
 }

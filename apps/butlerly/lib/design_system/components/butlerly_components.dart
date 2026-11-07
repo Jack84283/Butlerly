@@ -128,7 +128,8 @@ class ButlerlyPage extends StatelessWidget {
               leading: leading,
               actions: [
                 ...actions,
-                if (ButlerlyContextHelpButton.articleForContext(context) != null)
+                if (ButlerlyContextHelpButton.articleForContext(context) !=
+                    null)
                   const ButlerlyContextHelpButton(),
               ],
               bottom: pinnedSpacing.headerBottomGap > ButlerlySpacing.none

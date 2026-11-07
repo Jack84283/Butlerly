@@ -136,9 +136,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(HelpGuideArticlePage), findsOneWidget);
       expect(
-        find.text(
-          catalog.articleById('ch-15', languageCode: language)!.title,
-        ),
+        find.text(catalog.articleById('ch-15', languageCode: language)!.title),
         findsWidgets,
       );
       expect(tester.takeException(), isNull);
