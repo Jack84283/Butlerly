@@ -839,13 +839,13 @@ class _HomeHeader extends StatelessWidget {
                   Flexible(
                     child: Transform.translate(
                       key: const ValueKey('home-month-vertical-offset'),
-                      offset: const Offset(0, 3),
+                      offset: const Offset(0, 6),
                       child: monthButton,
                     ),
                   ),
                   Transform.translate(
                     key: const ValueKey('home-help-vertical-offset'),
-                    offset: const Offset(0, -3),
+                    offset: const Offset(0, -6),
                     child: const ButlerlyContextHelpButton(articleId: 'ch-12'),
                   ),
                 ],
