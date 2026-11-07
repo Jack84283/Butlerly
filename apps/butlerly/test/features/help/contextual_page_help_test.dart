@@ -10,10 +10,13 @@ import 'package:go_router/go_router.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late HelpCatalog catalog;
-  setUpAll(() async => catalog = await HelpCatalog.load());
+  setUpAll(() async {
+    catalog = await HelpCatalog.load();
+  });
 
   const paths = <String, String>{
     '/': 'ch-12',
+    '/welcome': 'ch-2',
     '/transactions': 'ch-5',
     '/transactions/add': 'ch-5',
     '/add': 'ch-5',
@@ -32,7 +35,7 @@ void main() {
     '/import-export': 'ch-10',
     '/statements': 'ch-10',
     '/receipts/capture': 'ch-9',
-    '/privacy-data': 'ch-18',
+    '/privacy-data': 'ch-20',
     '/master-data': 'ch-8',
     '/notifications': 'ch-3',
     '/assistant': 'ch-25',
@@ -49,7 +52,7 @@ void main() {
         );
       }
     }
-    for (final path in ['/help', '/launch', '/welcome']) {
+    for (final path in ['/help', '/launch']) {
       expect(contextualHelpArticleForPath(path), isNull);
     }
     expect(contextualHelpArticleForPath('/future-page'), 'ch-3');

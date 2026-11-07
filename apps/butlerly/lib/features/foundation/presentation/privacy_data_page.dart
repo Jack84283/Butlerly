@@ -1240,7 +1240,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
               context.canPop() ? context.pop() : context.go('/settings'),
         ),
         title: Text(context.l10n.text('privacyAndData')),
-        actions: const [ButlerlyContextHelpButton(articleId: 'ch-18')],
+        actions: const [ButlerlyContextHelpButton(articleId: 'ch-20')],
       ),
       body: ButlerlyResponsiveBody(
         contentKey: const ValueKey('privacy-data-content'),

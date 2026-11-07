@@ -5,7 +5,8 @@ import 'package:go_router/go_router.dart';
 /// Stable guide chapter targets for each interactive Butlerly destination.
 /// Chapters live in the bundled offline, trilingual Help catalog.
 String? contextualHelpArticleForPath(String path) => switch (path) {
-  '/launch' || '/welcome' || '/help' => null,
+  '/launch' || '/help' => null,
+  '/welcome' => 'ch-2',
   '/' => 'ch-12',
   '/transactions' || '/transactions/add' || '/add' => 'ch-5',
   '/tools' || '/rules' || '/payment-settlements' => 'ch-16',
@@ -18,7 +19,7 @@ String? contextualHelpArticleForPath(String path) => switch (path) {
   '/payment-sources' => 'ch-7',
   '/import-export' || '/statements' => 'ch-10',
   '/receipts/capture' => 'ch-9',
-  '/privacy-data' => 'ch-18',
+  '/privacy-data' => 'ch-20',
   '/master-data' => 'ch-8',
   '/notifications' => 'ch-3',
   '/assistant' => 'ch-25',
