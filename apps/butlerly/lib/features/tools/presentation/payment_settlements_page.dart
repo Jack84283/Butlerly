@@ -19,6 +19,7 @@ import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 class PaymentSettlementsPage extends StatefulWidget {
@@ -77,41 +78,45 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
     await _data;
   }
 
-  /// Keep the Add action available even in an empty workspace. A payment
-  /// settlement requires an active card source; when none exists, guide the
-  /// user into creating one rather than disabling the header action.
+  /// The Add action should never strand a user in a prerequisite sheet.
+  /// A missing active credit card opens the real Payment Sources create page,
+  /// then resumes settlement entry when the source has been saved.
   Future<void> _onAddSettlement(_SettlementListData data) async {
     if (data.activeCardSources.isNotEmpty) {
       await _createSettlement(data);
       return;
     }
-    final openPaymentSources = await showButlerlyBottomSheet<bool>(
-      context: context,
-      builder: (sheetContext) => ButlerlySheet(
-        title: Text(sheetContext.l10n.text('addPaymentSettlement')),
-        content: Text(
-          sheetContext.l10n.text('paymentSettlementNeedsCardSource'),
+
+    final bool? created;
+    if (GoRouter.maybeOf(context) != null) {
+      created = await context.push<bool>(
+        '/payment-sources?create=true&from=settlements',
+      );
+    } else {
+      // Routerless host contexts (including widget tests) use the same
+      // prerequisite flow with an explicit Scaffold.
+      created = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => const Scaffold(
+            body: PaymentSourcesPage(
+              openCreateOnStart: true,
+              fromPaymentSettlement: true,
+            ),
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(sheetContext, false),
-            child: Text(sheetContext.l10n.text('cancel')),
-          ),
-          FilledButton(
-            key: const ValueKey('settlement-create-payment-source'),
-            onPressed: () => Navigator.pop(sheetContext, true),
-            child: Text(sheetContext.l10n.text('addPaymentSource')),
-          ),
-        ],
-      ),
-    );
-    if (!mounted || openPaymentSources != true) return;
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute(
-        builder: (_) => const PaymentSourcesPage(openCreateOnStart: true),
-      ),
-    );
-    if (mounted) await _refresh();
+      );
+    }
+    if (!mounted || created != true) return;
+
+    await _refresh();
+    if (!mounted) return;
+    final updated = await _data;
+    if (!mounted) return;
+    if (updated.activeCardSources.isNotEmpty) {
+      await _createSettlement(updated);
+    } else {
+      _showMessage(context.l10n.text('paymentSettlementNeedsCardSource'));
+    }
   }
 
   Future<void> _createSettlement(_SettlementListData data) async {
@@ -233,7 +238,9 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
               ButlerlyEmptyState(
                 icon: Icons.credit_card_off_outlined,
                 title: context.l10n.text('paymentSources'),
-                message: context.l10n.text('paymentSourcesSubtitle'),
+                message: context.l10n.text('paymentSettlementNeedsCardSource'),
+                actionLabel: context.l10n.text('addPaymentSource'),
+                onAction: () => _onAddSettlement(data),
               )
             else if (data.settlements.isEmpty)
               ButlerlyEmptyState(
@@ -1007,7 +1014,8 @@ class _SettlementEditorSheetState extends State<_SettlementEditorSheet> {
     super.initState();
     final existing = widget.existing;
     final settlement = existing?.settlement;
-    _paymentSourceId = settlement?.paymentSourceId;
+    _paymentSourceId = settlement?.paymentSourceId ??
+        (widget.sources.length == 1 ? widget.sources.single.id.value : null);
     _amount = TextEditingController(
       text: settlement?.payment.amount.toString() ?? '',
     );
@@ -1086,7 +1094,14 @@ class _SettlementEditorSheetState extends State<_SettlementEditorSheet> {
 
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
-    if (!_isEditing && _paymentSourceId == null) return;
+    if (!_isEditing && _paymentSourceId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(context.l10n.text('choosePaymentSourceToContinue')),
+        ),
+      );
+      return;
+    }
     final start = DateTime.parse(_periodStart.text);
     final end = DateTime.parse(_periodEnd.text);
     if (end.isBefore(start)) {
