@@ -308,7 +308,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final uri = router.routeInformationProvider.value.uri;
+    // A pushed GoRouter page may leave the public route-information URI on
+    // its origin; check the active route attached to the rendered page.
+    final uri = GoRouterState.of(
+      tester.element(find.byType(PaymentSourcesPage)),
+    ).uri;
     expect(uri.path, '/payment-sources');
     expect(uri.queryParameters['create'], 'true');
     expect(uri.queryParameters['from'], 'settlements');
