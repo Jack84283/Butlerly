@@ -2,6 +2,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/features/foundation/presentation/payment_sources_page.dart';
 import 'package:butlerly/features/tools/presentation/payment_settlements_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -67,15 +68,26 @@ void main() {
 
         await tester.tap(add);
         await tester.pumpAndSettle();
-        expect(find.byType(ButlerlySheet), findsOneWidget);
-        expect(find.text('Add or activate a credit-card payment source before creating a settlement.'), findsOneWidget);
+
+        // A missing card must navigate directly to the real create form,
+        // rather than leaving the user in an inert prerequisite sheet.
+        expect(find.byType(PaymentSourcesPage), findsOneWidget);
+        expect(find.text('Add payment source'), findsAtLeastNWidgets(1));
         expect(
           find.byKey(const ValueKey('settlement-create-payment-source')),
-          findsOneWidget,
+          findsNothing,
         );
-        await tester.tap(find.text('Cancel'));
-        await tester.pumpAndSettle();
-        expect(find.byType(ButlerlySheet), findsNothing);
+        if (width < 900) {
+          expect(find.byType(ButlerlySheet), findsOneWidget);
+          final types = find.byType(ButlerlySelectField<PaymentSourceType>);
+          expect(types, findsOneWidget);
+          expect(
+            tester.widget<ButlerlySelectField<PaymentSourceType>>(types).value,
+            PaymentSourceType.card,
+          );
+        } else {
+          expect(find.byType(ButlerlySheet), findsNothing);
+        }
         expect(tester.takeException(), isNull);
       },
     );
@@ -102,11 +114,58 @@ void main() {
         await tester.tap(add);
         await tester.pumpAndSettle();
         expect(find.byType(ButlerlySheet), findsOneWidget);
-        expect(find.text('Add or activate a credit-card payment source before creating a settlement.'), findsNothing);
+        expect(find.byType(PaymentSourcesPage), findsNothing);
         expect(find.text('Add payment settlement'), findsAtLeastNWidgets(1));
+        final source = find.byType(ButlerlySelectField<String>);
+        expect(source, findsOneWidget);
+        expect(
+          tester.widget<ButlerlySelectField<String>>(source).value,
+          'visa',
+        );
         expect(tester.takeException(), isNull);
       },
     );
+
+  testWidgets(
+    'creating a prerequisite credit card resumes the settlement editor',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final sources = <PaymentSource>[];
+      registerServices(sources);
+
+      await tester.pumpWidget(app());
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('payment-settlements-add')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(PaymentSourcesPage), findsOneWidget);
+
+      final name = find.widgetWithText(TextField, 'Name');
+      final lastFour = find.widgetWithText(TextField, 'Last 4 digits');
+      await tester.ensureVisible(name);
+      await tester.enterText(name, 'Visa test card');
+      await tester.ensureVisible(lastFour);
+      await tester.enterText(lastFour, '1234');
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      expect(sources, hasLength(1));
+      expect(sources.single.type, PaymentSourceType.card);
+      expect(find.byType(PaymentSourcesPage), findsNothing);
+      expect(find.byType(ButlerlySheet), findsOneWidget);
+      expect(find.text('Add payment settlement'), findsAtLeastNWidgets(1));
+      final selectedSource = find.byType(ButlerlySelectField<String>);
+      expect(
+        tester.widget<ButlerlySelectField<String>>(selectedSource).value,
+        sources.single.id.value,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
   }
 }
 
