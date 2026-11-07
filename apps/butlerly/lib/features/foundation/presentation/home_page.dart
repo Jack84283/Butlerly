@@ -548,8 +548,8 @@ Widget _homeEllipsisAction({
 // communicate state and should not change with the branding adjustment.
 Color _homeBrandTaglineColor(BuildContext context) =>
     Theme.of(context).brightness == Brightness.dark
-    ? const Color(0xFFECC778)
-    : const Color(0xFF9B6410);
+    ? const Color(0xFFFFE3A3)
+    : const Color(0xFF784B0B);
 
 bool _homeHeaderShouldStackTopRow(
   BuildContext context, {
@@ -710,7 +710,6 @@ double _homeHeaderExtent(
   // the pinned header never clips or overflows large text.
   final accessibilityAllowance = largeText ? ButlerlySpacing.large : 0.0;
   return topRowHeight +
-      ButlerlySpacing.micro +
       taglineHeight +
       ButlerlySpacing.small +
       greetingHeight +
@@ -897,7 +896,6 @@ class _HomeHeader extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             topRow,
-            const SizedBox(height: ButlerlySpacing.micro),
             brandTagline,
             const SizedBox(height: ButlerlySpacing.small),
             PersonalizedHomeGreeting(
