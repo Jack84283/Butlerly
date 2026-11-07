@@ -68,7 +68,7 @@ void main() {
         await tester.tap(add);
         await tester.pumpAndSettle();
         expect(find.byType(ButlerlySheet), findsOneWidget);
-        expect(find.text('Add or activate a card payment source before creating a settlement.'), findsOneWidget);
+        expect(find.text('Add or activate a credit-card payment source before creating a settlement.'), findsOneWidget);
         expect(
           find.byKey(const ValueKey('settlement-create-payment-source')),
           findsOneWidget,
@@ -102,7 +102,7 @@ void main() {
         await tester.tap(add);
         await tester.pumpAndSettle();
         expect(find.byType(ButlerlySheet), findsOneWidget);
-        expect(find.text('Add or activate a card payment source before creating a settlement.'), findsNothing);
+        expect(find.text('Add or activate a credit-card payment source before creating a settlement.'), findsNothing);
         expect(find.text('Add payment settlement'), findsAtLeastNWidgets(1));
         expect(tester.takeException(), isNull);
       },
