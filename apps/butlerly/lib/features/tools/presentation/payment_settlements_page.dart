@@ -90,7 +90,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
       builder: (sheetContext) => ButlerlySheet(
         title: Text(sheetContext.l10n.text('addPaymentSettlement')),
         content: Text(
-          sheetContext.l10n.text('choosePaymentSourceToContinue'),
+          sheetContext.l10n.text('paymentSettlementNeedsCardSource'),
         ),
         actions: [
           TextButton(
