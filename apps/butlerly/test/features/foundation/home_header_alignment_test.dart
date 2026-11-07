@@ -104,7 +104,7 @@ void main() {
           expect(
             actualCenter,
             closeTo(helpRect.center.dy, 1.1),
-            reason: 'Brand mark, selector surface and Help circle must share a visual center',
+            reason: 'Header visuals must share a vertical center',
           );
         }
 
