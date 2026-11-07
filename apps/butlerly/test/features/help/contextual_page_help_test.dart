@@ -370,7 +370,10 @@ void main() {
     expect(content, findsOneWidget);
     expect(detail, findsOneWidget);
     expect(tester.getRect(menu).right, lessThan(tester.getRect(content).left));
-    expect(tester.getRect(content).right, lessThan(tester.getRect(detail).left));
+    expect(
+      tester.getRect(content).right,
+      lessThan(tester.getRect(detail).left),
+    );
     expect(tester.getRect(detail).right, lessThanOrEqualTo(size.width));
     expect(find.byKey(const ValueKey('help-search')), findsOneWidget);
 
@@ -396,16 +399,11 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
-      MaterialApp(
-        home: HelpFaqPage(preloadedCatalog: catalog),
-      ),
+      MaterialApp(home: HelpFaqPage(preloadedCatalog: catalog)),
     );
     await tester.pumpAndSettle();
 
-    await tester.enterText(
-      find.byKey(const ValueKey('help-search')),
-      'backup',
-    );
+    await tester.enterText(find.byKey(const ValueKey('help-search')), 'backup');
     await tester.pumpAndSettle();
     final results = catalog.search('backup');
     expect(results, isNotEmpty);
