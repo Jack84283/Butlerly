@@ -98,9 +98,10 @@ void main() {
       expect(find.byTooltip('Help for this page'), findsOneWidget);
       await tester.tap(help);
       await tester.pumpAndSettle();
-      expect(router.routeInformationProvider.value.uri.path, '/help');
+      // GoRouter's imperative push can retain the source public URI.
+      // Verify the actual destination and selected article instead.
       expect(
-        router.routeInformationProvider.value.uri.queryParameters['article'],
+        tester.widget<HelpFaqPage>(find.byType(HelpFaqPage)).articleId,
         'ch-14',
       );
       expect(find.byType(HelpGuideArticlePage), findsOneWidget);

@@ -694,7 +694,9 @@ double _homeHeaderExtent(
         maxLines: largeText ? null : 1,
       );
   final monthHeight = monthButtonHeight(
-    math.max(1.0, monthWidth - ButlerlySize.minimumTarget),
+    GoRouter.maybeOf(context) == null
+        ? monthWidth
+        : math.max(1.0, monthWidth - ButlerlySize.minimumTarget),
   );
   final topRowHeight = stackedTopRow
       ? brandHeight + ButlerlySpacing.small + monthHeight
@@ -849,23 +851,36 @@ class _HomeHeader extends StatelessWidget {
           denseSurface: true,
           transparent: true,
         );
-        final monthAndHelp = Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(child: monthButton),
-            const ButlerlyContextHelpButton(articleId: 'ch-12'),
-          ],
-        );
+        final hasHelp = GoRouter.maybeOf(context) != null;
+        final monthAndHelp = hasHelp
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(child: monthButton),
+                  const ButlerlyContextHelpButton(articleId: 'ch-12'),
+                ],
+              )
+            : monthButton;
         final topRow = stackedTopRow
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   brand,
                   const SizedBox(height: ButlerlySpacing.small),
-                  Align(
-                    alignment: AlignmentDirectional.centerEnd,
-                    child: monthAndHelp,
-                  ),
+                  if (!hasHelp && !largeText)
+                    Align(
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: AlignmentDirectional.centerEnd,
+                        child: monthButton,
+                      ),
+                    )
+                  else
+                    Align(
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: monthAndHelp,
+                    ),
                 ],
               )
             : Row(
