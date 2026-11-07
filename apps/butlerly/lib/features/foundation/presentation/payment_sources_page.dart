@@ -202,6 +202,7 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
         typeLabelsResult is ApplicationSuccess<Map<String, String>>
         ? typeLabelsResult.value
         : const <String, String>{};
+    String? sourceError;
     final saved = await showButlerlyBottomSheet<bool>(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -318,6 +319,15 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
             ),
           ),
           actions: [
+            if (sourceError != null)
+              Semantics(
+                liveRegion: true,
+                child: Text(
+                  sourceError!,
+                  key: const ValueKey('payment-source-create-error'),
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
             ButlerlyCancelButton(
               onPressed: () => Navigator.pop(context),
               child: Text(context.l10n.text('cancel')),
@@ -328,11 +338,9 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                 final validLastFour = RegExp(r'^\d{4}$').hasMatch(safeLastFour);
                 if ((paymentSourceRequiresLastFour(type) && !validLastFour) ||
                     (safeLastFour.isNotEmpty && !validLastFour)) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(context.l10n.text('invalidLastFour')),
-                    ),
-                  );
+                  setDialogState(() {
+                    sourceError = context.l10n.text('invalidLastFour');
+                  });
                   return;
                 }
                 final listedSources = await finance.listPaymentSources();
