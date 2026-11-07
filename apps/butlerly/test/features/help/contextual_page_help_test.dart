@@ -220,9 +220,7 @@ void main() {
             key: ValueKey('${recovery.key}-help-host'),
             child: Scaffold(
               appBar: AppBar(
-                actions: [
-                  ButlerlyContextHelpButton(articleId: recovery.value),
-                ],
+                actions: [ButlerlyContextHelpButton(articleId: recovery.value)],
               ),
               body: Text('${recovery.key} recovery remains active'),
             ),
@@ -242,7 +240,10 @@ void main() {
         const ValueKey('context-help-offline-reader'),
       );
       expect(helpReader, findsOneWidget);
-      expect(find.text(catalog.articleById(recovery.value)!.title), findsWidgets);
+      expect(
+        find.text(catalog.articleById(recovery.value)!.title),
+        findsWidgets,
+      );
 
       // A navigator pop is also the action used for system Back on this route.
       final navigator = Navigator.of(tester.element(helpReader));
@@ -278,10 +279,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(
-      find.byKey(const ValueKey('router-error-content')),
-      findsOneWidget,
-    );
+    expect(find.byKey(const ValueKey('router-error-content')), findsOneWidget);
     expect(find.byKey(const ValueKey('page-context-help')), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('page-context-help')));
@@ -291,10 +289,7 @@ void main() {
 
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
-    expect(
-      find.byKey(const ValueKey('router-error-content')),
-      findsOneWidget,
-    );
+    expect(find.byKey(const ValueKey('router-error-content')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
