@@ -101,6 +101,9 @@ class _PortableBackupRecoveryRequiredPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        actions: const [ButlerlyContextHelpButton(articleId: 'ch-18')],
+      ),
       body: SafeArea(
         child: ButlerlyResponsiveBody(
           contentKey: const ValueKey('portable-backup-recovery-content'),

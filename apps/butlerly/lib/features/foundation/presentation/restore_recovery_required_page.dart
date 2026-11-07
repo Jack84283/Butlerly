@@ -79,6 +79,9 @@ class _RestoreRecoveryRequiredPageState
     final hasSafetyCopy = manager.hasRecoverySafetyCopy;
 
     return Scaffold(
+      appBar: AppBar(
+        actions: const [ButlerlyContextHelpButton(articleId: 'ch-19')],
+      ),
       body: SafeArea(
         child: ButlerlyResponsiveBody(
           contentKey: const ValueKey('restore-recovery-required-content'),

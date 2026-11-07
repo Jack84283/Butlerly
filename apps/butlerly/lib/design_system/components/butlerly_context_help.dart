@@ -122,7 +122,7 @@ void _openStandaloneHelp(BuildContext context, String articleId) {
                 children: [
                   Text(article.title, style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 16),
-                  for (final paragraph in article.body.split(RegExp(r'\\n\\s*\\n')))
+                  for (final paragraph in article.body.split(RegExp(r'\n\s*\n')))
                     if (paragraph.trim().isNotEmpty) ...[
                       SelectableText(paragraph.trim()),
                       const SizedBox(height: 12),

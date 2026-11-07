@@ -41,6 +41,9 @@ class _FirstUsePreferencesPageState
       return _buildProfileIntro(context);
     }
     return Scaffold(
+      appBar: AppBar(
+        actions: const [ButlerlyContextHelpButton(articleId: 'ch-2')],
+      ),
       body: SafeArea(
         child: ButlerlyResponsiveBody(
           contentKey: const ValueKey('first-use-preferences-content'),
@@ -198,6 +201,9 @@ class _FirstUsePreferencesPageState
   }
 
   Widget _buildProfileIntro(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      actions: const [ButlerlyContextHelpButton(articleId: 'ch-4')],
+    ),
     body: SafeArea(
       child: ButlerlyResponsiveBody(
         contentKey: const ValueKey('financial-profile-intro-content'),
