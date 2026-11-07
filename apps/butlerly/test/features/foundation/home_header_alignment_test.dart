@@ -63,30 +63,50 @@ void main() {
         expect(month, findsOneWidget);
         expect(help, findsOneWidget);
 
-        final monthShift = tester.widget<Transform>(
+        // Test the rendered visual centers, not merely membership of a Row.
+        // The old +6/-6 transforms made the buttons appear misaligned even
+        // though their parent had crossAxisAlignment.center.
+        expect(
           find.byKey(const ValueKey('home-month-vertical-offset')),
+          findsNothing,
         );
-        final helpShift = tester.widget<Transform>(
+        expect(
           find.byKey(const ValueKey('home-help-vertical-offset')),
+          findsNothing,
         );
-        expect(monthShift.transform.getTranslation().y, 6);
-        expect(helpShift.transform.getTranslation().y, -6);
-        final brandShift = tester.widget<Transform>(
+        expect(
           find.byKey(const ValueKey('home-brand-title-optical-adjustment')),
+          findsNothing,
         );
-        expect(brandShift.transform.getTranslation().y, 6);
 
         final brandRect = tester.getRect(brand);
         final monthRect = tester.getRect(month);
         final helpRect = tester.getRect(help);
+        final iconRect = tester.getRect(
+          find.descendant(of: brand, matching: find.byType(ButlerlyBrandIcon)),
+        );
+        final pillRect = tester.getRect(
+          find.descendant(of: month, matching: find.byType(Ink)),
+        );
+        final helpCircleRect = tester.getRect(
+          find.byKey(const ValueKey('page-context-help-visual')),
+        );
         expect(brandRect.right, lessThan(monthRect.left));
         expect(monthRect.right, lessThanOrEqualTo(helpRect.left));
-        expect((brandRect.center.dy - monthRect.center.dy).abs(), lessThan(12));
-        expect(
-          (monthRect.center.dy - helpRect.center.dy).abs(),
-          lessThanOrEqualTo(12.1),
-        );
         expect(helpRect.right, lessThanOrEqualTo(width));
+        for (final actualCenter in [
+          brandRect.center.dy,
+          monthRect.center.dy,
+          iconRect.center.dy,
+          pillRect.center.dy,
+          helpCircleRect.center.dy,
+        ]) {
+          expect(
+            actualCenter,
+            closeTo(helpRect.center.dy, 1.1),
+            reason: 'Brand mark, selector surface and Help circle must share a visual center',
+          );
+        }
 
         final tagline = find.byKey(const ValueKey('home-brand-tagline'));
         final taglineRect = tester.getRect(tagline);
