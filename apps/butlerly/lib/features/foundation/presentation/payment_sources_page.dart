@@ -343,7 +343,13 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                   });
                   return;
                 }
-                if (!RegExp(r'^[A-Za-z]{3}
+                if (!RegExp(r'^[A-Za-z]{3}$').hasMatch(currency.text.trim())) {
+                  setDialogState(() {
+                    sourceError = context.l10n.text('invalidCurrency');
+                  });
+                  return;
+                }
+                final safeLastFour = lastFour.text.trim();
                 final validLastFour = RegExp(r'^\d{4}$').hasMatch(safeLastFour);
                 if ((paymentSourceRequiresLastFour(type) && !validLastFour) ||
                     (safeLastFour.isNotEmpty && !validLastFour)) {
