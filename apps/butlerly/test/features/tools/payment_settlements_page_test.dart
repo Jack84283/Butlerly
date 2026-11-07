@@ -114,7 +114,11 @@ void main() {
         expect(tester.widget<IconButton>(add).onPressed, isNotNull);
         await tester.tap(add);
         await tester.pumpAndSettle();
-        expect(find.byType(ButlerlySheet), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('payment-settlement-editor-page')),
+          findsOneWidget,
+        );
+        expect(find.byType(BottomSheet), findsNothing);
         expect(find.byType(PaymentSourcesPage), findsNothing);
         expect(find.text('Add payment settlement'), findsAtLeastNWidgets(1));
         await tester.tap(find.widgetWithText(FilledButton, 'Save'));
@@ -178,7 +182,11 @@ void main() {
       expect(sources, hasLength(1));
       expect(sources.single.type, PaymentSourceType.card);
       expect(find.byType(PaymentSourcesPage), findsNothing);
-      expect(find.byType(ButlerlySheet), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('payment-settlement-editor-page')),
+        findsOneWidget,
+      );
+      expect(find.byType(BottomSheet), findsNothing);
       expect(find.text('Add payment settlement'), findsAtLeastNWidgets(1));
       final selectedSource = find.byType(ButlerlySelectField<String>);
       expect(
@@ -269,8 +277,20 @@ class _TestSources extends Fake implements PaymentSourceRepository {
 }
 
 class _TestSettlements extends Fake implements PaymentSettlementRepository {
+  final values = <PaymentSettlement>[];
+
   @override
-  Future<List<PaymentSettlement>> listAll() async => [];
+  Future<List<PaymentSettlement>> listAll() async => List.of(values);
+
+  @override
+  Future<PaymentSettlement?> findById(PaymentSettlementId id) async =>
+      values.where((value) => value.id == id).firstOrNull;
+
+  @override
+  Future<void> save(PaymentSettlement settlement) async {
+    values.removeWhere((value) => value.id == settlement.id);
+    values.add(settlement);
+  }
 }
 
 class _UnusedTransactions extends Fake implements TransactionRepository {}
