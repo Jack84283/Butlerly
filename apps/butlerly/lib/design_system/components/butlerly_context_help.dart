@@ -2,6 +2,7 @@ import 'package:butlerly/features/help/data/help_catalog.dart';
 import 'package:butlerly/features/help/presentation/help_copy.dart';
 import 'package:butlerly/features/help/presentation/help_guide_section.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -35,9 +36,17 @@ String? contextualHelpArticleForPath(String path) => switch (path) {
 /// Router-backed pages navigate to Help; setup/recovery screens use an offline
 /// overlay when no router is available. The Help reader hides its own action.
 class ButlerlyContextHelpButton extends StatelessWidget {
-  const ButlerlyContextHelpButton({this.articleId, super.key});
+  const ButlerlyContextHelpButton({
+    this.articleId,
+    this.visualGapAfterAdd,
+    super.key,
+  });
 
   final String? articleId;
+
+  /// Requested gap between the preceding 32px header Add circle and this
+  /// 32px Help circle. The Help hit target remains 44px.
+  final double? visualGapAfterAdd;
 
   static String? articleForContext(BuildContext context) {
     final router = GoRouter.maybeOf(context);
@@ -62,7 +71,12 @@ class ButlerlyContextHelpButton extends StatelessWidget {
     // target for touch and keyboard accessibility. Its left spacing is
     // independent of the visual circle diameter.
     return Padding(
-      padding: const EdgeInsets.only(left: 12),
+      padding: EdgeInsets.only(
+        left: visualGapAfterAdd == null
+            ? ButlerlySpacing.small
+            : visualGapAfterAdd! -
+                  (ButlerlySize.minimumTarget - 32) / 2,
+      ),
       child: IconButton(
         key: const ValueKey('page-context-help'),
         tooltip: context.l10n.text('contextHelp'),
