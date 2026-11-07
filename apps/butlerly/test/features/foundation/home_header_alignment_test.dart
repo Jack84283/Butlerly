@@ -62,6 +62,15 @@ void main() {
         expect(month, findsOneWidget);
         expect(help, findsOneWidget);
 
+        final monthShift = tester.widget<Transform>(
+          find.byKey(const ValueKey('home-month-vertical-offset')),
+        );
+        final helpShift = tester.widget<Transform>(
+          find.byKey(const ValueKey('home-help-vertical-offset')),
+        );
+        expect(monthShift.transform.getTranslation().y, 3);
+        expect(helpShift.transform.getTranslation().y, -3);
+
         final brandRect = tester.getRect(brand);
         final monthRect = tester.getRect(month);
         final helpRect = tester.getRect(help);
