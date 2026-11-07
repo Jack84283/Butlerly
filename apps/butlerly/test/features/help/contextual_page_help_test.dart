@@ -101,7 +101,7 @@ void main() {
       expect(find.byTooltip('Help for this page'), findsOneWidget);
       final visual = find.byKey(const ValueKey('page-context-help-visual'));
       expect(visual, findsOneWidget);
-      expect(tester.getSize(visual), const Size.square(38));
+      expect(tester.getSize(visual), const Size.square(32));
       // The 12px leading inset is separate from the 44px touch target.
       expect(
         find.ancestor(
@@ -121,7 +121,7 @@ void main() {
           matching: find.byIcon(Icons.question_mark_rounded),
         ),
       );
-      expect(helpIcon.size, 28);
+      expect(helpIcon.size, 16);
       final colors = Theme.of(tester.element(help)).colorScheme;
       expect(helpIcon.color, colors.onPrimary);
       final paintedCircle = tester.widget<DecoratedBox>(
