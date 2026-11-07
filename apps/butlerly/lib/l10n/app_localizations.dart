@@ -1077,6 +1077,7 @@ class AppLocalizations {
       'eraseNotAvailable': 'Erase-all is not available in this UI yet.',
       'about': 'About Butlerly',
       'legalLicenses': 'Legal & licenses',
+      'contextHelp': 'Help for this page',
       'legalLicensesBody': 'Terms, privacy, notices, and app information.',
       'termsOfUse': 'Terms of Use',
       'privacyPolicy': 'Privacy Policy',
@@ -2098,6 +2099,7 @@ class AppLocalizations {
       'eraseNotAvailable': '此界面暂不支持清除全部数据。',
       'about': '关于 账房先生',
       'legalLicenses': '法律与许可',
+      'contextHelp': '本页帮助',
       'legalLicensesBody': '条款、隐私、声明和应用信息。',
       'termsOfUse': '使用条款',
       'privacyPolicy': '隐私政策',
@@ -3260,6 +3262,7 @@ class AppLocalizations {
       'eraseNotAvailable': 'La eliminación total aún no está disponible aquí.',
       'about': 'Acerca de Butlerly',
       'legalLicenses': 'Avisos legales y licencias',
+      'contextHelp': 'Ayuda de esta página',
       'legalLicensesBody':
           'Términos, privacidad, avisos e información de la aplicación.',
       'termsOfUse': 'Términos de uso',

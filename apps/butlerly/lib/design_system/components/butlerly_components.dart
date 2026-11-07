@@ -1,6 +1,7 @@
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/components/butlerly_category_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_content_surface.dart';
+import 'package:butlerly/design_system/components/butlerly_context_help.dart';
 import 'package:butlerly/design_system/components/butlerly_payment_source_icon.dart';
 import 'package:butlerly/design_system/theme/butlerly_button_palette.dart';
 import 'package:butlerly/design_system/theme/butlerly_responsive_design_tokens.dart';
@@ -17,6 +18,7 @@ import 'package:flutter/material.dart';
 
 export 'butlerly_category_icon.dart';
 export 'butlerly_content_surface.dart';
+export 'butlerly_context_help.dart';
 
 class ButlerlyPinnedPageSpacing {
   const ButlerlyPinnedPageSpacing({
@@ -124,7 +126,11 @@ class ButlerlyPage extends StatelessWidget {
               toolbarHeight: toolbarHeight,
               title: Text(title!),
               leading: leading,
-              actions: actions,
+              actions: [
+                ...actions,
+                if (ButlerlyContextHelpButton.articleForContext(context) != null)
+                  const ButlerlyContextHelpButton(),
+              ],
               bottom: pinnedSpacing.headerBottomGap > ButlerlySpacing.none
                   ? PreferredSize(
                       preferredSize: Size.fromHeight(
