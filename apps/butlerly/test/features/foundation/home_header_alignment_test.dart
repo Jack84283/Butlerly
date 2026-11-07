@@ -90,15 +90,25 @@ void main() {
 
         final tagline = find.byKey(const ValueKey('home-brand-tagline'));
         final taglineRect = tester.getRect(tagline);
-        expect(taglineRect.top, greaterThan(brandRect.bottom));
+        final topRowRect = tester.getRect(
+          find.byKey(const ValueKey('home-brand-month-help-row')),
+        );
+        // No layout spacer remains between the header row and tagline.
+        expect(taglineRect.top, closeTo(topRowRect.bottom, 0.1));
         expect(
-          taglineRect.top - brandRect.bottom,
-          lessThan(10),
-          reason: 'Device brand and tagline should sit close together',
+          taglineRect.top,
+          greaterThanOrEqualTo(brandRect.bottom - 0.5),
+        );
+        final taglineColor = tester.widget<Text>(tagline).style!.color!;
+        expect(
+          taglineColor,
+          dark ? const Color(0xFFFFE3A3) : const Color(0xFF784B0B),
         );
         expect(
-          tester.widget<Text>(tagline).style?.color,
-          dark ? const Color(0xFFECC778) : const Color(0xFF9B6410),
+          taglineColor.computeLuminance(),
+          dark
+              ? greaterThan(const Color(0xFFECC778).computeLuminance())
+              : lessThan(const Color(0xFF9B6410).computeLuminance()),
         );
         expect(tester.takeException(), isNull);
       },
