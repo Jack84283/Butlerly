@@ -155,11 +155,24 @@ void main() {
 
       final name = find.widgetWithText(TextField, 'Name');
       final lastFour = find.widgetWithText(TextField, 'Last 4 digits');
+      final save = find.widgetWithText(FilledButton, 'Save');
+
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('payment-source-create-error')),
+        findsOneWidget,
+      );
+
       await tester.ensureVisible(name);
       await tester.enterText(name, 'Visa test card');
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+      expect(find.text('Enter exactly four digits.'), findsOneWidget);
+
       await tester.ensureVisible(lastFour);
       await tester.enterText(lastFour, '1234');
-      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.tap(save);
       await tester.pumpAndSettle();
 
       expect(sources, hasLength(1));
@@ -237,7 +250,6 @@ void main() {
     expect(find.byType(ButlerlySheet), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
-
 }
 
 class _TestSources extends Fake implements PaymentSourceRepository {
