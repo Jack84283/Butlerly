@@ -42,6 +42,7 @@ class _FirstUsePreferencesPageState
     }
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         actions: const [ButlerlyContextHelpButton(articleId: 'ch-2')],
       ),
       body: SafeArea(
@@ -202,6 +203,7 @@ class _FirstUsePreferencesPageState
 
   Widget _buildProfileIntro(BuildContext context) => Scaffold(
     appBar: AppBar(
+      automaticallyImplyLeading: false,
       actions: const [ButlerlyContextHelpButton(articleId: 'ch-4')],
     ),
     body: SafeArea(

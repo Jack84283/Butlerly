@@ -126,6 +126,7 @@ class _EvidenceDeletionRecoveryRequiredPageState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         actions: const [ButlerlyContextHelpButton(articleId: 'ch-21')],
       ),
       body: SafeArea(

@@ -80,6 +80,7 @@ class _RestoreRecoveryRequiredPageState
 
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         actions: const [ButlerlyContextHelpButton(articleId: 'ch-19')],
       ),
       body: SafeArea(
