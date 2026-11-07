@@ -57,7 +57,14 @@ NoTransitionPage<void> _primaryPage(
 Widget _responsiveStateScaffold({
   required Key contentKey,
   required Widget child,
+  String? helpArticleId,
 }) => Scaffold(
+  appBar: helpArticleId == null
+      ? null
+      : AppBar(
+          automaticallyImplyLeading: false,
+          actions: [ButlerlyContextHelpButton(articleId: helpArticleId)],
+        ),
   body: ButlerlyResponsiveBody(contentKey: contentKey, child: child),
 );
 
@@ -322,6 +329,7 @@ final appRouter = GoRouter(
   ],
   errorBuilder: (context, state) => _responsiveStateScaffold(
     contentKey: const ValueKey('router-error-content'),
+    helpArticleId: 'ch-3',
     child: ButlerlyErrorState(
       title: context.l10n.text('pageUnavailable'),
       message: context.l10n.text('pageUnavailableBody'),
