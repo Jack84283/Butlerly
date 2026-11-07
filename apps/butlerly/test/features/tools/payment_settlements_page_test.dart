@@ -74,14 +74,17 @@ void main() {
 
         // A missing card must navigate directly to the real create form,
         // rather than leaving the user in an inert prerequisite sheet.
-        expect(find.byType(PaymentSourcesPage), findsOneWidget);
         expect(find.text('Add payment source'), findsAtLeastNWidgets(1));
         expect(
           find.byKey(const ValueKey('settlement-create-payment-source')),
           findsNothing,
         );
         if (width < 900) {
-          expect(find.byType(ButlerlySheet), findsOneWidget);
+          expect(
+            find.byKey(const ValueKey('settlement-card-source-editor-page')),
+            findsOneWidget,
+          );
+          expect(find.byType(BottomSheet), findsNothing);
           final types = find.byType(ButlerlySelectField<PaymentSourceType>);
           expect(types, findsOneWidget);
           expect(
@@ -89,7 +92,8 @@ void main() {
             PaymentSourceType.card,
           );
         } else {
-          expect(find.byType(ButlerlySheet), findsNothing);
+          expect(find.byType(PaymentSourcesPage), findsOneWidget);
+          expect(find.byType(BottomSheet), findsNothing);
         }
         expect(tester.takeException(), isNull);
       },
@@ -157,7 +161,11 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('payment-settlements-add')));
       await tester.pumpAndSettle();
-      expect(find.byType(PaymentSourcesPage), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('settlement-card-source-editor-page')),
+        findsOneWidget,
+      );
+      expect(find.byType(BottomSheet), findsNothing);
 
       final name = find.widgetWithText(TextField, 'Name');
       final lastFour = find.widgetWithText(TextField, 'Last 4 digits');
@@ -183,7 +191,10 @@ void main() {
 
       expect(sources, hasLength(1));
       expect(sources.single.type, PaymentSourceType.card);
-      expect(find.byType(PaymentSourcesPage), findsNothing);
+      expect(
+        find.byKey(const ValueKey('settlement-card-source-editor-page')),
+        findsNothing,
+      );
       expect(
         find.byKey(const ValueKey('payment-settlement-editor-page')),
         findsOneWidget,
@@ -311,13 +322,16 @@ void main() {
     // A pushed GoRouter page may leave the public route-information URI on
     // its origin; check the active route attached to the rendered page.
     final uri = GoRouterState.of(
-      tester.element(find.byType(PaymentSourcesPage)),
+      tester.element(find.byType(PaymentSourcesPage, skipOffstage: false)),
     ).uri;
     expect(uri.path, '/payment-sources');
     expect(uri.queryParameters['create'], 'true');
     expect(uri.queryParameters['from'], 'settlements');
-    expect(find.byType(PaymentSourcesPage), findsOneWidget);
-    expect(find.byType(ButlerlySheet), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('settlement-card-source-editor-page')),
+      findsOneWidget,
+    );
+    expect(find.byType(BottomSheet), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }
