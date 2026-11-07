@@ -836,8 +836,18 @@ class _HomeHeader extends StatelessWidget {
             ? Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Flexible(child: monthButton),
-                  const ButlerlyContextHelpButton(articleId: 'ch-12'),
+                  Flexible(
+                    child: Transform.translate(
+                      key: const ValueKey('home-month-vertical-offset'),
+                      offset: const Offset(0, 3),
+                      child: monthButton,
+                    ),
+                  ),
+                  Transform.translate(
+                    key: const ValueKey('home-help-vertical-offset'),
+                    offset: const Offset(0, -3),
+                    child: const ButlerlyContextHelpButton(articleId: 'ch-12'),
+                  ),
                 ],
               )
             : monthButton;
