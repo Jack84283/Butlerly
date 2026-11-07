@@ -97,7 +97,9 @@ class ButlerlyApp extends ConsumerWidget {
                   builder: (context, _) =>
                       evidenceDeletionRecoveryState.isRecoveryRequired
                       ? ButlerlyRouterlessRecoveryHost(
-                          key: const ValueKey('evidence-deletion-recovery-host'),
+                          key: const ValueKey(
+                            'evidence-deletion-recovery-host',
+                          ),
                           child: EvidenceDeletionRecoveryRequiredPage(
                             resetRecovery: () =>
                                 services<WorkspaceDataService>().eraseAll(),
