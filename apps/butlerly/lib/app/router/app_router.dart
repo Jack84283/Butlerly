@@ -74,6 +74,13 @@ final appRouter = GoRouter(
   routes: [
     GoRoute(path: '/launch', builder: (_, _) => const ButlerlyLaunchPage()),
     GoRoute(path: '/welcome', builder: (_, _) => const WelcomePage()),
+    // Help is a standalone document surface: do not reserve the desktop
+    // navigation rail or other application-shell panels around it.
+    GoRoute(
+      path: '/help',
+      builder: (_, state) =>
+          HelpFaqPage(articleId: state.uri.queryParameters['article']),
+    ),
 
     // The application shell remains mounted while the content route changes.
     // Wide mode uses it for both primary destinations and normal secondary
@@ -161,11 +168,6 @@ final appRouter = GoRouter(
         GoRoute(
           path: '/legal-licenses',
           builder: (_, _) => const LegalLicensesPage(),
-        ),
-        GoRoute(
-          path: '/help',
-          builder: (_, state) =>
-              HelpFaqPage(articleId: state.uri.queryParameters['article']),
         ),
         GoRoute(
           path: '/review',
