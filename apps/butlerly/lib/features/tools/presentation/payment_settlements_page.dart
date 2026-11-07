@@ -126,10 +126,9 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
       _showMessage(context.l10n.text('paymentSettlementSaveFailed'));
       return;
     }
-    final draft = await showButlerlyBottomSheet<_SettlementDraft>(
+    final draft = await _openSettlementEditorPage(
       context: context,
-      builder: (context) =>
-          _SettlementEditorSheet(sources: data.activeCardSources),
+      sources: data.activeCardSources,
     );
     if (!mounted || draft == null) return;
 
@@ -360,10 +359,10 @@ class _PaymentSettlementDetailPageState
   Future<void> _edit(PaymentSettlementDetailDto detail) async {
     final save = widget.finance.savePaymentSettlement;
     if (save == null) return;
-    final draft = await showButlerlyBottomSheet<_SettlementDraft>(
+    final draft = await _openSettlementEditorPage(
       context: context,
-      builder: (context) =>
-          _SettlementEditorSheet(sources: widget.sources, existing: detail),
+      sources: widget.sources,
+      existing: detail,
     );
     if (!mounted || draft == null) return;
 
@@ -985,11 +984,55 @@ class _SettlementStatusChip extends StatelessWidget {
   }
 }
 
+/// Settlement entry is a long, editable form. Use a dedicated route instead
+/// of stacking an interactive form inside a constrained modal bottom sheet.
+/// This keeps fields, dropdowns and Save/Cancel reachable on device and desktop.
+Future<_SettlementDraft?> _openSettlementEditorPage({
+  required BuildContext context,
+  required List<PaymentSource> sources,
+  PaymentSettlementDetailDto? existing,
+}) => Navigator.of(context).push<_SettlementDraft>(
+  MaterialPageRoute(
+    builder: (routeContext) => Scaffold(
+      key: const ValueKey('payment-settlement-editor-page'),
+      appBar: AppBar(
+        title: Text(
+          routeContext.l10n.text(
+            existing == null ? 'addPaymentSettlement' : 'editPaymentSettlement',
+          ),
+        ),
+      ),
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: ButlerlySize.readableWidth,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(ButlerlySpacing.standard),
+              child: _SettlementEditorSheet(
+                sources: sources,
+                existing: existing,
+                showTitle: false,
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  ),
+);
+
 class _SettlementEditorSheet extends StatefulWidget {
-  const _SettlementEditorSheet({required this.sources, this.existing});
+  const _SettlementEditorSheet({
+    required this.sources,
+    this.existing,
+    this.showTitle = true,
+  });
 
   final List<PaymentSource> sources;
   final PaymentSettlementDetailDto? existing;
+  final bool showTitle;
 
   @override
   State<_SettlementEditorSheet> createState() => _SettlementEditorSheetState();
@@ -1155,11 +1198,13 @@ class _SettlementEditorSheetState extends State<_SettlementEditorSheet> {
               .where((value) => value.id.value == _paymentSourceId)
               .firstOrNull;
     return ButlerlySheet(
-      title: Text(
-        context.l10n.text(
-          _isEditing ? 'editPaymentSettlement' : 'addPaymentSettlement',
-        ),
-      ),
+      title: widget.showTitle
+          ? Text(
+              context.l10n.text(
+                _isEditing ? 'editPaymentSettlement' : 'addPaymentSettlement',
+              ),
+            )
+          : null,
       content: Form(
         key: _formKey,
         child: Column(
