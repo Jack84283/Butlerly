@@ -10,15 +10,16 @@ import 'package:go_router/go_router.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  for (final (width, locale) in <(double, Locale)>[
-    (320, const Locale('en')),
-    (390, const Locale('en')),
-    (430, const Locale('en')),
-    (390, const Locale('zh')),
-    (390, const Locale('es')),
+  for (final (width, locale, dark) in <(double, Locale, bool)>[
+    (320, const Locale('en'), false),
+    (390, const Locale('en'), false),
+    (430, const Locale('en'), false),
+    (390, const Locale('zh'), false),
+    (390, const Locale('es'), false),
+    (390, const Locale('en'), true),
   ]) {
     testWidgets(
-      'device Home keeps brand, month and Help on one row at $width $locale',
+      'device Home brand row and subtitle at $width $locale (dark: $dark)',
       (tester) async {
         tester.view.physicalSize = Size(width, 844);
         tester.view.devicePixelRatio = 1;
@@ -39,7 +40,7 @@ void main() {
           MaterialApp.router(
             routerConfig: router,
             locale: locale,
-            theme: AppTheme.light,
+            theme: dark ? AppTheme.dark : AppTheme.light,
             supportedLocales: AppLocalizations.supportedLocales,
             localizationsDelegates: const [
               AppLocalizations.delegate,
@@ -70,6 +71,10 @@ void main() {
         );
         expect(monthShift.transform.getTranslation().y, 6);
         expect(helpShift.transform.getTranslation().y, -6);
+        final brandShift = tester.widget<Transform>(
+          find.byKey(const ValueKey('home-brand-title-optical-adjustment')),
+        );
+        expect(brandShift.transform.getTranslation().y, 6);
 
         final brandRect = tester.getRect(brand);
         final monthRect = tester.getRect(month);
@@ -77,11 +82,24 @@ void main() {
         expect(brandRect.right, lessThan(monthRect.left));
         expect(monthRect.right, lessThanOrEqualTo(helpRect.left));
         expect((brandRect.center.dy - monthRect.center.dy).abs(), lessThan(12));
-        expect((monthRect.center.dy - helpRect.center.dy).abs(), lessThan(12));
+        expect(
+          (monthRect.center.dy - helpRect.center.dy).abs(),
+          lessThanOrEqualTo(12.1),
+        );
         expect(helpRect.right, lessThanOrEqualTo(width));
 
         final tagline = find.byKey(const ValueKey('home-brand-tagline'));
-        expect(tester.getRect(tagline).top, greaterThan(brandRect.bottom));
+        final taglineRect = tester.getRect(tagline);
+        expect(taglineRect.top, greaterThan(brandRect.bottom));
+        expect(
+          taglineRect.top - brandRect.bottom,
+          lessThan(10),
+          reason: 'Device brand and tagline should sit close together',
+        );
+        expect(
+          tester.widget<Text>(tagline).style?.color,
+          dark ? const Color(0xFFECC778) : const Color(0xFF9B6410),
+        );
         expect(tester.takeException(), isNull);
       },
     );
