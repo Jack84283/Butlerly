@@ -693,7 +693,11 @@ double _homeHeaderExtent(
         brandWidth,
         maxLines: largeText ? null : 1,
       );
-  final monthHeight = monthButtonHeight(monthWidth);
+  final monthHeight = monthButtonHeight(
+    GoRouter.maybeOf(context) == null
+        ? monthWidth
+        : math.max(1.0, monthWidth - ButlerlySize.minimumTarget),
+  );
   final topRowHeight = stackedTopRow
       ? brandHeight + ButlerlySpacing.small + monthHeight
       : brandHeight > monthHeight
@@ -847,18 +851,23 @@ class _HomeHeader extends StatelessWidget {
           denseSurface: true,
           transparent: true,
         );
+        final hasHelp = GoRouter.maybeOf(context) != null;
+        final monthAndHelp = hasHelp
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(child: monthButton),
+                  const ButlerlyContextHelpButton(articleId: 'ch-12'),
+                ],
+              )
+            : monthButton;
         final topRow = stackedTopRow
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   brand,
                   const SizedBox(height: ButlerlySpacing.small),
-                  if (MediaQuery.textScalerOf(context).scale(14) > 18)
-                    Align(
-                      alignment: AlignmentDirectional.centerEnd,
-                      child: monthButton,
-                    )
-                  else
+                  if (!hasHelp && !largeText)
                     Align(
                       alignment: AlignmentDirectional.centerEnd,
                       child: FittedBox(
@@ -866,6 +875,11 @@ class _HomeHeader extends StatelessWidget {
                         alignment: AlignmentDirectional.centerEnd,
                         child: monthButton,
                       ),
+                    )
+                  else
+                    Align(
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: monthAndHelp,
                     ),
                 ],
               )
@@ -878,7 +892,7 @@ class _HomeHeader extends StatelessWidget {
                     flex: 4,
                     child: Align(
                       alignment: AlignmentDirectional.topEnd,
-                      child: monthButton,
+                      child: monthAndHelp,
                     ),
                   ),
                 ],

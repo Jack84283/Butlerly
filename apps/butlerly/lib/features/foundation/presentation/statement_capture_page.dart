@@ -1205,6 +1205,7 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     final appBar = AppBar(
       title: Text(context.l10n.text('statements')),
       actions: [
+        const ButlerlyContextHelpButton(articleId: 'ch-10'),
         IconButton(
           onPressed: _busy ? null : () => _captureImage(ImageSource.camera),
           icon: const Icon(Icons.camera_alt_outlined),
@@ -2221,6 +2222,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
     appBar: AppBar(
       title: Text(context.l10n.text('reviewStatementImport')),
       actions: [
+        const ButlerlyContextHelpButton(articleId: 'ch-10'),
         IconButton(
           onPressed: _abandonImport,
           tooltip: context.l10n.text('abandonStatementImport'),

@@ -155,7 +155,11 @@ final appRouter = GoRouter(
           path: '/legal-licenses',
           builder: (_, _) => const LegalLicensesPage(),
         ),
-        GoRoute(path: '/help', builder: (_, _) => const HelpFaqPage()),
+        GoRoute(
+          path: '/help',
+          builder: (_, state) =>
+              HelpFaqPage(articleId: state.uri.queryParameters['article']),
+        ),
         GoRoute(
           path: '/review',
           builder: (context, state) => ReviewPage(

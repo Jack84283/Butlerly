@@ -9,10 +9,13 @@ import 'package:go_router/go_router.dart';
 
 /// Bundled, fully offline Help. No user queries or records leave the device.
 class HelpFaqPage extends StatefulWidget {
-  const HelpFaqPage({this.preloadedCatalog, super.key});
+  const HelpFaqPage({this.preloadedCatalog, this.articleId, super.key});
 
   /// Optional preloaded catalog for deterministic widget tests and previews.
   final HelpCatalog? preloadedCatalog;
+
+  /// Optional direct chapter target opened by a page-level Help action.
+  final String? articleId;
 
   @override
   State<HelpFaqPage> createState() => _HelpFaqPageState();
@@ -86,6 +89,14 @@ class _HelpFaqPageState extends State<HelpFaqPage> {
         future: _catalog,
         builder: (context, snapshot) {
           final catalog = snapshot.data;
+          if (catalog != null && widget.articleId != null) {
+            final language = Localizations.localeOf(context).languageCode;
+            final article = catalog.articleById(
+              widget.articleId!,
+              languageCode: language,
+            );
+            if (article != null) return HelpGuideArticlePage(article: article);
+          }
           return ButlerlyPage(
             title: HelpCopy.text(context, 'title'),
             subtitle: HelpCopy.text(context, 'subtitle'),

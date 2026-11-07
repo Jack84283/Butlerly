@@ -460,6 +460,7 @@ class _PaymentSettlementDetailPageState
           return Scaffold(
             appBar: AppBar(
               title: Text(context.l10n.text('paymentSettlements')),
+              actions: const [ButlerlyContextHelpButton(articleId: 'ch-16')],
             ),
             body: ButlerlyErrorState(
               title: context.l10n.text('paymentSettlements'),
