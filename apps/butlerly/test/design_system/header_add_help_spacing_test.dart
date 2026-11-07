@@ -1,4 +1,5 @@
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -66,7 +67,11 @@ void main() {
         final addRect = tester.getRect(add);
         final helpRect = tester.getRect(help);
         expect(addRect.center.dy, closeTo(helpRect.center.dy, 1.1));
-        expect(helpRect.left - addRect.right, lessThan(30));
+        expect(
+          helpRect.left - addRect.right,
+          closeTo(ButlerlySpacing.md, 0.5),
+          reason: 'The visible Add/Help circles must use medium spacing',
+        );
         expect(helpRect.left, greaterThan(addRect.center.dx));
         expect(tester.takeException(), isNull);
       },
