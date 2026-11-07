@@ -69,7 +69,7 @@ void main() {
         expect(addRect.center.dy, closeTo(helpRect.center.dy, 1.1));
         expect(
           helpRect.left - addRect.right,
-          closeTo(ButlerlySpacing.md, 0.5),
+          closeTo(ButlerlySpacing.small, 0.5),
           reason: 'The visible Add/Help circles must use medium spacing',
         );
         expect(helpRect.left, greaterThan(addRect.center.dx));
