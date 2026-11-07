@@ -279,6 +279,8 @@ final appRouter = GoRouter(
           path: '/payment-sources',
           builder: (_, state) => PaymentSourcesPage(
             openCreateOnStart: state.uri.queryParameters['create'] == 'true',
+            fromPaymentSettlement:
+                state.uri.queryParameters['from'] == 'settlements',
           ),
         ),
         GoRoute(
