@@ -21,11 +21,16 @@ class PaymentSourcesPage extends StatefulWidget {
   const PaymentSourcesPage({
     this.ocrRecognizer,
     this.openCreateOnStart = false,
+    this.fromPaymentSettlement = false,
     super.key,
   });
 
   final OcrRecognizer? ocrRecognizer;
   final bool openCreateOnStart;
+
+  /// Use a credit-card default and return to the settlement flow after
+  /// a successful new payment source is saved.
+  final bool fromPaymentSettlement;
 
   @override
   State<PaymentSourcesPage> createState() => _PaymentSourcesPageState();
@@ -180,7 +185,12 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
     );
     final currency = TextEditingController(text: existing?.currency ?? 'USD');
     final note = TextEditingController(text: existing?.note);
-    var type = existing?.type ?? scanned?.type ?? PaymentSourceType.account;
+    var type =
+        existing?.type ??
+        scanned?.type ??
+        (widget.fromPaymentSettlement
+            ? PaymentSourceType.card
+            : PaymentSourceType.account);
     String? network = existing?.network ?? detectedNetwork;
     final locale = Localizations.localeOf(context);
     final typeLabelsResult = await finance.loadReferenceData.labels(
@@ -404,8 +414,12 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
       ),
     );
     if (saved == true) {
-      _refresh();
-    } else if (mounted) {
+      if (widget.fromPaymentSettlement && existing == null && mounted) {
+        Navigator.of(context).pop(true);
+      } else {
+        _refresh();
+      }
+    } else if (mounted && saved == false) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.text('paymentSourceSaveFailed'))),
       );
@@ -586,10 +600,17 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
             finance: _finance!,
             existing: _desktopSelected,
             scanned: _desktopScanned,
+            initialType: widget.fromPaymentSettlement
+                ? PaymentSourceType.card
+                : PaymentSourceType.account,
             onCancel: () => setState(() => _desktopEditorOpen = false),
             onSaved: () {
-              setState(() => _desktopEditorOpen = false);
-              _refresh();
+              if (widget.fromPaymentSettlement && _desktopSelected == null) {
+                Navigator.of(context).pop(true);
+              } else {
+                setState(() => _desktopEditorOpen = false);
+                _refresh();
+              }
             },
             onError: _showMessage,
           ),
@@ -735,6 +756,7 @@ class _DesktopPaymentSourceEditor extends StatefulWidget {
     required this.finance,
     required this.existing,
     required this.scanned,
+    required this.initialType,
     required this.onCancel,
     required this.onSaved,
     required this.onError,
@@ -744,6 +766,7 @@ class _DesktopPaymentSourceEditor extends StatefulWidget {
   final FinanceServices finance;
   final PaymentSource? existing;
   final CardScanResult? scanned;
+  final PaymentSourceType initialType;
   final VoidCallback onCancel;
   final VoidCallback onSaved;
   final ValueChanged<String> onError;
@@ -782,7 +805,7 @@ class _DesktopPaymentSourceEditorState
     );
     _currency = TextEditingController(text: existing?.currency ?? 'USD');
     _note = TextEditingController(text: existing?.note);
-    _type = existing?.type ?? scanned?.type ?? PaymentSourceType.account;
+    _type = existing?.type ?? scanned?.type ?? widget.initialType;
     _network = existing?.network ?? detectedNetwork;
     _active =
         existing?.status == null ||
