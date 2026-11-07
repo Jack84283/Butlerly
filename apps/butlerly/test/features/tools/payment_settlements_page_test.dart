@@ -9,6 +9,7 @@ import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -174,6 +175,69 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('settlement Add uses the app route for credit-card creation', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    registerServices([]);
+
+    final router = GoRouter(
+      initialLocation: '/payment-settlements',
+      routes: [
+        GoRoute(
+          path: '/payment-settlements',
+          builder: (_, _) =>
+              const Scaffold(body: PaymentSettlementsPage()),
+        ),
+        GoRoute(
+          path: '/payment-sources',
+          builder: (_, state) => Scaffold(
+            body: PaymentSourcesPage(
+              openCreateOnStart: state.uri.queryParameters['create'] == 'true',
+              fromPaymentSettlement:
+                  state.uri.queryParameters['from'] == 'settlements',
+            ),
+          ),
+        ),
+        GoRoute(
+          path: '/help',
+          builder: (_, _) => const Scaffold(body: Text('Help')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp.router(
+        routerConfig: router,
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey('payment-settlements-add')),
+    );
+    await tester.pumpAndSettle();
+
+    final uri = router.routeInformationProvider.value.uri;
+    expect(uri.path, '/payment-sources');
+    expect(uri.queryParameters['create'], 'true');
+    expect(uri.queryParameters['from'], 'settlements');
+    expect(find.byType(PaymentSourcesPage), findsOneWidget);
+    expect(find.byType(ButlerlySheet), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
 }
 
 class _TestSources extends Fake implements PaymentSourceRepository {
