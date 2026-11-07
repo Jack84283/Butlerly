@@ -1006,6 +1006,7 @@ class _SettlementEditorSheetState extends State<_SettlementEditorSheet> {
   late final TextEditingController _description;
   late final TextEditingController _externalReference;
   late String? _paymentSourceId;
+  String? _submitError;
 
   bool get _isEditing => widget.existing != null;
 
@@ -1093,21 +1094,34 @@ class _SettlementEditorSheetState extends State<_SettlementEditorSheet> {
   }
 
   void _submit() {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      // A SnackBar belongs to the underlying page and can be obscured by
+      // this modal sheet. Show validation beside Save instead.
+      setState(() {
+        _submitError = _paymentSourceId == null && !_isEditing
+            ? context.l10n.text('choosePaymentSourceToContinue')
+            : _requiredAmount(_amount.text) ??
+                  _currencyValidator(_currency.text) ??
+                  _requiredDate(_paymentDate.text) ??
+                  _requiredDate(_periodStart.text) ??
+                  _requiredDate(_periodEnd.text) ??
+                  _optionalAmount(_statementBalance.text) ??
+                  context.l10n.text('tryAgain');
+      });
+      return;
+    }
     if (!_isEditing && _paymentSourceId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(context.l10n.text('choosePaymentSourceToContinue')),
-        ),
-      );
+      setState(() {
+        _submitError = context.l10n.text('choosePaymentSourceToContinue');
+      });
       return;
     }
     final start = DateTime.parse(_periodStart.text);
     final end = DateTime.parse(_periodEnd.text);
     if (end.isBefore(start)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.text('paymentSettlementPeriod'))),
-      );
+      setState(() {
+        _submitError = context.l10n.text('paymentSettlementPeriod');
+      });
       return;
     }
     Navigator.pop(
@@ -1306,6 +1320,15 @@ class _SettlementEditorSheetState extends State<_SettlementEditorSheet> {
         ),
       ),
       actions: [
+        if (_submitError != null)
+          Semantics(
+            liveRegion: true,
+            child: Text(
+              _submitError!,
+              key: const ValueKey('payment-settlement-submit-error'),
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ),
         ButlerlyCancelButton(
           onPressed: () => Navigator.pop(context),
           child: Text(context.l10n.text('cancel')),
