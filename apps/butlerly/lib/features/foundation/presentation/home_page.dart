@@ -665,16 +665,14 @@ double _homeHeaderExtent(
   );
   final hasHelp = GoRouter.maybeOf(context) != null;
   const brandIconSize = 28.0;
-  final rowWidth =
-      (availableWidth - ButlerlySpacing.compact - (hasHelp ? 56.0 : 0.0))
-          .clamp(1.0, double.infinity)
-          .toDouble();
-  final brandWidth = stackedTopRow ? availableWidth : rowWidth / 2;
-  final monthWidth = stackedTopRow
-      ? (availableWidth - (hasHelp ? 56.0 : 0.0))
-            .clamp(1.0, double.infinity)
-            .toDouble()
-      : rowWidth / 2;
+  final halfRowWidth = (availableWidth - ButlerlySpacing.compact) / 2;
+  final brandWidth = stackedTopRow ? availableWidth : halfRowWidth;
+  // The Help action takes 44px plus its existing 12px leading inset.
+  // Measure the selector against the same width it gets in the actual row.
+  final rightWidth = stackedTopRow ? availableWidth : halfRowWidth;
+  final monthWidth = (rightWidth - (hasHelp ? 56.0 : 0.0))
+      .clamp(1.0, double.infinity)
+      .toDouble();
   final brandNameWidth = (brandWidth - brandIconSize - ButlerlySpacing.compact)
       .clamp(1.0, double.infinity)
       .toDouble();
