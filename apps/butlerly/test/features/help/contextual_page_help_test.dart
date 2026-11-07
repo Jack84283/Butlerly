@@ -295,50 +295,57 @@ void main() {
   });
 
   for (final size in const [Size(390, 844), Size(1440, 900)]) {
-    testWidgets('Help takes the full viewport without navigation panels at $size', (
-      tester,
-    ) async {
-      tester.view.physicalSize = size;
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      appRouter.go('/help');
-      addTearDown(() => appRouter.go('/'));
+    testWidgets(
+      'Help takes the full viewport without navigation panels at $size',
+      (tester) async {
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        appRouter.go('/help');
+        addTearDown(() => appRouter.go('/'));
 
-      await tester.pumpWidget(
-        MaterialApp.router(
-          routerConfig: appRouter,
-          supportedLocales: AppLocalizations.supportedLocales,
-          localizationsDelegates: const [
-            AppLocalizations.delegate,
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-        ),
-      );
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(
+          MaterialApp.router(
+            routerConfig: appRouter,
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
 
-      expect(find.byType(DesktopPrimaryShell), findsNothing);
-      expect(
-        find.byKey(const ValueKey('primary-wide-navigation')),
-        findsNothing,
-      );
-      expect(find.byKey(const ValueKey('help-search')), findsOneWidget);
-      expect(tester.widget<ButlerlyPage>(find.byType(ButlerlyPage)).fullWidth, isTrue);
-      final canvas = find.byKey(const ValueKey('butlerly-page-canvas'));
-      expect(tester.getSize(canvas).width, closeTo(size.width, 1));
-      expect(tester.getTopLeft(canvas).dx, closeTo(0, 1));
+        expect(find.byType(DesktopPrimaryShell), findsNothing);
+        expect(
+          find.byKey(const ValueKey('primary-wide-navigation')),
+          findsNothing,
+        );
+        expect(find.byKey(const ValueKey('help-search')), findsOneWidget);
+        expect(
+          tester.widget<ButlerlyPage>(find.byType(ButlerlyPage)).fullWidth,
+          isTrue,
+        );
+        final canvas = find.byKey(const ValueKey('butlerly-page-canvas'));
+        expect(tester.getSize(canvas).width, closeTo(size.width, 1));
+        expect(tester.getTopLeft(canvas).dx, closeTo(0, 1));
 
-      // The full guide is also a page: it must not restore the side rail or
-      // regress to the standard constrained-width layout.
-      await tester.tap(find.byKey(const ValueKey('help-full-guide')));
-      await tester.pumpAndSettle();
-      expect(find.byType(HelpGuideIndexPage), findsOneWidget);
-      expect(find.byType(DesktopPrimaryShell), findsNothing);
-      expect(tester.widget<ButlerlyPage>(find.byType(ButlerlyPage)).fullWidth, isTrue);
-      expect(tester.takeException(), isNull);
-    });
+        // The full guide is also a page: it must not restore the side rail or
+        // regress to the standard constrained-width layout.
+        await tester.tap(find.byKey(const ValueKey('help-full-guide')));
+        await tester.pumpAndSettle();
+        expect(find.byType(HelpGuideIndexPage), findsOneWidget);
+        expect(find.byType(DesktopPrimaryShell), findsNothing);
+        expect(
+          tester.widget<ButlerlyPage>(find.byType(ButlerlyPage)).fullWidth,
+          isTrue,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
   }
 
   testWidgets('direct Help chapter fills the desktop document canvas', (
@@ -368,7 +375,10 @@ void main() {
 
     expect(find.byType(HelpGuideArticlePage), findsOneWidget);
     expect(find.byType(DesktopPrimaryShell), findsNothing);
-    expect(tester.widget<ButlerlyPage>(find.byType(ButlerlyPage)).fullWidth, isTrue);
+    expect(
+      tester.widget<ButlerlyPage>(find.byType(ButlerlyPage)).fullWidth,
+      isTrue,
+    );
     expect(
       tester.getSize(find.byKey(const ValueKey('butlerly-page-canvas'))).width,
       closeTo(size.width, 1),
