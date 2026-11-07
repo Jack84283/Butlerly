@@ -9,6 +9,7 @@ import 'package:butlerly/design_system/components/butlerly_transaction_inner_car
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/payment_source_display.dart';
+import 'package:butlerly/features/foundation/presentation/payment_sources_page.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_row.dart';
@@ -76,10 +77,50 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
     await _data;
   }
 
+  /// Keep the Add action available even in an empty workspace. A payment
+  /// settlement requires an active card source; when none exists, guide the
+  /// user into creating one rather than disabling the header action.
+  Future<void> _onAddSettlement(_SettlementListData data) async {
+    if (data.activeCardSources.isNotEmpty) {
+      await _createSettlement(data);
+      return;
+    }
+    final openPaymentSources = await showButlerlyBottomSheet<bool>(
+      context: context,
+      builder: (sheetContext) => ButlerlySheet(
+        title: Text(sheetContext.l10n.text('addPaymentSettlement')),
+        content: Text(
+          sheetContext.l10n.text('choosePaymentSourceToContinue'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(sheetContext, false),
+            child: Text(sheetContext.l10n.text('cancel')),
+          ),
+          FilledButton(
+            key: const ValueKey('settlement-create-payment-source'),
+            onPressed: () => Navigator.pop(sheetContext, true),
+            child: Text(sheetContext.l10n.text('addPaymentSource')),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || openPaymentSources != true) return;
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => const PaymentSourcesPage(openCreateOnStart: true),
+      ),
+    );
+    if (mounted) await _refresh();
+  }
+
   Future<void> _createSettlement(_SettlementListData data) async {
     final finance = _finance;
     final save = finance?.savePaymentSettlement;
-    if (finance == null || save == null) return;
+    if (finance == null || save == null) {
+      _showMessage(context.l10n.text('paymentSettlementSaveFailed'));
+      return;
+    }
     final draft = await showButlerlyBottomSheet<_SettlementDraft>(
       context: context,
       builder: (context) =>
@@ -180,28 +221,11 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
           subtitle: context.l10n.text('paymentSettlementsSubtitle'),
           onRefresh: _refresh,
           actions: [
-            Padding(
-              padding: const EdgeInsetsDirectional.only(
-                end: ButlerlySpacing.headerActionTrailing,
-              ),
-              child: IconButton.filled(
-                key: const ValueKey('payment-settlements-add'),
-                tooltip: context.l10n.text('addPaymentSettlement'),
-                onPressed: data.activeCardSources.isEmpty
-                    ? null
-                    : () => _createSettlement(data),
-                icon: const Icon(Icons.add_rounded),
-                style: IconButton.styleFrom(
-                  backgroundColor: context.colors.interactive,
-                  foregroundColor:
-                      context.colors.interactive.computeLuminance() > 0.5
-                      ? context.colors.background
-                      : Colors.white,
-                  shape: const CircleBorder(),
-                  minimumSize: const Size.square(32),
-                  maximumSize: const Size.square(32),
-                ),
-              ),
+            ButlerlyHeaderAddButton(
+              buttonKey: const ValueKey('payment-settlements-add'),
+              closeToHelp: true,
+              label: context.l10n.text('addPaymentSettlement'),
+              onPressed: () => _onAddSettlement(data),
             ),
           ],
           children: [
