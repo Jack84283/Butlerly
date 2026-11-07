@@ -543,6 +543,14 @@ Widget _homeEllipsisAction({
   alignment: Alignment.topCenter,
 );
 
+// A slightly more luminous gold on dark canvases and a warmer, legible
+// gold on light canvases. Keep this device Home-only: other warning colors
+// communicate state and should not change with the branding adjustment.
+Color _homeBrandTaglineColor(BuildContext context) =>
+    Theme.of(context).brightness == Brightness.dark
+    ? const Color(0xFFECC778)
+    : const Color(0xFF9B6410);
+
 bool _homeHeaderShouldStackTopRow(
   BuildContext context, {
   required double availableWidth,
@@ -581,7 +589,7 @@ double _homeHeaderExtent(
     context.designTokens.homeTypography.subtitle(
       textTheme.bodySmall ?? const TextStyle(),
     ),
-  ).copyWith(color: context.colors.warning);
+  ).copyWith(color: _homeBrandTaglineColor(context));
   final introStyle = context.designTokens.homeTypography.subtitle(
     textTheme.bodySmall ?? const TextStyle(),
   );
@@ -817,7 +825,7 @@ class _HomeHeader extends StatelessWidget {
             context.designTokens.homeTypography.subtitle(
               Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
             ),
-          ).copyWith(color: context.colors.warning),
+          ).copyWith(color: _homeBrandTaglineColor(context)),
         );
         final compactMonthLabel = availableWidth < 360
             ? DateFormat.MMM(locale).format(month)
@@ -867,7 +875,13 @@ class _HomeHeader extends StatelessWidget {
                 key: const ValueKey('home-brand-month-help-row'),
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Expanded(child: brand),
+                  Expanded(
+                    child: Transform.translate(
+                      key: const ValueKey('home-brand-title-optical-adjustment'),
+                      offset: const Offset(0, 6),
+                      child: brand,
+                    ),
+                  ),
                   const SizedBox(width: ButlerlySpacing.compact),
                   Expanded(
                     child: Align(
