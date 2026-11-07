@@ -347,7 +347,7 @@ class AppLocalizations {
           'Track each card payment and the transactions covered by its statement period.',
       'addPaymentSettlement': 'Add payment settlement',
       'paymentSettlementNeedsCardSource':
-          'Add or activate a credit-card payment source before creating a settlement.'
+          'Add or activate a credit-card payment source before creating a settlement.',
       'editPaymentSettlement': 'Edit payment settlement',
       'noPaymentSettlements': 'No payment settlements yet',
       'noPaymentSettlementsBody':
@@ -1471,7 +1471,7 @@ class AppLocalizations {
       'toolsPaymentSettlementsDescription': '将信用卡付款与每个账单周期内的交易进行核对。',
       'paymentSettlementsSubtitle': '跟踪每笔信用卡付款以及其账单周期所涵盖的交易。',
       'addPaymentSettlement': '添加付款结算',
-      'paymentSettlementNeedsCardSource': '请先添加或启用信用卡付款来源，再创建付款结算。'
+      'paymentSettlementNeedsCardSource': '请先添加或启用信用卡付款来源，再创建付款结算。',
       'editPaymentSettlement': '编辑付款结算',
       'noPaymentSettlements': '暂无付款结算',
       'noPaymentSettlementsBody': '添加信用卡付款及其账单周期，以审核该周期内的交易。',
@@ -2513,7 +2513,7 @@ class AppLocalizations {
           'Sigue cada pago de tarjeta y las transacciones incluidas en su período del extracto.',
       'addPaymentSettlement': 'Añadir liquidación de pago',
       'paymentSettlementNeedsCardSource':
-          'Añade o activa una tarjeta de crédito antes de crear una liquidación.'
+          'Añade o activa una tarjeta de crédito antes de crear una liquidación.',
       'editPaymentSettlement': 'Editar liquidación de pago',
       'noPaymentSettlements': 'Aún no hay liquidaciones de pago',
       'noPaymentSettlementsBody':
