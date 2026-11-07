@@ -135,7 +135,17 @@ class ButlerlyPage extends StatelessWidget {
                 if (showContextHelp &&
                     ButlerlyContextHelpButton.articleForContext(context) !=
                         null)
-                  const ButlerlyContextHelpButton(),
+                  ButlerlyContextHelpButton(
+                    // Opt-in only for the three headers with an adjacent Add
+                    // action; other pages keep their original Help padding.
+                    visualGapAfterAdd:
+                        actions.isNotEmpty &&
+                            actions.last is ButlerlyHeaderAddButton &&
+                            (actions.last as ButlerlyHeaderAddButton)
+                                .closeToHelp
+                        ? ButlerlySpacing.md
+                        : null,
+                  ),
               ],
               bottom: pinnedSpacing.headerBottomGap > ButlerlySpacing.none
                   ? PreferredSize(
