@@ -72,13 +72,45 @@ class ButlerlyContextHelpButton extends StatelessWidget {
   }
 }
 
-/// Startup and recovery overlays replace the router's Navigator. Show the
-/// same bundled guide chapter in their own overlay without leaving the safe
-/// recovery/setup flow or requiring a network connection.
+/// Local Navigator for blocking recovery screens rendered above GoRouter.
+///
+/// This preserves the recovery workflow while giving modal confirmations and
+/// offline contextual Help a route stack. System Back dismisses Help, not the
+/// recovery screen. The host must have a distinct key for each recovery mode.
+class ButlerlyRouterlessRecoveryHost extends StatelessWidget {
+  const ButlerlyRouterlessRecoveryHost({required this.child, super.key});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Navigator(
+    onGenerateRoute: (settings) => MaterialPageRoute<void>(
+      settings: settings,
+      builder: (_) => child,
+    ),
+  );
+}
+
+/// Setup screens may have an Overlay but no Navigator; recovery screens use
+/// ButlerlyRouterlessRecoveryHost. Both paths display the same offline reader.
 void _openStandaloneHelp(BuildContext context, String articleId) {
+  final future = HelpCatalog.load();
+  final navigator = Navigator.maybeOf(context);
+  if (navigator != null) {
+    navigator.push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => _StandaloneHelpReader(
+          articleId: articleId,
+          future: future,
+          onClose: () => navigator.pop(),
+        ),
+      ),
+    );
+    return;
+  }
+
   final overlay = Overlay.maybeOf(context);
   if (overlay == null) return;
-  final future = HelpCatalog.load();
   late final OverlayEntry entry;
   void close() {
     entry.remove();
@@ -86,61 +118,78 @@ void _openStandaloneHelp(BuildContext context, String articleId) {
   }
 
   entry = OverlayEntry(
-    builder: (overlayContext) => Material(
-      child: Scaffold(
-        appBar: AppBar(
-          leading: IconButton(
-            key: const ValueKey('context-help-close'),
-            tooltip: HelpCopy.text(overlayContext, 'back'),
-            onPressed: close,
-            icon: const Icon(Icons.arrow_back_rounded),
-          ),
-          title: Text(HelpCopy.text(overlayContext, 'guide')),
+    builder: (_) => _StandaloneHelpReader(
+      articleId: articleId,
+      future: future,
+      onClose: close,
+    ),
+  );
+  overlay.insert(entry);
+}
+
+class _StandaloneHelpReader extends StatelessWidget {
+  const _StandaloneHelpReader({
+    required this.articleId,
+    required this.future,
+    required this.onClose,
+  });
+
+  final String articleId;
+  final Future<HelpCatalog> future;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    child: Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          key: const ValueKey('context-help-close'),
+          tooltip: HelpCopy.text(context, 'back'),
+          onPressed: onClose,
+          icon: const Icon(Icons.arrow_back_rounded),
         ),
-        body: SafeArea(
-          child: FutureBuilder<HelpCatalog>(
-            future: future,
-            builder: (context, snapshot) {
-              if (snapshot.hasError) {
-                return Center(
-                  child: Text(HelpCopy.text(context, 'loadFailed')),
-                );
-              }
-              final catalog = snapshot.data;
-              if (catalog == null) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              final language = Localizations.localeOf(context).languageCode;
-              final article = catalog.articleById(
-                articleId,
-                languageCode: language,
-              );
-              if (article == null) {
-                return Center(child: Text(HelpCopy.text(context, 'noResults')));
-              }
-              return ListView(
-                key: const ValueKey('context-help-offline-reader'),
-                padding: const EdgeInsets.all(16),
-                children: [
-                  Text(
-                    article.title,
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
-                  const SizedBox(height: 16),
-                  for (final paragraph in article.body.split(
-                    RegExp(r'\n\s*\n'),
-                  ))
-                    if (paragraph.trim().isNotEmpty) ...[
-                      helpGuideSection(context, paragraph),
-                      const SizedBox(height: 12),
-                    ],
-                ],
-              );
-            },
-          ),
+        title: Text(HelpCopy.text(context, 'guide')),
+      ),
+      body: SafeArea(
+        child: FutureBuilder<HelpCatalog>(
+          future: future,
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return Center(child: Text(HelpCopy.text(context, 'loadFailed')));
+            }
+            final catalog = snapshot.data;
+            if (catalog == null) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            final language = Localizations.localeOf(context).languageCode;
+            final article = catalog.articleById(
+              articleId,
+              languageCode: language,
+            );
+            if (article == null) {
+              return Center(child: Text(HelpCopy.text(context, 'noResults')));
+            }
+            return ListView(
+              key: const ValueKey('context-help-offline-reader'),
+              padding: const EdgeInsets.all(16),
+              children: [
+                Text(
+                  article.title,
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 16),
+                for (final paragraph in article.body.split(
+                  RegExp(r'\n\s*\n'),
+                ))
+                  if (paragraph.trim().isNotEmpty) ...[
+                    helpGuideSection(context, paragraph),
+                    const SizedBox(height: 12),
+                  ],
+              ],
+            );
+          },
         ),
       ),
     ),
   );
-  overlay.insert(entry);
 }
