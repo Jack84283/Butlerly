@@ -4,6 +4,7 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/help/data/help_catalog.dart';
 import 'package:butlerly/features/help/presentation/help_copy.dart';
+import 'package:butlerly/features/help/presentation/help_desktop_workspace.dart';
 import 'package:butlerly/features/help/presentation/help_guide_section.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -90,6 +91,15 @@ class _HelpFaqPageState extends State<HelpFaqPage> {
         future: _catalog,
         builder: (context, snapshot) {
           final catalog = snapshot.data;
+          // At desktop widths, keep topics, content and article details
+          // visible together instead of opening a full-page document.
+          if (catalog != null &&
+              MediaQuery.sizeOf(context).width >= ButlerlySize.wideBreakpoint) {
+            return HelpDesktopWorkspace(
+              catalog: catalog,
+              articleId: widget.articleId,
+            );
+          }
           if (catalog != null && widget.articleId != null) {
             final language = Localizations.localeOf(context).languageCode;
             final article = catalog.articleById(
@@ -99,7 +109,6 @@ class _HelpFaqPageState extends State<HelpFaqPage> {
             if (article != null) return HelpGuideArticlePage(article: article);
           }
           return ButlerlyPage(
-            fullWidth: true,
             showContextHelp: false,
             title: HelpCopy.text(context, 'title'),
             subtitle: HelpCopy.text(context, 'subtitle'),
@@ -401,7 +410,6 @@ class HelpFaqDetailPage extends StatelessWidget {
     final translation = faq.translation(language);
     final linked = catalog.articleById(faq.guideId, languageCode: language);
     return ButlerlyPage(
-      fullWidth: true,
       showContextHelp: false,
       title: HelpCopy.text(context, 'faq'),
       subtitle: HelpCopy.category(context, faq.category),
@@ -459,7 +467,6 @@ class HelpGuideIndexPage extends StatelessWidget {
       );
     }
     return ButlerlyPage(
-      fullWidth: true,
       showContextHelp: false,
       title: HelpCopy.text(context, 'guide'),
       leading: _helpBackButton(context),
@@ -479,7 +486,6 @@ class HelpGuideArticlePage extends StatelessWidget {
         .split(RegExp(r'\n\s*\n'))
         .where((section) => section.trim().isNotEmpty);
     return ButlerlyPage(
-      fullWidth: true,
       showContextHelp: false,
       title: HelpCopy.text(context, 'guide'),
       leading: _helpBackButton(context),
