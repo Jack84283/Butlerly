@@ -319,7 +319,7 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
           ),
           actions: [
             ButlerlyCancelButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () => Navigator.pop(context),
               child: Text(context.l10n.text('cancel')),
             ),
             FilledButton(
@@ -414,10 +414,18 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
       ),
     );
     if (saved == true) {
-      if (widget.fromPaymentSettlement && existing == null && mounted) {
+      if (widget.fromPaymentSettlement &&
+          existing == null &&
+          type == PaymentSourceType.card &&
+          mounted) {
         Navigator.of(context).pop(true);
       } else {
         _refresh();
+        if (widget.fromPaymentSettlement &&
+            type != PaymentSourceType.card &&
+            mounted) {
+          _showMessage(context.l10n.text('paymentSettlementNeedsCardSource'));
+        }
       }
     } else if (mounted && saved == false) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -604,12 +612,20 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                 ? PaymentSourceType.card
                 : PaymentSourceType.account,
             onCancel: () => setState(() => _desktopEditorOpen = false),
-            onSaved: () {
-              if (widget.fromPaymentSettlement && _desktopSelected == null) {
+            onSaved: (savedType) {
+              if (widget.fromPaymentSettlement &&
+                  _desktopSelected == null &&
+                  savedType == PaymentSourceType.card) {
                 Navigator.of(context).pop(true);
               } else {
                 setState(() => _desktopEditorOpen = false);
                 _refresh();
+                if (widget.fromPaymentSettlement &&
+                    savedType != PaymentSourceType.card) {
+                  _showMessage(
+                    context.l10n.text('paymentSettlementNeedsCardSource'),
+                  );
+                }
               }
             },
             onError: _showMessage,
@@ -768,7 +784,7 @@ class _DesktopPaymentSourceEditor extends StatefulWidget {
   final CardScanResult? scanned;
   final PaymentSourceType initialType;
   final VoidCallback onCancel;
-  final VoidCallback onSaved;
+  final ValueChanged<PaymentSourceType> onSaved;
   final ValueChanged<String> onError;
 
   @override
@@ -893,7 +909,7 @@ class _DesktopPaymentSourceEditorState
             return;
           }
         }
-        widget.onSaved();
+        widget.onSaved(_type);
       } else {
         widget.onError(context.l10n.text('paymentSourceSaveFailed'));
       }
