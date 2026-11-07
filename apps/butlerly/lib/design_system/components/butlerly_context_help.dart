@@ -58,25 +58,47 @@ class ButlerlyContextHelpButton extends StatelessWidget {
     final target = articleId ?? articleForContext(context);
     if (target == null) return const SizedBox.shrink();
     final scheme = Theme.of(context).colorScheme;
-    return IconButton.filled(
-      key: const ValueKey('page-context-help'),
-      tooltip: context.l10n.text('contextHelp'),
-      icon: const Icon(Icons.question_mark_rounded, size: 28),
-      style: IconButton.styleFrom(
-        backgroundColor: scheme.primary,
-        foregroundColor: scheme.onPrimary,
-        minimumSize: const Size.square(44),
-        maximumSize: const Size.square(44),
-        padding: EdgeInsets.zero,
-        shape: const CircleBorder(),
+    // Keep the painted Help control compact while retaining a 44px hit
+    // target for touch and keyboard accessibility. Its left spacing is
+    // independent of the visual circle diameter.
+    return Padding(
+      padding: const EdgeInsets.only(left: 12),
+      child: IconButton(
+        key: const ValueKey('page-context-help'),
+        tooltip: context.l10n.text('contextHelp'),
+        icon: SizedBox.square(
+          key: const ValueKey('page-context-help-visual'),
+          dimension: 38,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: scheme.primary,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Icon(
+                Icons.question_mark_rounded,
+                size: 28,
+                color: scheme.onPrimary,
+              ),
+            ),
+          ),
+        ),
+        style: IconButton.styleFrom(
+          backgroundColor: Colors.transparent,
+          minimumSize: const Size.square(44),
+          maximumSize: const Size.square(44),
+          padding: EdgeInsets.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          shape: const CircleBorder(),
+        ),
+        onPressed: () {
+          if (router == null) {
+            _openStandaloneHelp(context, target);
+          } else {
+            context.push('/help?article=${Uri.encodeComponent(target)}');
+          }
+        },
       ),
-      onPressed: () {
-        if (router == null) {
-          _openStandaloneHelp(context, target);
-        } else {
-          context.push('/help?article=${Uri.encodeComponent(target)}');
-        }
-      },
     );
   }
 }
