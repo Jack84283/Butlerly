@@ -76,10 +76,7 @@ class _HelpDesktopWorkspaceState extends State<HelpDesktopWorkspace> {
   List<_HelpDesktopItem> _items(String language) {
     if (_query.trim().isNotEmpty) {
       return [
-        for (final hit in widget.catalog.search(
-          _query,
-          languageCode: language,
-        ))
+        for (final hit in widget.catalog.search(_query, languageCode: language))
           _HelpDesktopItem(
             id: hit.id,
             title: hit.title,
@@ -106,10 +103,7 @@ class _HelpDesktopWorkspaceState extends State<HelpDesktopWorkspace> {
           _HelpDesktopItem(
             id: faq.id,
             title: faq.translation(language).question,
-            subtitle: HelpCopy.category(
-              context,
-              faq.category,
-            ),
+            subtitle: HelpCopy.category(context, faq.category),
             faq: faq,
           ),
     ];
@@ -224,7 +218,10 @@ class _HelpDesktopWorkspaceState extends State<HelpDesktopWorkspace> {
                                 suffixIcon: _query.isEmpty
                                     ? null
                                     : IconButton(
-                                        tooltip: HelpCopy.text(context, 'clear'),
+                                        tooltip: HelpCopy.text(
+                                          context,
+                                          'clear',
+                                        ),
                                         icon: const Icon(Icons.close_rounded),
                                         onPressed: () {
                                           _searchController.clear();
@@ -255,7 +252,9 @@ class _HelpDesktopWorkspaceState extends State<HelpDesktopWorkspace> {
                                 itemBuilder: (context, index) {
                                   final item = items[index];
                                   return ListTile(
-                                    key: ValueKey('help-desktop-item-${item.id}'),
+                                    key: ValueKey(
+                                      'help-desktop-item-${item.id}',
+                                    ),
                                     title: Text(item.title),
                                     subtitle: Text(
                                       item.subtitle,
@@ -266,9 +265,8 @@ class _HelpDesktopWorkspaceState extends State<HelpDesktopWorkspace> {
                                     trailing: const Icon(
                                       Icons.chevron_right_rounded,
                                     ),
-                                    onTap: () => setState(
-                                      () => _selectedId = item.id,
-                                    ),
+                                    onTap: () =>
+                                        setState(() => _selectedId = item.id),
                                   );
                                 },
                               ),
@@ -336,10 +334,7 @@ class _HelpDesktopWorkspaceState extends State<HelpDesktopWorkspace> {
         const SizedBox(height: ButlerlySpacing.section),
         SelectableText(translation.answer),
         const SizedBox(height: ButlerlySpacing.section),
-        if (widget.catalog.articleById(
-              faq.guideId,
-              languageCode: language,
-            ) !=
+        if (widget.catalog.articleById(faq.guideId, languageCode: language) !=
             null)
           Align(
             alignment: Alignment.centerLeft,
