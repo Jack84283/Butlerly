@@ -377,6 +377,17 @@ void main() {
     expect(tester.getRect(detail).right, lessThanOrEqualTo(size.width));
     expect(find.byKey(const ValueKey('help-search')), findsOneWidget);
 
+    // Selecting a different middle-column entry updates the detail in place.
+    final secondChapter = catalog.guide[1];
+    await tester.tap(
+      find.byKey(ValueKey('help-desktop-item-${secondChapter.id}')),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(ValueKey('help-desktop-article-${secondChapter.id}')),
+      findsOneWidget,
+    );
+
     final category = catalog.categories.first;
     await tester.tap(find.byKey(ValueKey('help-desktop-menu-$category')));
     await tester.pumpAndSettle();
