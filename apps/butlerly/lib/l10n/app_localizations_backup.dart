@@ -492,11 +492,11 @@ const _backupStrings = <String, Map<String, String>>{
         'No se pudo completar la recuperación. Los datos de recuperación conservados permanecen disponibles.',
   },
   'zh': {
-    'backup': '备份 Butlerly',
+    'backup': '备份 “账房先生”',
     'toastDetails': '详细信息',
     'toastClose': '关闭',
     'toastExportFailedDetails':
-        '导出无法完成或保存。请检查剩余存储空间与文件权限，保留当前 Butlerly 数据，选择可写入位置后重试。',
+        '导出无法完成或保存。请检查剩余存储空间与文件权限，保留当前 “账房先生” 数据，选择可写入位置后重试。',
     'toastEraseFailedDetails':
         '清除操作未成功完成。在确认当前应用状态前，无法确定数据已全部清除或保留。请保存已有备份，并按照恢复指引处理。',
     'backupSubtitle': '创建一个加密且可跨设备使用的本地备份文件。',
@@ -504,16 +504,16 @@ const _backupStrings = <String, Map<String, String>>{
     'restoreMerge': '合并备份',
     'restoreReplace': '从备份替换',
     'mergeSubtitle': '导入缺失记录，同时保留本机已有记录。',
-    'mergeTitle': '合并 Butlerly 备份？',
+    'mergeTitle': '合并 “账房先生” 备份？',
     'mergeBody':
         '本机已有的记录将保留，并导入备份中的缺失记录及可用附件。如存在无法安全合并的记录或附件路径冲突，则不会应用更改。测试前请另外备份当前数据。',
-    'restoreSubtitle': '从加密的 Butlerly 备份替换本地数据。',
+    'restoreSubtitle': '从加密的 “账房先生” 备份替换本地数据。',
     'backupComplete': '加密备份创建成功。',
     'backupFailed': '无法创建备份。',
     'backupSavedVerified':
-        '加密备份已创建，通过解密校验，并保存至所选位置。请另行妥善保存备份密码；Butlerly 无法找回密码。',
+        '加密备份已创建，通过解密校验，并保存至所选位置。请另行妥善保存备份密码；“账房先生” 无法找回密码。',
     'backupSharedVerified':
-        '加密备份已创建并校验完成。分享目标报告成功；请自行确认文件已在目标位置保存。Butlerly 的临时副本将被清理。',
+        '加密备份已创建并校验完成。分享目标报告成功；请自行确认文件已在目标位置保存。“账房先生” 的临时副本将被清理。',
     'restoreMissingEvidenceWarning':
         '注意：创建此备份时有 {count} 个原始附件缺失。合并或替换无法找回这些文件。请保留单独保存的原始附件和旧备份。',
     'backupMissingEvidenceTitle': '备份缺少部分附件',
@@ -533,103 +533,103 @@ const _backupStrings = <String, Map<String, String>>{
     'backupFailurePasswordPolicyReason': '备份密码未达到最低长度要求。',
     'backupFailurePasswordPolicyAction': '请使用至少 12 个字符，并确保两次输入一致。',
     'backupFailureDatabaseUnavailableReason':
-        'Butlerly 无法创建或读取一致的本地 SQLite 快照。',
+        '“账房先生” 无法创建或读取一致的本地 SQLite 快照。',
     'backupFailureDatabaseUnavailableAction':
         '请保留现有数据库，关闭并行操作后重试。如持续失败，请报告问题，勿修改或删除本地数据。',
     'backupFailureDatabaseBusyReason': '本地数据库正被占用，无法安全完成快照。',
-    'backupFailureDatabaseBusyAction': '完成正在运行的导入或编辑，关闭其他 Butlerly 窗口后重试。',
+    'backupFailureDatabaseBusyAction': '完成正在运行的导入或编辑，关闭其他 “账房先生” 窗口后重试。',
     'backupFailureDatabaseIntegrityReason': '创建备份时 SQLite 报告数据库完整性问题。',
     'backupFailureDatabaseIntegrityAction': '请勿覆盖已有备份。保留数据库，并先进行独立的只读完整性检查。',
     'backupFailureStorageFullReason': '可用存储空间不足，无法准备或保存加密备份。',
     'backupFailureStorageFullAction':
-        '请释放存储空间，但勿删除 Butlerly 数据或现有备份。备份需要快照和临时加密文件的空间。',
-    'backupFailureFileAccessReason': 'Butlerly 无法读取源文件或写入所选位置。可能是权限或文件可访问性问题。',
+        '请释放存储空间，但勿删除 “账房先生” 数据或现有备份。备份需要快照和临时加密文件的空间。',
+    'backupFailureFileAccessReason': '“账房先生” 无法读取源文件或写入所选位置。可能是权限或文件可访问性问题。',
     'backupFailureFileAccessAction': '请检查目标位置与文件权限，选择可写入的本地位置重试，并保留原始数据及已有备份。',
     'backupFailureEvidenceReason': '某个附件的路径、文件名或源文件无法安全打包，备份未发布。',
     'backupFailureEvidenceAction': '请保留全部附件，检查不可访问文件或不安全文件名后重试；不要通过删除收据来强制备份。',
-    'backupFailureEvidenceChangedReason': 'Butlerly 打包时源数据库或附件发生了变化。',
+    'backupFailureEvidenceChangedReason': '“账房先生” 打包时源数据库或附件发生了变化。',
     'backupFailureEvidenceChangedAction': '请完成导入、扫描或编辑，待文件稳定后重试。保留原始文件。',
     'backupFailureVerificationReason': '新建加密备份未通过完成后的完整性验证，不能视为有效备份。',
     'backupFailureVerificationAction': '请勿依赖失败文件。保留当前数据库，尝试其他本地位置；如多次失败，请报告。',
-    'backupFailurePublicationReason': '加密备份已准备好，但 Butlerly 无法确认是否成功保存至所选位置。',
+    'backupFailurePublicationReason': '加密备份已准备好，但 “账房先生” 无法确认是否成功保存至所选位置。',
     'backupFailurePublicationAction': '请检查目标权限与存储空间。保留该位置的现有备份，并使用其他文件名重试。',
     'backupFailurePublicationRecoveryReason':
         '保存备份或回滚原目标文件未能安全完成。可能保留有恢复副本，需要检查目标状态。',
     'backupFailurePublicationRecoveryAction':
-        '请勿覆盖或删除目标文件及 Butlerly 恢复文件。先使用应用内恢复流程或寻求帮助，再尝试保存。',
-    'backupFailureShareFailureReason': 'Butlerly 已准备临时加密备份，但系统分享操作失败或无法确认已交付。',
+        '请勿覆盖或删除目标文件及 “账房先生” 恢复文件。先使用应用内恢复流程或寻求帮助，再尝试保存。',
+    'backupFailureShareFailureReason': '“账房先生” 已准备临时加密备份，但系统分享操作失败或无法确认已交付。',
     'backupFailureShareFailureAction':
         '请尝试其他分享目标，或在可用时存储至本地“文件”。临时副本会在操作后删除，需要重新创建备份。',
-    'backupFailureUnknownReason': '发生意外错误，Butlerly 未能完成并确认备份。请勿假定文件已成功保存。',
+    'backupFailureUnknownReason': '发生意外错误，“账房先生” 未能完成并确认备份。请勿假定文件已成功保存。',
     'backupFailureUnknownAction': '请保留现有数据和备份，检查存储与权限，换个位置重试；如持续失败，请报告。',
     'restoreFailed': '无法恢复备份。',
     'restoreFailureTitle': '无法恢复备份',
     'restoreFailureReasonLabel': '失败原因',
     'restoreFailureNextStepLabel': '下一步建议',
     'restoreFailureAuthenticationReason':
-        '备份加密验证未通过。密码错误与加密文件损坏都会导致相同的验证失败，Butlerly 无法准确区分两者。',
+        '备份加密验证未通过。密码错误与加密文件损坏都会导致相同的验证失败，“账房先生” 无法准确区分两者。',
     'restoreFailureAuthenticationAction':
         '核对创建备份时使用的密码，注意大小写。如仍失败，请尝试另一份完整的备份副本，并保留原始文件。',
     'restoreFailureMissingPasswordReason': '未提供解锁加密备份所需的密码。',
     'restoreFailureMissingPasswordAction': '请输入创建备份时使用的密码，然后重试。',
     'restoreFailureUnsupportedFormatReason':
-        '所选文件不是当前支持的 Butlerly 加密原始备份，或使用了此版本无法读取的旧备份格式。',
+        '所选文件不是当前支持的 “账房先生” 加密原始备份，或使用了此版本无法读取的旧备份格式。',
     'restoreFailureUnsupportedFormatAction':
-        '请选择兼容的 Butlerly 版本创建的加密原始备份。请勿重命名或修改原始备份文件。',
+        '请选择兼容的 “账房先生” 版本创建的加密原始备份。请勿重命名或修改原始备份文件。',
     'restoreFailureDamagedReason': '备份内容未通过归档校验和、数据完整性或 SQLite 数据库检查，无法安全用于恢复。',
     'restoreFailureDamagedAction': '请尝试另一份完整备份。保留失败文件用于排查，不要手动修复或覆盖当前数据。',
     'restoreFailureUnsupportedSchemaReason':
-        '备份的 SQLite 数据库结构无效或不受支持，Butlerly 无法安全识别。',
+        '备份的 SQLite 数据库结构无效或不受支持，“账房先生” 无法安全识别。',
     'restoreFailureUnsupportedSchemaAction':
-        '请使用兼容的 Butlerly 版本或受支持结构的备份。保留原始备份与当前数据。',
+        '请使用兼容的 “账房先生” 版本或受支持结构的备份。保留原始备份与当前数据。',
     'restoreFailureMigrationReason': '备份使用较旧的数据库结构，但临时副本的结构迁移失败。原始备份文件未被修改。',
     'restoreFailureMigrationAction': '在修复迁移问题前，请勿对重要数据反复尝试。保留备份，并连同应用版本报告此问题。',
     'restoreFailureMergeConflictReason':
         '合并发现表结构、删除标记、记录或附件标识不兼容。为了防止覆盖本地数据，操作已停止。',
     'restoreFailureMergeConflictAction': '请保留双方数据及备份，解决冲突后再尝试合并。替换是独立的破坏性操作。',
     'restoreFailureStorageReason': '设备剩余存储空间不足，无法安全准备恢复操作。',
-    'restoreFailureStorageAction': '请释放存储空间，但不要删除 Butlerly 数据或备份。恢复过程需要额外临时空间。',
-    'restoreFailureFileAccessReason': 'Butlerly 无法读取所选文件，或无法访问所需的本地临时目录。',
+    'restoreFailureStorageAction': '请释放存储空间，但不要删除 “账房先生” 数据或备份。恢复过程需要额外临时空间。',
+    'restoreFailureFileAccessReason': '“账房先生” 无法读取所选文件，或无法访问所需的本地临时目录。',
     'restoreFailureFileAccessAction':
         '请检查文件是否可访问以及存储权限。将备份复制到可访问的本地目录后重试，勿修改原文件。',
     'restoreFailureDatabaseBusyReason': '本地 SQLite 数据库仍有活动读取连接，因此无法安全开始恢复。',
     'restoreFailureDatabaseBusyAction':
-        '关闭其他 Butlerly 窗口或操作，待数据库空闲后重试。恢复进行中请勿强制退出。',
+        '关闭其他 “账房先生” 窗口或操作，待数据库空闲后重试。恢复进行中请勿强制退出。',
     'restoreFailureRecoveryReason': '先前恢复操作留下了需要处理的恢复状态，不能直接继续恢复。',
     'restoreFailureRecoveryAction': '请保留已有恢复文件，按照应用内恢复指引处理。不要删除当前数据或回滚文件。',
     'restoreFailureUnknownReason': '恢复过程中发生意外错误，现有信息不足以确定具体原因。',
     'restoreFailureUnknownAction':
-        '请保留当前数据与原始备份。重启 Butlerly，确认存储空间和应用版本；如问题重复出现，请报告。',
-    'upgradeAppRequiredTitle': '请先更新 Butlerly 再恢复备份',
+        '请保留当前数据与原始备份。重启 “账房先生”，确认存储空间和应用版本；如问题重复出现，请报告。',
+    'upgradeAppRequiredTitle': '请先更新 “账房先生” 再恢复备份',
     'upgradeAppRequiredBody':
-        '此备份需要数据库结构版本 {backupVersion}，而当前安装的 Butlerly 仅支持到版本 {supportedVersion}。本机数据未被修改。请更新 Butlerly 后使用同一备份重试。',
+        '此备份需要数据库结构版本 {backupVersion}，而当前安装的 “账房先生” 仅支持到版本 {supportedVersion}。本机数据未被修改。请更新 “账房先生” 后使用同一备份重试。',
     'upgradeFromAppleStore':
-        '在 iPhone 或 iPad 上打开 App Store，搜索 Butlerly。如有较新的官方版本，点击“更新”。若使用的是测试版，请从原安装渠道更新。',
+        '在 iPhone 或 iPad 上打开 App Store，搜索 “账房先生”。如有较新的官方版本，点击“更新”。若使用的是测试版，请从原安装渠道更新。',
     'upgradeFromGooglePlay':
-        '在 Android 设备上打开 Google Play，搜索 Butlerly。如有较新的官方版本，点击“更新”。若使用的是测试版，请从原安装渠道更新。',
+        '在 Android 设备上打开 Google Play，搜索 “账房先生”。如有较新的官方版本，点击“更新”。若使用的是测试版，请从原安装渠道更新。',
     'upgradeFromMacStore':
-        '在 Mac 上，如果 Butlerly 是通过 Mac App Store 安装的，请在其中检查更新；如果是开发版或直接安装的版本，请从原可信渠道安装支持该数据库结构的更新版本。',
+        '在 Mac 上，如果 “账房先生” 是通过 Mac App Store 安装的，请在其中检查更新；如果是开发版或直接安装的版本，请从原可信渠道安装支持该数据库结构的更新版本。',
     'upgradeFromDesktopDistribution':
-        '请从原可信安装渠道获取支持该数据库结构的较新 Butlerly 版本，安装后重新尝试恢复。',
+        '请从原可信安装渠道获取支持该数据库结构的较新 “账房先生” 版本，安装后重新尝试恢复。',
     'upgradeAppDismiss': '知道了',
     'unsupportedBackupSchema':
-        '此备份使用当前 Butlerly 版本无法恢复的 SQLite 数据库结构。您的本机数据未被修改。',
-    'restoreTitle': '恢复 Butlerly 备份？',
+        '此备份使用当前 “账房先生” 版本无法恢复的 SQLite 数据库结构。您的本机数据未被修改。',
+    'restoreTitle': '恢复 “账房先生” 备份？',
     'backupCreatedAt': '创建时间：{date}',
-    'newerData': '此设备包含较新的本地数据。替换会丢弃当前 Butlerly 数据并准确恢复备份。',
+    'newerData': '此设备包含较新的本地数据。替换会丢弃当前 “账房先生” 数据并准确恢复备份。',
     'noNewerData': '备份有效。请查看摘要，然后确认替换以准确恢复备份。',
     'merge': '合并',
     'replace': '替换',
-    'replaceTitle': '替换全部 Butlerly 数据？',
+    'replaceTitle': '替换全部 “账房先生” 数据？',
     'replaceBody':
-        '此操作将使用备份替换 Butlerly 的整个本地数据库及所有表，包括：\n'
+        '此操作将使用备份替换 “账房先生” 的整个本地数据库及所有表，包括：\n'
         '• 基础数据：类别、子类别、商户、付款来源、标签和翻译\n'
         '• 交易、付款结算、导入及对账记录\n'
         '• 分析规则、发现、结果和已保存的分析数据\n'
         '• 预算、财务档案和应用内偏好设置\n'
         '• 本地附件（如收据和对账单，仅恢复备份中实际包含的文件）\n\n'
-        '本机不在此备份中的数据及附件将从 Butlerly 中丢失。除非另有当前数据的备份，否则无法撤销。设备或操作系统级权限及设置不会恢复。',
-    'replaceAcknowledgement': '我了解：当前 Butlerly 的全部数据库数据和附件将被替换。',
+        '本机不在此备份中的数据及附件将从 “账房先生” 中丢失。除非另有当前数据的备份，否则无法撤销。设备或操作系统级权限及设置不会恢复。',
+    'replaceAcknowledgement': '我了解：当前 “账房先生” 的全部数据库数据和附件将被替换。',
     'replaceAllData': '替换全部数据',
     'restoreComplete': '恢复完成。',
     'restoreResult': '已恢复 {restored} 笔交易',
@@ -641,28 +641,28 @@ const _backupStrings = <String, Map<String, String>>{
     'deletedItems': '项数据是在备份之后删除的',
     'backupPasswordTitle': '保护此备份',
     'backupPasswordBody':
-        '此备份包含敏感的财务数据以及收据或文档凭证。Butlerly 将使用您的密码加密该文件。如果密码丢失，Butlerly 无法恢复此备份。',
+        '此备份包含敏感的财务数据以及收据或文档凭证。“账房先生” 将使用您的密码加密该文件。如果密码丢失，“账房先生” 无法恢复此备份。',
     'backupPasswordLabel': '备份密码',
     'backupPasswordConfirmLabel': '确认密码',
     'backupPasswordTooShort': '请至少使用 12 个字符。',
     'backupPasswordMismatch': '两次输入的密码不一致。',
     'createEncryptedBackup': '创建加密备份',
     'restorePasswordTitle': '解锁备份',
-    'restorePasswordBody': '请输入创建此 Butlerly 备份时使用的密码。',
+    'restorePasswordBody': '请输入创建此 “账房先生” 备份时使用的密码。',
     'unlockBackup': '解锁',
     'passwordOrIntegrityFailed': '密码不正确，或加密备份已损坏。',
-    'encryptedBackupRequired': '此页面只能恢复加密的 Butlerly 备份。',
-    'recoveryRequiredTitle': 'Butlerly 需要恢复',
+    'encryptedBackupRequired': '此页面只能恢复加密的 “账房先生” 备份。',
+    'recoveryRequiredTitle': '“账房先生” 需要恢复',
     'rawStartupRecoveryBody':
         '先前中断的恢复操作目前无法安全完成，已暂停正常访问。本地数据库、附件和恢复文件均已保留。仅在解决临时存储故障后重试；否则请保留所有文件并寻求恢复支持。不要清除或覆盖恢复文件。',
     'recoveryRequiredBody':
-        'Butlerly 已暂停正常编辑，直到当前恢复状态通过验证。如果无法安全保留当前状态，可以使用恢复前的安全副本。',
+        '“账房先生” 已暂停正常编辑，直到当前恢复状态通过验证。如果无法安全保留当前状态，可以使用恢复前的安全副本。',
     'recoveryUnavailableBody':
-        'Butlerly 无法确认一个安全的恢复状态，并且没有可信的安全副本可用。正常编辑仍处于暂停状态。您可以清除本机 Butlerly 数据并重新开始。',
-    'recoverButlerly': '恢复 Butlerly',
+        '“账房先生” 无法确认一个安全的恢复状态，并且没有可信的安全副本可用。正常编辑仍处于暂停状态。您可以清除本机 “账房先生” 数据并重新开始。',
+    'recover“账房先生”': '恢复 “账房先生”',
     'eraseLocalRecoveryData': '清除本地数据并重新开始',
-    'recoveryResetTitle': '清除本机 Butlerly 数据？',
-    'recoveryResetBody': '这将永久删除此设备上的 Butlerly 本地财务数据、凭证和恢复副本。仅在无法完成恢复时使用此操作。',
+    'recoveryResetTitle': '清除本机 “账房先生” 数据？',
+    'recoveryResetBody': '这将永久删除此设备上的 “账房先生” 本地财务数据、凭证和恢复副本。仅在无法完成恢复时使用此操作。',
     'recoveryResetConfirm': '清除并重新开始',
     'recoveryStillRequired': '仍需要执行恢复。正常编辑仍未启用，可用的恢复材料已保留。',
     'recoveryEvidenceExport': '导出已保留的凭证',
@@ -670,7 +670,7 @@ const _backupStrings = <String, Map<String, String>>{
     'recoveryEvidenceExported': '已创建凭证恢复副本',
     'recoveryEvidenceExportedBody': '未解决的暂存凭证已复制，原始恢复文件未被更改。您可以在选择清除数据前使用此副本。',
     'portableRecoveryTitle': '需要恢复备份',
-    'portableRecoveryBody': '备份替换过程中断。Butlerly 已保留之前的有效备份，但需要访问原备份位置才能完成恢复。',
+    'portableRecoveryBody': '备份替换过程中断。“账房先生” 已保留之前的有效备份，但需要访问原备份位置才能完成恢复。',
     'selectBackupLocation': '选择备份位置',
     'keepRecoveryData': '保留恢复数据',
     'portableRecoveryStillRequired': '无法完成恢复。已保留恢复数据。',
