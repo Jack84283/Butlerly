@@ -18,7 +18,7 @@
         },
         "zh": {
           "question": "需要注册账户吗？",
-          "answer": "Alpha 版的核心财务功能无需 Butlerly 账户。财务记录设计为保存在您的设备上。参见指南第 1–2 章。"
+          "answer": "Alpha 版的核心财务功能无需 “账房先生” 账户。财务记录设计为保存在您的设备上。参见指南第 1–2 章。"
         },
         "es": {
           "question": "¿Necesito una cuenta?",
@@ -233,7 +233,7 @@
         },
         "zh": {
           "question": "能同步 Google Drive 或 iCloud 文件吗？",
-          "answer": "不能直接同步。请先在 Butlerly 以外下载或导出为受支持的本地文件，再导入、审核并确认。Butlerly 不会自动同步云端源文件。参见第 10 章和附录 C。"
+          "answer": "不能直接同步。请先在 “账房先生” 以外下载或导出为受支持的本地文件，再导入、审核并确认。“账房先生” 不会自动同步云端源文件。参见第 10 章和附录 C。"
         },
         "es": {
           "question": "¿Puede sincronizar documentos de Google Drive o iCloud?",
@@ -257,7 +257,7 @@
         },
         "zh": {
           "question": "能自动下载银行流水吗？",
-          "answer": "Alpha 版不支持。请从银行网站或应用自行导出流水，再使用相应的本地 CSV 或账单导入流程。不要在 Butlerly 中输入网银密码。参见第 10 章。"
+          "answer": "Alpha 版不支持。请从银行网站或应用自行导出流水，再使用相应的本地 CSV 或账单导入流程。不要在 “账房先生” 中输入网银密码。参见第 10 章。"
         },
         "es": {
           "question": "¿Descarga extractos bancarios automáticamente?",
@@ -284,7 +284,7 @@
         },
         "zh": {
           "question": "支持什么 CSV 格式？",
-          "answer": "请使用 Butlerly 下载的交易或收据 V1 模板。导入器支持英语、中文和西班牙语模板表头；其他银行格式可能需要转换。参见第 10 章和附录 A。"
+          "answer": "请使用 “账房先生” 下载的交易或收据 V1 模板。导入器支持英语、中文和西班牙语模板表头；其他银行格式可能需要转换。参见第 10 章和附录 A。"
         },
         "es": {
           "question": "¿Qué formato CSV admite?",
@@ -334,7 +334,7 @@
         },
         "zh": {
           "question": "可以直接导入在线 Google 文档或任意银行表格吗？",
-          "answer": "不能通过在线链接直接导入。请先导出文件，必要时转换为 Butlerly 支持的格式。不能假定所有 XLSX、PDF 或 CSV 结构都能识别。参见第 10 章。"
+          "answer": "不能通过在线链接直接导入。请先导出文件，必要时转换为 “账房先生” 支持的格式。不能假定所有 XLSX、PDF 或 CSV 结构都能识别。参见第 10 章。"
         },
         "es": {
           "question": "¿Puedo importar un Google Doc en línea o cualquier hoja bancaria?",
@@ -670,7 +670,7 @@
         },
         "zh": {
           "question": "财务数据保存在哪里？",
-          "answer": "您的财务记录和保存的附件位于设备上 Butlerly 的专用存储空间。您主动导出或分享的文件可能保存在所选位置。参见指南第 1、20 章。"
+          "answer": "您的财务记录和保存的附件位于设备上 “账房先生” 的专用存储空间。您主动导出或分享的文件可能保存在所选位置。参见指南第 1、20 章。"
         },
         "es": {
           "question": "¿Dónde se guardan mis datos financieros?",
@@ -720,7 +720,7 @@
         },
         "zh": {
           "question": "帮助搜索会把问题发到网上吗？",
-          "answer": "不会。帮助功能只搜索设备上 Butlerly 随附的文章，不会把搜索词或财务记录发送到网络服务。参见指南第 3 章。"
+          "answer": "不会。帮助功能只搜索设备上 “账房先生” 随附的文章，不会把搜索词或财务记录发送到网络服务。参见指南第 3 章。"
         },
         "es": {
           "question": "¿La búsqueda de ayuda envía preguntas a Internet?",
