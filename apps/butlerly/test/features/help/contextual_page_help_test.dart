@@ -1,3 +1,4 @@
+import 'package:butlerly/app/router/app_router.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/features/help/data/help_catalog.dart';
 import 'package:butlerly/features/help/presentation/help_faq_page.dart';
@@ -180,6 +181,119 @@ void main() {
     expect(
       find.byKey(const ValueKey('context-help-offline-reader')),
       findsNothing,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  // Mirrors MaterialApp.router.builder in ButlerlyApp: the recovery workflow
+  // replaces the GoRouter child and is hosted in a local Navigator.
+  for (final recovery in const <String, String>{
+    'restore': 'ch-19',
+    'portable backup': 'ch-18',
+    'evidence deletion': 'ch-21',
+  }.entries) {
+    testWidgets('${recovery.key} recovery Help returns to the blocked flow', (
+      tester,
+    ) async {
+      final router = GoRouter(
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, _) =>
+                const Scaffold(body: Text('Normal router content')),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp.router(
+          routerConfig: router,
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          builder: (_, child) => ButlerlyRouterlessRecoveryHost(
+            key: ValueKey('${recovery.key}-help-host'),
+            child: Scaffold(
+              appBar: AppBar(
+                actions: [
+                  ButlerlyContextHelpButton(articleId: recovery.value),
+                ],
+              ),
+              body: Text('${recovery.key} recovery remains active'),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Normal router content'), findsNothing);
+      expect(
+        find.text('${recovery.key} recovery remains active'),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const ValueKey('page-context-help')));
+      await tester.pumpAndSettle();
+      final helpReader = find.byKey(
+        const ValueKey('context-help-offline-reader'),
+      );
+      expect(helpReader, findsOneWidget);
+      expect(find.text(catalog.articleById(recovery.value)!.title), findsWidgets);
+
+      // A navigator pop is also the action used for system Back on this route.
+      final navigator = Navigator.of(tester.element(helpReader));
+      expect(navigator.canPop(), isTrue);
+      expect(await navigator.maybePop(), isTrue);
+      await tester.pumpAndSettle();
+
+      expect(helpReader, findsNothing);
+      expect(
+        find.text('${recovery.key} recovery remains active'),
+        findsOneWidget,
+      );
+      expect(find.text('Normal router content'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('unrecognized route provides Help and returns to error', (
+    tester,
+  ) async {
+    appRouter.go('/unknown-context-help-test-route');
+    addTearDown(() => appRouter.go('/'));
+    await tester.pumpWidget(
+      MaterialApp.router(
+        routerConfig: appRouter,
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('router-error-content')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('page-context-help')), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('page-context-help')));
+    await tester.pumpAndSettle();
+    expect(find.byType(HelpGuideArticlePage), findsOneWidget);
+    expect(find.text(catalog.articleById('ch-3')!.title), findsWidgets);
+
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('router-error-content')),
+      findsOneWidget,
     );
     expect(tester.takeException(), isNull);
   });
