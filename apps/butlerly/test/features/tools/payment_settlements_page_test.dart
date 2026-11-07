@@ -28,7 +28,8 @@ void main() {
     home: Scaffold(body: PaymentSettlementsPage()),
   );
 
-  void registerServices(List<PaymentSource> sources) {
+  _TestSettlements registerServices(List<PaymentSource> sources) {
+    final settlements = _TestSettlements();
     services.registerSingleton<FinanceServices>(
       FinanceServices(
         _UnusedTransactions(),
@@ -38,9 +39,10 @@ void main() {
         _UnusedTags(),
         _UnusedEvidence(),
         _UnusedPreferences(),
-        paymentSettlements: _TestSettlements(),
+        paymentSettlements: settlements,
       ),
     );
+    return settlements;
   }
 
   for (final width in [390.0, 1400.0]) {
@@ -196,6 +198,62 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  for (final width in [390.0, 1400.0]) {
+    testWidgets('settlement form accepts typing and Save at $width', (
+      tester,
+    ) async {
+      tester.view.physicalSize = Size(width, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final settlements = registerServices([
+        PaymentSource(
+          id: PaymentSourceId('visa'),
+          name: 'Visa',
+          type: PaymentSourceType.card,
+          currency: 'USD',
+        ),
+      ]);
+
+      await tester.pumpWidget(app());
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('payment-settlements-add')),
+      );
+      await tester.pumpAndSettle();
+
+      // The form is a real page, not a modal barrier swallowing touches.
+      expect(
+        find.byKey(const ValueKey('payment-settlement-editor-page')),
+        findsOneWidget,
+      );
+      expect(find.byType(BottomSheet), findsNothing);
+      final amount = find.widgetWithText(TextFormField, 'Amount');
+      expect(amount, findsOneWidget);
+      await tester.enterText(amount, '42.50');
+      await tester.pump();
+      expect(
+        tester.widget<TextFormField>(amount).controller!.text,
+        '42.50',
+      );
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      expect(settlements.values, hasLength(1));
+      expect(
+        settlements.values.single.payment.amount,
+        DecimalValue.parse('42.50'),
+      );
+      expect(settlements.values.single.paymentSourceId.value, 'visa');
+      expect(
+        find.byKey(const ValueKey('payment-settlement-editor-page')),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('settlement Add uses the app route for credit-card creation', (
     tester,
