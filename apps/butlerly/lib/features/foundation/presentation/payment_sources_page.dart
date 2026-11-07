@@ -203,15 +203,18 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
         ? typeLabelsResult.value
         : const <String, String>{};
     String? sourceError;
-    final saved = await showButlerlyBottomSheet<bool>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => ButlerlySheet(
-          title: Text(
-            context.l10n.text(
-              existing == null ? 'addPaymentSource' : 'editPaymentSource',
-            ),
-          ),
+    // Settlement prerequisite card entry uses a regular route on devices,
+    // keeping all fields and Save reachable without a nested modal barrier.
+    final useEditorPage = widget.fromPaymentSettlement && !_isDesktop(context);
+    final WidgetBuilder editorBuilder = (editorContext) => StatefulBuilder(
+      builder: (context, setDialogState) => ButlerlySheet(
+          title: useEditorPage
+              ? null
+              : Text(
+                  context.l10n.text(
+                    existing == null ? 'addPaymentSource' : 'editPaymentSource',
+                  ),
+                ),
           content: ButlerlyCard(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -427,6 +430,36 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
         ),
       ),
     );
+    final saved = useEditorPage
+        ? await Navigator.of(context).push<bool>(
+            MaterialPageRoute(
+              builder: (routeContext) => Scaffold(
+                key: const ValueKey('settlement-card-source-editor-page'),
+                appBar: AppBar(
+                  title: Text(routeContext.l10n.text('addPaymentSource')),
+                ),
+                body: SafeArea(
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        maxWidth: ButlerlySize.readableWidth,
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(
+                          ButlerlySpacing.standard,
+                        ),
+                        child: editorBuilder(routeContext),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          )
+        : await showButlerlyBottomSheet<bool>(
+            context: context,
+            builder: editorBuilder,
+          );
     if (saved == true) {
       if (widget.fromPaymentSettlement &&
           existing == null &&
