@@ -544,6 +544,7 @@ class ButlerlyCompactSelector extends StatelessWidget {
     this.semanticLabel,
     this.buttonKey,
     this.alignVisualEnd = false,
+    this.centerVisual = false,
     this.denseSurface = false,
     this.transparent = false,
     super.key,
@@ -554,6 +555,9 @@ class ButlerlyCompactSelector extends StatelessWidget {
   final String? semanticLabel;
   final Key? buttonKey;
   final bool alignVisualEnd;
+  /// Vertically centers the painted selector within the existing 44px target.
+  /// Used by the device Home header to align with its brand and Help circle.
+  final bool centerVisual;
   final bool denseSurface;
   final bool transparent;
 
@@ -585,9 +589,13 @@ class ButlerlyCompactSelector extends StatelessWidget {
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
         child: SizedBox(
-          height: alignVisualEnd ? ButlerlySize.minimumTarget : null,
+          height: alignVisualEnd || centerVisual
+              ? ButlerlySize.minimumTarget
+              : null,
           child: Align(
-            alignment: alignVisualEnd
+            alignment: centerVisual
+                ? AlignmentDirectional.centerEnd
+                : alignVisualEnd
                 ? AlignmentDirectional.topEnd
                 : Alignment.topCenter,
             child: Ink(
