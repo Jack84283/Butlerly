@@ -81,17 +81,29 @@ abstract final class ButlerlyToast {
               ),
             ),
             if (status == _ToastStatus.error) ...[
+              // The app-wide TextButton/IconButton themes can supply a white
+              // background. Explicitly pair the error actions' white surface
+              // with dark labels/icons instead of white-on-white controls.
               TextButton(
                 key: const ValueKey('butlerly-toast-details'),
                 onPressed: onDetails,
-                style: TextButton.styleFrom(foregroundColor: foreground),
+                style: TextButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFF202020),
+                  side: BorderSide.none,
+                ),
                 child: Text(detailsLabel!),
               ),
               IconButton(
                 key: const ValueKey('butlerly-toast-close'),
                 onPressed: messenger.hideCurrentSnackBar,
                 tooltip: closeLabel,
-                icon: Icon(Icons.close_rounded, color: foreground),
+                icon: const Icon(Icons.close_rounded),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFF202020),
+                  side: BorderSide.none,
+                ),
               ),
             ],
           ],
