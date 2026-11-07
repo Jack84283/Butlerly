@@ -7,6 +7,7 @@ import 'package:butlerly/core/data/backup_publication_recovery_state.dart';
 import 'package:butlerly/core/data/restore_recovery_state.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/evidence_deletion_recovery_state.dart';
+import 'package:butlerly/design_system/components/butlerly_context_help.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/features/foundation/presentation/evidence_deletion_recovery_required_page.dart';
@@ -95,9 +96,12 @@ class ButlerlyApp extends ConsumerWidget {
                   listenable: evidenceDeletionRecoveryState,
                   builder: (context, _) =>
                       evidenceDeletionRecoveryState.isRecoveryRequired
-                      ? EvidenceDeletionRecoveryRequiredPage(
-                          resetRecovery: () =>
-                              services<WorkspaceDataService>().eraseAll(),
+                      ? ButlerlyRouterlessRecoveryHost(
+                          key: const ValueKey('evidence-deletion-recovery-host'),
+                          child: EvidenceDeletionRecoveryRequiredPage(
+                            resetRecovery: () =>
+                                services<WorkspaceDataService>().eraseAll(),
+                          ),
                         )
                       : normalContent(),
                 );
@@ -110,7 +114,10 @@ class ButlerlyApp extends ConsumerWidget {
                 listenable: portableRecoveryState,
                 builder: (context, _) {
                   if (portableRecoveryState.isRecoveryRequired) {
-                    return const PortableBackupRecoveryRequiredPage();
+                    return const ButlerlyRouterlessRecoveryHost(
+                      key: ValueKey('portable-backup-recovery-host'),
+                      child: PortableBackupRecoveryRequiredPage(),
+                    );
                   }
                   return contentWithEvidenceDeletionRecovery();
                 },
@@ -121,7 +128,10 @@ class ButlerlyApp extends ConsumerWidget {
             return ListenableBuilder(
               listenable: recoveryState,
               builder: (context, _) => recoveryState.isRecoveryRequired
-                  ? const RestoreRecoveryRequiredPage()
+                  ? const ButlerlyRouterlessRecoveryHost(
+                      key: ValueKey('restore-recovery-host'),
+                      child: RestoreRecoveryRequiredPage(),
+                    )
                   : contentWithPortableRecovery(),
             );
           },
