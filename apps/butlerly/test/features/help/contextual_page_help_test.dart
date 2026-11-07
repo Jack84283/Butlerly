@@ -144,6 +144,46 @@ void main() {
     });
   }
 
+  testWidgets('setup or recovery can read Help without a router', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Overlay(
+          initialEntries: [
+            OverlayEntry(
+              builder: (context) => Scaffold(
+                appBar: AppBar(
+                  actions: const [
+                    ButlerlyContextHelpButton(articleId: 'ch-19'),
+                  ],
+                ),
+                body: const Text('Safe recovery screen'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('page-context-help')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('page-context-help')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('context-help-offline-reader')),
+      findsOneWidget,
+    );
+    expect(find.text(catalog.articleById('ch-19')!.title), findsWidgets);
+    await tester.tap(find.byKey(const ValueKey('context-help-close')));
+    await tester.pumpAndSettle();
+    expect(find.text('Safe recovery screen'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('context-help-offline-reader')),
+      findsNothing,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('unknown direct chapter falls back to Help browsing', (
     tester,
   ) async {

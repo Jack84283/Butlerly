@@ -1,5 +1,6 @@
 import 'package:butlerly/features/help/data/help_catalog.dart';
 import 'package:butlerly/features/help/presentation/help_copy.dart';
+import 'package:butlerly/features/help/presentation/help_guide_section.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -120,11 +121,14 @@ void _openStandaloneHelp(BuildContext context, String articleId) {
                 key: const ValueKey('context-help-offline-reader'),
                 padding: const EdgeInsets.all(16),
                 children: [
-                  Text(article.title, style: Theme.of(context).textTheme.titleLarge),
+                  Text(
+                    article.title,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
                   const SizedBox(height: 16),
                   for (final paragraph in article.body.split(RegExp(r'\n\s*\n')))
                     if (paragraph.trim().isNotEmpty) ...[
-                      SelectableText(paragraph.trim()),
+                      helpGuideSection(context, paragraph),
                       const SizedBox(height: 12),
                     ],
                 ],
