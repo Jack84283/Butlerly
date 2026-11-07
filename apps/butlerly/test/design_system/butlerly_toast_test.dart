@@ -86,8 +86,10 @@ void main() {
     expect(find.text('Backup could not be verified'), findsNothing);
   });
 
-  testWidgets('error action labels and close icons contrast with white buttons '
-      'in both app themes', (tester) async {
+  testWidgets(
+    'error action labels and close icons contrast with white buttons '
+    'in both app themes',
+    (tester) async {
     for (final theme in [AppTheme.light, AppTheme.dark]) {
       late BuildContext toastContext;
       await tester.pumpWidget(
@@ -142,6 +144,6 @@ void main() {
       expect(tester.takeException(), isNull);
       await tester.tap(find.byKey(const ValueKey('butlerly-toast-close')));
       await tester.pumpAndSettle();
-    }
-  });
+    },
+  );
 }
