@@ -769,7 +769,9 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    final repository = _PagedSummarySettlements();
+    final repository = _PagedSummarySettlements()
+      ..declaredTotalCount = 41
+      ..snapshotToken = '41:original';
     final now = DateTime.utc(2026, 11, 8);
     repository.values.add(
       PaymentSettlement(
@@ -864,21 +866,50 @@ void main() {
     expect(find.text('Progressive purchase'), findsOneWidget);
     expect(repository.summaryCalls, 1);
 
+    // A concurrent import changes the database snapshot *before* the old
+    // summary has completed. Changing pages must schedule a new summary.
+    repository.snapshotToken = '41:changed';
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('settlement-detail-transaction-next')),
+      160,
+      scrollable: detailScroll,
+    );
+    await tester.tap(
+      find.byKey(const ValueKey('settlement-detail-transaction-next')),
+    );
+    await tester.pumpAndSettle();
+    expect(repository.summaryCalls, 2);
+
+    // Completing the obsolete summary must not overwrite the newer page.
     repository.completeSummary(
       PaymentSettlementTransactionSummary(
-        totalCount: 1,
+        totalCount: 41,
         recordedTotal: Money(
           amount: DecimalValue.parse('5.00'),
           currency: CurrencyCode('USD'),
         ),
-        snapshotToken: '1:fixed',
+        snapshotToken: '41:original',
       ),
     );
     await tester.pumpAndSettle();
     await tester.drag(detailScroll, const Offset(0, 1000));
     await tester.pumpAndSettle();
+    expect(find.text('Loading…'), findsAtLeastNWidgets(1));
+
+    repository.completeSummary(
+      PaymentSettlementTransactionSummary(
+        totalCount: 41,
+        recordedTotal: Money(
+          amount: DecimalValue.parse('5.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        snapshotToken: '41:changed',
+      ),
+      index: 1,
+    );
+    await tester.pumpAndSettle();
     expect(find.text('Loading…'), findsNothing);
-    expect(repository.summaryCalls, 1);
+    expect(repository.summaryCalls, 2);
     expect(tester.takeException(), isNull);
   });
 
