@@ -650,12 +650,22 @@ class _PaymentSettlementDetailPageState
     extends State<PaymentSettlementDetailPage> {
   static const _detailDeadline = Duration(seconds: 20);
   static const _transactionPageSize = 20;
-  late Future<PaymentSettlementDetailDto> _detail = _load().timeout(
-    _detailDeadline,
-  );
+  Future<PaymentSettlementDetailDto>? _detail;
   TransactionMasterData _masterData = const TransactionMasterData();
   String? _loadedLanguageCode;
+  bool _masterDataReady = false;
+  int _detailGeneration = 0;
   int _transactionPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Opening detail must paint a navigable loading shell *before* SQLite
+    // starts work. The previous State field initializer read immediately.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadPage(0);
+    });
+  }
 
   @override
   void didChangeDependencies() {
@@ -663,43 +673,37 @@ class _PaymentSettlementDetailPageState
     final languageCode = Localizations.localeOf(context).languageCode;
     if (_loadedLanguageCode == languageCode) return;
     _loadedLanguageCode = languageCode;
-    // Wait until transaction detail is ready before loading optional labels.
-    // Concurrent metadata queries contend for the same local SQLite
-    // connection on iOS and must not delay the actual detail navigation.
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted || _loadedLanguageCode != languageCode) return;
-      try {
-        await _detail;
-      } catch (_) {
-        return;
-      }
-      if (!mounted || _loadedLanguageCode != languageCode) return;
-      try {
-        final value = await TransactionMasterData.load(
-          widget.finance,
-          languageCode: languageCode,
-          includePaymentSources: false,
-        ).timeout(_detailDeadline);
-        if (!mounted || _loadedLanguageCode != languageCode) return;
-        setState(() => _masterData = value);
-      } catch (_) {
-        // Optional labels never block settlement detail or Back.
-      }
-    });
+    _masterDataReady = false;
+    final current = _detail;
+    if (current != null) {
+      _loadOptionalLabels(current, languageCode, _detailGeneration);
+    }
   }
 
-  Future<PaymentSettlementDetailDto> _load() async {
+  Future<PaymentSettlementDetailDto> _load({int page = 0}) async {
     final watch = Stopwatch()..start();
     assert(() {
       debugPrint('[PaymentSettlements] detail read started');
       return true;
     }());
     try {
-      final getDetail = widget.finance.getPaymentSettlementDetail;
-      if (getDetail == null) {
-        throw StateError('Payment settlement detail is unavailable.');
-      }
-      final result = await getDetail(widget.settlementId);
+      final desktop =
+          effectiveButlerlyLayoutMode(
+            context,
+            MediaQuery.sizeOf(context).width,
+          ) ==
+          ButlerlyLayoutMode.wide;
+      final usePage = !desktop || widget.embedded;
+      final result = usePage &&
+              widget.finance.getPaymentSettlementDetailPage != null
+          ? await widget.finance.getPaymentSettlementDetailPage!(
+              widget.settlementId,
+              offset: page * _transactionPageSize,
+              limit: _transactionPageSize,
+            )
+          : await widget.finance.getPaymentSettlementDetail?.call(
+              widget.settlementId,
+            );
       if (result case ApplicationSuccess<PaymentSettlementDetailDto>(
         value: final detail,
       )) {
@@ -707,7 +711,7 @@ class _PaymentSettlementDetailPageState
           debugPrint(
             '[PaymentSettlements] detail ready after '
             '${watch.elapsedMilliseconds} ms; '
-            '${detail.transactions.length} matched transactions',
+            '${detail.transactionCount} matching transactions',
           );
           return true;
         }());
@@ -728,33 +732,56 @@ class _PaymentSettlementDetailPageState
     }
   }
 
-  Future<void> _refresh() async {
-    final detail = _load().timeout(_detailDeadline);
-    setState(() {
-      _detail = detail;
-      _transactionPage = 0;
-    });
+  Future<void> _loadOptionalLabels(
+    Future<PaymentSettlementDetailDto> detail,
+    String languageCode,
+    int generation,
+  ) async {
     try {
       await detail;
     } catch (_) {
-      // FutureBuilder shows an actionable retry state.
       return;
     }
-    if (!mounted) return;
-    final languageCode =
-        _loadedLanguageCode ?? Localizations.localeOf(context).languageCode;
+    if (!mounted ||
+        generation != _detailGeneration ||
+        _loadedLanguageCode != languageCode ||
+        _masterDataReady) {
+      return;
+    }
     try {
-      final refreshedMasterData = await TransactionMasterData.load(
+      final value = await TransactionMasterData.load(
         widget.finance,
         languageCode: languageCode,
         includePaymentSources: false,
       ).timeout(_detailDeadline);
-      if (!mounted || _loadedLanguageCode != languageCode) return;
-      setState(() => _masterData = refreshedMasterData);
+      if (!mounted ||
+          generation != _detailGeneration ||
+          _loadedLanguageCode != languageCode) {
+        return;
+      }
+      setState(() {
+        _masterData = value;
+        _masterDataReady = true;
+      });
     } catch (_) {
-      // Displaying details does not require optional master-data labels.
+      // Optional labels must not block detail, pagination, or Back.
     }
   }
+
+  Future<void> _loadPage(int page) async {
+    if (!mounted || page < 0) return;
+    final generation = ++_detailGeneration;
+    final next = _load(page: page).timeout(_detailDeadline);
+    setState(() {
+      _detail = next;
+      _transactionPage = page;
+    });
+    final languageCode =
+        _loadedLanguageCode ?? Localizations.localeOf(context).languageCode;
+    await _loadOptionalLabels(next, languageCode, generation);
+  }
+
+  Future<void> _refresh() => _loadPage(0);
 
   Future<void> _openTransaction(TransactionDto transaction) async {
     final changed = await Navigator.of(context).push<bool>(
@@ -976,7 +1003,7 @@ class _PaymentSettlementDetailPageState
         final detail = snapshot.requireData;
         final settlement = detail.settlement;
         final transactionPageCount =
-            (detail.transactions.length + _transactionPageSize - 1) ~/
+            (detail.transactionCount + _transactionPageSize - 1) ~/
             _transactionPageSize;
         final currentTransactionPage =
             transactionPageCount == 0 || _transactionPage < transactionPageCount
@@ -984,8 +1011,8 @@ class _PaymentSettlementDetailPageState
             : transactionPageCount - 1;
         final transactionStart = currentTransactionPage * _transactionPageSize;
         final transactionEnd =
-            transactionStart + _transactionPageSize > detail.transactions.length
-            ? detail.transactions.length
+            transactionStart + _transactionPageSize > detail.transactionCount
+            ? detail.transactionCount
             : transactionStart + _transactionPageSize;
         final sourceName =
             sourceNames[settlement.paymentSourceId] ??
@@ -1021,7 +1048,7 @@ class _PaymentSettlementDetailPageState
                   {'count': '${detail.transactionCount}'},
                 ),
               ),
-              if (detail.transactions.isEmpty)
+              if (detail.transactionCount == 0)
                 ButlerlyEmptyState(
                   icon: Icons.receipt_long_outlined,
                   title: context.l10n.text('noTransactions'),
@@ -1043,8 +1070,9 @@ class _PaymentSettlementDetailPageState
                     children: [
                       // Never construct hundreds of transaction widgets in
                       // a single mobile/embedded detail frame.
-                      for (final transaction in detail.transactions
-                          .skip(transactionStart)
+                      for (final transaction in (detail.paged
+                              ? detail.transactions
+                              : detail.transactions.skip(transactionStart))
                           .take(_transactionPageSize))
                         TransactionRow(
                           transaction: transaction,
@@ -1065,7 +1093,7 @@ class _PaymentSettlementDetailPageState
                   children: [
                     Text(
                       '${transactionStart + 1}–$transactionEnd / '
-                      '${detail.transactions.length}',
+                      '${detail.transactionCount}',
                       key: const ValueKey('settlement-detail-transaction-range'),
                     ),
                     IconButton(
@@ -1075,9 +1103,7 @@ class _PaymentSettlementDetailPageState
                       ).previousPageTooltip,
                       onPressed: currentTransactionPage == 0
                           ? null
-                          : () => setState(
-                              () => _transactionPage = currentTransactionPage - 1,
-                            ),
+                          : () => _loadPage(currentTransactionPage - 1),
                       icon: const Icon(Icons.chevron_left_rounded),
                     ),
                     IconButton(
@@ -1088,9 +1114,7 @@ class _PaymentSettlementDetailPageState
                       onPressed: currentTransactionPage >=
                               transactionPageCount - 1
                           ? null
-                          : () => setState(
-                              () => _transactionPage = currentTransactionPage + 1,
-                            ),
+                          : () => _loadPage(currentTransactionPage + 1),
                       icon: const Icon(Icons.chevron_right_rounded),
                     ),
                   ],
