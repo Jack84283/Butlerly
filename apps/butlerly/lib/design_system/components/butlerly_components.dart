@@ -572,6 +572,7 @@ class ButlerlyCompactSelector extends StatelessWidget {
   final String? semanticLabel;
   final Key? buttonKey;
   final bool alignVisualEnd;
+
   /// Vertically centers the painted selector within the existing 44px target.
   /// Used by the device Home header to align with its brand and Help circle.
   final bool centerVisual;
