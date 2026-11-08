@@ -1420,6 +1420,8 @@ void main() {
           });
         }
       });
+      // Retain the imported workspace across a real SQLite close/reopen.
+      await harness.restart();
 
       _setIntegrationView(tester, const Size(390, 844));
       addTearDown(tester.view.resetPhysicalSize);
