@@ -761,6 +761,110 @@ void main() {
     );
   }
 
+  testWidgets('device detail paints while exact comparison remains pending', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final repository = _PagedSummarySettlements();
+    final now = DateTime.utc(2026, 11, 8);
+    repository.values.add(
+      PaymentSettlement(
+        id: PaymentSettlementId('progressive-detail'),
+        paymentSourceId: PaymentSourceId('legacy-import'),
+        payment: Money(
+          amount: DecimalValue.parse('5.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        paymentDate: '2026-10-05',
+        periodStart: '2026-09-01',
+        periodEnd: '2026-09-30',
+        status: PaymentSettlementStatus.open,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    repository.transactionResults.add(
+      Transaction(
+        id: TransactionId('progressive-purchase'),
+        timing: KnownTransactionTime(DateTime.utc(2026, 9, 15)),
+        money: Money(
+          amount: DecimalValue.parse('5.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        direction: TransactionDirection.expense,
+        sourceType: TransactionSourceType.import,
+        paymentSourceId: PaymentSourceId('legacy-import'),
+        description: 'Progressive purchase',
+        transactionDate: '2026-09-15',
+        provenance: [
+          Provenance(
+            id: ProvenanceId('progressive-import'),
+            sourceType: ProvenanceSourceType.import,
+            capturedAt: now,
+            originalRepresentation: 'statement row',
+          ),
+        ],
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    services.registerSingleton<FinanceServices>(
+      FinanceServices(
+        _UnusedTransactions(),
+        _TestSources([]),
+        _UnusedMerchants(),
+        _UnusedCategories(),
+        _UnusedTags(),
+        _UnusedEvidence(),
+        _UnusedPreferences(),
+        paymentSettlements: repository,
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: Scaffold(
+          body: PaymentSettlementDetailPage(
+            finance: services<FinanceServices>(),
+            settlementId: 'progressive-detail',
+            sourceNames: const {},
+            sources: const [],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Progressive purchase'), findsOneWidget);
+    expect(find.text('Loading…'), findsAtLeastNWidgets(1));
+    expect(repository.summaryCalls, 1);
+
+    repository.completeSummary(
+      PaymentSettlementTransactionSummary(
+        totalCount: 1,
+        recordedTotal: Money(
+          amount: DecimalValue.parse('5.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        snapshotToken: '1:fixed',
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Loading…'), findsNothing);
+    expect(repository.summaryCalls, 1);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('device Back remains usable while detail SQLite read stalls', (
     tester,
   ) async {
@@ -1724,6 +1828,43 @@ class _TestSettlements extends Fake implements PaymentSettlementRepository {
     DateTime? occurredAtFrom,
     DateTime? occurredAtToExclusive,
   }) async => transactionResults;
+}
+
+class _PagedSummarySettlements extends _TestSettlements
+    implements
+        PaginatedPaymentSettlementTransactionRepository,
+        PaymentSettlementSummaryRepository {
+  final _summary = Completer<PaymentSettlementTransactionSummary>();
+  int summaryCalls = 0;
+
+  @override
+  Future<PaymentSettlementTransactionPage> listTransactionsPage(
+    PaymentSettlement settlement, {
+    DateTime? occurredAtFrom,
+    DateTime? occurredAtToExclusive,
+    required int offset,
+    required int limit,
+  }) async => PaymentSettlementTransactionPage(
+    rows: transactionResults.skip(offset).take(limit).toList(),
+    totalCount: transactionResults.length,
+    recordedTotal: null,
+    summaryPending: true,
+    snapshotToken: '1:fixed',
+  );
+
+  @override
+  Future<PaymentSettlementTransactionSummary> summarizeTransactions(
+    PaymentSettlement settlement, {
+    DateTime? occurredAtFrom,
+    DateTime? occurredAtToExclusive,
+  }) {
+    summaryCalls++;
+    return _summary.future;
+  }
+
+  void completeSummary(PaymentSettlementTransactionSummary value) {
+    _summary.complete(value);
+  }
 }
 
 class _UnusedTransactions extends Fake implements TransactionRepository {}
