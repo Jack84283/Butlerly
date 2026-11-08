@@ -52,14 +52,26 @@ final class PaymentSettlementDetailDto {
   const PaymentSettlementDetailDto({
     required this.settlement,
     required this.transactions,
+    this.totalCount,
+    this.paged = false,
+    this.completeRecordedTotal,
   });
 
   final PaymentSettlementDto settlement;
   final List<TransactionDto> transactions;
 
-  int get transactionCount => transactions.length;
+  /// Null for the legacy unpaged constructor; pages report the full count.
+  final int? totalCount;
+  final bool paged;
+
+  /// Exact total over all matched rows, not merely the visible page.
+  /// A null value means currencies/adjustments prevent comparison.
+  final Money? completeRecordedTotal;
+
+  int get transactionCount => totalCount ?? transactions.length;
 
   Money? get recordedTransactionTotal {
+    if (paged) return completeRecordedTotal;
     final currency = settlement.payment.currency;
     var total = DecimalValue.fromParts(coefficient: BigInt.zero, scale: 0);
     for (final transaction in transactions) {
