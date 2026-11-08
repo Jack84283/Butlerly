@@ -250,7 +250,9 @@ void main() {
     expect(second.rows.first.id.value, 'page-020');
     expect(third.rows.last.id.value, 'page-052');
     expect(
-      [...first.rows, ...second.rows, ...third.rows].map((s) => s.id.value).toSet(),
+      [...first.rows, ...second.rows, ...third.rows]
+          .map((settlement) => settlement.id.value)
+          .toSet(),
       hasLength(53),
     );
     expect(await settlements.listAll(), hasLength(53));
@@ -374,8 +376,9 @@ void main() {
     expect(uncomparable.recordedTotal, isNull);
   });
 
-  test('bounded queries preserve provenance, tags, review and normalized values', (
-    ) async {
+  test(
+    'bounded queries preserve provenance, tags, review and normalized values',
+    () async {
     final at = DateTime.utc(2026, 9, 2, 12);
     final id = TransactionId('rich-paged');
     final money = _money('2.50');
@@ -416,7 +419,7 @@ void main() {
         updatedAt: at,
       ),
     );
-    final direct = await transactions.findById(id);
+    final direct = (await transactions.findById(id))!;
     final paged = await transactions.query(
       TransactionRepositoryQuery(
         from: DateTime.utc(2026, 9, 1),
@@ -427,13 +430,19 @@ void main() {
       ),
     );
     final read = paged.singleWhere((t) => t.id == id);
-    expect(read.provenance.map((p) => p.id.value).toList(),
-        direct!.provenance.map((p) => p.id.value).toList());
+    expect(
+      read.provenance.map((p) => p.id.value).toList(),
+      direct.provenance.map((p) => p.id.value).toList(),
+    );
     expect(read.tagIds, direct.tagIds);
-    expect(read.reviewIssues.map((r) => r.id.value).toList(),
-        direct.reviewIssues.map((r) => r.id.value).toList());
-    expect(read.normalizedMoney.map((n) => n.converted).toList(),
-        direct.normalizedMoney.map((n) => n.converted).toList());
+    expect(
+      read.reviewIssues.map((review) => review.id.value).toList(),
+      direct.reviewIssues.map((review) => review.id.value).toList(),
+    );
+    expect(
+      read.normalizedMoney.map((money) => money.converted).toList(),
+      direct.normalizedMoney.map((money) => money.converted).toList(),
+    );
   });
 
   test('does not create a persisted settlement membership table', () async {
