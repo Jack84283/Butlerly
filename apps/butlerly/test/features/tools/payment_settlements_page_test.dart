@@ -591,12 +591,19 @@ void main() {
     settlements.blockedList = Completer<List<PaymentSettlement>>().future;
 
     await tester.pumpWidget(app());
+    // Even with a stalled read, the page header stays visible instead of
+    // replacing the whole route with an unlabelled spinner.
+    expect(find.byType(ButlerlyPage), findsOneWidget);
+    expect(find.text('Payment settlements'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.text('Loading…'), findsOneWidget);
     // Advance the widget-test clock beyond the bounded load deadline.
     await tester.pump(const Duration(seconds: 21));
     await tester.pump();
 
     expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.byType(ButlerlyPage), findsOneWidget);
+    expect(find.text('Payment settlements'), findsAtLeastNWidgets(1));
     expect(find.text('Try again'), findsAtLeastNWidgets(1));
     expect(tester.takeException(), isNull);
   });
