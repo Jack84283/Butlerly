@@ -32,12 +32,15 @@ void main() {
     home: Scaffold(body: PaymentSettlementsPage()),
   );
 
-  _TestSettlements registerServices(List<PaymentSource> sources) {
+  _TestSettlements registerServices(
+    List<PaymentSource> sources, {
+    _TestSources? sourceRepository,
+  }) {
     final settlements = _TestSettlements();
     services.registerSingleton<FinanceServices>(
       FinanceServices(
         _UnusedTransactions(),
-        _TestSources(sources),
+        sourceRepository ?? _TestSources(sources),
         _UnusedMerchants(),
         _UnusedCategories(),
         _UnusedTags(),
@@ -591,6 +594,36 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('desktop paints before reads and never overlaps SQLite reads', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final sources = _TestSources([]);
+    final settlements = registerServices([], sourceRepository: sources);
+    final deferred = Completer<List<PaymentSettlement>>();
+    settlements.blockedList = deferred.future;
+
+    await tester.pumpWidget(app());
+    // The route can paint its title even while SQLite has not answered.
+    expect(find.text('Payment settlements'), findsOneWidget);
+    expect(find.text('Loading…'), findsOneWidget);
+    // The source query must not race a still-in-flight settlement query.
+    expect(sources.listCalls, 0);
+
+    deferred.complete([]);
+    await tester.pumpAndSettle();
+    expect(sources.listCalls, 1);
+    expect(
+      find.byKey(const ValueKey('desktop-settlement-payment-sources')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('a stalled initial read resolves to retry instead of spinning', (
     tester,
   ) async {
@@ -684,9 +717,13 @@ class _TestSources extends Fake implements PaymentSourceRepository {
   _TestSources(this.sources);
 
   final List<PaymentSource> sources;
+  int listCalls = 0;
 
   @override
-  Future<List<PaymentSource>> listAll() async => sources;
+  Future<List<PaymentSource>> listAll() async {
+    listCalls++;
+    return sources;
+  }
 
   @override
   Future<PaymentSource?> findById(PaymentSourceId id) async =>
