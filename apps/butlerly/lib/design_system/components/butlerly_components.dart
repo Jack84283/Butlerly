@@ -443,10 +443,8 @@ class ButlerlyHeaderAddButton extends StatelessWidget {
       onPressed: onPressed,
       icon: const Icon(Icons.add),
       style: IconButton.styleFrom(
-        backgroundColor: context.colors.interactive,
-        foregroundColor: context.colors.interactive.computeLuminance() > 0.5
-            ? context.colors.background
-            : Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         shape: const CircleBorder(),
         iconSize: ButlerlySize.standardIcon,
         padding: EdgeInsets.zero,

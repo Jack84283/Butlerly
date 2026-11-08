@@ -86,6 +86,28 @@ void main() {
             isA<CircleBorder>(),
           );
 
+          // The Add and Help circles must have the exact same theme colors
+          // on device/desktop and in light/dark mode.
+          final scheme = Theme.of(tester.element(add)).colorScheme;
+          final helpDecoration = tester.widget<DecoratedBox>(
+            find.descendant(of: help, matching: find.byType(DecoratedBox)),
+          );
+          final helpBackground = (helpDecoration.decoration as BoxDecoration)
+              .color;
+          final helpIcon = tester.widget<Icon>(
+            find.descendant(
+              of: help,
+              matching: find.byIcon(Icons.question_mark_rounded),
+            ),
+          );
+          expect(helpBackground, scheme.primary);
+          expect(addButton.style?.backgroundColor?.resolve({}), helpBackground);
+          expect(
+            addButton.style?.foregroundColor?.resolve({}),
+            scheme.onPrimary,
+          );
+          expect(helpIcon.color, scheme.onPrimary);
+
           final addRect = tester.getRect(add);
           final helpRect = tester.getRect(help);
           expect(addRect.center.dy, closeTo(helpRect.center.dy, 1.1));
