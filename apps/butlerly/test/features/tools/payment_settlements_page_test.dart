@@ -4,6 +4,7 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/features/foundation/presentation/payment_sources_page.dart';
 import 'package:butlerly/features/tools/presentation/payment_settlements_page.dart';
+import 'package:butlerly/features/tools/presentation/tools_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
@@ -447,6 +448,123 @@ void main() {
     await tester.enterText(amount, '50.00');
     await tester.pump();
     expect(tester.widget<TextFormField>(amount).controller!.text, '50.00');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('desktop Tools opens real settlements with bounded rendering', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final sources = List.generate(
+      30,
+      (index) => PaymentSource(
+        id: PaymentSourceId('card-$index'),
+        name: 'Card $index',
+        type: PaymentSourceType.card,
+        lastFour: index.toString().padLeft(4, '0'),
+      ),
+    );
+    final settlements = registerServices(sources);
+    final now = DateTime.utc(2026, 11, 7);
+    settlements.values.addAll(
+      List.generate(
+        105,
+        (index) => PaymentSettlement(
+          id: PaymentSettlementId('settlement-$index'),
+          paymentSourceId: PaymentSourceId('card-${index % 30}'),
+          payment: Money(
+            amount: DecimalValue.parse('50.00'),
+            currency: CurrencyCode('USD'),
+          ),
+          paymentDate: '2026-10-05',
+          periodStart: '2026-09-01',
+          periodEnd: '2026-09-30',
+          status: PaymentSettlementStatus.open,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      ),
+    );
+
+    final router = GoRouter(
+      initialLocation: '/tools',
+      routes: [
+        GoRoute(path: '/tools', builder: (_, _) => const ToolsPage()),
+        GoRoute(
+          path: '/payment-settlements',
+          builder: (_, _) =>
+              const Scaffold(body: PaymentSettlementsPage()),
+        ),
+        GoRoute(
+          path: '/help',
+          builder: (_, _) => const Scaffold(body: Text('Help')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      MaterialApp.router(
+        routerConfig: router,
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Payment settlements'), findsOneWidget);
+    await tester.tap(find.text('Payment settlements'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PaymentSettlementsPage), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('desktop-settlement-payment-sources')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('desktop-payment-settlements-table')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('settlement-eligible-source-card-0')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('settlement-more-active-sources')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('settlement-eligible-source-card-29')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('desktop-payment-settlement-settlement-0')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('desktop-payment-settlement-settlement-20')),
+      findsNothing,
+    );
+    final next = find.byKey(const ValueKey('settlement-page-next'));
+    expect(next, findsOneWidget);
+    await tester.ensureVisible(next);
+    await tester.tap(next);
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('desktop-payment-settlement-settlement-0')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('desktop-payment-settlement-settlement-20')),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 
