@@ -141,13 +141,21 @@ class HelpCatalog {
   // page navigations so opening Help doesn't restart four asset reads.
   // Explicit custom bundles remain uncached for isolated tests.
   static Future<HelpCatalog>? _bundledCatalog;
+  static HelpCatalog? _bundledCatalogValue;
+
+  /// Loaded, immutable offline Help content, when available in memory.
+  static HelpCatalog? get cachedBundle => _bundledCatalogValue;
 
   static Future<HelpCatalog> load({AssetBundle? bundle}) {
     if (bundle != null) return _readFrom(bundle);
     return _bundledCatalog ??= _readFrom(rootBundle).then(
-      (catalog) => catalog,
+      (catalog) {
+        _bundledCatalogValue = catalog;
+        return catalog;
+      },
       onError: (Object error, StackTrace stack) {
         _bundledCatalog = null;
+        _bundledCatalogValue = null;
         Error.throwWithStackTrace(error, stack);
       },
     );

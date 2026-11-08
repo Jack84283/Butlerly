@@ -232,6 +232,7 @@ class _StandaloneHelpReader extends StatelessWidget {
           body: SafeArea(
             child: FutureBuilder<HelpCatalog>(
               future: future,
+              initialData: HelpCatalog.cachedBundle,
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return Center(

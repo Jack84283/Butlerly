@@ -89,6 +89,7 @@ class _HelpFaqPageState extends State<HelpFaqPage> {
       type: MaterialType.transparency,
       child: FutureBuilder<HelpCatalog>(
         future: _catalog,
+        initialData: widget.preloadedCatalog ?? HelpCatalog.cachedBundle,
         builder: (context, snapshot) {
           final catalog = snapshot.data;
           // At desktop widths, keep topics, content and article details

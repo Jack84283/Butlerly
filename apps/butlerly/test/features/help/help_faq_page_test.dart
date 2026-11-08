@@ -242,6 +242,9 @@ void main() {
       find.byKey(const ValueKey('help-desktop-item-ch-1')),
       findsOneWidget,
     );
+    // The first displayed chapter need not be ch-1; choose it explicitly.
+    await tester.tap(find.byKey(const ValueKey('help-desktop-item-ch-1')));
+    await tester.pumpAndSettle();
     expect(
       find.byKey(const ValueKey('help-desktop-article-ch-1')),
       findsOneWidget,

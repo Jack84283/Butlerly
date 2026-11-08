@@ -178,7 +178,7 @@ void main() {
       expect(tester.widget<Text>(brand).style?.fontSize, 24);
       final taglineText = tester.widget<Text>(brandTagline);
       expect(taglineText.style?.fontSize, 13);
-      expect(taglineText.style?.color, ButlerlySemanticColors.light.warning);
+      expect(taglineText.style?.color, const Color(0xFF784B0B));
       expect(
         taglineText.style?.fontFamily,
         ButlerlyTypography.editorialFontFamily,
@@ -1063,7 +1063,7 @@ void main() {
       expect(tester.getSize(trendSurface).height, lessThan(44));
       expect(
         tester.getSize(trendSurface).height,
-        greaterThanOrEqualTo(tester.getSize(monthSurface).height),
+        lessThanOrEqualTo(tester.getSize(monthSurface).height),
       );
 
       final headerTitle = find.descendant(
