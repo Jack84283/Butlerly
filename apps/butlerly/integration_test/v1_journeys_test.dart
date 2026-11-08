@@ -1410,6 +1410,8 @@ void main() {
       expect(find.text(source.id.value), findsOneWidget);
       expect(find.byType(BackButton), findsOneWidget);
 
+      await tester.ensureVisible(find.text(source.id.value));
+      await tester.pump();
       await tester.tap(find.text(source.id.value));
       await tester.pump();
       for (var attempt = 0; attempt < 100; attempt++) {
