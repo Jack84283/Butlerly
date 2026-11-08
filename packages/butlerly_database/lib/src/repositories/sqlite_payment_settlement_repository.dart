@@ -209,6 +209,7 @@ final class SqlitePaymentSettlementRepository
     PaymentSettlement settlement, {
     DateTime? occurredAtFrom,
     DateTime? occurredAtToExclusive,
+    PaymentSettlementSummaryCancellation? cancellation,
   }) async {
     final filter = _periodFilter(
       settlement,
@@ -216,6 +217,9 @@ final class SqlitePaymentSettlementRepository
       occurredAtToExclusive: occurredAtToExclusive,
     );
     try {
+      if (cancellation?.isCancelled == true) {
+        throw StateError('Settlement comparison was cancelled');
+      }
       // Never hold a SQLite transaction over the complete settlement history.
       // A 400-row query releases the connection before the next batch, so
       // Next/Back and other work can proceed while comparison is calculated.
@@ -231,6 +235,9 @@ final class SqlitePaymentSettlementRepository
       );
       var canCompare = true;
       while (true) {
+        if (cancellation?.isCancelled == true) {
+          throw StateError('Settlement comparison was cancelled');
+        }
         if (database.openSession != before.session) {
           throw StateError('Settlement database reopened during comparison');
         }
@@ -276,7 +283,13 @@ final class SqlitePaymentSettlementRepository
           await Future<void>.delayed(Duration.zero);
         }
       }
+      if (cancellation?.isCancelled == true) {
+        throw StateError('Settlement comparison was cancelled');
+      }
       final after = await _readSnapshotState(filter);
+      if (cancellation?.isCancelled == true) {
+        throw StateError('Settlement comparison was cancelled');
+      }
       if (before != after ||
           totalCount != after.count ||
           latest != after.latest) {
