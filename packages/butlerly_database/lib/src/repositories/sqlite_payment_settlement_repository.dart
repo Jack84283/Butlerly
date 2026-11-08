@@ -216,12 +216,12 @@ final class SqlitePaymentSettlementRepository
             coefficient: BigInt.parse(row['amount_coefficient']! as String),
             scale: row['amount_scale']! as int,
           ).abs();
-          switch (row['direction'] as String) {
-            case 'expense':
-              sum = sum.add(amount);
-            case 'refund':
-            case 'income':
-              sum = sum.subtract(amount);
+          final direction = row['direction'] as String;
+          if (direction == TransactionDirection.expense.name) {
+            sum = sum.add(amount);
+          } else if (direction == TransactionDirection.refund.name ||
+              direction == TransactionDirection.income.name) {
+            sum = sum.subtract(amount);
           }
         }
         cursor = values.last['id']! as String;
