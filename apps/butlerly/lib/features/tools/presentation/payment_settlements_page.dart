@@ -877,18 +877,23 @@ class _PaymentSettlementDetailPageState
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return Scaffold(
-            appBar: widget.embedded
-                ? AppBar(
-                    title: Text(context.l10n.text('paymentSettlement')),
-                    actions: [_closeEmbedded(context)],
-                  )
-                : null,
+            // The loading state must always offer device Back. Previously
+            // the non-embedded screen had no AppBar while SQLite was busy,
+            // making an in-flight detail read appear to trap navigation.
+            appBar: AppBar(
+              leading: widget.embedded ? null : const BackButton(),
+              title: Text(context.l10n.text('paymentSettlement')),
+              actions: [
+                if (widget.embedded) _closeEmbedded(context),
+              ],
+            ),
             body: const ButlerlyLoadingState(),
           );
         }
         if (snapshot.hasError) {
           return Scaffold(
             appBar: AppBar(
+              leading: widget.embedded ? null : const BackButton(),
               title: Text(context.l10n.text('paymentSettlements')),
               actions: [
                 if (widget.embedded) _closeEmbedded(context),
@@ -924,6 +929,7 @@ class _PaymentSettlementDetailPageState
         return Scaffold(
           body: ButlerlyPage(
             title: context.l10n.text('paymentSettlement'),
+            leading: widget.embedded ? null : const BackButton(),
             fullWidth: desktop,
             onRefresh: _refresh,
             actions: [
