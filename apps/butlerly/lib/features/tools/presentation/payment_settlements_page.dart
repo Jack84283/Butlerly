@@ -1527,23 +1527,26 @@ final class _SettlementDraft {
 }
 
 final class _SettlementListData {
-  const _SettlementListData({required this.settlements, required this.sources});
+  _SettlementListData({required this.settlements, required this.sources});
 
   final List<PaymentSettlementDto> settlements;
   final List<PaymentSource> sources;
 
-  List<PaymentSource> get activeCardSources => sources
-      .where(
-        (source) =>
-            source.status == PaymentSourceStatus.active &&
-            source.type == PaymentSourceType.card,
-      )
-      .toList(growable: false);
+  // Compute each lookup once when the local data is loaded. The desktop
+  // table uses sourceNames for every row; rebuilding it per row used to
+  // produce O(settlements * sources) work on the UI thread.
+  late final List<PaymentSource> activeCardSources = List.unmodifiable(
+    sources.where(
+      (source) =>
+          source.status == PaymentSourceStatus.active &&
+          source.type == PaymentSourceType.card,
+    ),
+  );
 
-  Map<String, String> get sourceNames => {
+  late final Map<String, String> sourceNames = Map.unmodifiable({
     for (final source in sources)
       source.id.value: paymentSourceDisplayLabel(source),
-  };
+  });
 }
 
 enum _SettlementAction { open, reconciled, needsReview, remove }
