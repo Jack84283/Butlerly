@@ -651,17 +651,43 @@ class _PaymentSettlementDetailPageState
   }
 
   Future<PaymentSettlementDetailDto> _load() async {
-    final getDetail = widget.finance.getPaymentSettlementDetail;
-    if (getDetail == null) {
-      throw StateError('Payment settlement detail is unavailable.');
+    final watch = Stopwatch()..start();
+    assert(() {
+      debugPrint('[PaymentSettlements] detail read started');
+      return true;
+    }());
+    try {
+      final getDetail = widget.finance.getPaymentSettlementDetail;
+      if (getDetail == null) {
+        throw StateError('Payment settlement detail is unavailable.');
+      }
+      final result = await getDetail(widget.settlementId);
+      if (result case ApplicationSuccess<PaymentSettlementDetailDto>(
+        value: final detail,
+      )) {
+        assert(() {
+          debugPrint(
+            '[PaymentSettlements] detail ready after '
+            '${watch.elapsedMilliseconds} ms; '
+            '${detail.transactions.length} matched transactions',
+          );
+          return true;
+        }());
+        return detail;
+      }
+      throw StateError('Payment settlement detail could not be loaded.');
+    } catch (error) {
+      assert(() {
+        debugPrint(
+          '[PaymentSettlements] detail failed after '
+          '${watch.elapsedMilliseconds} ms (${error.runtimeType})',
+        );
+        return true;
+      }());
+      rethrow;
+    } finally {
+      watch.stop();
     }
-    final result = await getDetail(widget.settlementId);
-    if (result case ApplicationSuccess<PaymentSettlementDetailDto>(
-      value: final detail,
-    )) {
-      return detail;
-    }
-    throw StateError('Payment settlement detail could not be loaded.');
   }
 
   Future<void> _refresh() async {
