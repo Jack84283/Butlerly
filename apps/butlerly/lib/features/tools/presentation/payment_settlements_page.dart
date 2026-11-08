@@ -306,7 +306,15 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
         ),
       );
     }
-    if (mounted) await _refresh();
+    if (!mounted) return;
+    await _refresh();
+    if (!mounted) return;
+    // Source management was explicitly requested. Re-resolve the legacy
+    // labels afterward, rather than tying every settlement-page entry to it.
+    final history = await _data;
+    if (mounted && history != null) {
+      await _loadSources(history, _loadGeneration);
+    }
   }
 
   Future<void> _createSettlement(_SettlementListData data) async {
