@@ -45,6 +45,9 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
   bool _sourcesLoaded = false;
   bool _sourcesError = false;
   int _loadGeneration = 0;
+  int _devicePage = 0;
+  bool _loadingSourceAction = false;
+  static const int _devicePageSize = 20;
   String? _selectedDesktopSettlementId;
   // A detail route opened before the optional legacy source-label lookup
   // finishes must update without navigating away or requerying the database.
@@ -76,6 +79,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
   void _onWorkspaceRestored() {
     if (!mounted) return;
     _selectedDesktopSettlementId = null;
+    _devicePage = 0;
     _refresh();
   }
 
@@ -124,16 +128,15 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
     setState(() {
       _data = refreshed;
       _displayData = null;
+      _devicePage = 0;
       _sourcesLoaded = false;
       _sourcesError = false;
     });
     try {
-      final settlements = await refreshed;
-      if (!mounted || generation != _loadGeneration) return;
-      // Query sources only after the settlement read has completed. They use
-      // the same local SQLite connection, but a failed source lookup must
-      // never discard or block a successfully loaded settlement history.
-      await _loadSources(settlements, generation);
+      // Loading a settlement page must not query Payment Sources. The
+      // legacy source lookup is performed only if the user explicitly
+      // chooses to create/edit a legacy settlement.
+      await refreshed;
     } catch (_) {
       // FutureBuilder displays settlement failures and offers Retry.
     }
@@ -214,20 +217,36 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
   /// A missing active credit card opens the real Payment Sources create page,
   /// then resumes settlement entry when the source has been saved.
   Future<void> _onAddSettlement(_SettlementListData data) async {
-    // Device mode's + always opens Add Payment Settlement in a bottom sheet.
-    // Lack of an eligible credit card is an inline form prerequisite, never
-    // a reason to silently navigate to the unrelated Payment Sources page.
-    final desktop =
-        effectiveButlerlyLayoutMode(
-          context,
-          MediaQuery.sizeOf(context).width,
-        ) ==
-        ButlerlyLayoutMode.wide;
-    if (!desktop || data.activeCardSources.isNotEmpty) {
-      await _createSettlement(data);
-      return;
+    if (_loadingSourceAction) return;
+    // Do not read payment-source tables while navigating to settlements.
+    // For old/manual settlement creation, resolve legacy card references
+    // only after an explicit Add action.
+    _loadingSourceAction = true;
+    try {
+      var resolved = _displayData ?? data;
+      if (!_sourcesLoaded) {
+        final generation = _loadGeneration;
+        await _loadSources(resolved, generation);
+        if (!mounted || generation != _loadGeneration || !_sourcesLoaded) {
+          return;
+        }
+        resolved = _displayData ?? resolved;
+      }
+      if (!mounted) return;
+      final desktop =
+          effectiveButlerlyLayoutMode(
+            context,
+            MediaQuery.sizeOf(context).width,
+          ) ==
+          ButlerlyLayoutMode.wide;
+      if (!desktop || resolved.activeCardSources.isNotEmpty) {
+        await _createSettlement(resolved);
+      } else {
+        await _addSourceForSettlement();
+      }
+    } finally {
+      _loadingSourceAction = false;
     }
-    await _addSourceForSettlement();
   }
 
   /// Only an explicit Add Payment Source action may open the source editor.
@@ -431,7 +450,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
               buttonKey: const ValueKey('payment-settlements-add'),
               closeToHelp: true,
               label: context.l10n.text('addPaymentSettlement'),
-              onPressed: _sourcesLoaded ? () => _onAddSettlement(data) : null,
+              onPressed: () => _onAddSettlement(data),
             ),
           ],
           children: [
@@ -441,10 +460,10 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
                   data: data,
                   onManage: _managePaymentSources,
                   onAdd: () => _onAddSettlement(data),
-                )
-              else
-                _sourceLoadState(context),
-              const SizedBox(height: ButlerlySpacing.cardGap),
+                ),
+              if (_sourcesError) _sourceLoadState(context),
+              if (_sourcesLoaded || _sourcesError)
+                const SizedBox(height: ButlerlySpacing.cardGap),
               // Do not hide saved settlements when their source is archived.
               if (data.settlements.isNotEmpty) ...[
                 _SettlementDesktopOverview(data: data),
@@ -453,24 +472,20 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
                   data: data,
                   onOpen: (settlement) => _openSettlement(settlement, data),
                 ),
-              ] else if (_sourcesLoaded)
+              ] else
                 ButlerlyEmptyState(
                   icon: Icons.credit_score_outlined,
                   title: context.l10n.text('noPaymentSettlements'),
-                  message: data.activeCardSources.isEmpty
-                      ? context.l10n.text('paymentSettlementNeedsCardSource')
-                      : context.l10n.text('noPaymentSettlementsBody'),
-                  actionLabel: context.l10n.text(
-                    data.activeCardSources.isEmpty
-                        ? 'addPaymentSource'
-                        : 'addPaymentSettlement',
-                  ),
+                  message: context.l10n.text('noPaymentSettlementsBody'),
+                  actionLabel: context.l10n.text('addPaymentSettlement'),
                   onAction: () => _onAddSettlement(data),
                 ),
             ] else if (data.settlements.isNotEmpty) ...[
-              // Historical settlements remain accessible even if a card
-              // source is archived or none are currently eligible.
-              for (final settlement in data.settlements) ...[
+              // Keep device rendering bounded even with a large imported
+              // workspace. The previous eager loop built every card at once.
+              for (final settlement in data.settlements
+                  .skip(_devicePage * _devicePageSize)
+                  .take(_devicePageSize)) ...[
                 _SettlementCard(
                   settlement: settlement,
                   sourceName:
@@ -480,24 +495,45 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
                 ),
                 const SizedBox(height: ButlerlySpacing.small),
               ],
-            ] else if (!_sourcesLoaded)
-              _sourceLoadState(context)
-            else if (data.activeCardSources.isEmpty)
-              ButlerlyEmptyState(
-                icon: Icons.credit_card_off_outlined,
-                title: context.l10n.text('paymentSources'),
-                message: context.l10n.text('paymentSettlementNeedsCardSource'),
-                actionLabel: context.l10n.text('addPaymentSource'),
-                onAction: _addSourceForSettlement,
-              )
-            else
+              if (data.settlements.length > _devicePageSize)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${_devicePage * _devicePageSize + 1}–'
+                      '${(_devicePage + 1) * _devicePageSize > data.settlements.length ? data.settlements.length : (_devicePage + 1) * _devicePageSize} / '
+                      '${data.settlements.length}',
+                      key: const ValueKey('device-settlement-page-range'),
+                    ),
+                    IconButton(
+                      key: const ValueKey('device-settlement-page-previous'),
+                      tooltip: MaterialLocalizations.of(context).previousPageTooltip,
+                      onPressed: _devicePage == 0
+                          ? null
+                          : () => setState(() => _devicePage--),
+                      icon: const Icon(Icons.chevron_left_rounded),
+                    ),
+                    IconButton(
+                      key: const ValueKey('device-settlement-page-next'),
+                      tooltip: MaterialLocalizations.of(context).nextPageTooltip,
+                      onPressed: (_devicePage + 1) * _devicePageSize >=
+                              data.settlements.length
+                          ? null
+                          : () => setState(() => _devicePage++),
+                      icon: const Icon(Icons.chevron_right_rounded),
+                    ),
+                  ],
+                ),
+            ] else ...[
+              if (_sourcesError) _sourceLoadState(context),
               ButlerlyEmptyState(
                 icon: Icons.credit_score_outlined,
                 title: context.l10n.text('noPaymentSettlements'),
                 message: context.l10n.text('noPaymentSettlementsBody'),
                 actionLabel: context.l10n.text('addPaymentSettlement'),
-                onAction: () => _createSettlement(data),
+                onAction: () => _onAddSettlement(data),
               ),
+            ],
             const SizedBox(height: ButlerlySpacing.structural),
           ],
         );
