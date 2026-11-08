@@ -940,6 +940,82 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('disposing device detail cancels an unfinished summary', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final repository = _PagedSummarySettlements();
+    final now = DateTime.utc(2026, 11, 8);
+    repository.values.add(
+      PaymentSettlement(
+        id: PaymentSettlementId('abandoned-summary'),
+        paymentSourceId: PaymentSourceId('legacy-import'),
+        payment: Money(
+          amount: DecimalValue.parse('5.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        paymentDate: '2026-10-05',
+        periodStart: '2026-09-01',
+        periodEnd: '2026-09-30',
+        status: PaymentSettlementStatus.open,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+    services.registerSingleton<FinanceServices>(
+      FinanceServices(
+        _UnusedTransactions(),
+        _TestSources([]),
+        _UnusedMerchants(),
+        _UnusedCategories(),
+        _UnusedTags(),
+        _UnusedEvidence(),
+        _UnusedPreferences(),
+        paymentSettlements: repository,
+      ),
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: Scaffold(
+          body: PaymentSettlementDetailPage(
+            finance: services<FinanceServices>(),
+            settlementId: 'abandoned-summary',
+            sourceNames: const {},
+            sources: const [],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(repository.summaryCalls, 1);
+    final token = repository.lastCancellation;
+    expect(token, isNotNull);
+    expect(token!.isCancelled, isFalse);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    expect(token.isCancelled, isTrue);
+    repository.completeSummary(
+      PaymentSettlementTransactionSummary(
+        totalCount: 0,
+        recordedTotal: null,
+        snapshotToken: '1:fixed',
+      ),
+    );
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('device Back remains usable while detail SQLite read stalls', (
     tester,
   ) async {
@@ -1911,6 +1987,7 @@ class _PagedSummarySettlements extends _TestSettlements
         PaymentSettlementSummaryRepository {
   final _summaries = <Completer<PaymentSettlementTransactionSummary>>[];
   int summaryCalls = 0;
+  PaymentSettlementSummaryCancellation? lastCancellation;
   int? declaredTotalCount;
   String snapshotToken = '1:fixed';
 
@@ -1937,6 +2014,7 @@ class _PagedSummarySettlements extends _TestSettlements
     PaymentSettlementSummaryCancellation? cancellation,
   }) {
     summaryCalls++;
+    lastCancellation = cancellation;
     final pending = Completer<PaymentSettlementTransactionSummary>();
     _summaries.add(pending);
     return pending.future;
