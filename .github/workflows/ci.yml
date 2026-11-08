@@ -45,6 +45,23 @@ jobs:
       - run: ./tool/setup.sh
       - run: ./tool/validate.sh flutter_application
 
+  # Focused, bounded regression gate for PR #400's cross-platform
+  # Payment Settlements navigation blocker. The full Flutter test suite runs
+  # separately and can take substantially longer to complete.
+  payment_settlements_regression:
+    name: Payment Settlements Regression
+    if: github.event_name == 'pull_request' && github.event.pull_request.number == 400
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-toolchain
+      - run: ./tool/setup.sh
+      - name: Test device and desktop Payment Settlements paths
+        run: |
+          cd apps/butlerly
+          flutter test test/features/tools/payment_settlements_page_test.dart --reporter expanded --timeout 2m
+
   # Keep macOS runner usage low for ordinary PRs. Backup/Restore PR #396
   # and desktop/audio PR #399 need native Apple checks before merge because
   # they modify native integrations and platform plugin registration.
