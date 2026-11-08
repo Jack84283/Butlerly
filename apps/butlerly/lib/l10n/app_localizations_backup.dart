@@ -510,8 +510,7 @@ const _backupStrings = <String, Map<String, String>>{
     'restoreSubtitle': '从加密的 “账房先生” 备份替换本地数据。',
     'backupComplete': '加密备份创建成功。',
     'backupFailed': '无法创建备份。',
-    'backupSavedVerified':
-        '加密备份已创建，通过解密校验，并保存至所选位置。请另行妥善保存备份密码；“账房先生” 无法找回密码。',
+    'backupSavedVerified': '加密备份已创建，通过解密校验，并保存至所选位置。请另行妥善保存备份密码；“账房先生” 无法找回密码。',
     'backupSharedVerified':
         '加密备份已创建并校验完成。分享目标报告成功；请自行确认文件已在目标位置保存。“账房先生” 的临时副本将被清理。',
     'restoreMissingEvidenceWarning':
@@ -532,8 +531,7 @@ const _backupStrings = <String, Map<String, String>>{
     'backupStageSharing': '分享临时备份',
     'backupFailurePasswordPolicyReason': '备份密码未达到最低长度要求。',
     'backupFailurePasswordPolicyAction': '请使用至少 12 个字符，并确保两次输入一致。',
-    'backupFailureDatabaseUnavailableReason':
-        '“账房先生” 无法创建或读取一致的本地 SQLite 快照。',
+    'backupFailureDatabaseUnavailableReason': '“账房先生” 无法创建或读取一致的本地 SQLite 快照。',
     'backupFailureDatabaseUnavailableAction':
         '请保留现有数据库，关闭并行操作后重试。如持续失败，请报告问题，勿修改或删除本地数据。',
     'backupFailureDatabaseBusyReason': '本地数据库正被占用，无法安全完成快照。',
