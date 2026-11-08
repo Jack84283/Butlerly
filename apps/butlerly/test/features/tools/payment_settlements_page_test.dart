@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/finance_services.dart';
@@ -11,10 +12,12 @@ import 'package:butlerly/features/tools/presentation/payment_settlements_page.da
 import 'package:butlerly/features/tools/presentation/tools_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
+import 'package:butlerly_database/butlerly_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart' hide Transaction;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -849,6 +852,115 @@ void main() {
     expect(sourceRepository.listCalls, 0);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    'device opens and leaves real SQLite settlement history without source reads',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      sqfliteFfiInit();
+      final database = ButlerlyDatabase(
+        factory: databaseFactoryFfi,
+        path: inMemoryDatabasePath,
+        schemaSql: await File(
+          '../../packages/butlerly_database/database/schema/v1.sql',
+        ).readAsString(),
+      );
+      await database.open(seedSystemDataOnOpen: false);
+      addTearDown(() => database.close());
+      await database.connection.insert('payment_sources', {
+        'id': 'legacy-import',
+        'name': 'Legacy import',
+        'type': PaymentSourceType.card.name,
+        'status': PaymentSourceStatus.active.name,
+      });
+      final repository = SqlitePaymentSettlementRepository(database);
+      final now = DateTime.utc(2026, 11, 7);
+      for (var index = 0; index < 75; index++) {
+        await repository.save(
+          PaymentSettlement(
+            id: PaymentSettlementId('sqlite-settlement-$index'),
+            paymentSourceId: PaymentSourceId('legacy-import'),
+            payment: Money(
+              amount: DecimalValue.parse('42.00'),
+              currency: CurrencyCode('USD'),
+            ),
+            paymentDate: '2026-10-05',
+            periodStart: '2026-09-01',
+            periodEnd: '2026-09-30',
+            status: PaymentSettlementStatus.open,
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+      }
+      final sources = _TestSources([]);
+      services.registerSingleton<FinanceServices>(
+        FinanceServices(
+          _UnusedTransactions(),
+          sources,
+          _UnusedMerchants(),
+          _UnusedCategories(),
+          _UnusedTags(),
+          _UnusedEvidence(),
+          _UnusedPreferences(),
+          paymentSettlements: repository,
+        ),
+      );
+      final router = GoRouter(
+        initialLocation: '/tools',
+        routes: [
+          ShellRoute(
+            builder: (_, state, child) =>
+                AdaptiveShell(location: state.uri.toString(), child: child),
+            routes: [
+              GoRoute(path: '/tools', builder: (_, _) => const ToolsPage()),
+              GoRoute(
+                path: '/payment-settlements',
+                builder: (_, _) =>
+                    const Scaffold(body: PaymentSettlementsPage()),
+              ),
+            ],
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp.router(
+          routerConfig: router,
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Payment settlements'));
+      await tester.pumpAndSettle();
+      expect(find.byType(PaymentSettlementsPage), findsOneWidget);
+      expect(find.text('1–20 / 75'), findsOneWidget);
+      expect(sources.listCalls, 0);
+      await tester.tap(
+        find.byKey(const ValueKey('device-settlement-page-next')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('21–40 / 75'), findsOneWidget);
+      expect(sources.listCalls, 0);
+
+      router.pop();
+      await tester.pumpAndSettle();
+      expect(find.byType(ToolsPage), findsOneWidget);
+      expect(find.byType(PaymentSettlementsPage), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('desktop paints before reads and never overlaps SQLite reads', (
     tester,
