@@ -88,6 +88,55 @@ final class ListPaymentSettlements {
       });
 }
 
+/// Read-only page; the full-history use case remains unchanged for exports.
+final class PaymentSettlementPageDto {
+  const PaymentSettlementPageDto({
+    required this.settlements,
+    required this.totalCount,
+    required this.repositoryPaged,
+  });
+
+  final List<PaymentSettlementDto> settlements;
+  final int totalCount;
+  final bool repositoryPaged;
+}
+
+final class ListPaymentSettlementsPage {
+  const ListPaymentSettlementsPage(this.repository);
+
+  final PaymentSettlementRepository repository;
+
+  Future<ApplicationResult<PaymentSettlementPageDto>> call({
+    required int offset,
+    int limit = 20,
+  }) => runApplication('page payment settlements', () async {
+    if (offset < 0 || limit <= 0 || limit > 100) {
+      throw ArgumentError('Invalid settlement page bounds');
+    }
+    if (repository is PaginatedPaymentSettlementRepository) {
+      final page = await (repository as PaginatedPaymentSettlementRepository)
+          .listPage(offset: offset, limit: limit);
+      return PaymentSettlementPageDto(
+        settlements: List.unmodifiable(
+          page.rows.map(PaymentSettlementDto.fromDomain),
+        ),
+        totalCount: page.totalCount,
+        repositoryPaged: true,
+      );
+    }
+    // Compatibility fallback for imported/test repository implementations
+    // that do not yet expose the optional read-only page capability.
+    final all = await repository.listAll();
+    return PaymentSettlementPageDto(
+      settlements: List.unmodifiable(
+        all.skip(offset).take(limit).map(PaymentSettlementDto.fromDomain),
+      ),
+      totalCount: all.length,
+      repositoryPaged: true,
+    );
+  });
+}
+
 final class GetPaymentSettlementDetail {
   const GetPaymentSettlementDetail(this.repository, {this.preferences});
 
