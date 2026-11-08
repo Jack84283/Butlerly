@@ -76,12 +76,12 @@ class ButlerlyApp extends ConsumerWidget {
                 );
               }
               if (firstUse) {
-                return Overlay(
-                  initialEntries: [
-                    OverlayEntry(
-                      builder: (_) => const FirstUsePreferencesPage(),
-                    ),
-                  ],
+                // Keep first-use preferences and its profile-intro step under
+                // a local Navigator. Contextual Help then opens a real route,
+                // so system Back and desktop Escape can dismiss it safely.
+                return const ButlerlyRouterlessRecoveryHost(
+                  key: ValueKey('first-use-help-host'),
+                  child: FirstUsePreferencesPage(),
                 );
               }
               return child ?? const SizedBox.shrink();
