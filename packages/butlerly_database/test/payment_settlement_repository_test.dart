@@ -597,6 +597,35 @@ void main() {
       final summary = await summaryFuture;
       expect(summary.recordedTotal, _money('1131.25'));
       expect(summary.snapshotToken, settlementPage.snapshotToken);
+
+      // A write between scalar batches must invalidate the entire
+      // comparison, even when the writer leaves updated_at unchanged.
+      final pausedAgain = Completer<void>();
+      final releaseAgain = Completer<void>();
+      final changing = SqlitePaymentSettlementRepository(
+        database,
+        summaryBatchCheckpoint: () async {
+          if (!pausedAgain.isCompleted) pausedAgain.complete();
+          await releaseAgain.future;
+        },
+      );
+      final changedSummary = changing.summarizeTransactions(
+        _settlement(),
+        occurredAtFrom: DateTime.utc(2026, 8, 15),
+        occurredAtToExclusive: DateTime.utc(2026, 9, 15),
+      );
+      await pausedAgain.future.timeout(const Duration(seconds: 10));
+      try {
+        await database.connection.update(
+          'transactions',
+          {'amount_coefficient': '500'},
+          where: 'id = ?',
+          whereArgs: ['bulk-0000'],
+        ).timeout(const Duration(seconds: 10));
+      } finally {
+        releaseAgain.complete();
+      }
+      await expectLater(changedSummary, throwsA(isA<StateError>()));
     },
   );
 
@@ -669,6 +698,45 @@ void main() {
       )).snapshotToken,
       after.snapshotToken,
     );
+  });
+
+  test('reopening SQLite invalidates all prior settlement snapshot tokens', (
+    ) async {
+    final settlement = _settlement();
+    await transactions.save(
+      _transaction(
+        id: 'same-after-reopen',
+        sourceId: 'visa',
+        transactionDate: '2026-09-01',
+      ),
+    );
+    final first = await settlements.listTransactionsPage(
+      settlement,
+      offset: 0,
+      limit: 20,
+    );
+    final session = database.openSession;
+    await database.close();
+    // An in-memory database intentionally gets the same contents again,
+    // proving that the connection epoch — not the transaction count alone —
+    // separates the two calculation sessions.
+    await database.open(seedSystemDataOnOpen: false);
+    await _insertPaymentSource(database, 'visa', 'Visa');
+    await transactions.save(
+      _transaction(
+        id: 'same-after-reopen',
+        sourceId: 'visa',
+        transactionDate: '2026-09-01',
+      ),
+    );
+    final second = await settlements.listTransactionsPage(
+      settlement,
+      offset: 0,
+      limit: 20,
+    );
+    expect(second.totalCount, first.totalCount);
+    expect(database.openSession, greaterThan(session));
+    expect(second.snapshotToken, isNot(first.snapshotToken));
   });
 
   test('does not create a persisted settlement membership table', () async {
