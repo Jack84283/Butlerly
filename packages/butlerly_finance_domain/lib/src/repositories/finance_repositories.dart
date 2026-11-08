@@ -23,7 +23,6 @@ import '../entities/transaction_rule.dart';
 import '../entities/user_preference.dart';
 import '../value_objects/currency_code.dart';
 import '../value_objects/domain_id.dart';
-import '../value_objects/money.dart';
 
 abstract interface class TransactionRepository {
   Future<void> save(Transaction transaction);
@@ -186,98 +185,6 @@ abstract interface class PaymentSettlementRepository {
     DateTime? occurredAtToExclusive,
   });
   Future<void> remove(PaymentSettlementId id);
-}
-
-/// Bounded, stable settlement history for interactive screens. The legacy
-/// listAll contract remains available to exporters and other full readers.
-final class PaymentSettlementPage {
-  const PaymentSettlementPage({
-    required this.rows,
-    required this.totalCount,
-    this.statusCounts = const {},
-  });
-
-  final List<PaymentSettlement> rows;
-  final int totalCount;
-  /// Database-level totals for the complete history, not just this page.
-  final Map<PaymentSettlementStatus, int> statusCounts;
-}
-
-/// Optional read-only capability. Non-SQLite repositories may continue to
-/// implement PaymentSettlementRepository without an interface break.
-abstract interface class PaginatedPaymentSettlementRepository {
-  Future<PaymentSettlementPage> listPage({
-    required int offset,
-    required int limit,
-  });
-}
-
-/// Bounded settlement-detail data, with exact totals independent of the
-/// visible transaction page. Financial amounts use decimal Money, never REAL.
-final class PaymentSettlementTransactionPage {
-  const PaymentSettlementTransactionPage({
-    required this.rows,
-    required this.totalCount,
-    required this.recordedTotal,
-    this.summaryPending = false,
-    this.snapshotToken = '',
-  });
-
-  final List<Transaction> rows;
-  final int totalCount;
-  final Money? recordedTotal;
-
-  /// Initial page can paint before the exact whole-period summary finishes.
-  final bool summaryPending;
-
-  /// Read-snapshot signature used to reject a summary from changed data.
-  final String snapshotToken;
-}
-
-/// A separate exact-decimal summary, computed within its own read snapshot.
-final class PaymentSettlementTransactionSummary {
-  const PaymentSettlementTransactionSummary({
-    required this.totalCount,
-    required this.recordedTotal,
-    required this.snapshotToken,
-  });
-
-  final int totalCount;
-  final Money? recordedTotal;
-  final String snapshotToken;
-}
-
-/// Optional capability; legacy repositories retain their original behavior.
-abstract interface class PaginatedPaymentSettlementTransactionRepository {
-  Future<PaymentSettlementTransactionPage> listTransactionsPage(
-    PaymentSettlement settlement, {
-    DateTime? occurredAtFrom,
-    DateTime? occurredAtToExclusive,
-    required int offset,
-    required int limit,
-  });
-}
-
-/// Cooperative cancellation for long exact-decimal settlement reads.
-/// Cancellation does not interrupt a SQLite statement already executing;
-/// it prevents the next batch from starting.
-final class PaymentSettlementSummaryCancellation {
-  bool _cancelled = false;
-
-  bool get isCancelled => _cancelled;
-
-  void cancel() {
-    _cancelled = true;
-  }
-}
-
-abstract interface class PaymentSettlementSummaryRepository {
-  Future<PaymentSettlementTransactionSummary> summarizeTransactions(
-    PaymentSettlement settlement, {
-    DateTime? occurredAtFrom,
-    DateTime? occurredAtToExclusive,
-    PaymentSettlementSummaryCancellation? cancellation,
-  });
 }
 
 abstract interface class PaymentSourceRepository {

@@ -545,25 +545,9 @@ final class FinanceServices {
        listPaymentSettlements = paymentSettlements == null
            ? null
            : ListPaymentSettlements(paymentSettlements),
-       listPaymentSettlementsPage = paymentSettlements == null
-           ? null
-           : ListPaymentSettlementsPage(paymentSettlements),
        getPaymentSettlementDetail = paymentSettlements == null
            ? null
            : GetPaymentSettlementDetail(
-               paymentSettlements,
-               preferences: preferences,
-             ),
-       getPaymentSettlementDetailPage = paymentSettlements == null
-           ? null
-           : GetPaymentSettlementDetailPage(
-               paymentSettlements,
-               preferences: preferences,
-             ),
-       getPaymentSettlementSummary = paymentSettlements == null ||
-               paymentSettlements is! PaymentSettlementSummaryRepository
-           ? null
-           : GetPaymentSettlementSummary(
                paymentSettlements,
                preferences: preferences,
              ),
@@ -769,10 +753,7 @@ final class FinanceServices {
   final StatementServices? statementServices;
   final SavePaymentSettlement? savePaymentSettlement;
   final ListPaymentSettlements? listPaymentSettlements;
-  final ListPaymentSettlementsPage? listPaymentSettlementsPage;
   final GetPaymentSettlementDetail? getPaymentSettlementDetail;
-  final GetPaymentSettlementDetailPage? getPaymentSettlementDetailPage;
-  final GetPaymentSettlementSummary? getPaymentSettlementSummary;
   final SetPaymentSettlementStatus? setPaymentSettlementStatus;
   final DeletePaymentSettlement? deletePaymentSettlement;
   final ListMerchantAliases? listMerchantAliases;

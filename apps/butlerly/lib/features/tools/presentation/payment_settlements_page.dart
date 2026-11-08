@@ -8,9 +8,7 @@ import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
-import 'package:butlerly/features/desktop/presentation/desktop_transaction_detail_split_view.dart';
 import 'package:butlerly/features/foundation/presentation/payment_source_display.dart';
-import 'package:butlerly/features/foundation/presentation/payment_sources_page.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_row.dart';
@@ -19,9 +17,7 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
-import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 class PaymentSettlementsPage extends StatefulWidget {
@@ -36,476 +32,60 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
       ? services<FinanceServices>()
       : null;
 
-  // A read-only database query must never hold this page in a perpetual
-  // loading state. A stalled load exposes the existing retry UI instead.
-  static const _loadDeadline = Duration(seconds: 20);
-  // Devices must expose a retry promptly if a read is blocked by restore,
-  // import, or another local SQLite operation. Back remains available.
-  static const _deviceLoadDeadline = Duration(seconds: 8);
-  static const _sourceLoadDeadline = Duration(seconds: 8);
-  Future<_SettlementListData>? _data;
-  _SettlementListData? _displayData;
-  bool _sourcesLoaded = false;
-  bool _sourcesError = false;
-  int _loadGeneration = 0;
-  int _devicePage = 0;
-  bool _loadingSourceAction = false;
-  Future<void>? _sourceFetch;
-  bool? _lastWideLayout;
-  static const int _devicePageSize = 20;
-  int _devicePageEnd(int length) {
-    final end = (_devicePage + 1) * _devicePageSize;
-    return end > length ? length : end;
-  }
-
-  String? _selectedDesktopSettlementId;
-  // A detail route opened before the optional legacy source-label lookup
-  // finishes must update without navigating away or requerying the database.
-  final ValueNotifier<List<PaymentSource>> _detailSources = ValueNotifier(
-    const [],
-  );
+  late Future<_SettlementListData> _data = _load();
 
   @override
   void initState() {
     super.initState();
     workspaceRestoreChanges.addListener(_onWorkspaceRestored);
-    // Let the desktop shell and this route paint before starting SQLite
-    // work. Previously _load() started from a field initializer during
-    // navigation, making a busy local database look like an app freeze.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _data == null) {
-        _refresh();
-      }
-    });
   }
 
   @override
   void dispose() {
     workspaceRestoreChanges.removeListener(_onWorkspaceRestored);
-    _detailSources.dispose();
     super.dispose();
   }
 
   void _onWorkspaceRestored() {
     if (!mounted) return;
-    _selectedDesktopSettlementId = null;
-    _devicePage = 0;
-    _refresh();
+    setState(() => _data = _load());
   }
 
-  // Log only phase timings and result counts, never private financial data.
-  // This distinguishes desktop navigation/layout stalls from database stalls.
-  void _traceLoad(String stage, Stopwatch watch) {
-    assert(() {
-      debugPrint(
-        '[PaymentSettlements] $stage after ${watch.elapsedMilliseconds} ms',
-      );
-      return true;
-    }());
-  }
-
-  Future<_SettlementListData> _load({int page = 0}) async {
-    final watch = Stopwatch()..start();
-    _traceLoad('starting initial read', watch);
-    try {
-      final finance = _finance;
-      if (finance == null) {
-        throw StateError('Payment settlements are unavailable.');
-      }
-      // Both device and desktop use bounded SQLite history pages.
-      if (finance.listPaymentSettlementsPage != null) {
-        final result = await finance.listPaymentSettlementsPage!(
-          offset: page * _devicePageSize,
-          limit: _devicePageSize,
-        );
-        _traceLoad('settlement page read returned', watch);
-        if (result case ApplicationSuccess<PaymentSettlementPageDto>(
-          value: final data,
-        )) {
-          return _SettlementListData(
-            settlements: data.settlements,
-            sources: const [],
-            totalCount: data.totalCount,
-            serverPaged: data.repositoryPaged,
-            statusCounts: data.statusCounts,
-          );
-        }
-        throw StateError('Payment settlement page could not be loaded.');
-      }
-      final listSettlements = finance.listPaymentSettlements;
-      if (listSettlements == null) {
-        throw StateError('Payment settlements are unavailable.');
-      }
-      final settlementResult = await listSettlements();
-      _traceLoad('settlements read returned', watch);
-      if (settlementResult case ApplicationSuccess<List<PaymentSettlementDto>>(
-        value: final settlements,
-      )) {
-        return _SettlementListData(settlements: settlements, sources: const []);
-      }
-      throw StateError('Payment settlements could not be loaded.');
-    } catch (error) {
-      _traceLoad('read failed (${error.runtimeType})', watch);
-      rethrow;
-    } finally {
-      watch.stop();
+  Future<_SettlementListData> _load() async {
+    final finance = _finance;
+    final listSettlements = finance?.listPaymentSettlements;
+    if (finance == null || listSettlements == null) {
+      throw StateError('Payment settlements are unavailable.');
     }
-  }
-
-  Future<void> _refresh() => _openDevicePage(0);
-
-  Future<void> _openDevicePage(int page) async {
-    if (page < 0) return;
-    final generation = ++_loadGeneration;
-    final deadline = _lastWideLayout == true
-        ? _loadDeadline
-        : _deviceLoadDeadline;
-    final refreshed = _load(page: page).timeout(deadline);
-    _detailSources.value = const [];
-    _sourceFetch = null;
-    setState(() {
-      _data = refreshed;
-      _displayData = null;
-      _devicePage = page;
-      _sourcesLoaded = false;
-      _sourcesError = false;
-    });
-    try {
-      // Loading a settlement page must not query Payment Sources. The
-      // legacy source lookup is performed only after an explicit Add.
-      final loaded = await refreshed;
-      if (!mounted || generation != _loadGeneration) return;
-      if (page > 0 &&
-          loaded.serverPaged &&
-          loaded.settlements.isEmpty &&
-          loaded.totalCount > 0) {
-        // Records may be deleted by another workflow between page reads.
-        // Fall back to the last nonempty page rather than displaying a false
-        // "no settlements" state.
-        final lastPage = (loaded.totalCount - 1) ~/ _devicePageSize;
-        if (lastPage < page) {
-          await _openDevicePage(lastPage);
-          return;
-        }
-      }
-      // Desktop card metadata loads only after the history page is painted.
-      if (_lastWideLayout == true) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted && generation == _loadGeneration) {
-            _ensureSourcesLoaded(loaded);
-          }
-        });
-      }
-    } catch (_) {
-      // FutureBuilder displays settlement failures and offers Retry.
-    }
-  }
-
-  Future<void> _ensureSourcesLoaded(_SettlementListData settlements) {
-    if (_sourcesLoaded) return Future<void>.value();
-    final existing = _sourceFetch;
-    if (existing != null) return existing;
-    final future = _loadSources(settlements, _loadGeneration);
-    _sourceFetch = future;
-    return future.whenComplete(() {
-      if (identical(_sourceFetch, future)) _sourceFetch = null;
-    });
-  }
-
-  Future<void> _loadSources(
-    _SettlementListData settlements,
-    int generation,
-  ) async {
-    final watch = Stopwatch()..start();
-    _traceLoad('starting payment source read', watch);
-    try {
-      final finance = _finance;
-      if (finance == null) {
-        throw StateError('Payment sources are unavailable.');
-      }
-      final result = await finance.listPaymentSources().timeout(
-        _sourceLoadDeadline,
-      );
-      if (!mounted || generation != _loadGeneration) return;
-      if (result case ApplicationSuccess<List<PaymentSource>>(
+    final settlementResult = await listSettlements();
+    final sourceResult = await finance.listPaymentSources();
+    if (settlementResult case ApplicationSuccess<List<PaymentSettlementDto>>(
+      value: final settlements,
+    )) {
+      if (sourceResult case ApplicationSuccess<List<PaymentSource>>(
         value: final sources,
       )) {
-        final resolved = _SettlementListData(
-          settlements: settlements.settlements,
-          sources: sources,
-          totalCount: settlements.totalCount,
-          serverPaged: settlements.serverPaged,
-          statusCounts: settlements.statusCounts,
-        );
-        _traceLoad(
-          'ready (${resolved.settlements.length} settlements, '
-          '${sources.length} sources)',
-          watch,
-        );
-        _detailSources.value = sources;
-        setState(() {
-          _displayData = resolved;
-          _sourcesLoaded = true;
-          _sourcesError = false;
-        });
-      } else {
-        throw StateError('Payment sources could not be loaded.');
+        return _SettlementListData(settlements: settlements, sources: sources);
       }
-    } catch (error) {
-      _traceLoad('payment source read failed (${error.runtimeType})', watch);
-      if (mounted && generation == _loadGeneration) {
-        setState(() => _sourcesError = true);
-      }
-    } finally {
-      watch.stop();
     }
+    throw StateError('Payment settlements could not be loaded.');
   }
 
-  Future<void> _retrySources() async {
-    // Preserve already visible settlement records and their pagination. Only
-    // refresh the failed source lookup; another history query is unnecessary.
-    final current = _displayData ?? await _data;
-    if (!mounted || current == null) return;
-    setState(() {
-      _sourcesError = false;
-      _sourcesLoaded = false;
-    });
-    await _ensureSourcesLoaded(current);
-  }
-
-  Widget _sourceLoadState(BuildContext context) => ButlerlyCard(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          context.l10n.text('paymentSources'),
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        const SizedBox(height: ButlerlySpacing.compact),
-        if (_sourcesError)
-          ButlerlyErrorState(
-            title: context.l10n.text('paymentSources'),
-            message: context.l10n.text('tryAgain'),
-            preserved: context.l10n.text('dataPreserved'),
-            actionLabel: context.l10n.text('tryAgain'),
-            onAction: _retrySources,
-          )
-        else
-          ButlerlyLoadingState(message: context.l10n.text('loading')),
-      ],
-    ),
-  );
-
-  /// The Add action should never strand a user in a prerequisite sheet.
-  /// A missing active credit card opens the real Payment Sources create page,
-  /// then resumes settlement entry when the source has been saved.
-  Future<void> _onAddSettlement(_SettlementListData data) async {
-    if (_loadingSourceAction) return;
-    // Do not read payment-source tables while navigating to settlements.
-    // For old/manual settlement creation, resolve legacy card references
-    // only after an explicit Add action.
-    setState(() => _loadingSourceAction = true);
-    try {
-      final desktop =
-          effectiveButlerlyLayoutMode(
-            context,
-            MediaQuery.sizeOf(context).width,
-          ) ==
-          ButlerlyLayoutMode.wide;
-      if (!desktop) {
-        // A device tap must open the settlement bottom sheet immediately.
-        // Resolve optional card metadata *inside* the sheet, not before it.
-        await _createSettlement(data);
-        return;
-      }
-      var resolved = _displayData ?? data;
-      if (!_sourcesLoaded) {
-        await _ensureSourcesLoaded(resolved);
-        if (!mounted) return;
-        if (!_sourcesLoaded) {
-          _showMessage(context.l10n.text('tryAgain'));
-          return;
-        }
-        resolved = _displayData ?? resolved;
-      }
-      if (!mounted) return;
-      if (resolved.activeCardSources.isNotEmpty) {
-        await _createSettlement(resolved);
-      } else {
-        // A source must be created before opening the settlement editor.
-        await _addSourceForSettlement();
-      }
-    } finally {
-      if (mounted) setState(() => _loadingSourceAction = false);
-    }
-  }
-
-  /// Only an explicit Add Payment Source action may open the source editor.
-  /// The device header's + is never routed through this prerequisite.
-  Future<void> _addSourceForSettlement() async {
-    final bool? created;
-    if (GoRouter.maybeOf(context) != null) {
-      created = await context.push<bool>(
-        '/payment-sources?create=true&from=settlements',
-      );
-    } else {
-      // Routerless host contexts (including widget tests) use the same
-      // prerequisite flow with an explicit Scaffold.
-      created = await Navigator.of(context).push<bool>(
-        MaterialPageRoute(
-          builder: (_) => const Scaffold(
-            body: PaymentSourcesPage(
-              openCreateOnStart: true,
-              fromPaymentSettlement: true,
-            ),
-          ),
-        ),
-      );
-    }
-    if (!mounted || created != true) return;
-
-    // A new card invalidates the cached eligible-source list. Fetch its
-    // canonical saved state before resuming the settlement editor.
-    setState(() {
-      _sourcesLoaded = false;
-      _sourcesError = false;
-    });
-    _sourceFetch = null;
-    final history = _displayData ?? await _data;
-    if (!mounted || history == null) return;
-    await _ensureSourcesLoaded(history);
-    if (!mounted) return;
-    final updated = _displayData;
-    if (_sourcesLoaded &&
-        updated != null &&
-        updated.activeCardSources.isNotEmpty) {
-      await _createSettlement(updated);
-    } else {
-      _showMessage(context.l10n.text('paymentSettlementNeedsCardSource'));
-    }
-  }
-
-  /// Let desktop users inspect, activate, or add Payment Sources without
-  /// losing settlement history. Refresh eligible cards after returning.
-  Future<void> _managePaymentSources() async {
-    if (GoRouter.maybeOf(context) != null) {
-      await context.push<void>('/payment-sources');
-    } else {
-      await Navigator.of(context).push<void>(
-        MaterialPageRoute(
-          builder: (_) => const Scaffold(body: PaymentSourcesPage()),
-        ),
-      );
-    }
-    if (!mounted) return;
-    await _refresh();
-    if (!mounted) return;
-    // The separate desktop summary refreshes after the next history frame.
-  }
-
-  Future<Object?> _openDeviceSettlementEditor(
-    _SettlementListData data,
-  ) {
-    // Let the sheet paint before starting the optional payment-source read.
-    // A stalled SQLite call must not prevent the sheet's Cancel action.
-    Future<void> load = Future<void>.delayed(
-      const Duration(milliseconds: 80),
-      () => _ensureSourcesLoaded(data),
-    );
-    return showButlerlyBottomSheet<Object>(
-      context: context,
-      builder: (sheetContext) => StatefulBuilder(
-        builder: (sheetContext, setSheetState) => FutureBuilder<void>(
-          future: load,
-          builder: (sheetContext, snapshot) {
-            final title = Text(sheetContext.l10n.text('addPaymentSettlement'));
-            if (snapshot.connectionState != ConnectionState.done) {
-              return ButlerlySheet(
-                title: title,
-                content: const ButlerlyLoadingState(),
-                actions: [
-                  ButlerlyCancelButton(
-                    onPressed: () => Navigator.pop(sheetContext),
-                    child: Text(sheetContext.l10n.text('cancel')),
-                  ),
-                ],
-              );
-            }
-            if (_sourcesError || !_sourcesLoaded) {
-              return ButlerlySheet(
-                title: title,
-                content: Text(sheetContext.l10n.text('tryAgain')),
-                actions: [
-                  ButlerlyCancelButton(
-                    onPressed: () => Navigator.pop(sheetContext),
-                    child: Text(sheetContext.l10n.text('cancel')),
-                  ),
-                  FilledButton(
-                    onPressed: () {
-                      setSheetState(() {
-                        load = _ensureSourcesLoaded(data);
-                      });
-                    },
-                    child: Text(sheetContext.l10n.text('tryAgain')),
-                  ),
-                ],
-              );
-            }
-            final available = (_displayData ?? data).activeCardSources;
-            if (available.isEmpty) {
-              return ButlerlySheet(
-                title: title,
-                content: Text(
-                  sheetContext.l10n.text('paymentSettlementNeedsCardSource'),
-                ),
-                actions: [
-                  ButlerlyCancelButton(
-                    onPressed: () => Navigator.pop(sheetContext),
-                    child: Text(sheetContext.l10n.text('cancel')),
-                  ),
-                  FilledButton(
-                    onPressed: () => Navigator.pop(
-                      sheetContext,
-                      _DeviceSettlementAction.addSource,
-                    ),
-                    child: Text(sheetContext.l10n.text('addPaymentSource')),
-                  ),
-                ],
-              );
-            }
-            return _SettlementEditorSheet(sources: available);
-          },
-        ),
-      ),
-    );
+  Future<void> _refresh() async {
+    setState(() => _data = _load());
+    await _data;
   }
 
   Future<void> _createSettlement(_SettlementListData data) async {
     final finance = _finance;
     final save = finance?.savePaymentSettlement;
-    if (finance == null || save == null) {
-      _showMessage(context.l10n.text('paymentSettlementSaveFailed'));
-      return;
-    }
-    final desktop =
-        effectiveButlerlyLayoutMode(
-          context,
-          MediaQuery.sizeOf(context).width,
-        ) ==
-        ButlerlyLayoutMode.wide;
-    final entry = desktop
-        ? await _openSettlementEditorPage(
-            context: context,
-            sources: data.activeCardSources,
-          )
-        : await _openDeviceSettlementEditor(data);
-    if (!mounted) return;
-    if (entry == _DeviceSettlementAction.addSource) {
-      await _addSourceForSettlement();
-      return;
-    }
-    if (entry is! _SettlementDraft) return;
-    final draft = entry;
+    if (finance == null || save == null) return;
+    final draft = await showButlerlyBottomSheet<_SettlementDraft>(
+      context: context,
+      builder: (context) =>
+          _SettlementEditorSheet(sources: data.activeCardSources),
+    );
+    if (!mounted || draft == null) return;
 
     final token = DateTime.now().microsecondsSinceEpoch;
     final result = await save(
@@ -543,21 +123,6 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
   ) async {
     final finance = _finance;
     if (finance == null) return;
-    // Desktop details belong to the right panel of the same workspace.
-    // Do not push another route for row selection: this matches Statements
-    // and Rules and keeps the list and its scroll state mounted.
-    if (effectiveButlerlyLayoutMode(
-          context,
-          MediaQuery.sizeOf(context).width,
-        ) ==
-        ButlerlyLayoutMode.wide) {
-      setState(() => _selectedDesktopSettlementId = settlement.id);
-      return;
-    }
-    assert(() {
-      debugPrint('[PaymentSettlements] device detail navigation started');
-      return true;
-    }());
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => PaymentSettlementDetailPage(
@@ -565,7 +130,6 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
           settlementId: settlement.id,
           sourceNames: data.sourceNames,
           sources: data.sources,
-          sourceUpdates: _detailSources,
         ),
       ),
     );
@@ -586,17 +150,6 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
           MediaQuery.sizeOf(context).width,
         ) ==
         ButlerlyLayoutMode.wide;
-    final previousLayout = _lastWideLayout;
-    if (previousLayout != null && previousLayout != desktop) {
-      // A device SQL page cannot supply desktop's complete overview after
-      // rotation/resizing. Re-read using the correct layout contract.
-      _lastWideLayout = desktop;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _refresh();
-      });
-    } else {
-      _lastWideLayout = desktop;
-    }
     if (_finance?.listPaymentSettlements == null) {
       return ButlerlyEmptyState(
         icon: Icons.storage_outlined,
@@ -605,133 +158,76 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
       );
     }
 
-    final deviceBack = !desktop && Navigator.of(context).canPop()
-        ? const BackButton()
-        : null;
-    final results = FutureBuilder<_SettlementListData>(
+    return FutureBuilder<_SettlementListData>(
       future: _data,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
-          return ButlerlyPage(
-            title: context.l10n.text('paymentSettlements'),
-            leading: deviceBack,
-            fullWidth: desktop,
-            children: [
-              ButlerlyLoadingState(message: context.l10n.text('loading')),
-            ],
-          );
+          return const ButlerlyLoadingState();
         }
         if (snapshot.hasError) {
-          return ButlerlyPage(
+          return ButlerlyErrorState(
             title: context.l10n.text('paymentSettlements'),
-            leading: deviceBack,
-            fullWidth: desktop,
-            children: [
-              ButlerlyErrorState(
-                title: context.l10n.text('paymentSettlements'),
-                message: context.l10n.text('tryAgain'),
-                preserved: context.l10n.text('dataPreserved'),
-                actionLabel: context.l10n.text('tryAgain'),
-                onAction: _refresh,
-              ),
-            ],
+            message: context.l10n.text('tryAgain'),
+            preserved: context.l10n.text('dataPreserved'),
+            actionLabel: context.l10n.text('tryAgain'),
+            onAction: _refresh,
           );
         }
-        // The full history is already usable while source metadata loads.
-        // Resolve labels and eligible cards only when that separate read ends.
-        final data = _displayData ?? snapshot.requireData;
+        final data = snapshot.requireData;
         return ButlerlyPage(
           title: context.l10n.text('paymentSettlements'),
-          leading: deviceBack,
           fullWidth: desktop,
           subtitle: context.l10n.text('paymentSettlementsSubtitle'),
           onRefresh: _refresh,
           actions: [
-            ButlerlyHeaderAddButton(
-              buttonKey: const ValueKey('payment-settlements-add'),
-              closeToHelp: true,
-              label: context.l10n.text('addPaymentSettlement'),
-              onPressed: _loadingSourceAction
-                  ? null
-                  : () => _onAddSettlement(data),
+            Padding(
+              padding: const EdgeInsetsDirectional.only(
+                end: ButlerlySpacing.headerActionTrailing,
+              ),
+              child: IconButton.filled(
+                key: const ValueKey('payment-settlements-add'),
+                tooltip: context.l10n.text('addPaymentSettlement'),
+                onPressed: data.activeCardSources.isEmpty
+                    ? null
+                    : () => _createSettlement(data),
+                icon: const Icon(Icons.add_rounded),
+                style: IconButton.styleFrom(
+                  backgroundColor: context.colors.interactive,
+                  foregroundColor:
+                      context.colors.interactive.computeLuminance() > 0.5
+                      ? context.colors.background
+                      : Colors.white,
+                  shape: const CircleBorder(),
+                  minimumSize: const Size.square(32),
+                  maximumSize: const Size.square(32),
+                ),
+              ),
             ),
           ],
           children: [
-            if (_loadingSourceAction)
-              const LinearProgressIndicator(
-                key: ValueKey('payment-settlement-add-loading'),
-              ),
-            if (desktop) ...[
-              if (_sourcesLoaded)
-                _SettlementDesktopSources(
-                  data: data,
-                  onManage: _managePaymentSources,
-                  onAdd: () => _onAddSettlement(data),
-                )
-              else
-                _sourceLoadState(context),
+            if (data.activeCardSources.isEmpty)
+              ButlerlyEmptyState(
+                icon: Icons.credit_card_off_outlined,
+                title: context.l10n.text('paymentSources'),
+                message: context.l10n.text('paymentSourcesSubtitle'),
+              )
+            else if (data.settlements.isEmpty)
+              ButlerlyEmptyState(
+                icon: Icons.credit_score_outlined,
+                title: context.l10n.text('noPaymentSettlements'),
+                message: context.l10n.text('noPaymentSettlementsBody'),
+                actionLabel: context.l10n.text('addPaymentSettlement'),
+                onAction: () => _createSettlement(data),
+              )
+            else if (desktop) ...[
+              _SettlementDesktopOverview(data: data),
               const SizedBox(height: ButlerlySpacing.cardGap),
-              // Do not hide saved settlements when their source is archived.
-              if (data.settlements.isNotEmpty) ...[
-                _SettlementDesktopOverview(data: data),
-                const SizedBox(height: ButlerlySpacing.cardGap),
-                _SettlementDesktopTable(
-                  data: data,
-                  page: _devicePage,
-                  onPageChanged: _openDevicePage,
-                  onOpen: (settlement) => _openSettlement(settlement, data),
-                ),
-              ] else
-                ButlerlyEmptyState(
-                  icon: Icons.credit_score_outlined,
-                  title: context.l10n.text('noPaymentSettlements'),
-                  message: context.l10n.text('noPaymentSettlementsBody'),
-                  actionLabel: context.l10n.text('addPaymentSettlement'),
-                  onAction: () => _onAddSettlement(data),
-                ),
-            ] else if (data.settlements.isNotEmpty) ...[
-              if (_sourcesError) _sourceLoadState(context),
-              // Keep device rendering bounded even with a large imported
-              // workspace. The previous eager loop built every card at once.
-              if (data.totalCount > _devicePageSize)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Text(
-                      '${_devicePage * _devicePageSize + 1}–'
-                      '${_devicePageEnd(data.totalCount)} / '
-                      '${data.totalCount}',
-                      key: const ValueKey('device-settlement-page-range'),
-                    ),
-                    IconButton(
-                      key: const ValueKey('device-settlement-page-previous'),
-                      tooltip: MaterialLocalizations.of(
-                        context,
-                      ).previousPageTooltip,
-                      onPressed: _devicePage == 0
-                          ? null
-                          : () => _openDevicePage(_devicePage - 1),
-                      icon: const Icon(Icons.chevron_left_rounded),
-                    ),
-                    IconButton(
-                      key: const ValueKey('device-settlement-page-next'),
-                      tooltip: MaterialLocalizations.of(
-                        context,
-                      ).nextPageTooltip,
-                      onPressed: (_devicePage + 1) * _devicePageSize >=
-                              data.totalCount
-                          ? null
-                          : () => _openDevicePage(_devicePage + 1),
-                      icon: const Icon(Icons.chevron_right_rounded),
-                    ),
-                  ],
-                ),
-              for (final settlement in (data.serverPaged
-                      ? data.settlements
-                      : data.settlements.skip(
-                          _devicePage * _devicePageSize,
-                        ))
-                  .take(_devicePageSize)) ...[
+              _SettlementDesktopTable(
+                data: data,
+                onOpen: (settlement) => _openSettlement(settlement, data),
+              ),
+            ] else ...[
+              for (final settlement in data.settlements) ...[
                 _SettlementCard(
                   settlement: settlement,
                   sourceName:
@@ -741,39 +237,11 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
                 ),
                 const SizedBox(height: ButlerlySpacing.small),
               ],
-            ] else ...[
-              if (_sourcesError) _sourceLoadState(context),
-              ButlerlyEmptyState(
-                icon: Icons.credit_score_outlined,
-                title: context.l10n.text('noPaymentSettlements'),
-                message: context.l10n.text('noPaymentSettlementsBody'),
-                actionLabel: context.l10n.text('addPaymentSettlement'),
-                onAction: () => _onAddSettlement(data),
-              ),
             ],
             const SizedBox(height: ButlerlySpacing.structural),
           ],
         );
       },
-    );
-    final selected = _selectedDesktopSettlementId;
-    final finance = _finance;
-    if (!desktop || selected == null || finance == null) return results;
-    return DesktopTransactionDetailSplitView(
-      results: results,
-      detail: PaymentSettlementDetailPage(
-        key: ValueKey('desktop-settlement-detail-$selected'),
-        finance: finance,
-        settlementId: selected,
-        // Keep a selected panel mounted while source labels resolve.
-        // The detail widget receives the latest labels during rebuild.
-        sourceNames: _displayData?.sourceNames ?? const {},
-        sources: _displayData?.sources ?? const [],
-        sourceUpdates: _detailSources,
-        embedded: true,
-        onClose: () => setState(() => _selectedDesktopSettlementId = null),
-        onChanged: _refresh,
-      ),
     );
   }
 }
@@ -784,10 +252,6 @@ class PaymentSettlementDetailPage extends StatefulWidget {
     required this.settlementId,
     required this.sourceNames,
     required this.sources,
-    this.embedded = false,
-    this.sourceUpdates,
-    this.onClose,
-    this.onChanged,
     super.key,
   });
 
@@ -795,10 +259,6 @@ class PaymentSettlementDetailPage extends StatefulWidget {
   final String settlementId;
   final Map<String, String> sourceNames;
   final List<PaymentSource> sources;
-  final bool embedded;
-  final ValueListenable<List<PaymentSource>>? sourceUpdates;
-  final VoidCallback? onClose;
-  final VoidCallback? onChanged;
 
   @override
   State<PaymentSettlementDetailPage> createState() =>
@@ -807,42 +267,9 @@ class PaymentSettlementDetailPage extends StatefulWidget {
 
 class _PaymentSettlementDetailPageState
     extends State<PaymentSettlementDetailPage> {
-  static const _detailDeadline = Duration(seconds: 20);
-  static const _transactionPageSize = 20;
-  Future<PaymentSettlementDetailDto>? _detail;
+  late Future<PaymentSettlementDetailDto> _detail = _load();
   TransactionMasterData _masterData = const TransactionMasterData();
   String? _loadedLanguageCode;
-  bool _masterDataReady = false;
-  int _detailGeneration = 0;
-  int _transactionPage = 0;
-  int _summaryGeneration = 0;
-  bool _summaryStarted = false;
-  bool _summaryFailed = false;
-  PaymentSettlementTransactionSummary? _comparisonSummary;
-  String? _visibleSnapshotToken;
-  String? _requestedSummaryToken;
-  PaymentSettlementSummaryCancellation? _summaryCancellation;
-
-  void _cancelPendingSummary() {
-    _summaryCancellation?.cancel();
-    _summaryCancellation = null;
-  }
-
-  @override
-  void dispose() {
-    _cancelPendingSummary();
-    super.dispose();
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    // Opening detail must paint a navigable loading shell *before* SQLite
-    // starts work. The previous State field initializer read immediately.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _loadPage(0);
-    });
-  }
 
   @override
   void didChangeDependencies() {
@@ -850,202 +277,42 @@ class _PaymentSettlementDetailPageState
     final languageCode = Localizations.localeOf(context).languageCode;
     if (_loadedLanguageCode == languageCode) return;
     _loadedLanguageCode = languageCode;
-    _masterDataReady = false;
-    final current = _detail;
-    if (current != null) {
-      _loadOptionalLabels(current, languageCode, _detailGeneration);
-    }
+    TransactionMasterData.load(widget.finance, languageCode: languageCode).then(
+      (value) {
+        if (!mounted || _loadedLanguageCode != languageCode) return;
+        setState(() => _masterData = value);
+      },
+    );
   }
 
-  Future<PaymentSettlementDetailDto> _load({int page = 0}) async {
-    final watch = Stopwatch()..start();
-    assert(() {
-      debugPrint('[PaymentSettlements] detail read started');
-      return true;
-    }());
-    try {
-      final desktop =
-          effectiveButlerlyLayoutMode(
-            context,
-            MediaQuery.sizeOf(context).width,
-          ) ==
-          ButlerlyLayoutMode.wide;
-      final usePage = !desktop || widget.embedded;
-      final result = usePage &&
-              widget.finance.getPaymentSettlementDetailPage != null
-          ? await widget.finance.getPaymentSettlementDetailPage!(
-              widget.settlementId,
-              offset: page * _transactionPageSize,
-              limit: _transactionPageSize,
-            )
-          : await widget.finance.getPaymentSettlementDetail?.call(
-              widget.settlementId,
-            );
-      if (result case ApplicationSuccess<PaymentSettlementDetailDto>(
-        value: final detail,
-      )) {
-        assert(() {
-          debugPrint(
-            '[PaymentSettlements] detail ready after '
-            '${watch.elapsedMilliseconds} ms; '
-            '${detail.transactionCount} matching transactions',
-          );
-          return true;
-        }());
-        return detail;
-      }
-      throw StateError('Payment settlement detail could not be loaded.');
-    } catch (error) {
-      assert(() {
-        debugPrint(
-          '[PaymentSettlements] detail failed after '
-          '${watch.elapsedMilliseconds} ms (${error.runtimeType})',
-        );
-        return true;
-      }());
-      rethrow;
-    } finally {
-      watch.stop();
+  Future<PaymentSettlementDetailDto> _load() async {
+    final getDetail = widget.finance.getPaymentSettlementDetail;
+    if (getDetail == null) {
+      throw StateError('Payment settlement detail is unavailable.');
     }
+    final result = await getDetail(widget.settlementId);
+    if (result case ApplicationSuccess<PaymentSettlementDetailDto>(
+      value: final detail,
+    )) {
+      return detail;
+    }
+    throw StateError('Payment settlement detail could not be loaded.');
   }
 
-  Future<void> _loadOptionalLabels(
-    Future<PaymentSettlementDetailDto> detail,
-    String languageCode,
-    int generation,
-  ) async {
-    try {
-      await detail;
-    } catch (_) {
-      return;
-    }
-    if (!mounted ||
-        generation != _detailGeneration ||
-        _loadedLanguageCode != languageCode ||
-        _masterDataReady) {
-      return;
-    }
-    try {
-      final value = await TransactionMasterData.load(
-        widget.finance,
-        languageCode: languageCode,
-        includePaymentSources: false,
-      ).timeout(_detailDeadline);
-      if (!mounted ||
-          generation != _detailGeneration ||
-          _loadedLanguageCode != languageCode) {
-        return;
-      }
-      setState(() {
-        _masterData = value;
-        _masterDataReady = true;
-      });
-    } catch (_) {
-      // Optional labels must not block detail, pagination, or Back.
-    }
-  }
-
-  void _scheduleExactSummary(
-    PaymentSettlementDetailDto detail,
-    int generation,
-  ) {
-    if (!detail.summaryPending || _summaryStarted) return;
-    _summaryStarted = true;
-    _requestedSummaryToken = detail.snapshotToken;
-    final cancellation = PaymentSettlementSummaryCancellation();
-    _summaryCancellation = cancellation;
-    // The first page has already been resolved and can render before this
-    // potentially long exact-decimal scan begins.
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted || generation != _summaryGeneration) return;
-      final summarize = widget.finance.getPaymentSettlementSummary;
-      if (summarize == null) {
-        setState(() => _summaryFailed = true);
-        return;
-      }
-      try {
-        final result = await summarize(
-          widget.settlementId,
-          cancellation: cancellation,
-        ).timeout(
-          const Duration(seconds: 90),
-          onTimeout: () {
-            cancellation.cancel();
-            throw StateError('Settlement comparison timed out');
-          },
-        );
-        if (!mounted || generation != _summaryGeneration) return;
-        if (result case ApplicationSuccess<PaymentSettlementTransactionSummary>(
-          value: final summary,
-        )) {
-          // Never attach an exact amount from a different SQLite snapshot.
-          // Data can change during import or editing while this scan runs.
-          if (summary.snapshotToken == _visibleSnapshotToken) {
-            setState(() => _comparisonSummary = summary);
-          } else {
-            // The user may have paged to a newer database snapshot while
-            // the old background summary was still running.
-            setState(() => _summaryFailed = true);
-          }
-        } else {
-          setState(() => _summaryFailed = true);
-        }
-      } catch (_) {
-        if (!mounted || generation != _summaryGeneration) return;
-        setState(() => _summaryFailed = true);
-      }
-    });
-  }
-
-  Future<void> _loadPage(int page, {bool refresh = false}) async {
-    if (!mounted || page < 0) return;
-    final generation = ++_detailGeneration;
-    // Going back from page 2 to page 1 must reuse the exact summary,
-    // rather than triggering the full-period scan a second time.
-    if (refresh || _detail == null) {
-      _cancelPendingSummary();
-      ++_summaryGeneration;
-      _summaryStarted = false;
-      _summaryFailed = false;
-      _comparisonSummary = null;
-      _visibleSnapshotToken = null;
-      _requestedSummaryToken = null;
-    }
-    final summaryGeneration = _summaryGeneration;
-    final next = _load(page: page).timeout(_detailDeadline);
-    setState(() {
-      _detail = next;
-      _transactionPage = page;
-    });
-    // On success, schedule the summary after the first visible detail frame.
-    // Do not await it while navigating or changing transaction pages.
-    next.then((detail) {
-      if (!mounted || generation != _detailGeneration) return;
-      _visibleSnapshotToken = detail.snapshotToken;
-      var activeSummaryGeneration = summaryGeneration;
-      if (detail.summaryPending &&
-          _requestedSummaryToken != null &&
-          _requestedSummaryToken != detail.snapshotToken) {
-        // Also invalidate an IN-FLIGHT summary: _comparisonSummary is null
-        // while it runs. Comparing only completed summaries stranded the
-        // new page in an unavailable state after the old result returned.
-        _cancelPendingSummary();
-        activeSummaryGeneration = ++_summaryGeneration;
-        setState(() {
-          _comparisonSummary = null;
-          _summaryFailed = false;
-          _summaryStarted = false;
-          _requestedSummaryToken = null;
-        });
-      }
-      _scheduleExactSummary(detail, activeSummaryGeneration);
-    }, onError: (Object error, StackTrace stackTrace) {});
+  Future<void> _refresh() async {
+    final detail = _load();
     final languageCode =
         _loadedLanguageCode ?? Localizations.localeOf(context).languageCode;
-    await _loadOptionalLabels(next, languageCode, generation);
+    final masterData = TransactionMasterData.load(
+      widget.finance,
+      languageCode: languageCode,
+    );
+    setState(() => _detail = detail);
+    await detail;
+    final refreshedMasterData = await masterData;
+    if (!mounted || _loadedLanguageCode != languageCode) return;
+    setState(() => _masterData = refreshedMasterData);
   }
-
-  Future<void> _refresh() => _loadPage(0, refresh: true);
 
   Future<void> _openTransaction(TransactionDto transaction) async {
     final changed = await Navigator.of(context).push<bool>(
@@ -1062,25 +329,11 @@ class _PaymentSettlementDetailPageState
   Future<void> _edit(PaymentSettlementDetailDto detail) async {
     final save = widget.finance.savePaymentSettlement;
     if (save == null) return;
-    final desktop =
-        effectiveButlerlyLayoutMode(
-          context,
-          MediaQuery.sizeOf(context).width,
-        ) ==
-        ButlerlyLayoutMode.wide;
-    final draft = desktop
-        ? await _openSettlementEditorPage(
-            context: context,
-            sources: widget.sourceUpdates?.value ?? widget.sources,
-            existing: detail,
-          )
-        : await showButlerlyBottomSheet<_SettlementDraft>(
-            context: context,
-            builder: (_) => _SettlementEditorSheet(
-              sources: widget.sourceUpdates?.value ?? widget.sources,
-              existing: detail,
-            ),
-          );
+    final draft = await showButlerlyBottomSheet<_SettlementDraft>(
+      context: context,
+      builder: (context) =>
+          _SettlementEditorSheet(sources: widget.sources, existing: detail),
+    );
     if (!mounted || draft == null) return;
 
     final result = await save(
@@ -1109,7 +362,6 @@ class _PaymentSettlementDetailPageState
       return;
     }
     _showMessage(context.l10n.text('paymentSettlementSaved'));
-    widget.onChanged?.call();
     await _refresh();
   }
 
@@ -1122,7 +374,6 @@ class _PaymentSettlementDetailPageState
       _showMessage(context.l10n.text('paymentSettlementSaveFailed'));
       return;
     }
-    widget.onChanged?.call();
     await _refresh();
   }
 
@@ -1182,12 +433,7 @@ class _PaymentSettlementDetailPageState
       return;
     }
     _showMessage(context.l10n.text('paymentSettlementRemoved'));
-    widget.onChanged?.call();
-    if (widget.embedded) {
-      widget.onClose?.call();
-    } else {
-      Navigator.of(context).pop(true);
-    }
+    Navigator.of(context).pop(true);
   }
 
   void _showMessage(String message) {
@@ -1196,64 +442,24 @@ class _PaymentSettlementDetailPageState
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Widget _closeEmbedded(BuildContext context) => IconButton(
-    key: const ValueKey('desktop-settlement-detail-close'),
-    tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
-    onPressed: widget.onClose,
-    icon: const Icon(Icons.close_rounded),
-  );
-
   @override
   Widget build(BuildContext context) {
-    final updates = widget.sourceUpdates;
-    if (updates != null) {
-      return ValueListenableBuilder<List<PaymentSource>>(
-        valueListenable: updates,
-        builder: (context, sources, _) => _buildDetail(context, sources),
-      );
-    }
-    return _buildDetail(context, widget.sources);
-  }
-
-  Widget _buildDetail(BuildContext context, List<PaymentSource> sources) {
     final desktop =
         effectiveButlerlyLayoutMode(
           context,
           MediaQuery.sizeOf(context).width,
         ) ==
         ButlerlyLayoutMode.wide;
-    final sourceNames = {
-      ...widget.sourceNames,
-      for (final source in sources)
-        source.id.value: paymentSourceDisplayLabel(source),
-    };
     return FutureBuilder<PaymentSettlementDetailDto>(
       future: _detail,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
-          return Scaffold(
-            // The loading state must always offer device Back. Previously
-            // the non-embedded screen had no AppBar while SQLite was busy,
-            // making an in-flight detail read appear to trap navigation.
-            appBar: AppBar(
-              leading: widget.embedded ? null : const BackButton(),
-              title: Text(context.l10n.text('paymentSettlement')),
-              actions: [
-                if (widget.embedded) _closeEmbedded(context),
-              ],
-            ),
-            body: const ButlerlyLoadingState(),
-          );
+          return const Scaffold(body: ButlerlyLoadingState());
         }
         if (snapshot.hasError) {
           return Scaffold(
             appBar: AppBar(
-              leading: widget.embedded ? null : const BackButton(),
               title: Text(context.l10n.text('paymentSettlements')),
-              actions: [
-                if (widget.embedded) _closeEmbedded(context),
-                const ButlerlyContextHelpButton(articleId: 'ch-16'),
-              ],
             ),
             body: ButlerlyErrorState(
               title: context.l10n.text('paymentSettlements'),
@@ -1264,42 +470,17 @@ class _PaymentSettlementDetailPageState
             ),
           );
         }
-        final initialDetail = snapshot.requireData;
-        final summary = _comparisonSummary;
-        final summaryMatches =
-            summary != null &&
-            summary.snapshotToken == initialDetail.snapshotToken;
-        final detail = initialDetail.summaryPending && summaryMatches
-            ? initialDetail.withRecordedTotal(summary!.recordedTotal)
-            : initialDetail;
-        final comparisonPending =
-            initialDetail.summaryPending &&
-            !summaryMatches &&
-            !_summaryFailed;
+        final detail = snapshot.requireData;
         final settlement = detail.settlement;
-        final transactionPageCount =
-            (detail.transactionCount + _transactionPageSize - 1) ~/
-            _transactionPageSize;
-        final currentTransactionPage =
-            transactionPageCount == 0 || _transactionPage < transactionPageCount
-            ? _transactionPage
-            : transactionPageCount - 1;
-        final transactionStart = currentTransactionPage * _transactionPageSize;
-        final transactionEnd =
-            transactionStart + _transactionPageSize > detail.transactionCount
-            ? detail.transactionCount
-            : transactionStart + _transactionPageSize;
         final sourceName =
-            sourceNames[settlement.paymentSourceId] ??
+            widget.sourceNames[settlement.paymentSourceId] ??
             settlement.paymentSourceId;
         return Scaffold(
           body: ButlerlyPage(
             title: context.l10n.text('paymentSettlement'),
-            leading: widget.embedded ? null : const BackButton(),
             fullWidth: desktop,
             onRefresh: _refresh,
             actions: [
-              if (widget.embedded) _closeEmbedded(context),
               IconButton(
                 tooltip: context.l10n.text('editPaymentSettlement'),
                 onPressed: () => _edit(detail),
@@ -1316,180 +497,47 @@ class _PaymentSettlementDetailPageState
               ButlerlySectionHeader(
                 title: context.l10n.text('paymentSettlementComparison'),
               ),
-              _SettlementComparisonCard(
-                detail: detail,
-                loading: comparisonPending,
-              ),
+              _SettlementComparisonCard(detail: detail),
               ButlerlySectionHeader(
                 title: context.l10n.text(
                   'paymentSettlementPeriodTransactions',
                   {'count': '${detail.transactionCount}'},
                 ),
               ),
-              if (detail.transactionCount == 0)
+              if (detail.transactions.isEmpty)
                 ButlerlyEmptyState(
                   icon: Icons.receipt_long_outlined,
                   title: context.l10n.text('noTransactions'),
                   message: context.l10n.text('noActivityInPeriod'),
                 )
-              else if (desktop && !widget.embedded)
+              else if (desktop)
                 ButlerlyDesktopTransactionTableCard(
                   transactions: detail.transactions,
                   masterData: _masterData,
-                  paymentSourceNames: sourceNames,
+                  paymentSourceNames: widget.sourceNames,
                   onTap: _openTransaction,
                 )
               else
                 ButlerlyTransactionInnerCard(
-                  key: widget.embedded
-                      ? const ValueKey('settlement-detail-compact-transactions')
-                      : null,
                   child: ButlerlyTransactionList(
                     children: [
-                      // Never construct hundreds of transaction widgets in
-                      // a single mobile/embedded detail frame.
-                      for (final transaction in (detail.paged
-                              ? detail.transactions
-                              : detail.transactions.skip(transactionStart))
-                          .take(_transactionPageSize))
+                      for (final transaction in detail.transactions)
                         TransactionRow(
                           transaction: transaction,
                           masterData: _masterData,
-                          paymentSourceNames: sourceNames,
+                          paymentSourceNames: widget.sourceNames,
                           showDate: true,
                           showNavigationIndicator: true,
-                          compactSpacing: widget.embedded,
                           onTap: () => _openTransaction(transaction),
                         ),
                     ],
                   ),
-                ),
-              if ((!desktop || widget.embedded) &&
-                  transactionPageCount > 1)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Text(
-                      '${transactionStart + 1}–$transactionEnd / '
-                      '${detail.transactionCount}',
-                      key: const ValueKey(
-                        'settlement-detail-transaction-range',
-                      ),
-                    ),
-                    IconButton(
-                      key: const ValueKey('settlement-detail-transaction-prev'),
-                      tooltip: MaterialLocalizations.of(
-                        context,
-                      ).previousPageTooltip,
-                      onPressed: currentTransactionPage == 0
-                          ? null
-                          : () => _loadPage(currentTransactionPage - 1),
-                      icon: const Icon(Icons.chevron_left_rounded),
-                    ),
-                    IconButton(
-                      key: const ValueKey('settlement-detail-transaction-next'),
-                      tooltip: MaterialLocalizations.of(
-                        context,
-                      ).nextPageTooltip,
-                      onPressed: currentTransactionPage >=
-                              transactionPageCount - 1
-                          ? null
-                          : () => _loadPage(currentTransactionPage + 1),
-                      icon: const Icon(Icons.chevron_right_rounded),
-                    ),
-                  ],
                 ),
               const SizedBox(height: ButlerlySpacing.structural),
             ],
           ),
         );
       },
-    );
-  }
-}
-
-/// Connect Payment Settlements to its eligible card sources on desktop.
-/// Other source types remain managed in Payment Sources, and archived cards
-/// still resolve historic settlement labels without becoming selectable.
-class _SettlementDesktopSources extends StatelessWidget {
-  const _SettlementDesktopSources({
-    required this.data,
-    required this.onManage,
-    required this.onAdd,
-  });
-
-  final _SettlementListData data;
-  final VoidCallback onManage;
-  final VoidCallback onAdd;
-
-  @override
-  Widget build(BuildContext context) {
-    final activeCards = data.activeCardSources;
-    return ButlerlyCard(
-      child: Column(
-        key: const ValueKey('desktop-settlement-payment-sources'),
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  context.l10n.text('paymentSources'),
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-              TextButton.icon(
-                key: const ValueKey('desktop-settlement-manage-sources'),
-                onPressed: onManage,
-                icon: const Icon(Icons.credit_card_outlined),
-                label: Text(context.l10n.text('viewAll')),
-              ),
-            ],
-          ),
-          Text(
-            '${context.l10n.text('paymentSourceStatusActive')} · '
-            '${context.l10n.text('paymentSourceTypeCard')}',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          const SizedBox(height: ButlerlySpacing.compact),
-          if (activeCards.isEmpty)
-            Text(
-              context.l10n.text('paymentSettlementNeedsCardSource'),
-              style: Theme.of(context).textTheme.bodyMedium,
-            )
-          else
-            Wrap(
-              spacing: ButlerlySpacing.compact,
-              runSpacing: ButlerlySpacing.compact,
-              children: [
-                // A restored workspace can contain hundreds of sources.
-                // Only show a compact preview; View all opens the full list.
-                for (final source in activeCards.take(12))
-                  Chip(
-                    key: ValueKey(
-                      'settlement-eligible-source-${source.id.value}',
-                    ),
-                    avatar: const Icon(Icons.credit_card_outlined, size: 18),
-                    label: Text(paymentSourceDisplayLabel(source)),
-                  ),
-                if (activeCards.length > 12)
-                  Chip(
-                    key: const ValueKey('settlement-more-active-sources'),
-                    label: Text('+${activeCards.length - 12}'),
-                  ),
-              ],
-            ),
-          if (activeCards.isEmpty) ...[
-            const SizedBox(height: ButlerlySpacing.standard),
-            OutlinedButton.icon(
-              key: const ValueKey('desktop-settlement-add-source'),
-              onPressed: onAdd,
-              icon: const Icon(Icons.add),
-              label: Text(context.l10n.text('addPaymentSource')),
-            ),
-          ],
-        ],
-      ),
     );
   }
 }
@@ -1502,26 +550,36 @@ class _SettlementDesktopOverview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final settlements = data.settlements;
     return LayoutBuilder(
       builder: (context, constraints) {
         final cards = <Widget>[
           _SettlementCounterCard(
             label: context.l10n.text('paymentSettlements'),
-            count: data.totalCount,
+            count: settlements.length,
           ),
           _SettlementCounterCard(
             label: context.l10n.text('paymentSettlementOpen'),
-            count: data.statusCounts[PaymentSettlementStatus.open] ?? 0,
+            count: settlements
+                .where((value) => value.status == PaymentSettlementStatus.open)
+                .length,
           ),
           _SettlementCounterCard(
             label: context.l10n.text('paymentSettlementReconciled'),
-            count:
-                data.statusCounts[PaymentSettlementStatus.reconciled] ?? 0,
+            count: settlements
+                .where(
+                  (value) => value.status == PaymentSettlementStatus.reconciled,
+                )
+                .length,
           ),
           _SettlementCounterCard(
             label: context.l10n.text('needsReview'),
-            count:
-                data.statusCounts[PaymentSettlementStatus.needsReview] ?? 0,
+            count: settlements
+                .where(
+                  (value) =>
+                      value.status == PaymentSettlementStatus.needsReview,
+                )
+                .length,
           ),
         ];
         const gap = ButlerlySpacing.cardGap;
@@ -1558,152 +616,60 @@ class _SettlementCounterCard extends StatelessWidget {
   );
 }
 
-class _SettlementDesktopTable extends StatefulWidget {
-  const _SettlementDesktopTable({
-    required this.data,
-    required this.page,
-    required this.onPageChanged,
-    required this.onOpen,
-  });
+class _SettlementDesktopTable extends StatelessWidget {
+  const _SettlementDesktopTable({required this.data, required this.onOpen});
 
   final _SettlementListData data;
-  final int page;
-  final ValueChanged<int> onPageChanged;
   final ValueChanged<PaymentSettlementDto> onOpen;
 
-  @override
-  State<_SettlementDesktopTable> createState() =>
-      _SettlementDesktopTableState();
-}
-
-class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
   static const double minimumWidth = 920;
-  static const int pageSize = 20;
-  int _page = 0;
 
   @override
-  void didUpdateWidget(covariant _SettlementDesktopTable oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.data.serverPaged) return;
-    final pageCount =
-        (widget.data.settlements.length + pageSize - 1) ~/ pageSize;
-    if (_page >= pageCount) {
-      _page = pageCount > 0 ? pageCount - 1 : 0;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final settlements = widget.data.settlements;
-    final serverPaged = widget.data.serverPaged;
-    final total = serverPaged ? widget.data.totalCount : settlements.length;
-    final page = serverPaged ? widget.page : _page;
-    final pageCount = (total + pageSize - 1) ~/ pageSize;
-    final startIndex = page * pageSize;
-    final endIndex = startIndex + pageSize < total
-        ? startIndex + pageSize
-        : total;
-    final visibleRows = serverPaged
-        ? settlements
-        : settlements.skip(startIndex).take(pageSize);
-
-    return ButlerlyCard(
-      padding: const EdgeInsets.all(ButlerlySpacing.cardGap),
-      child: ButlerlyDesktopInnerCard(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (pageCount > 1)
-              Padding(
-                padding: const EdgeInsets.only(
-                  bottom: ButlerlySpacing.standard,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Text(
-                      '${startIndex + 1}–$endIndex / $total',
-                      key: const ValueKey('settlement-page-range'),
-                    ),
-                    IconButton(
-                      key: const ValueKey('settlement-page-previous'),
-                      tooltip: MaterialLocalizations.of(
-                        context,
-                      ).previousPageTooltip,
-                      onPressed: page == 0
-                          ? null
-                          : () => serverPaged
-                              ? widget.onPageChanged(page - 1)
-                              : setState(() => _page--),
-                      icon: const Icon(Icons.chevron_left_rounded),
-                    ),
-                    IconButton(
-                      key: const ValueKey('settlement-page-next'),
-                      tooltip: MaterialLocalizations.of(
-                        context,
-                      ).nextPageTooltip,
-                      onPressed: page >= pageCount - 1
-                          ? null
-                          : () => serverPaged
-                              ? widget.onPageChanged(page + 1)
-                              : setState(() => _page++),
-                      icon: const Icon(Icons.chevron_right_rounded),
-                    ),
-                  ],
-                ),
-              ),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final table = Column(
-                  key: const ValueKey('desktop-payment-settlements-table'),
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          flex: 3,
-                          child: _heading(context, 'paymentSource'),
-                        ),
-                        SizedBox(width: 110, child: _heading(context, 'date')),
-                        Expanded(
-                          flex: 3,
-                          child: _heading(context, 'paymentSettlementPeriod'),
-                        ),
-                        SizedBox(
-                          width: 145,
-                          child: _heading(context, 'paymentSettlementAmount'),
-                        ),
-                        SizedBox(
-                          width: 135,
-                          child: _heading(context, 'status'),
-                        ),
-                        const SizedBox(width: 24),
-                      ],
-                    ),
-                    const SizedBox(height: ButlerlyTableTokens.headerToRowsGap),
-                    _divider(context),
-                    for (final settlement in visibleRows) ...[
-                      _row(context, settlement),
-                      _divider(context),
-                    ],
-                  ],
-                );
-                if (constraints.maxWidth >= minimumWidth) return table;
-                return SingleChildScrollView(
-                  key: const ValueKey(
-                    'desktop-payment-settlements-horizontal-scroll',
+  Widget build(BuildContext context) => ButlerlyCard(
+    padding: const EdgeInsets.all(ButlerlySpacing.cardGap),
+    child: ButlerlyDesktopInnerCard(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final table = Column(
+            key: const ValueKey('desktop-payment-settlements-table'),
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Expanded(flex: 3, child: _heading(context, 'paymentSource')),
+                  SizedBox(width: 110, child: _heading(context, 'date')),
+                  Expanded(
+                    flex: 3,
+                    child: _heading(context, 'paymentSettlementPeriod'),
                   ),
-                  scrollDirection: Axis.horizontal,
-                  child: SizedBox(width: minimumWidth, child: table),
-                );
-              },
+                  SizedBox(
+                    width: 145,
+                    child: _heading(context, 'paymentSettlementAmount'),
+                  ),
+                  SizedBox(width: 135, child: _heading(context, 'status')),
+                  const SizedBox(width: 24),
+                ],
+              ),
+              const SizedBox(height: ButlerlyTableTokens.headerToRowsGap),
+              _divider(context),
+              for (final settlement in data.settlements) ...[
+                _row(context, settlement),
+                _divider(context),
+              ],
+            ],
+          );
+          if (constraints.maxWidth >= minimumWidth) return table;
+          return SingleChildScrollView(
+            key: const ValueKey(
+              'desktop-payment-settlements-horizontal-scroll',
             ),
-          ],
-        ),
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(width: minimumWidth, child: table),
+          );
+        },
       ),
-    );
-  }
+    ),
+  );
 
   Widget _heading(BuildContext context, String key) => Text(
     context.l10n.text(key),
@@ -1731,7 +697,7 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
       type: MaterialType.transparency,
       child: InkWell(
         key: ValueKey('desktop-payment-settlement-${settlement.id}'),
-        onTap: () => widget.onOpen(settlement),
+        onTap: () => onOpen(settlement),
         child: Padding(
           padding: const EdgeInsets.symmetric(
             vertical: ButlerlyTableTokens.rowVerticalPadding,
@@ -1741,7 +707,7 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
               Expanded(
                 flex: 3,
                 child: Text(
-                  widget.data.sourceNames[settlement.paymentSourceId] ??
+                  data.sourceNames[settlement.paymentSourceId] ??
                       settlement.paymentSourceId,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -1854,13 +820,9 @@ class _SettlementCard extends StatelessWidget {
 }
 
 class _SettlementComparisonCard extends StatelessWidget {
-  const _SettlementComparisonCard({
-    required this.detail,
-    this.loading = false,
-  });
+  const _SettlementComparisonCard({required this.detail});
 
   final PaymentSettlementDetailDto detail;
-  final bool loading;
 
   @override
   Widget build(BuildContext context) {
@@ -1879,9 +841,7 @@ class _SettlementComparisonCard extends StatelessWidget {
         children: [
           _SummaryLine(
             label: context.l10n.text('recordedTransactionTotal'),
-            value: loading
-                ? context.l10n.text('loading')
-                : recorded == null
+            value: recorded == null
                 ? context.l10n.text('comparisonUnavailable')
                 : amount(recorded.amount),
           ),
@@ -1891,9 +851,7 @@ class _SettlementComparisonCard extends StatelessWidget {
           ),
           _SummaryLine(
             label: context.l10n.text('paymentSettlementDifference'),
-            value: loading
-                ? context.l10n.text('loading')
-                : difference == null
+            value: difference == null
                 ? context.l10n.text('comparisonUnavailable')
                 : amount(difference.amount),
           ),
@@ -1995,55 +953,11 @@ class _SettlementStatusChip extends StatelessWidget {
   }
 }
 
-/// Settlement entry is a long, editable form. Use a dedicated route instead
-/// of stacking an interactive form inside a constrained modal bottom sheet.
-/// This keeps fields, dropdowns and Save/Cancel reachable on device and desktop.
-Future<_SettlementDraft?> _openSettlementEditorPage({
-  required BuildContext context,
-  required List<PaymentSource> sources,
-  PaymentSettlementDetailDto? existing,
-}) => Navigator.of(context).push<_SettlementDraft>(
-  MaterialPageRoute(
-    builder: (routeContext) => Scaffold(
-      key: const ValueKey('payment-settlement-editor-page'),
-      appBar: AppBar(
-        title: Text(
-          routeContext.l10n.text(
-            existing == null ? 'addPaymentSettlement' : 'editPaymentSettlement',
-          ),
-        ),
-      ),
-      body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(
-              maxWidth: ButlerlySize.readableWidth,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(ButlerlySpacing.standard),
-              child: _SettlementEditorSheet(
-                sources: sources,
-                existing: existing,
-                showTitle: false,
-              ),
-            ),
-          ),
-        ),
-      ),
-    ),
-  ),
-);
-
 class _SettlementEditorSheet extends StatefulWidget {
-  const _SettlementEditorSheet({
-    required this.sources,
-    this.existing,
-    this.showTitle = true,
-  });
+  const _SettlementEditorSheet({required this.sources, this.existing});
 
   final List<PaymentSource> sources;
   final PaymentSettlementDetailDto? existing;
-  final bool showTitle;
 
   @override
   State<_SettlementEditorSheet> createState() => _SettlementEditorSheetState();
@@ -2060,7 +974,6 @@ class _SettlementEditorSheetState extends State<_SettlementEditorSheet> {
   late final TextEditingController _description;
   late final TextEditingController _externalReference;
   late String? _paymentSourceId;
-  String? _submitError;
 
   bool get _isEditing => widget.existing != null;
 
@@ -2069,9 +982,7 @@ class _SettlementEditorSheetState extends State<_SettlementEditorSheet> {
     super.initState();
     final existing = widget.existing;
     final settlement = existing?.settlement;
-    _paymentSourceId =
-        settlement?.paymentSourceId ??
-        (widget.sources.length == 1 ? widget.sources.single.id.value : null);
+    _paymentSourceId = settlement?.paymentSourceId;
     _amount = TextEditingController(
       text: settlement?.payment.amount.toString() ?? '',
     );
@@ -2149,34 +1060,14 @@ class _SettlementEditorSheetState extends State<_SettlementEditorSheet> {
   }
 
   void _submit() {
-    if (!_formKey.currentState!.validate()) {
-      // A SnackBar belongs to the underlying page and can be obscured by
-      // this modal sheet. Show validation beside Save instead.
-      setState(() {
-        _submitError = _paymentSourceId == null && !_isEditing
-            ? context.l10n.text('choosePaymentSourceToContinue')
-            : _requiredAmount(_amount.text) ??
-                  _currencyValidator(_currency.text) ??
-                  _requiredDate(_paymentDate.text) ??
-                  _requiredDate(_periodStart.text) ??
-                  _requiredDate(_periodEnd.text) ??
-                  _optionalAmount(_statementBalance.text) ??
-                  context.l10n.text('tryAgain');
-      });
-      return;
-    }
-    if (!_isEditing && _paymentSourceId == null) {
-      setState(() {
-        _submitError = context.l10n.text('choosePaymentSourceToContinue');
-      });
-      return;
-    }
+    if (!_formKey.currentState!.validate()) return;
+    if (!_isEditing && _paymentSourceId == null) return;
     final start = DateTime.parse(_periodStart.text);
     final end = DateTime.parse(_periodEnd.text);
     if (end.isBefore(start)) {
-      setState(() {
-        _submitError = context.l10n.text('paymentSettlementPeriod');
-      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.text('paymentSettlementPeriod'))),
+      );
       return;
     }
     Navigator.pop(
@@ -2210,13 +1101,11 @@ class _SettlementEditorSheetState extends State<_SettlementEditorSheet> {
               .where((value) => value.id.value == _paymentSourceId)
               .firstOrNull;
     return ButlerlySheet(
-      title: widget.showTitle
-          ? Text(
-              context.l10n.text(
-                _isEditing ? 'editPaymentSettlement' : 'addPaymentSettlement',
-              ),
-            )
-          : null,
+      title: Text(
+        context.l10n.text(
+          _isEditing ? 'editPaymentSettlement' : 'addPaymentSettlement',
+        ),
+      ),
       content: Form(
         key: _formKey,
         child: Column(
@@ -2232,12 +1121,6 @@ class _SettlementEditorSheetState extends State<_SettlementEditorSheet> {
                       ? widget.existing!.settlement.paymentSourceId
                       : paymentSourceDisplayLabel(source),
                 ),
-              )
-            else if (widget.sources.isEmpty)
-              Text(
-                context.l10n.text('paymentSettlementNeedsCardSource'),
-                key: const ValueKey('settlement-no-eligible-source'),
-                style: TextStyle(color: Theme.of(context).colorScheme.error),
               )
             else
               FormField<String>(
@@ -2383,15 +1266,6 @@ class _SettlementEditorSheetState extends State<_SettlementEditorSheet> {
         ),
       ),
       actions: [
-        if (_submitError != null)
-          Semantics(
-            liveRegion: true,
-            child: Text(
-              _submitError!,
-              key: const ValueKey('payment-settlement-submit-error'),
-              style: TextStyle(color: Theme.of(context).colorScheme.error),
-            ),
-          ),
         ButlerlyCancelButton(
           onPressed: () => Navigator.pop(context),
           child: Text(context.l10n.text('cancel')),
@@ -2430,43 +1304,24 @@ final class _SettlementDraft {
 }
 
 final class _SettlementListData {
-  _SettlementListData({
-    required this.settlements,
-    required this.sources,
-    int? totalCount,
-    this.serverPaged = false,
-    Map<PaymentSettlementStatus, int>? statusCounts,
-  }) : totalCount = totalCount ?? settlements.length,
-       statusCounts = statusCounts ??
-           {
-             for (final status in PaymentSettlementStatus.values)
-               status: settlements.where((s) => s.status == status).length,
-           };
+  const _SettlementListData({required this.settlements, required this.sources});
 
   final List<PaymentSettlementDto> settlements;
   final List<PaymentSource> sources;
-  final int totalCount;
-  final bool serverPaged;
-  final Map<PaymentSettlementStatus, int> statusCounts;
 
-  // Compute each lookup once when the local data is loaded. The desktop
-  // table uses sourceNames for every row; rebuilding it per row used to
-  // produce O(settlements * sources) work on the UI thread.
-  late final List<PaymentSource> activeCardSources = List.unmodifiable(
-    sources.where(
-      (source) =>
-          source.status == PaymentSourceStatus.active &&
-          source.type == PaymentSourceType.card,
-    ),
-  );
+  List<PaymentSource> get activeCardSources => sources
+      .where(
+        (source) =>
+            source.status == PaymentSourceStatus.active &&
+            source.type == PaymentSourceType.card,
+      )
+      .toList(growable: false);
 
-  late final Map<String, String> sourceNames = Map.unmodifiable({
+  Map<String, String> get sourceNames => {
     for (final source in sources)
       source.id.value: paymentSourceDisplayLabel(source),
-  });
+  };
 }
-
-enum _DeviceSettlementAction { addSource }
 
 enum _SettlementAction { open, reconciled, needsReview, remove }
 
