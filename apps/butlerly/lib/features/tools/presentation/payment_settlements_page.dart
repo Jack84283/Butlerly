@@ -56,28 +56,56 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
     setState(() => _data = _load().timeout(_loadDeadline));
   }
 
+  // Log only phase timings and result counts, never private financial data.
+  // This distinguishes desktop navigation/layout stalls from database stalls.
+  void _traceLoad(String stage, Stopwatch watch) {
+    assert(() {
+      debugPrint(
+        '[PaymentSettlements] $stage after ${watch.elapsedMilliseconds} ms',
+      );
+      return true;
+    }());
+  }
+
   Future<_SettlementListData> _load() async {
-    final finance = _finance;
-    final listSettlements = finance?.listPaymentSettlements;
-    if (finance == null || listSettlements == null) {
-      throw StateError('Payment settlements are unavailable.');
-    }
-    // Start independent read-only queries concurrently. Serial waiting here
-    // prolonged the initial loading screen even when one result was ready.
-    final settlementsFuture = listSettlements();
-    final sourcesFuture = finance.listPaymentSources();
-    final settlementResult = await settlementsFuture;
-    final sourceResult = await sourcesFuture;
-    if (settlementResult case ApplicationSuccess<List<PaymentSettlementDto>>(
-      value: final settlements,
-    )) {
-      if (sourceResult case ApplicationSuccess<List<PaymentSource>>(
-        value: final sources,
-      )) {
-        return _SettlementListData(settlements: settlements, sources: sources);
+    final watch = Stopwatch()..start();
+    _traceLoad('starting initial read', watch);
+    try {
+      final finance = _finance;
+      final listSettlements = finance?.listPaymentSettlements;
+      if (finance == null || listSettlements == null) {
+        throw StateError('Payment settlements are unavailable.');
       }
+      final settlementsFuture = listSettlements();
+      final sourcesFuture = finance.listPaymentSources();
+      _traceLoad('read requests dispatched', watch);
+      final settlementResult = await settlementsFuture;
+      _traceLoad('settlements read returned', watch);
+      final sourceResult = await sourcesFuture;
+      _traceLoad('payment sources read returned', watch);
+      if (settlementResult case ApplicationSuccess<List<PaymentSettlementDto>>(
+        value: final settlements,
+      )) {
+        if (sourceResult case ApplicationSuccess<List<PaymentSource>>(
+          value: final sources,
+        )) {
+          _traceLoad(
+            'ready (${settlements.length} settlements, ${sources.length} sources)',
+            watch,
+          );
+          return _SettlementListData(
+            settlements: settlements,
+            sources: sources,
+          );
+        }
+      }
+      throw StateError('Payment settlements could not be loaded.');
+    } catch (error) {
+      _traceLoad('read failed (${error.runtimeType})', watch);
+      rethrow;
+    } finally {
+      watch.stop();
     }
-    throw StateError('Payment settlements could not be loaded.');
   }
 
   Future<void> _refresh() async {
@@ -235,15 +263,29 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
       future: _data,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
-          return const ButlerlyLoadingState();
+          return ButlerlyPage(
+            title: context.l10n.text('paymentSettlements'),
+            fullWidth: desktop,
+            children: [
+              ButlerlyLoadingState(
+                message: context.l10n.text('loading'),
+              ),
+            ],
+          );
         }
         if (snapshot.hasError) {
-          return ButlerlyErrorState(
+          return ButlerlyPage(
             title: context.l10n.text('paymentSettlements'),
-            message: context.l10n.text('tryAgain'),
-            preserved: context.l10n.text('dataPreserved'),
-            actionLabel: context.l10n.text('tryAgain'),
-            onAction: _refresh,
+            fullWidth: desktop,
+            children: [
+              ButlerlyErrorState(
+                title: context.l10n.text('paymentSettlements'),
+                message: context.l10n.text('tryAgain'),
+                preserved: context.l10n.text('dataPreserved'),
+                actionLabel: context.l10n.text('tryAgain'),
+                onAction: _refresh,
+              ),
+            ],
           );
         }
         final data = snapshot.requireData;
