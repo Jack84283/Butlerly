@@ -620,12 +620,21 @@ class _PaymentSettlementDetailPageState
     final languageCode = Localizations.localeOf(context).languageCode;
     if (_loadedLanguageCode == languageCode) return;
     _loadedLanguageCode = languageCode;
-    TransactionMasterData.load(widget.finance, languageCode: languageCode).then(
-      (value) {
+    // The settlement detail does not need a Payment Sources lookup.
+    // Defer optional label resolution until after the detail route paints.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _loadedLanguageCode != languageCode) return;
+      TransactionMasterData.load(
+        widget.finance,
+        languageCode: languageCode,
+        includePaymentSources: false,
+      ).then((value) {
         if (!mounted || _loadedLanguageCode != languageCode) return;
         setState(() => _masterData = value);
-      },
-    );
+      }).catchError((Object _) {
+        // Master-data labels are optional: do not strand detail navigation.
+      });
+    });
   }
 
   Future<PaymentSettlementDetailDto> _load() async {
@@ -649,6 +658,7 @@ class _PaymentSettlementDetailPageState
     final masterData = TransactionMasterData.load(
       widget.finance,
       languageCode: languageCode,
+      includePaymentSources: false,
     );
     setState(() => _detail = detail);
     await detail;
@@ -910,7 +920,7 @@ class _PaymentSettlementDetailPageState
                   title: context.l10n.text('noTransactions'),
                   message: context.l10n.text('noActivityInPeriod'),
                 )
-              else if (desktop)
+              else if (desktop && !widget.embedded)
                 ButlerlyDesktopTransactionTableCard(
                   transactions: detail.transactions,
                   masterData: _masterData,
@@ -919,6 +929,9 @@ class _PaymentSettlementDetailPageState
                 )
               else
                 ButlerlyTransactionInnerCard(
+                  key: widget.embedded
+                      ? const ValueKey('settlement-detail-compact-transactions')
+                      : null,
                   child: ButlerlyTransactionList(
                     children: [
                       for (final transaction in detail.transactions)
@@ -928,6 +941,7 @@ class _PaymentSettlementDetailPageState
                           paymentSourceNames: sourceNames,
                           showDate: true,
                           showNavigationIndicator: true,
+                          compactSpacing: widget.embedded,
                           onTap: () => _openTransaction(transaction),
                         ),
                     ],
