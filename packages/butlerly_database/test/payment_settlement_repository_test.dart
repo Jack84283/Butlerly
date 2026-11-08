@@ -780,33 +780,74 @@ void main() {
   test(
     'indexed settlement filters cover normalized and timing-only dates',
     () async {
+      const sql = '''SELECT t.id FROM transactions t
+        WHERE t.payment_source_id = ? AND t.status = ?
+          AND t.direction != ?
+          AND (
+            (TRIM(COALESCE(t.transaction_date, '')) != ''
+             AND TRIM(t.transaction_date) >= ?
+             AND TRIM(t.transaction_date) <= ?)
+            OR
+            (TRIM(COALESCE(t.transaction_date, '')) = ''
+             AND t.occurred_at IS NOT NULL
+             AND t.occurred_at >= ?
+             AND t.occurred_at < ?)
+          )''';
+      final arguments = <Object?>[
+        'visa',
+        TransactionStatus.active.name,
+        TransactionDirection.transfer.name,
+        '2026-08-15',
+        '2026-09-14',
+        '2026-08-15T00:00:00',
+        '2026-09-15T00:00:00',
+      ];
       final plan = await database.connection.rawQuery(
-        '''EXPLAIN QUERY PLAN SELECT t.id FROM transactions t
-           WHERE t.payment_source_id = ? AND t.status = ?
-             AND t.direction != ?
-             AND (
-               (TRIM(COALESCE(t.transaction_date, '')) != ''
-                AND TRIM(t.transaction_date) >= ?
-                AND TRIM(t.transaction_date) <= ?)
-               OR
-               (TRIM(COALESCE(t.transaction_date, '')) = ''
-                AND t.occurred_at IS NOT NULL
-                AND t.occurred_at >= ?
-                AND t.occurred_at < ?)
-             )''',
-        [
-          'visa',
-          TransactionStatus.active.name,
-          TransactionDirection.transfer.name,
-          '2026-08-15',
-          '2026-09-14',
-          '2026-08-15T00:00:00',
-          '2026-09-15T00:00:00',
-        ],
+        'EXPLAIN QUERY PLAN $sql',
+        arguments,
       );
       final steps = plan.map((row) => row['detail'].toString()).join(' ');
       expect(steps, contains('idx_settlement_source_trimmed_date'));
       expect(steps, contains('idx_settlement_source_occurred_at'));
+
+      Future<void> seed(
+        String id, {
+        String? transactionDate,
+        required String occurredAt,
+      }) => database.connection.insert('transactions', {
+        'id': id,
+        'occurred_at': occurredAt,
+        'amount_coefficient': '125',
+        'amount_scale': 2,
+        'currency': 'USD',
+        'direction': TransactionDirection.expense.name,
+        'source_type': TransactionSourceType.import.name,
+        'status': TransactionStatus.active.name,
+        'payment_source_id': 'visa',
+        'transaction_date': transactionDate,
+        'created_at': occurredAt,
+        'updated_at': occurredAt,
+      }).then((_) {});
+      await seed(
+        'legacy-padded-date',
+        transactionDate: ' 2026-09-01 ',
+        occurredAt: '2026-09-01T12:00:00',
+      );
+      await seed(
+        'timing-only',
+        occurredAt: '2026-09-02T12:00:00',
+      );
+      await seed(
+        'outside-period',
+        transactionDate: '2026-10-01',
+        occurredAt: '2026-10-01T12:00:00',
+      );
+      final actual = await database.connection.rawQuery(sql, arguments);
+      expect(
+        actual.map((row) => row['id']).toSet(),
+        {'legacy-padded-date', 'timing-only'},
+      );
+
       final deployment = await File(
         'database/migrations/deployment.sql',
       ).readAsString();
