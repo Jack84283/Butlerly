@@ -196,13 +196,16 @@ void main() {
         closeTo(taglineLineHeight, 1.0),
         reason: 'The device tagline should occupy one visual line',
       );
-      expect(
-        tester.getTopLeft(brandTagline).dy - tester.getBottomLeft(brand).dy,
-        closeTo(ButlerlySpacing.micro, 1.0),
+      final topRow = find.byKey(
+        const ValueKey('home-brand-month-help-row'),
       );
       expect(
-        tester.getTopLeft(monthSurface).dy,
-        greaterThan(tester.getBottomLeft(brandTagline).dy),
+        tester.getTopLeft(brandTagline).dy,
+        closeTo(tester.getBottomLeft(topRow).dy, 1.0),
+      );
+      expect(
+        tester.getCenter(monthSurface).dy,
+        closeTo(tester.getCenter(brandIcon).dy, 1.1),
       );
       expect(tester.widget<Text>(greeting).style?.fontSize, 20);
       expect(tester.widget<Text>(intro).style?.fontSize, 13);
