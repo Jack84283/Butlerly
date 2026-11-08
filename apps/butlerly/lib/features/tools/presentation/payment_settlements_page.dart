@@ -37,12 +37,20 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
   // A read-only database query must never hold this page in a perpetual
   // loading state. A stalled load exposes the existing retry UI instead.
   static const _loadDeadline = Duration(seconds: 20);
-  late Future<_SettlementListData> _data = _load().timeout(_loadDeadline);
+  Future<_SettlementListData>? _data;
 
   @override
   void initState() {
     super.initState();
     workspaceRestoreChanges.addListener(_onWorkspaceRestored);
+    // Let the desktop shell and this route paint before starting SQLite
+    // work. Previously _load() started from a field initializer during
+    // navigation, making a busy local database look like an app freeze.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _data == null) {
+        _refresh();
+      }
+    });
   }
 
   @override
@@ -53,7 +61,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
 
   void _onWorkspaceRestored() {
     if (!mounted) return;
-    setState(() => _data = _load().timeout(_loadDeadline));
+    _refresh();
   }
 
   // Log only phase timings and result counts, never private financial data.
@@ -76,12 +84,12 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
       if (finance == null || listSettlements == null) {
         throw StateError('Payment settlements are unavailable.');
       }
-      final settlementsFuture = listSettlements();
-      final sourcesFuture = finance.listPaymentSources();
-      _traceLoad('read requests dispatched', watch);
-      final settlementResult = await settlementsFuture;
+      // Both repositories share the local SQLite connection. Restore the
+      // original serial read order instead of issuing both queries during
+      // the first navigation frame.
+      final settlementResult = await listSettlements();
       _traceLoad('settlements read returned', watch);
-      final sourceResult = await sourcesFuture;
+      final sourceResult = await finance.listPaymentSources();
       _traceLoad('payment sources read returned', watch);
       if (settlementResult case ApplicationSuccess<List<PaymentSettlementDto>>(
         value: final settlements,
@@ -165,7 +173,9 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
 
     await _refresh();
     if (!mounted) return;
-    final updated = await _data;
+    final latest = _data;
+    if (latest == null) return;
+    final updated = await latest;
     if (!mounted) return;
     if (updated.activeCardSources.isNotEmpty) {
       await _createSettlement(updated);
