@@ -614,6 +614,71 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets(
+    'desktop history stays visible if Payment Sources cannot finish loading',
+    (tester) async {
+      tester.view.physicalSize = const Size(1400, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final sources = _TestSources([]);
+      // Deliberately never complete this source query. Settlement history
+      // must remain accessible, without waiting for the source timeout.
+      sources.blockedList = Completer<List<PaymentSource>>().future;
+      final settlements = registerServices([], sourceRepository: sources);
+      settlements.values.add(
+        PaymentSettlement(
+          id: PaymentSettlementId('history-only'),
+          paymentSourceId: PaymentSourceId('archived-card'),
+          payment: Money(
+            amount: DecimalValue.parse('60.00'),
+            currency: CurrencyCode('USD'),
+          ),
+          paymentDate: '2026-10-05',
+          periodStart: '2026-09-01',
+          periodEnd: '2026-09-30',
+          status: PaymentSettlementStatus.open,
+          createdAt: DateTime.utc(2026, 11, 7),
+          updatedAt: DateTime.utc(2026, 11, 7),
+        ),
+      );
+
+      await tester.pumpWidget(app());
+      await tester.pump();
+      await tester.pump();
+
+      expect(sources.listCalls, 1);
+      expect(find.text('Payment settlements'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('desktop-payment-settlements-table')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('desktop-payment-settlement-history-only')),
+        findsOneWidget,
+      );
+      // Until source eligibility is known, avoid opening the wrong editor.
+      final add = find.byKey(const ValueKey('payment-settlements-add'));
+      expect(tester.widget<IconButton>(add).onPressed, isNull);
+
+      // A failed prerequisite read is isolated to the source card. The
+      // settlement table and its historical data remain on screen.
+      await tester.pump(const Duration(seconds: 9));
+      await tester.pump();
+      expect(find.text('Try again'), findsAtLeastNWidgets(1));
+      expect(
+        find.byKey(const ValueKey('desktop-payment-settlements-table')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('desktop-payment-settlement-history-only')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('a stalled initial read resolves to retry instead of spinning', (
     tester,
   ) async {
@@ -706,12 +771,13 @@ class _TestSources extends Fake implements PaymentSourceRepository {
   _TestSources(this.sources);
 
   final List<PaymentSource> sources;
+  Future<List<PaymentSource>>? blockedList;
   int listCalls = 0;
 
   @override
-  Future<List<PaymentSource>> listAll() async {
+  Future<List<PaymentSource>> listAll() {
     listCalls++;
-    return sources;
+    return blockedList ?? Future.value(sources);
   }
 
   @override
