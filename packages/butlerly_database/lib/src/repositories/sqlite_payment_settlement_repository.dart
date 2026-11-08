@@ -211,8 +211,7 @@ final class SqlitePaymentSettlementRepository
         final revisionRows = await executor.rawQuery(
           'SELECT total_changes() AS database_revision',
         );
-        final revision =
-            revisionRows.single['database_revision']! as int;
+        final revision = revisionRows.single['database_revision']! as int;
         const batchSize = 400;
         var cursor = '';
         var totalCount = 0;
