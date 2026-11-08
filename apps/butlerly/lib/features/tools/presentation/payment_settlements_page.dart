@@ -453,7 +453,8 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
           MediaQuery.sizeOf(context).width,
         ) ==
         ButlerlyLayoutMode.wide;
-    if (_lastWideLayout case final previous? when previous != desktop) {
+    final previousLayout = _lastWideLayout;
+    if (previousLayout != null && previousLayout != desktop) {
       // A device SQL page cannot supply desktop's complete overview after
       // rotation/resizing. Re-read using the correct layout contract.
       _lastWideLayout = desktop;
