@@ -5,6 +5,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/features/desktop/presentation/desktop_transaction_detail_split_view.dart';
 import 'package:butlerly/features/foundation/presentation/payment_sources_page.dart';
 import 'package:butlerly/features/tools/presentation/payment_settlements_page.dart';
 import 'package:butlerly/features/tools/presentation/tools_page.dart';
@@ -651,6 +652,99 @@ void main() {
     },
   );
 
+  for (final width in [900.0, 1200.0, 1400.0]) {
+    testWidgets(
+      'desktop right detail uses compact transaction rows at $width',
+      (tester) async {
+        tester.view.physicalSize = Size(width, 900);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final sources = _TestSources([]);
+        final settlements = registerServices([], sourceRepository: sources);
+        final now = DateTime.utc(2026, 11, 7);
+        settlements.values.add(
+          PaymentSettlement(
+            id: PaymentSettlementId('compact-panel'),
+            paymentSourceId: PaymentSourceId('legacy-import'),
+            payment: Money(
+              amount: DecimalValue.parse('42.50'),
+              currency: CurrencyCode('USD'),
+            ),
+            paymentDate: '2026-10-05',
+            periodStart: '2026-09-01',
+            periodEnd: '2026-09-30',
+            status: PaymentSettlementStatus.open,
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+        settlements.transactionResults.add(
+          Transaction(
+            id: TransactionId('import-transaction'),
+            timing: KnownTransactionTime(DateTime.utc(2026, 9, 15)),
+            money: Money(
+              amount: DecimalValue.parse('42.50'),
+              currency: CurrencyCode('USD'),
+            ),
+            direction: TransactionDirection.expense,
+            sourceType: TransactionSourceType.import,
+            description: 'Imported statement purchase',
+            provenance: [
+              Provenance(
+                id: ProvenanceId('compact-panel-provenance'),
+                sourceType: ProvenanceSourceType.import,
+                sourceId: 'statement-row-one',
+                originalRepresentation: '2026-09-15 Purchase USD 42.50',
+                capturedAt: now,
+              ),
+            ],
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(
+              body: DesktopTransactionDetailSplitView(
+                results: const SizedBox.expand(),
+                detail: PaymentSettlementDetailPage(
+                  finance: services<FinanceServices>(),
+                  settlementId: 'compact-panel',
+                  sourceNames: const {},
+                  sources: const [],
+                  embedded: true,
+                  onClose: () {},
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const ValueKey('desktop-transaction-detail-panel')),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('settlement-detail-compact-transactions')),
+          findsOneWidget,
+        );
+        expect(find.text('Imported statement purchase'), findsOneWidget);
+        expect(sources.listCalls, 0);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets(
     'device detail opens and closes with source metadata unavailable',
     (tester) async {
@@ -1144,6 +1238,7 @@ class _TestSources extends Fake implements PaymentSourceRepository {
 
 class _TestSettlements extends Fake implements PaymentSettlementRepository {
   final values = <PaymentSettlement>[];
+  final transactionResults = <Transaction>[];
   Future<List<PaymentSettlement>>? blockedList;
   int listCalls = 0;
 
@@ -1168,7 +1263,7 @@ class _TestSettlements extends Fake implements PaymentSettlementRepository {
     PaymentSettlement settlement, {
     DateTime? occurredAtFrom,
     DateTime? occurredAtToExclusive,
-  }) async => const [];
+  }) async => transactionResults;
 }
 
 class _UnusedTransactions extends Fake implements TransactionRepository {}
