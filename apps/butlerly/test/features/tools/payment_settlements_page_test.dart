@@ -76,27 +76,37 @@ void main() {
         await tester.tap(add);
         await tester.pumpAndSettle();
 
-        // A missing card must navigate directly to the real create form,
-        // rather than leaving the user in an inert prerequisite sheet.
-        expect(find.text('Add payment source'), findsAtLeastNWidgets(1));
-        expect(
-          find.byKey(const ValueKey('settlement-create-payment-source')),
-          findsNothing,
-        );
         if (width < 900) {
+          // Device mode must always show the actual settlement bottom sheet.
+          // Having zero eligible cards is an inline prerequisite, not a route
+          // change to Add Payment Source.
+          expect(find.byType(BottomSheet), findsOneWidget);
+          expect(find.byType(PaymentSourcesPage), findsNothing);
           expect(
-            find.byKey(const ValueKey('settlement-card-source-editor-page')),
+            find.byKey(const ValueKey('payment-settlement-editor-page')),
+            findsNothing,
+          );
+          expect(find.text('Add payment settlement'), findsOneWidget);
+          expect(
+            find.byKey(const ValueKey('settlement-no-eligible-source')),
             findsOneWidget,
           );
-          expect(find.byType(BottomSheet), findsNothing);
-          final types = find.byType(ButlerlySelectField<PaymentSourceType>);
-          expect(types, findsOneWidget);
+          await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+          await tester.pumpAndSettle();
           expect(
-            tester.widget<ButlerlySelectField<PaymentSourceType>>(types).value,
-            PaymentSourceType.card,
+            find.byKey(const ValueKey('payment-settlement-submit-error')),
+            findsOneWidget,
           );
+          await tester.tap(find.widgetWithText(ButlerlyCancelButton, 'Cancel'));
+          await tester.pumpAndSettle();
+          expect(find.byType(BottomSheet), findsNothing);
         } else {
+          // Desktop prerequisite navigation is intentionally unchanged.
           expect(find.byType(PaymentSourcesPage), findsOneWidget);
+          expect(
+            find.byKey(const ValueKey('desktop-payment-source-workspace')),
+            findsOneWidget,
+          );
           expect(find.byType(BottomSheet), findsNothing);
         }
         expect(tester.takeException(), isNull);
@@ -124,11 +134,19 @@ void main() {
         expect(tester.widget<IconButton>(add).onPressed, isNotNull);
         await tester.tap(add);
         await tester.pumpAndSettle();
-        expect(
-          find.byKey(const ValueKey('payment-settlement-editor-page')),
-          findsOneWidget,
-        );
-        expect(find.byType(BottomSheet), findsNothing);
+        if (width < 900) {
+          expect(find.byType(BottomSheet), findsOneWidget);
+          expect(
+            find.byKey(const ValueKey('payment-settlement-editor-page')),
+            findsNothing,
+          );
+        } else {
+          expect(
+            find.byKey(const ValueKey('payment-settlement-editor-page')),
+            findsOneWidget,
+          );
+          expect(find.byType(BottomSheet), findsNothing);
+        }
         expect(find.byType(PaymentSourcesPage), findsNothing);
         expect(find.text('Add payment settlement'), findsAtLeastNWidgets(1));
         await tester.tap(find.widgetWithText(FilledButton, 'Save'));
@@ -151,68 +169,52 @@ void main() {
     );
   }
 
-  testWidgets(
-    'creating a prerequisite credit card resumes the settlement editor',
-    (tester) async {
-      tester.view.physicalSize = const Size(390, 900);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      final sources = <PaymentSource>[];
-      registerServices(sources);
+  testWidgets('device sheet offers only eligible credit-card sources', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    registerServices([
+      PaymentSource(
+        id: PaymentSourceId('visa'),
+        name: 'Visa',
+        type: PaymentSourceType.card,
+      ),
+      PaymentSource(
+        id: PaymentSourceId('mastercard'),
+        name: 'Mastercard',
+        type: PaymentSourceType.card,
+      ),
+      PaymentSource(
+        id: PaymentSourceId('cash'),
+        name: 'Cash',
+        type: PaymentSourceType.cash,
+      ),
+      PaymentSource(
+        id: PaymentSourceId('archived'),
+        name: 'Archived',
+        type: PaymentSourceType.card,
+        status: PaymentSourceStatus.archived,
+      ),
+    ]);
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('payment-settlements-add')));
+    await tester.pumpAndSettle();
 
-      await tester.pumpWidget(app());
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const ValueKey('payment-settlements-add')));
-      await tester.pumpAndSettle();
-      expect(
-        find.byKey(const ValueKey('settlement-card-source-editor-page')),
-        findsOneWidget,
-      );
-      expect(find.byType(BottomSheet), findsNothing);
-
-      final name = find.widgetWithText(TextField, 'Name');
-      final lastFour = find.widgetWithText(TextField, 'Last 4 digits');
-      final save = find.widgetWithText(FilledButton, 'Save');
-
-      await tester.tap(save);
-      await tester.pumpAndSettle();
-      expect(
-        find.byKey(const ValueKey('payment-source-create-error')),
-        findsOneWidget,
-      );
-
-      await tester.ensureVisible(name);
-      await tester.enterText(name, 'Visa test card');
-      await tester.tap(save);
-      await tester.pumpAndSettle();
-      expect(find.text('Enter exactly four digits.'), findsOneWidget);
-
-      await tester.ensureVisible(lastFour);
-      await tester.enterText(lastFour, '1234');
-      await tester.tap(save);
-      await tester.pumpAndSettle();
-
-      expect(sources, hasLength(1));
-      expect(sources.single.type, PaymentSourceType.card);
-      expect(
-        find.byKey(const ValueKey('settlement-card-source-editor-page')),
-        findsNothing,
-      );
-      expect(
-        find.byKey(const ValueKey('payment-settlement-editor-page')),
-        findsOneWidget,
-      );
-      expect(find.byType(BottomSheet), findsNothing);
-      expect(find.text('Add payment settlement'), findsAtLeastNWidgets(1));
-      final selectedSource = find.byType(ButlerlySelectField<String>);
-      expect(
-        tester.widget<ButlerlySelectField<String>>(selectedSource).value,
-        sources.single.id.value,
-      );
-      expect(tester.takeException(), isNull);
-    },
-  );
+    expect(find.byType(BottomSheet), findsOneWidget);
+    expect(find.byType(PaymentSourcesPage), findsNothing);
+    final selector = tester.widget<ButlerlySelectField<String>>(
+      find.byType(ButlerlySelectField<String>),
+    );
+    expect(
+      selector.entries.map((entry) => entry.value).toList(),
+      ['visa', 'mastercard'],
+    );
+    expect(tester.takeException(), isNull);
+  });
 
   for (final width in [390.0, 1400.0]) {
     testWidgets('settlement form accepts typing and Save at $width', (
@@ -238,12 +240,20 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // The form is a real page, not a modal barrier swallowing touches.
-      expect(
-        find.byKey(const ValueKey('payment-settlement-editor-page')),
-        findsOneWidget,
-      );
-      expect(find.byType(BottomSheet), findsNothing);
+      // Device uses the original bottom sheet; desktop keeps the page editor.
+      if (width < 900) {
+        expect(find.byType(BottomSheet), findsOneWidget);
+        expect(
+          find.byKey(const ValueKey('payment-settlement-editor-page')),
+          findsNothing,
+        );
+      } else {
+        expect(
+          find.byKey(const ValueKey('payment-settlement-editor-page')),
+          findsOneWidget,
+        );
+        expect(find.byType(BottomSheet), findsNothing);
+      }
       final amount = find.widgetWithText(TextFormField, 'Amount');
       expect(amount, findsOneWidget);
       await tester.enterText(amount, '42.50');
@@ -266,6 +276,7 @@ void main() {
         find.byKey(const ValueKey('payment-settlement-editor-page')),
         findsNothing,
       );
+      expect(find.byType(BottomSheet), findsNothing);
       expect(tester.takeException(), isNull);
     });
   }
