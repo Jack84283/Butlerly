@@ -115,10 +115,7 @@ void main() {
         );
         // No layout spacer remains between the header row and tagline.
         expect(taglineRect.top, closeTo(topRowRect.bottom, 0.1));
-        expect(
-          taglineRect.top,
-          greaterThanOrEqualTo(brandRect.bottom - 0.5),
-        );
+        expect(taglineRect.top, greaterThanOrEqualTo(brandRect.bottom - 0.5));
         final taglineColor = tester.widget<Text>(tagline).style!.color!;
         expect(
           taglineColor,
