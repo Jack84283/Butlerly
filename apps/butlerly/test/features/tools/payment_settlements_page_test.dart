@@ -1282,8 +1282,14 @@ void main() {
         await tester.pump(const Duration(milliseconds: 350));
         expect(find.byType(PaymentSettlementsPage), findsOneWidget);
         expect(find.byType(CircularProgressIndicator), findsOneWidget);
-        // Navigation must work even though the database never responds.
-        router.pop();
+        // The actual device Back control must work even when SQLite never
+        // answers, not just a programmatic router.pop().
+        if (width < 900) {
+          expect(find.byType(BackButton), findsOneWidget);
+          await tester.tap(find.byType(BackButton));
+        } else {
+          router.pop();
+        }
         await tester.pumpAndSettle();
         expect(find.byType(ToolsPage), findsOneWidget);
         expect(find.byType(PaymentSettlementsPage), findsNothing);
