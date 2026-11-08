@@ -18,6 +18,8 @@ import 'package:butlerly/features/foundation/presentation/privacy_data_page.dart
 import 'package:butlerly/features/foundation/presentation/settings_page.dart';
 import 'package:butlerly/features/foundation/presentation/statement_capture_page.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
+import 'package:butlerly/features/tools/presentation/payment_settlements_page.dart';
+import 'package:butlerly/features/tools/presentation/tools_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -1357,6 +1359,79 @@ void main() {
       expect(settlement.paymentDate, '2026-09-25');
       expect(settlement.paymentSourceId, source.id.value);
       expect(settlement.status, PaymentSettlementStatus.open);
+    },
+  );
+
+  testWidgets(
+    'device Tools payment settlements opens, shows detail, and returns',
+    (tester) async {
+      await _saveIntegrationPreference(harness);
+      final source = paymentSource(
+        'device-nav-settlement-source-e2e',
+        'Device navigation card',
+      );
+      expect(
+        await harness.finance.savePaymentSource(source),
+        isA<ApplicationSuccess<PaymentSource>>(),
+      );
+      expect(
+        await harness.finance.savePaymentSettlement!(
+          id: 'device-nav-settlement-e2e',
+          paymentSourceId: source.id.value,
+          payment: money('5.00', 'USD'),
+          paymentDate: '2026-09-25',
+          periodStart: '2026-09-01',
+          periodEnd: '2026-09-25',
+          description: 'Device navigation settlement',
+        ),
+        isA<ApplicationSuccess<PaymentSettlementDto>>(),
+      );
+
+      _setIntegrationView(tester, const Size(390, 844));
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      appRouter.go('/tools');
+      await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+      await tester.pumpAndSettle();
+      expect(find.byType(ToolsPage), findsOneWidget);
+
+      await tester.tap(find.text('Payment settlements').first);
+      await tester.pump();
+      for (var attempt = 0; attempt < 100; attempt++) {
+        if (find.text(source.id.value).evaluate().isNotEmpty) break;
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 20)),
+        );
+        await tester.pump();
+      }
+      expect(find.byType(PaymentSettlementsPage), findsOneWidget);
+      expect(find.text(source.id.value), findsOneWidget);
+      expect(find.byType(BackButton), findsOneWidget);
+
+      await tester.tap(find.text(source.id.value));
+      await tester.pump();
+      for (var attempt = 0; attempt < 100; attempt++) {
+        if (find.byType(PaymentSettlementDetailPage).evaluate().isNotEmpty &&
+            find.text('Device navigation settlement').evaluate().isNotEmpty) {
+          break;
+        }
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 20)),
+        );
+        await tester.pump();
+      }
+      expect(find.byType(PaymentSettlementDetailPage), findsOneWidget);
+      expect(find.byType(BackButton), findsOneWidget);
+
+      // Back must work even if an optional comparison is still loading.
+      await tester.tap(find.byType(BackButton).first);
+      await tester.pumpAndSettle();
+      expect(find.byType(PaymentSettlementsPage), findsOneWidget);
+      await tester.tap(find.byType(BackButton).first);
+      await tester.pumpAndSettle();
+      expect(find.byType(ToolsPage), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
     },
   );
 
