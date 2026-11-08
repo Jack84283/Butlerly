@@ -136,7 +136,12 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
       await _createSettlement(data);
       return;
     }
+    await _addSourceForSettlement();
+  }
 
+  /// Only an explicit Add Payment Source action may open the source editor.
+  /// The device header's + is never routed through this prerequisite.
+  Future<void> _addSourceForSettlement() async {
     final bool? created;
     if (GoRouter.maybeOf(context) != null) {
       created = await context.push<bool>(
@@ -372,7 +377,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
                 title: context.l10n.text('paymentSources'),
                 message: context.l10n.text('paymentSettlementNeedsCardSource'),
                 actionLabel: context.l10n.text('addPaymentSource'),
-                onAction: () => _onAddSettlement(data),
+                onAction: _addSourceForSettlement,
               )
             else
               ButlerlyEmptyState(
