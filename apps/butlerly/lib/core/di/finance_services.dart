@@ -545,6 +545,9 @@ final class FinanceServices {
        listPaymentSettlements = paymentSettlements == null
            ? null
            : ListPaymentSettlements(paymentSettlements),
+       listPaymentSettlementsPage = paymentSettlements == null
+           ? null
+           : ListPaymentSettlementsPage(paymentSettlements),
        getPaymentSettlementDetail = paymentSettlements == null
            ? null
            : GetPaymentSettlementDetail(
@@ -753,6 +756,7 @@ final class FinanceServices {
   final StatementServices? statementServices;
   final SavePaymentSettlement? savePaymentSettlement;
   final ListPaymentSettlements? listPaymentSettlements;
+  final ListPaymentSettlementsPage? listPaymentSettlementsPage;
   final GetPaymentSettlementDetail? getPaymentSettlementDetail;
   final SetPaymentSettlementStatus? setPaymentSettlementStatus;
   final DeletePaymentSettlement? deletePaymentSettlement;
