@@ -81,8 +81,14 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
   }
 
   Future<void> _refresh() async {
-    setState(() => _data = _load().timeout(_loadDeadline));
-    await _data;
+    final refreshed = _load().timeout(_loadDeadline);
+    setState(() => _data = refreshed);
+    try {
+      await refreshed;
+    } catch (_) {
+      // FutureBuilder displays the load error and a retry action. Do not
+      // surface an unhandled async exception from pull-to-refresh or Retry.
+    }
   }
 
   /// The Add action should never strand a user in a prerequisite sheet.
