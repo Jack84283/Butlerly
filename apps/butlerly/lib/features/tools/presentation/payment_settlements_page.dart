@@ -303,9 +303,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
             title: context.l10n.text('paymentSettlements'),
             fullWidth: desktop,
             children: [
-              ButlerlyLoadingState(
-                message: context.l10n.text('loading'),
-              ),
+              ButlerlyLoadingState(message: context.l10n.text('loading')),
             ],
           );
         }
@@ -774,7 +772,9 @@ class _SettlementDesktopSources extends StatelessWidget {
                 // Only show a compact preview; View all opens the full list.
                 for (final source in activeCards.take(12))
                   Chip(
-                    key: ValueKey('settlement-eligible-source-${source.id.value}'),
+                    key: ValueKey(
+                      'settlement-eligible-source-${source.id.value}',
+                    ),
                     avatar: const Icon(Icons.credit_card_outlined, size: 18),
                     label: Text(paymentSourceDisplayLabel(source)),
                   ),
@@ -929,10 +929,7 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
                           flex: 3,
                           child: _heading(context, 'paymentSource'),
                         ),
-                        SizedBox(
-                          width: 110,
-                          child: _heading(context, 'date'),
-                        ),
+                        SizedBox(width: 110, child: _heading(context, 'date')),
                         Expanded(
                           flex: 3,
                           child: _heading(context, 'paymentSettlementPeriod'),
@@ -948,9 +945,7 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
                         const SizedBox(width: 24),
                       ],
                     ),
-                    const SizedBox(
-                      height: ButlerlyTableTokens.headerToRowsGap,
-                    ),
+                    const SizedBox(height: ButlerlyTableTokens.headerToRowsGap),
                     _divider(context),
                     for (final settlement in visibleRows) ...[
                       _row(context, settlement),
@@ -970,9 +965,7 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
             ),
             if (pageCount > 1)
               Padding(
-                padding: const EdgeInsets.only(
-                  top: ButlerlySpacing.standard,
-                ),
+                padding: const EdgeInsets.only(top: ButlerlySpacing.standard),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -992,7 +985,9 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
                     ),
                     IconButton(
                       key: const ValueKey('settlement-page-next'),
-                      tooltip: MaterialLocalizations.of(context).nextPageTooltip,
+                      tooltip: MaterialLocalizations.of(
+                        context,
+                      ).nextPageTooltip,
                       onPressed: _page >= pageCount - 1
                           ? null
                           : () => setState(() => _page++),
@@ -1363,7 +1358,8 @@ class _SettlementEditorSheetState extends State<_SettlementEditorSheet> {
     super.initState();
     final existing = widget.existing;
     final settlement = existing?.settlement;
-    _paymentSourceId = settlement?.paymentSourceId ??
+    _paymentSourceId =
+        settlement?.paymentSourceId ??
         (widget.sources.length == 1 ? widget.sources.single.id.value : null);
     _amount = TextEditingController(
       text: settlement?.payment.amount.toString() ?? '',
@@ -1530,9 +1526,7 @@ class _SettlementEditorSheetState extends State<_SettlementEditorSheet> {
               Text(
                 context.l10n.text('paymentSettlementNeedsCardSource'),
                 key: const ValueKey('settlement-no-eligible-source'),
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.error,
-                ),
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
               )
             else
               FormField<String>(
