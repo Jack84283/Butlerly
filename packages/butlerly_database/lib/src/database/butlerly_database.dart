@@ -36,6 +36,13 @@ final class ButlerlyDatabase {
   /// lowering the schema Butlerly opens.
   final int targetVersion;
   Database? _database;
+  static int _nextOpenSession = 0;
+  int _openSession = 0;
+
+  /// Process-local, monotonic identity of the currently opened SQLite
+  /// connection. Prevents comparing snapshots across close/reopen/restore.
+  int get openSession => _openSession;
+
   bool _restoreActivationActive = false;
 
   bool get isRestoreActivationActive => _restoreActivationActive;
@@ -135,6 +142,7 @@ final class ButlerlyDatabase {
           },
         ),
       );
+      _openSession = ++_nextOpenSession;
       if (seedSystemDataOnOpen) {
         if (_isDebugBuild) developer.log('Butlerly DB: seeding catalog');
         await seedSystemData();
