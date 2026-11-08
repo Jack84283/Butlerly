@@ -302,8 +302,20 @@ void main() {
       find.byKey(const ValueKey('settlement-eligible-source-cash')),
       findsNothing,
     );
+    final manage = find.byKey(
+      const ValueKey('desktop-settlement-manage-sources'),
+    );
+    expect(manage, findsOneWidget);
+    await tester.tap(manage);
+    await tester.pumpAndSettle();
+    expect(find.byType(PaymentSourcesPage), findsOneWidget);
+
+    Navigator.of(
+      tester.element(find.byType(PaymentSourcesPage)),
+    ).pop();
+    await tester.pumpAndSettle();
     expect(
-      find.byKey(const ValueKey('desktop-settlement-manage-sources')),
+      find.byKey(const ValueKey('desktop-settlement-payment-sources')),
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);
