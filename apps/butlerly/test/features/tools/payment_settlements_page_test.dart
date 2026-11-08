@@ -1,3 +1,4 @@
+import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
@@ -493,11 +494,20 @@ void main() {
     final router = GoRouter(
       initialLocation: '/tools',
       routes: [
-        GoRoute(path: '/tools', builder: (_, _) => const ToolsPage()),
-        GoRoute(
-          path: '/payment-settlements',
-          builder: (_, _) =>
-              const Scaffold(body: PaymentSettlementsPage()),
+        ShellRoute(
+          // Match the real desktop navigation shell, not a bare test route.
+          builder: (_, state, child) => AdaptiveShell(
+            location: state.uri.toString(),
+            child: child,
+          ),
+          routes: [
+            GoRoute(path: '/tools', builder: (_, _) => const ToolsPage()),
+            GoRoute(
+              path: '/payment-settlements',
+              builder: (_, _) =>
+                  const Scaffold(body: PaymentSettlementsPage()),
+            ),
+          ],
         ),
         GoRoute(
           path: '/help',
