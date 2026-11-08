@@ -610,9 +610,14 @@ class PaymentSettlementDetailPage extends StatefulWidget {
 
 class _PaymentSettlementDetailPageState
     extends State<PaymentSettlementDetailPage> {
-  late Future<PaymentSettlementDetailDto> _detail = _load();
+  static const _detailDeadline = Duration(seconds: 20);
+  static const _transactionPageSize = 20;
+  late Future<PaymentSettlementDetailDto> _detail = _load().timeout(
+    _detailDeadline,
+  );
   TransactionMasterData _masterData = const TransactionMasterData();
   String? _loadedLanguageCode;
+  int _transactionPage = 0;
 
   @override
   void didChangeDependencies() {
@@ -620,20 +625,28 @@ class _PaymentSettlementDetailPageState
     final languageCode = Localizations.localeOf(context).languageCode;
     if (_loadedLanguageCode == languageCode) return;
     _loadedLanguageCode = languageCode;
-    // The settlement detail does not need a Payment Sources lookup.
-    // Defer optional label resolution until after the detail route paints.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    // Wait until transaction detail is ready before loading optional labels.
+    // Concurrent metadata queries contend for the same local SQLite
+    // connection on iOS and must not delay the actual detail navigation.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted || _loadedLanguageCode != languageCode) return;
-      TransactionMasterData.load(
-        widget.finance,
-        languageCode: languageCode,
-        includePaymentSources: false,
-      ).then((value) {
+      try {
+        await _detail;
+      } catch (_) {
+        return;
+      }
+      if (!mounted || _loadedLanguageCode != languageCode) return;
+      try {
+        final value = await TransactionMasterData.load(
+          widget.finance,
+          languageCode: languageCode,
+          includePaymentSources: false,
+        ).timeout(_detailDeadline);
         if (!mounted || _loadedLanguageCode != languageCode) return;
         setState(() => _masterData = value);
-      }).catchError((Object _) {
-        // Master-data labels are optional: do not strand detail navigation.
-      });
+      } catch (_) {
+        // Optional labels never block settlement detail or Back.
+      }
     });
   }
 
@@ -652,19 +665,31 @@ class _PaymentSettlementDetailPageState
   }
 
   Future<void> _refresh() async {
-    final detail = _load();
+    final detail = _load().timeout(_detailDeadline);
+    setState(() {
+      _detail = detail;
+      _transactionPage = 0;
+    });
+    try {
+      await detail;
+    } catch (_) {
+      // FutureBuilder shows an actionable retry state.
+      return;
+    }
+    if (!mounted) return;
     final languageCode =
         _loadedLanguageCode ?? Localizations.localeOf(context).languageCode;
-    final masterData = TransactionMasterData.load(
-      widget.finance,
-      languageCode: languageCode,
-      includePaymentSources: false,
-    );
-    setState(() => _detail = detail);
-    await detail;
-    final refreshedMasterData = await masterData;
-    if (!mounted || _loadedLanguageCode != languageCode) return;
-    setState(() => _masterData = refreshedMasterData);
+    try {
+      final refreshedMasterData = await TransactionMasterData.load(
+        widget.finance,
+        languageCode: languageCode,
+        includePaymentSources: false,
+      ).timeout(_detailDeadline);
+      if (!mounted || _loadedLanguageCode != languageCode) return;
+      setState(() => _masterData = refreshedMasterData);
+    } catch (_) {
+      // Displaying details does not require optional master-data labels.
+    }
   }
 
   Future<void> _openTransaction(TransactionDto transaction) async {
@@ -881,6 +906,18 @@ class _PaymentSettlementDetailPageState
         }
         final detail = snapshot.requireData;
         final settlement = detail.settlement;
+        final transactionPageCount =
+            (detail.transactions.length + _transactionPageSize - 1) ~/
+            _transactionPageSize;
+        final currentTransactionPage =
+            transactionPageCount == 0 || _transactionPage < transactionPageCount
+            ? _transactionPage
+            : transactionPageCount - 1;
+        final transactionStart = currentTransactionPage * _transactionPageSize;
+        final transactionEnd =
+            transactionStart + _transactionPageSize > detail.transactions.length
+            ? detail.transactions.length
+            : transactionStart + _transactionPageSize;
         final sourceName =
             sourceNames[settlement.paymentSourceId] ??
             settlement.paymentSourceId;
@@ -934,7 +971,11 @@ class _PaymentSettlementDetailPageState
                       : null,
                   child: ButlerlyTransactionList(
                     children: [
-                      for (final transaction in detail.transactions)
+                      // Never construct hundreds of transaction widgets in
+                      // a single mobile/embedded detail frame.
+                      for (final transaction in detail.transactions
+                          .skip(transactionStart)
+                          .take(_transactionPageSize))
                         TransactionRow(
                           transaction: transaction,
                           masterData: _masterData,
@@ -946,6 +987,43 @@ class _PaymentSettlementDetailPageState
                         ),
                     ],
                   ),
+                ),
+              if ((!desktop || widget.embedded) &&
+                  transactionPageCount > 1)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${transactionStart + 1}–$transactionEnd / '
+                      '${detail.transactions.length}',
+                      key: const ValueKey('settlement-detail-transaction-range'),
+                    ),
+                    IconButton(
+                      key: const ValueKey('settlement-detail-transaction-prev'),
+                      tooltip: MaterialLocalizations.of(
+                        context,
+                      ).previousPageTooltip,
+                      onPressed: currentTransactionPage == 0
+                          ? null
+                          : () => setState(
+                              () => _transactionPage = currentTransactionPage - 1,
+                            ),
+                      icon: const Icon(Icons.chevron_left_rounded),
+                    ),
+                    IconButton(
+                      key: const ValueKey('settlement-detail-transaction-next'),
+                      tooltip: MaterialLocalizations.of(
+                        context,
+                      ).nextPageTooltip,
+                      onPressed: currentTransactionPage >=
+                              transactionPageCount - 1
+                          ? null
+                          : () => setState(
+                              () => _transactionPage = currentTransactionPage + 1,
+                            ),
+                      icon: const Icon(Icons.chevron_right_rounded),
+                    ),
+                  ],
                 ),
               const SizedBox(height: ButlerlySpacing.structural),
             ],
