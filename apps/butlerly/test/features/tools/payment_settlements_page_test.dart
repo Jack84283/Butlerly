@@ -11,8 +11,8 @@ import 'package:butlerly/features/foundation/presentation/payment_sources_page.d
 import 'package:butlerly/features/tools/presentation/payment_settlements_page.dart';
 import 'package:butlerly/features/tools/presentation/tools_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
-import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:butlerly_database/butlerly_database.dart';
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -737,6 +737,19 @@ void main() {
           find.byKey(const ValueKey('desktop-transaction-detail-panel')),
           findsOneWidget,
         );
+        // Transactions can start below the fold in a 350px-wide detail
+        // pane. Scroll the pane rather than assuming a lazy sliver mounted it.
+        await tester.scrollUntilVisible(
+          find.byKey(const ValueKey('settlement-detail-compact-transactions')),
+          120,
+          scrollable: find
+              .descendant(
+                of: find.byType(PaymentSettlementDetailPage),
+                matching: find.byType(Scrollable),
+              )
+              .first,
+        );
+        await tester.pumpAndSettle();
         expect(
           find.byKey(const ValueKey('settlement-detail-compact-transactions')),
           findsOneWidget,
