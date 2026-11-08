@@ -256,6 +256,186 @@ void main() {
     expect(await settlements.listAll(), hasLength(53));
   });
 
+  test('transaction pages match full history with exact period totals', () async {
+    final settlement = _settlement();
+    await settlements.save(settlement);
+    for (var index = 0; index < 45; index++) {
+      await transactions.save(
+        _transaction(
+          id: 'paged-$index',
+          sourceId: 'visa',
+          transactionDate: '2026-09-01',
+          amount: '1.25',
+          direction: index == 0
+              ? TransactionDirection.refund
+              : TransactionDirection.expense,
+        ),
+      );
+    }
+    await transactions.save(
+      _transaction(
+        id: 'timing-only-paged',
+        sourceId: 'visa',
+        occurredAt: DateTime.utc(2026, 9, 14, 23),
+        amount: '0.75',
+      ),
+    );
+    await transactions.save(
+      _transaction(
+        id: 'excluded-transfer',
+        sourceId: 'visa',
+        transactionDate: '2026-09-01',
+        direction: TransactionDirection.transfer,
+      ),
+    );
+    await transactions.save(
+      _transaction(
+        id: 'outside-period',
+        sourceId: 'visa',
+        transactionDate: '2026-09-15',
+      ),
+    );
+    await transactions.save(
+      _transaction(
+        id: 'wrong-source',
+        sourceId: 'amex',
+        transactionDate: '2026-09-01',
+      ),
+    );
+    await transactions.save(
+      _transaction(
+        id: 'archived-paged',
+        sourceId: 'visa',
+        transactionDate: '2026-09-01',
+        status: TransactionStatus.archived,
+      ),
+    );
+
+    final from = DateTime.utc(2026, 8, 15);
+    final toExclusive = DateTime.utc(2026, 9, 15);
+    final full = await settlements.listTransactions(
+      settlement,
+      occurredAtFrom: from,
+      occurredAtToExclusive: toExclusive,
+    );
+    final first = await settlements.listTransactionsPage(
+      settlement,
+      occurredAtFrom: from,
+      occurredAtToExclusive: toExclusive,
+      offset: 0,
+      limit: 20,
+    );
+    final second = await settlements.listTransactionsPage(
+      settlement,
+      occurredAtFrom: from,
+      occurredAtToExclusive: toExclusive,
+      offset: 20,
+      limit: 20,
+    );
+    final third = await settlements.listTransactionsPage(
+      settlement,
+      occurredAtFrom: from,
+      occurredAtToExclusive: toExclusive,
+      offset: 40,
+      limit: 20,
+    );
+    expect(first.totalCount, 46);
+    expect(second.totalCount, 46);
+    expect(third.totalCount, 46);
+    expect(first.rows, hasLength(20));
+    expect(second.rows, hasLength(20));
+    expect(third.rows, hasLength(6));
+    expect(
+      [...first.rows, ...second.rows, ...third.rows]
+          .map((t) => t.id.value)
+          .toList(),
+      full.map((t) => t.id.value).toList(),
+    );
+    // 44 expenses - 1 refund, at 1.25 each, plus 0.75 timing-only.
+    expect(first.recordedTotal, _money('54.50'));
+    expect(second.recordedTotal, first.recordedTotal);
+
+    await transactions.save(
+      _transaction(
+        id: 'adjustment',
+        sourceId: 'visa',
+        transactionDate: '2026-09-01',
+        direction: TransactionDirection.adjustment,
+      ),
+    );
+    final uncomparable = await settlements.listTransactionsPage(
+      settlement,
+      occurredAtFrom: from,
+      occurredAtToExclusive: toExclusive,
+      offset: 0,
+      limit: 20,
+    );
+    expect(uncomparable.totalCount, 47);
+    expect(uncomparable.recordedTotal, isNull);
+  });
+
+  test('bounded queries preserve provenance, tags, review and normalized values', (
+    ) async {
+    final at = DateTime.utc(2026, 9, 2, 12);
+    final id = TransactionId('rich-paged');
+    final money = _money('2.50');
+    await database.connection.insert('tags', {
+      'id': 'tag-paged',
+      'name': 'Paged Tag',
+    });
+    await transactions.save(
+      Transaction(
+        id: id,
+        timing: KnownTransactionTime(at),
+        money: money,
+        direction: TransactionDirection.expense,
+        sourceType: TransactionSourceType.import,
+        paymentSourceId: PaymentSourceId('visa'),
+        transactionDate: '2026-09-02',
+        tagIds: [TagId('tag-paged')],
+        provenance: [
+          Provenance(
+            id: ProvenanceId('rich-page-provenance'),
+            sourceType: ProvenanceSourceType.import,
+            capturedAt: at,
+            originalRepresentation: 'preserve me',
+          ),
+        ],
+        reviewIssues: [
+          ReviewIssue(
+            id: ReviewIssueId('rich-page-review'),
+            transactionId: id,
+            reason: ReviewIssueReason.uncertain,
+            createdAt: at,
+          ),
+        ],
+        normalizedMoney: [
+          NormalizedMoney(original: money, converted: money, updatedAt: at),
+        ],
+        createdAt: at,
+        updatedAt: at,
+      ),
+    );
+    final direct = await transactions.findById(id);
+    final paged = await transactions.query(
+      TransactionRepositoryQuery(
+        from: DateTime.utc(2026, 9, 1),
+        to: DateTime.utc(2026, 9, 30),
+        paymentSourceId: PaymentSourceId('visa'),
+        limit: 20,
+        offset: 0,
+      ),
+    );
+    final read = paged.singleWhere((t) => t.id == id);
+    expect(read.provenance.map((p) => p.id.value).toList(),
+        direct!.provenance.map((p) => p.id.value).toList());
+    expect(read.tagIds, direct.tagIds);
+    expect(read.reviewIssues.map((r) => r.id.value).toList(),
+        direct.reviewIssues.map((r) => r.id.value).toList());
+    expect(read.normalizedMoney.map((n) => n.converted).toList(),
+        direct.normalizedMoney.map((n) => n.converted).toList());
+  });
+
   test('does not create a persisted settlement membership table', () async {
     final rows = await database.connection.rawQuery(
       "SELECT name FROM sqlite_master WHERE type = 'table' "
