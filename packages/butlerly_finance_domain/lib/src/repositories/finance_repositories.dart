@@ -179,6 +179,27 @@ abstract interface class PaymentSettlementRepository {
   Future<void> remove(PaymentSettlementId id);
 }
 
+/// Bounded, stable settlement history for interactive screens. The legacy
+/// listAll contract remains available to exporters and other full readers.
+final class PaymentSettlementPage {
+  const PaymentSettlementPage({
+    required this.rows,
+    required this.totalCount,
+  });
+
+  final List<PaymentSettlement> rows;
+  final int totalCount;
+}
+
+/// Optional read-only capability. Non-SQLite repositories may continue to
+/// implement PaymentSettlementRepository without an interface break.
+abstract interface class PaginatedPaymentSettlementRepository {
+  Future<PaymentSettlementPage> listPage({
+    required int offset,
+    required int limit,
+  });
+}
+
 abstract interface class PaymentSourceRepository {
   Future<void> save(PaymentSource paymentSource);
   Future<PaymentSource?> findById(PaymentSourceId id);
