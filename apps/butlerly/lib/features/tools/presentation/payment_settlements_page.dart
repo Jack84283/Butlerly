@@ -34,7 +34,10 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
       ? services<FinanceServices>()
       : null;
 
-  late Future<_SettlementListData> _data = _load();
+  // A read-only database query must never hold this page in a perpetual
+  // loading state. A stalled load exposes the existing retry UI instead.
+  static const _loadDeadline = Duration(seconds: 20);
+  late Future<_SettlementListData> _data = _load().timeout(_loadDeadline);
 
   @override
   void initState() {
@@ -50,7 +53,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
 
   void _onWorkspaceRestored() {
     if (!mounted) return;
-    setState(() => _data = _load());
+    setState(() => _data = _load().timeout(_loadDeadline));
   }
 
   Future<_SettlementListData> _load() async {
@@ -59,8 +62,12 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
     if (finance == null || listSettlements == null) {
       throw StateError('Payment settlements are unavailable.');
     }
-    final settlementResult = await listSettlements();
-    final sourceResult = await finance.listPaymentSources();
+    // Start independent read-only queries concurrently. Serial waiting here
+    // prolonged the initial loading screen even when one result was ready.
+    final settlementsFuture = listSettlements();
+    final sourcesFuture = finance.listPaymentSources();
+    final settlementResult = await settlementsFuture;
+    final sourceResult = await sourcesFuture;
     if (settlementResult case ApplicationSuccess<List<PaymentSettlementDto>>(
       value: final settlements,
     )) {
@@ -74,7 +81,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
   }
 
   Future<void> _refresh() async {
-    setState(() => _data = _load());
+    setState(() => _data = _load().timeout(_loadDeadline));
     await _data;
   }
 
