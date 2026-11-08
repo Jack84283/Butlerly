@@ -6,6 +6,7 @@ import 'package:butlerly/features/help/presentation/help_desktop_workspace.dart'
 import 'package:butlerly/features/help/presentation/help_faq_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -298,6 +299,86 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Normal router content'), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  // The app root now uses ButlerlyRouterlessRecoveryHost for first-use,
+  // rather than injecting its setup screen into a raw OverlayEntry.
+  for (final stage in const <String, String>{
+    'preferences': 'ch-2',
+    'financial profile introduction': 'ch-4',
+  }.entries) {
+    testWidgets('${stage.key} Help dismisses via system Back and Escape', (
+      tester,
+    ) async {
+      final router = GoRouter(
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, _) => const Scaffold(
+              body: Text('Underlying app'),
+            ),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp.router(
+          routerConfig: router,
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          builder: (_, child) => ButlerlyRouterlessRecoveryHost(
+            key: const ValueKey('first-use-help-host'),
+            child: Scaffold(
+              appBar: AppBar(
+                actions: [
+                  ButlerlyContextHelpButton(articleId: stage.value),
+                ],
+              ),
+              body: Text('${stage.key} stays active'),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Underlying app'), findsNothing);
+      expect(find.text('${stage.key} stays active'), findsOneWidget);
+      final help = find.byKey(const ValueKey('page-context-help'));
+
+      await tester.tap(help);
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('context-help-offline-reader')),
+        findsOneWidget,
+      );
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('context-help-offline-reader')),
+        findsNothing,
+      );
+      expect(find.text('${stage.key} stays active'), findsOneWidget);
+
+      await tester.tap(help);
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('context-help-offline-reader')),
+        findsOneWidget,
+      );
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('context-help-offline-reader')),
+        findsNothing,
+      );
+      expect(find.text('${stage.key} stays active'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }
