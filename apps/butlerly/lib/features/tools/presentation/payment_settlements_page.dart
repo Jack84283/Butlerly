@@ -472,12 +472,16 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
       );
     }
 
+    final deviceBack = !desktop && Navigator.of(context).canPop()
+        ? const BackButton()
+        : null;
     final results = FutureBuilder<_SettlementListData>(
       future: _data,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return ButlerlyPage(
             title: context.l10n.text('paymentSettlements'),
+            leading: deviceBack,
             fullWidth: desktop,
             children: [
               ButlerlyLoadingState(message: context.l10n.text('loading')),
@@ -487,6 +491,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
         if (snapshot.hasError) {
           return ButlerlyPage(
             title: context.l10n.text('paymentSettlements'),
+            leading: deviceBack,
             fullWidth: desktop,
             children: [
               ButlerlyErrorState(
@@ -504,6 +509,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
         final data = _displayData ?? snapshot.requireData;
         return ButlerlyPage(
           title: context.l10n.text('paymentSettlements'),
+          leading: deviceBack,
           fullWidth: desktop,
           subtitle: context.l10n.text('paymentSettlementsSubtitle'),
           onRefresh: _refresh,
