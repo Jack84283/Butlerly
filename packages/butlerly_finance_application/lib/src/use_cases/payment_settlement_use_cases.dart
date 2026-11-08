@@ -281,8 +281,9 @@ final class GetPaymentSettlementSummary {
   final UserPreferenceRepository? preferences;
 
   Future<ApplicationResult<PaymentSettlementTransactionSummary>> call(
-    String id,
-  ) => runApplication('summarize payment settlement', () async {
+    String id, {
+    PaymentSettlementSummaryCancellation? cancellation,
+  }) => runApplication('summarize payment settlement', () async {
     if (repository is! PaymentSettlementSummaryRepository) {
       throw const RepositoryException(
         RepositoryFailureCode.unavailable,
@@ -307,6 +308,7 @@ final class GetPaymentSettlementSummary {
           settlement,
           occurredAtFrom: bounds.start,
           occurredAtToExclusive: bounds.endExclusive,
+          cancellation: cancellation,
         );
   });
 }
