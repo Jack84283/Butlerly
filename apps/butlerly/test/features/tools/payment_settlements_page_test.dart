@@ -690,7 +690,8 @@ void main() {
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
         final settlements = registerServices([]);
-        settlements.blockedList = Completer<List<PaymentSettlement>>().future;
+        final deferred = Completer<List<PaymentSettlement>>();
+        settlements.blockedList = deferred.future;
 
         final router = GoRouter(
           initialLocation: '/tools',
@@ -740,6 +741,11 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.byType(ToolsPage), findsOneWidget);
         expect(find.byType(PaymentSettlementsPage), findsNothing);
+        // Release the fake database read after leaving the page. This
+        // cancels the Future.timeout timer without reopening the route.
+        deferred.complete([]);
+        await tester.pump();
+        await tester.pump();
         expect(tester.takeException(), isNull);
       },
     );
