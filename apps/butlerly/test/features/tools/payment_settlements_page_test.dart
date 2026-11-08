@@ -913,6 +913,54 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('device pages recover when records are deleted elsewhere', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final settlements = registerServices([]);
+    settlements.values.addAll(
+      List.generate(
+        41,
+        (index) => PaymentSettlement(
+          id: PaymentSettlementId('deleted-$index'),
+          paymentSourceId: PaymentSourceId('source-$index'),
+          payment: Money(
+            amount: DecimalValue.parse('10.00'),
+            currency: CurrencyCode('USD'),
+          ),
+          paymentDate: '2026-10-05',
+          periodStart: '2026-09-01',
+          periodEnd: '2026-09-30',
+          status: PaymentSettlementStatus.open,
+          createdAt: DateTime.utc(2026, 11, 7),
+          updatedAt: DateTime.utc(2026, 11, 7),
+        ),
+      ),
+    );
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    final next = find.byKey(const ValueKey('device-settlement-page-next'));
+    await tester.tap(next);
+    await tester.pumpAndSettle();
+    await tester.tap(next);
+    await tester.pumpAndSettle();
+    expect(find.text('41–41 / 41'), findsOneWidget);
+
+    settlements.values.removeRange(1, settlements.values.length);
+    await tester.tap(
+      find.byKey(const ValueKey('device-settlement-page-previous')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(PaymentSettlementsPage), findsOneWidget);
+    expect(find.text('source-0'), findsOneWidget);
+    expect(find.text('No payment settlements'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('resizing from device to desktop restores full history', (
     tester,
   ) async {
