@@ -123,7 +123,16 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
   /// A missing active credit card opens the real Payment Sources create page,
   /// then resumes settlement entry when the source has been saved.
   Future<void> _onAddSettlement(_SettlementListData data) async {
-    if (data.activeCardSources.isNotEmpty) {
+    // Device mode's + always opens Add Payment Settlement in a bottom sheet.
+    // Lack of an eligible credit card is an inline form prerequisite, never
+    // a reason to silently navigate to the unrelated Payment Sources page.
+    final desktop =
+        effectiveButlerlyLayoutMode(
+          context,
+          MediaQuery.sizeOf(context).width,
+        ) ==
+        ButlerlyLayoutMode.wide;
+    if (!desktop || data.activeCardSources.isNotEmpty) {
       await _createSettlement(data);
       return;
     }
@@ -182,10 +191,22 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
       _showMessage(context.l10n.text('paymentSettlementSaveFailed'));
       return;
     }
-    final draft = await _openSettlementEditorPage(
-      context: context,
-      sources: data.activeCardSources,
-    );
+    final desktop =
+        effectiveButlerlyLayoutMode(
+          context,
+          MediaQuery.sizeOf(context).width,
+        ) ==
+        ButlerlyLayoutMode.wide;
+    final draft = desktop
+        ? await _openSettlementEditorPage(
+            context: context,
+            sources: data.activeCardSources,
+          )
+        : await showButlerlyBottomSheet<_SettlementDraft>(
+            context: context,
+            builder: (_) =>
+                _SettlementEditorSheet(sources: data.activeCardSources),
+          );
     if (!mounted || draft == null) return;
 
     final token = DateTime.now().microsecondsSinceEpoch;
@@ -452,11 +473,25 @@ class _PaymentSettlementDetailPageState
   Future<void> _edit(PaymentSettlementDetailDto detail) async {
     final save = widget.finance.savePaymentSettlement;
     if (save == null) return;
-    final draft = await _openSettlementEditorPage(
-      context: context,
-      sources: widget.sources,
-      existing: detail,
-    );
+    final desktop =
+        effectiveButlerlyLayoutMode(
+          context,
+          MediaQuery.sizeOf(context).width,
+        ) ==
+        ButlerlyLayoutMode.wide;
+    final draft = desktop
+        ? await _openSettlementEditorPage(
+            context: context,
+            sources: widget.sources,
+            existing: detail,
+          )
+        : await showButlerlyBottomSheet<_SettlementDraft>(
+            context: context,
+            builder: (_) => _SettlementEditorSheet(
+              sources: widget.sources,
+              existing: detail,
+            ),
+          );
     if (!mounted || draft == null) return;
 
     final result = await save(
@@ -1474,6 +1509,14 @@ class _SettlementEditorSheetState extends State<_SettlementEditorSheet> {
                   source == null
                       ? widget.existing!.settlement.paymentSourceId
                       : paymentSourceDisplayLabel(source),
+                ),
+              )
+            else if (widget.sources.isEmpty)
+              Text(
+                context.l10n.text('paymentSettlementNeedsCardSource'),
+                key: const ValueKey('settlement-no-eligible-source'),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.error,
                 ),
               )
             else
