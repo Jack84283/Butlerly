@@ -40,10 +40,12 @@ void main() {
     });
     final path = '${directory.path}/workspace.db';
     final baseline = await File('database/schema/v1.sql').readAsString();
-    const trimmedIndex = '''CREATE INDEX IF NOT EXISTS idx_settlement_source_trimmed_date
-  ON transactions(payment_source_id, TRIM(transaction_date));''';
-    const instantIndex = '''CREATE INDEX IF NOT EXISTS idx_settlement_source_occurred_at
-  ON transactions(payment_source_id, occurred_at);''';
+    const trimmedIndex =
+        'CREATE INDEX IF NOT EXISTS idx_settlement_source_trimmed_date\n'
+        '  ON transactions(payment_source_id, TRIM(transaction_date));';
+    const instantIndex =
+        'CREATE INDEX IF NOT EXISTS idx_settlement_source_occurred_at\n'
+        '  ON transactions(payment_source_id, occurred_at);';
     expect(baseline, contains(trimmedIndex));
     expect(baseline, contains(instantIndex));
     final legacy = ButlerlyDatabase(
