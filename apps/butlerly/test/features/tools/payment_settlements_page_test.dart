@@ -570,7 +570,8 @@ void main() {
     );
     final next = find.byKey(const ValueKey('settlement-page-next'));
     expect(next, findsOneWidget);
-    await tester.ensureVisible(next);
+    expect(tester.widget<IconButton>(next).onPressed, isNotNull);
+    // Page navigation now sits above the long table, within the viewport.
     await tester.tap(next);
     await tester.pumpAndSettle();
     expect(
@@ -728,7 +729,10 @@ void main() {
         await tester.pumpAndSettle();
 
         await tester.tap(find.text('Payment settlements'));
+        // A GoRouter push transition needs an elapsed frame; pumpAndSettle
+        // cannot be used while the deliberately stalled spinner is active.
         await tester.pump();
+        await tester.pump(const Duration(milliseconds: 350));
         expect(find.byType(PaymentSettlementsPage), findsOneWidget);
         expect(find.byType(CircularProgressIndicator), findsOneWidget);
         // Navigation must work even though the database never responds.
