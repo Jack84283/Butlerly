@@ -212,10 +212,10 @@ void main() {
     final selector = tester.widget<ButlerlySelectField<String>>(
       find.byType(ButlerlySelectField<String>),
     );
-    expect(
-      selector.entries.map((entry) => entry.value).toList(),
-      ['visa', 'mastercard'],
-    );
+    expect(selector.entries.map((entry) => entry.value).toList(), [
+      'visa',
+      'mastercard',
+    ]);
     expect(tester.takeException(), isNull);
   });
 
@@ -238,9 +238,7 @@ void main() {
 
       await tester.pumpWidget(app());
       await tester.pumpAndSettle();
-      await tester.tap(
-        find.byKey(const ValueKey('payment-settlements-add')),
-      );
+      await tester.tap(find.byKey(const ValueKey('payment-settlements-add')));
       await tester.pumpAndSettle();
 
       // Device uses the original bottom sheet; desktop keeps the page editor.
@@ -261,10 +259,7 @@ void main() {
       expect(amount, findsOneWidget);
       await tester.enterText(amount, '42.50');
       await tester.pump();
-      expect(
-        tester.widget<TextFormField>(amount).controller!.text,
-        '42.50',
-      );
+      expect(tester.widget<TextFormField>(amount).controller!.text, '42.50');
 
       await tester.tap(find.widgetWithText(FilledButton, 'Save'));
       await tester.pumpAndSettle();
@@ -328,9 +323,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(PaymentSourcesPage), findsOneWidget);
 
-    Navigator.of(
-      tester.element(find.byType(PaymentSourcesPage)),
-    ).pop();
+    Navigator.of(tester.element(find.byType(PaymentSourcesPage))).pop();
     await tester.pumpAndSettle();
     expect(
       find.byKey(const ValueKey('desktop-settlement-payment-sources')),
@@ -512,16 +505,13 @@ void main() {
       routes: [
         ShellRoute(
           // Match the real desktop navigation shell, not a bare test route.
-          builder: (_, state, child) => AdaptiveShell(
-            location: state.uri.toString(),
-            child: child,
-          ),
+          builder: (_, state, child) =>
+              AdaptiveShell(location: state.uri.toString(), child: child),
           routes: [
             GoRoute(path: '/tools', builder: (_, _) => const ToolsPage()),
             GoRoute(
               path: '/payment-settlements',
-              builder: (_, _) =>
-                  const Scaffold(body: PaymentSettlementsPage()),
+              builder: (_, _) => const Scaffold(body: PaymentSettlementsPage()),
             ),
           ],
         ),
@@ -666,8 +656,7 @@ void main() {
       routes: [
         GoRoute(
           path: '/payment-settlements',
-          builder: (_, _) =>
-              const Scaffold(body: PaymentSettlementsPage()),
+          builder: (_, _) => const Scaffold(body: PaymentSettlementsPage()),
         ),
         GoRoute(
           path: '/payment-sources',
