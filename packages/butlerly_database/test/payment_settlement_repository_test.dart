@@ -31,144 +31,146 @@ void main() {
   test(
     'persists settlement-owned payment facts without a transaction',
     () async {
+        final settlement = _settlement();
+
+        await settlements.save(settlement);
+        final loaded = await settlements.findById(settlement.id);
+
+        expect(loaded, isNotNull);
+        expect(loaded!.paymentSourceId, PaymentSourceId('visa'));
+        expect(loaded.payment.amount, DecimalValue.parse('2846.72'));
+        expect(loaded.payment.currency, CurrencyCode('USD'));
+        expect(loaded.paymentDate, '2026-09-20');
+        expect(loaded.periodStart, '2026-08-15');
+        expect(loaded.periodEnd, '2026-09-14');
+        expect(loaded.statementBalance, settlement.statementBalance);
+
+        final transactionRows = await database.connection.query('transactions');
+        expect(transactionRows, isEmpty);
+      },
+    );
+
+    test('resolves activity dynamically and excludes transfers', () async {
       final settlement = _settlement();
-
       await settlements.save(settlement);
-      final loaded = await settlements.findById(settlement.id);
+      await transactions.save(
+        _transaction(
+          id: 'inside-expense',
+          sourceId: 'visa',
+          transactionDate: '2026-09-01',
+        ),
+      );
+      await transactions.save(
+        _transaction(
+          id: 'inside-refund',
+          sourceId: 'visa',
+          transactionDate: '2026-09-02',
+          direction: TransactionDirection.refund,
+        ),
+      );
+      await transactions.save(
+        _transaction(
+          id: 'inside-transfer',
+          sourceId: 'visa',
+          transactionDate: '2026-09-03',
+          direction: TransactionDirection.transfer,
+        ),
+      );
+      await transactions.save(
+        _transaction(
+          id: 'outside',
+          sourceId: 'visa',
+          transactionDate: '2026-09-15',
+        ),
+      );
+      await transactions.save(
+        _transaction(
+          id: 'other-source',
+          sourceId: 'amex',
+          transactionDate: '2026-09-01',
+        ),
+      );
 
-      expect(loaded, isNotNull);
-      expect(loaded!.paymentSourceId, PaymentSourceId('visa'));
-      expect(loaded.payment.amount, DecimalValue.parse('2846.72'));
-      expect(loaded.payment.currency, CurrencyCode('USD'));
-      expect(loaded.paymentDate, '2026-09-20');
-      expect(loaded.periodStart, '2026-08-15');
-      expect(loaded.periodEnd, '2026-09-14');
-      expect(loaded.statementBalance, settlement.statementBalance);
+      final first = await settlements.listTransactions(settlement);
+      expect(first.map((value) => value.id.value).toSet(), {
+        'inside-expense',
+        'inside-refund',
+      });
 
-      final transactionRows = await database.connection.query('transactions');
-      expect(transactionRows, isEmpty);
+      await transactions.save(
+        _transaction(
+          id: 'late-import',
+          sourceId: 'visa',
+          transactionDate: '2026-08-20',
+        ),
+      );
+
+      final refreshed = await settlements.listTransactions(settlement);
+      expect(refreshed.map((value) => value.id.value).toSet(), {
+        'inside-expense',
+        'inside-refund',
+        'late-import',
+      });
     },
   );
-
-  test('resolves activity dynamically and excludes transfers', () async {
-    final settlement = _settlement();
-    await settlements.save(settlement);
-    await transactions.save(
-      _transaction(
-        id: 'inside-expense',
-        sourceId: 'visa',
-        transactionDate: '2026-09-01',
-      ),
-    );
-    await transactions.save(
-      _transaction(
-        id: 'inside-refund',
-        sourceId: 'visa',
-        transactionDate: '2026-09-02',
-        direction: TransactionDirection.refund,
-      ),
-    );
-    await transactions.save(
-      _transaction(
-        id: 'inside-transfer',
-        sourceId: 'visa',
-        transactionDate: '2026-09-03',
-        direction: TransactionDirection.transfer,
-      ),
-    );
-    await transactions.save(
-      _transaction(
-        id: 'outside',
-        sourceId: 'visa',
-        transactionDate: '2026-09-15',
-      ),
-    );
-    await transactions.save(
-      _transaction(
-        id: 'other-source',
-        sourceId: 'amex',
-        transactionDate: '2026-09-01',
-      ),
-    );
-
-    final first = await settlements.listTransactions(settlement);
-    expect(first.map((value) => value.id.value).toSet(), {
-      'inside-expense',
-      'inside-refund',
-    });
-
-    await transactions.save(
-      _transaction(
-        id: 'late-import',
-        sourceId: 'visa',
-        transactionDate: '2026-08-20',
-      ),
-    );
-
-    final refreshed = await settlements.listTransactions(settlement);
-    expect(refreshed.map((value) => value.id.value).toSet(), {
-      'inside-expense',
-      'inside-refund',
-      'late-import',
-    });
-  });
 
   test(
     'includes timing-only activity when application supplies period bounds',
     () async {
-      final settlement = _settlement();
-      await settlements.save(settlement);
-      await transactions.save(
-        _transaction(
-          id: 'timing-only-inside',
-          sourceId: 'visa',
-          transactionDate: null,
-          occurredAt: DateTime.utc(2026, 9, 14, 23),
-        ),
-      );
-      await transactions.save(
-        _transaction(
-          id: 'timing-only-outside',
-          sourceId: 'visa',
-          transactionDate: null,
-          occurredAt: DateTime.utc(2026, 9, 15),
+        final settlement = _settlement();
+        await settlements.save(settlement);
+        await transactions.save(
+          _transaction(
+            id: 'timing-only-inside',
+            sourceId: 'visa',
+            transactionDate: null,
+            occurredAt: DateTime.utc(2026, 9, 14, 23),
+          ),
+        );
+        await transactions.save(
+          _transaction(
+            id: 'timing-only-outside',
+            sourceId: 'visa',
+            transactionDate: null,
+            occurredAt: DateTime.utc(2026, 9, 15),
+          ),
+        );
+
+        final result = await settlements.listTransactions(
+          settlement,
+          occurredAtFrom: DateTime.utc(2026, 8, 15),
+          occurredAtToExclusive: DateTime.utc(2026, 9, 15),
+        );
+
+        expect(result.map((value) => value.id.value), ['timing-only-inside']);
+      },
+    );
+
+    test('updates payment amount and date directly on the settlement', () async {
+      await settlements.save(_settlement());
+
+      final at = DateTime.utc(2026, 9, 21, 12);
+      await settlements.save(
+        PaymentSettlement(
+          id: PaymentSettlementId('settlement-1'),
+          paymentSourceId: PaymentSourceId('visa'),
+          payment: _money('2900.00'),
+          paymentDate: '2026-09-21',
+          periodStart: '2026-08-15',
+          periodEnd: '2026-09-14',
+          status: PaymentSettlementStatus.open,
+          createdAt: DateTime.utc(2026, 9, 20, 12),
+          updatedAt: at,
         ),
       );
 
-      final result = await settlements.listTransactions(
-        settlement,
-        occurredAtFrom: DateTime.utc(2026, 8, 15),
-        occurredAtToExclusive: DateTime.utc(2026, 9, 15),
+      final loaded = await settlements.findById(
+        PaymentSettlementId('settlement-1'),
       );
-
-      expect(result.map((value) => value.id.value), ['timing-only-inside']);
+      expect(loaded!.payment.amount, DecimalValue.parse('2900.00'));
+      expect(loaded.paymentDate, '2026-09-21');
     },
   );
-
-  test('updates payment amount and date directly on the settlement', () async {
-    await settlements.save(_settlement());
-
-    final at = DateTime.utc(2026, 9, 21, 12);
-    await settlements.save(
-      PaymentSettlement(
-        id: PaymentSettlementId('settlement-1'),
-        paymentSourceId: PaymentSourceId('visa'),
-        payment: _money('2900.00'),
-        paymentDate: '2026-09-21',
-        periodStart: '2026-08-15',
-        periodEnd: '2026-09-14',
-        status: PaymentSettlementStatus.open,
-        createdAt: DateTime.utc(2026, 9, 20, 12),
-        updatedAt: at,
-      ),
-    );
-
-    final loaded = await settlements.findById(
-      PaymentSettlementId('settlement-1'),
-    );
-    expect(loaded!.payment.amount, DecimalValue.parse('2900.00'));
-    expect(loaded.paymentDate, '2026-09-21');
-  });
 
   test('deleting a settlement does not delete ordinary transactions', () async {
     await settlements.save(_settlement());
@@ -192,370 +194,419 @@ void main() {
   test(
     'large settlement history preserves every row and stable ordering',
     () async {
-      final now = DateTime.utc(2026, 9, 20, 12);
-      for (var index = 0; index < 260; index++) {
+        final now = DateTime.utc(2026, 9, 20, 12);
+        for (var index = 0; index < 260; index++) {
+          await settlements.save(
+            PaymentSettlement(
+              id: PaymentSettlementId('restored-$index'),
+              paymentSourceId: PaymentSourceId('visa'),
+              payment: _money('10.00'),
+              paymentDate: '2026-09-20',
+              periodStart: '2026-08-15',
+              periodEnd: '2026-09-14',
+              status: PaymentSettlementStatus.open,
+              createdAt: now,
+              updatedAt: now,
+            ),
+          );
+        }
+
+        final listed = await settlements.listAll();
+        final ids = listed.map((value) => value.id.value).toList();
+        final expected = [
+          for (var index = 0; index < 260; index++) 'restored-$index',
+        ]..sort();
+        expect(ids, expected);
+        expect(ids.toSet(), hasLength(260));
+      },
+    );
+
+    test('SQL pages bound settlement loading without losing history', () async {
+      final at = DateTime.utc(2026, 11, 8);
+      for (var index = 0; index < 53; index++) {
         await settlements.save(
           PaymentSettlement(
-            id: PaymentSettlementId('restored-$index'),
+            id: PaymentSettlementId('page-${index.toString().padLeft(3, '0')}'),
             paymentSourceId: PaymentSourceId('visa'),
-            payment: _money('10.00'),
+            payment: _money('11.00'),
             paymentDate: '2026-09-20',
             periodStart: '2026-08-15',
             periodEnd: '2026-09-14',
             status: PaymentSettlementStatus.open,
-            createdAt: now,
-            updatedAt: now,
+            createdAt: at,
+            updatedAt: at,
           ),
         );
       }
 
-      final listed = await settlements.listAll();
-      final ids = listed.map((value) => value.id.value).toList();
-      final expected = [
-        for (var index = 0; index < 260; index++) 'restored-$index',
-      ]..sort();
-      expect(ids, expected);
-      expect(ids.toSet(), hasLength(260));
+      final first = await settlements.listPage(offset: 0, limit: 20);
+      final second = await settlements.listPage(offset: 20, limit: 20);
+      final third = await settlements.listPage(offset: 40, limit: 20);
+      expect(first.totalCount, 53);
+      expect(second.totalCount, 53);
+      expect(third.totalCount, 53);
+      expect(first.rows, hasLength(20));
+      expect(second.rows, hasLength(20));
+      expect(third.rows, hasLength(13));
+      expect(first.rows.first.id.value, 'page-000');
+      expect(second.rows.first.id.value, 'page-020');
+      expect(third.rows.last.id.value, 'page-052');
+      expect(
+        [...first.rows, ...second.rows, ...third.rows]
+            .map((settlement) => settlement.id.value)
+            .toSet(),
+        hasLength(53),
+      );
+      expect(await settlements.listAll(), hasLength(53));
     },
   );
-
-  test('SQL pages bound settlement loading without losing history', () async {
-    final at = DateTime.utc(2026, 11, 8);
-    for (var index = 0; index < 53; index++) {
-      await settlements.save(
-        PaymentSettlement(
-          id: PaymentSettlementId('page-${index.toString().padLeft(3, '0')}'),
-          paymentSourceId: PaymentSourceId('visa'),
-          payment: _money('11.00'),
-          paymentDate: '2026-09-20',
-          periodStart: '2026-08-15',
-          periodEnd: '2026-09-14',
-          status: PaymentSettlementStatus.open,
-          createdAt: at,
-          updatedAt: at,
-        ),
-      );
-    }
-
-    final first = await settlements.listPage(offset: 0, limit: 20);
-    final second = await settlements.listPage(offset: 20, limit: 20);
-    final third = await settlements.listPage(offset: 40, limit: 20);
-    expect(first.totalCount, 53);
-    expect(second.totalCount, 53);
-    expect(third.totalCount, 53);
-    expect(first.rows, hasLength(20));
-    expect(second.rows, hasLength(20));
-    expect(third.rows, hasLength(13));
-    expect(first.rows.first.id.value, 'page-000');
-    expect(second.rows.first.id.value, 'page-020');
-    expect(third.rows.last.id.value, 'page-052');
-    expect(
-      [...first.rows, ...second.rows, ...third.rows]
-          .map((settlement) => settlement.id.value)
-          .toSet(),
-      hasLength(53),
-    );
-    expect(await settlements.listAll(), hasLength(53));
-  });
 
   test(
     'transaction pages match full history with exact period totals',
     () async {
-    final settlement = _settlement();
-    await settlements.save(settlement);
-    for (var index = 0; index < 45; index++) {
+      final settlement = _settlement();
+      await settlements.save(settlement);
+      for (var index = 0; index < 45; index++) {
+        await transactions.save(
+          _transaction(
+            id: 'paged-$index',
+            sourceId: 'visa',
+            transactionDate: '2026-09-01',
+            amount: '1.25',
+            direction: index == 0
+                ? TransactionDirection.refund
+                : TransactionDirection.expense,
+          ),
+        );
+      }
       await transactions.save(
         _transaction(
-          id: 'paged-$index',
+          id: 'timing-only-paged',
           sourceId: 'visa',
-          transactionDate: '2026-09-01',
-          amount: '1.25',
-          direction: index == 0
-              ? TransactionDirection.refund
-              : TransactionDirection.expense,
+          occurredAt: DateTime.utc(2026, 9, 14, 23),
+          amount: '0.75',
         ),
       );
-    }
-    await transactions.save(
-      _transaction(
-        id: 'timing-only-paged',
-        sourceId: 'visa',
-        occurredAt: DateTime.utc(2026, 9, 14, 23),
-        amount: '0.75',
-      ),
-    );
-    await transactions.save(
-      _transaction(
-        id: 'excluded-transfer',
-        sourceId: 'visa',
-        transactionDate: '2026-09-01',
-        direction: TransactionDirection.transfer,
-      ),
-    );
-    await transactions.save(
-      _transaction(
-        id: 'outside-period',
-        sourceId: 'visa',
-        transactionDate: '2026-09-15',
-      ),
-    );
-    await transactions.save(
-      _transaction(
-        id: 'wrong-source',
-        sourceId: 'amex',
-        transactionDate: '2026-09-01',
-      ),
-    );
-    await transactions.save(
-      _transaction(
-        id: 'archived-paged',
-        sourceId: 'visa',
-        transactionDate: '2026-09-01',
-        status: TransactionStatus.archived,
-      ),
-    );
+      await transactions.save(
+        _transaction(
+          id: 'excluded-transfer',
+          sourceId: 'visa',
+          transactionDate: '2026-09-01',
+          direction: TransactionDirection.transfer,
+        ),
+      );
+      await transactions.save(
+        _transaction(
+          id: 'outside-period',
+          sourceId: 'visa',
+          transactionDate: '2026-09-15',
+        ),
+      );
+      await transactions.save(
+        _transaction(
+          id: 'wrong-source',
+          sourceId: 'amex',
+          transactionDate: '2026-09-01',
+        ),
+      );
+      await transactions.save(
+        _transaction(
+          id: 'archived-paged',
+          sourceId: 'visa',
+          transactionDate: '2026-09-01',
+          status: TransactionStatus.archived,
+        ),
+      );
 
-    final from = DateTime.utc(2026, 8, 15);
-    final toExclusive = DateTime.utc(2026, 9, 15);
-    final full = await settlements.listTransactions(
-      settlement,
-      occurredAtFrom: from,
-      occurredAtToExclusive: toExclusive,
-    );
-    final first = await settlements.listTransactionsPage(
-      settlement,
-      occurredAtFrom: from,
-      occurredAtToExclusive: toExclusive,
-      offset: 0,
-      limit: 20,
-    );
-    final second = await settlements.listTransactionsPage(
-      settlement,
-      occurredAtFrom: from,
-      occurredAtToExclusive: toExclusive,
-      offset: 20,
-      limit: 20,
-    );
-    final third = await settlements.listTransactionsPage(
-      settlement,
-      occurredAtFrom: from,
-      occurredAtToExclusive: toExclusive,
-      offset: 40,
-      limit: 20,
-    );
-    expect(first.totalCount, 46);
-    expect(second.totalCount, 46);
-    expect(third.totalCount, 46);
-    expect(first.rows, hasLength(20));
-    expect(second.rows, hasLength(20));
-    expect(third.rows, hasLength(6));
-    expect(
-      [...first.rows, ...second.rows, ...third.rows]
-          .map((t) => t.id.value)
-          .toList(),
-      full.map((t) => t.id.value).toList(),
-    );
-    // 44 expenses - 1 refund, at 1.25 each, plus 0.75 timing-only.
-    expect(first.recordedTotal, _money('54.50'));
-    expect(second.recordedTotal, first.recordedTotal);
+      final from = DateTime.utc(2026, 8, 15);
+      final toExclusive = DateTime.utc(2026, 9, 15);
+      final full = await settlements.listTransactions(
+        settlement,
+        occurredAtFrom: from,
+        occurredAtToExclusive: toExclusive,
+      );
+      final first = await settlements.listTransactionsPage(
+        settlement,
+        occurredAtFrom: from,
+        occurredAtToExclusive: toExclusive,
+        offset: 0,
+        limit: 20,
+      );
+      final second = await settlements.listTransactionsPage(
+        settlement,
+        occurredAtFrom: from,
+        occurredAtToExclusive: toExclusive,
+        offset: 20,
+        limit: 20,
+      );
+      final third = await settlements.listTransactionsPage(
+        settlement,
+        occurredAtFrom: from,
+        occurredAtToExclusive: toExclusive,
+        offset: 40,
+        limit: 20,
+      );
+      expect(first.totalCount, 46);
+      expect(second.totalCount, 46);
+      expect(third.totalCount, 46);
+      expect(first.rows, hasLength(20));
+      expect(second.rows, hasLength(20));
+      expect(third.rows, hasLength(6));
+      expect(
+        [...first.rows, ...second.rows, ...third.rows]
+            .map((t) => t.id.value)
+            .toList(),
+        full.map((t) => t.id.value).toList(),
+      );
+      // 44 expenses - 1 refund, at 1.25 each, plus 0.75 timing-only.
+      expect(first.summaryPending, isTrue);
+      expect(first.recordedTotal, isNull);
+      final summary = await settlements.summarizeTransactions(
+        settlement,
+        occurredAtFrom: from,
+        occurredAtToExclusive: toExclusive,
+      );
+      expect(summary.recordedTotal, _money('54.50'));
+      expect(summary.totalCount, 46);
+      expect(summary.snapshotToken, first.snapshotToken);
+      expect(second.snapshotToken, first.snapshotToken);
 
-    await transactions.save(
-      _transaction(
-        id: 'adjustment',
-        sourceId: 'visa',
-        transactionDate: '2026-09-01',
-        direction: TransactionDirection.adjustment,
-      ),
-    );
-    final uncomparable = await settlements.listTransactionsPage(
-      settlement,
-      occurredAtFrom: from,
-      occurredAtToExclusive: toExclusive,
-      offset: 0,
-      limit: 20,
-    );
-    expect(uncomparable.totalCount, 47);
-    expect(uncomparable.recordedTotal, isNull);
-  });
+      await transactions.save(
+        _transaction(
+          id: 'adjustment',
+          sourceId: 'visa',
+          transactionDate: '2026-09-01',
+          direction: TransactionDirection.adjustment,
+        ),
+      );
+      final uncomparable = await settlements.listTransactionsPage(
+        settlement,
+        occurredAtFrom: from,
+        occurredAtToExclusive: toExclusive,
+        offset: 0,
+        limit: 20,
+      );
+      expect(uncomparable.totalCount, 47);
+      final unavailableSummary = await settlements.summarizeTransactions(
+        settlement,
+        occurredAtFrom: from,
+        occurredAtToExclusive: toExclusive,
+      );
+      expect(unavailableSummary.recordedTotal, isNull);
+      expect(unavailableSummary.totalCount, 47);
+    },
+  );
 
   test(
     'bounded queries preserve provenance, tags, review and normalized values',
     () async {
-    final at = DateTime.utc(2026, 9, 2, 12);
-    final id = TransactionId('rich-paged');
-    final money = _money('2.50');
-    await database.connection.insert('tags', {
-      'id': 'tag-paged',
-      'name': 'Paged Tag',
-    });
-    await transactions.save(
-      Transaction(
-        id: id,
-        timing: KnownTransactionTime(at),
-        money: money,
-        direction: TransactionDirection.expense,
-        sourceType: TransactionSourceType.import,
-        paymentSourceId: PaymentSourceId('visa'),
-        transactionDate: '2026-09-02',
-        tagIds: [TagId('tag-paged')],
-        provenance: [
-          Provenance(
-            id: ProvenanceId('rich-page-provenance'),
-            sourceType: ProvenanceSourceType.import,
-            capturedAt: at,
-            originalRepresentation: 'preserve me',
-          ),
-        ],
-        reviewIssues: [
-          ReviewIssue(
-            id: ReviewIssueId('rich-page-review'),
-            transactionId: id,
-            reason: ReviewIssueReason.uncertain,
-            createdAt: at,
-          ),
-        ],
-        normalizedMoney: [
-          NormalizedMoney(
-            original: money,
-            converted: Money(
-              amount: DecimalValue.parse('2.25'),
-              currency: CurrencyCode('EUR'),
+      final at = DateTime.utc(2026, 9, 2, 12);
+      final id = TransactionId('rich-paged');
+      final money = _money('2.50');
+      await database.connection.insert('tags', {
+        'id': 'tag-paged',
+        'name': 'Paged Tag',
+      });
+      await transactions.save(
+        Transaction(
+          id: id,
+          timing: KnownTransactionTime(at),
+          money: money,
+          direction: TransactionDirection.expense,
+          sourceType: TransactionSourceType.import,
+          paymentSourceId: PaymentSourceId('visa'),
+          transactionDate: '2026-09-02',
+          tagIds: [TagId('tag-paged')],
+          provenance: [
+            Provenance(
+              id: ProvenanceId('rich-page-provenance'),
+              sourceType: ProvenanceSourceType.import,
+              capturedAt: at,
+              originalRepresentation: 'preserve me',
             ),
-            exchangeRate: ExchangeRate(
-              id: ExchangeRateId('rich-page-exchange-rate'),
-              fromCurrency: CurrencyCode('USD'),
-              toCurrency: CurrencyCode('EUR'),
-              rate: DecimalValue.parse('0.90'),
-              effectiveAt: at,
-              source: 'regression-test',
+          ],
+          reviewIssues: [
+            ReviewIssue(
+              id: ReviewIssueId('rich-page-review'),
+              transactionId: id,
+              reason: ReviewIssueReason.uncertain,
+              createdAt: at,
             ),
-            updatedAt: at,
-          ),
-        ],
-        createdAt: at,
-        updatedAt: at,
-      ),
-    );
-    final direct = (await transactions.findById(id))!;
-    final paged = await transactions.query(
-      TransactionRepositoryQuery(
-        from: DateTime.utc(2026, 9, 1),
-        to: DateTime.utc(2026, 9, 30),
-        paymentSourceId: PaymentSourceId('visa'),
-        limit: 20,
-        offset: 0,
-      ),
-    );
-    final read = paged.singleWhere((t) => t.id == id);
-    expect(
-      read.provenance.map((p) => p.id.value).toList(),
-      direct.provenance.map((p) => p.id.value).toList(),
-    );
-    expect(read.tagIds, direct.tagIds);
-    expect(
-      read.reviewIssues.map((review) => review.id.value).toList(),
-      direct.reviewIssues.map((review) => review.id.value).toList(),
-    );
-    expect(
-      read.normalizedMoney.map((value) => value.converted).toList(),
-      direct.normalizedMoney.map((value) => value.converted).toList(),
-    );
-    expect(
-      read.normalizedMoney.single.exchangeRate?.id.value,
-      'rich-page-exchange-rate',
-    );
-    expect(
-      read.normalizedMoney.single.exchangeRate?.rate,
-      DecimalValue.parse('0.90'),
-    );
-  });
+          ],
+          normalizedMoney: [
+            NormalizedMoney(
+              original: money,
+              converted: Money(
+                amount: DecimalValue.parse('2.25'),
+                currency: CurrencyCode('EUR'),
+              ),
+              exchangeRate: ExchangeRate(
+                id: ExchangeRateId('rich-page-exchange-rate'),
+                fromCurrency: CurrencyCode('USD'),
+                toCurrency: CurrencyCode('EUR'),
+                rate: DecimalValue.parse('0.90'),
+                effectiveAt: at,
+                source: 'regression-test',
+              ),
+              updatedAt: at,
+            ),
+          ],
+          createdAt: at,
+          updatedAt: at,
+        ),
+      );
+      final direct = (await transactions.findById(id))!;
+      final paged = await transactions.query(
+        TransactionRepositoryQuery(
+          from: DateTime.utc(2026, 9, 1),
+          to: DateTime.utc(2026, 9, 30),
+          paymentSourceId: PaymentSourceId('visa'),
+          limit: 20,
+          offset: 0,
+        ),
+      );
+      final read = paged.singleWhere((t) => t.id == id);
+      expect(
+        read.provenance.map((p) => p.id.value).toList(),
+        direct.provenance.map((p) => p.id.value).toList(),
+      );
+      expect(read.tagIds, direct.tagIds);
+      expect(
+        read.reviewIssues.map((review) => review.id.value).toList(),
+        direct.reviewIssues.map((review) => review.id.value).toList(),
+      );
+      expect(
+        read.normalizedMoney.map((value) => value.converted).toList(),
+        direct.normalizedMoney.map((value) => value.converted).toList(),
+      );
+      expect(
+        read.normalizedMoney.single.exchangeRate?.id.value,
+        'rich-page-exchange-rate',
+      );
+      expect(
+        read.normalizedMoney.single.exchangeRate?.rate,
+        DecimalValue.parse('0.90'),
+      );
+    },
+  );
 
   test(
     'paging stays complete across scalar and aggregate batch boundaries',
     () async {
-    final at = DateTime.utc(2026, 9, 1, 12);
-    final stamp = at.toIso8601String();
-    await database.connection.insert('provenances', {
-      'id': 'shared-bulk-provenance',
-      'source_type': ProvenanceSourceType.import.name,
-      'captured_at': stamp,
-      'original_representation': 'bulk import',
-    });
-    // Seed through one test-only transaction so this regression is fast
-    // without modifying production data or migration behavior.
-    await database.transaction((executor) async {
-      for (var index = 0; index < 905; index++) {
-        final id = 'bulk-${index.toString().padLeft(4, '0')}';
-        await executor.insert('transactions', {
-          'id': id,
-          'occurred_at': stamp,
-          'amount_coefficient': '125',
-          'amount_scale': 2,
-          'currency': 'USD',
-          'direction': TransactionDirection.expense.name,
-          'source_type': TransactionSourceType.import.name,
-          'status': TransactionStatus.active.name,
-          'payment_source_id': 'visa',
-          'transaction_date': '2026-09-01',
-          'created_at': stamp,
-          'updated_at': stamp,
-        });
-        await executor.insert('transaction_provenances', {
-          'transaction_id': id,
-          'provenance_id': 'shared-bulk-provenance',
-        });
-      }
-    });
+      final at = DateTime.utc(2026, 9, 1, 12);
+      final stamp = at.toIso8601String();
+      await database.connection.insert('provenances', {
+        'id': 'shared-bulk-provenance',
+        'source_type': ProvenanceSourceType.import.name,
+        'captured_at': stamp,
+        'original_representation': 'bulk import',
+      });
+      // Seed through one test-only transaction so this regression is fast
+      // without modifying production data or migration behavior.
+      await database.transaction((executor) async {
+        for (var index = 0; index < 905; index++) {
+          final id = 'bulk-${index.toString().padLeft(4, '0')}';
+          await executor.insert('transactions', {
+            'id': id,
+            'occurred_at': stamp,
+            'amount_coefficient': '125',
+            'amount_scale': 2,
+            'currency': 'USD',
+            'direction': TransactionDirection.expense.name,
+            'source_type': TransactionSourceType.import.name,
+            'status': TransactionStatus.active.name,
+            'payment_source_id': 'visa',
+            'transaction_date': '2026-09-01',
+            'created_at': stamp,
+            'updated_at': stamp,
+          });
+          await executor.insert('transaction_provenances', {
+            'transaction_id': id,
+            'provenance_id': 'shared-bulk-provenance',
+          });
+        }
+      });
 
-    final query = TransactionRepositoryQuery(
-      from: DateTime.utc(2026, 8, 15),
-      to: DateTime.utc(2026, 9, 14),
-      paymentSourceId: PaymentSourceId('visa'),
-      status: TransactionStatus.active,
-    );
-    final all = await transactions.query(query);
-    expect(all, hasLength(905));
-    expect(all.every((t) => t.provenance.length == 1), isTrue);
-
-    final slice = await transactions.query(
-      TransactionRepositoryQuery(
+      final query = TransactionRepositoryQuery(
         from: DateTime.utc(2026, 8, 15),
         to: DateTime.utc(2026, 9, 14),
         paymentSourceId: PaymentSourceId('visa'),
         status: TransactionStatus.active,
-        limit: 20,
-        offset: 895,
-      ),
-    );
-    expect(
-      slice.map((t) => t.id.value).toList(),
-      all.skip(895).map((t) => t.id.value).toList(),
-    );
+      );
+      final all = await transactions.query(query);
+      expect(all, hasLength(905));
+      expect(all.every((t) => t.provenance.length == 1), isTrue);
 
-    final settlementPage = await settlements.listTransactionsPage(
-      _settlement(),
-      occurredAtFrom: DateTime.utc(2026, 8, 15),
-      occurredAtToExclusive: DateTime.utc(2026, 9, 15),
-      offset: 900,
-      limit: 20,
-    );
-    expect(settlementPage.totalCount, 905);
-    expect(settlementPage.rows, hasLength(5));
-    expect(settlementPage.recordedTotal, _money('1131.25'));
-  });
+      final slice = await transactions.query(
+        TransactionRepositoryQuery(
+          from: DateTime.utc(2026, 8, 15),
+          to: DateTime.utc(2026, 9, 14),
+          paymentSourceId: PaymentSourceId('visa'),
+          status: TransactionStatus.active,
+          limit: 20,
+          offset: 895,
+        ),
+      );
+      expect(
+        slice.map((t) => t.id.value).toList(),
+        all.skip(895).map((t) => t.id.value).toList(),
+      );
+
+      final settlementPage = await settlements.listTransactionsPage(
+        _settlement(),
+        occurredAtFrom: DateTime.utc(2026, 8, 15),
+        occurredAtToExclusive: DateTime.utc(2026, 9, 15),
+        offset: 900,
+        limit: 20,
+      );
+      expect(settlementPage.totalCount, 905);
+      expect(settlementPage.rows, hasLength(5));
+      expect(settlementPage.summaryPending, isTrue);
+      final summary = await settlements.summarizeTransactions(
+        _settlement(),
+        occurredAtFrom: DateTime.utc(2026, 8, 15),
+        occurredAtToExclusive: DateTime.utc(2026, 9, 15),
+      );
+      expect(summary.recordedTotal, _money('1131.25'));
+      expect(summary.snapshotToken, settlementPage.snapshotToken);
+    },
+  );
 
   test(
     'mixed currencies make the complete recorded total unavailable',
     () async {
+      final settlement = _settlement();
+      await settlements.save(settlement);
+      await transactions.save(
+        _transaction(
+          id: 'mixed-currency',
+          sourceId: 'visa',
+          transactionDate: '2026-09-01',
+          amount: '2.50',
+          currency: 'EUR',
+        ),
+      );
+      final page = await settlements.listTransactionsPage(
+        settlement,
+        offset: 0,
+        limit: 20,
+      );
+      expect(page.totalCount, 1);
+      expect(page.rows.single.money.currency, CurrencyCode('EUR'));
+      final summary = await settlements.summarizeTransactions(settlement);
+      expect(summary.recordedTotal, isNull);
+      expect(summary.snapshotToken, page.snapshotToken);
+    },
+  );
+
+  test('changed data cannot reuse a previous exact-summary snapshot', () async {
     final settlement = _settlement();
     await settlements.save(settlement);
     await transactions.save(
       _transaction(
-        id: 'mixed-currency',
+        id: 'changed-amount',
         sourceId: 'visa',
         transactionDate: '2026-09-01',
-        amount: '2.50',
-        currency: 'EUR',
       ),
     );
     final page = await settlements.listTransactionsPage(
@@ -563,9 +614,32 @@ void main() {
       offset: 0,
       limit: 20,
     );
-    expect(page.totalCount, 1);
-    expect(page.rows.single.money.currency, CurrencyCode('EUR'));
-    expect(page.recordedTotal, isNull);
+    final before = await settlements.summarizeTransactions(settlement);
+    expect(before.snapshotToken, page.snapshotToken);
+    expect(before.recordedTotal, _money('10.00'));
+
+    await database.connection.update(
+      'transactions',
+      {
+        'amount_coefficient': '2500',
+        'amount_scale': 2,
+        'updated_at': DateTime.utc(2030, 1, 1).toIso8601String(),
+      },
+      where: 'id = ?',
+      whereArgs: ['changed-amount'],
+    );
+    final after = await settlements.summarizeTransactions(settlement);
+    expect(after.totalCount, page.totalCount);
+    expect(after.recordedTotal, _money('25.00'));
+    expect(after.snapshotToken, isNot(page.snapshotToken));
+    expect(
+      (await settlements.listTransactionsPage(
+        settlement,
+        offset: 0,
+        limit: 20,
+      )).snapshotToken,
+      after.snapshotToken,
+    );
   });
 
   test('does not create a persisted settlement membership table', () async {
