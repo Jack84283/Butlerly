@@ -996,6 +996,39 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (pageCount > 1)
+              Padding(
+                padding: const EdgeInsets.only(bottom: ButlerlySpacing.standard),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${startIndex + 1}–$endIndex / ${settlements.length}',
+                      key: const ValueKey('settlement-page-range'),
+                    ),
+                    IconButton(
+                      key: const ValueKey('settlement-page-previous'),
+                      tooltip: MaterialLocalizations.of(
+                        context,
+                      ).previousPageTooltip,
+                      onPressed: _page == 0
+                          ? null
+                          : () => setState(() => _page--),
+                      icon: const Icon(Icons.chevron_left_rounded),
+                    ),
+                    IconButton(
+                      key: const ValueKey('settlement-page-next'),
+                      tooltip: MaterialLocalizations.of(
+                        context,
+                      ).nextPageTooltip,
+                      onPressed: _page >= pageCount - 1
+                          ? null
+                          : () => setState(() => _page++),
+                      icon: const Icon(Icons.chevron_right_rounded),
+                    ),
+                  ],
+                ),
+              ),
             LayoutBuilder(
               builder: (context, constraints) {
                 final table = Column(
@@ -1042,39 +1075,6 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
                 );
               },
             ),
-            if (pageCount > 1)
-              Padding(
-                padding: const EdgeInsets.only(top: ButlerlySpacing.standard),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Text(
-                      '${startIndex + 1}–$endIndex / ${settlements.length}',
-                      key: const ValueKey('settlement-page-range'),
-                    ),
-                    IconButton(
-                      key: const ValueKey('settlement-page-previous'),
-                      tooltip: MaterialLocalizations.of(
-                        context,
-                      ).previousPageTooltip,
-                      onPressed: _page == 0
-                          ? null
-                          : () => setState(() => _page--),
-                      icon: const Icon(Icons.chevron_left_rounded),
-                    ),
-                    IconButton(
-                      key: const ValueKey('settlement-page-next'),
-                      tooltip: MaterialLocalizations.of(
-                        context,
-                      ).nextPageTooltip,
-                      onPressed: _page >= pageCount - 1
-                          ? null
-                          : () => setState(() => _page++),
-                      icon: const Icon(Icons.chevron_right_rounded),
-                    ),
-                  ],
-                ),
-              ),
           ],
         ),
       ),
