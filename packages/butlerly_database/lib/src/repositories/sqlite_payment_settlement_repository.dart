@@ -177,7 +177,7 @@ final class SqlitePaymentSettlementRepository
           totalCount: count,
           recordedTotal: null,
           summaryPending: true,
-          snapshotToken: '${count}:${latest}',
+          snapshotToken: _snapshotToken(settlement, count, latest),
         );
       });
     } on DatabaseException catch (error) {
@@ -252,7 +252,7 @@ final class SqlitePaymentSettlementRepository
           recordedTotal: canCompare
               ? Money(amount: sum, currency: settlement.payment.currency)
               : null,
-          snapshotToken: '${totalCount}:${latest}',
+          snapshotToken: _snapshotToken(settlement, totalCount, latest),
         );
       });
     } on DatabaseException catch (error) {
@@ -298,6 +298,23 @@ final class SqlitePaymentSettlementRepository
       ],
     );
   }
+
+  // Also bind the signature to the settlement definition. A concurrent
+  // statement-period or source edit must never attach the old comparison
+  // amount to the newly loaded transaction page.
+  static String _snapshotToken(
+    PaymentSettlement settlement,
+    int count,
+    String latestUpdate,
+  ) => [
+    settlement.id.value,
+    settlement.paymentSourceId.value,
+    settlement.periodStart,
+    settlement.periodEnd,
+    settlement.payment.currency.value,
+    '${count}',
+    latestUpdate,
+  ].join('|');
 
   static String _instantBound(DateTime value) {
     final iso = value.toUtc().toIso8601String();
