@@ -910,6 +910,39 @@ void main() {
           ),
         );
       }
+      // Exercise the detail path with actual imported transactions.
+      // Previously this test only opened the settlement list and could
+      // never detect a slow N+1 detail hydration query.
+      final importedTransactions = SqliteTransactionRepository(database);
+      for (var index = 0; index < 50; index++) {
+        final at = DateTime.utc(2026, 9, 15, 12, index % 60);
+        await importedTransactions.save(
+          Transaction(
+            id: TransactionId('sqlite-import-$index'),
+            timing: KnownTransactionTime(at),
+            money: Money(
+              amount: DecimalValue.parse('5.00'),
+              currency: CurrencyCode('USD'),
+            ),
+            direction: TransactionDirection.expense,
+            sourceType: TransactionSourceType.import,
+            paymentSourceId: PaymentSourceId('legacy-import'),
+            transactionDate: '2026-09-15',
+            description: 'Statement purchase $index',
+            provenance: [
+              Provenance(
+                id: ProvenanceId('sqlite-import-provenance-$index'),
+                sourceType: ProvenanceSourceType.import,
+                sourceId: 'statement-row-$index',
+                originalRepresentation: '2026-09-15 purchase 5.00',
+                capturedAt: at,
+              ),
+            ],
+            createdAt: at,
+            updatedAt: at,
+          ),
+        );
+      }
       final sources = _TestSources([]);
       services.registerSingleton<FinanceServices>(
         FinanceServices(
@@ -966,6 +999,41 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('21–40 / 75'), findsOneWidget);
       expect(sources.listCalls, 0);
+
+      // Open a saved settlement, fetch 50 matching imported transactions
+      // from real SQLite, paginate, close, and then navigate back to Tools.
+      final settlementCard = find.text('legacy-import').first;
+      await tester.ensureVisible(settlementCard);
+      await tester.tap(settlementCard);
+      await tester.pumpAndSettle();
+      expect(find.byType(PaymentSettlementDetailPage), findsOneWidget);
+      expect(sources.listCalls, 0);
+
+      final detailScroll = find
+          .descendant(
+            of: find.byType(PaymentSettlementDetailPage),
+            matching: find.byType(Scrollable),
+          )
+          .first;
+      await tester.scrollUntilVisible(
+        find.byKey(const ValueKey('settlement-detail-transaction-next')),
+        180,
+        scrollable: detailScroll,
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('1–20 / 50'), findsOneWidget);
+      await tester.tap(
+        find.byKey(const ValueKey('settlement-detail-transaction-next')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('21–40 / 50'), findsOneWidget);
+      expect(sources.listCalls, 0);
+
+      Navigator.of(
+        tester.element(find.byType(PaymentSettlementDetailPage)),
+      ).pop();
+      await tester.pumpAndSettle();
+      expect(find.byType(PaymentSettlementsPage), findsOneWidget);
 
       router.pop();
       await tester.pumpAndSettle();
