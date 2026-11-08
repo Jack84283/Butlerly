@@ -117,11 +117,11 @@ class ButlerlyContextHelpButton extends StatelessWidget {
   }
 }
 
-/// Local Navigator for blocking recovery screens rendered above GoRouter.
+/// Local Navigator for first-use and blocking recovery screens above GoRouter.
 ///
-/// This preserves the recovery workflow while giving modal confirmations and
-/// offline contextual Help a route stack. System Back dismisses Help, not the
-/// recovery screen. The host must have a distinct key for each recovery mode.
+/// Preserves the active setup/recovery workflow while giving offline Help a
+/// real route. System Back dismisses Help before the underlying gate. Each
+/// independent gate must use a distinct key.
 class ButlerlyRouterlessRecoveryHost extends StatefulWidget {
   const ButlerlyRouterlessRecoveryHost({required this.child, super.key});
 
@@ -169,8 +169,8 @@ class _ButlerlyRouterlessRecoveryHostState
   );
 }
 
-/// Setup screens may have an Overlay but no Navigator; recovery screens use
-/// ButlerlyRouterlessRecoveryHost. Both paths display the same offline reader.
+/// The app's setup/recovery gates use ButlerlyRouterlessRecoveryHost;
+/// independent routerless Overlay hosts retain a fallback Help reader.
 void _openStandaloneHelp(BuildContext context, String articleId) {
   final future = HelpCatalog.load();
   final navigator = Navigator.maybeOf(context);
