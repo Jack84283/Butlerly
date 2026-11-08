@@ -96,10 +96,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
       if (settlementResult case ApplicationSuccess<List<PaymentSettlementDto>>(
         value: final settlements,
       )) {
-        return _SettlementListData(
-          settlements: settlements,
-          sources: const [],
-        );
+        return _SettlementListData(settlements: settlements, sources: const []);
       }
       throw StateError('Payment settlements could not be loaded.');
     } catch (error) {
