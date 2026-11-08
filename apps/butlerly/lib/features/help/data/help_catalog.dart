@@ -137,8 +137,23 @@ class HelpCatalog {
     return result;
   }
 
-  static Future<HelpCatalog> load({AssetBundle? bundle}) async {
-    final localBundle = bundle ?? rootBundle;
+  // Bundled Help is immutable for an app version. Reuse one load across
+  // page navigations so opening Help doesn't restart four asset reads.
+  // Explicit custom bundles remain uncached for isolated tests.
+  static Future<HelpCatalog>? _bundledCatalog;
+
+  static Future<HelpCatalog> load({AssetBundle? bundle}) {
+    if (bundle != null) return _readFrom(bundle);
+    return _bundledCatalog ??= _readFrom(rootBundle).then(
+      (catalog) => catalog,
+      onError: (Object error, StackTrace stack) {
+        _bundledCatalog = null;
+        Error.throwWithStackTrace(error, stack);
+      },
+    );
+  }
+
+  static Future<HelpCatalog> _readFrom(AssetBundle localBundle) async {
     final values = await Future.wait([
       localBundle.loadString('assets/help/guide_en.json'),
       localBundle.loadString('assets/help/guide_zh.json'),

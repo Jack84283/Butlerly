@@ -548,7 +548,7 @@ void main() {
       supportedVersion: 19,
     );
     await tester.pumpAndSettle();
-    expect(find.text('请先更新 Butlerly 再恢复备份'), findsOneWidget);
+    expect(find.text('请先更新 “账房先生” 再恢复备份'), findsOneWidget);
     expect(find.textContaining('App Store'), findsOneWidget);
     expect(find.textContaining('版本 20'), findsOneWidget);
     await tester.tap(find.text('知道了'));

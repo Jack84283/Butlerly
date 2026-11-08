@@ -349,7 +349,11 @@ void main() {
       }
       expect(exception, isNull);
       expect(find.text('Good morning'), findsOneWidget);
-      expect(find.text('Aug 2026'), findsOneWidget);
+      // 320px Home uses a short month label to keep Help visible.
+      expect(
+        find.text(size.width < 360 ? 'Aug' : 'Aug 2026'),
+        findsOneWidget,
+      );
       expect(find.byKey(const ValueKey('home-summary-card')), findsOneWidget);
       expect(find.byKey(const ValueKey('home-trend-card')), findsOneWidget);
       expect(find.byKey(const ValueKey('home-category-card')), findsOneWidget);

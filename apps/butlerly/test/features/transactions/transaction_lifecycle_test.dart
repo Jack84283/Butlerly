@@ -3000,12 +3000,7 @@ void main() {
             )
             .first,
       );
-      expect(
-        headerPadding.padding,
-        const EdgeInsetsDirectional.only(
-          end: ButlerlySpacing.headerActionTrailing,
-        ),
-      );
+      expect(headerPadding.padding, EdgeInsetsDirectional.zero);
 
       final addButton = find.byKey(const ValueKey('master-data-add'));
       final addIcon = find.descendant(
@@ -3016,9 +3011,12 @@ void main() {
       final iconButton = tester.widget<IconButton>(addButton);
       expect(
         iconButton.style?.backgroundColor?.resolve({}),
-        tester.element(addButton).colors.interactive,
+        Theme.of(tester.element(addButton)).colorScheme.primary,
       );
-      expect(iconButton.style?.foregroundColor?.resolve({}), Colors.white);
+      expect(
+        iconButton.style?.foregroundColor?.resolve({}),
+        Theme.of(tester.element(addButton)).colorScheme.onPrimary,
+      );
     },
   );
 

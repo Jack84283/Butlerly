@@ -657,7 +657,7 @@ const _backupStrings = <String, Map<String, String>>{
         '“账房先生” 已暂停正常编辑，直到当前恢复状态通过验证。如果无法安全保留当前状态，可以使用恢复前的安全副本。',
     'recoveryUnavailableBody':
         '“账房先生” 无法确认一个安全的恢复状态，并且没有可信的安全副本可用。正常编辑仍处于暂停状态。您可以清除本机 “账房先生” 数据并重新开始。',
-    'recover“账房先生”': '恢复 “账房先生”',
+    'recoverButlerly': '恢复 “账房先生”',
     'eraseLocalRecoveryData': '清除本地数据并重新开始',
     'recoveryResetTitle': '清除本机 “账房先生” 数据？',
     'recoveryResetBody': '这将永久删除此设备上的 “账房先生” 本地财务数据、凭证和恢复副本。仅在无法完成恢复时使用此操作。',

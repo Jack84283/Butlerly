@@ -9,7 +9,12 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test('desktop text scale increases reading roles without mutating base', () {
-    final base = ThemeData(useMaterial3: true).textTheme;
+    const base = TextTheme(
+      bodyMedium: TextStyle(fontSize: 14),
+      bodySmall: TextStyle(fontSize: 12),
+      titleLarge: TextStyle(fontSize: 20),
+      labelLarge: TextStyle(fontSize: 14),
+    );
     final desktop = ButlerlyTypography.desktopTextTheme(base);
 
     expect(desktop.bodyMedium!.fontSize, base.bodyMedium!.fontSize! + 1);
@@ -31,7 +36,14 @@ void main() {
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
 
-        final original = ThemeData(useMaterial3: true, brightness: brightness);
+        final original = ThemeData(
+          useMaterial3: true,
+          brightness: brightness,
+          textTheme: const TextTheme(
+            bodyMedium: TextStyle(fontSize: 14),
+            bodySmall: TextStyle(fontSize: 12),
+          ),
+        );
         await tester.pumpWidget(
           MaterialApp(
             theme: original,
