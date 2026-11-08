@@ -10,9 +10,16 @@ final class SqlitePaymentSettlementRepository
         PaginatedPaymentSettlementRepository,
         PaginatedPaymentSettlementTransactionRepository,
         PaymentSettlementSummaryRepository {
-  const SqlitePaymentSettlementRepository(this.database);
+  const SqlitePaymentSettlementRepository(
+    this.database, {
+    this.summaryBatchCheckpoint,
+  });
 
   final ButlerlyDatabase database;
+
+  /// Optional test seam to pause between completed scalar batches. This is
+  /// always called with NO SQLite transaction active.
+  final Future<void> Function()? summaryBatchCheckpoint;
 
   @override
   Future<void> save(PaymentSettlement value) async {
@@ -262,7 +269,12 @@ final class SqlitePaymentSettlementRepository
         cursor = values.last['id']! as String;
         if (values.length < batchSize) break;
         // Yield *without* owning a SQLite transaction or connection lock.
-        await Future<void>.delayed(Duration.zero);
+        final checkpoint = summaryBatchCheckpoint;
+        if (checkpoint != null) {
+          await checkpoint();
+        } else {
+          await Future<void>.delayed(Duration.zero);
+        }
       }
       final after = await _readSnapshotState(filter);
       if (before != after ||
