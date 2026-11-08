@@ -913,6 +913,48 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('resizing from device to desktop restores full history', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final settlements = registerServices([]);
+    settlements.values.addAll(
+      List.generate(
+        75,
+        (index) => PaymentSettlement(
+          id: PaymentSettlementId('resize-$index'),
+          paymentSourceId: PaymentSourceId('legacy-resize'),
+          payment: Money(
+            amount: DecimalValue.parse('12.00'),
+            currency: CurrencyCode('USD'),
+          ),
+          paymentDate: '2026-10-05',
+          periodStart: '2026-09-01',
+          periodEnd: '2026-09-30',
+          status: PaymentSettlementStatus.open,
+          createdAt: DateTime.utc(2026, 11, 7),
+          updatedAt: DateTime.utc(2026, 11, 7),
+        ),
+      ),
+    );
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    expect(find.text('1–20 / 75'), findsOneWidget);
+
+    tester.view.physicalSize = const Size(1400, 900);
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('desktop-payment-settlements-table')),
+      findsOneWidget,
+    );
+    expect(find.text('75'), findsAtLeastNWidgets(1));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'device opens and leaves real SQLite settlement history without source reads',
     (tester) async {
