@@ -777,43 +777,45 @@ void main() {
     },
   );
 
-  test('indexed settlement filters cover normalized and timing-only dates', (
-    ) async {
-    final plan = await database.connection.rawQuery(
-      '''EXPLAIN QUERY PLAN SELECT t.id FROM transactions t
-         WHERE t.payment_source_id = ? AND t.status = ?
-           AND t.direction != ?
-           AND (
-             (TRIM(COALESCE(t.transaction_date, '')) != ''
-              AND TRIM(t.transaction_date) >= ?
-              AND TRIM(t.transaction_date) <= ?)
-             OR
-             (TRIM(COALESCE(t.transaction_date, '')) = ''
-              AND t.occurred_at IS NOT NULL
-              AND t.occurred_at >= ?
-              AND t.occurred_at < ?)
-           )''',
-      [
-        'visa',
-        TransactionStatus.active.name,
-        TransactionDirection.transfer.name,
-        '2026-08-15',
-        '2026-09-14',
-        '2026-08-15T00:00:00',
-        '2026-09-15T00:00:00',
-      ],
-    );
-    final steps = plan.map((row) => row['detail'].toString()).join(' ');
-    expect(steps, contains('idx_settlement_source_trimmed_date'));
-    expect(steps, contains('idx_settlement_source_occurred_at'));
-    final deployment = await File(
-      'database/migrations/deployment.sql',
-    ).readAsString();
-    final migration = parseDeploymentMigrations(deployment)[20];
-    expect(migration, isNotNull);
-    expect(migration, contains('idx_settlement_source_trimmed_date'));
-    expect(migration, contains('idx_settlement_source_occurred_at'));
-  });
+  test(
+    'indexed settlement filters cover normalized and timing-only dates',
+    () async {
+      final plan = await database.connection.rawQuery(
+        '''EXPLAIN QUERY PLAN SELECT t.id FROM transactions t
+           WHERE t.payment_source_id = ? AND t.status = ?
+             AND t.direction != ?
+             AND (
+               (TRIM(COALESCE(t.transaction_date, '')) != ''
+                AND TRIM(t.transaction_date) >= ?
+                AND TRIM(t.transaction_date) <= ?)
+               OR
+               (TRIM(COALESCE(t.transaction_date, '')) = ''
+                AND t.occurred_at IS NOT NULL
+                AND t.occurred_at >= ?
+                AND t.occurred_at < ?)
+             )''',
+        [
+          'visa',
+          TransactionStatus.active.name,
+          TransactionDirection.transfer.name,
+          '2026-08-15',
+          '2026-09-14',
+          '2026-08-15T00:00:00',
+          '2026-09-15T00:00:00',
+        ],
+      );
+      final steps = plan.map((row) => row['detail'].toString()).join(' ');
+      expect(steps, contains('idx_settlement_source_trimmed_date'));
+      expect(steps, contains('idx_settlement_source_occurred_at'));
+      final deployment = await File(
+        'database/migrations/deployment.sql',
+      ).readAsString();
+      final migration = parseDeploymentMigrations(deployment)[20];
+      expect(migration, isNotNull);
+      expect(migration, contains('idx_settlement_source_trimmed_date'));
+      expect(migration, contains('idx_settlement_source_occurred_at'));
+    },
+  );
 
   test('does not create a persisted settlement membership table', () async {
     final rows = await database.connection.rawQuery(
