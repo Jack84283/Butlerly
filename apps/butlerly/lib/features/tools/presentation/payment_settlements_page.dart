@@ -158,7 +158,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
 
   Future<void> _openDevicePage(int page) async {
     if (page < 0) return;
-    ++_loadGeneration;
+    final generation = ++_loadGeneration;
     final refreshed = _load(page: page).timeout(_loadDeadline);
     _detailSources.value = const [];
     setState(() {
@@ -171,7 +171,18 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
     try {
       // Loading a settlement page must not query Payment Sources. The
       // legacy source lookup is performed only after an explicit Add.
-      await refreshed;
+      final loaded = await refreshed;
+      if (!mounted || generation != _loadGeneration) return;
+      if (page > 0 &&
+          loaded.serverPaged &&
+          loaded.settlements.isEmpty &&
+          loaded.totalCount > 0) {
+        // Records may be deleted by another workflow between page reads.
+        // Fall back to the last nonempty page rather than displaying a false
+        // "no settlements" state.
+        final lastPage = (loaded.totalCount - 1) ~/ _devicePageSize;
+        if (lastPage < page) await _openDevicePage(lastPage);
+      }
     } catch (_) {
       // FutureBuilder displays settlement failures and offers Retry.
     }
