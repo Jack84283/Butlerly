@@ -862,7 +862,21 @@ class _PaymentSettlementDetailPageState
     // Do not await it while navigating or changing transaction pages.
     next.then((detail) {
       if (!mounted || generation != _detailGeneration) return;
-      _scheduleExactSummary(detail, summaryGeneration);
+      var activeSummaryGeneration = summaryGeneration;
+      final previous = _comparisonSummary;
+      if (detail.summaryPending &&
+          previous != null &&
+          previous.snapshotToken != detail.snapshotToken) {
+        // The underlying transactions changed between page reads.
+        // Discard the cached total and load a fresh consistent snapshot.
+        activeSummaryGeneration = ++_summaryGeneration;
+        setState(() {
+          _comparisonSummary = null;
+          _summaryFailed = false;
+          _summaryStarted = false;
+        });
+      }
+      _scheduleExactSummary(detail, activeSummaryGeneration);
     }, onError: (Object error, StackTrace stackTrace) {});
     final languageCode =
         _loadedLanguageCode ?? Localizations.localeOf(context).languageCode;
