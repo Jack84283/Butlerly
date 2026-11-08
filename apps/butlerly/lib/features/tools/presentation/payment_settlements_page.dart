@@ -689,6 +689,7 @@ class _PaymentSettlementDetailPageState
   bool _summaryStarted = false;
   bool _summaryFailed = false;
   PaymentSettlementTransactionSummary? _comparisonSummary;
+  String? _visibleSnapshotToken;
 
   @override
   void initState() {
@@ -826,9 +827,11 @@ class _PaymentSettlementDetailPageState
         )) {
           // Never attach an exact amount from a different SQLite snapshot.
           // Data can change during import or editing while this scan runs.
-          if (summary.snapshotToken == detail.snapshotToken) {
+          if (summary.snapshotToken == _visibleSnapshotToken) {
             setState(() => _comparisonSummary = summary);
           } else {
+            // The user may have paged to a newer database snapshot while
+            // the old background summary was still running.
             setState(() => _summaryFailed = true);
           }
         } else {
@@ -851,6 +854,7 @@ class _PaymentSettlementDetailPageState
       _summaryStarted = false;
       _summaryFailed = false;
       _comparisonSummary = null;
+      _visibleSnapshotToken = null;
     }
     final summaryGeneration = _summaryGeneration;
     final next = _load(page: page).timeout(_detailDeadline);
@@ -862,6 +866,7 @@ class _PaymentSettlementDetailPageState
     // Do not await it while navigating or changing transaction pages.
     next.then((detail) {
       if (!mounted || generation != _detailGeneration) return;
+      _visibleSnapshotToken = detail.snapshotToken;
       var activeSummaryGeneration = summaryGeneration;
       final previous = _comparisonSummary;
       if (detail.summaryPending &&
