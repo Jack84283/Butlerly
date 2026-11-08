@@ -1,6 +1,7 @@
 import 'package:butlerly/design_system/components/butlerly_brand_icon.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
@@ -36,32 +37,40 @@ class _DesktopPrimaryShellState extends State<DesktopPrimaryShell> {
     final narrow =
         MediaQuery.sizeOf(context).width < ButlerlySize.wideBreakpoint;
     final expanded = narrow ? _expandedAtNarrowWidths : _expandedAtWideWidths;
-    return Scaffold(
-      body: SafeArea(
-        bottom: false,
-        child: Row(
-          children: [
-            _WidePrimaryNavigation(
-              key: const ValueKey('primary-wide-navigation'),
-              expanded: expanded,
-              currentIndex: widget.currentIndex,
-              onToggleExpanded: () => setState(() {
-                if (narrow) {
-                  _expandedAtNarrowWidths = !expanded;
-                } else {
-                  _expandedAtWideWidths = !expanded;
-                }
-              }),
-              onParentSelected: widget.onSelected,
-            ),
-            Expanded(
-              child: ColoredBox(
-                key: const ValueKey('primary-wide-body-surface'),
-                color: context.colors.background,
-                child: SafeArea(bottom: false, child: widget.body),
+    // Apply the readability adjustment only within the wide desktop shell.
+    // Compact and medium device layouts never mount this Theme override.
+    final theme = Theme.of(context);
+    return Theme(
+      data: theme.copyWith(
+        textTheme: ButlerlyTypography.desktopTextTheme(theme.textTheme),
+      ),
+      child: Scaffold(
+        body: SafeArea(
+          bottom: false,
+          child: Row(
+            children: [
+              _WidePrimaryNavigation(
+                key: const ValueKey('primary-wide-navigation'),
+                expanded: expanded,
+                currentIndex: widget.currentIndex,
+                onToggleExpanded: () => setState(() {
+                  if (narrow) {
+                    _expandedAtNarrowWidths = !expanded;
+                  } else {
+                    _expandedAtWideWidths = !expanded;
+                  }
+                }),
+                onParentSelected: widget.onSelected,
               ),
-            ),
-          ],
+              Expanded(
+                child: ColoredBox(
+                  key: const ValueKey('primary-wide-body-surface'),
+                  color: context.colors.background,
+                  child: SafeArea(bottom: false, child: widget.body),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
