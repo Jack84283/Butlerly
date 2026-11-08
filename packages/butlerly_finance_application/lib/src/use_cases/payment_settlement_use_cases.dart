@@ -237,6 +237,8 @@ final class GetPaymentSettlementDetailPage {
         totalCount: page.totalCount,
         completeRecordedTotal: page.recordedTotal,
         paged: true,
+        summaryPending: page.summaryPending,
+        snapshotToken: page.snapshotToken,
       );
     }
 
@@ -267,6 +269,45 @@ final class GetPaymentSettlementDetailPage {
       completeRecordedTotal: full.recordedTransactionTotal,
       paged: true,
     );
+  });
+}
+
+/// Computes exact whole-period comparison independently of the visible
+/// transaction page. A snapshot signature guards against stale summaries.
+final class GetPaymentSettlementSummary {
+  const GetPaymentSettlementSummary(this.repository, {this.preferences});
+
+  final PaymentSettlementRepository repository;
+  final UserPreferenceRepository? preferences;
+
+  Future<ApplicationResult<PaymentSettlementTransactionSummary>> call(
+    String id,
+  ) => runApplication('summarize payment settlement', () async {
+    if (repository is! PaymentSettlementSummaryRepository) {
+      throw const RepositoryException(
+        RepositoryFailureCode.unavailable,
+        'summarize payment settlement',
+      );
+    }
+    final settlement = await repository.findById(PaymentSettlementId(id));
+    if (settlement == null) {
+      throw const RepositoryException(
+        RepositoryFailureCode.notFound,
+        'summarize payment settlement',
+      );
+    }
+    final timeZone = await configuredFinancialTimeZone(preferences);
+    final bounds = financialInstantRangeForCalendarDates(
+      from: DateTime.parse(settlement.periodStart),
+      to: DateTime.parse(settlement.periodEnd),
+      timeZoneId: timeZone.id,
+    );
+    return (repository as PaymentSettlementSummaryRepository)
+        .summarizeTransactions(
+          settlement,
+          occurredAtFrom: bounds.start,
+          occurredAtToExclusive: bounds.endExclusive,
+        );
   });
 }
 
