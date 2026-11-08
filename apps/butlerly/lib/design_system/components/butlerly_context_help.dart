@@ -123,15 +123,37 @@ class ButlerlyContextHelpButton extends StatelessWidget {
 /// This preserves the recovery workflow while giving modal confirmations and
 /// offline contextual Help a route stack. System Back dismisses Help, not the
 /// recovery screen. The host must have a distinct key for each recovery mode.
-class ButlerlyRouterlessRecoveryHost extends StatelessWidget {
+class ButlerlyRouterlessRecoveryHost extends StatefulWidget {
   const ButlerlyRouterlessRecoveryHost({required this.child, super.key});
 
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => Navigator(
-    onGenerateRoute: (settings) =>
-        MaterialPageRoute<void>(settings: settings, builder: (_) => child),
+  State<ButlerlyRouterlessRecoveryHost> createState() =>
+      _ButlerlyRouterlessRecoveryHostState();
+}
+
+class _ButlerlyRouterlessRecoveryHostState
+    extends State<ButlerlyRouterlessRecoveryHost> {
+  final _navigatorKey = GlobalKey<NavigatorState>();
+
+  Future<bool> _handleSystemBack() async {
+    final navigator = _navigatorKey.currentState;
+    if (navigator == null || !navigator.canPop()) return false;
+    await navigator.maybePop();
+    return true;
+  }
+
+  @override
+  Widget build(BuildContext context) => BackButtonListener(
+    onBackButtonPressed: _handleSystemBack,
+    child: Navigator(
+      key: _navigatorKey,
+      onGenerateRoute: (settings) => MaterialPageRoute<void>(
+        settings: settings,
+        builder: (_) => widget.child,
+      ),
+    ),
   );
 }
 
