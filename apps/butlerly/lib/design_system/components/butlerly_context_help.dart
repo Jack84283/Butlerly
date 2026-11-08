@@ -52,14 +52,11 @@ class ButlerlyContextHelpButton extends StatelessWidget {
   static String? articleForContext(BuildContext context) {
     final router = GoRouter.maybeOf(context);
     if (router == null) return null;
-    // Prefer the route associated with this page: imperative push() may
-    // keep the public route-information URI at the original destination.
-    try {
-      return contextualHelpArticleForPath(GoRouterState.of(context).uri.path);
-    } catch (_) {
-      // Dialog and nested Navigator contexts may lack a route-local state.
-      return contextualHelpArticleForPath(router.state.uri.path);
-    }
+    // GoRouterState.of(context) expects a GoRouter-managed modal route.
+    // Details opened with Navigator.push(MaterialPageRoute), including Payment
+    // Settlements, do not have their own GoRouterState. Resolve the active
+    // destination from the enclosing router without inspecting the modal route.
+    return contextualHelpArticleForPath(router.state.uri.path);
   }
 
   @override

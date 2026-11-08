@@ -160,6 +160,78 @@ void main() {
     });
   }
 
+  // Payment Settlement details are pushed with Navigator.push(MaterialPageRoute),
+  // not declared as a GoRouter route. Contextual Help must not attempt to
+  // recover a GoRouterState from that imperative route during build.
+  for (final size in [const Size(390, 844), const Size(1440, 900)]) {
+    testWidgets('Settlement detail Help survives MaterialPageRoute at $size', (
+      tester,
+    ) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final router = GoRouter(
+        initialLocation: '/payment-settlements',
+        routes: [
+          GoRoute(
+            path: '/payment-settlements',
+            builder: (_, _) => Scaffold(
+              body: Builder(
+                builder: (context) => Center(
+                  child: ElevatedButton(
+                    key: const ValueKey('open-settlement-detail'),
+                    onPressed: () => Navigator.of(context).push<void>(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const Scaffold(
+                          body: ButlerlyPage(
+                            title: 'Payment Settlement',
+                            children: [Text('Settlement detail body')],
+                          ),
+                        ),
+                      ),
+                    ),
+                    child: const Text('Open settlement'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          GoRoute(
+            path: '/help',
+            builder: (_, state) => Scaffold(
+              body: HelpFaqPage(
+                preloadedCatalog: catalog,
+                articleId: state.uri.queryParameters['article'],
+              ),
+            ),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('open-settlement-detail')));
+      await tester.pumpAndSettle();
+      expect(find.text('Settlement detail body'), findsOneWidget);
+      expect(find.byKey(const ValueKey('page-context-help')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.byKey(const ValueKey('page-context-help')));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<HelpFaqPage>(find.byType(HelpFaqPage)).articleId,
+        'ch-16',
+      );
+      await tester.tap(find.byTooltip('Back'));
+      await tester.pumpAndSettle();
+      expect(find.text('Settlement detail body'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   for (final language in ['en', 'zh', 'es']) {
     testWidgets('direct page Help uses the $language guide', (tester) async {
       await tester.pumpWidget(
