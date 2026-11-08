@@ -303,6 +303,18 @@ void main() {
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
 
+    // Entry is independent of the unrelated Payment Sources repository.
+    expect(
+      find.byKey(const ValueKey('desktop-settlement-payment-sources')),
+      findsNothing,
+    );
+    // Legacy Add resolves source metadata only after the user requests it.
+    await tester.tap(find.byKey(const ValueKey('payment-settlements-add')));
+    await tester.pumpAndSettle();
+    final editor = find.byKey(const ValueKey('payment-settlement-editor-page'));
+    expect(editor, findsOneWidget);
+    Navigator.of(tester.element(editor)).pop();
+    await tester.pumpAndSettle();
     expect(
       find.byKey(const ValueKey('desktop-settlement-payment-sources')),
       findsOneWidget,
@@ -371,17 +383,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       find.byKey(const ValueKey('desktop-settlement-payment-sources')),
-      findsOneWidget,
+      findsNothing,
     );
     expect(
       find.byKey(const ValueKey('desktop-payment-settlements-table')),
       findsOneWidget,
     );
-    expect(find.textContaining('Archived Visa'), findsAtLeastNWidgets(1));
-    expect(
-      find.byKey(const ValueKey('desktop-settlement-add-source')),
-      findsOneWidget,
-    );
+    expect(find.textContaining('archived-visa'), findsAtLeastNWidgets(1));
     expect(tester.takeException(), isNull);
   });
 
@@ -478,7 +486,11 @@ void main() {
         lastFour: index.toString().padLeft(4, '0'),
       ),
     );
-    final settlements = registerServices(sources);
+    final sourceRepository = _TestSources(sources);
+    final settlements = registerServices(
+      sources,
+      sourceRepository: sourceRepository,
+    );
     final now = DateTime.utc(2026, 11, 7);
     settlements.values.addAll(
       List.generate(
@@ -540,25 +552,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(PaymentSettlementsPage), findsOneWidget);
+    expect(sourceRepository.listCalls, 0);
     expect(
       find.byKey(const ValueKey('desktop-settlement-payment-sources')),
-      findsOneWidget,
+      findsNothing,
     );
     expect(
       find.byKey(const ValueKey('desktop-payment-settlements-table')),
       findsOneWidget,
-    );
-    expect(
-      find.byKey(const ValueKey('settlement-eligible-source-card-0')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const ValueKey('settlement-more-active-sources')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const ValueKey('settlement-eligible-source-card-29')),
-      findsNothing,
     );
     expect(
       find.byKey(const ValueKey('desktop-payment-settlement-settlement-0')),
@@ -651,7 +652,7 @@ void main() {
   );
 
   testWidgets(
-    'device detail updates source labels after a delayed metadata read',
+    'device detail opens and closes with source metadata unavailable',
     (tester) async {
       tester.view.physicalSize = const Size(390, 900);
       tester.view.devicePixelRatio = 1;
@@ -687,22 +688,14 @@ void main() {
       await tester.pump(const Duration(milliseconds: 350));
       expect(find.byType(PaymentSettlementDetailPage), findsOneWidget);
 
-      pending.complete([
-        PaymentSource(
-          id: PaymentSourceId('legacy-source'),
-          name: 'Imported Visa',
-          type: PaymentSourceType.card,
-        ),
-      ]);
+      Navigator.of(
+        tester.element(find.byType(PaymentSettlementDetailPage)),
+      ).pop();
+      await tester.pumpAndSettle();
+      expect(find.byType(PaymentSettlementsPage), findsOneWidget);
+      pending.complete([]);
       await tester.pump();
       await tester.pump();
-      expect(
-        find.descendant(
-          of: find.byType(PaymentSettlementDetailPage),
-          matching: find.text('Imported Visa'),
-        ),
-        findsWidgets,
-      );
       expect(tester.takeException(), isNull);
     },
   );
@@ -729,10 +722,10 @@ void main() {
 
     deferred.complete([]);
     await tester.pumpAndSettle();
-    expect(sources.listCalls, 1);
+    expect(sources.listCalls, 0);
     expect(
       find.byKey(const ValueKey('desktop-settlement-payment-sources')),
-      findsOneWidget,
+      findsNothing,
     );
     expect(tester.takeException(), isNull);
   });
@@ -771,7 +764,7 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      expect(sources.listCalls, 1);
+      expect(sources.listCalls, 0);
       expect(find.text('Payment settlements'), findsAtLeastNWidgets(1));
       expect(
         find.byKey(const ValueKey('desktop-payment-settlements-table')),
@@ -903,13 +896,28 @@ void main() {
                 find.byKey(const ValueKey('payment-settlements-add')),
               )
               .onPressed,
-          isNull,
+          isNotNull,
         );
+        expect(sources.listCalls, 0);
         expect(find.text('Add payment source'), findsNothing);
         expect(find.byType(PaymentSourcesPage), findsNothing);
 
+        await tester.tap(
+          find.byKey(const ValueKey('payment-settlements-add')),
+        );
+        await tester.pump();
+        expect(sources.listCalls, 1);
         pendingSources.complete(sources.sources);
         await tester.pumpAndSettle();
+        expect(find.byType(PaymentSourcesPage), findsNothing);
+        if (width < 900) {
+          expect(find.byType(BottomSheet), findsOneWidget);
+        } else {
+          expect(
+            find.byKey(const ValueKey('payment-settlement-editor-page')),
+            findsOneWidget,
+          );
+        }
         expect(
           tester
               .widget<IconButton>(
@@ -955,6 +963,10 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(settlements.listCalls, 1);
+    expect(sources.listCalls, 0);
+    await tester.tap(find.byKey(const ValueKey('payment-settlements-add')));
+    await tester.pump();
+    expect(sources.listCalls, 1);
     await tester.pump(const Duration(seconds: 9));
     await tester.pump();
     expect(find.text('Try again'), findsAtLeastNWidgets(1));
