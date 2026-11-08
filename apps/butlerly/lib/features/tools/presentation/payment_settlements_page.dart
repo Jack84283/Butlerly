@@ -173,6 +173,19 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
     }
   }
 
+  Future<void> _retrySources() async {
+    // Preserve already visible settlement records and their pagination. Only
+    // refresh the failed source lookup; another history query is unnecessary.
+    final current = _displayData ?? await _data;
+    if (!mounted || current == null) return;
+    final generation = ++_loadGeneration;
+    setState(() {
+      _sourcesError = false;
+      _sourcesLoaded = false;
+    });
+    await _loadSources(current, generation);
+  }
+
   Widget _sourceLoadState(BuildContext context) => ButlerlyCard(
     child: _sourcesError
         ? ButlerlyErrorState(
@@ -180,7 +193,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
             message: context.l10n.text('tryAgain'),
             preserved: context.l10n.text('dataPreserved'),
             actionLabel: context.l10n.text('tryAgain'),
-            onAction: _refresh,
+            onAction: _retrySources,
           )
         : ButlerlyLoadingState(message: context.l10n.text('loading')),
   );
@@ -231,11 +244,12 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
 
     await _refresh();
     if (!mounted) return;
-    final latest = _data;
-    if (latest == null) return;
-    final updated = await latest;
-    if (!mounted) return;
-    if (updated.activeCardSources.isNotEmpty) {
+    // _data contains settlement history only. The eligible cards live in
+    // _displayData after the separate Payment Sources query completes.
+    final updated = _displayData;
+    if (_sourcesLoaded &&
+        updated != null &&
+        updated.activeCardSources.isNotEmpty) {
       await _createSettlement(updated);
     } else {
       _showMessage(context.l10n.text('paymentSettlementNeedsCardSource'));
@@ -415,7 +429,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
                   data: data,
                   onOpen: (settlement) => _openSettlement(settlement, data),
                 ),
-              ] else
+              ] else if (_sourcesLoaded)
                 ButlerlyEmptyState(
                   icon: Icons.credit_score_outlined,
                   title: context.l10n.text('noPaymentSettlements'),
