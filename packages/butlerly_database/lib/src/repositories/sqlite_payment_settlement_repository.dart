@@ -7,7 +7,8 @@ import 'sqlite_transaction_repository.dart';
 final class SqlitePaymentSettlementRepository
     implements
         PaymentSettlementRepository,
-        PaginatedPaymentSettlementRepository {
+        PaginatedPaymentSettlementRepository,
+        PaginatedPaymentSettlementTransactionRepository {
   const SqlitePaymentSettlementRepository(this.database);
 
   final ButlerlyDatabase database;
@@ -124,6 +125,138 @@ final class SqlitePaymentSettlementRepository
     return values
         .where((value) => value.direction != TransactionDirection.transfer)
         .toList(growable: false);
+  }
+
+  @override
+  Future<PaymentSettlementTransactionPage> listTransactionsPage(
+    PaymentSettlement settlement, {
+    DateTime? occurredAtFrom,
+    DateTime? occurredAtToExclusive,
+    required int offset,
+    required int limit,
+  }) async {
+    if (offset < 0 || limit <= 0 || limit > 100) {
+      throw ArgumentError('Invalid settlement transaction page bounds');
+    }
+    // Match the existing transaction query's financial-date rules. When a
+    // transaction_date is present it wins; otherwise compare occurred_at
+    // against the financial timezone's UTC instant bounds.
+    final clauses = <String>[
+      't.payment_source_id = ?',
+      't.status = ?',
+      't.direction != ?',
+      "TRIM(COALESCE(t.transaction_date, '')) != ''",
+      'TRIM(t.transaction_date) >= ?',
+      'TRIM(t.transaction_date) <= ?',
+    ];
+    final args = <Object?>[
+      settlement.paymentSourceId.value,
+      TransactionStatus.active.name,
+      TransactionDirection.transfer.name,
+      settlement.periodStart,
+      settlement.periodEnd,
+    ];
+    final knownDate = '(${clauses.skip(3).join(' AND ')})';
+    final occurredParts = <String>[
+      "TRIM(COALESCE(t.transaction_date, '')) = ''",
+      't.occurred_at IS NOT NULL',
+    ];
+    final occurredArgs = <Object?>[];
+    if (occurredAtFrom != null) {
+      occurredParts.add('t.occurred_at >= ?');
+      occurredArgs.add(_instantBound(occurredAtFrom));
+    }
+    if (occurredAtToExclusive != null) {
+      occurredParts.add('t.occurred_at < ?');
+      occurredArgs.add(_instantBound(occurredAtToExclusive));
+    }
+    final period = occurredArgs.isEmpty
+        ? knownDate
+        : '($knownDate OR (${occurredParts.join(' AND ')}))';
+    final where = 't.payment_source_id = ? AND t.status = ? '
+        'AND t.direction != ? AND $period';
+    final whereArgs = <Object?>[
+      ...args.take(3),
+      ...args.skip(3),
+      ...occurredArgs,
+    ];
+
+    try {
+      // Compute the complete comparison total with exact BigInt decimals,
+      // but scan only bounded scalar projections. Never hydrate every
+      // transaction aggregate just to show the first detail page.
+      const batchSize = 400;
+      var cursor = '';
+      var totalCount = 0;
+      var sum = DecimalValue.fromParts(
+        coefficient: BigInt.zero,
+        scale: 0,
+      );
+      var canCompare = true;
+      while (true) {
+        final values = await database.connection.rawQuery(
+          '''SELECT t.id, t.direction, t.currency, t.amount_coefficient,
+                    t.amount_scale
+             FROM transactions t
+             WHERE $where AND t.id > ?
+             ORDER BY t.id LIMIT ?''',
+          [...whereArgs, cursor, batchSize],
+        );
+        if (values.isEmpty) break;
+        for (final row in values) {
+          totalCount++;
+          if (!canCompare) continue;
+          if ((row['currency'] as String).trim().toUpperCase() !=
+                  settlement.payment.currency.value ||
+              row['direction'] == TransactionDirection.adjustment.name) {
+            canCompare = false;
+            continue;
+          }
+          final amount = DecimalValue.fromParts(
+            coefficient: BigInt.parse(row['amount_coefficient']! as String),
+            scale: row['amount_scale']! as int,
+          ).abs();
+          switch (row['direction'] as String) {
+            case 'expense':
+              sum = sum.add(amount);
+            case 'refund':
+            case 'income':
+              sum = sum.subtract(amount);
+          }
+        }
+        cursor = values.last['id']! as String;
+        if (values.length < batchSize) break;
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      final page = await SqliteTransactionRepository(database).query(
+        TransactionRepositoryQuery(
+          from: DateTime.parse(settlement.periodStart),
+          to: DateTime.parse(settlement.periodEnd),
+          occurredAtFrom: occurredAtFrom,
+          occurredAtToExclusive: occurredAtToExclusive,
+          paymentSourceId: settlement.paymentSourceId,
+          status: TransactionStatus.active,
+          excludeTransfers: true,
+          offset: offset,
+          limit: limit,
+        ),
+      );
+      return PaymentSettlementTransactionPage(
+        rows: List.unmodifiable(page),
+        totalCount: totalCount,
+        recordedTotal: canCompare
+            ? Money(amount: sum, currency: settlement.payment.currency)
+            : null,
+      );
+    } on DatabaseException catch (error) {
+      throw mapDatabaseException(error, 'page settlement transactions');
+    }
+  }
+
+  static String _instantBound(DateTime value) {
+    final iso = value.toUtc().toIso8601String();
+    return iso.endsWith('Z') ? iso.substring(0, iso.length - 1) : iso;
   }
 
   @override
