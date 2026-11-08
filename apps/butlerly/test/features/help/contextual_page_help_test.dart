@@ -316,9 +316,7 @@ void main() {
         routes: [
           GoRoute(
             path: '/',
-            builder: (_, _) => const Scaffold(
-              body: Text('Underlying app'),
-            ),
+            builder: (_, _) => const Scaffold(body: Text('Underlying app')),
           ),
         ],
       );
@@ -338,9 +336,7 @@ void main() {
             key: const ValueKey('first-use-help-host'),
             child: Scaffold(
               appBar: AppBar(
-                actions: [
-                  ButlerlyContextHelpButton(articleId: stage.value),
-                ],
+                actions: [ButlerlyContextHelpButton(articleId: stage.value)],
               ),
               body: Text('${stage.key} stays active'),
             ),
