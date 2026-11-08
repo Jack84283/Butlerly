@@ -445,6 +445,77 @@ void main() {
     );
   });
 
+  test('paging stays complete across scalar and aggregate batch boundaries', (
+    ) async {
+    final at = DateTime.utc(2026, 9, 1, 12);
+    final stamp = at.toIso8601String();
+    await database.connection.insert('provenances', {
+      'id': 'shared-bulk-provenance',
+      'source_type': ProvenanceSourceType.import.name,
+      'captured_at': stamp,
+      'original_representation': 'bulk import',
+    });
+    // Seed through one test-only transaction so this regression is fast
+    // without modifying production data or migration behavior.
+    await database.transaction((executor) async {
+      for (var index = 0; index < 905; index++) {
+        final id = 'bulk-${index.toString().padLeft(4, '0')}';
+        await executor.insert('transactions', {
+          'id': id,
+          'occurred_at': stamp,
+          'amount_coefficient': '125',
+          'amount_scale': 2,
+          'currency': 'USD',
+          'direction': TransactionDirection.expense.name,
+          'source_type': TransactionSourceType.import.name,
+          'status': TransactionStatus.active.name,
+          'payment_source_id': 'visa',
+          'transaction_date': '2026-09-01',
+          'created_at': stamp,
+          'updated_at': stamp,
+        });
+        await executor.insert('transaction_provenances', {
+          'transaction_id': id,
+          'provenance_id': 'shared-bulk-provenance',
+        });
+      }
+    });
+
+    final query = TransactionRepositoryQuery(
+      from: DateTime.utc(2026, 8, 15),
+      to: DateTime.utc(2026, 9, 14),
+      paymentSourceId: PaymentSourceId('visa'),
+      status: TransactionStatus.active,
+    );
+    final all = await transactions.query(query);
+    expect(all, hasLength(905));
+    expect(all.every((t) => t.provenance.length == 1), isTrue);
+
+    final slice = await transactions.query(
+      TransactionRepositoryQuery(
+        from: DateTime.utc(2026, 8, 15),
+        to: DateTime.utc(2026, 9, 14),
+        paymentSourceId: PaymentSourceId('visa'),
+        status: TransactionStatus.active,
+        limit: 20,
+        offset: 895,
+      ),
+    );
+    expect(slice.map((t) => t.id.value).toList(),
+        all.skip(895).map((t) => t.id.value).toList());
+
+    final settlementPage = await settlements.listTransactionsPage(
+      _settlement(),
+      occurredAtFrom: DateTime.utc(2026, 8, 15),
+      occurredAtToExclusive: DateTime.utc(2026, 9, 15),
+      offset: 900,
+      limit: 20,
+    );
+    expect(settlementPage.totalCount, 905);
+    expect(settlementPage.rows, hasLength(5));
+    expect(settlementPage.recordedTotal, _money('1131.25'));
+  });
+
   test('does not create a persisted settlement membership table', () async {
     final rows = await database.connection.rawQuery(
       "SELECT name FROM sqlite_master WHERE type = 'table' "
