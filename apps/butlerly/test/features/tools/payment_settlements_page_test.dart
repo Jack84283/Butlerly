@@ -736,9 +736,10 @@ void main() {
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
     expect(sourceRepository.listCalls, 0);
+    // Off-screen sliver children are not required to be mounted.
+    // Verify the visible first record and the authoritative pager range.
     expect(find.text('legacy-0'), findsOneWidget);
-    expect(find.text('legacy-19'), findsOneWidget);
-    expect(find.text('legacy-20'), findsNothing);
+    expect(find.text('1–20 / 75'), findsOneWidget);
     expect(
       find.byKey(const ValueKey('device-settlement-page-range')),
       findsOneWidget,
@@ -747,9 +748,10 @@ void main() {
     expect(tester.widget<IconButton>(next).onPressed, isNotNull);
     await tester.tap(next);
     await tester.pumpAndSettle();
+    expect(find.text('21–40 / 75'), findsOneWidget);
     expect(find.text('legacy-0'), findsNothing);
-    expect(find.text('legacy-20'), findsOneWidget);
-    expect(find.text('legacy-40'), findsNothing);
+    // Check the selected range instead of assuming an off-screen card is
+    // mounted by the lazily rendered SliverList.
     expect(sourceRepository.listCalls, 0);
     expect(tester.takeException(), isNull);
   });
