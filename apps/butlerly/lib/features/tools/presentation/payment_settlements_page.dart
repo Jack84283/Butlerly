@@ -47,6 +47,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
   int _loadGeneration = 0;
   int _devicePage = 0;
   bool _loadingSourceAction = false;
+  bool? _lastWideLayout;
   static const int _devicePageSize = 20;
   int _devicePageEnd(int length) {
     final end = (_devicePage + 1) * _devicePageSize;
@@ -452,6 +453,16 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
           MediaQuery.sizeOf(context).width,
         ) ==
         ButlerlyLayoutMode.wide;
+    if (_lastWideLayout case final previous? when previous != desktop) {
+      // A device SQL page cannot supply desktop's complete overview after
+      // rotation/resizing. Re-read using the correct layout contract.
+      _lastWideLayout = desktop;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _refresh();
+      });
+    } else {
+      _lastWideLayout = desktop;
+    }
     if (_finance?.listPaymentSettlements == null) {
       return ButlerlyEmptyState(
         icon: Icons.storage_outlined,
