@@ -255,11 +255,25 @@ abstract interface class PaginatedPaymentSettlementTransactionRepository {
   });
 }
 
+/// Cooperative cancellation for long exact-decimal settlement reads.
+/// Cancellation does not interrupt a SQLite statement already executing;
+/// it prevents the next batch from starting.
+final class PaymentSettlementSummaryCancellation {
+  bool _cancelled = false;
+
+  bool get isCancelled => _cancelled;
+
+  void cancel() {
+    _cancelled = true;
+  }
+}
+
 abstract interface class PaymentSettlementSummaryRepository {
   Future<PaymentSettlementTransactionSummary> summarizeTransactions(
     PaymentSettlement settlement, {
     DateTime? occurredAtFrom,
     DateTime? occurredAtToExclusive,
+    PaymentSettlementSummaryCancellation? cancellation,
   });
 }
 
