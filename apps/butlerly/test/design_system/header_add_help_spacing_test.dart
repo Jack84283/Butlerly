@@ -76,4 +76,107 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  for (final width in [390.0, 1400.0]) {
+    testWidgets('Custom header: Help last, 12px gap at $width', (tester) async {
+      tester.view.physicalSize = Size(width, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          home: Scaffold(
+            appBar: AppBar(
+              actions: [
+                IconButton(
+                  key: const ValueKey('test-custom-header-action'),
+                  tooltip: 'Edit',
+                  onPressed: () {},
+                  icon: const Icon(Icons.edit_outlined),
+                ),
+                const ButlerlyContextHelpButton(articleId: 'ch-5'),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final action = tester.getRect(
+        find.byKey(const ValueKey('test-custom-header-action')),
+      );
+      final help = tester.getRect(
+        find.byKey(const ValueKey('page-context-help')),
+      );
+      expect(help.left - action.right, closeTo(ButlerlySpacing.small, 0.5));
+      expect(help.center.dx, greaterThan(action.center.dx));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('Shared header: Help last, 12px gap at $width', (tester) async {
+      tester.view.physicalSize = Size(width, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final router = GoRouter(
+        initialLocation: '/payment-settlements',
+        routes: [
+          GoRoute(
+            path: '/payment-settlements',
+            builder: (_, _) => Scaffold(
+              body: ButlerlyPage(
+                title: 'Payment Settlements',
+                actions: [
+                  IconButton(
+                    key: const ValueKey('test-page-header-action'),
+                    tooltip: 'Edit',
+                    onPressed: () {},
+                    icon: const Icon(Icons.edit_outlined),
+                  ),
+                ],
+                children: const [SizedBox(height: 50)],
+              ),
+            ),
+          ),
+          GoRoute(
+            path: '/help',
+            builder: (_, _) => const Scaffold(body: Text('Help')),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        MaterialApp.router(
+          routerConfig: router,
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final action = tester.getRect(
+        find.byKey(const ValueKey('test-page-header-action')),
+      );
+      final help = tester.getRect(
+        find.byKey(const ValueKey('page-context-help')),
+      );
+      expect(help.left - action.right, closeTo(ButlerlySpacing.small, 0.5));
+      expect(help.center.dx, greaterThan(action.center.dx));
+      expect(tester.takeException(), isNull);
+    });
+  }
 }

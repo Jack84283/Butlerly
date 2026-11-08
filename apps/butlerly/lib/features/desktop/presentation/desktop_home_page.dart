@@ -415,7 +415,6 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                           ),
                         ),
                       if (!compactToolbar) const SizedBox(width: 8),
-                      const ButlerlyContextHelpButton(articleId: 'ch-12'),
                       if (compactToolbar)
                         IconButton(
                           tooltip: context.l10n.text('add'),
@@ -438,6 +437,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                           icon: const Icon(Icons.add),
                           label: Text(context.l10n.text('add')),
                         ),
+                      const ButlerlyContextHelpButton(articleId: 'ch-12'),
                     ],
                   );
                 },

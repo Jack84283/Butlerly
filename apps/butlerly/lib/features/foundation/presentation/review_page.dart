@@ -453,13 +453,13 @@ class _ReviewPageState extends State<ReviewPage> {
         title: Text(context.l10n.text('needsReview')),
         automaticallyImplyLeading: false,
         actions: [
-          const ButlerlyContextHelpButton(articleId: 'ch-11'),
           IconButton(
             key: const ValueKey('desktop-needs-review-close'),
             tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
             icon: const Icon(Icons.close),
             onPressed: () => setState(() => _selectedReview = null),
           ),
+          const ButlerlyContextHelpButton(articleId: 'ch-11'),
         ],
       ),
       body: ButlerlyPage(

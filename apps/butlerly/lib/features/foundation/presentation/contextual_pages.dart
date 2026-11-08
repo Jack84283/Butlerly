@@ -165,11 +165,11 @@ class WelcomePage extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
       actions: [
-        const ButlerlyContextHelpButton(articleId: 'ch-2'),
         TextButton(
           onPressed: () => context.go('/'),
           child: Text(context.l10n.text('skip')),
         ),
+        const ButlerlyContextHelpButton(articleId: 'ch-2'),
       ],
     ),
     body: SafeArea(
