@@ -39,6 +39,7 @@ void main() {
   _TestSettlements registerServices(
     List<PaymentSource> sources, {
     _TestSources? sourceRepository,
+    ReferenceDataRepository? referenceData,
   }) {
     final settlements = _TestSettlements();
     services.registerSingleton<FinanceServices>(
@@ -51,6 +52,7 @@ void main() {
         _UnusedEvidence(),
         _UnusedPreferences(),
         paymentSettlements: settlements,
+        referenceData: referenceData,
       ),
     );
     return settlements;
@@ -193,6 +195,47 @@ void main() {
 
     expect(find.byType(BottomSheet), findsNothing);
     expect(find.byType(PaymentSettlementsPage), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('device card prerequisite opens before reference labels load', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final sources = _TestSources([]);
+    final referenceData = _BlockedReferenceData();
+    registerServices(
+      [],
+      sourceRepository: sources,
+      referenceData: referenceData,
+    );
+
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('payment-settlements-add')));
+    await tester.pumpAndSettle();
+    expect(find.byType(BottomSheet), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Add payment source'));
+    await tester.pumpAndSettle();
+
+    // Before the optional reference labels resolve, the card editor remains
+    // interactive and the initial source list is not redundantly reloaded.
+    expect(
+      find.byKey(const ValueKey('settlement-card-source-editor-page')),
+      findsOneWidget,
+    );
+    expect(referenceData.labelCalls, 1);
+    expect(sources.listCalls, 1);
+    expect(find.widgetWithText(TextField, 'Name'), findsOneWidget);
+    await tester.tap(find.widgetWithText(ButlerlyCancelButton, 'Cancel'));
+    await tester.pumpAndSettle();
+    expect(find.byType(PaymentSettlementsPage), findsOneWidget);
+    expect(find.byType(PaymentSourcesPage), findsNothing);
+    referenceData.complete();
+    await tester.pump();
     expect(tester.takeException(), isNull);
   });
 
@@ -2028,6 +2071,23 @@ void main() {
     expect(find.byType(PaymentSettlementsPage), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+}
+
+class _BlockedReferenceData extends Fake implements ReferenceDataRepository {
+  final _pending = Completer<Map<String, String>>();
+  int labelCalls = 0;
+
+  @override
+  Future<Map<String, String>> labels({
+    required String type,
+    required String locale,
+    bool includeArchived = false,
+  }) {
+    labelCalls++;
+    return _pending.future;
+  }
+
+  void complete() => _pending.complete(const {});
 }
 
 class _TestSources extends Fake implements PaymentSourceRepository {

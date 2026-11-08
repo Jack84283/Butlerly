@@ -63,10 +63,20 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
   void initState() {
     super.initState();
     workspaceRestoreChanges.addListener(_onWorkspaceRestored);
-    _sources = _load();
+    final creatingForSettlement =
+        widget.openCreateOnStart && widget.fromPaymentSettlement;
+    // The dedicated prerequisite route does not need the complete source
+    // list before it can present the new-card editor on a device.
+    _sources = creatingForSettlement
+        ? Future<List<PaymentSource>>.value(const <PaymentSource>[])
+        : _load();
     if (widget.openCreateOnStart) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _add();
+        if (!mounted) return;
+        // Desktop still shows the existing source workspace beside its
+        // editor; only the device prerequisite skips this eager lookup.
+        if (creatingForSettlement && _isDesktop(context)) _refresh();
+        _add();
       });
     }
   }
