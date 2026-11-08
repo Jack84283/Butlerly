@@ -623,7 +623,8 @@ void main() {
       {
         'amount_coefficient': '2500',
         'amount_scale': 2,
-        'updated_at': DateTime.utc(2030, 1, 1).toIso8601String(),
+        // Deliberately keep updated_at unchanged. The database revision
+        // must still reject an old exact-summary snapshot.
       },
       where: 'id = ?',
       whereArgs: ['changed-amount'],
