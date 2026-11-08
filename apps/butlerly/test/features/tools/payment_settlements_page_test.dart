@@ -266,6 +266,178 @@ void main() {
     });
   }
 
+  testWidgets('desktop shows eligible cards alongside settlement history', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    registerServices([
+      PaymentSource(
+        id: PaymentSourceId('visa'),
+        name: 'Visa',
+        type: PaymentSourceType.card,
+        lastFour: '1234',
+      ),
+      PaymentSource(
+        id: PaymentSourceId('cash'),
+        name: 'Cash',
+        type: PaymentSourceType.cash,
+      ),
+    ]);
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('desktop-settlement-payment-sources')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('settlement-eligible-source-visa')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('settlement-eligible-source-cash')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('desktop-settlement-manage-sources')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('desktop never hides saved settlements for an archived card', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final saved = registerServices([
+      PaymentSource(
+        id: PaymentSourceId('archived-visa'),
+        name: 'Archived Visa',
+        type: PaymentSourceType.card,
+        status: PaymentSourceStatus.archived,
+        lastFour: '4321',
+      ),
+    ]);
+    final now = DateTime.utc(2026, 11, 7);
+    saved.values.add(
+      PaymentSettlement(
+        id: PaymentSettlementId('past-settlement'),
+        paymentSourceId: PaymentSourceId('archived-visa'),
+        payment: Money(
+          amount: DecimalValue.parse('80.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        paymentDate: '2026-10-05',
+        periodStart: '2026-09-01',
+        periodEnd: '2026-09-30',
+        status: PaymentSettlementStatus.open,
+        createdAt: now,
+        updatedAt: now,
+      ),
+    );
+
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('desktop-settlement-payment-sources')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('desktop-payment-settlements-table')),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Archived Visa'), findsAtLeastNWidgets(1));
+    expect(
+      find.byKey(const ValueKey('desktop-settlement-add-source')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('desktop source setup Cancel returns to settlements', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    registerServices([]);
+
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('payment-settlements-add')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const ValueKey('desktop-payment-source-workspace')),
+      findsOneWidget,
+    );
+    expect(find.byType(BottomSheet), findsNothing);
+    await tester.tap(find.widgetWithText(ButlerlyCancelButton, 'Cancel'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PaymentSourcesPage), findsNothing);
+    expect(
+      find.byKey(const ValueKey('desktop-settlement-payment-sources')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('desktop card setup returns to tappable settlement editor', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final sources = <PaymentSource>[];
+    registerServices(sources);
+
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('payment-settlements-add')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('desktop-payment-source-workspace')),
+      findsOneWidget,
+    );
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Name'),
+      'Desktop Visa',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Last 4 digits'),
+      '1234',
+    );
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    expect(sources, hasLength(1));
+    expect(sources.single.type, PaymentSourceType.card);
+    expect(sources.single.status, PaymentSourceStatus.active);
+    expect(
+      find.byKey(const ValueKey('payment-settlement-editor-page')),
+      findsOneWidget,
+    );
+    expect(find.byType(BottomSheet), findsNothing);
+
+    final amount = find.widgetWithText(TextFormField, 'Amount');
+    await tester.enterText(amount, '50.00');
+    await tester.pump();
+    expect(tester.widget<TextFormField>(amount).controller!.text, '50.00');
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('settlement Add uses the app route for credit-card creation', (
     tester,
   ) async {
