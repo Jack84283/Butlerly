@@ -84,29 +84,18 @@ void main() {
         await tester.pumpAndSettle();
 
         if (width < 900) {
-          // Device mode must always show the actual settlement bottom sheet.
-          // Having zero eligible cards is an inline prerequisite, not a route
-          // change to Add Payment Source.
-          expect(find.byType(BottomSheet), findsOneWidget);
-          expect(find.byType(PaymentSourcesPage), findsNothing);
+          // A missing card is a real prerequisite, not an unfinishable
+          // settlement sheet. The source editor remains cancellable.
+          expect(find.byType(PaymentSourcesPage), findsOneWidget);
           expect(
-            find.byKey(const ValueKey('payment-settlement-editor-page')),
-            findsNothing,
-          );
-          expect(find.text('Add payment settlement'), findsOneWidget);
-          expect(
-            find.byKey(const ValueKey('settlement-no-eligible-source')),
+            find.byKey(const ValueKey('settlement-card-source-editor-page')),
             findsOneWidget,
           );
-          await tester.tap(find.widgetWithText(FilledButton, 'Save'));
-          await tester.pumpAndSettle();
-          expect(
-            find.byKey(const ValueKey('payment-settlement-submit-error')),
-            findsOneWidget,
-          );
+          expect(find.byType(BottomSheet), findsNothing);
           await tester.tap(find.widgetWithText(ButlerlyCancelButton, 'Cancel'));
           await tester.pumpAndSettle();
-          expect(find.byType(BottomSheet), findsNothing);
+          expect(find.byType(PaymentSourcesPage), findsNothing);
+          expect(find.byType(PaymentSettlementsPage), findsOneWidget);
         } else {
           // Desktop prerequisite navigation is intentionally unchanged.
           expect(find.byType(PaymentSourcesPage), findsOneWidget);
@@ -307,18 +296,8 @@ void main() {
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
 
-    // Entry is independent of the unrelated Payment Sources repository.
-    expect(
-      find.byKey(const ValueKey('desktop-settlement-payment-sources')),
-      findsNothing,
-    );
-    // Legacy Add resolves source metadata only after the user requests it.
-    await tester.tap(find.byKey(const ValueKey('payment-settlements-add')));
-    await tester.pumpAndSettle();
-    final editor = find.byKey(const ValueKey('payment-settlement-editor-page'));
-    expect(editor, findsOneWidget);
-    Navigator.of(tester.element(editor)).pop();
-    await tester.pumpAndSettle();
+    // Desktop history and eligible-card preview load independently.
+    // The preview must not require clicking + first.
     expect(
       find.byKey(const ValueKey('desktop-settlement-payment-sources')),
       findsOneWidget,
@@ -387,13 +366,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(
       find.byKey(const ValueKey('desktop-settlement-payment-sources')),
-      findsNothing,
+      findsOneWidget,
     );
     expect(
       find.byKey(const ValueKey('desktop-payment-settlements-table')),
       findsOneWidget,
     );
-    expect(find.textContaining('archived-visa'), findsAtLeastNWidgets(1));
+    expect(find.textContaining('Archived Visa'), findsAtLeastNWidgets(1));
     expect(tester.takeException(), isNull);
   });
 
@@ -470,6 +449,74 @@ void main() {
     await tester.enterText(amount, '50.00');
     await tester.pump();
     expect(tester.widget<TextFormField>(amount).controller!.text, '50.00');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('desktop page uses bounded repository reads and exact counters', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final repository = _PagedOnlySettlements();
+    final at = DateTime.utc(2026, 11, 8);
+    repository.values.addAll(List.generate(
+      62,
+      (index) => PaymentSettlement(
+        id: PaymentSettlementId('paged-$index'),
+        paymentSourceId: PaymentSourceId('archived-card'),
+        payment: Money(
+          amount: DecimalValue.parse('15.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        paymentDate: '2026-10-05',
+        periodStart: '2026-09-01',
+        periodEnd: '2026-09-30',
+        status: index < 12
+            ? PaymentSettlementStatus.reconciled
+            : PaymentSettlementStatus.open,
+        createdAt: at,
+        updatedAt: at,
+      ),
+    ));
+    services.registerSingleton<FinanceServices>(
+      FinanceServices(
+        _UnusedTransactions(),
+        _TestSources([]),
+        _UnusedMerchants(),
+        _UnusedCategories(),
+        _UnusedTags(),
+        _UnusedEvidence(),
+        _UnusedPreferences(),
+        paymentSettlements: repository,
+      ),
+    );
+
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    expect(repository.fullReads, 0);
+    expect(repository.pageReads, 1);
+    expect(repository.lastLimit, 20);
+    expect(find.text('1–20 / 62'), findsOneWidget);
+    expect(find.text('62'), findsAtLeastNWidgets(1));
+    expect(find.text('12'), findsAtLeastNWidgets(1));
+    expect(
+      find.byKey(const ValueKey('desktop-payment-settlement-paged-0')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('settlement-page-next')));
+    await tester.pumpAndSettle();
+    expect(repository.fullReads, 0);
+    expect(repository.pageReads, 2);
+    expect(repository.lastOffset, 20);
+    expect(find.text('21–40 / 62'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('desktop-payment-settlement-paged-20')),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -556,10 +603,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(PaymentSettlementsPage), findsOneWidget);
-    expect(sourceRepository.listCalls, 0);
+    expect(sourceRepository.listCalls, 1);
     expect(
       find.byKey(const ValueKey('desktop-settlement-payment-sources')),
-      findsNothing,
+      findsOneWidget,
     );
     expect(
       find.byKey(const ValueKey('desktop-payment-settlements-table')),
@@ -1456,10 +1503,11 @@ void main() {
 
     deferred.complete([]);
     await tester.pumpAndSettle();
-    expect(sources.listCalls, 0);
+    // Only after the settlement query completes may card lookup begin.
+    expect(sources.listCalls, 1);
     expect(
       find.byKey(const ValueKey('desktop-settlement-payment-sources')),
-      findsNothing,
+      findsOneWidget,
     );
     expect(tester.takeException(), isNull);
   });
@@ -1498,7 +1546,7 @@ void main() {
       await tester.pump();
       await tester.pump();
 
-      expect(sources.listCalls, 0);
+      expect(sources.listCalls, 1);
       expect(find.text('Payment settlements'), findsAtLeastNWidgets(1));
       expect(
         find.byKey(const ValueKey('desktop-payment-settlements-table')),
@@ -1514,8 +1562,8 @@ void main() {
 
       await tester.pump(const Duration(seconds: 9));
       await tester.pump();
-      expect(sources.listCalls, 0);
-      expect(find.text('Try again'), findsNothing);
+      expect(sources.listCalls, 1);
+      expect(find.text('Try again'), findsAtLeastNWidgets(1));
       expect(
         find.byKey(const ValueKey('desktop-payment-settlements-table')),
         findsOneWidget,
@@ -1637,8 +1685,9 @@ void main() {
               .onPressed,
           isNotNull,
         );
-        expect(sources.listCalls, 0);
-        expect(find.text('Add payment source'), findsNothing);
+        // Device defers source reads until Add; desktop independently loads
+        // its eligible-card preview after the settlement history frame.
+        expect(sources.listCalls, width < 900 ? 0 : 1);
         expect(find.byType(PaymentSourcesPage), findsNothing);
 
         await tester.tap(find.byKey(const ValueKey('payment-settlements-add')));
@@ -1814,9 +1863,6 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(settlements.listCalls, 1);
-    expect(sources.listCalls, 0);
-    await tester.tap(find.byKey(const ValueKey('payment-settlements-add')));
-    await tester.pump();
     expect(sources.listCalls, 1);
     await tester.pump(const Duration(seconds: 9));
     await tester.pump();
@@ -1867,7 +1913,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('device + never redirects to Payment Sources under GoRouter', (
+  testWidgets('device + opens card prerequisite when no credit card exists', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 900);
@@ -1912,17 +1958,12 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('payment-settlements-add')));
     await tester.pumpAndSettle();
 
-    expect(
-      router.routeInformationProvider.value.uri.path,
-      '/payment-settlements',
-    );
-    expect(find.byType(BottomSheet), findsOneWidget);
-    expect(find.text('Add payment settlement'), findsOneWidget);
-    expect(find.text('unexpected-payment-sources-route'), findsNothing);
-    expect(
-      find.byKey(const ValueKey('settlement-no-eligible-source')),
-      findsOneWidget,
-    );
+    // A test route stands in for the dedicated card-creation workflow.
+    expect(find.text('unexpected-payment-sources-route'), findsOneWidget);
+    expect(find.byType(BottomSheet), findsNothing);
+    router.pop();
+    await tester.pumpAndSettle();
+    expect(find.byType(PaymentSettlementsPage), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }
@@ -1978,6 +2019,38 @@ class _TestSettlements extends Fake implements PaymentSettlementRepository {
     DateTime? occurredAtFrom,
     DateTime? occurredAtToExclusive,
   }) async => transactionResults;
+}
+
+class _PagedOnlySettlements extends _TestSettlements
+    implements PaginatedPaymentSettlementRepository {
+  int pageReads = 0;
+  int fullReads = 0;
+  int? lastOffset;
+  int? lastLimit;
+
+  @override
+  Future<List<PaymentSettlement>> listAll() async {
+    fullReads++;
+    throw StateError('Desktop must never request the complete history');
+  }
+
+  @override
+  Future<PaymentSettlementPage> listPage({
+    required int offset,
+    required int limit,
+  }) async {
+    pageReads++;
+    lastOffset = offset;
+    lastLimit = limit;
+    return PaymentSettlementPage(
+      rows: values.skip(offset).take(limit).toList(growable: false),
+      totalCount: values.length,
+      statusCounts: {
+        for (final status in PaymentSettlementStatus.values)
+          status: values.where((item) => item.status == status).length,
+      },
+    );
+  }
 }
 
 class _PagedSummarySettlements extends _TestSettlements

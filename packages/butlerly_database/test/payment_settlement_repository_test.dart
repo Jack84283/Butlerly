@@ -244,6 +244,9 @@ void main() {
     expect(first.totalCount, 53);
     expect(second.totalCount, 53);
     expect(third.totalCount, 53);
+    expect(first.statusCounts[PaymentSettlementStatus.open], 53);
+    expect(first.statusCounts[PaymentSettlementStatus.reconciled], 0);
+    expect(second.statusCounts[PaymentSettlementStatus.open], 53);
     expect(first.rows, hasLength(20));
     expect(second.rows, hasLength(20));
     expect(third.rows, hasLength(13));

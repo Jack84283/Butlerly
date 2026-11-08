@@ -96,8 +96,17 @@ final class SqlitePaymentSettlementRepository
       return await database.transaction((executor) async {
         // COUNT and the visible page share one SQLite read snapshot.
         final counts = await executor.rawQuery(
-          'SELECT COUNT(*) AS total FROM payment_settlements',
+          'SELECT status, COUNT(*) AS total FROM payment_settlements GROUP BY status',
         );
+        final statusCounts = <PaymentSettlementStatus, int>{
+          for (final status in PaymentSettlementStatus.values) status: 0,
+        };
+        for (final count in counts) {
+          final status = PaymentSettlementStatus.values.byName(
+            count['status']! as String,
+          );
+          statusCounts[status] = count['total']! as int;
+        }
         final rows = await executor.query(
           'payment_settlements',
           orderBy: 'payment_date DESC, id',
@@ -106,7 +115,8 @@ final class SqlitePaymentSettlementRepository
         );
         return PaymentSettlementPage(
           rows: List.unmodifiable(rows.map(_fromRow)),
-          totalCount: counts.single['total']! as int,
+          totalCount: statusCounts.values.fold(0, (sum, count) => sum + count),
+          statusCounts: Map.unmodifiable(statusCounts),
         );
       });
     } on DatabaseException catch (error) {

@@ -47,6 +47,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
   int _loadGeneration = 0;
   int _devicePage = 0;
   bool _loadingSourceAction = false;
+  Future<void>? _sourceFetch;
   bool? _lastWideLayout;
   static const int _devicePageSize = 20;
   int _devicePageEnd(int length) {
@@ -108,15 +109,8 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
       if (finance == null) {
         throw StateError('Payment settlements are unavailable.');
       }
-      final desktop =
-          effectiveButlerlyLayoutMode(
-            context,
-            MediaQuery.sizeOf(context).width,
-          ) ==
-          ButlerlyLayoutMode.wide;
-      // Device entry must fetch only the requested 20 rows from SQLite.
-      // Desktop's full-history overview remains on its existing contract.
-      if (!desktop && finance.listPaymentSettlementsPage != null) {
+      // Both device and desktop use bounded SQLite history pages.
+      if (finance.listPaymentSettlementsPage != null) {
         final result = await finance.listPaymentSettlementsPage!(
           offset: page * _devicePageSize,
           limit: _devicePageSize,
@@ -130,6 +124,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
             sources: const [],
             totalCount: data.totalCount,
             serverPaged: data.repositoryPaged,
+            statusCounts: data.statusCounts,
           );
         }
         throw StateError('Payment settlement page could not be loaded.');
@@ -161,6 +156,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
     final generation = ++_loadGeneration;
     final refreshed = _load(page: page).timeout(_loadDeadline);
     _detailSources.value = const [];
+    _sourceFetch = null;
     setState(() {
       _data = refreshed;
       _displayData = null;
@@ -181,11 +177,33 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
         // Fall back to the last nonempty page rather than displaying a false
         // "no settlements" state.
         final lastPage = (loaded.totalCount - 1) ~/ _devicePageSize;
-        if (lastPage < page) await _openDevicePage(lastPage);
+        if (lastPage < page) {
+          await _openDevicePage(lastPage);
+          return;
+        }
+      }
+      // Desktop card metadata loads only after the history page is painted.
+      if (_lastWideLayout == true) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && generation == _loadGeneration) {
+            _ensureSourcesLoaded(loaded);
+          }
+        });
       }
     } catch (_) {
       // FutureBuilder displays settlement failures and offers Retry.
     }
+  }
+
+  Future<void> _ensureSourcesLoaded(_SettlementListData settlements) {
+    if (_sourcesLoaded) return Future<void>.value();
+    final existing = _sourceFetch;
+    if (existing != null) return existing;
+    final future = _loadSources(settlements, _loadGeneration);
+    _sourceFetch = future;
+    return future.whenComplete(() {
+      if (identical(_sourceFetch, future)) _sourceFetch = null;
+    });
   }
 
   Future<void> _loadSources(
@@ -211,6 +229,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
           sources: sources,
           totalCount: settlements.totalCount,
           serverPaged: settlements.serverPaged,
+          statusCounts: settlements.statusCounts,
         );
         _traceLoad(
           'ready (${resolved.settlements.length} settlements, '
@@ -241,24 +260,34 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
     // refresh the failed source lookup; another history query is unnecessary.
     final current = _displayData ?? await _data;
     if (!mounted || current == null) return;
-    final generation = ++_loadGeneration;
     setState(() {
       _sourcesError = false;
       _sourcesLoaded = false;
     });
-    await _loadSources(current, generation);
+    await _ensureSourcesLoaded(current);
   }
 
   Widget _sourceLoadState(BuildContext context) => ButlerlyCard(
-    child: _sourcesError
-        ? ButlerlyErrorState(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          context.l10n.text('paymentSources'),
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: ButlerlySpacing.compact),
+        if (_sourcesError)
+          ButlerlyErrorState(
             title: context.l10n.text('paymentSources'),
             message: context.l10n.text('tryAgain'),
             preserved: context.l10n.text('dataPreserved'),
             actionLabel: context.l10n.text('tryAgain'),
             onAction: _retrySources,
           )
-        : ButlerlyLoadingState(message: context.l10n.text('loading')),
+        else
+          ButlerlyLoadingState(message: context.l10n.text('loading')),
+      ],
+    ),
   );
 
   /// The Add action should never strand a user in a prerequisite sheet.
@@ -269,31 +298,27 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
     // Do not read payment-source tables while navigating to settlements.
     // For old/manual settlement creation, resolve legacy card references
     // only after an explicit Add action.
-    _loadingSourceAction = true;
+    setState(() => _loadingSourceAction = true);
     try {
       var resolved = _displayData ?? data;
       if (!_sourcesLoaded) {
-        final generation = _loadGeneration;
-        await _loadSources(resolved, generation);
-        if (!mounted || generation != _loadGeneration || !_sourcesLoaded) {
+        await _ensureSourcesLoaded(resolved);
+        if (!mounted) return;
+        if (!_sourcesLoaded) {
+          _showMessage(context.l10n.text('tryAgain'));
           return;
         }
         resolved = _displayData ?? resolved;
       }
       if (!mounted) return;
-      final desktop =
-          effectiveButlerlyLayoutMode(
-            context,
-            MediaQuery.sizeOf(context).width,
-          ) ==
-          ButlerlyLayoutMode.wide;
-      if (!desktop || resolved.activeCardSources.isNotEmpty) {
+      if (resolved.activeCardSources.isNotEmpty) {
         await _createSettlement(resolved);
       } else {
+        // A source must be created before opening the settlement editor.
         await _addSourceForSettlement();
       }
     } finally {
-      _loadingSourceAction = false;
+      if (mounted) setState(() => _loadingSourceAction = false);
     }
   }
 
@@ -321,11 +346,16 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
     }
     if (!mounted || created != true) return;
 
-    // Only reload the legacy source metadata after explicit creation.
-    // A settlement-history refresh intentionally does not query sources.
+    // A new card invalidates the cached eligible-source list. Fetch its
+    // canonical saved state before resuming the settlement editor.
+    setState(() {
+      _sourcesLoaded = false;
+      _sourcesError = false;
+    });
+    _sourceFetch = null;
     final history = _displayData ?? await _data;
     if (!mounted || history == null) return;
-    await _loadSources(history, _loadGeneration);
+    await _ensureSourcesLoaded(history);
     if (!mounted) return;
     final updated = _displayData;
     if (_sourcesLoaded &&
@@ -352,12 +382,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
     if (!mounted) return;
     await _refresh();
     if (!mounted) return;
-    // Source management was explicitly requested. Re-resolve the legacy
-    // labels afterward, rather than tying every settlement-page entry to it.
-    final history = await _data;
-    if (mounted && history != null) {
-      await _loadSources(history, _loadGeneration);
-    }
+    // The separate desktop summary refreshes after the next history frame.
   }
 
   Future<void> _createSettlement(_SettlementListData data) async {
@@ -529,26 +554,34 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
               buttonKey: const ValueKey('payment-settlements-add'),
               closeToHelp: true,
               label: context.l10n.text('addPaymentSettlement'),
-              onPressed: () => _onAddSettlement(data),
+              onPressed: _loadingSourceAction
+                  ? null
+                  : () => _onAddSettlement(data),
             ),
           ],
           children: [
+            if (_loadingSourceAction)
+              const LinearProgressIndicator(
+                key: ValueKey('payment-settlement-add-loading'),
+              ),
             if (desktop) ...[
               if (_sourcesLoaded)
                 _SettlementDesktopSources(
                   data: data,
                   onManage: _managePaymentSources,
                   onAdd: () => _onAddSettlement(data),
-                ),
-              if (_sourcesError) _sourceLoadState(context),
-              if (_sourcesLoaded || _sourcesError)
-                const SizedBox(height: ButlerlySpacing.cardGap),
+                )
+              else
+                _sourceLoadState(context),
+              const SizedBox(height: ButlerlySpacing.cardGap),
               // Do not hide saved settlements when their source is archived.
               if (data.settlements.isNotEmpty) ...[
                 _SettlementDesktopOverview(data: data),
                 const SizedBox(height: ButlerlySpacing.cardGap),
                 _SettlementDesktopTable(
                   data: data,
+                  page: _devicePage,
+                  onPageChanged: _openDevicePage,
                   onOpen: (settlement) => _openSettlement(settlement, data),
                 ),
               ] else
@@ -1372,36 +1405,26 @@ class _SettlementDesktopOverview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final settlements = data.settlements;
     return LayoutBuilder(
       builder: (context, constraints) {
         final cards = <Widget>[
           _SettlementCounterCard(
             label: context.l10n.text('paymentSettlements'),
-            count: settlements.length,
+            count: data.totalCount,
           ),
           _SettlementCounterCard(
             label: context.l10n.text('paymentSettlementOpen'),
-            count: settlements
-                .where((value) => value.status == PaymentSettlementStatus.open)
-                .length,
+            count: data.statusCounts[PaymentSettlementStatus.open] ?? 0,
           ),
           _SettlementCounterCard(
             label: context.l10n.text('paymentSettlementReconciled'),
-            count: settlements
-                .where(
-                  (value) => value.status == PaymentSettlementStatus.reconciled,
-                )
-                .length,
+            count:
+                data.statusCounts[PaymentSettlementStatus.reconciled] ?? 0,
           ),
           _SettlementCounterCard(
             label: context.l10n.text('needsReview'),
-            count: settlements
-                .where(
-                  (value) =>
-                      value.status == PaymentSettlementStatus.needsReview,
-                )
-                .length,
+            count:
+                data.statusCounts[PaymentSettlementStatus.needsReview] ?? 0,
           ),
         ];
         const gap = ButlerlySpacing.cardGap;
@@ -1439,9 +1462,16 @@ class _SettlementCounterCard extends StatelessWidget {
 }
 
 class _SettlementDesktopTable extends StatefulWidget {
-  const _SettlementDesktopTable({required this.data, required this.onOpen});
+  const _SettlementDesktopTable({
+    required this.data,
+    required this.page,
+    required this.onPageChanged,
+    required this.onOpen,
+  });
 
   final _SettlementListData data;
+  final int page;
+  final ValueChanged<int> onPageChanged;
   final ValueChanged<PaymentSettlementDto> onOpen;
 
   @override
@@ -1457,6 +1487,7 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
   @override
   void didUpdateWidget(covariant _SettlementDesktopTable oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.data.serverPaged) return;
     final pageCount =
         (widget.data.settlements.length + pageSize - 1) ~/ pageSize;
     if (_page >= pageCount) {
@@ -1467,12 +1498,17 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
   @override
   Widget build(BuildContext context) {
     final settlements = widget.data.settlements;
-    final pageCount = (settlements.length + pageSize - 1) ~/ pageSize;
-    final startIndex = _page * pageSize;
-    final endIndex = startIndex + pageSize < settlements.length
+    final serverPaged = widget.data.serverPaged;
+    final total = serverPaged ? widget.data.totalCount : settlements.length;
+    final page = serverPaged ? widget.page : _page;
+    final pageCount = (total + pageSize - 1) ~/ pageSize;
+    final startIndex = page * pageSize;
+    final endIndex = startIndex + pageSize < total
         ? startIndex + pageSize
-        : settlements.length;
-    final visibleRows = settlements.skip(startIndex).take(pageSize);
+        : total;
+    final visibleRows = serverPaged
+        ? settlements
+        : settlements.skip(startIndex).take(pageSize);
 
     return ButlerlyCard(
       padding: const EdgeInsets.all(ButlerlySpacing.cardGap),
@@ -1490,7 +1526,7 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     Text(
-                      '${startIndex + 1}–$endIndex / ${settlements.length}',
+                      '${startIndex + 1}–$endIndex / $total',
                       key: const ValueKey('settlement-page-range'),
                     ),
                     IconButton(
@@ -1498,9 +1534,11 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
                       tooltip: MaterialLocalizations.of(
                         context,
                       ).previousPageTooltip,
-                      onPressed: _page == 0
+                      onPressed: page == 0
                           ? null
-                          : () => setState(() => _page--),
+                          : () => serverPaged
+                              ? widget.onPageChanged(page - 1)
+                              : setState(() => _page--),
                       icon: const Icon(Icons.chevron_left_rounded),
                     ),
                     IconButton(
@@ -1508,9 +1546,11 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
                       tooltip: MaterialLocalizations.of(
                         context,
                       ).nextPageTooltip,
-                      onPressed: _page >= pageCount - 1
+                      onPressed: page >= pageCount - 1
                           ? null
-                          : () => setState(() => _page++),
+                          : () => serverPaged
+                              ? widget.onPageChanged(page + 1)
+                              : setState(() => _page++),
                       icon: const Icon(Icons.chevron_right_rounded),
                     ),
                   ],
@@ -2298,12 +2338,19 @@ final class _SettlementListData {
     required this.sources,
     int? totalCount,
     this.serverPaged = false,
-  }) : totalCount = totalCount ?? settlements.length;
+    Map<PaymentSettlementStatus, int>? statusCounts,
+  }) : totalCount = totalCount ?? settlements.length,
+       statusCounts = statusCounts ??
+           {
+             for (final status in PaymentSettlementStatus.values)
+               status: settlements.where((s) => s.status == status).length,
+           };
 
   final List<PaymentSettlementDto> settlements;
   final List<PaymentSource> sources;
   final int totalCount;
   final bool serverPaged;
+  final Map<PaymentSettlementStatus, int> statusCounts;
 
   // Compute each lookup once when the local data is loaded. The desktop
   // table uses sourceNames for every row; rebuilding it per row used to

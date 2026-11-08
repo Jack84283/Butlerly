@@ -94,11 +94,13 @@ final class PaymentSettlementPageDto {
     required this.settlements,
     required this.totalCount,
     required this.repositoryPaged,
+    this.statusCounts = const {},
   });
 
   final List<PaymentSettlementDto> settlements;
   final int totalCount;
   final bool repositoryPaged;
+  final Map<PaymentSettlementStatus, int> statusCounts;
 }
 
 final class ListPaymentSettlementsPage {
@@ -122,6 +124,7 @@ final class ListPaymentSettlementsPage {
         ),
         totalCount: page.totalCount,
         repositoryPaged: true,
+        statusCounts: page.statusCounts,
       );
     }
     // Compatibility fallback for imported/test repository implementations
@@ -133,6 +136,10 @@ final class ListPaymentSettlementsPage {
       ),
       totalCount: all.length,
       repositoryPaged: true,
+      statusCounts: {
+        for (final status in PaymentSettlementStatus.values)
+          status: all.where((value) => value.status == status).length,
+      },
     );
   });
 }

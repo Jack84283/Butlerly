@@ -194,10 +194,13 @@ final class PaymentSettlementPage {
   const PaymentSettlementPage({
     required this.rows,
     required this.totalCount,
+    this.statusCounts = const {},
   });
 
   final List<PaymentSettlement> rows;
   final int totalCount;
+  /// Database-level totals for the complete history, not just this page.
+  final Map<PaymentSettlementStatus, int> statusCounts;
 }
 
 /// Optional read-only capability. Non-SQLite repositories may continue to

@@ -477,6 +477,11 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
           _showMessage(context.l10n.text('paymentSettlementNeedsCardSource'));
         }
       }
+    } else if (mounted && saved == null &&
+        widget.fromPaymentSettlement && existing == null) {
+      // Cancelling the prerequisite editor returns to the original
+      // Payment Settlements screen, not an inert Payment Sources page.
+      Navigator.of(context).pop(false);
     } else if (mounted && saved == false) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.text('paymentSourceSaveFailed'))),
