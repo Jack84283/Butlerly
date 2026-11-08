@@ -75,8 +75,7 @@ class ButlerlyContextHelpButton extends StatelessWidget {
       padding: EdgeInsets.only(
         left: visualGapAfterAdd == null
             ? ButlerlySpacing.small
-            : visualGapAfterAdd! -
-                  (ButlerlySize.minimumTarget - 32) / 2,
+            : visualGapAfterAdd! - (ButlerlySize.minimumTarget - 32) / 2,
       ),
       child: IconButton(
         key: const ValueKey('page-context-help'),
