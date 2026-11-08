@@ -1112,7 +1112,9 @@ class _PaymentSettlementDetailPageState
                     Text(
                       '${transactionStart + 1}–$transactionEnd / '
                       '${detail.transactionCount}',
-                      key: const ValueKey('settlement-detail-transaction-range'),
+                      key: const ValueKey(
+                        'settlement-detail-transaction-range',
+                      ),
                     ),
                     IconButton(
                       key: const ValueKey('settlement-detail-transaction-prev'),
