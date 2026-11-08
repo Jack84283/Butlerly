@@ -58,9 +58,7 @@ jobs:
       - uses: ./.github/actions/setup-toolchain
       - run: ./tool/setup.sh
       - name: Test device and desktop Payment Settlements paths
-        run: |
-          cd apps/butlerly
-          flutter test test/features/tools/payment_settlements_page_test.dart --reporter expanded --timeout 2m
+        run: ./tool/validate.sh payment_settlements
 
   # Keep macOS runner usage low for ordinary PRs. Backup/Restore PR #396
   # and desktop/audio PR #399 need native Apple checks before merge because
