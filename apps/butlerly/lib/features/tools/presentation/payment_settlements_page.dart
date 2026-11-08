@@ -37,7 +37,12 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
   // A read-only database query must never hold this page in a perpetual
   // loading state. A stalled load exposes the existing retry UI instead.
   static const _loadDeadline = Duration(seconds: 20);
+  static const _sourceLoadDeadline = Duration(seconds: 8);
   Future<_SettlementListData>? _data;
+  _SettlementListData? _displayData;
+  bool _sourcesLoaded = false;
+  bool _sourcesError = false;
+  int _loadGeneration = 0;
 
   @override
   void initState() {
@@ -84,28 +89,17 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
       if (finance == null || listSettlements == null) {
         throw StateError('Payment settlements are unavailable.');
       }
-      // Both repositories share the local SQLite connection. Restore the
-      // original serial read order instead of issuing both queries during
-      // the first navigation frame.
+      // Settlement history is independent of Payment Sources. Do not hide
+      // existing records while a source query is blocked or unavailable.
       final settlementResult = await listSettlements();
       _traceLoad('settlements read returned', watch);
-      final sourceResult = await finance.listPaymentSources();
-      _traceLoad('payment sources read returned', watch);
       if (settlementResult case ApplicationSuccess<List<PaymentSettlementDto>>(
         value: final settlements,
       )) {
-        if (sourceResult case ApplicationSuccess<List<PaymentSource>>(
-          value: final sources,
-        )) {
-          _traceLoad(
-            'ready (${settlements.length} settlements, ${sources.length} sources)',
-            watch,
-          );
-          return _SettlementListData(
-            settlements: settlements,
-            sources: sources,
-          );
-        }
+        return _SettlementListData(
+          settlements: settlements,
+          sources: const [],
+        );
       }
       throw StateError('Payment settlements could not be loaded.');
     } catch (error) {
@@ -117,15 +111,82 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
   }
 
   Future<void> _refresh() async {
+    final generation = ++_loadGeneration;
     final refreshed = _load().timeout(_loadDeadline);
-    setState(() => _data = refreshed);
+    setState(() {
+      _data = refreshed;
+      _displayData = null;
+      _sourcesLoaded = false;
+      _sourcesError = false;
+    });
     try {
-      await refreshed;
+      final settlements = await refreshed;
+      if (!mounted || generation != _loadGeneration) return;
+      // Query sources only after the settlement read has completed. They use
+      // the same local SQLite connection, but a failed source lookup must
+      // never discard or block a successfully loaded settlement history.
+      await _loadSources(settlements, generation);
     } catch (_) {
-      // FutureBuilder displays the load error and a retry action. Do not
-      // surface an unhandled async exception from pull-to-refresh or Retry.
+      // FutureBuilder displays settlement failures and offers Retry.
     }
   }
+
+  Future<void> _loadSources(
+    _SettlementListData settlements,
+    int generation,
+  ) async {
+    final watch = Stopwatch()..start();
+    _traceLoad('starting payment source read', watch);
+    try {
+      final finance = _finance;
+      if (finance == null) {
+        throw StateError('Payment sources are unavailable.');
+      }
+      final result = await finance.listPaymentSources().timeout(
+        _sourceLoadDeadline,
+      );
+      if (!mounted || generation != _loadGeneration) return;
+      if (result case ApplicationSuccess<List<PaymentSource>>(
+        value: final sources,
+      )) {
+        final resolved = _SettlementListData(
+          settlements: settlements.settlements,
+          sources: sources,
+        );
+        _traceLoad(
+          'ready (${resolved.settlements.length} settlements, '
+          '${sources.length} sources)',
+          watch,
+        );
+        setState(() {
+          _displayData = resolved;
+          _sourcesLoaded = true;
+          _sourcesError = false;
+        });
+      } else {
+        throw StateError('Payment sources could not be loaded.');
+      }
+    } catch (error) {
+      _traceLoad('payment source read failed (${error.runtimeType})', watch);
+      if (mounted && generation == _loadGeneration) {
+        setState(() => _sourcesError = true);
+      }
+    } finally {
+      watch.stop();
+    }
+  }
+
+  Widget _sourceLoadState(BuildContext context) => ButlerlyCard(
+    child: _sourcesError
+        ? ButlerlyErrorState(
+            title: context.l10n.text('paymentSources'),
+            message: context.l10n.text('tryAgain'),
+            preserved: context.l10n.text('dataPreserved'),
+            actionLabel: context.l10n.text('tryAgain'),
+            onAction: _refresh,
+          )
+        : ButlerlyLoadingState(message: context.l10n.text('loading')),
+  );
 
   /// The Add action should never strand a user in a prerequisite sheet.
   /// A missing active credit card opens the real Payment Sources create page,
@@ -322,7 +383,9 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
             ],
           );
         }
-        final data = snapshot.requireData;
+        // The full history is already usable while source metadata loads.
+        // Resolve labels and eligible cards only when that separate read ends.
+        final data = _displayData ?? snapshot.requireData;
         return ButlerlyPage(
           title: context.l10n.text('paymentSettlements'),
           fullWidth: desktop,
@@ -333,16 +396,21 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
               buttonKey: const ValueKey('payment-settlements-add'),
               closeToHelp: true,
               label: context.l10n.text('addPaymentSettlement'),
-              onPressed: () => _onAddSettlement(data),
+              onPressed: _sourcesLoaded
+                  ? () => _onAddSettlement(data)
+                  : null,
             ),
           ],
           children: [
             if (desktop) ...[
-              _SettlementDesktopSources(
-                data: data,
-                onManage: _managePaymentSources,
-                onAdd: () => _onAddSettlement(data),
-              ),
+              if (_sourcesLoaded)
+                _SettlementDesktopSources(
+                  data: data,
+                  onManage: _managePaymentSources,
+                  onAdd: () => _onAddSettlement(data),
+                )
+              else
+                _sourceLoadState(context),
               const SizedBox(height: ButlerlySpacing.cardGap),
               // Do not hide saved settlements when their source is archived.
               if (data.settlements.isNotEmpty) ...[
@@ -379,7 +447,9 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
                 ),
                 const SizedBox(height: ButlerlySpacing.small),
               ],
-            ] else if (data.activeCardSources.isEmpty)
+            ] else if (!_sourcesLoaded)
+              _sourceLoadState(context)
+            else if (data.activeCardSources.isEmpty)
               ButlerlyEmptyState(
                 icon: Icons.credit_card_off_outlined,
                 title: context.l10n.text('paymentSources'),
