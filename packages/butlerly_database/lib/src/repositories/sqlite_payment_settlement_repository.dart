@@ -8,7 +8,8 @@ final class SqlitePaymentSettlementRepository
     implements
         PaymentSettlementRepository,
         PaginatedPaymentSettlementRepository,
-        PaginatedPaymentSettlementTransactionRepository {
+        PaginatedPaymentSettlementTransactionRepository,
+        PaymentSettlementSummaryRepository {
   const SqlitePaymentSettlementRepository(this.database);
 
   final ButlerlyDatabase database;
@@ -85,22 +86,22 @@ final class SqlitePaymentSettlementRepository
       throw ArgumentError('Expected offset >= 0 and 1 <= limit <= 100');
     }
     try {
-      // SQLite does the limiting before any domain records are decoded.
-      // Use the same order as listAll, with id as a stable tiebreaker.
-      final countRows = await database.connection.rawQuery(
-        'SELECT COUNT(*) AS total FROM payment_settlements',
-      );
-      final totalCount = countRows.first['total']! as int;
-      final rows = await database.connection.query(
-        'payment_settlements',
-        orderBy: 'payment_date DESC, id',
-        limit: limit,
-        offset: offset,
-      );
-      return PaymentSettlementPage(
-        rows: List.unmodifiable(rows.map(_fromRow)),
-        totalCount: totalCount,
-      );
+      return await database.transaction((executor) async {
+        // COUNT and the visible page share one SQLite read snapshot.
+        final counts = await executor.rawQuery(
+          'SELECT COUNT(*) AS total FROM payment_settlements',
+        );
+        final rows = await executor.query(
+          'payment_settlements',
+          orderBy: 'payment_date DESC, id',
+          limit: limit,
+          offset: offset,
+        );
+        return PaymentSettlementPage(
+          rows: List.unmodifiable(rows.map(_fromRow)),
+          totalCount: counts.single['total']! as int,
+        );
+      });
     } on DatabaseException catch (error) {
       throw mapDatabaseException(error, 'page payment settlements');
     }
@@ -138,9 +139,132 @@ final class SqlitePaymentSettlementRepository
     if (offset < 0 || limit <= 0 || limit > 100) {
       throw ArgumentError('Invalid settlement transaction page bounds');
     }
-    // Match the existing transaction query's financial-date rules. When a
-    // transaction_date is present it wins; otherwise compare occurred_at
-    // against the financial timezone's UTC instant bounds.
+    final filter = _periodFilter(
+      settlement,
+      occurredAtFrom: occurredAtFrom,
+      occurredAtToExclusive: occurredAtToExclusive,
+    );
+    try {
+      return await database.transaction((executor) async {
+        // Count and child aggregates are read from the same snapshot, with
+        // *all* child-table queries using the transaction executor.
+        final counts = await executor.rawQuery(
+          '''SELECT COUNT(*) AS total,
+                    COALESCE(MAX(t.updated_at), '') AS latest_update
+             FROM transactions t WHERE ${filter.where}''',
+          filter.arguments,
+        );
+        final count = counts.single['total']! as int;
+        final latest = counts.single['latest_update']! as String;
+        final page = await SqliteTransactionRepository(
+          database,
+        ).queryWithExecutor(
+          TransactionRepositoryQuery(
+            from: DateTime.parse(settlement.periodStart),
+            to: DateTime.parse(settlement.periodEnd),
+            occurredAtFrom: occurredAtFrom,
+            occurredAtToExclusive: occurredAtToExclusive,
+            paymentSourceId: settlement.paymentSourceId,
+            status: TransactionStatus.active,
+            excludeTransfers: true,
+            offset: offset,
+            limit: limit,
+          ),
+          executor,
+        );
+        return PaymentSettlementTransactionPage(
+          rows: List.unmodifiable(page),
+          totalCount: count,
+          recordedTotal: null,
+          summaryPending: true,
+          snapshotToken: '${count}:${latest}',
+        );
+      });
+    } on DatabaseException catch (error) {
+      throw mapDatabaseException(error, 'page settlement transactions');
+    }
+  }
+
+  @override
+  Future<PaymentSettlementTransactionSummary> summarizeTransactions(
+    PaymentSettlement settlement, {
+    DateTime? occurredAtFrom,
+    DateTime? occurredAtToExclusive,
+  }) async {
+    final filter = _periodFilter(
+      settlement,
+      occurredAtFrom: occurredAtFrom,
+      occurredAtToExclusive: occurredAtToExclusive,
+    );
+    try {
+      // The full-period exact-decimal summary is an independent operation,
+      // so device detail can render its first 20 rows without waiting for it.
+      // This snapshot is consistent *within* the 400-row scalar scan.
+      return await database.transaction((executor) async {
+        const batchSize = 400;
+        var cursor = '';
+        var totalCount = 0;
+        var latest = '';
+        var sum = DecimalValue.fromParts(
+          coefficient: BigInt.zero,
+          scale: 0,
+        );
+        var canCompare = true;
+        while (true) {
+          final values = await executor.rawQuery(
+            '''SELECT t.id, t.updated_at, t.direction, t.currency,
+                      t.amount_coefficient, t.amount_scale
+               FROM transactions t
+               WHERE ${filter.where} AND t.id > ?
+               ORDER BY t.id LIMIT ?''',
+            [...filter.arguments, cursor, batchSize],
+          );
+          if (values.isEmpty) break;
+          for (final row in values) {
+            totalCount++;
+            final updated = row['updated_at']! as String;
+            if (updated.compareTo(latest) > 0) latest = updated;
+            if (!canCompare) continue;
+            if ((row['currency'] as String).trim().toUpperCase() !=
+                    settlement.payment.currency.value ||
+                row['direction'] == TransactionDirection.adjustment.name) {
+              canCompare = false;
+              continue;
+            }
+            final amount = DecimalValue.fromParts(
+              coefficient: BigInt.parse(row['amount_coefficient']! as String),
+              scale: row['amount_scale']! as int,
+            ).abs();
+            final direction = row['direction'] as String;
+            if (direction == TransactionDirection.expense.name) {
+              sum = sum.add(amount);
+            } else if (direction == TransactionDirection.refund.name ||
+                direction == TransactionDirection.income.name) {
+              sum = sum.subtract(amount);
+            }
+          }
+          cursor = values.last['id']! as String;
+          if (values.length < batchSize) break;
+          await Future<void>.delayed(Duration.zero);
+        }
+        return PaymentSettlementTransactionSummary(
+          totalCount: totalCount,
+          recordedTotal: canCompare
+              ? Money(amount: sum, currency: settlement.payment.currency)
+              : null,
+          snapshotToken: '${totalCount}:${latest}',
+        );
+      });
+    } on DatabaseException catch (error) {
+      throw mapDatabaseException(error, 'summarize settlement transactions');
+    }
+  }
+
+  static ({String where, List<Object?> arguments}) _periodFilter(
+    PaymentSettlement settlement, {
+    DateTime? occurredAtFrom,
+    DateTime? occurredAtToExclusive,
+  }) {
     const knownDate = "("
         "TRIM(COALESCE(t.transaction_date, '')) != '' AND "
         "TRIM(t.transaction_date) >= ? AND "
@@ -161,88 +285,18 @@ final class SqlitePaymentSettlementRepository
     final period = occurredArgs.isEmpty
         ? knownDate
         : '($knownDate OR (${occurredParts.join(' AND ')}))';
-    final where = 't.payment_source_id = ? AND t.status = ? '
-        'AND t.direction != ? AND $period';
-    final whereArgs = <Object?>[
-      settlement.paymentSourceId.value,
-      TransactionStatus.active.name,
-      TransactionDirection.transfer.name,
-      settlement.periodStart,
-      settlement.periodEnd,
-      ...occurredArgs,
-    ];
-
-    try {
-      // Compute the complete comparison total with exact BigInt decimals,
-      // but scan only bounded scalar projections. Never hydrate every
-      // transaction aggregate just to show the first detail page.
-      const batchSize = 400;
-      var cursor = '';
-      var totalCount = 0;
-      var sum = DecimalValue.fromParts(
-        coefficient: BigInt.zero,
-        scale: 0,
-      );
-      var canCompare = true;
-      while (true) {
-        final values = await database.connection.rawQuery(
-          '''SELECT t.id, t.direction, t.currency, t.amount_coefficient,
-                    t.amount_scale
-             FROM transactions t
-             WHERE $where AND t.id > ?
-             ORDER BY t.id LIMIT ?''',
-          [...whereArgs, cursor, batchSize],
-        );
-        if (values.isEmpty) break;
-        for (final row in values) {
-          totalCount++;
-          if (!canCompare) continue;
-          if ((row['currency'] as String).trim().toUpperCase() !=
-                  settlement.payment.currency.value ||
-              row['direction'] == TransactionDirection.adjustment.name) {
-            canCompare = false;
-            continue;
-          }
-          final amount = DecimalValue.fromParts(
-            coefficient: BigInt.parse(row['amount_coefficient']! as String),
-            scale: row['amount_scale']! as int,
-          ).abs();
-          final direction = row['direction'] as String;
-          if (direction == TransactionDirection.expense.name) {
-            sum = sum.add(amount);
-          } else if (direction == TransactionDirection.refund.name ||
-              direction == TransactionDirection.income.name) {
-            sum = sum.subtract(amount);
-          }
-        }
-        cursor = values.last['id']! as String;
-        if (values.length < batchSize) break;
-        await Future<void>.delayed(Duration.zero);
-      }
-
-      final page = await SqliteTransactionRepository(database).query(
-        TransactionRepositoryQuery(
-          from: DateTime.parse(settlement.periodStart),
-          to: DateTime.parse(settlement.periodEnd),
-          occurredAtFrom: occurredAtFrom,
-          occurredAtToExclusive: occurredAtToExclusive,
-          paymentSourceId: settlement.paymentSourceId,
-          status: TransactionStatus.active,
-          excludeTransfers: true,
-          offset: offset,
-          limit: limit,
-        ),
-      );
-      return PaymentSettlementTransactionPage(
-        rows: List.unmodifiable(page),
-        totalCount: totalCount,
-        recordedTotal: canCompare
-            ? Money(amount: sum, currency: settlement.payment.currency)
-            : null,
-      );
-    } on DatabaseException catch (error) {
-      throw mapDatabaseException(error, 'page settlement transactions');
-    }
+    return (
+      where: 't.payment_source_id = ? AND t.status = ? '
+          'AND t.direction != ? AND $period',
+      arguments: <Object?>[
+        settlement.paymentSourceId.value,
+        TransactionStatus.active.name,
+        TransactionDirection.transfer.name,
+        settlement.periodStart,
+        settlement.periodEnd,
+        ...occurredArgs,
+      ],
+    );
   }
 
   static String _instantBound(DateTime value) {
