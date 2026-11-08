@@ -99,17 +99,44 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
     }());
   }
 
-  Future<_SettlementListData> _load() async {
+  Future<_SettlementListData> _load({int page = 0}) async {
     final watch = Stopwatch()..start();
     _traceLoad('starting initial read', watch);
     try {
       final finance = _finance;
-      final listSettlements = finance?.listPaymentSettlements;
-      if (finance == null || listSettlements == null) {
+      if (finance == null) {
         throw StateError('Payment settlements are unavailable.');
       }
-      // Settlement history is independent of Payment Sources. Do not hide
-      // existing records while a source query is blocked or unavailable.
+      final desktop =
+          effectiveButlerlyLayoutMode(
+            context,
+            MediaQuery.sizeOf(context).width,
+          ) ==
+          ButlerlyLayoutMode.wide;
+      // Device entry must fetch only the requested 20 rows from SQLite.
+      // Desktop's full-history overview remains on its existing contract.
+      if (!desktop && finance.listPaymentSettlementsPage != null) {
+        final result = await finance.listPaymentSettlementsPage!(
+          offset: page * _devicePageSize,
+          limit: _devicePageSize,
+        );
+        _traceLoad('settlement page read returned', watch);
+        if (result case ApplicationSuccess<PaymentSettlementPageDto>(
+          value: final data,
+        )) {
+          return _SettlementListData(
+            settlements: data.settlements,
+            sources: const [],
+            totalCount: data.totalCount,
+            serverPaged: data.repositoryPaged,
+          );
+        }
+        throw StateError('Payment settlement page could not be loaded.');
+      }
+      final listSettlements = finance.listPaymentSettlements;
+      if (listSettlements == null) {
+        throw StateError('Payment settlements are unavailable.');
+      }
       final settlementResult = await listSettlements();
       _traceLoad('settlements read returned', watch);
       if (settlementResult case ApplicationSuccess<List<PaymentSettlementDto>>(
@@ -126,21 +153,23 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
     }
   }
 
-  Future<void> _refresh() async {
+  Future<void> _refresh() => _openDevicePage(0);
+
+  Future<void> _openDevicePage(int page) async {
+    if (page < 0) return;
     ++_loadGeneration;
-    final refreshed = _load().timeout(_loadDeadline);
+    final refreshed = _load(page: page).timeout(_loadDeadline);
     _detailSources.value = const [];
     setState(() {
       _data = refreshed;
       _displayData = null;
-      _devicePage = 0;
+      _devicePage = page;
       _sourcesLoaded = false;
       _sourcesError = false;
     });
     try {
       // Loading a settlement page must not query Payment Sources. The
-      // legacy source lookup is performed only if the user explicitly
-      // chooses to create/edit a legacy settlement.
+      // legacy source lookup is performed only after an explicit Add.
       await refreshed;
     } catch (_) {
       // FutureBuilder displays settlement failures and offers Retry.
@@ -168,6 +197,8 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
         final resolved = _SettlementListData(
           settlements: settlements.settlements,
           sources: sources,
+          totalCount: settlements.totalCount,
+          serverPaged: settlements.serverPaged,
         );
         _traceLoad(
           'ready (${resolved.settlements.length} settlements, '
@@ -503,14 +534,14 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
               if (_sourcesError) _sourceLoadState(context),
               // Keep device rendering bounded even with a large imported
               // workspace. The previous eager loop built every card at once.
-              if (data.settlements.length > _devicePageSize)
+              if (data.totalCount > _devicePageSize)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     Text(
                       '${_devicePage * _devicePageSize + 1}–'
-                      '${_devicePageEnd(data.settlements.length)} / '
-                      '${data.settlements.length}',
+                      '${_devicePageEnd(data.totalCount)} / '
+                      '${data.totalCount}',
                       key: const ValueKey('device-settlement-page-range'),
                     ),
                     IconButton(
@@ -520,7 +551,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
                       ).previousPageTooltip,
                       onPressed: _devicePage == 0
                           ? null
-                          : () => setState(() => _devicePage--),
+                          : () => _openDevicePage(_devicePage - 1),
                       icon: const Icon(Icons.chevron_left_rounded),
                     ),
                     IconButton(
@@ -529,15 +560,18 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
                         context,
                       ).nextPageTooltip,
                       onPressed: (_devicePage + 1) * _devicePageSize >=
-                              data.settlements.length
+                              data.totalCount
                           ? null
-                          : () => setState(() => _devicePage++),
+                          : () => _openDevicePage(_devicePage + 1),
                       icon: const Icon(Icons.chevron_right_rounded),
                     ),
                   ],
                 ),
-              for (final settlement in data.settlements
-                  .skip(_devicePage * _devicePageSize)
+              for (final settlement in (data.serverPaged
+                      ? data.settlements
+                      : data.settlements.skip(
+                          _devicePage * _devicePageSize,
+                        ))
                   .take(_devicePageSize)) ...[
                 _SettlementCard(
                   settlement: settlement,
@@ -2077,10 +2111,17 @@ final class _SettlementDraft {
 }
 
 final class _SettlementListData {
-  _SettlementListData({required this.settlements, required this.sources});
+  _SettlementListData({
+    required this.settlements,
+    required this.sources,
+    int? totalCount,
+    this.serverPaged = false,
+  }) : totalCount = totalCount ?? settlements.length;
 
   final List<PaymentSettlementDto> settlements;
   final List<PaymentSource> sources;
+  final int totalCount;
+  final bool serverPaged;
 
   // Compute each lookup once when the local data is loaded. The desktop
   // table uses sourceNames for every row; rebuilding it per row used to
