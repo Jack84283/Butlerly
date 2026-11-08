@@ -786,6 +786,10 @@ CREATE INDEX payment_settlements_payment_date_idx
 
 CREATE INDEX transactions_payment_source_date_idx
   ON transactions(payment_source_id, transaction_date);
+CREATE INDEX IF NOT EXISTS idx_settlement_source_trimmed_date
+  ON transactions(payment_source_id, TRIM(transaction_date));
+CREATE INDEX IF NOT EXISTS idx_settlement_source_occurred_at
+  ON transactions(payment_source_id, occurred_at);
 
 CREATE TRIGGER payment_settlements_tombstone AFTER DELETE ON payment_settlements
 BEGIN
