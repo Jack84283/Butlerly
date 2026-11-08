@@ -663,17 +663,25 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
             initialType: widget.fromPaymentSettlement
                 ? PaymentSourceType.card
                 : PaymentSourceType.account,
-            onCancel: () => setState(() => _desktopEditorOpen = false),
-            onSaved: (savedType) {
+            onCancel: () {
+              if (widget.fromPaymentSettlement && _desktopSelected == null) {
+                Navigator.of(context).pop(false);
+              } else {
+                setState(() => _desktopEditorOpen = false);
+              }
+            },
+            onSaved: (savedSource) {
+              final eligible =
+                  savedSource.type == PaymentSourceType.card &&
+                  savedSource.status == PaymentSourceStatus.active;
               if (widget.fromPaymentSettlement &&
                   _desktopSelected == null &&
-                  savedType == PaymentSourceType.card) {
+                  eligible) {
                 Navigator.of(context).pop(true);
               } else {
                 setState(() => _desktopEditorOpen = false);
                 _refresh();
-                if (widget.fromPaymentSettlement &&
-                    savedType != PaymentSourceType.card) {
+                if (widget.fromPaymentSettlement && !eligible) {
                   _showMessage(
                     context.l10n.text('paymentSettlementNeedsCardSource'),
                   );
@@ -836,7 +844,7 @@ class _DesktopPaymentSourceEditor extends StatefulWidget {
   final CardScanResult? scanned;
   final PaymentSourceType initialType;
   final VoidCallback onCancel;
-  final ValueChanged<PaymentSourceType> onSaved;
+  final ValueChanged<PaymentSource> onSaved;
   final ValueChanged<String> onError;
 
   @override
@@ -961,7 +969,7 @@ class _DesktopPaymentSourceEditorState
             return;
           }
         }
-        widget.onSaved(_type);
+        widget.onSaved(_active ? result.value : result.value.archive());
       } else {
         widget.onError(context.l10n.text('paymentSourceSaveFailed'));
       }
