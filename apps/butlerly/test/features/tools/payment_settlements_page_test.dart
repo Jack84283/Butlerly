@@ -761,6 +761,53 @@ void main() {
     );
   }
 
+  testWidgets('device Back remains usable while detail SQLite read stalls', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final settlements = registerServices([]);
+    final saved = PaymentSettlement(
+      id: PaymentSettlementId('slow-device-detail'),
+      paymentSourceId: PaymentSourceId('legacy-device-source'),
+      payment: Money(
+        amount: DecimalValue.parse('23.00'),
+        currency: CurrencyCode('USD'),
+      ),
+      paymentDate: '2026-10-05',
+      periodStart: '2026-09-01',
+      periodEnd: '2026-09-30',
+      status: PaymentSettlementStatus.open,
+      createdAt: DateTime.utc(2026, 11, 7),
+      updatedAt: DateTime.utc(2026, 11, 7),
+    );
+    settlements.values.add(saved);
+    final pending = Completer<PaymentSettlement?>();
+    settlements.blockedFind = pending.future;
+
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('legacy-device-source').first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 350));
+    expect(find.byType(PaymentSettlementDetailPage), findsOneWidget);
+    expect(find.byType(BackButton), findsOneWidget);
+
+    // A pending local DB read must not trap the device on a spinner.
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    expect(find.byType(PaymentSettlementDetailPage), findsNothing);
+    expect(find.byType(PaymentSettlementsPage), findsOneWidget);
+
+    pending.complete(saved);
+    await tester.pump();
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets(
     'device detail opens and closes with source metadata unavailable',
     (tester) async {
@@ -1433,6 +1480,7 @@ class _TestSettlements extends Fake implements PaymentSettlementRepository {
   final values = <PaymentSettlement>[];
   final transactionResults = <Transaction>[];
   Future<List<PaymentSettlement>>? blockedList;
+  Future<PaymentSettlement?>? blockedFind;
   int listCalls = 0;
 
   @override
@@ -1442,8 +1490,9 @@ class _TestSettlements extends Fake implements PaymentSettlementRepository {
   }
 
   @override
-  Future<PaymentSettlement?> findById(PaymentSettlementId id) async =>
-      values.where((value) => value.id == id).firstOrNull;
+  Future<PaymentSettlement?> findById(PaymentSettlementId id) =>
+      blockedFind ??
+      Future.value(values.where((value) => value.id == id).firstOrNull);
 
   @override
   Future<void> save(PaymentSettlement settlement) async {
