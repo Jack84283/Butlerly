@@ -150,12 +150,14 @@ final class SqlitePaymentSettlementRepository
         // *all* child-table queries using the transaction executor.
         final counts = await executor.rawQuery(
           '''SELECT COUNT(*) AS total,
-                    COALESCE(MAX(t.updated_at), '') AS latest_update
+                    COALESCE(MAX(t.updated_at), '') AS latest_update,
+                    total_changes() AS database_revision
              FROM transactions t WHERE ${filter.where}''',
           filter.arguments,
         );
         final count = counts.single['total']! as int;
         final latest = counts.single['latest_update']! as String;
+        final revision = counts.single['database_revision']! as int;
         final page = await SqliteTransactionRepository(
           database,
         ).queryWithExecutor(
@@ -177,7 +179,12 @@ final class SqlitePaymentSettlementRepository
           totalCount: count,
           recordedTotal: null,
           summaryPending: true,
-          snapshotToken: _snapshotToken(settlement, count, latest),
+          snapshotToken: _snapshotToken(
+            settlement,
+            count,
+            latest,
+            revision,
+          ),
         );
       });
     } on DatabaseException catch (error) {
@@ -201,6 +208,11 @@ final class SqlitePaymentSettlementRepository
       // so device detail can render its first 20 rows without waiting for it.
       // This snapshot is consistent *within* the 400-row scalar scan.
       return await database.transaction((executor) async {
+        final revisionRows = await executor.rawQuery(
+          'SELECT total_changes() AS database_revision',
+        );
+        final revision =
+            revisionRows.single['database_revision']! as int;
         const batchSize = 400;
         var cursor = '';
         var totalCount = 0;
@@ -252,7 +264,12 @@ final class SqlitePaymentSettlementRepository
           recordedTotal: canCompare
               ? Money(amount: sum, currency: settlement.payment.currency)
               : null,
-          snapshotToken: _snapshotToken(settlement, totalCount, latest),
+          snapshotToken: _snapshotToken(
+            settlement,
+            totalCount,
+            latest,
+            revision,
+          ),
         );
       });
     } on DatabaseException catch (error) {
@@ -306,6 +323,7 @@ final class SqlitePaymentSettlementRepository
     PaymentSettlement settlement,
     int count,
     String latestUpdate,
+    int revision,
   ) => [
     settlement.id.value,
     settlement.paymentSourceId.value,
@@ -314,6 +332,7 @@ final class SqlitePaymentSettlementRepository
     settlement.payment.currency.value,
     '${count}',
     latestUpdate,
+    '${revision}',
   ].join('|');
 
   static String _instantBound(DateTime value) {
