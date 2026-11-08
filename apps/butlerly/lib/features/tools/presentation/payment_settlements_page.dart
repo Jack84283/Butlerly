@@ -737,6 +737,13 @@ class _PaymentSettlementDetailPageState
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  Widget _closeEmbedded(BuildContext context) => IconButton(
+    key: const ValueKey('desktop-settlement-detail-close'),
+    tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+    onPressed: widget.onClose,
+    icon: const Icon(Icons.close_rounded),
+  );
+
   @override
   Widget build(BuildContext context) {
     final desktop =
@@ -749,13 +756,24 @@ class _PaymentSettlementDetailPageState
       future: _detail,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
-          return const Scaffold(body: ButlerlyLoadingState());
+          return Scaffold(
+            appBar: widget.embedded
+                ? AppBar(
+                    title: Text(context.l10n.text('paymentSettlement')),
+                    actions: [_closeEmbedded(context)],
+                  )
+                : null,
+            body: const ButlerlyLoadingState(),
+          );
         }
         if (snapshot.hasError) {
           return Scaffold(
             appBar: AppBar(
               title: Text(context.l10n.text('paymentSettlements')),
-              actions: const [ButlerlyContextHelpButton(articleId: 'ch-16')],
+              actions: [
+                if (widget.embedded) _closeEmbedded(context),
+                const ButlerlyContextHelpButton(articleId: 'ch-16'),
+              ],
             ),
             body: ButlerlyErrorState(
               title: context.l10n.text('paymentSettlements'),
@@ -777,13 +795,7 @@ class _PaymentSettlementDetailPageState
             fullWidth: desktop,
             onRefresh: _refresh,
             actions: [
-              if (widget.embedded)
-                IconButton(
-                  key: const ValueKey('desktop-settlement-detail-close'),
-                  tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
-                  onPressed: widget.onClose,
-                  icon: const Icon(Icons.close_rounded),
-                ),
+              if (widget.embedded) _closeEmbedded(context),
               IconButton(
                 tooltip: context.l10n.text('editPaymentSettlement'),
                 onPressed: () => _edit(detail),
