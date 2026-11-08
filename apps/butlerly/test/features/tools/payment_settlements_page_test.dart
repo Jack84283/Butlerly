@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
@@ -578,6 +580,27 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('a stalled initial read resolves to retry instead of spinning', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final settlements = registerServices([]);
+    settlements.blockedList = Completer<List<PaymentSettlement>>().future;
+
+    await tester.pumpWidget(app());
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    // Advance the widget-test clock beyond the bounded load deadline.
+    await tester.pump(const Duration(seconds: 21));
+    await tester.pump();
+
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.text('Try again'), findsAtLeastNWidgets(1));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('settlement Add uses the app route for credit-card creation', (
     tester,
   ) async {
@@ -666,9 +689,11 @@ class _TestSources extends Fake implements PaymentSourceRepository {
 
 class _TestSettlements extends Fake implements PaymentSettlementRepository {
   final values = <PaymentSettlement>[];
+  Future<List<PaymentSettlement>>? blockedList;
 
   @override
-  Future<List<PaymentSettlement>> listAll() async => List.of(values);
+  Future<List<PaymentSettlement>> listAll() =>
+      blockedList ?? Future.value(List.of(values));
 
   @override
   Future<PaymentSettlement?> findById(PaymentSettlementId id) async =>
