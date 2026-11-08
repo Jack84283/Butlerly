@@ -743,9 +743,7 @@ void main() {
       find.byKey(const ValueKey('device-settlement-page-range')),
       findsOneWidget,
     );
-    final next = find.byKey(
-      const ValueKey('device-settlement-page-next'),
-    );
+    final next = find.byKey(const ValueKey('device-settlement-page-next'));
     expect(tester.widget<IconButton>(next).onPressed, isNotNull);
     await tester.tap(next);
     await tester.pumpAndSettle();
@@ -830,15 +828,14 @@ void main() {
         find.byKey(const ValueKey('desktop-payment-settlement-history-only')),
         findsOneWidget,
       );
-      // Until source eligibility is known, avoid opening the wrong editor.
+      // A source lookup must not be issued unless Add was explicitly tapped.
       final add = find.byKey(const ValueKey('payment-settlements-add'));
-      expect(tester.widget<IconButton>(add).onPressed, isNull);
+      expect(tester.widget<IconButton>(add).onPressed, isNotNull);
 
-      // A failed prerequisite read is isolated to the source card. The
-      // settlement table and its historical data remain on screen.
       await tester.pump(const Duration(seconds: 9));
       await tester.pump();
-      expect(find.text('Try again'), findsAtLeastNWidgets(1));
+      expect(sources.listCalls, 0);
+      expect(find.text('Try again'), findsNothing);
       expect(
         find.byKey(const ValueKey('desktop-payment-settlements-table')),
         findsOneWidget,
@@ -958,9 +955,7 @@ void main() {
         expect(find.text('Add payment source'), findsNothing);
         expect(find.byType(PaymentSourcesPage), findsNothing);
 
-        await tester.tap(
-          find.byKey(const ValueKey('payment-settlements-add')),
-        );
+        await tester.tap(find.byKey(const ValueKey('payment-settlements-add')));
         await tester.pump();
         expect(sources.listCalls, 1);
         pendingSources.complete(sources.sources);
@@ -974,14 +969,6 @@ void main() {
             findsOneWidget,
           );
         }
-        expect(
-          tester
-              .widget<IconButton>(
-                find.byKey(const ValueKey('payment-settlements-add')),
-              )
-              .onPressed,
-          isNotNull,
-        );
         expect(tester.takeException(), isNull);
       },
     );
