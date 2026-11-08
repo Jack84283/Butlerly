@@ -119,6 +119,21 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
     }
   }
 
+  /// Let desktop users inspect, activate, or add Payment Sources without
+  /// losing settlement history. Refresh eligible cards after returning.
+  Future<void> _managePaymentSources() async {
+    if (GoRouter.maybeOf(context) != null) {
+      await context.push<void>('/payment-sources');
+    } else {
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (_) => const Scaffold(body: PaymentSourcesPage()),
+        ),
+      );
+    }
+    if (mounted) await _refresh();
+  }
+
   Future<void> _createSettlement(_SettlementListData data) async {
     final finance = _finance;
     final save = finance?.savePaymentSettlement;
@@ -233,30 +248,38 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
             ),
           ],
           children: [
-            if (data.activeCardSources.isEmpty)
-              ButlerlyEmptyState(
-                icon: Icons.credit_card_off_outlined,
-                title: context.l10n.text('paymentSources'),
-                message: context.l10n.text('paymentSettlementNeedsCardSource'),
-                actionLabel: context.l10n.text('addPaymentSource'),
-                onAction: () => _onAddSettlement(data),
-              )
-            else if (data.settlements.isEmpty)
-              ButlerlyEmptyState(
-                icon: Icons.credit_score_outlined,
-                title: context.l10n.text('noPaymentSettlements'),
-                message: context.l10n.text('noPaymentSettlementsBody'),
-                actionLabel: context.l10n.text('addPaymentSettlement'),
-                onAction: () => _createSettlement(data),
-              )
-            else if (desktop) ...[
-              _SettlementDesktopOverview(data: data),
-              const SizedBox(height: ButlerlySpacing.cardGap),
-              _SettlementDesktopTable(
+            if (desktop) ...[
+              _SettlementDesktopSources(
                 data: data,
-                onOpen: (settlement) => _openSettlement(settlement, data),
+                onManage: _managePaymentSources,
+                onAdd: () => _onAddSettlement(data),
               ),
-            ] else ...[
+              const SizedBox(height: ButlerlySpacing.cardGap),
+              // Do not hide saved settlements when their source is archived.
+              if (data.settlements.isNotEmpty) ...[
+                _SettlementDesktopOverview(data: data),
+                const SizedBox(height: ButlerlySpacing.cardGap),
+                _SettlementDesktopTable(
+                  data: data,
+                  onOpen: (settlement) => _openSettlement(settlement, data),
+                ),
+              ] else
+                ButlerlyEmptyState(
+                  icon: Icons.credit_score_outlined,
+                  title: context.l10n.text('noPaymentSettlements'),
+                  message: data.activeCardSources.isEmpty
+                      ? context.l10n.text('paymentSettlementNeedsCardSource')
+                      : context.l10n.text('noPaymentSettlementsBody'),
+                  actionLabel: context.l10n.text(
+                    data.activeCardSources.isEmpty
+                        ? 'addPaymentSource'
+                        : 'addPaymentSettlement',
+                  ),
+                  onAction: () => _onAddSettlement(data),
+                ),
+            ] else if (data.settlements.isNotEmpty) ...[
+              // Historical settlements remain accessible even if a card
+              // source is archived or none are currently eligible.
               for (final settlement in data.settlements) ...[
                 _SettlementCard(
                   settlement: settlement,
@@ -267,7 +290,22 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
                 ),
                 const SizedBox(height: ButlerlySpacing.small),
               ],
-            ],
+            ] else if (data.activeCardSources.isEmpty)
+              ButlerlyEmptyState(
+                icon: Icons.credit_card_off_outlined,
+                title: context.l10n.text('paymentSources'),
+                message: context.l10n.text('paymentSettlementNeedsCardSource'),
+                actionLabel: context.l10n.text('addPaymentSource'),
+                onAction: () => _onAddSettlement(data),
+              )
+            else
+              ButlerlyEmptyState(
+                icon: Icons.credit_score_outlined,
+                title: context.l10n.text('noPaymentSettlements'),
+                message: context.l10n.text('noPaymentSettlementsBody'),
+                actionLabel: context.l10n.text('addPaymentSettlement'),
+                onAction: () => _createSettlement(data),
+              ),
             const SizedBox(height: ButlerlySpacing.structural),
           ],
         );
@@ -569,6 +607,78 @@ class _PaymentSettlementDetailPageState
           ),
         );
       },
+    );
+  }
+}
+
+/// Connect Payment Settlements to its eligible card sources on desktop.
+/// Other source types remain managed in Payment Sources, and archived cards
+/// still resolve historic settlement labels without becoming selectable.
+class _SettlementDesktopSources extends StatelessWidget {
+  const _SettlementDesktopSources({
+    required this.data,
+    required this.onManage,
+    required this.onAdd,
+  });
+
+  final _SettlementListData data;
+  final VoidCallback onManage;
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    final activeCards = data.activeCardSources;
+    return ButlerlyCard(
+      child: Column(
+        key: const ValueKey('desktop-settlement-payment-sources'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  context.l10n.text('paymentSources'),
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              TextButton.icon(
+                key: const ValueKey('desktop-settlement-manage-sources'),
+                onPressed: onManage,
+                icon: const Icon(Icons.credit_card_outlined),
+                label: Text(context.l10n.text('viewAll')),
+              ),
+            ],
+          ),
+          const SizedBox(height: ButlerlySpacing.compact),
+          if (activeCards.isEmpty)
+            Text(
+              context.l10n.text('paymentSettlementNeedsCardSource'),
+              style: Theme.of(context).textTheme.bodyMedium,
+            )
+          else
+            Wrap(
+              spacing: ButlerlySpacing.compact,
+              runSpacing: ButlerlySpacing.compact,
+              children: [
+                for (final source in activeCards)
+                  Chip(
+                    key: ValueKey('settlement-eligible-source-${source.id.value}'),
+                    avatar: const Icon(Icons.credit_card_outlined, size: 18),
+                    label: Text(paymentSourceDisplayLabel(source)),
+                  ),
+              ],
+            ),
+          if (activeCards.isEmpty) ...[
+            const SizedBox(height: ButlerlySpacing.standard),
+            OutlinedButton.icon(
+              key: const ValueKey('desktop-settlement-add-source'),
+              onPressed: onAdd,
+              icon: const Icon(Icons.add),
+              label: Text(context.l10n.text('addPaymentSource')),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
