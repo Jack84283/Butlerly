@@ -4,6 +4,7 @@ import 'package:butlerly/features/help/presentation/help_guide_section.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 /// Stable guide chapter targets for each interactive Butlerly destination.
@@ -182,9 +183,15 @@ class _StandaloneHelpReader extends StatelessWidget {
   final VoidCallback onClose;
 
   @override
-  Widget build(BuildContext context) => Material(
-    child: Scaffold(
-      appBar: AppBar(
+  Widget build(BuildContext context) => CallbackShortcuts(
+    bindings: {
+      const SingleActivator(LogicalKeyboardKey.escape): onClose,
+    },
+    child: Focus(
+      autofocus: true,
+      child: Material(
+        child: Scaffold(
+          appBar: AppBar(
         leading: IconButton(
           key: const ValueKey('context-help-close'),
           tooltip: HelpCopy.text(context, 'back'),
@@ -229,6 +236,8 @@ class _StandaloneHelpReader extends StatelessWidget {
               ],
             );
           },
+        ),
+      ),
         ),
       ),
     ),
