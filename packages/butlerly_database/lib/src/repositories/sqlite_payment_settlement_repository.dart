@@ -158,6 +158,9 @@ final class SqlitePaymentSettlementRepository
         final count = counts.single['total']! as int;
         final latest = counts.single['latest_update']! as String;
         final revision = counts.single['database_revision']! as int;
+        final version = await executor.rawQuery('PRAGMA data_version');
+        final dataVersion = version.single['data_version']! as int;
+        final session = database.openSession;
         final page = await SqliteTransactionRepository(
           database,
         ).queryWithExecutor(
@@ -184,6 +187,8 @@ final class SqlitePaymentSettlementRepository
             count,
             latest,
             revision,
+            dataVersion,
+            session,
           ),
         );
       });
@@ -204,76 +209,113 @@ final class SqlitePaymentSettlementRepository
       occurredAtToExclusive: occurredAtToExclusive,
     );
     try {
-      // The full-period exact-decimal summary is an independent operation,
-      // so device detail can render its first 20 rows without waiting for it.
-      // This snapshot is consistent *within* the 400-row scalar scan.
-      return await database.transaction((executor) async {
-        final revisionRows = await executor.rawQuery(
-          'SELECT total_changes() AS database_revision',
-        );
-        final revision = revisionRows.single['database_revision']! as int;
-        const batchSize = 400;
-        var cursor = '';
-        var totalCount = 0;
-        var latest = '';
-        var sum = DecimalValue.fromParts(
-          coefficient: BigInt.zero,
-          scale: 0,
-        );
-        var canCompare = true;
-        while (true) {
-          final values = await executor.rawQuery(
-            '''SELECT t.id, t.updated_at, t.direction, t.currency,
-                      t.amount_coefficient, t.amount_scale
-               FROM transactions t
-               WHERE ${filter.where} AND t.id > ?
-               ORDER BY t.id LIMIT ?''',
-            [...filter.arguments, cursor, batchSize],
-          );
-          if (values.isEmpty) break;
-          for (final row in values) {
-            totalCount++;
-            final updated = row['updated_at']! as String;
-            if (updated.compareTo(latest) > 0) latest = updated;
-            if (!canCompare) continue;
-            if ((row['currency'] as String).trim().toUpperCase() !=
-                    settlement.payment.currency.value ||
-                row['direction'] == TransactionDirection.adjustment.name) {
-              canCompare = false;
-              continue;
-            }
-            final amount = DecimalValue.fromParts(
-              coefficient: BigInt.parse(row['amount_coefficient']! as String),
-              scale: row['amount_scale']! as int,
-            ).abs();
-            final direction = row['direction'] as String;
-            if (direction == TransactionDirection.expense.name) {
-              sum = sum.add(amount);
-            } else if (direction == TransactionDirection.refund.name ||
-                direction == TransactionDirection.income.name) {
-              sum = sum.subtract(amount);
-            }
-          }
-          cursor = values.last['id']! as String;
-          if (values.length < batchSize) break;
-          await Future<void>.delayed(Duration.zero);
+      // Never hold a SQLite transaction over the complete settlement history.
+      // A 400-row query releases the connection before the next batch, so
+      // Next/Back and other work can proceed while comparison is calculated.
+      // Separate revisions before/after reject mixed-snapshot calculations.
+      final before = await _readSnapshotState(filter);
+      const batchSize = 400;
+      var cursor = '';
+      var totalCount = 0;
+      var latest = '';
+      var sum = DecimalValue.fromParts(
+        coefficient: BigInt.zero,
+        scale: 0,
+      );
+      var canCompare = true;
+      while (true) {
+        if (database.openSession != before.session) {
+          throw StateError('Settlement database reopened during comparison');
         }
-        return PaymentSettlementTransactionSummary(
-          totalCount: totalCount,
-          recordedTotal: canCompare
-              ? Money(amount: sum, currency: settlement.payment.currency)
-              : null,
-          snapshotToken: _snapshotToken(
-            settlement,
-            totalCount,
-            latest,
-            revision,
-          ),
+        final values = await database.connection.rawQuery(
+          '''SELECT t.id, t.updated_at, t.direction, t.currency,
+                    t.amount_coefficient, t.amount_scale
+             FROM transactions t
+             WHERE ${filter.where} AND t.id > ?
+             ORDER BY t.id LIMIT ?''',
+          [...filter.arguments, cursor, batchSize],
         );
-      });
+        if (values.isEmpty) break;
+        for (final row in values) {
+          totalCount++;
+          final updated = row['updated_at']! as String;
+          if (updated.compareTo(latest) > 0) latest = updated;
+          if (!canCompare) continue;
+          if ((row['currency'] as String).trim().toUpperCase() !=
+                  settlement.payment.currency.value ||
+              row['direction'] == TransactionDirection.adjustment.name) {
+            canCompare = false;
+            continue;
+          }
+          final amount = DecimalValue.fromParts(
+            coefficient: BigInt.parse(row['amount_coefficient']! as String),
+            scale: row['amount_scale']! as int,
+          ).abs();
+          final direction = row['direction'] as String;
+          if (direction == TransactionDirection.expense.name) {
+            sum = sum.add(amount);
+          } else if (direction == TransactionDirection.refund.name ||
+              direction == TransactionDirection.income.name) {
+            sum = sum.subtract(amount);
+          }
+        }
+        cursor = values.last['id']! as String;
+        if (values.length < batchSize) break;
+        // Yield *without* owning a SQLite transaction or connection lock.
+        await Future<void>.delayed(Duration.zero);
+      }
+      final after = await _readSnapshotState(filter);
+      if (before != after ||
+          totalCount != after.count ||
+          latest != after.latest) {
+        // Do not report a financial figure assembled across import/edit or
+        // restore. An explicit refresh can retry on a stable dataset.
+        throw StateError('Settlement data changed during comparison');
+      }
+      return PaymentSettlementTransactionSummary(
+        totalCount: totalCount,
+        recordedTotal: canCompare
+            ? Money(amount: sum, currency: settlement.payment.currency)
+            : null,
+        snapshotToken: _snapshotToken(
+          settlement,
+          after.count,
+          after.latest,
+          after.revision,
+          after.dataVersion,
+          after.session,
+        ),
+      );
     } on DatabaseException catch (error) {
       throw mapDatabaseException(error, 'summarize settlement transactions');
     }
+  }
+
+  Future<({
+    int count,
+    String latest,
+    int revision,
+    int dataVersion,
+    int session,
+  })> _readSnapshotState(
+    ({String where, List<Object?> arguments}) filter,
+  ) async {
+    final session = database.openSession;
+    final counts = await database.connection.rawQuery(
+      '''SELECT COUNT(*) AS total,
+                COALESCE(MAX(t.updated_at), '') AS latest_update,
+                total_changes() AS database_revision
+         FROM transactions t WHERE ${filter.where}''',
+      filter.arguments,
+    );
+    final version = await database.connection.rawQuery('PRAGMA data_version');
+    return (
+      count: counts.single['total']! as int,
+      latest: counts.single['latest_update']! as String,
+      revision: counts.single['database_revision']! as int,
+      dataVersion: version.single['data_version']! as int,
+      session: session,
+    );
   }
 
   static ({String where, List<Object?> arguments}) _periodFilter(
@@ -323,6 +365,8 @@ final class SqlitePaymentSettlementRepository
     int count,
     String latestUpdate,
     int revision,
+    int dataVersion,
+    int session,
   ) => [
     settlement.id.value,
     settlement.paymentSourceId.value,
@@ -332,6 +376,8 @@ final class SqlitePaymentSettlementRepository
     '$count',
     latestUpdate,
     '$revision',
+    '$dataVersion',
+    '$session',
   ].join('|');
 
   static String _instantBound(DateTime value) {
