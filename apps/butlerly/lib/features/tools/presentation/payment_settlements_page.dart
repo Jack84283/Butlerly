@@ -8,6 +8,7 @@ import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/desktop/presentation/desktop_transaction_detail_split_view.dart';
 import 'package:butlerly/features/foundation/presentation/payment_source_display.dart';
 import 'package:butlerly/features/foundation/presentation/payment_sources_page.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
@@ -43,6 +44,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
   bool _sourcesLoaded = false;
   bool _sourcesError = false;
   int _loadGeneration = 0;
+  String? _selectedDesktopSettlementId;
 
   @override
   void initState() {
@@ -66,6 +68,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
 
   void _onWorkspaceRestored() {
     if (!mounted) return;
+    _selectedDesktopSettlementId = null;
     _refresh();
   }
 
@@ -332,6 +335,17 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
   ) async {
     final finance = _finance;
     if (finance == null) return;
+    // Desktop details belong to the right panel of the same workspace.
+    // Do not push another route for row selection: this matches Statements
+    // and Rules and keeps the list and its scroll state mounted.
+    if (effectiveButlerlyLayoutMode(
+          context,
+          MediaQuery.sizeOf(context).width,
+        ) ==
+        ButlerlyLayoutMode.wide) {
+      setState(() => _selectedDesktopSettlementId = settlement.id);
+      return;
+    }
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => PaymentSettlementDetailPage(
@@ -367,7 +381,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
       );
     }
 
-    return FutureBuilder<_SettlementListData>(
+    final results = FutureBuilder<_SettlementListData>(
       future: _data,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
@@ -479,6 +493,24 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
         );
       },
     );
+    final selected = _selectedDesktopSettlementId;
+    final finance = _finance;
+    if (!desktop || selected == null || finance == null) return results;
+    return DesktopTransactionDetailSplitView(
+      results: results,
+      detail: PaymentSettlementDetailPage(
+        key: ValueKey('desktop-settlement-detail-$selected'),
+        finance: finance,
+        settlementId: selected,
+        // Keep a selected panel mounted while source labels resolve.
+        // The detail widget receives the latest labels during rebuild.
+        sourceNames: _displayData?.sourceNames ?? const {},
+        sources: _displayData?.sources ?? const [],
+        embedded: true,
+        onClose: () => setState(() => _selectedDesktopSettlementId = null),
+        onChanged: _refresh,
+      ),
+    );
   }
 }
 
@@ -488,6 +520,9 @@ class PaymentSettlementDetailPage extends StatefulWidget {
     required this.settlementId,
     required this.sourceNames,
     required this.sources,
+    this.embedded = false,
+    this.onClose,
+    this.onChanged,
     super.key,
   });
 
@@ -495,6 +530,9 @@ class PaymentSettlementDetailPage extends StatefulWidget {
   final String settlementId;
   final Map<String, String> sourceNames;
   final List<PaymentSource> sources;
+  final bool embedded;
+  final VoidCallback? onClose;
+  final VoidCallback? onChanged;
 
   @override
   State<PaymentSettlementDetailPage> createState() =>
@@ -612,6 +650,7 @@ class _PaymentSettlementDetailPageState
       return;
     }
     _showMessage(context.l10n.text('paymentSettlementSaved'));
+    widget.onChanged?.call();
     await _refresh();
   }
 
@@ -624,6 +663,7 @@ class _PaymentSettlementDetailPageState
       _showMessage(context.l10n.text('paymentSettlementSaveFailed'));
       return;
     }
+    widget.onChanged?.call();
     await _refresh();
   }
 
@@ -683,7 +723,12 @@ class _PaymentSettlementDetailPageState
       return;
     }
     _showMessage(context.l10n.text('paymentSettlementRemoved'));
-    Navigator.of(context).pop(true);
+    widget.onChanged?.call();
+    if (widget.embedded) {
+      widget.onClose?.call();
+    } else {
+      Navigator.of(context).pop(true);
+    }
   }
 
   void _showMessage(String message) {
@@ -732,6 +777,13 @@ class _PaymentSettlementDetailPageState
             fullWidth: desktop,
             onRefresh: _refresh,
             actions: [
+              if (widget.embedded)
+                IconButton(
+                  key: const ValueKey('desktop-settlement-detail-close'),
+                  tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+                  onPressed: widget.onClose,
+                  icon: const Icon(Icons.close_rounded),
+                ),
               IconButton(
                 tooltip: context.l10n.text('editPaymentSettlement'),
                 onPressed: () => _edit(detail),
