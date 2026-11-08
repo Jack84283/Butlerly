@@ -45,6 +45,11 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
   bool _sourcesError = false;
   int _loadGeneration = 0;
   String? _selectedDesktopSettlementId;
+  // A detail route opened before the optional legacy source-label lookup
+  // finishes must update without navigating away or requerying the database.
+  final ValueNotifier<List<PaymentSource>> _detailSources = ValueNotifier(
+    const [],
+  );
 
   @override
   void initState() {
@@ -63,6 +68,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
   @override
   void dispose() {
     workspaceRestoreChanges.removeListener(_onWorkspaceRestored);
+    _detailSources.dispose();
     super.dispose();
   }
 
@@ -113,6 +119,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
   Future<void> _refresh() async {
     final generation = ++_loadGeneration;
     final refreshed = _load().timeout(_loadDeadline);
+    _detailSources.value = const [];
     setState(() {
       _data = refreshed;
       _displayData = null;
@@ -158,6 +165,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
           '${sources.length} sources)',
           watch,
         );
+        _detailSources.value = sources;
         setState(() {
           _displayData = resolved;
           _sourcesLoaded = true;
@@ -353,6 +361,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
           settlementId: settlement.id,
           sourceNames: data.sourceNames,
           sources: data.sources,
+          sourceUpdates: _detailSources,
         ),
       ),
     );
@@ -506,6 +515,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
         // The detail widget receives the latest labels during rebuild.
         sourceNames: _displayData?.sourceNames ?? const {},
         sources: _displayData?.sources ?? const [],
+        sourceUpdates: _detailSources,
         embedded: true,
         onClose: () => setState(() => _selectedDesktopSettlementId = null),
         onChanged: _refresh,
@@ -521,6 +531,7 @@ class PaymentSettlementDetailPage extends StatefulWidget {
     required this.sourceNames,
     required this.sources,
     this.embedded = false,
+    this.sourceUpdates,
     this.onClose,
     this.onChanged,
     super.key,
@@ -531,6 +542,7 @@ class PaymentSettlementDetailPage extends StatefulWidget {
   final Map<String, String> sourceNames;
   final List<PaymentSource> sources;
   final bool embedded;
+  final ValueListenable<List<PaymentSource>>? sourceUpdates;
   final VoidCallback? onClose;
   final VoidCallback? onChanged;
 
@@ -612,13 +624,13 @@ class _PaymentSettlementDetailPageState
     final draft = desktop
         ? await _openSettlementEditorPage(
             context: context,
-            sources: widget.sources,
+            sources: widget.sourceUpdates?.value ?? widget.sources,
             existing: detail,
           )
         : await showButlerlyBottomSheet<_SettlementDraft>(
             context: context,
             builder: (_) => _SettlementEditorSheet(
-              sources: widget.sources,
+              sources: widget.sourceUpdates?.value ?? widget.sources,
               existing: detail,
             ),
           );
@@ -746,12 +758,28 @@ class _PaymentSettlementDetailPageState
 
   @override
   Widget build(BuildContext context) {
+    final updates = widget.sourceUpdates;
+    if (updates != null) {
+      return ValueListenableBuilder<List<PaymentSource>>(
+        valueListenable: updates,
+        builder: (context, sources, _) => _buildDetail(context, sources),
+      );
+    }
+    return _buildDetail(context, widget.sources);
+  }
+
+  Widget _buildDetail(BuildContext context, List<PaymentSource> sources) {
     final desktop =
         effectiveButlerlyLayoutMode(
           context,
           MediaQuery.sizeOf(context).width,
         ) ==
         ButlerlyLayoutMode.wide;
+    final sourceNames = {
+      ...widget.sourceNames,
+      for (final source in sources)
+        source.id.value: paymentSourceDisplayLabel(source),
+    };
     return FutureBuilder<PaymentSettlementDetailDto>(
       future: _detail,
       builder: (context, snapshot) {
@@ -787,7 +815,7 @@ class _PaymentSettlementDetailPageState
         final detail = snapshot.requireData;
         final settlement = detail.settlement;
         final sourceName =
-            widget.sourceNames[settlement.paymentSourceId] ??
+            sourceNames[settlement.paymentSourceId] ??
             settlement.paymentSourceId;
         return Scaffold(
           body: ButlerlyPage(
@@ -829,7 +857,7 @@ class _PaymentSettlementDetailPageState
                 ButlerlyDesktopTransactionTableCard(
                   transactions: detail.transactions,
                   masterData: _masterData,
-                  paymentSourceNames: widget.sourceNames,
+                  paymentSourceNames: sourceNames,
                   onTap: _openTransaction,
                 )
               else
@@ -840,7 +868,7 @@ class _PaymentSettlementDetailPageState
                         TransactionRow(
                           transaction: transaction,
                           masterData: _masterData,
-                          paymentSourceNames: widget.sourceNames,
+                          paymentSourceNames: sourceNames,
                           showDate: true,
                           showNavigationIndicator: true,
                           onTap: () => _openTransaction(transaction),
