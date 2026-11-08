@@ -258,7 +258,9 @@ void main() {
     expect(await settlements.listAll(), hasLength(53));
   });
 
-  test('transaction pages match full history with exact period totals', () async {
+  test(
+    'transaction pages match full history with exact period totals',
+    () async {
     final settlement = _settlement();
     await settlements.save(settlement);
     for (var index = 0; index < 45; index++) {
