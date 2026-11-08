@@ -189,6 +189,35 @@ void main() {
     expect(await transactions.findById(TransactionId('purchase')), isNotNull);
   });
 
+  test('large settlement history preserves every row and stable ordering', (
+    ) async {
+      final now = DateTime.utc(2026, 9, 20, 12);
+      for (var index = 0; index < 260; index++) {
+        await settlements.save(
+          PaymentSettlement(
+            id: PaymentSettlementId('restored-$index'),
+            paymentSourceId: PaymentSourceId('visa'),
+            payment: _money('10.00'),
+            paymentDate: '2026-09-20',
+            periodStart: '2026-08-15',
+            periodEnd: '2026-09-14',
+            status: PaymentSettlementStatus.open,
+            createdAt: now,
+            updatedAt: now,
+          ),
+        );
+      }
+
+      final listed = await settlements.listAll();
+      final ids = listed.map((value) => value.id.value).toList();
+      final expected = [
+        for (var index = 0; index < 260; index++) 'restored-$index',
+      ]..sort();
+      expect(ids, expected);
+      expect(ids.toSet(), hasLength(260));
+    },
+  );
+
   test('does not create a persisted settlement membership table', () async {
     final rows = await database.connection.rawQuery(
       "SELECT name FROM sqlite_master WHERE type = 'table' "
