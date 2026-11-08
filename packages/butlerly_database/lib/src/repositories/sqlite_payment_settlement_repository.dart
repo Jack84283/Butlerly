@@ -57,7 +57,17 @@ final class SqlitePaymentSettlementRepository
         'payment_settlements',
         orderBy: 'payment_date DESC, id',
       );
-      return rows.map(_fromRow).toList(growable: false);
+      // Give Flutter an event-loop turn while decoding large restored
+      // histories. Keep the existing complete, ordered result contract;
+      // pagination and statement provenance belong at the application layer.
+      final values = <PaymentSettlement>[];
+      for (var index = 0; index < rows.length; index++) {
+        values.add(_fromRow(rows[index]));
+        if (index > 0 && index % 128 == 0) {
+          await Future<void>.delayed(Duration.zero);
+        }
+      }
+      return List.unmodifiable(values);
     } on DatabaseException catch (error) {
       throw mapDatabaseException(error, 'list payment settlements');
     }
