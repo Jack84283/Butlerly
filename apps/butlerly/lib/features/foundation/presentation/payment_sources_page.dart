@@ -192,20 +192,48 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
             ? PaymentSourceType.card
             : PaymentSourceType.account);
     String? network = existing?.network ?? detectedNetwork;
+    // On devices the prerequisite editor must be visible before reading
+    // optional type labels. A slow local reference-data lookup previously
+    // prevented the editor route from opening at all.
+    final useEditorPage = widget.fromPaymentSettlement && !_isDesktop(context);
     final locale = Localizations.localeOf(context);
-    final typeLabelsResult = await finance.loadReferenceData.labels(
+    final typeLabelsFuture = finance.loadReferenceData.labels(
       type: 'payment_source_type',
       locale: locale.languageCode == 'zh' ? 'zh-Hans' : locale.languageCode,
     );
+    final typeLabelsResult = useEditorPage ? null : await typeLabelsFuture;
     if (!mounted) return;
     final typeLabels =
         typeLabelsResult is ApplicationSuccess<Map<String, String>>
         ? typeLabelsResult.value
         : const <String, String>{};
     String? sourceError;
-    // Settlement prerequisite card entry uses a regular route on devices,
-    // keeping all fields and Save reachable without a nested modal barrier.
-    final useEditorPage = widget.fromPaymentSettlement && !_isDesktop(context);
+
+    Widget sourceTypeSelector(
+      BuildContext fieldContext,
+      StateSetter setDialogState,
+      Map<String, String> labels,
+    ) => ButlerlySelectField<PaymentSourceType>(
+      label: fieldContext.l10n.text('type'),
+      value: type,
+      entries: [
+        for (final value in PaymentSourceType.values)
+          DropdownMenuEntry(
+            value: value,
+            label: labels['payment_source_type.${value.name}'] ??
+                _typeLabel(fieldContext, value),
+          ),
+      ],
+      onChanged: (value) {
+        if (value != null) {
+          setDialogState(() {
+            if (value != type) network = null;
+            type = value;
+          });
+        }
+      },
+    );
+
     Widget editorBuilder(BuildContext editorContext) => StatefulBuilder(
       builder: (context, setDialogState) => ButlerlySheet(
         title: useEditorPage
@@ -258,27 +286,20 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                 ),
               ),
               const SizedBox(height: ButlerlySpacing.small),
-              ButlerlySelectField<PaymentSourceType>(
-                label: context.l10n.text('type'),
-                value: type,
-                entries: [
-                  for (final value in PaymentSourceType.values)
-                    DropdownMenuEntry(
-                      value: value,
-                      label:
-                          typeLabels['payment_source_type.${value.name}'] ??
-                          _typeLabel(context, value),
-                    ),
-                ],
-                onChanged: (value) {
-                  if (value != null) {
-                    setDialogState(() {
-                      if (value != type) network = null;
-                      type = value;
-                    });
-                  }
-                },
-              ),
+              if (useEditorPage)
+                FutureBuilder(
+                  future: typeLabelsFuture,
+                  builder: (context, snapshot) {
+                    final result = snapshot.data;
+                    final labels =
+                        result is ApplicationSuccess<Map<String, String>>
+                            ? result.value
+                            : const <String, String>{};
+                    return sourceTypeSelector(context, setDialogState, labels);
+                  },
+                )
+              else
+                sourceTypeSelector(context, setDialogState, typeLabels),
               if (type == PaymentSourceType.card ||
                   type == PaymentSourceType.debitCard ||
                   type == PaymentSourceType.wallet) ...[

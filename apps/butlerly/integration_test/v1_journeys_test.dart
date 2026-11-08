@@ -1503,6 +1503,25 @@ void main() {
       await tester.tap(find.byType(BackButton).first);
       await tester.pumpAndSettle();
       expect(find.byType(PaymentSettlementsPage), findsOneWidget);
+
+      // Device Add must stay in a cancellable settlement bottom sheet even
+      // after a real SQLite close/reopen and a full detail page round trip.
+      await tester.tap(
+        find.byKey(const ValueKey('payment-settlements-add')),
+      );
+      await tester.pump();
+      for (var attempt = 0; attempt < 100; attempt++) {
+        if (find.byType(BottomSheet).evaluate().isNotEmpty) break;
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 20)),
+        );
+        await tester.pump();
+      }
+      expect(find.byType(BottomSheet), findsOneWidget);
+      Navigator.of(tester.element(find.byType(BottomSheet))).pop();
+      await tester.pumpAndSettle();
+      expect(find.byType(PaymentSettlementsPage), findsOneWidget);
+
       await tester.tap(find.byType(BackButton).first);
       await tester.pumpAndSettle();
       expect(find.byType(ToolsPage), findsOneWidget);

@@ -84,17 +84,14 @@ void main() {
         await tester.pumpAndSettle();
 
         if (width < 900) {
-          // A missing card is a real prerequisite, not an unfinishable
-          // settlement sheet. The source editor remains cancellable.
-          expect(find.byType(PaymentSourcesPage), findsOneWidget);
-          expect(
-            find.byKey(const ValueKey('settlement-card-source-editor-page')),
-            findsOneWidget,
-          );
-          expect(find.byType(BottomSheet), findsNothing);
+          // The user sees a real, cancellable settlement bottom sheet first.
+          // Card creation is an explicit action inside this prerequisite.
+          expect(find.byType(BottomSheet), findsOneWidget);
+          expect(find.byType(PaymentSourcesPage), findsNothing);
+          expect(find.text('Add payment source'), findsAtLeastNWidgets(1));
           await tester.tap(find.widgetWithText(ButlerlyCancelButton, 'Cancel'));
           await tester.pumpAndSettle();
-          expect(find.byType(PaymentSourcesPage), findsNothing);
+          expect(find.byType(BottomSheet), findsNothing);
           expect(find.byType(PaymentSettlementsPage), findsOneWidget);
         } else {
           // Desktop prerequisite navigation is intentionally unchanged.
@@ -164,6 +161,40 @@ void main() {
       },
     );
   }
+
+  testWidgets('device Add sheet stays cancellable during a stalled card read', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final sources = _TestSources([]);
+    final blocked = Completer<List<PaymentSource>>();
+    sources.blockedList = blocked.future;
+    registerServices([], sourceRepository: sources);
+
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('payment-settlements-add')));
+    await tester.pump();
+    expect(find.byType(BottomSheet), findsOneWidget);
+    expect(find.widgetWithText(ButlerlyCancelButton, 'Cancel'), findsOneWidget);
+    expect(sources.listCalls, 0);
+
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump();
+    expect(sources.listCalls, 1);
+    expect(find.byType(BottomSheet), findsOneWidget);
+    await tester.tap(find.widgetWithText(ButlerlyCancelButton, 'Cancel'));
+    await tester.pump();
+    blocked.complete([]);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(BottomSheet), findsNothing);
+    expect(find.byType(PaymentSettlementsPage), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('device sheet offers only eligible credit-card sources', (
     tester,
@@ -1692,6 +1723,12 @@ void main() {
 
         await tester.tap(find.byKey(const ValueKey('payment-settlements-add')));
         await tester.pump();
+        if (width < 900) {
+          // The bottom sheet is visible before SQLite answers.
+          expect(find.byType(BottomSheet), findsOneWidget);
+          expect(sources.listCalls, 0);
+          await tester.pump(const Duration(milliseconds: 100));
+        }
         expect(sources.listCalls, 1);
         pendingSources.complete(sources.sources);
         await tester.pumpAndSettle();
@@ -1913,6 +1950,27 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('device blocked settlement load exposes retry after 8 seconds', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final settlements = registerServices([]);
+    settlements.blockedList = Completer<List<PaymentSettlement>>().future;
+
+    await tester.pumpWidget(app());
+    await tester.pump();
+    expect(find.text('Payment settlements'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    await tester.pump(const Duration(seconds: 9));
+    await tester.pump();
+    expect(find.text('Try again'), findsAtLeastNWidgets(1));
+    expect(find.byType(PaymentSettlementsPage), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('device + opens card prerequisite when no credit card exists', (
     tester,
   ) async {
@@ -1958,9 +2016,13 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('payment-settlements-add')));
     await tester.pumpAndSettle();
 
-    // A test route stands in for the dedicated card-creation workflow.
+    // + keeps the settlement context and shows the bottom sheet.
+    expect(find.text('unexpected-payment-sources-route'), findsNothing);
+    expect(find.byType(BottomSheet), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Add payment source'));
+    await tester.pumpAndSettle();
+    // Only explicitly choosing the prerequisite navigates to sources.
     expect(find.text('unexpected-payment-sources-route'), findsOneWidget);
-    expect(find.byType(BottomSheet), findsNothing);
     router.pop();
     await tester.pumpAndSettle();
     expect(find.byType(PaymentSettlementsPage), findsOneWidget);

@@ -39,6 +39,9 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
   // A read-only database query must never hold this page in a perpetual
   // loading state. A stalled load exposes the existing retry UI instead.
   static const _loadDeadline = Duration(seconds: 20);
+  // Devices must expose a retry promptly if a read is blocked by restore,
+  // import, or another local SQLite operation. Back remains available.
+  static const _deviceLoadDeadline = Duration(seconds: 8);
   static const _sourceLoadDeadline = Duration(seconds: 8);
   Future<_SettlementListData>? _data;
   _SettlementListData? _displayData;
@@ -154,7 +157,10 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
   Future<void> _openDevicePage(int page) async {
     if (page < 0) return;
     final generation = ++_loadGeneration;
-    final refreshed = _load(page: page).timeout(_loadDeadline);
+    final deadline = _lastWideLayout == true
+        ? _loadDeadline
+        : _deviceLoadDeadline;
+    final refreshed = _load(page: page).timeout(deadline);
     _detailSources.value = const [];
     _sourceFetch = null;
     setState(() {
@@ -300,6 +306,18 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
     // only after an explicit Add action.
     setState(() => _loadingSourceAction = true);
     try {
+      final desktop =
+          effectiveButlerlyLayoutMode(
+            context,
+            MediaQuery.sizeOf(context).width,
+          ) ==
+          ButlerlyLayoutMode.wide;
+      if (!desktop) {
+        // A device tap must open the settlement bottom sheet immediately.
+        // Resolve optional card metadata *inside* the sheet, not before it.
+        await _createSettlement(data);
+        return;
+      }
       var resolved = _displayData ?? data;
       if (!_sourcesLoaded) {
         await _ensureSourcesLoaded(resolved);
@@ -385,6 +403,83 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
     // The separate desktop summary refreshes after the next history frame.
   }
 
+  Future<Object?> _openDeviceSettlementEditor(
+    _SettlementListData data,
+  ) {
+    // Let the sheet paint before starting the optional payment-source read.
+    // A stalled SQLite call must not prevent the sheet's Cancel action.
+    Future<void> load = Future<void>.delayed(
+      const Duration(milliseconds: 80),
+      () => _ensureSourcesLoaded(data),
+    );
+    return showButlerlyBottomSheet<Object>(
+      context: context,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) => FutureBuilder<void>(
+          future: load,
+          builder: (sheetContext, snapshot) {
+            final title = Text(sheetContext.l10n.text('addPaymentSettlement'));
+            if (snapshot.connectionState != ConnectionState.done) {
+              return ButlerlySheet(
+                title: title,
+                content: const ButlerlyLoadingState(),
+                actions: [
+                  ButlerlyCancelButton(
+                    onPressed: () => Navigator.pop(sheetContext),
+                    child: Text(sheetContext.l10n.text('cancel')),
+                  ),
+                ],
+              );
+            }
+            if (_sourcesError || !_sourcesLoaded) {
+              return ButlerlySheet(
+                title: title,
+                content: Text(sheetContext.l10n.text('tryAgain')),
+                actions: [
+                  ButlerlyCancelButton(
+                    onPressed: () => Navigator.pop(sheetContext),
+                    child: Text(sheetContext.l10n.text('cancel')),
+                  ),
+                  FilledButton(
+                    onPressed: () {
+                      setSheetState(() {
+                        load = _ensureSourcesLoaded(data);
+                      });
+                    },
+                    child: Text(sheetContext.l10n.text('tryAgain')),
+                  ),
+                ],
+              );
+            }
+            final available = (_displayData ?? data).activeCardSources;
+            if (available.isEmpty) {
+              return ButlerlySheet(
+                title: title,
+                content: Text(
+                  sheetContext.l10n.text('paymentSettlementNeedsCardSource'),
+                ),
+                actions: [
+                  ButlerlyCancelButton(
+                    onPressed: () => Navigator.pop(sheetContext),
+                    child: Text(sheetContext.l10n.text('cancel')),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(
+                      sheetContext,
+                      _DeviceSettlementAction.addSource,
+                    ),
+                    child: Text(sheetContext.l10n.text('addPaymentSource')),
+                  ),
+                ],
+              );
+            }
+            return _SettlementEditorSheet(sources: available);
+          },
+        ),
+      ),
+    );
+  }
+
   Future<void> _createSettlement(_SettlementListData data) async {
     final finance = _finance;
     final save = finance?.savePaymentSettlement;
@@ -398,17 +493,19 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
           MediaQuery.sizeOf(context).width,
         ) ==
         ButlerlyLayoutMode.wide;
-    final draft = desktop
+    final entry = desktop
         ? await _openSettlementEditorPage(
             context: context,
             sources: data.activeCardSources,
           )
-        : await showButlerlyBottomSheet<_SettlementDraft>(
-            context: context,
-            builder: (_) =>
-                _SettlementEditorSheet(sources: data.activeCardSources),
-          );
-    if (!mounted || draft == null) return;
+        : await _openDeviceSettlementEditor(data);
+    if (!mounted) return;
+    if (entry == _DeviceSettlementAction.addSource) {
+      await _addSourceForSettlement();
+      return;
+    }
+    if (entry is! _SettlementDraft) return;
+    final draft = entry;
 
     final token = DateTime.now().microsecondsSinceEpoch;
     final result = await save(
@@ -2368,6 +2465,8 @@ final class _SettlementListData {
       source.id.value: paymentSourceDisplayLabel(source),
   });
 }
+
+enum _DeviceSettlementAction { addSource }
 
 enum _SettlementAction { open, reconciled, needsReview, remove }
 
