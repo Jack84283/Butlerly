@@ -411,8 +411,8 @@ class ButlerlyCardHeader extends StatelessWidget {
 
 /// Shared Add action for page headers on desktop and device layouts.
 ///
-/// The filled 32px circular icon and trailing inset match Master Data's
-/// established design. Hosts supply only the tooltip and action.
+/// The filled 32px circular icon uses identical sizing, padding, and colors
+/// in compact and desktop headers. Hosts supply only the tooltip and action.
 class ButlerlyHeaderAddButton extends StatelessWidget {
   const ButlerlyHeaderAddButton({
     required this.label,
@@ -448,8 +448,13 @@ class ButlerlyHeaderAddButton extends StatelessWidget {
             ? context.colors.background
             : Colors.white,
         shape: const CircleBorder(),
+        iconSize: ButlerlySize.standardIcon,
+        padding: EdgeInsets.zero,
+        fixedSize: const Size.square(32),
         minimumSize: const Size.square(32),
         maximumSize: const Size.square(32),
+        visualDensity: VisualDensity.standard,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
     ),
   );

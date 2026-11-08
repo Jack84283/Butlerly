@@ -180,28 +180,13 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
           subtitle: context.l10n.text('paymentSettlementsSubtitle'),
           onRefresh: _refresh,
           actions: [
-            Padding(
-              padding: const EdgeInsetsDirectional.only(
-                end: ButlerlySpacing.headerActionTrailing,
-              ),
-              child: IconButton.filled(
-                key: const ValueKey('payment-settlements-add'),
-                tooltip: context.l10n.text('addPaymentSettlement'),
-                onPressed: data.activeCardSources.isEmpty
-                    ? null
-                    : () => _createSettlement(data),
-                icon: const Icon(Icons.add_rounded),
-                style: IconButton.styleFrom(
-                  backgroundColor: context.colors.interactive,
-                  foregroundColor:
-                      context.colors.interactive.computeLuminance() > 0.5
-                      ? context.colors.background
-                      : Colors.white,
-                  shape: const CircleBorder(),
-                  minimumSize: const Size.square(32),
-                  maximumSize: const Size.square(32),
-                ),
-              ),
+            ButlerlyHeaderAddButton(
+              buttonKey: const ValueKey('payment-settlements-add'),
+              closeToHelp: true,
+              label: context.l10n.text('addPaymentSettlement'),
+              onPressed: data.activeCardSources.isEmpty
+                  ? null
+                  : () => _createSettlement(data),
             ),
           ],
           children: [
