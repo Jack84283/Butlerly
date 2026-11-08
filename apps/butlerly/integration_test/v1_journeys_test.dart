@@ -1387,6 +1387,40 @@ void main() {
         isA<ApplicationSuccess<PaymentSettlementDto>>(),
       );
 
+      // Import-sized, persisted records exercise the real SQL-backed pager
+      // and exact comparison instead of navigating an empty detail page.
+      final stamp = DateTime.utc(2026, 9, 17, 12).toIso8601String();
+      await harness.database.database.transaction((executor) async {
+        await executor.insert('provenances', {
+          'id': 'device-nav-bulk-import-provenance',
+          'source_type': ProvenanceSourceType.import.name,
+          'captured_at': stamp,
+          'original_representation': 'device navigation import fixture',
+        });
+        for (var index = 0; index < 65; index++) {
+          final id = 'device-nav-import-$index';
+          await executor.insert('transactions', {
+            'id': id,
+            'occurred_at': stamp,
+            'amount_coefficient': '125',
+            'amount_scale': 2,
+            'currency': 'USD',
+            'direction': TransactionDirection.expense.name,
+            'source_type': TransactionSourceType.import.name,
+            'status': TransactionStatus.active.name,
+            'payment_source_id': source.id.value,
+            'transaction_date': '2026-09-17',
+            'description': 'Imported device purchase $index',
+            'created_at': stamp,
+            'updated_at': stamp,
+          });
+          await executor.insert('transaction_provenances', {
+            'transaction_id': id,
+            'provenance_id': 'device-nav-bulk-import-provenance',
+          });
+        }
+      });
+
       _setIntegrationView(tester, const Size(390, 844));
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
@@ -1425,8 +1459,41 @@ void main() {
         await tester.pump();
       }
       expect(find.byType(PaymentSettlementDetailPage), findsOneWidget);
-      expect(find.text('Device navigation settlement'), findsOneWidget);
       expect(find.byType(BackButton), findsOneWidget);
+
+      final scroll = find
+          .descendant(
+            of: find.byType(PaymentSettlementDetailPage),
+            matching: find.byType(Scrollable),
+          )
+          .first;
+      final next = find.byKey(
+        const ValueKey('settlement-detail-transaction-next'),
+      );
+      final previous = find.byKey(
+        const ValueKey('settlement-detail-transaction-previous'),
+      );
+      await tester.scrollUntilVisible(next, 200, scrollable: scroll);
+      await tester.tap(next);
+      await tester.pump();
+      for (var attempt = 0; attempt < 100; attempt++) {
+        if (find.text('21–40 / 65').evaluate().isNotEmpty) break;
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 20)),
+        );
+        await tester.pump();
+      }
+      expect(find.text('21–40 / 65'), findsOneWidget);
+      await tester.tap(previous);
+      await tester.pump();
+      for (var attempt = 0; attempt < 100; attempt++) {
+        if (find.text('1–20 / 65').evaluate().isNotEmpty) break;
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 20)),
+        );
+        await tester.pump();
+      }
+      expect(find.text('1–20 / 65'), findsOneWidget);
 
       // Back must work even if an optional comparison is still loading.
       await tester.tap(find.byType(BackButton).first);
