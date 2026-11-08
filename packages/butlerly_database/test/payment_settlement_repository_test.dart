@@ -413,7 +413,22 @@ void main() {
           ),
         ],
         normalizedMoney: [
-          NormalizedMoney(original: money, converted: money, updatedAt: at),
+          NormalizedMoney(
+            original: money,
+            converted: Money(
+              amount: DecimalValue.parse('2.25'),
+              currency: CurrencyCode('EUR'),
+            ),
+            exchangeRate: ExchangeRate(
+              id: ExchangeRateId('rich-page-exchange-rate'),
+              fromCurrency: CurrencyCode('USD'),
+              toCurrency: CurrencyCode('EUR'),
+              rate: DecimalValue.parse('0.90'),
+              effectiveAt: at,
+              source: 'regression-test',
+            ),
+            updatedAt: at,
+          ),
         ],
         createdAt: at,
         updatedAt: at,
@@ -440,8 +455,16 @@ void main() {
       direct.reviewIssues.map((review) => review.id.value).toList(),
     );
     expect(
-      read.normalizedMoney.map((money) => money.converted).toList(),
-      direct.normalizedMoney.map((money) => money.converted).toList(),
+      read.normalizedMoney.map((value) => value.converted).toList(),
+      direct.normalizedMoney.map((value) => value.converted).toList(),
+    );
+    expect(
+      read.normalizedMoney.single.exchangeRate?.id.value,
+      'rich-page-exchange-rate',
+    );
+    expect(
+      read.normalizedMoney.single.exchangeRate?.rate,
+      DecimalValue.parse('0.90'),
     );
   });
 
@@ -519,6 +542,29 @@ void main() {
     expect(settlementPage.recordedTotal, _money('1131.25'));
   });
 
+  test('mixed currencies make the complete recorded total unavailable', (
+    ) async {
+    final settlement = _settlement();
+    await settlements.save(settlement);
+    await transactions.save(
+      _transaction(
+        id: 'mixed-currency',
+        sourceId: 'visa',
+        transactionDate: '2026-09-01',
+        amount: '2.50',
+        currency: 'EUR',
+      ),
+    );
+    final page = await settlements.listTransactionsPage(
+      settlement,
+      offset: 0,
+      limit: 20,
+    );
+    expect(page.totalCount, 1);
+    expect(page.rows.single.money.currency, CurrencyCode('EUR'));
+    expect(page.recordedTotal, isNull);
+  });
+
   test('does not create a persisted settlement membership table', () async {
     final rows = await database.connection.rawQuery(
       "SELECT name FROM sqlite_master WHERE type = 'table' "
@@ -556,12 +602,16 @@ Transaction _transaction({
   TransactionDirection direction = TransactionDirection.expense,
   TransactionStatus status = TransactionStatus.active,
   String amount = '10.00',
+  String currency = 'USD',
 }) {
   final at = occurredAt ?? DateTime.parse('${transactionDate!}T12:00:00Z');
   return Transaction(
     id: TransactionId(id),
     timing: KnownTransactionTime(at),
-    money: _money(amount),
+    money: Money(
+      amount: DecimalValue.parse(amount),
+      currency: CurrencyCode(currency),
+    ),
     direction: direction,
     sourceType: TransactionSourceType.import,
     status: status,
