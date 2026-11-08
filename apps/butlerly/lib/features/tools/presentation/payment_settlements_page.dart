@@ -998,7 +998,9 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
           children: [
             if (pageCount > 1)
               Padding(
-                padding: const EdgeInsets.only(bottom: ButlerlySpacing.standard),
+                padding: const EdgeInsets.only(
+                  bottom: ButlerlySpacing.standard,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
