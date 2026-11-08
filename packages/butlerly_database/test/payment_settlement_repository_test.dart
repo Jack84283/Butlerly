@@ -445,8 +445,9 @@ void main() {
     );
   });
 
-  test('paging stays complete across scalar and aggregate batch boundaries', (
-    ) async {
+  test(
+    'paging stays complete across scalar and aggregate batch boundaries',
+    () async {
     final at = DateTime.utc(2026, 9, 1, 12);
     final stamp = at.toIso8601String();
     await database.connection.insert('provenances', {
@@ -501,8 +502,10 @@ void main() {
         offset: 895,
       ),
     );
-    expect(slice.map((t) => t.id.value).toList(),
-        all.skip(895).map((t) => t.id.value).toList());
+    expect(
+      slice.map((t) => t.id.value).toList(),
+      all.skip(895).map((t) => t.id.value).toList(),
+    );
 
     final settlementPage = await settlements.listTransactionsPage(
       _settlement(),
