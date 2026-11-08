@@ -57,7 +57,17 @@ class ToolsPage extends StatelessWidget {
                   icon: tool.icon,
                   title: tool.title,
                   subtitle: tool.description,
-                  onTap: () => context.push(tool.route),
+                  onTap: () {
+                    assert(() {
+                      if (tool.route == '/payment-settlements') {
+                        debugPrint(
+                          '[PaymentSettlements] device Tools tile tapped',
+                        );
+                      }
+                      return true;
+                    }());
+                    context.push(tool.route);
+                  },
                 ),
             ],
           ),
