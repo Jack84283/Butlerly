@@ -18,6 +18,8 @@ final class ButlerlyDatabase {
     this.targetVersion = databaseVersion,
   }) : assert(targetVersion >= 1 && targetVersion <= databaseVersion);
 
+  // Preserve compatibility with workspaces opened by early PR #400 builds.
+  // Migration 20 is now a no-op; settlement query changes were reverted.
   static const databaseVersion = 20;
 
   final DatabaseFactory factory;
@@ -36,13 +38,6 @@ final class ButlerlyDatabase {
   /// lowering the schema Butlerly opens.
   final int targetVersion;
   Database? _database;
-  static int _nextOpenSession = 0;
-  int _openSession = 0;
-
-  /// Process-local, monotonic identity of the currently opened SQLite
-  /// connection. Prevents comparing snapshots across close/reopen/restore.
-  int get openSession => _openSession;
-
   bool _restoreActivationActive = false;
 
   bool get isRestoreActivationActive => _restoreActivationActive;
@@ -142,7 +137,6 @@ final class ButlerlyDatabase {
           },
         ),
       );
-      _openSession = ++_nextOpenSession;
       if (seedSystemDataOnOpen) {
         if (_isDebugBuild) developer.log('Butlerly DB: seeding catalog');
         await seedSystemData();

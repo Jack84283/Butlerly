@@ -142,9 +142,6 @@ final class TransactionRepositoryQuery {
     this.needsReview,
     this.uncategorized = false,
     this.includeUndated = false,
-    this.excludeTransfers = false,
-    this.limit,
-    this.offset = 0,
   });
 
   final String? text;
@@ -168,11 +165,6 @@ final class TransactionRepositoryQuery {
   final bool? needsReview;
   final bool uncategorized;
   final bool includeUndated;
-  final bool excludeTransfers;
-
-  /// Optional SQLite-side bounds; null keeps existing full query behavior.
-  final int? limit;
-  final int offset;
 }
 
 abstract interface class PaymentSettlementRepository {

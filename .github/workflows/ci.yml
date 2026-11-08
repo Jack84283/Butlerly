@@ -45,27 +45,12 @@ jobs:
       - run: ./tool/setup.sh
       - run: ./tool/validate.sh flutter_application
 
-  # Focused, bounded regression gate for PR #400's cross-platform
-  # Payment Settlements navigation blocker. The full Flutter test suite runs
-  # separately and can take substantially longer to complete.
-  payment_settlements_regression:
-    name: Payment Settlements Regression
-    if: github.event_name == 'pull_request' && github.event.pull_request.number == 400
-    runs-on: ubuntu-latest
-    timeout-minutes: 12
-    steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-toolchain
-      - run: ./tool/setup.sh
-      - name: Test device and desktop Payment Settlements paths
-        run: ./tool/validate.sh payment_settlements
-
-  # Keep macOS runner usage low for ordinary PRs. Backup/Restore PR #396,
-  # desktop/audio PR #399, and Payment Settlements blocker PR #400 need
-  # native Apple checks before merge.
+  # Keep macOS runner usage low for ordinary PRs. Backup/Restore PR #396
+  # and desktop/audio PR #399 need native Apple checks before merge because
+  # they modify native integrations and platform plugin registration.
   ios_simulator:
     name: iOS Simulator
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && (github.event.pull_request.number == 396 || github.event.pull_request.number == 399 || github.event.pull_request.number == 400))
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && (github.event.pull_request.number == 396 || github.event.pull_request.number == 399))
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -75,7 +60,7 @@ jobs:
 
   ios_integration:
     name: iOS Integration Journeys
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && (github.event.pull_request.number == 396 || github.event.pull_request.number == 399 || github.event.pull_request.number == 400))
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && (github.event.pull_request.number == 396 || github.event.pull_request.number == 399))
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -100,7 +85,7 @@ jobs:
 
   macos_backup_smoke:
     name: macOS Backup & Restore Smoke Build
-    if: github.event_name == 'pull_request' && (github.event.pull_request.number == 396 || github.event.pull_request.number == 399 || github.event.pull_request.number == 400)
+    if: github.event_name == 'pull_request' && (github.event.pull_request.number == 396 || github.event.pull_request.number == 399)
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4

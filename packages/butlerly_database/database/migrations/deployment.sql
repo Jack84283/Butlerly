@@ -1120,9 +1120,6 @@ CREATE TABLE IF NOT EXISTS financial_profiles (
     );
 
 -- BUTLERLY_MIGRATION_TARGET: 20
--- Read-only acceleration for Payment Settlements with preserved legacy dates.
--- Both indexes are additive and do not rewrite historical observations.
-CREATE INDEX IF NOT EXISTS idx_settlement_source_trimmed_date
-  ON transactions(payment_source_id, TRIM(transaction_date));
-CREATE INDEX IF NOT EXISTS idx_settlement_source_occurred_at
-  ON transactions(payment_source_id, occurred_at);
+-- Compatibility-only: earlier PR #400 builds may have advanced
+-- local SQLite user_version to 20. Do not alter schema or user data.
+SELECT 1;

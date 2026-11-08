@@ -41,12 +41,6 @@ validate_flutter_application() (
   flutter build web
 )
 
-validate_payment_settlements() (
-  cd apps/butlerly
-  format_check
-  flutter test test/features/tools/payment_settlements_page_test.dart --reporter expanded --timeout 2m
-)
-
 validate_integration_test() (
   cd apps/butlerly
   flutter test -d "${BUTLERLY_IOS_DEVICE_ID:-macos}" integration_test/v1_journeys_test.dart
@@ -59,7 +53,7 @@ validate_ios_simulator() (
 
 validate_macos_backup() (
   cd apps/butlerly
-  flutter test test/core/data/raw_restore_service_test.dart test/core/data/atomic_evidence_publication_test.dart test/features/tools/payment_settlements_page_test.dart
+  flutter test test/core/data/raw_restore_service_test.dart test/core/data/atomic_evidence_publication_test.dart
   flutter build macos --debug
 )
 
@@ -90,9 +84,6 @@ case "${1:-all}" in
   flutter_application)
     validate_flutter_application
     ;;
-  payment_settlements)
-    validate_payment_settlements
-    ;;
   integration_test)
     validate_integration_test
     ;;
@@ -106,7 +97,7 @@ case "${1:-all}" in
     validate_macos_backup
     ;;
   *)
-    echo "Usage: $0 [all|finance_domain|database|finance_application|flutter_application|payment_settlements|integration_test|android_smoke|ios_simulator|macos_backup]" >&2
+    echo "Usage: $0 [all|finance_domain|database|finance_application|flutter_application|integration_test|android_smoke|ios_simulator|macos_backup]" >&2
     exit 2
     ;;
 esac

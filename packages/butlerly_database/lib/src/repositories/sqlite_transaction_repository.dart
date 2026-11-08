@@ -120,23 +120,7 @@ final class SqliteTransactionRepository
   }
 
   @override
-  Future<List<Transaction>> query(TransactionRepositoryQuery query) =>
-      queryWithExecutor(query, database.connection);
-
-  /// Query and hydrate under a caller-owned snapshot, using its executor for
-  /// every child-table lookup. Never fall back to database.connection while
-  /// inside a sqflite transaction (that would deadlock).
-  Future<List<Transaction>> queryWithExecutor(
-    TransactionRepositoryQuery query,
-    DatabaseExecutor executor,
-  ) async {
-    if (query.limit != null &&
-        (query.limit! <= 0 || query.limit! > 100)) {
-      throw ArgumentError('Transaction page limit must be 1..100');
-    }
-    if (query.offset < 0) {
-      throw ArgumentError('Transaction page offset must be nonnegative');
-    }
+  Future<List<Transaction>> query(TransactionRepositoryQuery query) async {
     final conditions = <String>[];
     final arguments = <Object?>[];
     final hasAuthoritativeTransactionIds = query.transactionIds != null;
@@ -251,10 +235,6 @@ final class SqliteTransactionRepository
       conditions.add('t.direction = ?');
       arguments.add(query.direction!.name);
     }
-    if (query.excludeTransfers) {
-      conditions.add('t.direction != ?');
-      arguments.add(TransactionDirection.transfer.name);
-    }
     if (query.status != null) {
       conditions.add('t.status = ?');
       arguments.add(query.status!.name);
@@ -267,12 +247,8 @@ final class SqliteTransactionRepository
       )''');
     }
 
-    final paginationClause = query.limit == null ? '' : 'LIMIT ? OFFSET ?';
-    if (query.limit != null) {
-      arguments.addAll([query.limit, query.offset]);
-    }
     try {
-      final rows = await executor.rawQuery(
+      final rows = await database.connection.rawQuery(
         '''SELECT DISTINCT t.* FROM transactions t
            LEFT JOIN merchants m ON m.id = t.merchant_id
            LEFT JOIN categories c ON c.id = t.category_id
@@ -283,14 +259,10 @@ final class SqliteTransactionRepository
                     CASE WHEN TRIM(COALESCE(t.transaction_date, '')) = ''
                          THEN julianday(t.occurred_at) END DESC,
                     TRIM(t.transaction_date) DESC,
-                    t.id
-           $paginationClause''',
+                    t.id''',
         arguments,
       );
-      // One set of batched child queries replaces four SQLite reads for
-      // every matched transaction. This is especially important when a
-      // statement period contains hundreds of imported transactions.
-      return await _hydrateRowsBatched(rows, executor: executor);
+      return await Future.wait(rows.map(_hydrate));
     } on DatabaseException catch (error) {
       throw mapDatabaseException(error, 'query transactions');
     }
@@ -314,19 +286,7 @@ final class SqliteTransactionRepository
          ) ORDER BY t.transaction_date DESC, t.id''',
       [TransactionStatus.active.name, ReviewIssueStatus.active.name],
     );
-    return _hydrateRowsBatched(rows);
-  }
-
-  // Hydrate matching transaction aggregates in chunks instead of firing
-  // four queries per row. Reuses the audited bulk strategy already used
-  // for Review, preserving transaction order, provenance, tags, review
-  // issues, normalized amounts, and complete dataset semantics.
-  Future<List<Transaction>> _hydrateRowsBatched(
-    List<Map<String, Object?>> rows, {
-    DatabaseExecutor? executor,
-  }) async {
     if (rows.isEmpty) return const [];
-    final connection = executor ?? database.connection;
     final ids = rows.map((row) => row['id']! as String).toList();
     final provenanceByTransaction = <String, List<Map<String, Object?>>>{};
     final tagsByTransaction = <String, List<Map<String, Object?>>>{};
@@ -335,7 +295,7 @@ final class SqliteTransactionRepository
     for (final chunk in _chunks(ids)) {
       final placeholders = List.filled(chunk.length, '?').join(', ');
       final args = [...chunk];
-      final provenanceRows = await connection.rawQuery(
+      final provenanceRows = await database.connection.rawQuery(
         '''SELECT p.*, tp.transaction_id FROM provenances p
            INNER JOIN transaction_provenances tp ON tp.provenance_id = p.id
            WHERE tp.transaction_id IN ($placeholders) ORDER BY p.captured_at''',
@@ -346,7 +306,7 @@ final class SqliteTransactionRepository
           row,
         );
       }
-      final tagRows = await connection.rawQuery(
+      final tagRows = await database.connection.rawQuery(
         'SELECT transaction_id, tag_id FROM transaction_tags '
         'WHERE transaction_id IN ($placeholders)',
         args,
@@ -354,7 +314,7 @@ final class SqliteTransactionRepository
       for (final row in tagRows) {
         (tagsByTransaction[row['transaction_id']! as String] ??= []).add(row);
       }
-      final issueRows = await connection.rawQuery(
+      final issueRows = await database.connection.rawQuery(
         'SELECT * FROM review_issues WHERE transaction_id IN ($placeholders) '
         'ORDER BY created_at',
         args,
@@ -362,7 +322,7 @@ final class SqliteTransactionRepository
       for (final row in issueRows) {
         (issuesByTransaction[row['transaction_id']! as String] ??= []).add(row);
       }
-      final normalizedRows = await connection.rawQuery(
+      final normalizedRows = await database.connection.rawQuery(
         '''SELECT n.*, r.id AS rate_id, r.from_currency, r.to_currency,
                   r.rate_coefficient, r.rate_scale, r.effective_at, r.source
            FROM normalized_money n LEFT JOIN exchange_rates r
