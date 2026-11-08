@@ -690,6 +690,7 @@ class _PaymentSettlementDetailPageState
   bool _summaryFailed = false;
   PaymentSettlementTransactionSummary? _comparisonSummary;
   String? _visibleSnapshotToken;
+  String? _requestedSummaryToken;
 
   @override
   void initState() {
@@ -808,6 +809,7 @@ class _PaymentSettlementDetailPageState
   ) {
     if (!detail.summaryPending || _summaryStarted) return;
     _summaryStarted = true;
+    _requestedSummaryToken = detail.snapshotToken;
     // The first page has already been resolved and can render before this
     // potentially long exact-decimal scan begins.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -855,6 +857,7 @@ class _PaymentSettlementDetailPageState
       _summaryFailed = false;
       _comparisonSummary = null;
       _visibleSnapshotToken = null;
+      _requestedSummaryToken = null;
     }
     final summaryGeneration = _summaryGeneration;
     final next = _load(page: page).timeout(_detailDeadline);
@@ -868,17 +871,18 @@ class _PaymentSettlementDetailPageState
       if (!mounted || generation != _detailGeneration) return;
       _visibleSnapshotToken = detail.snapshotToken;
       var activeSummaryGeneration = summaryGeneration;
-      final previous = _comparisonSummary;
       if (detail.summaryPending &&
-          previous != null &&
-          previous.snapshotToken != detail.snapshotToken) {
-        // The underlying transactions changed between page reads.
-        // Discard the cached total and load a fresh consistent snapshot.
+          _requestedSummaryToken != null &&
+          _requestedSummaryToken != detail.snapshotToken) {
+        // Also invalidate an IN-FLIGHT summary: _comparisonSummary is null
+        // while it runs. Comparing only completed summaries stranded the
+        // new page in an unavailable state after the old result returned.
         activeSummaryGeneration = ++_summaryGeneration;
         setState(() {
           _comparisonSummary = null;
           _summaryFailed = false;
           _summaryStarted = false;
+          _requestedSummaryToken = null;
         });
       }
       _scheduleExactSummary(detail, activeSummaryGeneration);
