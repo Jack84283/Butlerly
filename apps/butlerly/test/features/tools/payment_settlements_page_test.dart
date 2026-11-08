@@ -695,10 +695,8 @@ void main() {
           initialLocation: '/tools',
           routes: [
             ShellRoute(
-              builder: (_, state, child) => AdaptiveShell(
-                location: state.uri.toString(),
-                child: child,
-              ),
+              builder: (_, state, child) =>
+                  AdaptiveShell(location: state.uri.toString(), child: child),
               routes: [
                 GoRoute(path: '/tools', builder: (_, _) => const ToolsPage()),
                 GoRoute(
@@ -732,10 +730,7 @@ void main() {
         await tester.tap(find.text('Payment settlements'));
         await tester.pump();
         expect(find.byType(PaymentSettlementsPage), findsOneWidget);
-        expect(
-          find.byType(CircularProgressIndicator),
-          findsOneWidget,
-        );
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
         // Navigation must work even though the database never responds.
         router.pop();
         await tester.pumpAndSettle();
