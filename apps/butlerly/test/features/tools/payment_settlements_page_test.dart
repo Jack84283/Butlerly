@@ -679,6 +679,176 @@ void main() {
     },
   );
 
+  for (final width in [390.0, 1400.0]) {
+    testWidgets(
+      'Tools navigation remains responsive with a stalled settlement read '
+      'at $width',
+      (tester) async {
+        tester.view.physicalSize = Size(width, 900);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final settlements = registerServices([]);
+        settlements.blockedList = Completer<List<PaymentSettlement>>().future;
+
+        final router = GoRouter(
+          initialLocation: '/tools',
+          routes: [
+            ShellRoute(
+              builder: (_, state, child) => AdaptiveShell(
+                location: state.uri.toString(),
+                child: child,
+              ),
+              routes: [
+                GoRoute(path: '/tools', builder: (_, _) => const ToolsPage()),
+                GoRoute(
+                  path: '/payment-settlements',
+                  builder: (_, _) =>
+                      const Scaffold(body: PaymentSettlementsPage()),
+                ),
+              ],
+            ),
+            GoRoute(
+              path: '/help',
+              builder: (_, _) => const Scaffold(body: Text('Help')),
+            ),
+          ],
+        );
+        addTearDown(router.dispose);
+        await tester.pumpWidget(
+          MaterialApp.router(
+            routerConfig: router,
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Payment settlements'));
+        await tester.pump();
+        expect(find.byType(PaymentSettlementsPage), findsOneWidget);
+        expect(
+          find.byType(CircularProgressIndicator),
+          findsOneWidget,
+        );
+        // Navigation must work even though the database never responds.
+        router.pop();
+        await tester.pumpAndSettle();
+        expect(find.byType(ToolsPage), findsOneWidget);
+        expect(find.byType(PaymentSettlementsPage), findsNothing);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      'no premature Add Payment Source before card lookup at $width',
+      (tester) async {
+        tester.view.physicalSize = Size(width, 900);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final sources = _TestSources([
+          PaymentSource(
+            id: PaymentSourceId('existing-visa'),
+            name: 'Existing Visa',
+            type: PaymentSourceType.card,
+          ),
+        ]);
+        final pendingSources = Completer<List<PaymentSource>>();
+        sources.blockedList = pendingSources.future;
+        registerServices([], sourceRepository: sources);
+
+        await tester.pumpWidget(app());
+        await tester.pump();
+        await tester.pump();
+        expect(
+          find.byKey(const ValueKey('payment-settlements-add')),
+          findsOneWidget,
+        );
+        expect(
+          tester
+              .widget<IconButton>(
+                find.byKey(const ValueKey('payment-settlements-add')),
+              )
+              .onPressed,
+          isNull,
+        );
+        expect(find.text('Add payment source'), findsNothing);
+        expect(find.byType(PaymentSourcesPage), findsNothing);
+
+        pendingSources.complete(sources.sources);
+        await tester.pumpAndSettle();
+        expect(
+          tester
+              .widget<IconButton>(
+                find.byKey(const ValueKey('payment-settlements-add')),
+              )
+              .onPressed,
+          isNotNull,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
+  testWidgets('retry payment sources without reloading settlement history', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final sources = _TestSources([]);
+    sources.blockedList = Completer<List<PaymentSource>>().future;
+    final settlements = registerServices([], sourceRepository: sources);
+    settlements.values.add(
+      PaymentSettlement(
+        id: PaymentSettlementId('saved-history'),
+        paymentSourceId: PaymentSourceId('archived-card'),
+        payment: Money(
+          amount: DecimalValue.parse('15.00'),
+          currency: CurrencyCode('USD'),
+        ),
+        paymentDate: '2026-10-05',
+        periodStart: '2026-09-01',
+        periodEnd: '2026-09-30',
+        status: PaymentSettlementStatus.open,
+        createdAt: DateTime.utc(2026, 11, 7),
+        updatedAt: DateTime.utc(2026, 11, 7),
+      ),
+    );
+
+    await tester.pumpWidget(app());
+    await tester.pump();
+    await tester.pump();
+    expect(settlements.listCalls, 1);
+    await tester.pump(const Duration(seconds: 9));
+    await tester.pump();
+    expect(find.text('Try again'), findsAtLeastNWidgets(1));
+
+    sources.blockedList = null;
+    await tester.tap(find.widgetWithText(FilledButton, 'Try again'));
+    await tester.pumpAndSettle();
+
+    expect(settlements.listCalls, 1);
+    expect(sources.listCalls, 2);
+    expect(
+      find.byKey(const ValueKey('desktop-payment-settlement-saved-history')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('desktop-settlement-payment-sources')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('a stalled initial read resolves to retry instead of spinning', (
     tester,
   ) async {
@@ -791,10 +961,13 @@ class _TestSources extends Fake implements PaymentSourceRepository {
 class _TestSettlements extends Fake implements PaymentSettlementRepository {
   final values = <PaymentSettlement>[];
   Future<List<PaymentSettlement>>? blockedList;
+  int listCalls = 0;
 
   @override
-  Future<List<PaymentSettlement>> listAll() =>
-      blockedList ?? Future.value(List.of(values));
+  Future<List<PaymentSettlement>> listAll() {
+    listCalls++;
+    return blockedList ?? Future.value(List.of(values));
+  }
 
   @override
   Future<PaymentSettlement?> findById(PaymentSettlementId id) async =>
