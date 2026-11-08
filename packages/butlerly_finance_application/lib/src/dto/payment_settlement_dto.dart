@@ -55,6 +55,8 @@ final class PaymentSettlementDetailDto {
     this.totalCount,
     this.paged = false,
     this.completeRecordedTotal,
+    this.summaryPending = false,
+    this.snapshotToken = '',
   });
 
   final PaymentSettlementDto settlement;
@@ -67,6 +69,23 @@ final class PaymentSettlementDetailDto {
   /// Exact total over all matched rows, not merely the visible page.
   /// A null value means currencies/adjustments prevent comparison.
   final Money? completeRecordedTotal;
+
+  /// True while the exact whole-period summary loads independently.
+  final bool summaryPending;
+
+  /// Count/latest-update signature from the page's read transaction.
+  final String snapshotToken;
+
+  PaymentSettlementDetailDto withRecordedTotal(Money? value) =>
+      PaymentSettlementDetailDto(
+        settlement: settlement,
+        transactions: transactions,
+        totalCount: totalCount,
+        paged: paged,
+        completeRecordedTotal: value,
+        summaryPending: false,
+        snapshotToken: snapshotToken,
+      );
 
   int get transactionCount => totalCount ?? transactions.length;
 
