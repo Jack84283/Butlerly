@@ -665,11 +665,18 @@ class _SettlementDesktopSources extends StatelessWidget {
               spacing: ButlerlySpacing.compact,
               runSpacing: ButlerlySpacing.compact,
               children: [
-                for (final source in activeCards)
+                // A restored workspace can contain hundreds of sources.
+                // Only show a compact preview; View all opens the full list.
+                for (final source in activeCards.take(12))
                   Chip(
                     key: ValueKey('settlement-eligible-source-${source.id.value}'),
                     avatar: const Icon(Icons.credit_card_outlined, size: 18),
                     label: Text(paymentSourceDisplayLabel(source)),
+                  ),
+                if (activeCards.length > 12)
+                  Chip(
+                    key: const ValueKey('settlement-more-active-sources'),
+                    label: Text('+${activeCards.length - 12}'),
                   ),
               ],
             ),
