@@ -48,6 +48,11 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
   int _devicePage = 0;
   bool _loadingSourceAction = false;
   static const int _devicePageSize = 20;
+  int _devicePageEnd(int length) {
+    final end = (_devicePage + 1) * _devicePageSize;
+    return end > length ? length : end;
+  }
+
   String? _selectedDesktopSettlementId;
   // A detail route opened before the optional legacy source-label lookup
   // finishes must update without navigating away or requerying the database.
@@ -483,6 +488,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
                   onAction: () => _onAddSettlement(data),
                 ),
             ] else if (data.settlements.isNotEmpty) ...[
+              if (_sourcesError) _sourceLoadState(context),
               // Keep device rendering bounded even with a large imported
               // workspace. The previous eager loop built every card at once.
               if (data.settlements.length > _devicePageSize)
@@ -491,13 +497,15 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
                   children: [
                     Text(
                       '${_devicePage * _devicePageSize + 1}–'
-                      '${(_devicePage + 1) * _devicePageSize > data.settlements.length ? data.settlements.length : (_devicePage + 1) * _devicePageSize} / '
+                      '${_devicePageEnd(data.settlements.length)} / '
                       '${data.settlements.length}',
                       key: const ValueKey('device-settlement-page-range'),
                     ),
                     IconButton(
                       key: const ValueKey('device-settlement-page-previous'),
-                      tooltip: MaterialLocalizations.of(context).previousPageTooltip,
+                      tooltip: MaterialLocalizations.of(
+                        context,
+                      ).previousPageTooltip,
                       onPressed: _devicePage == 0
                           ? null
                           : () => setState(() => _devicePage--),
@@ -505,7 +513,9 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
                     ),
                     IconButton(
                       key: const ValueKey('device-settlement-page-next'),
-                      tooltip: MaterialLocalizations.of(context).nextPageTooltip,
+                      tooltip: MaterialLocalizations.of(
+                        context,
+                      ).nextPageTooltip,
                       onPressed: (_devicePage + 1) * _devicePageSize >=
                               data.settlements.length
                           ? null
