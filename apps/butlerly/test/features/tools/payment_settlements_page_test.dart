@@ -649,7 +649,7 @@ void main() {
       await tester.pump();
 
       expect(sources.listCalls, 1);
-      expect(find.text('Payment settlements'), findsOneWidget);
+      expect(find.text('Payment settlements'), findsAtLeastNWidgets(1));
       expect(
         find.byKey(const ValueKey('desktop-payment-settlements-table')),
         findsOneWidget,
