@@ -23,6 +23,7 @@ import '../entities/transaction_rule.dart';
 import '../entities/user_preference.dart';
 import '../value_objects/currency_code.dart';
 import '../value_objects/domain_id.dart';
+import '../value_objects/money.dart';
 
 abstract interface class TransactionRepository {
   Future<void> save(Transaction transaction);
