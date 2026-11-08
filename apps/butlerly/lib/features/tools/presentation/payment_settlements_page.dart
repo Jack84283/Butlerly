@@ -841,10 +841,12 @@ class _PaymentSettlementDetailPageState
     });
   }
 
-  Future<void> _loadPage(int page) async {
+  Future<void> _loadPage(int page, {bool refresh = false}) async {
     if (!mounted || page < 0) return;
     final generation = ++_detailGeneration;
-    if (page == 0) {
+    // Going back from page 2 to page 1 must reuse the exact summary,
+    // rather than triggering the full-period scan a second time.
+    if (refresh || _detail == null) {
       ++_summaryGeneration;
       _summaryStarted = false;
       _summaryFailed = false;
@@ -867,7 +869,7 @@ class _PaymentSettlementDetailPageState
     await _loadOptionalLabels(next, languageCode, generation);
   }
 
-  Future<void> _refresh() => _loadPage(0);
+  Future<void> _refresh() => _loadPage(0, refresh: true);
 
   Future<void> _openTransaction(TransactionDto transaction) async {
     final changed = await Navigator.of(context).push<bool>(
