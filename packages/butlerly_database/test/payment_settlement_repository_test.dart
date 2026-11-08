@@ -542,8 +542,9 @@ void main() {
     expect(settlementPage.recordedTotal, _money('1131.25'));
   });
 
-  test('mixed currencies make the complete recorded total unavailable', (
-    ) async {
+  test(
+    'mixed currencies make the complete recorded total unavailable',
+    () async {
     final settlement = _settlement();
     await settlements.save(settlement);
     await transactions.save(
