@@ -271,16 +271,6 @@ class _PaymentSettlementDetailPageState
   TransactionMasterData _masterData = const TransactionMasterData();
   String? _loadedLanguageCode;
 
-  // Keep the settlement totals computed over the complete period while
-  // building only one bounded page of rows in either layout.
-  static const int _transactionPageSize = 20;
-  int _transactionPage = 0;
-
-  void _showTransactionPage(int page, int pageCount) {
-    if (page < 0 || page >= pageCount) return;
-    setState(() => _transactionPage = page);
-  }
-
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -317,10 +307,7 @@ class _PaymentSettlementDetailPageState
       widget.finance,
       languageCode: languageCode,
     );
-    setState(() {
-      _transactionPage = 0;
-      _detail = detail;
-    });
+    setState(() => _detail = detail);
     await detail;
     final refreshedMasterData = await masterData;
     if (!mounted || _loadedLanguageCode != languageCode) return;
@@ -488,19 +475,6 @@ class _PaymentSettlementDetailPageState
         final sourceName =
             widget.sourceNames[settlement.paymentSourceId] ??
             settlement.paymentSourceId;
-        final transactionCount = detail.transactions.length;
-        final pageCount =
-            (transactionCount + _transactionPageSize - 1) ~/
-            _transactionPageSize;
-        final currentPage = pageCount == 0
-            ? 0
-            : (_transactionPage < pageCount
-                  ? _transactionPage
-                  : pageCount - 1);
-        final first = currentPage * _transactionPageSize;
-        final next = first + _transactionPageSize;
-        final last = next < transactionCount ? next : transactionCount;
-        final visibleTransactions = detail.transactions.sublist(first, last);
         return Scaffold(
           body: ButlerlyPage(
             title: context.l10n.text('paymentSettlement'),
@@ -530,41 +504,6 @@ class _PaymentSettlementDetailPageState
                   {'count': '${detail.transactionCount}'},
                 ),
               ),
-              if (pageCount > 1)
-                Row(
-                  key: const ValueKey('settlement-transaction-pagination'),
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Text(
-                      '${first + 1}–$last / $transactionCount',
-                      key: const ValueKey('settlement-transaction-page-range'),
-                    ),
-                    IconButton(
-                      key: const ValueKey('settlement-transaction-previous'),
-                      tooltip: MaterialLocalizations.of(
-                        context,
-                      ).previousPageTooltip,
-                      onPressed: currentPage == 0
-                          ? null
-                          : () => _showTransactionPage(
-                              currentPage - 1,
-                              pageCount,
-                            ),
-                      icon: const Icon(Icons.chevron_left_rounded),
-                    ),
-                    IconButton(
-                      key: const ValueKey('settlement-transaction-next'),
-                      tooltip: MaterialLocalizations.of(context).nextPageTooltip,
-                      onPressed: currentPage + 1 >= pageCount
-                          ? null
-                          : () => _showTransactionPage(
-                              currentPage + 1,
-                              pageCount,
-                            ),
-                      icon: const Icon(Icons.chevron_right_rounded),
-                    ),
-                  ],
-                ),
               if (detail.transactions.isEmpty)
                 ButlerlyEmptyState(
                   icon: Icons.receipt_long_outlined,
@@ -573,7 +512,7 @@ class _PaymentSettlementDetailPageState
                 )
               else if (desktop)
                 ButlerlyDesktopTransactionTableCard(
-                  transactions: visibleTransactions,
+                  transactions: detail.transactions,
                   masterData: _masterData,
                   paymentSourceNames: widget.sourceNames,
                   onTap: _openTransaction,
@@ -582,7 +521,7 @@ class _PaymentSettlementDetailPageState
                 ButlerlyTransactionInnerCard(
                   child: ButlerlyTransactionList(
                     children: [
-                      for (final transaction in visibleTransactions)
+                      for (final transaction in detail.transactions)
                         TransactionRow(
                           transaction: transaction,
                           masterData: _masterData,

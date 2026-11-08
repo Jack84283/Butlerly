@@ -18,9 +18,7 @@ final class ButlerlyDatabase {
     this.targetVersion = databaseVersion,
   }) : assert(targetVersion >= 1 && targetVersion <= databaseVersion);
 
-  // Preserve compatibility with workspaces opened by early PR #400 builds.
-  // Migration 20 is now a no-op; settlement query changes were reverted.
-  static const databaseVersion = 20;
+  static const databaseVersion = 19;
 
   final DatabaseFactory factory;
   final String path;

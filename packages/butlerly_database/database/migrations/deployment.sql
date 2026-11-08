@@ -1,4 +1,4 @@
--- Butlerly SQLite upgrade deployment, schema targets 2 through 20.
+-- Butlerly SQLite upgrade deployment, schema targets 2 through 19.
 -- Each block is run ONLY when upgrading to that target version, in order.
 -- Never run this whole file using sqlite3 .read against an existing database.
 -- Fresh installations use database/schema/v1.sql plus the marked hardening block.
@@ -1118,8 +1118,3 @@ CREATE TABLE IF NOT EXISTS financial_profiles (
         OR (monthly_savings_target IS NOT NULL AND monthly_savings_target_currency IS NOT NULL)
       )
     );
-
--- BUTLERLY_MIGRATION_TARGET: 20
--- Compatibility-only: earlier PR #400 builds may have advanced
--- local SQLite user_version to 20. Do not alter schema or user data.
-SELECT 1;
