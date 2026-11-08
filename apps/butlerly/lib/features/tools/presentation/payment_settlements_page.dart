@@ -1113,7 +1113,7 @@ class _PaymentSettlementDetailPageState
             summary != null &&
             summary.snapshotToken == initialDetail.snapshotToken;
         final detail = initialDetail.summaryPending && summaryMatches
-            ? initialDetail.withRecordedTotal(summary.recordedTotal)
+            ? initialDetail.withRecordedTotal(summary!.recordedTotal)
             : initialDetail;
         final comparisonPending =
             initialDetail.summaryPending &&
