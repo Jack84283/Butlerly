@@ -142,6 +142,9 @@ final class TransactionRepositoryQuery {
     this.needsReview,
     this.uncategorized = false,
     this.includeUndated = false,
+    this.excludeTransfers = false,
+    this.limit,
+    this.offset = 0,
   });
 
   final String? text;
@@ -165,6 +168,11 @@ final class TransactionRepositoryQuery {
   final bool? needsReview;
   final bool uncategorized;
   final bool includeUndated;
+  final bool excludeTransfers;
+
+  /// Optional SQLite-side bounds; null keeps existing full query behavior.
+  final int? limit;
+  final int offset;
 }
 
 abstract interface class PaymentSettlementRepository {
@@ -195,6 +203,31 @@ final class PaymentSettlementPage {
 /// implement PaymentSettlementRepository without an interface break.
 abstract interface class PaginatedPaymentSettlementRepository {
   Future<PaymentSettlementPage> listPage({
+    required int offset,
+    required int limit,
+  });
+}
+
+/// Bounded settlement-detail data, with exact totals independent of the
+/// visible transaction page. Financial amounts use decimal Money, never REAL.
+final class PaymentSettlementTransactionPage {
+  const PaymentSettlementTransactionPage({
+    required this.rows,
+    required this.totalCount,
+    required this.recordedTotal,
+  });
+
+  final List<Transaction> rows;
+  final int totalCount;
+  final Money? recordedTotal;
+}
+
+/// Optional capability; legacy repositories retain their original behavior.
+abstract interface class PaginatedPaymentSettlementTransactionRepository {
+  Future<PaymentSettlementTransactionPage> listTransactionsPage(
+    PaymentSettlement settlement, {
+    DateTime? occurredAtFrom,
+    DateTime? occurredAtToExclusive,
     required int offset,
     required int limit,
   });
