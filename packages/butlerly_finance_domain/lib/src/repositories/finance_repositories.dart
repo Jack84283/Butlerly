@@ -215,11 +215,32 @@ final class PaymentSettlementTransactionPage {
     required this.rows,
     required this.totalCount,
     required this.recordedTotal,
+    this.summaryPending = false,
+    this.snapshotToken = '',
   });
 
   final List<Transaction> rows;
   final int totalCount;
   final Money? recordedTotal;
+
+  /// Initial page can paint before the exact whole-period summary finishes.
+  final bool summaryPending;
+
+  /// Read-snapshot signature used to reject a summary from changed data.
+  final String snapshotToken;
+}
+
+/// A separate exact-decimal summary, computed within its own read snapshot.
+final class PaymentSettlementTransactionSummary {
+  const PaymentSettlementTransactionSummary({
+    required this.totalCount,
+    required this.recordedTotal,
+    required this.snapshotToken,
+  });
+
+  final int totalCount;
+  final Money? recordedTotal;
+  final String snapshotToken;
 }
 
 /// Optional capability; legacy repositories retain their original behavior.
@@ -230,6 +251,14 @@ abstract interface class PaginatedPaymentSettlementTransactionRepository {
     DateTime? occurredAtToExclusive,
     required int offset,
     required int limit,
+  });
+}
+
+abstract interface class PaymentSettlementSummaryRepository {
+  Future<PaymentSettlementTransactionSummary> summarizeTransactions(
+    PaymentSettlement settlement, {
+    DateTime? occurredAtFrom,
+    DateTime? occurredAtToExclusive,
   });
 }
 
