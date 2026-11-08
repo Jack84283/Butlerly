@@ -650,6 +650,63 @@ void main() {
     },
   );
 
+  testWidgets(
+    'device detail updates source labels after a delayed metadata read',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final sources = _TestSources([]);
+      final pending = Completer<List<PaymentSource>>();
+      sources.blockedList = pending.future;
+      final settlements = registerServices([], sourceRepository: sources);
+      settlements.values.add(
+        PaymentSettlement(
+          id: PaymentSettlementId('delayed-label'),
+          paymentSourceId: PaymentSourceId('legacy-source'),
+          payment: Money(
+            amount: DecimalValue.parse('12.00'),
+            currency: CurrencyCode('USD'),
+          ),
+          paymentDate: '2026-10-05',
+          periodStart: '2026-09-01',
+          periodEnd: '2026-09-30',
+          status: PaymentSettlementStatus.open,
+          createdAt: DateTime.utc(2026, 11, 7),
+          updatedAt: DateTime.utc(2026, 11, 7),
+        ),
+      );
+
+      await tester.pumpWidget(app());
+      await tester.pump();
+      await tester.pump();
+      await tester.tap(find.text('legacy-source').first);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
+      expect(find.byType(PaymentSettlementDetailPage), findsOneWidget);
+
+      pending.complete([
+        PaymentSource(
+          id: PaymentSourceId('legacy-source'),
+          name: 'Imported Visa',
+          type: PaymentSourceType.card,
+        ),
+      ]);
+      await tester.pump();
+      await tester.pump();
+      expect(
+        find.descendant(
+          of: find.byType(PaymentSettlementDetailPage),
+          matching: find.text('Imported Visa'),
+        ),
+        findsWidgets,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('desktop paints before reads and never overlaps SQLite reads', (
     tester,
   ) async {
@@ -1048,6 +1105,13 @@ class _TestSettlements extends Fake implements PaymentSettlementRepository {
     values.removeWhere((value) => value.id == settlement.id);
     values.add(settlement);
   }
+
+  @override
+  Future<List<Transaction>> listTransactions(
+    PaymentSettlement settlement, {
+    DateTime? occurredAtFrom,
+    DateTime? occurredAtToExclusive,
+  }) async => const [];
 }
 
 class _UnusedTransactions extends Fake implements TransactionRepository {}
