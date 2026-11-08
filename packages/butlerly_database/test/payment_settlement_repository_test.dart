@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:butlerly_database/butlerly_database.dart';
@@ -562,11 +563,38 @@ void main() {
       expect(settlementPage.totalCount, 905);
       expect(settlementPage.rows, hasLength(5));
       expect(settlementPage.summaryPending, isTrue);
-      final summary = await settlements.summarizeTransactions(
+      final paused = Completer<void>();
+      final release = Completer<void>();
+      final streaming = SqlitePaymentSettlementRepository(
+        database,
+        summaryBatchCheckpoint: () async {
+          if (!paused.isCompleted) paused.complete();
+          await release.future;
+        },
+      );
+      final summaryFuture = streaming.summarizeTransactions(
         _settlement(),
         occurredAtFrom: DateTime.utc(2026, 8, 15),
         occurredAtToExclusive: DateTime.utc(2026, 9, 15),
       );
+      await paused.future.timeout(const Duration(seconds: 10));
+      try {
+        // The exact summary is deliberately suspended between batches.
+        // A page read must nevertheless finish: no SQLite transaction may
+        // remain open while the summary is paused.
+        final concurrentPage = await streaming.listTransactionsPage(
+          _settlement(),
+          occurredAtFrom: DateTime.utc(2026, 8, 15),
+          occurredAtToExclusive: DateTime.utc(2026, 9, 15),
+          offset: 0,
+          limit: 20,
+        ).timeout(const Duration(seconds: 10));
+        expect(concurrentPage.rows, hasLength(20));
+        expect(concurrentPage.snapshotToken, settlementPage.snapshotToken);
+      } finally {
+        release.complete();
+      }
+      final summary = await summaryFuture;
       expect(summary.recordedTotal, _money('1131.25'));
       expect(summary.snapshotToken, settlementPage.snapshotToken);
     },
