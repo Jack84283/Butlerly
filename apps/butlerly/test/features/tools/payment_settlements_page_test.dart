@@ -814,6 +814,33 @@ void main() {
         updatedAt: now,
       ),
     );
+    for (var index = 1; index < 41; index++) {
+      repository.transactionResults.add(
+        Transaction(
+          id: TransactionId('progressive-purchase-$index'),
+          timing: KnownTransactionTime(DateTime.utc(2026, 9, 15)),
+          money: Money(
+            amount: DecimalValue.parse('5.00'),
+            currency: CurrencyCode('USD'),
+          ),
+          direction: TransactionDirection.expense,
+          sourceType: TransactionSourceType.import,
+          paymentSourceId: PaymentSourceId('legacy-import'),
+          description: 'Progressive purchase $index',
+          transactionDate: '2026-09-15',
+          provenance: [
+            Provenance(
+              id: ProvenanceId('progressive-import-$index'),
+              sourceType: ProvenanceSourceType.import,
+              capturedAt: now,
+              originalRepresentation: 'statement row $index',
+            ),
+          ],
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+    }
     services.registerSingleton<FinanceServices>(
       FinanceServices(
         _UnusedTransactions(),
