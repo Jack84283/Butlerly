@@ -273,10 +273,12 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
     }
     if (!mounted || created != true) return;
 
-    await _refresh();
+    // Only reload the legacy source metadata after explicit creation.
+    // A settlement-history refresh intentionally does not query sources.
+    final history = _displayData ?? await _data;
+    if (!mounted || history == null) return;
+    await _loadSources(history, _loadGeneration);
     if (!mounted) return;
-    // _data contains settlement history only. The eligible cards live in
-    // _displayData after the separate Payment Sources query completes.
     final updated = _displayData;
     if (_sourcesLoaded &&
         updated != null &&
