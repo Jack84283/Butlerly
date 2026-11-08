@@ -141,7 +141,9 @@ class _RestoreRecoveryRequiredPageState
                                   ),
                                 )
                               : const Icon(Icons.restore),
-                          label: Text(context.l10n.backupText('recoverButlerly')),
+                          label: Text(
+                            context.l10n.backupText('recoverButlerly'),
+                          ),
                         ),
                       if (hasSafetyCopy) const SizedBox(height: 12),
                       ButlerlyDestructiveButton(

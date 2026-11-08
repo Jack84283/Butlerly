@@ -155,7 +155,9 @@ class _PortableBackupRecoveryRequiredPageState
                         icon: _busy
                             ? const SizedBox.square(
                                 dimension: 18,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Icon(Icons.folder_open),
                         label: Text(
@@ -167,7 +169,9 @@ class _PortableBackupRecoveryRequiredPageState
                         onPressed: _busy
                             ? null
                             : () => setState(() => _failed = false),
-                        child: Text(context.l10n.backupText('keepRecoveryData')),
+                        child: Text(
+                          context.l10n.backupText('keepRecoveryData'),
+                        ),
                       ),
                       TextButton(
                         onPressed: _busy ? null : _eraseLocalData,

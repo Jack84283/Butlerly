@@ -153,9 +153,7 @@ void main() {
         AppTheme.light.extension<ButlerlySemanticColors>()!.secondaryText,
       );
       expect(
-        tester.getTopRight(
-          find.byKey(const ValueKey('page-context-help')),
-        ).dx,
+        tester.getTopRight(find.byKey(const ValueKey('page-context-help'))).dx,
         closeTo(tester.getTopRight(headerContent).dx, 0.01),
       );
       final brand = find.text('Butlerly');
@@ -238,9 +236,7 @@ void main() {
 
     final summaryCard = find.byKey(const ValueKey('home-summary-card'));
     expect(
-      tester.getTopRight(
-        find.byKey(const ValueKey('page-context-help')),
-      ).dx,
+      tester.getTopRight(find.byKey(const ValueKey('page-context-help'))).dx,
       closeTo(tester.getTopRight(summaryCard).dx, 0.01),
     );
   });
@@ -1247,9 +1243,7 @@ void main() {
       expect(tester.getSize(monthSurface).height, greaterThanOrEqualTo(44));
       final headerContent = find.byKey(const ValueKey('home-header-content'));
       expect(
-        tester.getTopRight(
-          find.byKey(const ValueKey('page-context-help')),
-        ).dx,
+        tester.getTopRight(find.byKey(const ValueKey('page-context-help'))).dx,
         closeTo(tester.getTopRight(headerContent).dx, 0.01),
       );
       await tester.scrollUntilVisible(
