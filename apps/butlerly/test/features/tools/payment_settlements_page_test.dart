@@ -585,6 +585,71 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets(
+    'desktop settlement detail stays in a closeable right panel',
+    (tester) async {
+      tester.view.physicalSize = const Size(1400, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final sources = _TestSources([]);
+      final pending = Completer<List<PaymentSource>>();
+      sources.blockedList = pending.future;
+      final settlements = registerServices([], sourceRepository: sources);
+      settlements.values.add(
+        PaymentSettlement(
+          id: PaymentSettlementId('panel-record'),
+          paymentSourceId: PaymentSourceId('legacy-source'),
+          payment: Money(
+            amount: DecimalValue.parse('42.50'),
+            currency: CurrencyCode('USD'),
+          ),
+          paymentDate: '2026-10-05',
+          periodStart: '2026-09-01',
+          periodEnd: '2026-09-30',
+          status: PaymentSettlementStatus.open,
+          createdAt: DateTime.utc(2026, 11, 7),
+          updatedAt: DateTime.utc(2026, 11, 7),
+        ),
+      );
+
+      await tester.pumpWidget(app());
+      await tester.pump();
+      await tester.pump();
+      final row = find.byKey(
+        const ValueKey('desktop-payment-settlement-panel-record'),
+      );
+      expect(row, findsOneWidget);
+      await tester.ensureVisible(row);
+      await tester.tap(row);
+      await tester.pump();
+      expect(
+        find.byKey(const ValueKey('desktop-transaction-detail-panel')),
+        findsOneWidget,
+      );
+      expect(find.byType(PaymentSettlementsPage), findsOneWidget);
+      expect(find.byType(PaymentSettlementDetailPage), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('desktop-payment-settlements-table')),
+        findsOneWidget,
+      );
+      await tester.tap(
+        find.byKey(const ValueKey('desktop-settlement-detail-close')),
+      );
+      await tester.pump();
+      expect(
+        find.byKey(const ValueKey('desktop-transaction-detail-panel')),
+        findsNothing,
+      );
+      expect(find.byType(PaymentSettlementsPage), findsOneWidget);
+      pending.complete([]);
+      await tester.pump();
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('desktop paints before reads and never overlaps SQLite reads', (
     tester,
   ) async {
