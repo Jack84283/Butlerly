@@ -1422,7 +1422,10 @@ void main() {
                     routes: [
                       GoRoute(
                         path: '/tools',
-                        builder: (_, _) => const ToolsPage(),
+                        pageBuilder: (_, _) => const NoTransitionPage<void>(
+                          name: 'primary-shell:tools',
+                          child: ToolsPage(),
+                        ),
                       ),
                     ],
                   ),
