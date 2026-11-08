@@ -206,7 +206,7 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
     // Settlement prerequisite card entry uses a regular route on devices,
     // keeping all fields and Save reachable without a nested modal barrier.
     final useEditorPage = widget.fromPaymentSettlement && !_isDesktop(context);
-    final WidgetBuilder editorBuilder = (editorContext) => StatefulBuilder(
+    Widget editorBuilder(BuildContext editorContext) => StatefulBuilder(
       builder: (context, setDialogState) => ButlerlySheet(
         title: useEditorPage
             ? null
