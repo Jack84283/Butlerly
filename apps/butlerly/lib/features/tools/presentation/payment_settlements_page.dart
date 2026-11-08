@@ -389,6 +389,10 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
       setState(() => _selectedDesktopSettlementId = settlement.id);
       return;
     }
+    assert(() {
+      debugPrint('[PaymentSettlements] device detail navigation started');
+      return true;
+    }());
     final changed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => PaymentSettlementDetailPage(
