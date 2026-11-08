@@ -31,10 +31,7 @@ void main() {
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
 
-        final original = ThemeData(
-          useMaterial3: true,
-          brightness: brightness,
-        );
+        final original = ThemeData(useMaterial3: true, brightness: brightness);
         await tester.pumpWidget(
           MaterialApp(
             theme: original,
@@ -63,10 +60,7 @@ void main() {
           find.byKey(const ValueKey('desktop-font-probe')),
         );
         final baseSize = original.textTheme.bodyMedium!.fontSize!;
-        expect(
-          actual.style?.fontSize,
-          width >= 1024 ? baseSize + 1 : baseSize,
-        );
+        expect(actual.style?.fontSize, width >= 1024 ? baseSize + 1 : baseSize);
         expect(tester.takeException(), isNull);
       });
     }

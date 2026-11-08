@@ -81,10 +81,7 @@ void main() {
             addButton.style?.iconSize?.resolve({}),
             ButlerlySize.standardIcon,
           );
-          expect(
-            addButton.style?.shape?.resolve({}),
-            isA<CircleBorder>(),
-          );
+          expect(addButton.style?.shape?.resolve({}), isA<CircleBorder>());
 
           // The Add and Help circles must have the exact same theme colors
           // on device/desktop and in light/dark mode.
@@ -92,8 +89,8 @@ void main() {
           final helpDecoration = tester.widget<DecoratedBox>(
             find.descendant(of: help, matching: find.byType(DecoratedBox)),
           );
-          final helpBackground = (helpDecoration.decoration as BoxDecoration)
-              .color;
+          final helpBackground =
+              (helpDecoration.decoration as BoxDecoration).color;
           final helpIcon = tester.widget<Icon>(
             find.descendant(
               of: help,

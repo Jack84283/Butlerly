@@ -314,10 +314,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                           textKey: const ValueKey('desktop-home-greeting'),
                           maxLines: 1,
                           textAlign: TextAlign.start,
-                          style: (
-                            theme.appBarTheme.titleTextStyle ??
-                            theme.textTheme.titleMedium
-                          )?.copyWith(fontSize: 18),
+                          style:
+                              (theme.appBarTheme.titleTextStyle ??
+                                      theme.textTheme.titleMedium)
+                                  ?.copyWith(fontSize: 18),
                         ),
                       ),
                       IconButton(
