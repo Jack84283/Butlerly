@@ -189,8 +189,9 @@ void main() {
     expect(await transactions.findById(TransactionId('purchase')), isNotNull);
   });
 
-  test('large settlement history preserves every row and stable ordering', (
-    ) async {
+  test(
+    'large settlement history preserves every row and stable ordering',
+    () async {
       final now = DateTime.utc(2026, 9, 20, 12);
       for (var index = 0; index < 260; index++) {
         await settlements.save(
