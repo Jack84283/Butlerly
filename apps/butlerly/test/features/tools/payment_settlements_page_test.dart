@@ -1358,6 +1358,125 @@ void main() {
     );
   }
 
+  testWidgets(
+    'nested primary shell keeps device Back responsive during stalled read',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final settlements = registerServices([]);
+      final pending = Completer<List<PaymentSettlement>>();
+      settlements.blockedList = pending.future;
+      final visibility = PrimaryShellVisibilityController();
+      addTearDown(visibility.dispose);
+
+      Widget primaryPlaceholder(String title) =>
+          Scaffold(body: Center(child: Text(title)));
+
+      final router = GoRouter(
+        initialLocation: '/tools',
+        routes: [
+          ShellRoute(
+            builder: (_, state, child) =>
+                AdaptiveShell(location: state.uri.toString(), child: child),
+            routes: [
+              StatefulShellRoute.indexedStack(
+                builder: (_, _, navigationShell) => PrimaryNavigationShell(
+                  navigationShell: navigationShell,
+                  visibilityController: visibility,
+                ),
+                branches: [
+                  StatefulShellBranch(
+                    routes: [
+                      GoRoute(
+                        path: '/',
+                        builder: (_, _) => primaryPlaceholder('Home'),
+                      ),
+                    ],
+                  ),
+                  StatefulShellBranch(
+                    routes: [
+                      GoRoute(
+                        path: '/transactions',
+                        builder: (_, _) => primaryPlaceholder('Transactions'),
+                      ),
+                    ],
+                  ),
+                  StatefulShellBranch(
+                    routes: [
+                      GoRoute(
+                        path: '/add',
+                        builder: (_, _) => primaryPlaceholder('Add'),
+                      ),
+                    ],
+                  ),
+                  StatefulShellBranch(
+                    observers: [
+                      PrimaryShellNavigatorObserver(
+                        branchIndex: 3,
+                        controller: visibility,
+                      ),
+                    ],
+                    routes: [
+                      GoRoute(
+                        path: '/tools',
+                        builder: (_, _) => const ToolsPage(),
+                      ),
+                    ],
+                  ),
+                  StatefulShellBranch(
+                    routes: [
+                      GoRoute(
+                        path: '/settings',
+                        builder: (_, _) => primaryPlaceholder('More'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              GoRoute(
+                path: '/payment-settlements',
+                builder: (_, _) =>
+                    const Scaffold(body: PaymentSettlementsPage()),
+              ),
+            ],
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp.router(
+          routerConfig: router,
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Payment settlements'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 350));
+      expect(find.byType(PaymentSettlementsPage), findsOneWidget);
+      expect(find.byType(BackButton), findsOneWidget);
+      await tester.tap(find.byType(BackButton));
+      await tester.pumpAndSettle();
+      expect(find.byType(ToolsPage), findsOneWidget);
+      expect(find.byType(PaymentSettlementsPage), findsNothing);
+
+      pending.complete([]);
+      await tester.pump();
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('retry payment sources without reloading settlement history', (
     tester,
   ) async {
