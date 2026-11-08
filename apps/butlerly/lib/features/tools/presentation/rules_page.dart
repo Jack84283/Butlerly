@@ -338,7 +338,7 @@ class _RulesPageState extends State<RulesPage> {
         actions: [
           ButlerlyHeaderAddButton(
             buttonKey: const ValueKey('rules-add'),
-          closeToHelp: true,
+            closeToHelp: true,
             label: context.l10n.text('addRule'),
             onPressed: () => _edit(data),
           ),
