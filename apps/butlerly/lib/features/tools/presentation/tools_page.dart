@@ -73,7 +73,15 @@ class _ToolPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ButlerlyCard(
-    onTap: () => context.push(tool.route),
+    onTap: () {
+      assert(() {
+        if (tool.route == '/payment-settlements') {
+          debugPrint('[PaymentSettlements] desktop Tools tile tapped');
+        }
+        return true;
+      }());
+      context.push(tool.route);
+    },
     semanticLabel: '${tool.title}, ${tool.description}',
     child: SizedBox(
       height: 148,
