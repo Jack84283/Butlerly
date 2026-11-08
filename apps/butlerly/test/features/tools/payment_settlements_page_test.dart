@@ -999,9 +999,8 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(repository.summaryCalls, 1);
-    final token = repository.lastCancellation;
-    expect(token, isNotNull);
-    expect(token!.isCancelled, isFalse);
+    final token = repository.lastCancellation!;
+    expect(token.isCancelled, isFalse);
 
     await tester.pumpWidget(const SizedBox.shrink());
     expect(token.isCancelled, isTrue);
