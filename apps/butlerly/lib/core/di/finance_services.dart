@@ -560,6 +560,13 @@ final class FinanceServices {
                paymentSettlements,
                preferences: preferences,
              ),
+       getPaymentSettlementSummary = paymentSettlements == null ||
+               paymentSettlements is! PaymentSettlementSummaryRepository
+           ? null
+           : GetPaymentSettlementSummary(
+               paymentSettlements,
+               preferences: preferences,
+             ),
        setPaymentSettlementStatus = paymentSettlements == null
            ? null
            : SetPaymentSettlementStatus(
@@ -765,6 +772,7 @@ final class FinanceServices {
   final ListPaymentSettlementsPage? listPaymentSettlementsPage;
   final GetPaymentSettlementDetail? getPaymentSettlementDetail;
   final GetPaymentSettlementDetailPage? getPaymentSettlementDetailPage;
+  final GetPaymentSettlementSummary? getPaymentSettlementSummary;
   final SetPaymentSettlementStatus? setPaymentSettlementStatus;
   final DeletePaymentSettlement? deletePaymentSettlement;
   final ListMerchantAliases? listMerchantAliases;
