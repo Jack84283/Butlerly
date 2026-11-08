@@ -691,6 +691,18 @@ class _PaymentSettlementDetailPageState
   PaymentSettlementTransactionSummary? _comparisonSummary;
   String? _visibleSnapshotToken;
   String? _requestedSummaryToken;
+  PaymentSettlementSummaryCancellation? _summaryCancellation;
+
+  void _cancelPendingSummary() {
+    _summaryCancellation?.cancel();
+    _summaryCancellation = null;
+  }
+
+  @override
+  void dispose() {
+    _cancelPendingSummary();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -810,6 +822,8 @@ class _PaymentSettlementDetailPageState
     if (!detail.summaryPending || _summaryStarted) return;
     _summaryStarted = true;
     _requestedSummaryToken = detail.snapshotToken;
+    final cancellation = PaymentSettlementSummaryCancellation();
+    _summaryCancellation = cancellation;
     // The first page has already been resolved and can render before this
     // potentially long exact-decimal scan begins.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -820,8 +834,15 @@ class _PaymentSettlementDetailPageState
         return;
       }
       try {
-        final result = await summarize(widget.settlementId).timeout(
+        final result = await summarize(
+          widget.settlementId,
+          cancellation: cancellation,
+        ).timeout(
           const Duration(seconds: 90),
+          onTimeout: () {
+            cancellation.cancel();
+            throw StateError('Settlement comparison timed out');
+          },
         );
         if (!mounted || generation != _summaryGeneration) return;
         if (result case ApplicationSuccess<PaymentSettlementTransactionSummary>(
@@ -852,6 +873,7 @@ class _PaymentSettlementDetailPageState
     // Going back from page 2 to page 1 must reuse the exact summary,
     // rather than triggering the full-period scan a second time.
     if (refresh || _detail == null) {
+      _cancelPendingSummary();
       ++_summaryGeneration;
       _summaryStarted = false;
       _summaryFailed = false;
@@ -877,6 +899,7 @@ class _PaymentSettlementDetailPageState
         // Also invalidate an IN-FLIGHT summary: _comparisonSummary is null
         // while it runs. Comparing only completed summaries stranded the
         // new page in an unavailable state after the old result returned.
+        _cancelPendingSummary();
         activeSummaryGeneration = ++_summaryGeneration;
         setState(() {
           _comparisonSummary = null;
