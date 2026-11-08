@@ -1405,6 +1405,8 @@ void main() {
         await tester.pump();
       }
       expect(find.byType(PaymentSettlementsPage), findsOneWidget);
+      expect(appRouter.routeInformationProvider.value.uri.path,
+          '/payment-settlements');
       expect(find.text(source.id.value), findsOneWidget);
       expect(find.byType(BackButton), findsOneWidget);
 
@@ -1421,6 +1423,7 @@ void main() {
         await tester.pump();
       }
       expect(find.byType(PaymentSettlementDetailPage), findsOneWidget);
+      expect(find.text('Device navigation settlement'), findsOneWidget);
       expect(find.byType(BackButton), findsOneWidget);
 
       // Back must work even if an optional comparison is still loading.
@@ -1430,6 +1433,7 @@ void main() {
       await tester.tap(find.byType(BackButton).first);
       await tester.pumpAndSettle();
       expect(find.byType(ToolsPage), findsOneWidget);
+      expect(appRouter.routeInformationProvider.value.uri.path, '/tools');
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
     },
