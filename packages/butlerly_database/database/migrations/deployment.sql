@@ -1,4 +1,4 @@
--- Butlerly SQLite upgrade deployment, schema targets 2 through 19.
+-- Butlerly SQLite upgrade deployment, schema targets 2 through 20.
 -- Each block is run ONLY when upgrading to that target version, in order.
 -- Never run this whole file using sqlite3 .read against an existing database.
 -- Fresh installations use database/schema/v1.sql plus the marked hardening block.
@@ -1118,3 +1118,11 @@ CREATE TABLE IF NOT EXISTS financial_profiles (
         OR (monthly_savings_target IS NOT NULL AND monthly_savings_target_currency IS NOT NULL)
       )
     );
+
+-- BUTLERLY_MIGRATION_TARGET: 20
+-- Read-only acceleration for Payment Settlements with preserved legacy dates.
+-- Both indexes are additive and do not rewrite historical observations.
+CREATE INDEX IF NOT EXISTS idx_settlement_source_trimmed_date
+  ON transactions(payment_source_id, TRIM(transaction_date));
+CREATE INDEX IF NOT EXISTS idx_settlement_source_occurred_at
+  ON transactions(payment_source_id, occurred_at);
