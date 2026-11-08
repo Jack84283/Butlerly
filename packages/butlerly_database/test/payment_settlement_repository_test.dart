@@ -814,20 +814,22 @@ void main() {
         String id, {
         String? transactionDate,
         required String occurredAt,
-      }) => database.connection.insert('transactions', {
-        'id': id,
-        'occurred_at': occurredAt,
-        'amount_coefficient': '125',
-        'amount_scale': 2,
-        'currency': 'USD',
-        'direction': TransactionDirection.expense.name,
-        'source_type': TransactionSourceType.import.name,
-        'status': TransactionStatus.active.name,
-        'payment_source_id': 'visa',
-        'transaction_date': transactionDate,
-        'created_at': occurredAt,
-        'updated_at': occurredAt,
-      }).then((_) {});
+      }) async {
+        await database.connection.insert('transactions', {
+          'id': id,
+          'occurred_at': occurredAt,
+          'amount_coefficient': '125',
+          'amount_scale': 2,
+          'currency': 'USD',
+          'direction': TransactionDirection.expense.name,
+          'source_type': TransactionSourceType.import.name,
+          'status': TransactionStatus.active.name,
+          'payment_source_id': 'visa',
+          'transaction_date': transactionDate,
+          'created_at': occurredAt,
+          'updated_at': occurredAt,
+        });
+      }
       await seed(
         'legacy-padded-date',
         transactionDate: ' 2026-09-01 ',
