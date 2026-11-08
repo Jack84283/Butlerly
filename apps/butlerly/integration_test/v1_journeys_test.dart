@@ -1441,8 +1441,10 @@ void main() {
         await tester.pump();
       }
       expect(find.byType(PaymentSettlementsPage), findsOneWidget);
-      expect(appRouter.routeInformationProvider.value.uri.path,
-          '/payment-settlements');
+      expect(
+        appRouter.routeInformationProvider.value.uri.path,
+        '/payment-settlements',
+      );
       expect(find.text(source.id.value), findsOneWidget);
       expect(find.byType(BackButton), findsOneWidget);
 
