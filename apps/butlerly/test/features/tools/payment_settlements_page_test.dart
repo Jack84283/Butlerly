@@ -700,6 +700,62 @@ void main() {
     },
   );
 
+  testWidgets('device entry displays only one history page at a time', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final sourceRepository = _TestSources([]);
+    final settlements = registerServices(
+      [],
+      sourceRepository: sourceRepository,
+    );
+    settlements.values.addAll(
+      List.generate(
+        75,
+        (index) => PaymentSettlement(
+          id: PaymentSettlementId('page-$index'),
+          paymentSourceId: PaymentSourceId('legacy-$index'),
+          payment: Money(
+            amount: DecimalValue.parse('42.00'),
+            currency: CurrencyCode('USD'),
+          ),
+          paymentDate: '2026-10-05',
+          periodStart: '2026-09-01',
+          periodEnd: '2026-09-30',
+          status: PaymentSettlementStatus.open,
+          createdAt: DateTime.utc(2026, 11, 7),
+          updatedAt: DateTime.utc(2026, 11, 7),
+        ),
+      ),
+    );
+
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    expect(sourceRepository.listCalls, 0);
+    expect(find.text('legacy-0'), findsOneWidget);
+    expect(find.text('legacy-19'), findsOneWidget);
+    expect(find.text('legacy-20'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('device-settlement-page-range')),
+      findsOneWidget,
+    );
+    final next = find.byKey(
+      const ValueKey('device-settlement-page-next'),
+    );
+    expect(tester.widget<IconButton>(next).onPressed, isNotNull);
+    await tester.tap(next);
+    await tester.pumpAndSettle();
+    expect(find.text('legacy-0'), findsNothing);
+    expect(find.text('legacy-20'), findsOneWidget);
+    expect(find.text('legacy-40'), findsNothing);
+    expect(sourceRepository.listCalls, 0);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('desktop paints before reads and never overlaps SQLite reads', (
     tester,
   ) async {
