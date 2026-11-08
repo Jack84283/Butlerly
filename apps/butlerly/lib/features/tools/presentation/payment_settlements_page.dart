@@ -685,6 +685,10 @@ class _PaymentSettlementDetailPageState
   bool _masterDataReady = false;
   int _detailGeneration = 0;
   int _transactionPage = 0;
+  int _summaryGeneration = 0;
+  bool _summaryStarted = false;
+  bool _summaryFailed = false;
+  PaymentSettlementTransactionSummary? _comparisonSummary;
 
   @override
   void initState() {
@@ -797,14 +801,67 @@ class _PaymentSettlementDetailPageState
     }
   }
 
+  void _scheduleExactSummary(
+    PaymentSettlementDetailDto detail,
+    int generation,
+  ) {
+    if (!detail.summaryPending || _summaryStarted) return;
+    _summaryStarted = true;
+    // The first page has already been resolved and can render before this
+    // potentially long exact-decimal scan begins.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted || generation != _summaryGeneration) return;
+      final summarize = widget.finance.getPaymentSettlementSummary;
+      if (summarize == null) {
+        setState(() => _summaryFailed = true);
+        return;
+      }
+      try {
+        final result = await summarize(widget.settlementId).timeout(
+          const Duration(seconds: 90),
+        );
+        if (!mounted || generation != _summaryGeneration) return;
+        if (result case ApplicationSuccess<PaymentSettlementTransactionSummary>(
+          value: final summary,
+        )) {
+          // Never attach an exact amount from a different SQLite snapshot.
+          // Data can change during import or editing while this scan runs.
+          if (summary.snapshotToken == detail.snapshotToken) {
+            setState(() => _comparisonSummary = summary);
+          } else {
+            setState(() => _summaryFailed = true);
+          }
+        } else {
+          setState(() => _summaryFailed = true);
+        }
+      } catch (_) {
+        if (!mounted || generation != _summaryGeneration) return;
+        setState(() => _summaryFailed = true);
+      }
+    });
+  }
+
   Future<void> _loadPage(int page) async {
     if (!mounted || page < 0) return;
     final generation = ++_detailGeneration;
+    if (page == 0) {
+      ++_summaryGeneration;
+      _summaryStarted = false;
+      _summaryFailed = false;
+      _comparisonSummary = null;
+    }
+    final summaryGeneration = _summaryGeneration;
     final next = _load(page: page).timeout(_detailDeadline);
     setState(() {
       _detail = next;
       _transactionPage = page;
     });
+    // On success, schedule the summary after the first visible detail frame.
+    // Do not await it while navigating or changing transaction pages.
+    next.then((detail) {
+      if (!mounted || generation != _detailGeneration) return;
+      _scheduleExactSummary(detail, summaryGeneration);
+    }, onError: (Object error, StackTrace stackTrace) {});
     final languageCode =
         _loadedLanguageCode ?? Localizations.localeOf(context).languageCode;
     await _loadOptionalLabels(next, languageCode, generation);
@@ -1029,7 +1086,18 @@ class _PaymentSettlementDetailPageState
             ),
           );
         }
-        final detail = snapshot.requireData;
+        final initialDetail = snapshot.requireData;
+        final summary = _comparisonSummary;
+        final summaryMatches =
+            summary != null &&
+            summary.snapshotToken == initialDetail.snapshotToken;
+        final detail = initialDetail.summaryPending && summaryMatches
+            ? initialDetail.withRecordedTotal(summary.recordedTotal)
+            : initialDetail;
+        final comparisonPending =
+            initialDetail.summaryPending &&
+            !summaryMatches &&
+            !_summaryFailed;
         final settlement = detail.settlement;
         final transactionPageCount =
             (detail.transactionCount + _transactionPageSize - 1) ~/
@@ -1070,7 +1138,10 @@ class _PaymentSettlementDetailPageState
               ButlerlySectionHeader(
                 title: context.l10n.text('paymentSettlementComparison'),
               ),
-              _SettlementComparisonCard(detail: detail),
+              _SettlementComparisonCard(
+                detail: detail,
+                loading: comparisonPending,
+              ),
               ButlerlySectionHeader(
                 title: context.l10n.text(
                   'paymentSettlementPeriodTransactions',
@@ -1598,9 +1669,13 @@ class _SettlementCard extends StatelessWidget {
 }
 
 class _SettlementComparisonCard extends StatelessWidget {
-  const _SettlementComparisonCard({required this.detail});
+  const _SettlementComparisonCard({
+    required this.detail,
+    this.loading = false,
+  });
 
   final PaymentSettlementDetailDto detail;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
@@ -1619,7 +1694,9 @@ class _SettlementComparisonCard extends StatelessWidget {
         children: [
           _SummaryLine(
             label: context.l10n.text('recordedTransactionTotal'),
-            value: recorded == null
+            value: loading
+                ? context.l10n.text('loading')
+                : recorded == null
                 ? context.l10n.text('comparisonUnavailable')
                 : amount(recorded.amount),
           ),
@@ -1629,7 +1706,9 @@ class _SettlementComparisonCard extends StatelessWidget {
           ),
           _SummaryLine(
             label: context.l10n.text('paymentSettlementDifference'),
-            value: difference == null
+            value: loading
+                ? context.l10n.text('loading')
+                : difference == null
                 ? context.l10n.text('comparisonUnavailable')
                 : amount(difference.amount),
           ),
