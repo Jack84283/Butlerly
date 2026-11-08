@@ -32,146 +32,144 @@ void main() {
   test(
     'persists settlement-owned payment facts without a transaction',
     () async {
-        final settlement = _settlement();
-
-        await settlements.save(settlement);
-        final loaded = await settlements.findById(settlement.id);
-
-        expect(loaded, isNotNull);
-        expect(loaded!.paymentSourceId, PaymentSourceId('visa'));
-        expect(loaded.payment.amount, DecimalValue.parse('2846.72'));
-        expect(loaded.payment.currency, CurrencyCode('USD'));
-        expect(loaded.paymentDate, '2026-09-20');
-        expect(loaded.periodStart, '2026-08-15');
-        expect(loaded.periodEnd, '2026-09-14');
-        expect(loaded.statementBalance, settlement.statementBalance);
-
-        final transactionRows = await database.connection.query('transactions');
-        expect(transactionRows, isEmpty);
-      },
-    );
-
-    test('resolves activity dynamically and excludes transfers', () async {
       final settlement = _settlement();
+
       await settlements.save(settlement);
-      await transactions.save(
-        _transaction(
-          id: 'inside-expense',
-          sourceId: 'visa',
-          transactionDate: '2026-09-01',
-        ),
-      );
-      await transactions.save(
-        _transaction(
-          id: 'inside-refund',
-          sourceId: 'visa',
-          transactionDate: '2026-09-02',
-          direction: TransactionDirection.refund,
-        ),
-      );
-      await transactions.save(
-        _transaction(
-          id: 'inside-transfer',
-          sourceId: 'visa',
-          transactionDate: '2026-09-03',
-          direction: TransactionDirection.transfer,
-        ),
-      );
-      await transactions.save(
-        _transaction(
-          id: 'outside',
-          sourceId: 'visa',
-          transactionDate: '2026-09-15',
-        ),
-      );
-      await transactions.save(
-        _transaction(
-          id: 'other-source',
-          sourceId: 'amex',
-          transactionDate: '2026-09-01',
-        ),
-      );
+      final loaded = await settlements.findById(settlement.id);
 
-      final first = await settlements.listTransactions(settlement);
-      expect(first.map((value) => value.id.value).toSet(), {
-        'inside-expense',
-        'inside-refund',
-      });
+      expect(loaded, isNotNull);
+      expect(loaded!.paymentSourceId, PaymentSourceId('visa'));
+      expect(loaded.payment.amount, DecimalValue.parse('2846.72'));
+      expect(loaded.payment.currency, CurrencyCode('USD'));
+      expect(loaded.paymentDate, '2026-09-20');
+      expect(loaded.periodStart, '2026-08-15');
+      expect(loaded.periodEnd, '2026-09-14');
+      expect(loaded.statementBalance, settlement.statementBalance);
 
-      await transactions.save(
-        _transaction(
-          id: 'late-import',
-          sourceId: 'visa',
-          transactionDate: '2026-08-20',
-        ),
-      );
-
-      final refreshed = await settlements.listTransactions(settlement);
-      expect(refreshed.map((value) => value.id.value).toSet(), {
-        'inside-expense',
-        'inside-refund',
-        'late-import',
-      });
+      final transactionRows = await database.connection.query('transactions');
+      expect(transactionRows, isEmpty);
     },
   );
+
+  test('resolves activity dynamically and excludes transfers', () async {
+    final settlement = _settlement();
+    await settlements.save(settlement);
+    await transactions.save(
+      _transaction(
+        id: 'inside-expense',
+        sourceId: 'visa',
+        transactionDate: '2026-09-01',
+      ),
+    );
+    await transactions.save(
+      _transaction(
+        id: 'inside-refund',
+        sourceId: 'visa',
+        transactionDate: '2026-09-02',
+        direction: TransactionDirection.refund,
+      ),
+    );
+    await transactions.save(
+      _transaction(
+        id: 'inside-transfer',
+        sourceId: 'visa',
+        transactionDate: '2026-09-03',
+        direction: TransactionDirection.transfer,
+      ),
+    );
+    await transactions.save(
+      _transaction(
+        id: 'outside',
+        sourceId: 'visa',
+        transactionDate: '2026-09-15',
+      ),
+    );
+    await transactions.save(
+      _transaction(
+        id: 'other-source',
+        sourceId: 'amex',
+        transactionDate: '2026-09-01',
+      ),
+    );
+
+    final first = await settlements.listTransactions(settlement);
+    expect(first.map((value) => value.id.value).toSet(), {
+      'inside-expense',
+      'inside-refund',
+    });
+
+    await transactions.save(
+      _transaction(
+        id: 'late-import',
+        sourceId: 'visa',
+        transactionDate: '2026-08-20',
+      ),
+    );
+
+    final refreshed = await settlements.listTransactions(settlement);
+    expect(refreshed.map((value) => value.id.value).toSet(), {
+      'inside-expense',
+      'inside-refund',
+      'late-import',
+    });
+  });
 
   test(
     'includes timing-only activity when application supplies period bounds',
     () async {
-        final settlement = _settlement();
-        await settlements.save(settlement);
-        await transactions.save(
-          _transaction(
-            id: 'timing-only-inside',
-            sourceId: 'visa',
-            transactionDate: null,
-            occurredAt: DateTime.utc(2026, 9, 14, 23),
-          ),
-        );
-        await transactions.save(
-          _transaction(
-            id: 'timing-only-outside',
-            sourceId: 'visa',
-            transactionDate: null,
-            occurredAt: DateTime.utc(2026, 9, 15),
-          ),
-        );
-
-        final result = await settlements.listTransactions(
-          settlement,
-          occurredAtFrom: DateTime.utc(2026, 8, 15),
-          occurredAtToExclusive: DateTime.utc(2026, 9, 15),
-        );
-
-        expect(result.map((value) => value.id.value), ['timing-only-inside']);
-      },
-    );
-
-    test('updates payment amount and date directly on the settlement', () async {
-      await settlements.save(_settlement());
-
-      final at = DateTime.utc(2026, 9, 21, 12);
-      await settlements.save(
-        PaymentSettlement(
-          id: PaymentSettlementId('settlement-1'),
-          paymentSourceId: PaymentSourceId('visa'),
-          payment: _money('2900.00'),
-          paymentDate: '2026-09-21',
-          periodStart: '2026-08-15',
-          periodEnd: '2026-09-14',
-          status: PaymentSettlementStatus.open,
-          createdAt: DateTime.utc(2026, 9, 20, 12),
-          updatedAt: at,
+      final settlement = _settlement();
+      await settlements.save(settlement);
+      await transactions.save(
+        _transaction(
+          id: 'timing-only-inside',
+          sourceId: 'visa',
+          transactionDate: null,
+          occurredAt: DateTime.utc(2026, 9, 14, 23),
+        ),
+      );
+      await transactions.save(
+        _transaction(
+          id: 'timing-only-outside',
+          sourceId: 'visa',
+          transactionDate: null,
+          occurredAt: DateTime.utc(2026, 9, 15),
         ),
       );
 
-      final loaded = await settlements.findById(
-        PaymentSettlementId('settlement-1'),
+      final result = await settlements.listTransactions(
+        settlement,
+        occurredAtFrom: DateTime.utc(2026, 8, 15),
+        occurredAtToExclusive: DateTime.utc(2026, 9, 15),
       );
-      expect(loaded!.payment.amount, DecimalValue.parse('2900.00'));
-      expect(loaded.paymentDate, '2026-09-21');
+
+      expect(result.map((value) => value.id.value), ['timing-only-inside']);
     },
   );
+
+  test('updates payment amount and date directly on the settlement', () async {
+    await settlements.save(_settlement());
+
+    final at = DateTime.utc(2026, 9, 21, 12);
+    await settlements.save(
+      PaymentSettlement(
+        id: PaymentSettlementId('settlement-1'),
+        paymentSourceId: PaymentSourceId('visa'),
+        payment: _money('2900.00'),
+        paymentDate: '2026-09-21',
+        periodStart: '2026-08-15',
+        periodEnd: '2026-09-14',
+        status: PaymentSettlementStatus.open,
+        createdAt: DateTime.utc(2026, 9, 20, 12),
+        updatedAt: at,
+      ),
+    );
+
+    final loaded = await settlements.findById(
+      PaymentSettlementId('settlement-1'),
+    );
+    expect(loaded!.payment.amount, DecimalValue.parse('2900.00'));
+    expect(loaded.paymentDate, '2026-09-21');
+  });
 
   test('deleting a settlement does not delete ordinary transactions', () async {
     await settlements.save(_settlement());
@@ -195,72 +193,71 @@ void main() {
   test(
     'large settlement history preserves every row and stable ordering',
     () async {
-        final now = DateTime.utc(2026, 9, 20, 12);
-        for (var index = 0; index < 260; index++) {
-          await settlements.save(
-            PaymentSettlement(
-              id: PaymentSettlementId('restored-$index'),
-              paymentSourceId: PaymentSourceId('visa'),
-              payment: _money('10.00'),
-              paymentDate: '2026-09-20',
-              periodStart: '2026-08-15',
-              periodEnd: '2026-09-14',
-              status: PaymentSettlementStatus.open,
-              createdAt: now,
-              updatedAt: now,
-            ),
-          );
-        }
-
-        final listed = await settlements.listAll();
-        final ids = listed.map((value) => value.id.value).toList();
-        final expected = [
-          for (var index = 0; index < 260; index++) 'restored-$index',
-        ]..sort();
-        expect(ids, expected);
-        expect(ids.toSet(), hasLength(260));
-      },
-    );
-
-    test('SQL pages bound settlement loading without losing history', () async {
-      final at = DateTime.utc(2026, 11, 8);
-      for (var index = 0; index < 53; index++) {
+      final now = DateTime.utc(2026, 9, 20, 12);
+      for (var index = 0; index < 260; index++) {
         await settlements.save(
           PaymentSettlement(
-            id: PaymentSettlementId('page-${index.toString().padLeft(3, '0')}'),
+            id: PaymentSettlementId('restored-$index'),
             paymentSourceId: PaymentSourceId('visa'),
-            payment: _money('11.00'),
+            payment: _money('10.00'),
             paymentDate: '2026-09-20',
             periodStart: '2026-08-15',
             periodEnd: '2026-09-14',
             status: PaymentSettlementStatus.open,
-            createdAt: at,
-            updatedAt: at,
+            createdAt: now,
+            updatedAt: now,
           ),
         );
       }
 
-      final first = await settlements.listPage(offset: 0, limit: 20);
-      final second = await settlements.listPage(offset: 20, limit: 20);
-      final third = await settlements.listPage(offset: 40, limit: 20);
-      expect(first.totalCount, 53);
-      expect(second.totalCount, 53);
-      expect(third.totalCount, 53);
-      expect(first.rows, hasLength(20));
-      expect(second.rows, hasLength(20));
-      expect(third.rows, hasLength(13));
-      expect(first.rows.first.id.value, 'page-000');
-      expect(second.rows.first.id.value, 'page-020');
-      expect(third.rows.last.id.value, 'page-052');
-      expect(
-        [...first.rows, ...second.rows, ...third.rows]
-            .map((settlement) => settlement.id.value)
-            .toSet(),
-        hasLength(53),
-      );
-      expect(await settlements.listAll(), hasLength(53));
+      final listed = await settlements.listAll();
+      final ids = listed.map((value) => value.id.value).toList();
+      final expected = [
+        for (var index = 0; index < 260; index++) 'restored-$index',
+      ]..sort();
+      expect(ids, expected);
+      expect(ids.toSet(), hasLength(260));
     },
   );
+
+  test('SQL pages bound settlement loading without losing history', () async {
+    final at = DateTime.utc(2026, 11, 8);
+    for (var index = 0; index < 53; index++) {
+      await settlements.save(
+        PaymentSettlement(
+          id: PaymentSettlementId('page-${index.toString().padLeft(3, '0')}'),
+          paymentSourceId: PaymentSourceId('visa'),
+          payment: _money('11.00'),
+          paymentDate: '2026-09-20',
+          periodStart: '2026-08-15',
+          periodEnd: '2026-09-14',
+          status: PaymentSettlementStatus.open,
+          createdAt: at,
+          updatedAt: at,
+        ),
+      );
+    }
+
+    final first = await settlements.listPage(offset: 0, limit: 20);
+    final second = await settlements.listPage(offset: 20, limit: 20);
+    final third = await settlements.listPage(offset: 40, limit: 20);
+    expect(first.totalCount, 53);
+    expect(second.totalCount, 53);
+    expect(third.totalCount, 53);
+    expect(first.rows, hasLength(20));
+    expect(second.rows, hasLength(20));
+    expect(third.rows, hasLength(13));
+    expect(first.rows.first.id.value, 'page-000');
+    expect(second.rows.first.id.value, 'page-020');
+    expect(third.rows.last.id.value, 'page-052');
+    expect(
+      [...first.rows, ...second.rows, ...third.rows]
+          .map((settlement) => settlement.id.value)
+          .toSet(),
+      hasLength(53),
+    );
+    expect(await settlements.listAll(), hasLength(53));
+  });
 
   test(
     'transaction pages match full history with exact period totals',
@@ -656,88 +653,93 @@ void main() {
     },
   );
 
-  test('changed data cannot reuse a previous exact-summary snapshot', () async {
-    final settlement = _settlement();
-    await settlements.save(settlement);
-    await transactions.save(
-      _transaction(
-        id: 'changed-amount',
-        sourceId: 'visa',
-        transactionDate: '2026-09-01',
-      ),
-    );
-    final page = await settlements.listTransactionsPage(
-      settlement,
-      offset: 0,
-      limit: 20,
-    );
-    final before = await settlements.summarizeTransactions(settlement);
-    expect(before.snapshotToken, page.snapshotToken);
-    expect(before.recordedTotal, _money('10.00'));
-
-    await database.connection.update(
-      'transactions',
-      {
-        'amount_coefficient': '2500',
-        'amount_scale': 2,
-        // Deliberately keep updated_at unchanged. The database revision
-        // must still reject an old exact-summary snapshot.
-      },
-      where: 'id = ?',
-      whereArgs: ['changed-amount'],
-    );
-    final after = await settlements.summarizeTransactions(settlement);
-    expect(after.totalCount, page.totalCount);
-    expect(after.recordedTotal, _money('25.00'));
-    expect(after.snapshotToken, isNot(page.snapshotToken));
-    expect(
-      (await settlements.listTransactionsPage(
+  test(
+    'changed data cannot reuse a previous exact-summary snapshot',
+    () async {
+      final settlement = _settlement();
+      await settlements.save(settlement);
+      await transactions.save(
+        _transaction(
+          id: 'changed-amount',
+          sourceId: 'visa',
+          transactionDate: '2026-09-01',
+        ),
+      );
+      final page = await settlements.listTransactionsPage(
         settlement,
         offset: 0,
         limit: 20,
-      )).snapshotToken,
-      after.snapshotToken,
-    );
-  });
+      );
+      final before = await settlements.summarizeTransactions(settlement);
+      expect(before.snapshotToken, page.snapshotToken);
+      expect(before.recordedTotal, _money('10.00'));
 
-  test('reopening SQLite invalidates all prior settlement snapshot tokens', (
-    ) async {
-    final settlement = _settlement();
-    await transactions.save(
-      _transaction(
-        id: 'same-after-reopen',
-        sourceId: 'visa',
-        transactionDate: '2026-09-01',
-      ),
-    );
-    final first = await settlements.listTransactionsPage(
-      settlement,
-      offset: 0,
-      limit: 20,
-    );
-    final session = database.openSession;
-    await database.close();
-    // An in-memory database intentionally gets the same contents again,
-    // proving that the connection epoch — not the transaction count alone —
-    // separates the two calculation sessions.
-    await database.open(seedSystemDataOnOpen: false);
-    await _insertPaymentSource(database, 'visa', 'Visa');
-    await transactions.save(
-      _transaction(
-        id: 'same-after-reopen',
-        sourceId: 'visa',
-        transactionDate: '2026-09-01',
-      ),
-    );
-    final second = await settlements.listTransactionsPage(
-      settlement,
-      offset: 0,
-      limit: 20,
-    );
-    expect(second.totalCount, first.totalCount);
-    expect(database.openSession, greaterThan(session));
-    expect(second.snapshotToken, isNot(first.snapshotToken));
-  });
+      await database.connection.update(
+        'transactions',
+        {
+          'amount_coefficient': '2500',
+          'amount_scale': 2,
+          // Deliberately keep updated_at unchanged. The database revision
+          // must still reject an old exact-summary snapshot.
+        },
+        where: 'id = ?',
+        whereArgs: ['changed-amount'],
+      );
+      final after = await settlements.summarizeTransactions(settlement);
+      expect(after.totalCount, page.totalCount);
+      expect(after.recordedTotal, _money('25.00'));
+      expect(after.snapshotToken, isNot(page.snapshotToken));
+      expect(
+        (await settlements.listTransactionsPage(
+          settlement,
+          offset: 0,
+          limit: 20,
+        )).snapshotToken,
+        after.snapshotToken,
+      );
+    },
+  );
+
+  test(
+    'reopening SQLite invalidates all prior settlement snapshot tokens',
+    () async {
+      final settlement = _settlement();
+      await transactions.save(
+        _transaction(
+          id: 'same-after-reopen',
+          sourceId: 'visa',
+          transactionDate: '2026-09-01',
+        ),
+      );
+      final first = await settlements.listTransactionsPage(
+        settlement,
+        offset: 0,
+        limit: 20,
+      );
+      final session = database.openSession;
+      await database.close();
+      // An in-memory database intentionally gets the same contents again,
+      // proving that the connection epoch — not the transaction count alone —
+      // separates the two calculation sessions.
+      await database.open(seedSystemDataOnOpen: false);
+      await _insertPaymentSource(database, 'visa', 'Visa');
+      await transactions.save(
+        _transaction(
+          id: 'same-after-reopen',
+          sourceId: 'visa',
+          transactionDate: '2026-09-01',
+        ),
+      );
+      final second = await settlements.listTransactionsPage(
+        settlement,
+        offset: 0,
+        limit: 20,
+      );
+      expect(second.totalCount, first.totalCount);
+      expect(database.openSession, greaterThan(session));
+      expect(second.snapshotToken, isNot(first.snapshotToken));
+    },
+  );
 
   test('does not create a persisted settlement membership table', () async {
     final rows = await database.connection.rawQuery(
