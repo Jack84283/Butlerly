@@ -122,7 +122,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
   }
 
   Future<void> _refresh() async {
-    final generation = ++_loadGeneration;
+    ++_loadGeneration;
     final refreshed = _load().timeout(_loadDeadline);
     _detailSources.value = const [];
     setState(() {
@@ -485,18 +485,6 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
             ] else if (data.settlements.isNotEmpty) ...[
               // Keep device rendering bounded even with a large imported
               // workspace. The previous eager loop built every card at once.
-              for (final settlement in data.settlements
-                  .skip(_devicePage * _devicePageSize)
-                  .take(_devicePageSize)) ...[
-                _SettlementCard(
-                  settlement: settlement,
-                  sourceName:
-                      data.sourceNames[settlement.paymentSourceId] ??
-                      settlement.paymentSourceId,
-                  onTap: () => _openSettlement(settlement, data),
-                ),
-                const SizedBox(height: ButlerlySpacing.small),
-              ],
               if (data.settlements.length > _devicePageSize)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
@@ -526,6 +514,18 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
                     ),
                   ],
                 ),
+              for (final settlement in data.settlements
+                  .skip(_devicePage * _devicePageSize)
+                  .take(_devicePageSize)) ...[
+                _SettlementCard(
+                  settlement: settlement,
+                  sourceName:
+                      data.sourceNames[settlement.paymentSourceId] ??
+                      settlement.paymentSourceId,
+                  onTap: () => _openSettlement(settlement, data),
+                ),
+                const SizedBox(height: ButlerlySpacing.small),
+              ],
             ] else ...[
               if (_sourcesError) _sourceLoadState(context),
               ButlerlyEmptyState(
