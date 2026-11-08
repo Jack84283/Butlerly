@@ -141,22 +141,10 @@ final class SqlitePaymentSettlementRepository
     // Match the existing transaction query's financial-date rules. When a
     // transaction_date is present it wins; otherwise compare occurred_at
     // against the financial timezone's UTC instant bounds.
-    final clauses = <String>[
-      't.payment_source_id = ?',
-      't.status = ?',
-      't.direction != ?',
-      "TRIM(COALESCE(t.transaction_date, '')) != ''",
-      'TRIM(t.transaction_date) >= ?',
-      'TRIM(t.transaction_date) <= ?',
-    ];
-    final args = <Object?>[
-      settlement.paymentSourceId.value,
-      TransactionStatus.active.name,
-      TransactionDirection.transfer.name,
-      settlement.periodStart,
-      settlement.periodEnd,
-    ];
-    final knownDate = '(${clauses.skip(3).join(' AND ')})';
+    const knownDate = "("
+        "TRIM(COALESCE(t.transaction_date, '')) != '' AND "
+        "TRIM(t.transaction_date) >= ? AND "
+        "TRIM(t.transaction_date) <= ?)";
     final occurredParts = <String>[
       "TRIM(COALESCE(t.transaction_date, '')) = ''",
       't.occurred_at IS NOT NULL',
@@ -176,8 +164,11 @@ final class SqlitePaymentSettlementRepository
     final where = 't.payment_source_id = ? AND t.status = ? '
         'AND t.direction != ? AND $period';
     final whereArgs = <Object?>[
-      ...args.take(3),
-      ...args.skip(3),
+      settlement.paymentSourceId.value,
+      TransactionStatus.active.name,
+      TransactionDirection.transfer.name,
+      settlement.periodStart,
+      settlement.periodEnd,
       ...occurredArgs,
     ];
 
