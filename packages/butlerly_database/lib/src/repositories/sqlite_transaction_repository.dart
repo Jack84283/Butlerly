@@ -262,7 +262,10 @@ final class SqliteTransactionRepository
                     t.id''',
         arguments,
       );
-      return await Future.wait(rows.map(_hydrate));
+      // One set of batched child queries replaces four SQLite reads for
+      // every matched transaction. This is especially important when a
+      // statement period contains hundreds of imported transactions.
+      return await _hydrateRowsBatched(rows);
     } on DatabaseException catch (error) {
       throw mapDatabaseException(error, 'query transactions');
     }
@@ -286,6 +289,16 @@ final class SqliteTransactionRepository
          ) ORDER BY t.transaction_date DESC, t.id''',
       [TransactionStatus.active.name, ReviewIssueStatus.active.name],
     );
+    return _hydrateRowsBatched(rows);
+  }
+
+  // Hydrate matching transaction aggregates in chunks instead of firing
+  // four queries per row. Reuses the audited bulk strategy already used
+  // for Review, preserving transaction order, provenance, tags, review
+  // issues, normalized amounts, and complete dataset semantics.
+  Future<List<Transaction>> _hydrateRowsBatched(
+    List<Map<String, Object?>> rows,
+  ) async {
     if (rows.isEmpty) return const [];
     final ids = rows.map((row) => row['id']! as String).toList();
     final provenanceByTransaction = <String, List<Map<String, Object?>>>{};
