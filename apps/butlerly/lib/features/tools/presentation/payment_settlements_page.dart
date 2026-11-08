@@ -649,6 +649,11 @@ class _SettlementDesktopSources extends StatelessWidget {
               ),
             ],
           ),
+          Text(
+            '${context.l10n.text('paymentSourceStatusActive')} · '
+            '${context.l10n.text('paymentSourceTypeCard')}',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
           const SizedBox(height: ButlerlySpacing.compact),
           if (activeCards.isEmpty)
             Text(
