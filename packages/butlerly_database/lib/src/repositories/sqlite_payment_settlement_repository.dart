@@ -5,7 +5,9 @@ import '../database/butlerly_database.dart';
 import 'sqlite_transaction_repository.dart';
 
 final class SqlitePaymentSettlementRepository
-    implements PaymentSettlementRepository {
+    implements
+        PaymentSettlementRepository,
+        PaginatedPaymentSettlementRepository {
   const SqlitePaymentSettlementRepository(this.database);
 
   final ButlerlyDatabase database;
@@ -70,6 +72,36 @@ final class SqlitePaymentSettlementRepository
       return List.unmodifiable(values);
     } on DatabaseException catch (error) {
       throw mapDatabaseException(error, 'list payment settlements');
+    }
+  }
+
+  @override
+  Future<PaymentSettlementPage> listPage({
+    required int offset,
+    required int limit,
+  }) async {
+    if (offset < 0 || limit <= 0 || limit > 100) {
+      throw ArgumentError('Expected offset >= 0 and 1 <= limit <= 100');
+    }
+    try {
+      // SQLite does the limiting before any domain records are decoded.
+      // Use the same order as listAll, with id as a stable tiebreaker.
+      final countRows = await database.connection.rawQuery(
+        'SELECT COUNT(*) AS total FROM payment_settlements',
+      );
+      final totalCount = countRows.first['total']! as int;
+      final rows = await database.connection.query(
+        'payment_settlements',
+        orderBy: 'payment_date DESC, id',
+        limit: limit,
+        offset: offset,
+      );
+      return PaymentSettlementPage(
+        rows: List.unmodifiable(rows.map(_fromRow)),
+        totalCount: totalCount,
+      );
+    } on DatabaseException catch (error) {
+      throw mapDatabaseException(error, 'page payment settlements');
     }
   }
 
