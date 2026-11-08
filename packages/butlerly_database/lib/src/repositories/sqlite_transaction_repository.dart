@@ -121,6 +121,13 @@ final class SqliteTransactionRepository
 
   @override
   Future<List<Transaction>> query(TransactionRepositoryQuery query) async {
+    if (query.limit != null &&
+        (query.limit! <= 0 || query.limit! > 100)) {
+      throw ArgumentError('Transaction page limit must be 1..100');
+    }
+    if (query.offset < 0) {
+      throw ArgumentError('Transaction page offset must be nonnegative');
+    }
     final conditions = <String>[];
     final arguments = <Object?>[];
     final hasAuthoritativeTransactionIds = query.transactionIds != null;
@@ -235,6 +242,10 @@ final class SqliteTransactionRepository
       conditions.add('t.direction = ?');
       arguments.add(query.direction!.name);
     }
+    if (query.excludeTransfers) {
+      conditions.add('t.direction != ?');
+      arguments.add(TransactionDirection.transfer.name);
+    }
     if (query.status != null) {
       conditions.add('t.status = ?');
       arguments.add(query.status!.name);
@@ -247,6 +258,10 @@ final class SqliteTransactionRepository
       )''');
     }
 
+    final paginationClause = query.limit == null ? '' : 'LIMIT ? OFFSET ?';
+    if (query.limit != null) {
+      arguments.addAll([query.limit, query.offset]);
+    }
     try {
       final rows = await database.connection.rawQuery(
         '''SELECT DISTINCT t.* FROM transactions t
@@ -259,7 +274,8 @@ final class SqliteTransactionRepository
                     CASE WHEN TRIM(COALESCE(t.transaction_date, '')) = ''
                          THEN julianday(t.occurred_at) END DESC,
                     TRIM(t.transaction_date) DESC,
-                    t.id''',
+                    t.id
+           $paginationClause''',
         arguments,
       );
       // One set of batched child queries replaces four SQLite reads for
