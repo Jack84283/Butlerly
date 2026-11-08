@@ -1471,7 +1471,7 @@ void main() {
         const ValueKey('settlement-detail-transaction-next'),
       );
       final previous = find.byKey(
-        const ValueKey('settlement-detail-transaction-previous'),
+        const ValueKey('settlement-detail-transaction-prev'),
       );
       await tester.scrollUntilVisible(next, 200, scrollable: scroll);
       await tester.tap(next);
