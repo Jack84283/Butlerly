@@ -205,60 +205,64 @@ class _StandaloneHelpReader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => CallbackShortcuts(
-    bindings: {
-      const SingleActivator(LogicalKeyboardKey.escape): onClose,
-    },
+    bindings: {const SingleActivator(LogicalKeyboardKey.escape): onClose},
     child: Focus(
       autofocus: true,
       child: Material(
         child: Scaffold(
           appBar: AppBar(
-        leading: IconButton(
-          key: const ValueKey('context-help-close'),
-          tooltip: HelpCopy.text(context, 'back'),
-          onPressed: onClose,
-          icon: const Icon(Icons.arrow_back_rounded),
-        ),
-        title: Text(HelpCopy.text(context, 'guide')),
-      ),
-      body: SafeArea(
-        child: FutureBuilder<HelpCatalog>(
-          future: future,
-          builder: (context, snapshot) {
-            if (snapshot.hasError) {
-              return Center(child: Text(HelpCopy.text(context, 'loadFailed')));
-            }
-            final catalog = snapshot.data;
-            if (catalog == null) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            final language = Localizations.localeOf(context).languageCode;
-            final article = catalog.articleById(
-              articleId,
-              languageCode: language,
-            );
-            if (article == null) {
-              return Center(child: Text(HelpCopy.text(context, 'noResults')));
-            }
-            return ListView(
-              key: const ValueKey('context-help-offline-reader'),
-              padding: const EdgeInsets.all(16),
-              children: [
-                Text(
-                  article.title,
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 16),
-                for (final paragraph in article.body.split(RegExp(r'\n\s*\n')))
-                  if (paragraph.trim().isNotEmpty) ...[
-                    helpGuideSection(context, paragraph),
-                    const SizedBox(height: 12),
+            leading: IconButton(
+              key: const ValueKey('context-help-close'),
+              tooltip: HelpCopy.text(context, 'back'),
+              onPressed: onClose,
+              icon: const Icon(Icons.arrow_back_rounded),
+            ),
+            title: Text(HelpCopy.text(context, 'guide')),
+          ),
+          body: SafeArea(
+            child: FutureBuilder<HelpCatalog>(
+              future: future,
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(HelpCopy.text(context, 'loadFailed')),
+                  );
+                }
+                final catalog = snapshot.data;
+                if (catalog == null) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final language = Localizations.localeOf(context).languageCode;
+                final article = catalog.articleById(
+                  articleId,
+                  languageCode: language,
+                );
+                if (article == null) {
+                  return Center(
+                    child: Text(HelpCopy.text(context, 'noResults')),
+                  );
+                }
+                return ListView(
+                  key: const ValueKey('context-help-offline-reader'),
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    Text(
+                      article.title,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 16),
+                    for (final paragraph in article.body.split(
+                      RegExp(r'\n\s*\n'),
+                    ))
+                      if (paragraph.trim().isNotEmpty) ...[
+                        helpGuideSection(context, paragraph),
+                        const SizedBox(height: 12),
+                      ],
                   ],
-              ],
-            );
-          },
-        ),
-      ),
+                );
+              },
+            ),
+          ),
         ),
       ),
     ),
