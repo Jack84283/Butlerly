@@ -845,8 +845,23 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Progressive purchase'), findsOneWidget);
+    expect(find.byType(PaymentSettlementDetailPage), findsOneWidget);
     expect(find.text('Loading…'), findsAtLeastNWidgets(1));
+    // ButlerlyPage lazily builds sliver children. Scroll to the transaction
+    // instead of expecting an off-screen row to be mounted on a 390px device.
+    final detailScroll = find
+        .descendant(
+          of: find.byType(PaymentSettlementDetailPage),
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    await tester.scrollUntilVisible(
+      find.text('Progressive purchase'),
+      170,
+      scrollable: detailScroll,
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Progressive purchase'), findsOneWidget);
     expect(repository.summaryCalls, 1);
 
     repository.completeSummary(
@@ -859,6 +874,8 @@ void main() {
         snapshotToken: '1:fixed',
       ),
     );
+    await tester.pumpAndSettle();
+    await tester.drag(detailScroll, const Offset(0, 1000));
     await tester.pumpAndSettle();
     expect(find.text('Loading…'), findsNothing);
     expect(repository.summaryCalls, 1);
@@ -1834,8 +1851,10 @@ class _PagedSummarySettlements extends _TestSettlements
     implements
         PaginatedPaymentSettlementTransactionRepository,
         PaymentSettlementSummaryRepository {
-  final _summary = Completer<PaymentSettlementTransactionSummary>();
+  final _summaries = <Completer<PaymentSettlementTransactionSummary>>[];
   int summaryCalls = 0;
+  int? declaredTotalCount;
+  String snapshotToken = '1:fixed';
 
   @override
   Future<PaymentSettlementTransactionPage> listTransactionsPage(
@@ -1846,10 +1865,10 @@ class _PagedSummarySettlements extends _TestSettlements
     required int limit,
   }) async => PaymentSettlementTransactionPage(
     rows: transactionResults.skip(offset).take(limit).toList(),
-    totalCount: transactionResults.length,
+    totalCount: declaredTotalCount ?? transactionResults.length,
     recordedTotal: null,
     summaryPending: true,
-    snapshotToken: '1:fixed',
+    snapshotToken: snapshotToken,
   );
 
   @override
@@ -1859,11 +1878,16 @@ class _PagedSummarySettlements extends _TestSettlements
     DateTime? occurredAtToExclusive,
   }) {
     summaryCalls++;
-    return _summary.future;
+    final pending = Completer<PaymentSettlementTransactionSummary>();
+    _summaries.add(pending);
+    return pending.future;
   }
 
-  void completeSummary(PaymentSettlementTransactionSummary value) {
-    _summary.complete(value);
+  void completeSummary(
+    PaymentSettlementTransactionSummary value, {
+    int index = 0,
+  }) {
+    _summaries[index].complete(value);
   }
 }
 
