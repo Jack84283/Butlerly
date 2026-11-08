@@ -219,6 +219,43 @@ void main() {
     },
   );
 
+  test('SQL pages bound settlement loading without losing history', () async {
+    final at = DateTime.utc(2026, 11, 8);
+    for (var index = 0; index < 53; index++) {
+      await settlements.save(
+        PaymentSettlement(
+          id: PaymentSettlementId('page-${index.toString().padLeft(3, '0')}'),
+          paymentSourceId: PaymentSourceId('visa'),
+          payment: _money('11.00'),
+          paymentDate: '2026-09-20',
+          periodStart: '2026-08-15',
+          periodEnd: '2026-09-14',
+          status: PaymentSettlementStatus.open,
+          createdAt: at,
+          updatedAt: at,
+        ),
+      );
+    }
+
+    final first = await settlements.listPage(offset: 0, limit: 20);
+    final second = await settlements.listPage(offset: 20, limit: 20);
+    final third = await settlements.listPage(offset: 40, limit: 20);
+    expect(first.totalCount, 53);
+    expect(second.totalCount, 53);
+    expect(third.totalCount, 53);
+    expect(first.rows, hasLength(20));
+    expect(second.rows, hasLength(20));
+    expect(third.rows, hasLength(13));
+    expect(first.rows.first.id.value, 'page-000');
+    expect(second.rows.first.id.value, 'page-020');
+    expect(third.rows.last.id.value, 'page-052');
+    expect(
+      [...first.rows, ...second.rows, ...third.rows].map((s) => s.id.value).toSet(),
+      hasLength(53),
+    );
+    expect(await settlements.listAll(), hasLength(53));
+  });
+
   test('does not create a persisted settlement membership table', () async {
     final rows = await database.connection.rawQuery(
       "SELECT name FROM sqlite_master WHERE type = 'table' "
