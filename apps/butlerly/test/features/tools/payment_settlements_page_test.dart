@@ -1934,6 +1934,7 @@ class _PagedSummarySettlements extends _TestSettlements
     PaymentSettlement settlement, {
     DateTime? occurredAtFrom,
     DateTime? occurredAtToExclusive,
+    PaymentSettlementSummaryCancellation? cancellation,
   }) {
     summaryCalls++;
     final pending = Completer<PaymentSettlementTransactionSummary>();
