@@ -180,6 +180,96 @@ final class GetPaymentSettlementDetail {
       });
 }
 
+/// Bounded settlement details for device/embedded navigation. The existing
+/// complete-detail use case remains unchanged for other callers.
+final class GetPaymentSettlementDetailPage {
+  const GetPaymentSettlementDetailPage(
+    this.repository, {
+    this.preferences,
+  });
+
+  final PaymentSettlementRepository repository;
+  final UserPreferenceRepository? preferences;
+
+  Future<ApplicationResult<PaymentSettlementDetailDto>> call(
+    String id, {
+    required int offset,
+    int limit = 20,
+  }) => runApplication('page payment settlement detail', () async {
+    if (offset < 0 || limit <= 0 || limit > 100) {
+      throw ArgumentError('Invalid settlement detail page bounds');
+    }
+    final settlement = await repository.findById(PaymentSettlementId(id));
+    if (settlement == null) {
+      throw const RepositoryException(
+        RepositoryFailureCode.notFound,
+        'page payment settlement detail',
+      );
+    }
+    final timeZone = await configuredFinancialTimeZone(preferences);
+    final bounds = financialInstantRangeForCalendarDates(
+      from: DateTime.parse(settlement.periodStart),
+      to: DateTime.parse(settlement.periodEnd),
+      timeZoneId: timeZone.id,
+    );
+    final dto = PaymentSettlementDto.fromDomain(settlement);
+
+    if (repository is PaginatedPaymentSettlementTransactionRepository) {
+      final page = await (repository
+              as PaginatedPaymentSettlementTransactionRepository)
+          .listTransactionsPage(
+            settlement,
+            occurredAtFrom: bounds.start,
+            occurredAtToExclusive: bounds.endExclusive,
+            offset: offset,
+            limit: limit,
+          );
+      return PaymentSettlementDetailDto(
+        settlement: dto,
+        transactions: List.unmodifiable(
+          page.rows.map(
+            (t) => TransactionDto.fromDomain(
+              t,
+              financialDate: transactionFinancialDate(t, timeZone.id),
+            ),
+          ),
+        ),
+        totalCount: page.totalCount,
+        completeRecordedTotal: page.recordedTotal,
+        paged: true,
+      );
+    }
+
+    // Compatibility with non-SQLite repositories, without silently losing
+    // full-period totals or changing their existing detail contract.
+    final all = await repository.listTransactions(
+      settlement,
+      occurredAtFrom: bounds.start,
+      occurredAtToExclusive: bounds.endExclusive,
+    );
+    final full = PaymentSettlementDetailDto(
+      settlement: dto,
+      transactions: List.unmodifiable(
+        all.map(
+          (t) => TransactionDto.fromDomain(
+            t,
+            financialDate: transactionFinancialDate(t, timeZone.id),
+          ),
+        ),
+      ),
+    );
+    return PaymentSettlementDetailDto(
+      settlement: dto,
+      transactions: List.unmodifiable(
+        full.transactions.skip(offset).take(limit),
+      ),
+      totalCount: full.transactionCount,
+      completeRecordedTotal: full.recordedTransactionTotal,
+      paged: true,
+    );
+  });
+}
+
 final class SetPaymentSettlementStatus {
   const SetPaymentSettlementStatus(this.repository, this.clock);
 
