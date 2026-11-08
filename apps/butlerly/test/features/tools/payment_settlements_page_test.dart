@@ -619,7 +619,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('settlement Add uses the app route for credit-card creation', (
+  testWidgets('device + never redirects to Payment Sources under GoRouter', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 900);
@@ -638,13 +638,8 @@ void main() {
         ),
         GoRoute(
           path: '/payment-sources',
-          builder: (_, state) => Scaffold(
-            body: PaymentSourcesPage(
-              openCreateOnStart: state.uri.queryParameters['create'] == 'true',
-              fromPaymentSettlement:
-                  state.uri.queryParameters['from'] == 'settlements',
-            ),
-          ),
+          builder: (_, _) =>
+              const Scaffold(body: Text('unexpected-payment-sources-route')),
         ),
         GoRoute(
           path: '/help',
@@ -667,24 +662,20 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(
-      find.byKey(const ValueKey('payment-settlements-add')),
-    );
+    await tester.tap(find.byKey(const ValueKey('payment-settlements-add')));
     await tester.pumpAndSettle();
 
-    // A pushed GoRouter page may leave the public route-information URI on
-    // its origin; check the active route attached to the rendered page.
-    final uri = GoRouterState.of(
-      tester.element(find.byType(PaymentSourcesPage, skipOffstage: false)),
-    ).uri;
-    expect(uri.path, '/payment-sources');
-    expect(uri.queryParameters['create'], 'true');
-    expect(uri.queryParameters['from'], 'settlements');
     expect(
-      find.byKey(const ValueKey('settlement-card-source-editor-page')),
+      router.routeInformationProvider.value.uri.path,
+      '/payment-settlements',
+    );
+    expect(find.byType(BottomSheet), findsOneWidget);
+    expect(find.text('Add payment settlement'), findsOneWidget);
+    expect(find.text('unexpected-payment-sources-route'), findsNothing);
+    expect(
+      find.byKey(const ValueKey('settlement-no-eligible-source')),
       findsOneWidget,
     );
-    expect(find.byType(BottomSheet), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }
