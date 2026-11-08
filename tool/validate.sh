@@ -59,7 +59,7 @@ validate_ios_simulator() (
 
 validate_macos_backup() (
   cd apps/butlerly
-  flutter test test/core/data/raw_restore_service_test.dart test/core/data/atomic_evidence_publication_test.dart
+  flutter test test/core/data/raw_restore_service_test.dart test/core/data/atomic_evidence_publication_test.dart test/features/tools/payment_settlements_page_test.dart
   flutter build macos --debug
 )
 
