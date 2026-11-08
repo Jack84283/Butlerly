@@ -133,25 +133,38 @@ class ButlerlyRouterlessRecoveryHost extends StatefulWidget {
 }
 
 class _ButlerlyRouterlessRecoveryHostState
-    extends State<ButlerlyRouterlessRecoveryHost> {
+    extends State<ButlerlyRouterlessRecoveryHost>
+    with WidgetsBindingObserver {
   final _navigatorKey = GlobalKey<NavigatorState>();
 
-  Future<bool> _handleSystemBack() async {
-    final navigator = _navigatorKey.currentState;
-    if (navigator == null || !navigator.canPop()) return false;
-    await navigator.maybePop();
-    return true;
+  @override
+  void initState() {
+    super.initState();
+    // MaterialApp.router.builder inserts recovery and first-use gates ABOVE
+    // its Router; BackButtonListener requires a Router ancestor and crashes
+    // there. Listen directly to platform Back only while this gate is active.
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
-  Widget build(BuildContext context) => BackButtonListener(
-    onBackButtonPressed: _handleSystemBack,
-    child: Navigator(
-      key: _navigatorKey,
-      onGenerateRoute: (settings) => MaterialPageRoute<void>(
-        settings: settings,
-        builder: (_) => widget.child,
-      ),
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  Future<bool> didPopRoute() async {
+    final navigator = _navigatorKey.currentState;
+    if (navigator == null || !navigator.canPop()) return false;
+    return navigator.maybePop();
+  }
+
+  @override
+  Widget build(BuildContext context) => Navigator(
+    key: _navigatorKey,
+    onGenerateRoute: (settings) => MaterialPageRoute<void>(
+      settings: settings,
+      builder: (_) => widget.child,
     ),
   );
 }
