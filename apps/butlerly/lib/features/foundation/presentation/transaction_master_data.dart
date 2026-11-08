@@ -111,11 +111,14 @@ final class TransactionMasterData {
   static Future<TransactionMasterData> load(
     FinanceServices finance, {
     String languageCode = 'en',
+    bool includePaymentSources = true,
   }) async {
     final merchantsResult = await finance.listMerchants();
     final categoriesResult = await finance.listCategories();
     final tagsResult = await finance.listTags();
-    final paymentSourcesResult = await finance.listPaymentSources();
+    final paymentSourcesResult = includePaymentSources
+        ? await finance.listPaymentSources()
+        : null;
 
     final merchants = switch (merchantsResult) {
       ApplicationSuccess<List<Merchant>>(:final value) => value,
