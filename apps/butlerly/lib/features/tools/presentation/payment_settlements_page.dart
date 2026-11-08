@@ -396,9 +396,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
               buttonKey: const ValueKey('payment-settlements-add'),
               closeToHelp: true,
               label: context.l10n.text('addPaymentSettlement'),
-              onPressed: _sourcesLoaded
-                  ? () => _onAddSettlement(data)
-                  : null,
+              onPressed: _sourcesLoaded ? () => _onAddSettlement(data) : null,
             ),
           ],
           children: [
