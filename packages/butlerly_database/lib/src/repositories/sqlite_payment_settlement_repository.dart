@@ -329,9 +329,9 @@ final class SqlitePaymentSettlementRepository
     settlement.periodStart,
     settlement.periodEnd,
     settlement.payment.currency.value,
-    '${count}',
+    '$count',
     latestUpdate,
-    '${revision}',
+    '$revision',
   ].join('|');
 
   static String _instantBound(DateTime value) {
