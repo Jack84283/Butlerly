@@ -37,7 +37,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
   String? _selectedDesktopSettlementId;
   TransactionDto? _selectedDesktopTransaction;
   bool _desktopTransactionChanged = false;
-  int _detailRevision = 0;
+  bool _desktopTransactionEditing = false;
 
   @override
   void initState() {
@@ -57,6 +57,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
       _selectedDesktopSettlementId = null;
       _selectedDesktopTransaction = null;
       _desktopTransactionChanged = false;
+      _desktopTransactionEditing = false;
       _data = _load();
     });
   }
@@ -66,6 +67,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
       _selectedDesktopSettlementId = null;
       _selectedDesktopTransaction = null;
       _desktopTransactionChanged = false;
+      _desktopTransactionEditing = false;
     });
   }
 
@@ -146,6 +148,16 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
           MediaQuery.sizeOf(context).width,
         ) ==
         ButlerlyLayoutMode.wide) {
+      if (_desktopTransactionEditing) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              context.l10n.text('finishTransactionEditBeforeChangingSettlement'),
+            ),
+          ),
+        );
+        return;
+      }
       setState(() {
         _selectedDesktopSettlementId = settlement.id;
         _selectedDesktopTransaction = null;
@@ -191,7 +203,8 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
     return FutureBuilder<_SettlementListData>(
       future: _data,
       builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
+        if (snapshot.connectionState != ConnectionState.done &&
+            !snapshot.hasData) {
           return const ButlerlyLoadingState();
         }
         if (snapshot.hasError) {
@@ -220,7 +233,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
             ),
           ],
           children: [
-            if (data.activeCardSources.isEmpty)
+            if (data.settlements.isEmpty && data.activeCardSources.isEmpty)
               ButlerlyEmptyState(
                 icon: Icons.credit_card_off_outlined,
                 title: context.l10n.text('paymentSources'),
@@ -265,40 +278,49 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
           results: resultsPage,
           detail: selectedSettlement == null
               ? null
-              : selectedTransaction != null
-              ? DesktopTransactionPanel(
-                  key: ValueKey(
-                    'desktop-settlement-transaction-${selectedTransaction.id}',
-                  ),
-                  finance: _finance!,
-                  transaction: selectedTransaction,
-                  onChanged: () => _desktopTransactionChanged = true,
-                  onClose: (changed) {
-                    final needsRefresh = changed || _desktopTransactionChanged;
-                    setState(() {
-                      _selectedDesktopTransaction = null;
-                      _desktopTransactionChanged = false;
-                      _detailRevision++;
-                    });
-                    if (needsRefresh) _refresh();
-                  },
-                )
-              : PaymentSettlementDetailPage(
-                  key: ValueKey(
-                    'desktop-settlement-detail-${selectedSettlement.id}-$_detailRevision',
-                  ),
-                  finance: _finance!,
-                  settlementId: selectedSettlement.id,
-                  sourceNames: data.sourceNames,
-                  sources: data.sources,
-                  onClose: _closeDesktopSettlement,
-                  onChanged: _refresh,
-                  onTransactionSelected: (transaction) {
-                    setState(() {
-                      _selectedDesktopTransaction = transaction;
-                      _desktopTransactionChanged = false;
-                    });
-                  },
+              : IndexedStack(
+                  index: selectedTransaction == null ? 0 : 1,
+                  children: [
+                    PaymentSettlementDetailPage(
+                      key: ValueKey(
+                        'desktop-settlement-detail-${selectedSettlement.id}',
+                      ),
+                      finance: _finance!,
+                      settlementId: selectedSettlement.id,
+                      sourceNames: data.sourceNames,
+                      sources: data.sources,
+                      onClose: _closeDesktopSettlement,
+                      onChanged: _refresh,
+                      onTransactionSelected: (transaction) {
+                        setState(() {
+                          _selectedDesktopTransaction = transaction;
+                          _desktopTransactionChanged = false;
+                          _desktopTransactionEditing = false;
+                        });
+                      },
+                    ),
+                    if (selectedTransaction != null)
+                      DesktopTransactionPanel(
+                        key: ValueKey(
+                          'desktop-settlement-transaction-${selectedTransaction.id}',
+                        ),
+                        finance: _finance!,
+                        transaction: selectedTransaction,
+                        onEditingChanged: (editing) =>
+                            _desktopTransactionEditing = editing,
+                        onChanged: () => _desktopTransactionChanged = true,
+                        onClose: (changed) {
+                          final needsRefresh =
+                              changed || _desktopTransactionChanged;
+                          setState(() {
+                            _selectedDesktopTransaction = null;
+                            _desktopTransactionChanged = false;
+                            _desktopTransactionEditing = false;
+                          });
+                          if (needsRefresh) _refresh();
+                        },
+                      ),
+                  ],
                 ),
         );
       },
@@ -531,7 +553,8 @@ class _PaymentSettlementDetailPageState
     return FutureBuilder<PaymentSettlementDetailDto>(
       future: _detail,
       builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
+        if (snapshot.connectionState != ConnectionState.done &&
+            !snapshot.hasData) {
           return Scaffold(
             appBar: widget.onClose == null
                 ? null
