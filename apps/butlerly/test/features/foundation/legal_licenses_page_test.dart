@@ -73,9 +73,12 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  test(
+  testWidgets(
     'all four legal review documents are bundled in three languages',
-    () async {
+    (tester) async {
+      // Asset-bundle reads rely on asynchronous platform messages. Running
+      // them inside a plain test() with a Flutter widget binding can hang.
+      final loaded = await tester.runAsync(() async {
       const documents = [
         LegalDocument('termsOfUse', 'assets/legal/terms_of_use.txt'),
         LegalDocument('privacyPolicy', 'assets/legal/privacy_policy.txt'),
@@ -104,10 +107,13 @@ void main() {
           }
         }
       }
-      expect(
-        documents.first.assetPathFor(const Locale('fr')),
-        'assets/legal/terms_of_use.txt',
-      );
+        expect(
+          documents.first.assetPathFor(const Locale('fr')),
+          'assets/legal/terms_of_use.txt',
+        );
+        return true;
+      });
+      expect(loaded, isTrue);
     },
   );
 
@@ -152,16 +158,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    var locale = const Locale('en');
-    late StateSetter updateRoot;
-    await tester.pumpWidget(
-      StatefulBuilder(
-        builder: (context, setState) {
-          updateRoot = setState;
-          return app(locale: locale);
-        },
-      ),
-    );
+    await tester.pumpWidget(app(locale: const Locale('en')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('desktop-legal-document-1')));
     await tester.pumpAndSettle();
@@ -176,7 +173,7 @@ void main() {
           .data,
       contains('PRIVACY POLICY'),
     );
-    updateRoot(() => locale = const Locale('es'));
+    await tester.pumpWidget(app(locale: const Locale('es')));
     await tester.pumpAndSettle();
     final spanish = find.descendant(
       of: find.byKey(const ValueKey('desktop-legal-reader-1-es')),
@@ -221,16 +218,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    var locale = const Locale('en');
-    late StateSetter updateRoot;
-    await tester.pumpWidget(
-      StatefulBuilder(
-        builder: (context, setState) {
-          updateRoot = setState;
-          return app(locale: locale);
-        },
-      ),
-    );
+    await tester.pumpWidget(app(locale: const Locale('en')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Terms of Use'));
     await tester.pumpAndSettle();
@@ -239,7 +227,7 @@ void main() {
       contains('BUTLERLY — TERMS OF USE'),
     );
 
-    updateRoot(() => locale = const Locale('zh', 'CN'));
+    await tester.pumpWidget(app(locale: const Locale('zh', 'CN')));
     await tester.pumpAndSettle();
     expect(find.byType(LegalDocumentPage), findsOneWidget);
     expect(
