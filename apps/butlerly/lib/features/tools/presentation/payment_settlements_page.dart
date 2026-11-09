@@ -152,7 +152,9 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              context.l10n.text('finishTransactionEditBeforeChangingSettlement'),
+              context.l10n.text(
+                'finishTransactionEditBeforeChangingSettlement',
+              ),
             ),
           ),
         );
