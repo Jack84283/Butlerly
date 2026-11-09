@@ -58,16 +58,20 @@ Widget _responsiveStateScaffold({
   required Key contentKey,
   required Widget child,
   String? helpArticleId,
-  VoidCallback? onHelpPressed,
+  void Function(BuildContext)? onHelpPressed,
 }) => Scaffold(
   appBar: helpArticleId == null
       ? null
       : AppBar(
           automaticallyImplyLeading: false,
           actions: [
-            ButlerlyContextHelpButton(
-              articleId: helpArticleId,
-              onPressed: onHelpPressed,
+            Builder(
+              builder: (buttonContext) => ButlerlyContextHelpButton(
+                articleId: helpArticleId,
+                onPressed: onHelpPressed == null
+                    ? null
+                    : () => onHelpPressed(buttonContext),
+              ),
             ),
           ],
         ),
@@ -340,8 +344,8 @@ final appRouter = GoRouter(
     helpArticleId: 'ch-3',
     // Unknown paths have no valid GoRouter match to push from. Open Help
     // as a local route so Back returns to the original error screen.
-    onHelpPressed: () {
-      Navigator.of(context).push<void>(
+    onHelpPressed: (buttonContext) {
+      Navigator.of(buttonContext).push<void>(
         MaterialPageRoute<void>(
           builder: (_) => const HelpFaqPage(articleId: 'ch-3'),
         ),
