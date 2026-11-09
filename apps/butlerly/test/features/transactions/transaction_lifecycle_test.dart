@@ -3160,7 +3160,7 @@ void main() {
       expect(
         tester
             .widget<ButlerlyHeaderAddButton>(
-              find.byKey(const ValueKey('payment-settlements-add')),
+              find.byType(ButlerlyHeaderAddButton),
             )
             .onPressed,
         isNull,
