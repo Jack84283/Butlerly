@@ -23,9 +23,9 @@ Future<String> _readBundledVersion() async {
 final Future<String> _bundledVersion = _readBundledVersion();
 
 /// Offline reader for the bundled legal review documents.
- ///
- /// LEG-0001–0004 v1.1 are review editions, not published legal agreements.
- /// Do not lift this release gate without issue #380 approval.
+///
+/// LEG-0001–0004 v1.1 are review editions, not published legal agreements.
+/// Do not lift this release gate without issue #380 approval.
 class LegalLicensesPage extends StatelessWidget {
   const LegalLicensesPage({super.key});
 
@@ -60,7 +60,7 @@ class LegalLicensesPage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: ButlerlySpacing.section),
-        _LegalReviewNotice(),
+        const _LegalReviewNotice(),
         const SizedBox(height: ButlerlySpacing.small),
         ButlerlyCard(
           padding: EdgeInsets.zero,
