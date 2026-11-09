@@ -107,13 +107,15 @@ class ButlerlyContextHelpButton extends StatelessWidget {
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           shape: const CircleBorder(),
         ),
-        onPressed: onPressed ?? () {
-          if (router == null) {
-            _openStandaloneHelp(context, target);
-          } else {
-            context.push('/help?article=${Uri.encodeComponent(target)}');
-          }
-        },
+        onPressed:
+            onPressed ??
+            () {
+              if (router == null) {
+                _openStandaloneHelp(context, target);
+              } else {
+                context.push('/help?article=${Uri.encodeComponent(target)}');
+              }
+            },
       ),
     );
   }
