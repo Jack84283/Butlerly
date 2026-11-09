@@ -459,6 +459,7 @@ class _ReviewPageState extends State<ReviewPage> {
             icon: const Icon(Icons.close),
             onPressed: () => setState(() => _selectedReview = null),
           ),
+          const ButlerlyContextHelpButton(articleId: 'ch-11'),
         ],
       ),
       body: ButlerlyPage(
@@ -520,7 +521,10 @@ class _ReviewPageState extends State<ReviewPage> {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (detailContext) => Scaffold(
-          appBar: AppBar(title: Text(context.l10n.text('needsReview'))),
+          appBar: AppBar(
+            title: Text(context.l10n.text('needsReview')),
+            actions: const [ButlerlyContextHelpButton(articleId: 'ch-11')],
+          ),
           body: ButlerlyPage(
             children: [
               for (final item in entry.items)

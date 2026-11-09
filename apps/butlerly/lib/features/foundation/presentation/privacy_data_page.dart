@@ -1193,24 +1193,35 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
                 ],
               );
             }
-            return Column(
+            // Independent columns give each card its natural height.
+            // Unlike two horizontal rows, this leaves no empty row-sized gap
+            // beneath a shorter card when localized descriptions wrap.
+            return Row(
+              key: const ValueKey('desktop-privacy-waterfall'),
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: backup),
-                    const SizedBox(width: ButlerlySpacing.small),
-                    Expanded(child: export),
-                  ],
+                Expanded(
+                  child: Column(
+                    key: const ValueKey('desktop-privacy-left-column'),
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      backup,
+                      const SizedBox(height: ButlerlySpacing.small),
+                      management,
+                    ],
+                  ),
                 ),
-                const SizedBox(height: ButlerlySpacing.small),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: management),
-                    const SizedBox(width: ButlerlySpacing.small),
-                    Expanded(child: danger),
-                  ],
+                const SizedBox(width: ButlerlySpacing.small),
+                Expanded(
+                  child: Column(
+                    key: const ValueKey('desktop-privacy-right-column'),
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      export,
+                      const SizedBox(height: ButlerlySpacing.small),
+                      danger,
+                    ],
+                  ),
                 ),
               ],
             );
@@ -1240,6 +1251,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
               context.canPop() ? context.pop() : context.go('/settings'),
         ),
         title: Text(context.l10n.text('privacyAndData')),
+        actions: const [ButlerlyContextHelpButton(articleId: 'ch-20')],
       ),
       body: ButlerlyResponsiveBody(
         contentKey: const ValueKey('privacy-data-content'),

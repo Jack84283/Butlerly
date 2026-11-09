@@ -543,29 +543,23 @@ Widget _homeEllipsisAction({
   alignment: Alignment.topCenter,
 );
 
+// A slightly more luminous gold on dark canvases and a warmer, legible
+// gold on light canvases. Keep this device Home-only: other warning colors
+// communicate state and should not change with the branding adjustment.
+Color _homeBrandTaglineColor(BuildContext context) =>
+    Theme.of(context).brightness == Brightness.dark
+    ? const Color(0xFFFFE3A3)
+    : const Color(0xFF784B0B);
+
 bool _homeHeaderShouldStackTopRow(
   BuildContext context, {
   required double availableWidth,
-  required String brandSubtitle,
-  required TextStyle brandSubtitleStyle,
 }) {
-  final scaler = MediaQuery.textScalerOf(context);
-  final largeText = scaler.scale(14) > 18;
-  if (largeText || availableWidth < 360) return true;
-
-  final rowWidth = (availableWidth - ButlerlySpacing.standard)
-      .clamp(1.0, double.infinity)
-      .toDouble();
-  final sideBySideBrandWidth = rowWidth * 5 / 9;
-  final subtitlePainter = TextPainter(
-    text: TextSpan(text: brandSubtitle, style: brandSubtitleStyle),
-    textDirection: Directionality.of(context),
-    textScaler: scaler,
-    locale: Localizations.localeOf(context),
-    maxLines: 1,
-  )..layout();
-
-  return subtitlePainter.width > sideBySideBrandWidth;
+  // Keep the brand, month selector and Help together at normal device
+  // widths. The tagline is below the entire toolbar, not part of the brand
+  // width decision. Reserve stacking only for narrow or accessibility layouts.
+  return MediaQuery.textScalerOf(context).scale(14) > 18 ||
+      availableWidth < 280;
 }
 
 double _homeHeaderExtent(
@@ -595,7 +589,7 @@ double _homeHeaderExtent(
     context.designTokens.homeTypography.subtitle(
       textTheme.bodySmall ?? const TextStyle(),
     ),
-  ).copyWith(color: context.colors.warning);
+  ).copyWith(color: _homeBrandTaglineColor(context));
   final introStyle = context.designTokens.homeTypography.subtitle(
     textTheme.bodySmall ?? const TextStyle(),
   );
@@ -642,7 +636,9 @@ double _homeHeaderExtent(
   ];
   final monthLabels = <String>[
     for (var month = 1; month <= 12; month++)
-      DateFormat.yMMM(localeTag).format(DateTime(2026, month)),
+      availableWidth < 360
+          ? DateFormat.MMM(localeTag).format(DateTime(2026, month))
+          : DateFormat.yMMM(localeTag).format(DateTime(2026, month)),
   ];
   final introLabels = <String>[
     for (var month = 1; month <= 12; month++)
@@ -674,31 +670,34 @@ double _homeHeaderExtent(
   final stackedTopRow = _homeHeaderShouldStackTopRow(
     context,
     availableWidth: availableWidth,
-    brandSubtitle: brandSubtitle,
-    brandSubtitleStyle: brandSubtitleStyle,
   );
-  final rowWidth = availableWidth - ButlerlySpacing.standard;
-  final brandWidth = stackedTopRow ? availableWidth : rowWidth * 5 / 9;
-  final monthWidth = stackedTopRow ? availableWidth : rowWidth * 4 / 9;
+  final hasHelp = GoRouter.maybeOf(context) != null;
   const brandIconSize = 28.0;
+  final halfRowWidth = (availableWidth - ButlerlySpacing.compact) / 2;
+  final brandWidth = stackedTopRow ? availableWidth : halfRowWidth;
+  // The Help action takes 44px plus its existing 12px leading inset.
+  // Measure the selector against the same width it gets in the actual row.
+  final rightWidth = stackedTopRow ? availableWidth : halfRowWidth;
+  final monthWidth = (rightWidth - (hasHelp ? 56.0 : 0.0))
+      .clamp(1.0, double.infinity)
+      .toDouble();
   final brandNameWidth = (brandWidth - brandIconSize - ButlerlySpacing.compact)
       .clamp(1.0, double.infinity)
       .toDouble();
-  final brandHeight =
-      math.max(brandIconSize, measure(appName, appStyle, brandNameWidth)) +
-      ButlerlySpacing.micro +
-      measure(
-        brandSubtitle,
-        brandSubtitleStyle,
-        brandWidth,
-        maxLines: largeText ? null : 1,
-      );
+  final brandTitleHeight = math.max(
+    brandIconSize,
+    measure(appName, appStyle, brandNameWidth),
+  );
+  final taglineHeight = measure(
+    brandSubtitle,
+    brandSubtitleStyle,
+    availableWidth,
+    maxLines: largeText ? null : 1,
+  );
   final monthHeight = monthButtonHeight(monthWidth);
   final topRowHeight = stackedTopRow
-      ? brandHeight + ButlerlySpacing.small + monthHeight
-      : brandHeight > monthHeight
-      ? brandHeight
-      : monthHeight;
+      ? brandTitleHeight + ButlerlySpacing.small + monthHeight
+      : math.max(brandTitleHeight, monthHeight);
   final greetingHeight = maxMeasured(
     greetingLabels,
     greetingStyle,
@@ -711,6 +710,7 @@ double _homeHeaderExtent(
   // the pinned header never clips or overflows large text.
   final accessibilityAllowance = largeText ? ButlerlySpacing.large : 0.0;
   return topRowHeight +
+      taglineHeight +
       ButlerlySpacing.small +
       greetingHeight +
       ButlerlySpacing.micro +
@@ -799,86 +799,88 @@ class _HomeHeader extends StatelessWidget {
     final selectorMonthLabel = DateFormat.yMMM(locale).format(month);
     return LayoutBuilder(
       builder: (context, constraints) {
-        final brandSubtitle = context.l10n.text('brandTagline');
-        final brandSubtitleStyle = ButlerlyTypography.editorialText(
-          context.designTokens.homeTypography.subtitle(
-            Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
-          ),
-        ).copyWith(color: context.colors.warning);
         final availableWidth = constraints.maxWidth;
         final largeText = MediaQuery.textScalerOf(context).scale(14) > 18;
         final stackedTopRow = _homeHeaderShouldStackTopRow(
           context,
           availableWidth: availableWidth,
-          brandSubtitle: brandSubtitle,
-          brandSubtitleStyle: brandSubtitleStyle,
         );
-        final brand = Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ButlerlyBrandTitle(
-              name: context.l10n.text('appName'),
-              iconSize: 28,
-              gap: ButlerlySpacing.compact,
-              textStyle: ButlerlyTypography.editorialText(
-                context.designTokens.homeTypography.appTitle(
-                  Theme.of(context).textTheme.headlineLarge ??
-                      const TextStyle(),
-                ),
-              ),
+        final brand = ButlerlyBrandTitle(
+          name: context.l10n.text('appName'),
+          iconSize: 28,
+          gap: ButlerlySpacing.compact,
+          textStyle: ButlerlyTypography.editorialText(
+            context.designTokens.homeTypography.appTitle(
+              Theme.of(context).textTheme.headlineLarge ?? const TextStyle(),
             ),
-            const SizedBox(height: ButlerlySpacing.micro),
-            Text(
-              brandSubtitle,
-              key: const ValueKey('home-brand-tagline'),
-              maxLines: largeText ? null : 1,
-              softWrap: largeText,
-              style: brandSubtitleStyle,
-            ),
-          ],
+          ),
         );
+        final brandTagline = Text(
+          context.l10n.text('brandTagline'),
+          key: const ValueKey('home-brand-tagline'),
+          maxLines: largeText ? null : 1,
+          softWrap: largeText,
+          style: ButlerlyTypography.editorialText(
+            context.designTokens.homeTypography.subtitle(
+              Theme.of(context).textTheme.bodySmall ?? const TextStyle(),
+            ),
+          ).copyWith(color: _homeBrandTaglineColor(context)),
+        );
+        final compactMonthLabel = availableWidth < 360
+            ? DateFormat.MMM(locale).format(month)
+            : selectorMonthLabel;
         final monthButton = ButlerlyCompactSelector(
           buttonKey: const Key('home-month-selector'),
-          label: selectorMonthLabel,
+          label: compactMonthLabel,
           semanticLabel: selectorMonthLabel,
           onPressed: onMonthTap,
-          alignVisualEnd: true,
+          centerVisual: true,
           denseSurface: true,
           transparent: true,
         );
+        final hasHelp = GoRouter.maybeOf(context) != null;
+        // A shared 44px cross-axis center aligns the visible brand mark,
+        // month pill, and Help circle. Do not offset their hit boxes.
+        final monthAndHelp = hasHelp
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Flexible(child: monthButton),
+                  const ButlerlyContextHelpButton(articleId: 'ch-12'),
+                ],
+              )
+            : monthButton;
         final topRow = stackedTopRow
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   brand,
                   const SizedBox(height: ButlerlySpacing.small),
-                  if (MediaQuery.textScalerOf(context).scale(14) > 18)
-                    Align(
-                      alignment: AlignmentDirectional.centerEnd,
-                      child: monthButton,
-                    )
-                  else
-                    Align(
-                      alignment: AlignmentDirectional.centerEnd,
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: AlignmentDirectional.centerEnd,
-                        child: monthButton,
-                      ),
-                    ),
+                  Align(
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: monthAndHelp,
+                  ),
                 ],
               )
             : Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                key: const ValueKey('home-brand-month-help-row'),
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Expanded(flex: 5, child: brand),
-                  const SizedBox(width: ButlerlySpacing.standard),
                   Expanded(
-                    flex: 4,
+                    child: SizedBox(
+                      height: ButlerlySize.minimumTarget,
+                      child: Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: brand,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: ButlerlySpacing.compact),
+                  Expanded(
                     child: Align(
-                      alignment: AlignmentDirectional.topEnd,
-                      child: monthButton,
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: monthAndHelp,
                     ),
                   ),
                 ],
@@ -889,6 +891,7 @@ class _HomeHeader extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             topRow,
+            brandTagline,
             const SizedBox(height: ButlerlySpacing.small),
             PersonalizedHomeGreeting(
               greetingKey: greetingKey,

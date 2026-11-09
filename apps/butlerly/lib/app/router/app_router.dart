@@ -57,7 +57,24 @@ NoTransitionPage<void> _primaryPage(
 Widget _responsiveStateScaffold({
   required Key contentKey,
   required Widget child,
+  String? helpArticleId,
+  void Function(BuildContext)? onHelpPressed,
 }) => Scaffold(
+  appBar: helpArticleId == null
+      ? null
+      : AppBar(
+          automaticallyImplyLeading: false,
+          actions: [
+            Builder(
+              builder: (buttonContext) => ButlerlyContextHelpButton(
+                articleId: helpArticleId,
+                onPressed: onHelpPressed == null
+                    ? null
+                    : () => onHelpPressed(buttonContext),
+              ),
+            ),
+          ],
+        ),
   body: ButlerlyResponsiveBody(contentKey: contentKey, child: child),
 );
 
@@ -67,6 +84,13 @@ final appRouter = GoRouter(
   routes: [
     GoRoute(path: '/launch', builder: (_, _) => const ButlerlyLaunchPage()),
     GoRoute(path: '/welcome', builder: (_, _) => const WelcomePage()),
+    // Help is a standalone document surface: do not reserve the desktop
+    // navigation rail or other application-shell panels around it.
+    GoRoute(
+      path: '/help',
+      builder: (_, state) =>
+          HelpFaqPage(articleId: state.uri.queryParameters['article']),
+    ),
 
     // The application shell remains mounted while the content route changes.
     // Wide mode uses it for both primary destinations and normal secondary
@@ -155,7 +179,6 @@ final appRouter = GoRouter(
           path: '/legal-licenses',
           builder: (_, _) => const LegalLicensesPage(),
         ),
-        GoRoute(path: '/help', builder: (_, _) => const HelpFaqPage()),
         GoRoute(
           path: '/review',
           builder: (context, state) => ReviewPage(
@@ -318,6 +341,16 @@ final appRouter = GoRouter(
   ],
   errorBuilder: (context, state) => _responsiveStateScaffold(
     contentKey: const ValueKey('router-error-content'),
+    helpArticleId: 'ch-3',
+    // Unknown paths have no valid GoRouter match to push from. Open Help
+    // as a local route so Back returns to the original error screen.
+    onHelpPressed: (buttonContext) {
+      Navigator.of(buttonContext).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => const HelpFaqPage(articleId: 'ch-3'),
+        ),
+      );
+    },
     child: ButlerlyErrorState(
       title: context.l10n.text('pageUnavailable'),
       message: context.l10n.text('pageUnavailableBody'),

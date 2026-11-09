@@ -1058,6 +1058,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
               ? context.l10n.text('addTransaction')
               : context.l10n.text('editTransaction'),
         ),
+        actions: const [ButlerlyContextHelpButton(articleId: 'ch-5')],
       ),
       body: ButlerlyResponsiveBody(
         fullWidth: desktopWide,
@@ -1776,6 +1777,7 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
             onPressed: _editTransaction,
             icon: const Icon(Icons.edit_outlined),
           ),
+          const ButlerlyContextHelpButton(articleId: 'ch-5'),
         ],
       ),
       body: ButlerlyResponsiveBody(

@@ -469,7 +469,8 @@ void main() {
     final appBarTitleStyle = Theme.of(
       tester.element(greeting),
     ).appBarTheme.titleTextStyle;
-    expect(tester.widget<Text>(greeting).style, appBarTitleStyle);
+    expect(tester.widget<Text>(greeting).style?.fontSize, 18);
+    expect(tester.widget<Text>(greeting).style?.color, appBarTitleStyle?.color);
     expect(
       tester.getRect(greeting).left - tester.getRect(header).left,
       closeTo(ButlerlySize.contentGutter, 0.01),

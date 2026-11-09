@@ -314,7 +314,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                           textKey: const ValueKey('desktop-home-greeting'),
                           maxLines: 1,
                           textAlign: TextAlign.start,
-                          style: theme.appBarTheme.titleTextStyle,
+                          style:
+                              (theme.appBarTheme.titleTextStyle ??
+                                      theme.textTheme.titleMedium)
+                                  ?.copyWith(fontSize: 18),
                         ),
                       ),
                       IconButton(
@@ -437,6 +440,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                           icon: const Icon(Icons.add),
                           label: Text(context.l10n.text('add')),
                         ),
+                      const ButlerlyContextHelpButton(articleId: 'ch-12'),
                     ],
                   );
                 },

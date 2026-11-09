@@ -169,6 +169,7 @@ class WelcomePage extends StatelessWidget {
           onPressed: () => context.go('/'),
           child: Text(context.l10n.text('skip')),
         ),
+        const ButlerlyContextHelpButton(articleId: 'ch-2'),
       ],
     ),
     body: SafeArea(
@@ -443,7 +444,10 @@ class _ImportExportPageState extends State<ImportExportPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(context.l10n.text('importExport'))),
+    appBar: AppBar(
+      title: Text(context.l10n.text('importExport')),
+      actions: const [ButlerlyContextHelpButton(articleId: 'ch-10')],
+    ),
     body: ButlerlyResponsiveBody(
       contentKey: const ValueKey('import-export-content'),
       child: ListView(
@@ -847,7 +851,10 @@ class NotificationsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(context.l10n.text('notifications'))),
+    appBar: AppBar(
+      title: Text(context.l10n.text('notifications')),
+      actions: const [ButlerlyContextHelpButton(articleId: 'ch-3')],
+    ),
     body: ButlerlyResponsiveBody(
       contentKey: const ValueKey('notifications-content'),
       child: ButlerlyEmptyState(
@@ -864,7 +871,10 @@ class AssistantUnavailablePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(context.l10n.text('assistant'))),
+    appBar: AppBar(
+      title: Text(context.l10n.text('assistant')),
+      actions: const [ButlerlyContextHelpButton(articleId: 'ch-25')],
+    ),
     body: ButlerlyResponsiveBody(
       contentKey: const ValueKey('assistant-unavailable-content'),
       child: ButlerlyEmptyState(
@@ -885,7 +895,10 @@ class ReceiptDetailPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(context.l10n.text('receiptDetail'))),
+    appBar: AppBar(
+      title: Text(context.l10n.text('receiptDetail')),
+      actions: const [ButlerlyContextHelpButton(articleId: 'ch-9')],
+    ),
     body: ButlerlyResponsiveBody(
       contentKey: const ValueKey('receipt-detail-content'),
       child: ListView(

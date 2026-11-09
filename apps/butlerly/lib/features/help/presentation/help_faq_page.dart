@@ -4,15 +4,20 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/help/data/help_catalog.dart';
 import 'package:butlerly/features/help/presentation/help_copy.dart';
+import 'package:butlerly/features/help/presentation/help_desktop_workspace.dart';
+import 'package:butlerly/features/help/presentation/help_guide_section.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 /// Bundled, fully offline Help. No user queries or records leave the device.
 class HelpFaqPage extends StatefulWidget {
-  const HelpFaqPage({this.preloadedCatalog, super.key});
+  const HelpFaqPage({this.preloadedCatalog, this.articleId, super.key});
 
   /// Optional preloaded catalog for deterministic widget tests and previews.
   final HelpCatalog? preloadedCatalog;
+
+  /// Optional direct chapter target opened by a page-level Help action.
+  final String? articleId;
 
   @override
   State<HelpFaqPage> createState() => _HelpFaqPageState();
@@ -84,9 +89,28 @@ class _HelpFaqPageState extends State<HelpFaqPage> {
       type: MaterialType.transparency,
       child: FutureBuilder<HelpCatalog>(
         future: _catalog,
+        initialData: widget.preloadedCatalog ?? HelpCatalog.cachedBundle,
         builder: (context, snapshot) {
           final catalog = snapshot.data;
+          // At desktop widths, keep topics, content and article details
+          // visible together instead of opening a full-page document.
+          if (catalog != null &&
+              MediaQuery.sizeOf(context).width >= ButlerlySize.wideBreakpoint) {
+            return HelpDesktopWorkspace(
+              catalog: catalog,
+              articleId: widget.articleId,
+            );
+          }
+          if (catalog != null && widget.articleId != null) {
+            final language = Localizations.localeOf(context).languageCode;
+            final article = catalog.articleById(
+              widget.articleId!,
+              languageCode: language,
+            );
+            if (article != null) return HelpGuideArticlePage(article: article);
+          }
           return ButlerlyPage(
+            showContextHelp: false,
             title: HelpCopy.text(context, 'title'),
             subtitle: HelpCopy.text(context, 'subtitle'),
             leading: _helpBackButton(context),
@@ -387,6 +411,7 @@ class HelpFaqDetailPage extends StatelessWidget {
     final translation = faq.translation(language);
     final linked = catalog.articleById(faq.guideId, languageCode: language);
     return ButlerlyPage(
+      showContextHelp: false,
       title: HelpCopy.text(context, 'faq'),
       subtitle: HelpCopy.category(context, faq.category),
       leading: _helpBackButton(context),
@@ -443,6 +468,7 @@ class HelpGuideIndexPage extends StatelessWidget {
       );
     }
     return ButlerlyPage(
+      showContextHelp: false,
       title: HelpCopy.text(context, 'guide'),
       leading: _helpBackButton(context),
       children: widgets,
@@ -461,39 +487,17 @@ class HelpGuideArticlePage extends StatelessWidget {
         .split(RegExp(r'\n\s*\n'))
         .where((section) => section.trim().isNotEmpty);
     return ButlerlyPage(
+      showContextHelp: false,
       title: HelpCopy.text(context, 'guide'),
       leading: _helpBackButton(context),
       children: [
         Text(article.title, style: Theme.of(context).textTheme.titleLarge),
         const SizedBox(height: ButlerlySpacing.section),
         for (final section in sections) ...[
-          _guideSection(context, section),
+          helpGuideSection(context, section),
           const SizedBox(height: ButlerlySpacing.standard),
         ],
       ],
     );
   }
-}
-
-Widget _guideSection(BuildContext context, String section) {
-  final text = section.trim();
-  if (!text.startsWith('## ')) return SelectableText(text);
-  final breakAt = text.indexOf('\n');
-  if (breakAt == -1) {
-    return Text(
-      text.substring(3),
-      style: Theme.of(context).textTheme.titleMedium,
-    );
-  }
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        text.substring(3, breakAt),
-        style: Theme.of(context).textTheme.titleMedium,
-      ),
-      const SizedBox(height: ButlerlySpacing.small),
-      SelectableText(text.substring(breakAt + 1).trim()),
-    ],
-  );
 }

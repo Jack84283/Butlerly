@@ -232,11 +232,23 @@ void main() {
 
     await tester.pumpWidget(app(const Locale('en')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('help-full-guide')));
+    // Wide Help now opens directly into the three-pane guide workspace.
+    expect(
+      find.byKey(const ValueKey('help-desktop-workspace')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('help-desktop-menu')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('help-desktop-item-ch-1')),
+      findsOneWidget,
+    );
+    // The first displayed chapter need not be ch-1; choose it explicitly.
+    await tester.tap(find.byKey(const ValueKey('help-desktop-item-ch-1')));
     await tester.pumpAndSettle();
-
-    expect(find.text('User Guide'), findsOneWidget);
-    expect(find.byKey(const ValueKey('help-article-ch-1')), findsWidgets);
+    expect(
+      find.byKey(const ValueKey('help-desktop-article-ch-1')),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 }

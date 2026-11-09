@@ -14,6 +14,27 @@ abstract final class ButlerlyTypography {
   static const financialAmountFeatures = [FontFeature.tabularFigures()];
   static const navigationLabelFontSize = 10.5;
 
+  // Mild typography lift inside DesktopPrimaryShell only. In particular,
+  // leave the compact/medium device scale, text scaling preferences, colors,
+  // font family, weight, and layout geometry unchanged.
+  static TextTheme desktopTextTheme(TextTheme base) => base.copyWith(
+    headlineLarge: _desktopIncrease(base.headlineLarge, 2),
+    headlineMedium: _desktopIncrease(base.headlineMedium, 2),
+    headlineSmall: _desktopIncrease(base.headlineSmall, 1),
+    titleLarge: _desktopIncrease(base.titleLarge, 2),
+    titleMedium: _desktopIncrease(base.titleMedium, 1),
+    titleSmall: _desktopIncrease(base.titleSmall, 1),
+    bodyLarge: _desktopIncrease(base.bodyLarge, 1),
+    bodyMedium: _desktopIncrease(base.bodyMedium, 1),
+    bodySmall: _desktopIncrease(base.bodySmall, 1),
+    labelLarge: _desktopIncrease(base.labelLarge, 1),
+    labelMedium: _desktopIncrease(base.labelMedium, 1),
+    labelSmall: _desktopIncrease(base.labelSmall, 1),
+  );
+
+  static TextStyle? _desktopIncrease(TextStyle? style, double increase) =>
+      style?.copyWith(fontSize: (style.fontSize ?? 14) + increase);
+
   // Semantic system-sans roles used by dense operational surfaces. These are
   // intentionally separate from the editorial TextTheme so a screen can opt
   // into the platform-native reading voice without changing every surface.

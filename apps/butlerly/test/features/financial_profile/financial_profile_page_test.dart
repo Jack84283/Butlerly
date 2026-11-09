@@ -279,6 +279,9 @@ void main() {
 
       final question = find.text('How many people are in your household?');
       final answer = find.text('1');
+      // The save completes through a real SQLite executor. Await the summary
+      // instead of assuming a fixed 100ms delay is enough on CI.
+      await _pumpUntilVisible(tester, question);
       expect(question, findsOneWidget);
       expect(answer, findsOneWidget);
       await tester.ensureVisible(question);

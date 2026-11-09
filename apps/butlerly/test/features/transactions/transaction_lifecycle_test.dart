@@ -9,7 +9,6 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_desktop_transaction_table.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
-import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/add_page.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
@@ -3000,12 +2999,7 @@ void main() {
             )
             .first,
       );
-      expect(
-        headerPadding.padding,
-        const EdgeInsetsDirectional.only(
-          end: ButlerlySpacing.headerActionTrailing,
-        ),
-      );
+      expect(headerPadding.padding, EdgeInsetsDirectional.zero);
 
       final addButton = find.byKey(const ValueKey('master-data-add'));
       final addIcon = find.descendant(
@@ -3016,9 +3010,12 @@ void main() {
       final iconButton = tester.widget<IconButton>(addButton);
       expect(
         iconButton.style?.backgroundColor?.resolve({}),
-        tester.element(addButton).colors.interactive,
+        Theme.of(tester.element(addButton)).colorScheme.primary,
       );
-      expect(iconButton.style?.foregroundColor?.resolve({}), Colors.white);
+      expect(
+        iconButton.style?.foregroundColor?.resolve({}),
+        Theme.of(tester.element(addButton)).colorScheme.onPrimary,
+      );
     },
   );
 

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/privacy_data_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -345,56 +346,78 @@ void main() {
     },
     variant: TargetPlatformVariant.only(TargetPlatform.iOS),
   );
-  testWidgets(
-    'wide Privacy & Data shows real actions in a two-column dashboard',
-    (tester) async {
-      tester.view.physicalSize = const Size(1440, 900);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+  testWidgets('wide Privacy & Data arranges its actions in waterfall columns', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
 
-      await tester.pumpWidget(app());
-      await tester.pumpAndSettle();
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
 
-      for (final key in const [
-        'desktop-privacy-local-banner',
-        'desktop-privacy-backup',
-        'desktop-privacy-export',
-        'desktop-privacy-management',
-        'desktop-privacy-danger',
-      ]) {
-        expect(find.byKey(ValueKey(key)), findsOneWidget);
-      }
-      expect(
-        find.byKey(const ValueKey('desktop-privacy-restore-merge')),
-        findsOneWidget,
-      );
-      expect(
-        find.byKey(const ValueKey('desktop-privacy-restore-replace')),
-        findsOneWidget,
-      );
-      expect(find.text('Merge backup'), findsOneWidget);
-      expect(find.text('Replace from backup'), findsOneWidget);
-      expect(find.text('Backup & Recovery'), findsOneWidget);
-      expect(find.text('Data Export'), findsOneWidget);
-      expect(find.text('Data Management'), findsOneWidget);
-      expect(find.text('Danger Zone'), findsOneWidget);
+    for (final key in const [
+      'desktop-privacy-local-banner',
+      'desktop-privacy-backup',
+      'desktop-privacy-export',
+      'desktop-privacy-management',
+      'desktop-privacy-danger',
+    ]) {
+      expect(find.byKey(ValueKey(key)), findsOneWidget);
+    }
+    expect(
+      find.byKey(const ValueKey('desktop-privacy-restore-merge')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('desktop-privacy-restore-replace')),
+      findsOneWidget,
+    );
+    expect(find.text('Merge backup'), findsOneWidget);
+    expect(find.text('Replace from backup'), findsOneWidget);
+    expect(find.text('Backup & Recovery'), findsOneWidget);
+    expect(find.text('Data Export'), findsOneWidget);
+    expect(find.text('Data Management'), findsOneWidget);
+    expect(find.text('Danger Zone'), findsOneWidget);
 
-      final backup = tester.getRect(
-        find.byKey(const ValueKey('desktop-privacy-backup')),
-      );
-      final export = tester.getRect(
-        find.byKey(const ValueKey('desktop-privacy-export')),
-      );
-      final management = tester.getRect(
-        find.byKey(const ValueKey('desktop-privacy-management')),
-      );
-      expect(backup.left, lessThan(export.left));
-      expect(backup.top, closeTo(export.top, 1));
-      expect(management.top, greaterThan(backup.top));
-      expect(tester.takeException(), isNull);
-    },
-  );
+    expect(
+      find.byKey(const ValueKey('desktop-privacy-waterfall')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('desktop-privacy-left-column')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('desktop-privacy-right-column')),
+      findsOneWidget,
+    );
+    final backup = tester.getRect(
+      find.byKey(const ValueKey('desktop-privacy-backup')),
+    );
+    final export = tester.getRect(
+      find.byKey(const ValueKey('desktop-privacy-export')),
+    );
+    final management = tester.getRect(
+      find.byKey(const ValueKey('desktop-privacy-management')),
+    );
+    final danger = tester.getRect(
+      find.byKey(const ValueKey('desktop-privacy-danger')),
+    );
+    expect(backup.left, lessThan(export.left));
+    expect(backup.top, closeTo(export.top, 1));
+    expect(management.left, closeTo(backup.left, 1));
+    expect(danger.left, closeTo(export.left, 1));
+    expect(management.width, closeTo(backup.width, 1));
+    expect(danger.width, closeTo(export.width, 1));
+    // Each lower card follows the previous card in its own column.
+    // It must not wait for the taller card in the other column.
+    expect(management.top, closeTo(backup.bottom + ButlerlySpacing.small, 1));
+    expect(danger.top, closeTo(export.bottom + ButlerlySpacing.small, 1));
+    expect(danger.top, lessThan(backup.bottom));
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('compact Privacy & Data preserves its original action list', (
     tester,
@@ -525,7 +548,7 @@ void main() {
       supportedVersion: 19,
     );
     await tester.pumpAndSettle();
-    expect(find.text('请先更新 Butlerly 再恢复备份'), findsOneWidget);
+    expect(find.text('请先更新 “账房先生” 再恢复备份'), findsOneWidget);
     expect(find.textContaining('App Store'), findsOneWidget);
     expect(find.textContaining('版本 20'), findsOneWidget);
     await tester.tap(find.text('知道了'));

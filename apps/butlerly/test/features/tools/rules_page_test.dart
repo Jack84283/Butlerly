@@ -329,6 +329,10 @@ void main() {
 
         final commonButton = find.byType(ButlerlyHeaderAddButton);
         expect(commonButton, findsOneWidget);
+        expect(
+          tester.widget<ButlerlyHeaderAddButton>(commonButton).closeToHelp,
+          isTrue,
+        );
         final button = find.byKey(ValueKey(buttonKey));
         expect(button, findsOneWidget);
         expect(

@@ -153,7 +153,7 @@ void main() {
         AppTheme.light.extension<ButlerlySemanticColors>()!.secondaryText,
       );
       expect(
-        tester.getTopRight(monthSurface).dx,
+        tester.getTopRight(find.byKey(const ValueKey('page-context-help'))).dx,
         closeTo(tester.getTopRight(headerContent).dx, 0.01),
       );
       final brand = find.text('Butlerly');
@@ -178,7 +178,7 @@ void main() {
       expect(tester.widget<Text>(brand).style?.fontSize, 24);
       final taglineText = tester.widget<Text>(brandTagline);
       expect(taglineText.style?.fontSize, 13);
-      expect(taglineText.style?.color, ButlerlySemanticColors.light.warning);
+      expect(taglineText.style?.color, const Color(0xFF784B0B));
       expect(
         taglineText.style?.fontFamily,
         ButlerlyTypography.editorialFontFamily,
@@ -196,13 +196,14 @@ void main() {
         closeTo(taglineLineHeight, 1.0),
         reason: 'The device tagline should occupy one visual line',
       );
+      final topRow = find.byKey(const ValueKey('home-brand-month-help-row'));
       expect(
-        tester.getTopLeft(brandTagline).dy - tester.getBottomLeft(brand).dy,
-        closeTo(ButlerlySpacing.micro, 1.0),
+        tester.getTopLeft(brandTagline).dy,
+        closeTo(tester.getBottomLeft(topRow).dy, 1.0),
       );
       expect(
-        tester.getTopLeft(monthSurface).dy,
-        greaterThan(tester.getBottomLeft(brandTagline).dy),
+        tester.getCenter(monthSurface).dy,
+        closeTo(tester.getCenter(brandIcon).dy, 1.1),
       );
       expect(tester.widget<Text>(greeting).style?.fontSize, 20);
       expect(tester.widget<Text>(intro).style?.fontSize, 13);
@@ -234,13 +235,9 @@ void main() {
     await tester.pumpWidget(_testApp(router));
     await tester.pumpAndSettle();
 
-    final monthSurface = find.descendant(
-      of: find.byKey(const Key('home-month-selector')),
-      matching: find.byType(Ink),
-    );
     final summaryCard = find.byKey(const ValueKey('home-summary-card'));
     expect(
-      tester.getTopRight(monthSurface).dx,
+      tester.getTopRight(find.byKey(const ValueKey('page-context-help'))).dx,
       closeTo(tester.getTopRight(summaryCard).dx, 0.01),
     );
   });
@@ -1064,7 +1061,7 @@ void main() {
       expect(tester.getSize(trendSurface).height, lessThan(44));
       expect(
         tester.getSize(trendSurface).height,
-        closeTo(tester.getSize(monthSurface).height, 0.1),
+        lessThanOrEqualTo(tester.getSize(monthSurface).height),
       );
 
       final headerTitle = find.descendant(
@@ -1247,7 +1244,7 @@ void main() {
       expect(tester.getSize(monthSurface).height, greaterThanOrEqualTo(44));
       final headerContent = find.byKey(const ValueKey('home-header-content'));
       expect(
-        tester.getTopRight(monthSurface).dx,
+        tester.getTopRight(find.byKey(const ValueKey('page-context-help'))).dx,
         closeTo(tester.getTopRight(headerContent).dx, 0.01),
       );
       await tester.scrollUntilVisible(

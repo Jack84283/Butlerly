@@ -319,6 +319,7 @@ class _MasterDataPageState extends State<MasterDataPage> {
       actions: [
         ButlerlyHeaderAddButton(
           buttonKey: const ValueKey('master-data-add'),
+          closeToHelp: true,
           label: context.l10n.text('add'),
           onPressed: _add,
         ),

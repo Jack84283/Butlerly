@@ -1,6 +1,7 @@
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/components/butlerly_category_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_content_surface.dart';
+import 'package:butlerly/design_system/components/butlerly_context_help.dart';
 import 'package:butlerly/design_system/components/butlerly_payment_source_icon.dart';
 import 'package:butlerly/design_system/theme/butlerly_button_palette.dart';
 import 'package:butlerly/design_system/theme/butlerly_responsive_design_tokens.dart';
@@ -17,6 +18,7 @@ import 'package:flutter/material.dart';
 
 export 'butlerly_category_icon.dart';
 export 'butlerly_content_surface.dart';
+export 'butlerly_context_help.dart';
 
 class ButlerlyPinnedPageSpacing {
   const ButlerlyPinnedPageSpacing({
@@ -63,6 +65,7 @@ class ButlerlyPage extends StatelessWidget {
     this.onRefresh,
     this.refreshKey,
     this.fullWidth = false,
+    this.showContextHelp = true,
     super.key,
   });
 
@@ -82,6 +85,9 @@ class ButlerlyPage extends StatelessWidget {
   /// Use the available page width instead of the standard readable-width cap.
   /// Only opt in from layouts designed for full-width content.
   final bool fullWidth;
+
+  /// Help readers suppress their own contextual Help action.
+  final bool showContextHelp;
 
   @override
   Widget build(BuildContext context) {
@@ -124,7 +130,23 @@ class ButlerlyPage extends StatelessWidget {
               toolbarHeight: toolbarHeight,
               title: Text(title!),
               leading: leading,
-              actions: actions,
+              actions: [
+                ...actions,
+                if (showContextHelp &&
+                    ButlerlyContextHelpButton.articleForContext(context) !=
+                        null)
+                  ButlerlyContextHelpButton(
+                    // Opt-in only for the three headers with an adjacent Add
+                    // action; other pages keep their original Help padding.
+                    visualGapAfterAdd:
+                        actions.isNotEmpty &&
+                            actions.last is ButlerlyHeaderAddButton &&
+                            (actions.last as ButlerlyHeaderAddButton)
+                                .closeToHelp
+                        ? ButlerlySpacing.small
+                        : null,
+                  ),
+              ],
               bottom: pinnedSpacing.headerBottomGap > ButlerlySpacing.none
                   ? PreferredSize(
                       preferredSize: Size.fromHeight(
@@ -389,13 +411,14 @@ class ButlerlyCardHeader extends StatelessWidget {
 
 /// Shared Add action for page headers on desktop and device layouts.
 ///
-/// The filled 32px circular icon and trailing inset match Master Data's
-/// established design. Hosts supply only the tooltip and action.
+/// The filled 32px circular icon uses identical sizing, padding, and colors
+/// in compact and desktop headers. Hosts supply only the tooltip and action.
 class ButlerlyHeaderAddButton extends StatelessWidget {
   const ButlerlyHeaderAddButton({
     required this.label,
     required this.onPressed,
     this.buttonKey,
+    this.closeToHelp = false,
     super.key,
   });
 
@@ -403,10 +426,16 @@ class ButlerlyHeaderAddButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final Key? buttonKey;
 
+  /// Omits the extra trailing padding when the Add action is directly
+  /// followed by the contextual Help control in a page header.
+  final bool closeToHelp;
+
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsetsDirectional.only(
-      end: ButlerlySpacing.headerActionTrailing,
+    padding: EdgeInsetsDirectional.only(
+      end: closeToHelp
+          ? ButlerlySpacing.none
+          : ButlerlySpacing.headerActionTrailing,
     ),
     child: IconButton.filled(
       key: buttonKey,
@@ -414,13 +443,16 @@ class ButlerlyHeaderAddButton extends StatelessWidget {
       onPressed: onPressed,
       icon: const Icon(Icons.add),
       style: IconButton.styleFrom(
-        backgroundColor: context.colors.interactive,
-        foregroundColor: context.colors.interactive.computeLuminance() > 0.5
-            ? context.colors.background
-            : Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
         shape: const CircleBorder(),
+        iconSize: ButlerlySize.standardIcon,
+        padding: EdgeInsets.zero,
+        fixedSize: const Size.square(32),
         minimumSize: const Size.square(32),
         maximumSize: const Size.square(32),
+        visualDensity: VisualDensity.standard,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
     ),
   );
@@ -532,6 +564,7 @@ class ButlerlyCompactSelector extends StatelessWidget {
     this.semanticLabel,
     this.buttonKey,
     this.alignVisualEnd = false,
+    this.centerVisual = false,
     this.denseSurface = false,
     this.transparent = false,
     super.key,
@@ -542,6 +575,10 @@ class ButlerlyCompactSelector extends StatelessWidget {
   final String? semanticLabel;
   final Key? buttonKey;
   final bool alignVisualEnd;
+
+  /// Vertically centers the painted selector within the existing 44px target.
+  /// Used by the device Home header to align with its brand and Help circle.
+  final bool centerVisual;
   final bool denseSurface;
   final bool transparent;
 
@@ -573,9 +610,13 @@ class ButlerlyCompactSelector extends StatelessWidget {
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
         child: SizedBox(
-          height: alignVisualEnd ? ButlerlySize.minimumTarget : null,
+          height: alignVisualEnd || centerVisual
+              ? ButlerlySize.minimumTarget
+              : null,
           child: Align(
-            alignment: alignVisualEnd
+            alignment: centerVisual
+                ? AlignmentDirectional.centerEnd
+                : alignVisualEnd
                 ? AlignmentDirectional.topEnd
                 : Alignment.topCenter,
             child: Ink(
