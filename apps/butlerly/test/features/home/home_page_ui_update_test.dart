@@ -196,9 +196,7 @@ void main() {
         closeTo(taglineLineHeight, 1.0),
         reason: 'The device tagline should occupy one visual line',
       );
-      final topRow = find.byKey(
-        const ValueKey('home-brand-month-help-row'),
-      );
+      final topRow = find.byKey(const ValueKey('home-brand-month-help-row'));
       expect(
         tester.getTopLeft(brandTagline).dy,
         closeTo(tester.getBottomLeft(topRow).dy, 1.0),
