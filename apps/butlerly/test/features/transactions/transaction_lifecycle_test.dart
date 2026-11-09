@@ -4358,10 +4358,10 @@ Future<void> _scrollEditorToMasterData(WidgetTester tester) async {
 }
 
 Future<void> _scrollEditorToSave(WidgetTester tester) async {
-  expect(
-    find.byKey(const ValueKey('transaction-save-locally')),
-    findsOneWidget,
-  );
+  final save = find.byKey(const ValueKey('transaction-save-locally'));
+  expect(save, findsOneWidget);
+  await tester.ensureVisible(save);
+  await tester.pumpAndSettle();
 }
 
 void _expectEditorSelection(WidgetTester tester, String label) {
