@@ -3158,9 +3158,11 @@ void main() {
       expect(find.text('USD 125.00'), findsOneWidget);
       expect(find.text('Apr 15, 2026'), findsOneWidget);
       expect(
-        tester.widget<ButlerlyHeaderAddButton>(
-          find.byKey(const ValueKey('payment-settlements-add')),
-        ).onPressed,
+        tester
+            .widget<ButlerlyHeaderAddButton>(
+              find.byKey(const ValueKey('payment-settlements-add')),
+            )
+            .onPressed,
         isNull,
       );
       expect(tester.takeException(), isNull);
