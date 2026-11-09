@@ -347,6 +347,7 @@ class _LegalDocumentPageState extends State<LegalDocumentPage> {
       child: ButlerlyResponsiveBody(
         contentKey: const ValueKey('legal-document-content'),
         child: FutureBuilder<String>(
+          key: ValueKey('legal-document-body-$_loadedPath'),
           future: _contents,
           builder: (context, snapshot) {
             if (snapshot.hasError) {
