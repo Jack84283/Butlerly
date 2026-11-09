@@ -1206,8 +1206,7 @@ class AppLocalizations {
       'subcategory': 'Subcategory',
     },
     'zh': {
-      'finishTransactionEditBeforeChangingSettlement':
-          '请先保存或取消交易编辑，再打开其他结算记录。',
+      'finishTransactionEditBeforeChangingSettlement': '请先保存或取消交易编辑，再打开其他结算记录。',
       'csvDefaultCurrencyApplied': '已为 {count} 行未填写币种的记录使用默认币种 {currency}。',
       'csvChooseTemplateLanguage': '选择模板语言',
       'csvGuideExample': '示例（不会写入文件）',
