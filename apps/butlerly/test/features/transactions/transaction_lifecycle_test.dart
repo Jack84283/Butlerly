@@ -3126,9 +3126,7 @@ void main() {
         '27.00',
       );
       await _scrollEditorToSave(tester);
-      await tester.tap(
-        find.byKey(const ValueKey('transaction-save-locally')),
-      );
+      await tester.tap(find.byKey(const ValueKey('transaction-save-locally')));
       await tester.pumpAndSettle();
       expect(
         find.byKey(const ValueKey('transaction-detail-summary-card')),
@@ -3168,9 +3166,7 @@ void main() {
         'Updated again',
       );
       await _scrollEditorToSave(tester);
-      await tester.tap(
-        find.byKey(const ValueKey('transaction-save-locally')),
-      );
+      await tester.tap(find.byKey(const ValueKey('transaction-save-locally')));
       await tester.pumpAndSettle();
       await tester.tap(
         find.byKey(
