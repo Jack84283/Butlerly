@@ -1090,7 +1090,7 @@ class AppLocalizations {
       'aiProfessionalAdviceDisclosures': 'AI & Professional-Advice Disclosures',
       'legalDocumentLoadError': 'This legal document could not be loaded.',
       'legalReviewNotApproved':
-          'Alpha review documents (v1.1). Not effective or approved for publication.'
+          'Alpha review documents (v1.1). Not effective or approved for publication.',
       'addSource': 'Add source',
       'name': 'Name',
       'type': 'Type',
@@ -2114,7 +2114,7 @@ class AppLocalizations {
       'softwareLicenseThirdPartyNotices': '软件许可与第三方声明',
       'aiProfessionalAdviceDisclosures': '人工智能与专业建议声明',
       'legalDocumentLoadError': '无法加载此法律文档。',
-      'legalReviewNotApproved': 'Alpha 审阅稿（v1.1），尚未生效，未经正式发布批准。'
+      'legalReviewNotApproved': 'Alpha 审阅稿（v1.1），尚未生效，未经正式发布批准。',
       'addSource': '添加来源',
       'name': '名称',
       'type': '类型',
@@ -3286,7 +3286,7 @@ class AppLocalizations {
           'Declaraciones sobre IA y asesoramiento profesional',
       'legalDocumentLoadError': 'No se pudo cargar este documento legal.',
       'legalReviewNotApproved':
-          'Documentos de revisión Alpha (v1.1). No vigentes ni aprobados para publicación.'
+          'Documentos de revisión Alpha (v1.1). No vigentes ni aprobados para publicación.',
       'addSource': 'Añadir fuente',
       'name': 'Nombre',
       'type': 'Tipo',
