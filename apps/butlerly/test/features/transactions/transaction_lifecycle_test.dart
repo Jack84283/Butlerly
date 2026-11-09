@@ -3084,7 +3084,10 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('transaction-editor-content')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('transaction-editor-content')),
+        findsOneWidget,
+      );
       expect(find.text('Uncommitted change'), findsOneWidget);
       expect(
         find.text(
@@ -3096,7 +3099,10 @@ void main() {
         find.byKey(const ValueKey('transaction-editor-cancel-panel')),
       );
       await tester.pumpAndSettle();
-      expect(find.byKey(const ValueKey('transaction-detail-summary-card')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('transaction-detail-summary-card')),
+        findsOneWidget,
+      );
       await tester.tap(
         find.byKey(const ValueKey('transaction-detail-close-panel')),
       );
