@@ -64,7 +64,8 @@ void main() {
       merchantAliases,
       merchantPatterns,
     );
-    paymentSettlements = MemoryPaymentSettlements();
+    paymentSettlements = MemoryPaymentSettlements()
+      ..transactionRepository = repository;
     services.registerSingleton<FinanceServices>(
       FinanceServices(
         repository,
@@ -2942,6 +2943,338 @@ void main() {
     expect(values.single.lastFour, '8421');
   });
 
+  testWidgets(
+    'Desktop settlements keep transaction drill-down in the right panel',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(1600, 1200);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final finance = services<FinanceServices>();
+      final source = PaymentSource(
+        id: PaymentSourceId('settlement-panel-source'),
+        name: 'Panel credit card',
+        type: PaymentSourceType.card,
+      );
+      await finance.savePaymentSource(source);
+      await paymentSettlements.save(
+        PaymentSettlement(
+          id: PaymentSettlementId('settlement-panel-next'),
+          paymentSourceId: source.id,
+          payment: Money(
+            amount: DecimalValue.parse('80.00'),
+            currency: CurrencyCode('USD'),
+          ),
+          paymentDate: '2026-10-15',
+          periodStart: '2026-10-01',
+          periodEnd: '2026-10-15',
+          status: PaymentSettlementStatus.open,
+          createdAt: DateTime.utc(2026, 10, 15),
+          updatedAt: DateTime.utc(2026, 10, 15),
+        ),
+      );
+      await paymentSettlements.save(
+        PaymentSettlement(
+          id: PaymentSettlementId('settlement-panel'),
+          paymentSourceId: source.id,
+          payment: Money(
+            amount: DecimalValue.parse('100.00'),
+            currency: CurrencyCode('USD'),
+          ),
+          paymentDate: '2026-09-15',
+          periodStart: '2026-09-01',
+          periodEnd: '2026-09-15',
+          status: PaymentSettlementStatus.open,
+          createdAt: DateTime.utc(2026, 9, 15),
+          updatedAt: DateTime.utc(2026, 9, 15),
+        ),
+      );
+      final created = await finance.createTransaction(
+        CreateTransactionCommand(
+          id: 'settlement-period-transaction',
+          provenanceId: 'settlement-period-provenance',
+          timing: KnownTransactionTime(DateTime.utc(2026, 9, 10, 12)),
+          money: Money(
+            amount: DecimalValue.parse('25.00'),
+            currency: CurrencyCode('USD'),
+          ),
+          direction: TransactionDirection.expense,
+          transactionDate: '2026-09-10',
+          description: 'Period purchase',
+          paymentSourceId: source.id.value,
+        ),
+      );
+      expect(created, isA<ApplicationSuccess<TransactionDto>>());
+      paymentSettlements.periodTransactions.add(
+        repository.values['settlement-period-transaction']!,
+      );
+
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: PaymentSettlementsPage())),
+      );
+      await tester.pumpAndSettle();
+
+      final settlementRow = find.byKey(
+        const ValueKey('desktop-payment-settlement-settlement-panel'),
+      );
+      expect(settlementRow, findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('desktop-transaction-detail-panel')),
+        findsNothing,
+      );
+
+      await tester.tap(settlementRow);
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('desktop-transaction-detail-panel')),
+        findsOneWidget,
+      );
+      expect(find.byType(PaymentSettlementDetailPage), findsOneWidget);
+      expect(find.byType(TransactionRow), findsOneWidget);
+      expect(settlementRow, findsOneWidget);
+      final originalDetailState = tester.state(
+        find.byType(PaymentSettlementDetailPage),
+      );
+
+      await tester.tap(find.byType(TransactionRow));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('transaction-detail-summary-card')),
+        findsOneWidget,
+      );
+      expect(find.byType(PaymentSettlementDetailPage), findsNothing);
+      expect(settlementRow, findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('desktop-transaction-detail-panel')),
+        findsOneWidget,
+      );
+
+      // Closing a read-only transaction restores the *same* settlement
+      // detail State, retaining its scroll position and loaded data.
+      await tester.tap(
+        find.byKey(const ValueKey('transaction-detail-close-panel')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(PaymentSettlementDetailPage), findsOneWidget);
+      expect(find.byType(TransactionRow), findsOneWidget);
+      expect(settlementRow, findsOneWidget);
+      expect(
+        identical(
+          tester.state(find.byType(PaymentSettlementDetailPage)),
+          originalDetailState,
+        ),
+        isTrue,
+      );
+
+      // Editing a transaction must protect the unsaved draft when the user
+      // clicks another settlement row in the still-visible left pane.
+      await tester.tap(find.byType(TransactionRow));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('transaction-detail-edit-action')),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('transaction-description-field')),
+        'Uncommitted change',
+      );
+      await tester.tap(
+        find.byKey(
+          const ValueKey('desktop-payment-settlement-settlement-panel-next'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('transaction-editor-content')),
+        findsOneWidget,
+      );
+      expect(find.text('Uncommitted change'), findsOneWidget);
+      expect(
+        find.text(
+          'Finish or cancel the transaction edit before opening another settlement.',
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(
+        find.byKey(const ValueKey('transaction-editor-cancel-panel')),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('transaction-detail-summary-card')),
+        findsOneWidget,
+      );
+      await tester.tap(
+        find.byKey(const ValueKey('transaction-detail-close-panel')),
+      );
+      await tester.pumpAndSettle();
+
+      // A saved transaction edit must invalidate the retained settlement
+      // detail, but must not replace its State or reset the panel.
+      await tester.tap(find.byType(TransactionRow));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('transaction-detail-edit-action')),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('transaction-description-field')),
+        'Updated period purchase',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('transaction-amount-field')),
+        '27.00',
+      );
+      await _scrollEditorToSave(tester);
+      await tester.tap(find.byKey(const ValueKey('transaction-save-locally')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('transaction-detail-summary-card')),
+        findsOneWidget,
+      );
+      await tester.tap(
+        find.byKey(const ValueKey('transaction-detail-close-panel')),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        identical(
+          tester.state(find.byType(PaymentSettlementDetailPage)),
+          originalDetailState,
+        ),
+        isTrue,
+      );
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is TransactionRow &&
+              widget.transaction.description == 'Updated period purchase' &&
+              widget.transaction.amount == '27',
+        ),
+        findsOneWidget,
+      );
+
+      // Also cover the direct path: save a second edit, then select a
+      // different settlement without first closing transaction details.
+      await tester.tap(find.byType(TransactionRow));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('transaction-detail-edit-action')),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('transaction-description-field')),
+        'Updated again',
+      );
+      await _scrollEditorToSave(tester);
+      await tester.tap(find.byKey(const ValueKey('transaction-save-locally')));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(
+          const ValueKey('desktop-payment-settlement-settlement-panel-next'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(PaymentSettlementDetailPage), findsOneWidget);
+      await tester.tap(settlementRow);
+      await tester.pumpAndSettle();
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is TransactionRow &&
+              widget.transaction.description == 'Updated again',
+        ),
+        findsOneWidget,
+      );
+
+      // Delete in the embedded transaction detail, then verify that its
+      // parent settlement refreshes the count/list rather than showing
+      // the now-deleted period transaction.
+      await tester.tap(find.byType(TransactionRow));
+      await tester.pumpAndSettle();
+      final deleteButton = find.byKey(
+        const ValueKey('transaction-detail-delete-button'),
+      );
+      await tester.scrollUntilVisible(
+        deleteButton,
+        200,
+        scrollable: _transactionDetailScrollable(tester),
+      );
+      await tester.ensureVisible(deleteButton);
+      await tester.tap(deleteButton);
+      await tester.pumpAndSettle();
+      final confirmDelete = find.text('Delete permanently').last;
+      await tester.ensureVisible(confirmDelete);
+      await tester.tap(confirmDelete);
+      await tester.pumpAndSettle();
+      expect(
+        repository.values.containsKey('settlement-period-transaction'),
+        isFalse,
+      );
+      expect(find.byType(PaymentSettlementDetailPage), findsOneWidget);
+      expect(find.byType(TransactionRow), findsNothing);
+      expect(find.text('Updated again'), findsNothing);
+
+      await tester.tap(
+        find.byKey(const ValueKey('desktop-payment-settlement-close')),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('desktop-transaction-detail-panel')),
+        findsNothing,
+      );
+      expect(settlementRow, findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'Archived card retains its historical settlements without enabling Add',
+    (tester) async {
+      final finance = services<FinanceServices>();
+      final archived = PaymentSource(
+        id: PaymentSourceId('archived-card-source'),
+        name: 'Archived credit card',
+        type: PaymentSourceType.card,
+        status: PaymentSourceStatus.archived,
+      );
+      await finance.savePaymentSource(archived);
+      await paymentSettlements.save(
+        PaymentSettlement(
+          id: PaymentSettlementId('historical-settlement'),
+          paymentSourceId: archived.id,
+          payment: Money(
+            amount: DecimalValue.parse('125.00'),
+            currency: CurrencyCode('USD'),
+          ),
+          paymentDate: '2026-04-15',
+          periodStart: '2026-03-16',
+          periodEnd: '2026-04-15',
+          status: PaymentSettlementStatus.reconciled,
+          createdAt: DateTime.utc(2026, 4, 15),
+          updatedAt: DateTime.utc(2026, 4, 15),
+        ),
+      );
+
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: PaymentSettlementsPage())),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Archived credit card'), findsOneWidget);
+      expect(find.text('USD 125.00'), findsOneWidget);
+      expect(find.text('Apr 15, 2026'), findsOneWidget);
+      expect(
+        tester
+            .widget<ButlerlyHeaderAddButton>(
+              find.byType(ButlerlyHeaderAddButton),
+            )
+            .onPressed,
+        isNull,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('payment settlement rows show source, amount, and payment date', (
     tester,
   ) async {
@@ -4409,6 +4742,8 @@ final class MemoryPaymentSources implements PaymentSourceRepository {
 
 final class MemoryPaymentSettlements implements PaymentSettlementRepository {
   final values = <String, PaymentSettlement>{};
+  final periodTransactions = <Transaction>[];
+  MemoryTransactionRepository? transactionRepository;
 
   @override
   Future<PaymentSettlement?> findById(PaymentSettlementId id) async =>
@@ -4422,7 +4757,14 @@ final class MemoryPaymentSettlements implements PaymentSettlementRepository {
     PaymentSettlement settlement, {
     DateTime? occurredAtFrom,
     DateTime? occurredAtToExclusive,
-  }) async => [];
+  }) async {
+    final transactions = transactionRepository;
+    if (transactions == null) return periodTransactions;
+    return periodTransactions
+        .map((original) => transactions.values[original.id.value])
+        .whereType<Transaction>()
+        .toList(growable: false);
+  }
 
   @override
   Future<void> remove(PaymentSettlementId id) async => values.remove(id.value);

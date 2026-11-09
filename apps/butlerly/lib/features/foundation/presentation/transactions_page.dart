@@ -613,6 +613,7 @@ class DesktopTransactionPanel extends StatefulWidget {
     required this.transaction,
     required this.onClose,
     required this.onChanged,
+    this.onEditingChanged,
     super.key,
   });
 
@@ -620,6 +621,10 @@ class DesktopTransactionPanel extends StatefulWidget {
   final TransactionDto transaction;
   final ValueChanged<bool> onClose;
   final VoidCallback onChanged;
+
+  /// Optional host notification to prevent changing a parent selection while
+  /// the embedded transaction editor has an unsaved draft.
+  final ValueChanged<bool>? onEditingChanged;
 
   @override
   State<DesktopTransactionPanel> createState() =>
@@ -646,6 +651,7 @@ class _DesktopTransactionPanelState extends State<DesktopTransactionPanel> {
 
   void _completeEdit(TransactionEditorResult result) {
     if (!mounted) return;
+    widget.onEditingChanged?.call(false);
     switch (result) {
       case TransactionEditorSaved(:final transaction):
         setState(() {
@@ -680,7 +686,10 @@ class _DesktopTransactionPanelState extends State<DesktopTransactionPanel> {
       key: ValueKey('desktop-detail-${transaction.id}'),
       finance: widget.finance,
       transaction: transaction,
-      onEditRequested: () => setState(() => _editing = true),
+      onEditRequested: () {
+        setState(() => _editing = true);
+        widget.onEditingChanged?.call(true);
+      },
       onChanged: widget.onChanged,
       onClose: (changed) => widget.onClose(changed || _changed),
     );
