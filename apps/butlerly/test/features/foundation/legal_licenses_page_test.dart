@@ -79,34 +79,34 @@ void main() {
       // Asset-bundle reads rely on asynchronous platform messages. Running
       // them inside a plain test() with a Flutter widget binding can hang.
       final loaded = await tester.runAsync(() async {
-      const documents = [
-        LegalDocument('termsOfUse', 'assets/legal/terms_of_use.txt'),
-        LegalDocument('privacyPolicy', 'assets/legal/privacy_policy.txt'),
-        LegalDocument(
-          'softwareLicenseThirdPartyNotices',
-          'assets/legal/third_party_notices.txt',
-        ),
-        LegalDocument(
-          'aiProfessionalAdviceDisclosures',
-          'assets/legal/ai_disclosures.txt',
-        ),
-      ];
-      const ids = ['LEG-0001', 'LEG-0002', 'LEG-0003', 'LEG-0004'];
-      for (var i = 0; i < documents.length; i++) {
-        for (final locale in AppLocalizations.supportedLocales) {
-          final path = documents[i].assetPathFor(locale);
-          final text = await rootBundle.loadString(path);
-          expect(text, contains(ids[i]), reason: path);
-          expect(text, contains('v1.1'), reason: path);
-          if (locale.languageCode == 'zh') {
-            expect(text, contains('审阅稿'), reason: path);
-          } else if (locale.languageCode == 'es') {
-            expect(text, contains('revisión Alpha'), reason: path);
-          } else {
-            expect(text, contains('review edition v1.1'), reason: path);
+        const documents = [
+          LegalDocument('termsOfUse', 'assets/legal/terms_of_use.txt'),
+          LegalDocument('privacyPolicy', 'assets/legal/privacy_policy.txt'),
+          LegalDocument(
+            'softwareLicenseThirdPartyNotices',
+            'assets/legal/third_party_notices.txt',
+          ),
+          LegalDocument(
+            'aiProfessionalAdviceDisclosures',
+            'assets/legal/ai_disclosures.txt',
+          ),
+        ];
+        const ids = ['LEG-0001', 'LEG-0002', 'LEG-0003', 'LEG-0004'];
+        for (var i = 0; i < documents.length; i++) {
+          for (final locale in AppLocalizations.supportedLocales) {
+            final path = documents[i].assetPathFor(locale);
+            final text = await rootBundle.loadString(path);
+            expect(text, contains(ids[i]), reason: path);
+            expect(text, contains('v1.1'), reason: path);
+            if (locale.languageCode == 'zh') {
+              expect(text, contains('审阅稿'), reason: path);
+            } else if (locale.languageCode == 'es') {
+              expect(text, contains('revisión Alpha'), reason: path);
+            } else {
+              expect(text, contains('review edition v1.1'), reason: path);
+            }
           }
         }
-      }
         expect(
           documents.first.assetPathFor(const Locale('fr')),
           'assets/legal/terms_of_use.txt',
