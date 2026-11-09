@@ -2942,6 +2942,116 @@ void main() {
     expect(values.single.lastFour, '8421');
   });
 
+  testWidgets(
+    'Desktop settlements keep transaction drill-down in the right panel',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(1600, 1200);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final finance = services<FinanceServices>();
+      final source = PaymentSource(
+        id: PaymentSourceId('settlement-panel-source'),
+        name: 'Panel credit card',
+        type: PaymentSourceType.card,
+      );
+      await finance.savePaymentSource(source);
+      await paymentSettlements.save(
+        PaymentSettlement(
+          id: PaymentSettlementId('settlement-panel'),
+          paymentSourceId: source.id,
+          payment: Money(
+            amount: DecimalValue.parse('100.00'),
+            currency: CurrencyCode('USD'),
+          ),
+          paymentDate: '2026-09-15',
+          periodStart: '2026-09-01',
+          periodEnd: '2026-09-15',
+          status: PaymentSettlementStatus.open,
+          createdAt: DateTime.utc(2026, 9, 15),
+          updatedAt: DateTime.utc(2026, 9, 15),
+        ),
+      );
+      final created = await finance.createTransaction(
+        CreateTransactionCommand(
+          id: 'settlement-period-transaction',
+          provenanceId: 'settlement-period-provenance',
+          timing: KnownTransactionTime(DateTime.utc(2026, 9, 10, 12)),
+          money: Money(
+            amount: DecimalValue.parse('25.00'),
+            currency: CurrencyCode('USD'),
+          ),
+          direction: TransactionDirection.expense,
+          transactionDate: '2026-09-10',
+          description: 'Period purchase',
+          paymentSourceId: source.id.value,
+        ),
+      );
+      expect(created, isA<ApplicationSuccess<TransactionDto>>());
+      paymentSettlements.periodTransactions.add(
+        repository.values['settlement-period-transaction']!,
+      );
+
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: PaymentSettlementsPage())),
+      );
+      await tester.pumpAndSettle();
+
+      final settlementRow = find.byKey(
+        const ValueKey('desktop-payment-settlement-settlement-panel'),
+      );
+      expect(settlementRow, findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('desktop-transaction-detail-panel')),
+        findsNothing,
+      );
+
+      await tester.tap(settlementRow);
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('desktop-transaction-detail-panel')),
+        findsOneWidget,
+      );
+      expect(find.byType(PaymentSettlementDetailPage), findsOneWidget);
+      expect(find.byType(TransactionRow), findsOneWidget);
+      expect(settlementRow, findsOneWidget);
+
+      await tester.tap(find.byType(TransactionRow));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('transaction-detail-summary-card')),
+        findsOneWidget,
+      );
+      expect(find.byType(PaymentSettlementDetailPage), findsNothing);
+      expect(settlementRow, findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('desktop-transaction-detail-panel')),
+        findsOneWidget,
+      );
+
+      // Closing the transaction restores the settlement in the same panel.
+      await tester.tap(
+        find.byKey(const ValueKey('transaction-detail-close-panel')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(PaymentSettlementDetailPage), findsOneWidget);
+      expect(find.byType(TransactionRow), findsOneWidget);
+      expect(settlementRow, findsOneWidget);
+
+      await tester.tap(
+        find.byKey(const ValueKey('desktop-payment-settlement-close')),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('desktop-transaction-detail-panel')),
+        findsNothing,
+      );
+      expect(settlementRow, findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('payment settlement rows show source, amount, and payment date', (
     tester,
   ) async {
@@ -4409,6 +4519,7 @@ final class MemoryPaymentSources implements PaymentSourceRepository {
 
 final class MemoryPaymentSettlements implements PaymentSettlementRepository {
   final values = <String, PaymentSettlement>{};
+  final periodTransactions = <Transaction>[];
 
   @override
   Future<PaymentSettlement?> findById(PaymentSettlementId id) async =>
@@ -4422,7 +4533,7 @@ final class MemoryPaymentSettlements implements PaymentSettlementRepository {
     PaymentSettlement settlement, {
     DateTime? occurredAtFrom,
     DateTime? occurredAtToExclusive,
-  }) async => [];
+  }) async => periodTransactions;
 
   @override
   Future<void> remove(PaymentSettlementId id) async => values.remove(id.value);
