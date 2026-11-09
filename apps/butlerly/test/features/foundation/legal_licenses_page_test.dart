@@ -212,4 +212,41 @@ void main() {
     );
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('compact open document reloads after changing app language', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    var locale = const Locale('en');
+    late StateSetter updateRoot;
+    await tester.pumpWidget(
+      StatefulBuilder(
+        builder: (context, setState) {
+          updateRoot = setState;
+          return app(locale: locale);
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Terms of Use'));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<SelectableText>(find.byType(SelectableText)).data,
+      contains('BUTLERLY — TERMS OF USE'),
+    );
+
+    updateRoot(() => locale = const Locale('zh', 'CN'));
+    await tester.pumpAndSettle();
+    expect(find.byType(LegalDocumentPage), findsOneWidget);
+    expect(
+      tester.widget<SelectableText>(find.byType(SelectableText)).data,
+      contains('BUTLERLY — 使用条款'),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
 }
