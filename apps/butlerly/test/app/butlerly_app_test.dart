@@ -475,7 +475,10 @@ void main() {
 
     await tester.tap(find.text('Terms of Use'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Acceptance of Terms'), findsOneWidget);
+    expect(
+      tester.widget<SelectableText>(find.byType(SelectableText)).data,
+      contains('BUTLERLY — TERMS OF USE'),
+    );
   });
 }
 
