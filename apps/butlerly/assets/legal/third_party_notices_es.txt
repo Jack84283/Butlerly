@@ -1,0 +1,35 @@
+BUTLERLY — LICENCIAS DE SOFTWARE Y AVISOS DE TERCEROS
+LEG-0003 | Edición de revisión Alpha v1.1 | Español | 9 de noviembre de 2026
+INVENTARIO DE DISTRIBUCIÓN INCOMPLETO — NO ES UN AVISO ÍNTEGRO DE LICENCIAS
+
+Este texto es un borrador explicativo para revisión, no sustituye las licencias originales ni constituye un inventario de atribuciones certificado. Deben incluirse los avisos originales de copyright, los textos de licencia, atribuciones, ofertas de código fuente y avisos de modificación que exijan las licencias de los componentes efectivamente distribuidos. La publicación queda pendiente hasta verificar el inventario de la versión congelada.
+
+1. Materiales originales de Butlerly
+El código original, nombre, diseños, contenido e identidad visual de Butlerly son propiedad o están autorizados por [TITULAR DE DERECHOS VERIFICADO]. Copyright © [AÑO Y TITULAR VERIFICADOS]. Los derechos no concedidos se reservan hasta donde permita la ley. El uso de la Aplicación se rige por LEG-0001 y las condiciones de distribución aplicables. Este párrafo no pretende atribuir a Butlerly la titularidad de software o recursos ajenos.
+
+2. Software libre y otros componentes de terceros
+La Aplicación puede contener componentes Flutter/Dart, bibliotecas SQLite, complementos de plataforma, herramientas de localización, navegación, criptografía, selección de archivos, procesamiento de imágenes y audio, iconos, tipografías y otros materiales de terceros. Cada componente se rige por su licencia. Las condiciones propietarias de Butlerly no suprimen los derechos otorgados por licencias de código abierto. La compilación final debe conservar y permitir consultar todos los derechos de autor, licencias íntegras y reconocimientos exigidos.
+
+No debe suponerse que todas las licencias sean permisivas. Una lista de paquetes no equivale a un inventario de licencias y puede omitir dependencias nativas y transitivas. Cuando una licencia exige mantener su texto original intacto, dicho texto debe proporcionarse incluso si se acompaña de una traducción explicativa.
+
+3. Inventario de la versión exacta
+El equipo de publicación debe elaborar el inventario a partir de las dependencias resueltas y los binarios distribuidos: pubspec.lock de Flutter/Dart, dependencias Gradle de Android, paquetes y archivos de bloqueo nativos de iOS/macOS, componentes de plataforma, código generado y recursos integrados. Para cada elemento distribuido deberá registrarse nombre, versión exacta, URL de origen, titular, identificador SPDX o licencia aplicable, textos íntegros y derechos de autor, atribuciones, modificaciones, obligaciones de ofrecer código fuente, ubicación del aviso y pruebas de verificación.
+
+Las licencias desconocidas, incompatibles, personalizadas, de copyleft o restrictivas para uso comercial requieren revisión especializada. No puede afirmarse el cumplimiento integral de licencias por el mero hecho de incluir este borrador.
+
+4. Recursos, tipografías, modelos y medios
+Debe verificarse el origen, los derechos y las condiciones de redistribución de iconos, marcas, datos de ejemplo, plantillas, capturas, audio, fuentes y modelos de IA/OCR empaquetados. Que un nombre de tipografía aparezca en el código no demuestra que se haya integrado ni que su distribución esté autorizada. No deben incorporarse marcas, bases de datos u obras protegidas de terceros sin permiso. La disponibilidad pública en Internet no equivale a una licencia de redistribución.
+
+5. Consulta de licencias reales
+La versión publicada deberá ofrecer, a través de «Aspectos legales y licencias» y los medios de distribución pertinentes, el inventario requerido y los textos originales accesibles sin conexión cuando corresponda. Un resumen no sustituye la licencia. Algunas licencias exigen además una oferta válida de código fuente, notas de modificación o atribuciones en lugares específicos. Tales obligaciones se satisfacen por separado de un pie de página genérico.
+
+Esta edición v1.1 no afirma que ya exista un inventario final verificado. Los cuatro activos legales actualmente empaquetados con la Aplicación siguen siendo borradores anteriores; no deben reemplazarse sin aprobación.
+
+6. Nombres y marcas de terceros
+Las referencias a productos, servicios, bancos, sistemas operativos y bibliotecas pueden utilizarse solo para identificar compatibilidad, fuentes o dependencias. No implican patrocinio, afiliación ni aprobación. Los derechos de marca corresponden a sus titulares. Las condiciones de una API pueden aplicarse independientemente de la licencia de código de una biblioteca cliente.
+
+7. Rectificaciones, contacto y versiones
+Cada aviso publicado debe corresponder a un commit y conjunto de dependencias congelados. Una actualización de paquetes, sustitución de activos o compilación de otra plataforma puede exigir revisar las atribuciones. Consultas y notificaciones sobre licencias: [CONTACTO JURÍDICO VERIFICADO]. Editor/titular: [ENTIDAD VERIFICADA]. Fecha y versión de vigencia: [PENDIENTE DE APROBACIÓN]. Cuando un resumen explicativo contradiga una licencia aplicable, prevalece la licencia original en la medida exigida por ley.
+
+REGISTRO DE INVENTARIO Y APROBACIÓN PREVIA — NO FORMA PARTE DEL AVISO PÚBLICO
+Pendiente: commit/build final; inventario completo de dependencias directas, transitivas y nativas; textos y derechos de autor originales; obligaciones de atribución y oferta de código fuente; procedencia de recursos, fuentes, medios y modelos; decisiones de licencias desconocidas; acceso offline en plataformas distribuidas; revisión EN/zh-Hans/es de textos explicativos manteniendo las licencias originales; editor/contacto y aprobación final. Esta revisión no generó un inventario certificado. Incidencia: https://github.com/Jack84283/Butlerly/issues/380.
