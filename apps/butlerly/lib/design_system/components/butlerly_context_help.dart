@@ -40,10 +40,15 @@ class ButlerlyContextHelpButton extends StatelessWidget {
   const ButlerlyContextHelpButton({
     this.articleId,
     this.visualGapAfterAdd,
+    this.onPressed,
     super.key,
   });
 
   final String? articleId;
+
+  /// Optional navigation override for router error screens, where the
+  /// invalid route cannot always be used as the base for context.push().
+  final VoidCallback? onPressed;
 
   /// Requested gap between the preceding 32px header Add circle and this
   /// 32px Help circle. The Help hit target remains 44px.
@@ -102,7 +107,7 @@ class ButlerlyContextHelpButton extends StatelessWidget {
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           shape: const CircleBorder(),
         ),
-        onPressed: () {
+        onPressed: onPressed ?? () {
           if (router == null) {
             _openStandaloneHelp(context, target);
           } else {

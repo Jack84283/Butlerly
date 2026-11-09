@@ -58,12 +58,18 @@ Widget _responsiveStateScaffold({
   required Key contentKey,
   required Widget child,
   String? helpArticleId,
+  VoidCallback? onHelpPressed,
 }) => Scaffold(
   appBar: helpArticleId == null
       ? null
       : AppBar(
           automaticallyImplyLeading: false,
-          actions: [ButlerlyContextHelpButton(articleId: helpArticleId)],
+          actions: [
+            ButlerlyContextHelpButton(
+              articleId: helpArticleId,
+              onPressed: onHelpPressed,
+            ),
+          ],
         ),
   body: ButlerlyResponsiveBody(contentKey: contentKey, child: child),
 );
@@ -332,6 +338,15 @@ final appRouter = GoRouter(
   errorBuilder: (context, state) => _responsiveStateScaffold(
     contentKey: const ValueKey('router-error-content'),
     helpArticleId: 'ch-3',
+    // Unknown paths have no valid GoRouter match to push from. Open Help
+    // as a local route so Back returns to the original error screen.
+    onHelpPressed: () {
+      Navigator.of(context).push<void>(
+        MaterialPageRoute<void>(
+          builder: (_) => const HelpFaqPage(articleId: 'ch-3'),
+        ),
+      );
+    },
     child: ButlerlyErrorState(
       title: context.l10n.text('pageUnavailable'),
       message: context.l10n.text('pageUnavailableBody'),
