@@ -8,12 +8,12 @@ import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
+import 'package:butlerly/features/desktop/presentation/desktop_transaction_detail_split_view.dart';
 import 'package:butlerly/features/foundation/presentation/payment_source_display.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_row.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
-import 'package:butlerly/features/desktop/presentation/desktop_transaction_detail_split_view.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
@@ -266,41 +266,40 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
           detail: selectedSettlement == null
               ? null
               : selectedTransaction != null
-                  ? DesktopTransactionPanel(
-                      key: ValueKey(
-                        'desktop-settlement-transaction-${selectedTransaction.id}',
-                      ),
-                      finance: _finance!,
-                      transaction: selectedTransaction,
-                      onChanged: () => _desktopTransactionChanged = true,
-                      onClose: (changed) {
-                        final needsRefresh =
-                            changed || _desktopTransactionChanged;
-                        setState(() {
-                          _selectedDesktopTransaction = null;
-                          _desktopTransactionChanged = false;
-                          _detailRevision++;
-                        });
-                        if (needsRefresh) _refresh();
-                      },
-                    )
-                  : PaymentSettlementDetailPage(
-                      key: ValueKey(
-                        'desktop-settlement-detail-${selectedSettlement.id}-$_detailRevision',
-                      ),
-                      finance: _finance!,
-                      settlementId: selectedSettlement.id,
-                      sourceNames: data.sourceNames,
-                      sources: data.sources,
-                      onClose: _closeDesktopSettlement,
-                      onChanged: _refresh,
-                      onTransactionSelected: (transaction) {
-                        setState(() {
-                          _selectedDesktopTransaction = transaction;
-                          _desktopTransactionChanged = false;
-                        });
-                      },
-                    ),
+              ? DesktopTransactionPanel(
+                  key: ValueKey(
+                    'desktop-settlement-transaction-${selectedTransaction.id}',
+                  ),
+                  finance: _finance!,
+                  transaction: selectedTransaction,
+                  onChanged: () => _desktopTransactionChanged = true,
+                  onClose: (changed) {
+                    final needsRefresh = changed || _desktopTransactionChanged;
+                    setState(() {
+                      _selectedDesktopTransaction = null;
+                      _desktopTransactionChanged = false;
+                      _detailRevision++;
+                    });
+                    if (needsRefresh) _refresh();
+                  },
+                )
+              : PaymentSettlementDetailPage(
+                  key: ValueKey(
+                    'desktop-settlement-detail-${selectedSettlement.id}-$_detailRevision',
+                  ),
+                  finance: _finance!,
+                  settlementId: selectedSettlement.id,
+                  sourceNames: data.sourceNames,
+                  sources: data.sources,
+                  onClose: _closeDesktopSettlement,
+                  onChanged: _refresh,
+                  onTransactionSelected: (transaction) {
+                    setState(() {
+                      _selectedDesktopTransaction = transaction;
+                      _desktopTransactionChanged = false;
+                    });
+                  },
+                ),
         );
       },
     );
@@ -522,12 +521,13 @@ class _PaymentSettlementDetailPageState
 
   @override
   Widget build(BuildContext context) {
-    final desktop = widget.onClose == null &&
+    final desktop =
+        widget.onClose == null &&
         effectiveButlerlyLayoutMode(
-          context,
-          MediaQuery.sizeOf(context).width,
-        ) ==
-        ButlerlyLayoutMode.wide;
+              context,
+              MediaQuery.sizeOf(context).width,
+            ) ==
+            ButlerlyLayoutMode.wide;
     return FutureBuilder<PaymentSettlementDetailDto>(
       future: _detail,
       builder: (context, snapshot) {
