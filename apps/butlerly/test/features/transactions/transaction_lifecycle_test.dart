@@ -3190,6 +3190,34 @@ void main() {
         findsOneWidget,
       );
 
+      // Delete in the embedded transaction detail, then verify that its
+      // parent settlement refreshes the count/list rather than showing
+      // the now-deleted period transaction.
+      await tester.tap(find.byType(TransactionRow));
+      await tester.pumpAndSettle();
+      final deleteButton = find.byKey(
+        const ValueKey('transaction-detail-delete-button'),
+      );
+      await tester.scrollUntilVisible(
+        deleteButton,
+        200,
+        scrollable: _transactionDetailScrollable(tester),
+      );
+      await tester.ensureVisible(deleteButton);
+      await tester.tap(deleteButton);
+      await tester.pumpAndSettle();
+      final confirmDelete = find.text('Delete permanently').last;
+      await tester.ensureVisible(confirmDelete);
+      await tester.tap(confirmDelete);
+      await tester.pumpAndSettle();
+      expect(
+        repository.values.containsKey('settlement-period-transaction'),
+        isFalse,
+      );
+      expect(find.byType(PaymentSettlementDetailPage), findsOneWidget);
+      expect(find.byType(TransactionRow), findsNothing);
+      expect(find.text('Updated again'), findsNothing);
+
       await tester.tap(
         find.byKey(const ValueKey('desktop-payment-settlement-close')),
       );
