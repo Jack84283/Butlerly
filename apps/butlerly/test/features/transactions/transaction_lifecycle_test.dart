@@ -3148,7 +3148,7 @@ void main() {
           (widget) =>
               widget is TransactionRow &&
               widget.transaction.description == 'Updated period purchase' &&
-              widget.transaction.amount == '27.00',
+              widget.transaction.amount == '27',
         ),
         findsOneWidget,
       );
