@@ -64,7 +64,8 @@ void main() {
       merchantAliases,
       merchantPatterns,
     );
-    paymentSettlements = MemoryPaymentSettlements();
+    paymentSettlements = MemoryPaymentSettlements()
+      ..transactionRepository = repository;
     services.registerSingleton<FinanceServices>(
       FinanceServices(
         repository,
@@ -3108,6 +3109,87 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      // A saved transaction edit must invalidate the retained settlement
+      // detail, but must not replace its State or reset the panel.
+      await tester.tap(find.byType(TransactionRow));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('transaction-detail-edit-action')),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('transaction-description-field')),
+        'Updated period purchase',
+      );
+      await tester.enterText(
+        find.byKey(const ValueKey('transaction-amount-field')),
+        '27.00',
+      );
+      await _scrollEditorToSave(tester);
+      await tester.tap(
+        find.byKey(const ValueKey('transaction-save-locally')),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('transaction-detail-summary-card')),
+        findsOneWidget,
+      );
+      await tester.tap(
+        find.byKey(const ValueKey('transaction-detail-close-panel')),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        identical(
+          tester.state(find.byType(PaymentSettlementDetailPage)),
+          originalDetailState,
+        ),
+        isTrue,
+      );
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is TransactionRow &&
+              widget.transaction.description == 'Updated period purchase' &&
+              widget.transaction.amount == '27.00',
+        ),
+        findsOneWidget,
+      );
+
+      // Also cover the direct path: save a second edit, then select a
+      // different settlement without first closing transaction details.
+      await tester.tap(find.byType(TransactionRow));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('transaction-detail-edit-action')),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('transaction-description-field')),
+        'Updated again',
+      );
+      await _scrollEditorToSave(tester);
+      await tester.tap(
+        find.byKey(const ValueKey('transaction-save-locally')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(
+          const ValueKey('desktop-payment-settlement-settlement-panel-next'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(PaymentSettlementDetailPage), findsOneWidget);
+      await tester.tap(settlementRow);
+      await tester.pumpAndSettle();
+      expect(
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is TransactionRow &&
+              widget.transaction.description == 'Updated again',
+        ),
+        findsOneWidget,
+      );
+
       await tester.tap(
         find.byKey(const ValueKey('desktop-payment-settlement-close')),
       );
@@ -4637,6 +4719,7 @@ final class MemoryPaymentSources implements PaymentSourceRepository {
 final class MemoryPaymentSettlements implements PaymentSettlementRepository {
   final values = <String, PaymentSettlement>{};
   final periodTransactions = <Transaction>[];
+  MemoryTransactionRepository? transactionRepository;
 
   @override
   Future<PaymentSettlement?> findById(PaymentSettlementId id) async =>
@@ -4650,7 +4733,14 @@ final class MemoryPaymentSettlements implements PaymentSettlementRepository {
     PaymentSettlement settlement, {
     DateTime? occurredAtFrom,
     DateTime? occurredAtToExclusive,
-  }) async => periodTransactions;
+  }) async {
+    final transactions = transactionRepository;
+    if (transactions == null) return periodTransactions;
+    return periodTransactions
+        .map((original) => transactions.values[original.id.value])
+        .whereType<Transaction>()
+        .toList(growable: false);
+  }
 
   @override
   Future<void> remove(PaymentSettlementId id) async => values.remove(id.value);
