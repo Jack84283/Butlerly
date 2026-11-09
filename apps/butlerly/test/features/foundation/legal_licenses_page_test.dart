@@ -73,41 +73,43 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  test('all four legal review documents are bundled in three languages', (
-  ) async {
-    const documents = [
-      LegalDocument('termsOfUse', 'assets/legal/terms_of_use.txt'),
-      LegalDocument('privacyPolicy', 'assets/legal/privacy_policy.txt'),
-      LegalDocument(
-        'softwareLicenseThirdPartyNotices',
-        'assets/legal/third_party_notices.txt',
-      ),
-      LegalDocument(
-        'aiProfessionalAdviceDisclosures',
-        'assets/legal/ai_disclosures.txt',
-      ),
-    ];
-    const ids = ['LEG-0001', 'LEG-0002', 'LEG-0003', 'LEG-0004'];
-    for (var i = 0; i < documents.length; i++) {
-      for (final locale in AppLocalizations.supportedLocales) {
-        final path = documents[i].assetPathFor(locale);
-        final text = await rootBundle.loadString(path);
-        expect(text, contains(ids[i]), reason: path);
-        expect(text, contains('v1.1'), reason: path);
-        if (locale.languageCode == 'zh') {
-          expect(text, contains('审阅稿'), reason: path);
-        } else if (locale.languageCode == 'es') {
-          expect(text, contains('revisión Alpha'), reason: path);
-        } else {
-          expect(text, contains('review edition v1.1'), reason: path);
+  test(
+    'all four legal review documents are bundled in three languages',
+    () async {
+      const documents = [
+        LegalDocument('termsOfUse', 'assets/legal/terms_of_use.txt'),
+        LegalDocument('privacyPolicy', 'assets/legal/privacy_policy.txt'),
+        LegalDocument(
+          'softwareLicenseThirdPartyNotices',
+          'assets/legal/third_party_notices.txt',
+        ),
+        LegalDocument(
+          'aiProfessionalAdviceDisclosures',
+          'assets/legal/ai_disclosures.txt',
+        ),
+      ];
+      const ids = ['LEG-0001', 'LEG-0002', 'LEG-0003', 'LEG-0004'];
+      for (var i = 0; i < documents.length; i++) {
+        for (final locale in AppLocalizations.supportedLocales) {
+          final path = documents[i].assetPathFor(locale);
+          final text = await rootBundle.loadString(path);
+          expect(text, contains(ids[i]), reason: path);
+          expect(text, contains('v1.1'), reason: path);
+          if (locale.languageCode == 'zh') {
+            expect(text, contains('审阅稿'), reason: path);
+          } else if (locale.languageCode == 'es') {
+            expect(text, contains('revisión Alpha'), reason: path);
+          } else {
+            expect(text, contains('review edition v1.1'), reason: path);
+          }
         }
       }
-    }
-    expect(
-      documents.first.assetPathFor(const Locale('fr')),
-      'assets/legal/terms_of_use.txt',
-    );
-  });
+      expect(
+        documents.first.assetPathFor(const Locale('fr')),
+        'assets/legal/terms_of_use.txt',
+      );
+    },
+  );
 
   testWidgets('desktop reader displays the Chinese and Spanish legal text', (
     tester,
@@ -124,10 +126,7 @@ void main() {
       matching: find.byType(SelectableText),
     );
     expect(chinese, findsOneWidget);
-    expect(
-      tester.widget<SelectableText>(chinese).data,
-      contains('使用条款'),
-    );
+    expect(tester.widget<SelectableText>(chinese).data, contains('使用条款'));
     expect(find.textContaining('尚未生效'), findsWidgets);
 
     await tester.pumpWidget(app(locale: const Locale('es')));
