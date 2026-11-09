@@ -370,6 +370,7 @@ class _PaymentSettlementDetailPageState
     extends State<PaymentSettlementDetailPage> {
   late Future<PaymentSettlementDetailDto> _detail = _load();
   TransactionMasterData _masterData = const TransactionMasterData();
+  String? _loadedLanguageCode;
 
   @override
   void didUpdateWidget(covariant PaymentSettlementDetailPage oldWidget) {
@@ -380,7 +381,6 @@ class _PaymentSettlementDetailPageState
       _detail = _load();
     }
   }
-  String? _loadedLanguageCode;
 
   @override
   void didChangeDependencies() {
