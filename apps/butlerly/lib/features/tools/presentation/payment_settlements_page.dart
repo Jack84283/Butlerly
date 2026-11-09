@@ -38,6 +38,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
   TransactionDto? _selectedDesktopTransaction;
   bool _desktopTransactionChanged = false;
   bool _desktopTransactionEditing = false;
+  int _settlementTransactionRevision = 0;
 
   @override
   void initState() {
@@ -160,11 +161,14 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
         );
         return;
       }
+      final needsRefresh = _desktopTransactionChanged;
       setState(() {
+        if (needsRefresh) _settlementTransactionRevision++;
         _selectedDesktopSettlementId = settlement.id;
         _selectedDesktopTransaction = null;
         _desktopTransactionChanged = false;
       });
+      if (needsRefresh) await _refresh();
       return;
     }
     final changed = await Navigator.of(context).push<bool>(
@@ -289,6 +293,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
                       ),
                       finance: _finance!,
                       settlementId: selectedSettlement.id,
+                      transactionRevision: _settlementTransactionRevision,
                       sourceNames: data.sourceNames,
                       sources: data.sources,
                       onClose: _closeDesktopSettlement,
@@ -315,6 +320,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
                           final needsRefresh =
                               changed || _desktopTransactionChanged;
                           setState(() {
+                            if (needsRefresh) _settlementTransactionRevision++;
                             _selectedDesktopTransaction = null;
                             _desktopTransactionChanged = false;
                             _desktopTransactionEditing = false;
@@ -336,6 +342,7 @@ class PaymentSettlementDetailPage extends StatefulWidget {
     required this.settlementId,
     required this.sourceNames,
     required this.sources,
+    this.transactionRevision = 0,
     this.onClose,
     this.onChanged,
     this.onTransactionSelected,
@@ -344,6 +351,10 @@ class PaymentSettlementDetailPage extends StatefulWidget {
 
   final FinanceServices finance;
   final String settlementId;
+
+  /// Refreshes the loaded settlement transactions without replacing this
+  /// State (and losing its scroll position) after an edited/deleted transaction.
+  final int transactionRevision;
   final Map<String, String> sourceNames;
   final List<PaymentSource> sources;
   final VoidCallback? onClose;
@@ -359,6 +370,16 @@ class _PaymentSettlementDetailPageState
     extends State<PaymentSettlementDetailPage> {
   late Future<PaymentSettlementDetailDto> _detail = _load();
   TransactionMasterData _masterData = const TransactionMasterData();
+
+  @override
+  void didUpdateWidget(covariant PaymentSettlementDetailPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.transactionRevision != oldWidget.transactionRevision) {
+      // The framework rebuilds after didUpdateWidget; replacing only this
+      // Future keeps the detail State, including its scroll position, intact.
+      _detail = _load();
+    }
+  }
   String? _loadedLanguageCode;
 
   @override
