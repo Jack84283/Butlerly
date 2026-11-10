@@ -3320,7 +3320,11 @@ void main() {
       );
       await tester.pumpAndSettle();
       await tester.tap(
-        find.byKey(const ValueKey('desktop-payment-settlement-scrolled-settlement-anchor')),
+        find.byKey(
+          const ValueKey(
+            'desktop-payment-settlement-scrolled-settlement-anchor',
+          ),
+        ),
       );
       await tester.pumpAndSettle();
       await tester.tap(find.byType(TransactionRow));
