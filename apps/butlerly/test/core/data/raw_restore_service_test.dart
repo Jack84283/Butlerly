@@ -186,10 +186,7 @@ void main() {
         );
         await expectLater(
           restores
-              .restoreReplace(
-                archive,
-                password: 'correct horse battery staple',
-              )
+              .restoreReplace(archive, password: 'correct horse battery staple')
               .timeout(const Duration(seconds: 15)),
           throwsA(isA<StateError>()),
         );
