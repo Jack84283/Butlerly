@@ -21,6 +21,7 @@ final class V1IntegrationHarness {
   V1IntegrationHarness._(this.root);
 
   final Directory root;
+
   /// Only fixed phase labels are collected; never include file paths or data.
   final List<String> restoreStages = <String>[];
   late LocalDatabase database;
