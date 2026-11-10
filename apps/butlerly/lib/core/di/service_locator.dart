@@ -25,6 +25,7 @@ void configureDependencies({
   required AppLogger logger,
   Directory? documentsDirectory,
   Directory? localEvidenceDirectory,
+  Future<void> Function(String stage)? restoreDiagnosticStage,
 }) {
   services
     ..registerSingleton<AppConfiguration>(configuration)
@@ -69,6 +70,10 @@ void configureDependencies({
       LocalWorkspaceDataGateway(
         services<LocalBackupManager>(),
         localDataManager,
+        // Stage labels are constants; never log backup paths or user data.
+        restoreDiagnosticStage:
+            restoreDiagnosticStage ??
+            (stage) async => logger.info('Raw restore stage: $stage'),
       ),
       consistencyGate: consistencyGate,
       refreshSystemData: () async {
