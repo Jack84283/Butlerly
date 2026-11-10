@@ -229,6 +229,35 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
           title: context.l10n.text('paymentSettlements'),
           fullWidth: desktop,
           subtitle: context.l10n.text('paymentSettlementsSubtitle'),
+          // This feedback must stay visible even when the results table is
+          // scrolled: a blocked settlement switch otherwise looks unresponsive.
+          pinnedHeader: desktop && _showDesktopEditWarning
+              ? Semantics(
+                  liveRegion: true,
+                  child: ButlerlyCard(
+                    key: const ValueKey('desktop-settlement-edit-warning'),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: ButlerlySpacing.standard,
+                      vertical: ButlerlySpacing.compact,
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info_outline_rounded),
+                        const SizedBox(width: ButlerlySpacing.compact),
+                        Expanded(
+                          child: Text(
+                            context.l10n.text(
+                              'finishTransactionEditBeforeChangingSettlement',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : null,
+          pinnedHeaderExtent:
+              96 * MediaQuery.textScalerOf(context).scale(1),
           onRefresh: _refresh,
           actions: [
             ButlerlyHeaderAddButton(
@@ -241,25 +270,6 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
             ),
           ],
           children: [
-            if (desktop && _showDesktopEditWarning) ...[
-              ButlerlyCard(
-                key: const ValueKey('desktop-settlement-edit-warning'),
-                child: Row(
-                  children: [
-                    const Icon(Icons.info_outline_rounded),
-                    const SizedBox(width: ButlerlySpacing.compact),
-                    Expanded(
-                      child: Text(
-                        context.l10n.text(
-                          'finishTransactionEditBeforeChangingSettlement',
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: ButlerlySpacing.cardGap),
-            ],
             if (data.settlements.isEmpty && data.activeCardSources.isEmpty)
               ButlerlyEmptyState(
                 icon: Icons.credit_card_off_outlined,
