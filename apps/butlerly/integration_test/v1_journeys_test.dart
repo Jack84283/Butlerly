@@ -19,6 +19,7 @@ import 'package:butlerly/features/foundation/presentation/settings_page.dart';
 import 'package:butlerly/features/foundation/presentation/statement_capture_page.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly/l10n/app_localizations_backup.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:file_selector_platform_interface/file_selector_platform_interface.dart';
@@ -2283,6 +2284,15 @@ void main() {
 
         await _confirmProductionReplace(tester, password);
         await _awaitProductionRestoreOutcome(tester, harness, success: false);
+        final errorContext = tester.element(find.byType(PrivacyDataPage));
+        expect(
+          find.text(
+            AppLocalizations.of(errorContext).backupText(
+              'restoreFailureDatabaseBusyReason',
+            ),
+          ),
+          findsOneWidget,
+        );
         expect(
           await harness.finance
               .getTransaction('ui-restore-busy-local')
