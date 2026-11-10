@@ -219,6 +219,4 @@ void main() {
     expect(find.byType(LegalDocumentPage), findsOneWidget);
     expect(find.text('使用条款'), findsWidgets);
     expect(tester.takeException(), isNull);
-  });
-
-}
+  });}
