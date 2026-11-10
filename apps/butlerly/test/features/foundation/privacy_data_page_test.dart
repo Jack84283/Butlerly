@@ -248,6 +248,12 @@ void main() {
     );
     expect(
       classifyRestoreFailure(
+        StateError('SQLite still has active readers; restore deferred.'),
+      ),
+      RestoreFailureKind.databaseBusy,
+    );
+    expect(
+      classifyRestoreFailure(
         const RepositoryException(
           RepositoryFailureCode.migration,
           'upgrade staging schema',
