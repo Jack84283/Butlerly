@@ -97,7 +97,9 @@ void main() {
       await tester.pumpAndSettle();
     }
     await _tapSurveyAction(tester, const ValueKey('financial-profile-save'));
-    await _pumpWithRealAsync(tester);
+    // SQLite FFI completion is scheduled on a real worker thread; a fixed
+    // 100 ms delay can race the save under concurrent CI test execution.
+    await _pumpUntilVisible(tester, find.text('Completed'));
 
     expect(find.text('Completed'), findsOneWidget);
     expect(find.text('0 of 11 questions answered'), findsOneWidget);

@@ -3125,8 +3125,28 @@ void main() {
         find.byKey(const ValueKey('transaction-amount-field')),
         '27.00',
       );
+      // An attempted settlement switch displays a warning while this editor
+      // is active. Save must remain physically tappable with it visible.
+      await tester.tap(
+        find.byKey(
+          const ValueKey('desktop-payment-settlement-settlement-panel-next'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('desktop-settlement-edit-warning')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('transaction-editor-content')),
+        findsOneWidget,
+      );
       await _submitEmbeddedTransactionSave(tester);
       await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('desktop-settlement-edit-warning')),
+        findsNothing,
+      );
       expect(
         find.byKey(const ValueKey('transaction-detail-summary-card')),
         findsOneWidget,
@@ -3221,6 +3241,153 @@ void main() {
         findsNothing,
       );
       expect(settlementRow, findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'Desktop edit warning stays pinned when settlement results are scrolled',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(1600, 900);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+
+      final finance = services<FinanceServices>();
+      final source = PaymentSource(
+        id: PaymentSourceId('scrolled-settlements-source'),
+        name: 'Scrolled card',
+        type: PaymentSourceType.card,
+      );
+      await finance.savePaymentSource(source);
+      await paymentSettlements.save(
+        PaymentSettlement(
+          id: PaymentSettlementId('scrolled-settlement-anchor'),
+          paymentSourceId: source.id,
+          payment: Money(
+            amount: DecimalValue.parse('25.00'),
+            currency: CurrencyCode('USD'),
+          ),
+          paymentDate: '2026-11-09',
+          periodStart: '2026-11-01',
+          periodEnd: '2026-11-09',
+          status: PaymentSettlementStatus.open,
+          createdAt: DateTime.utc(2026, 11, 9),
+          updatedAt: DateTime.utc(2026, 11, 9),
+        ),
+      );
+      // Make the left results pane scroll well beyond the overview/header.
+      for (var index = 0; index < 30; index++) {
+        await paymentSettlements.save(
+          PaymentSettlement(
+            id: PaymentSettlementId('scrolled-settlement-$index'),
+            paymentSourceId: source.id,
+            payment: Money(
+              amount: DecimalValue.parse('10.00'),
+              currency: CurrencyCode('USD'),
+            ),
+            paymentDate: '2026-10-10',
+            periodStart: '2026-10-01',
+            periodEnd: '2026-10-10',
+            status: PaymentSettlementStatus.open,
+            createdAt: DateTime.utc(2026, 10, 10),
+            updatedAt: DateTime.utc(2026, 10, 10),
+          ),
+        );
+      }
+      final created = await finance.createTransaction(
+        CreateTransactionCommand(
+          id: 'scrolled-settlement-transaction',
+          provenanceId: 'scrolled-settlement-provenance',
+          timing: KnownTransactionTime(DateTime.utc(2026, 11, 4, 12)),
+          money: Money(
+            amount: DecimalValue.parse('25.00'),
+            currency: CurrencyCode('USD'),
+          ),
+          direction: TransactionDirection.expense,
+          transactionDate: '2026-11-04',
+          description: 'Scrolled settlement purchase',
+          paymentSourceId: source.id.value,
+        ),
+      );
+      expect(created, isA<ApplicationSuccess<TransactionDto>>());
+      paymentSettlements.periodTransactions.add(
+        repository.values['scrolled-settlement-transaction']!,
+      );
+
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: PaymentSettlementsPage())),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(
+          const ValueKey(
+            'desktop-payment-settlement-scrolled-settlement-anchor',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(TransactionRow));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byKey(const ValueKey('transaction-detail-edit-action')),
+      );
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('transaction-description-field')),
+        'Unsaved scrolled edit',
+      );
+
+      final resultsScroll = find.descendant(
+        of: find.byKey(const ValueKey('butlerly-page-canvas')),
+        matching: find.byType(CustomScrollView),
+      );
+      expect(resultsScroll, findsOneWidget);
+      final otherSettlement = find.byKey(
+        const ValueKey('desktop-payment-settlement-scrolled-settlement-18'),
+      );
+      await tester.ensureVisible(otherSettlement);
+      await tester.pumpAndSettle();
+      final verticalResultsScrollable = find.descendant(
+        of: resultsScroll,
+        matching: find.byWidgetPredicate(
+          (widget) =>
+              widget is Scrollable &&
+              widget.axisDirection == AxisDirection.down,
+        ),
+      );
+      expect(verticalResultsScrollable, findsOneWidget);
+      final scrollPosition = tester
+          .state<ScrollableState>(verticalResultsScrollable)
+          .position;
+      expect(scrollPosition.pixels, greaterThan(200));
+
+      await tester.tap(otherSettlement);
+      await tester.pumpAndSettle();
+      final warning = find.byKey(
+        const ValueKey('desktop-settlement-edit-warning'),
+      );
+      expect(warning, findsOneWidget);
+      final resultsBounds = tester.getRect(resultsScroll);
+      final warningBounds = tester.getRect(warning);
+      expect(warningBounds.top, greaterThanOrEqualTo(resultsBounds.top));
+      expect(warningBounds.bottom, lessThan(resultsBounds.bottom));
+      expect(find.text('Unsaved scrolled edit'), findsOneWidget);
+
+      // Scrolling more does not move the pinned feedback out of the viewport.
+      final previousOffset = scrollPosition.pixels;
+      await tester.drag(resultsScroll, const Offset(0, 110));
+      await tester.pumpAndSettle();
+      expect(scrollPosition.pixels, lessThan(previousOffset));
+      expect(scrollPosition.pixels, greaterThan(0));
+      expect(tester.getTopLeft(warning).dy, closeTo(warningBounds.top, 1));
+
+      await _submitEmbeddedTransactionSave(tester);
+      expect(warning, findsNothing);
+      expect(
+        find.byKey(const ValueKey('transaction-detail-summary-card')),
+        findsOneWidget,
+      );
       expect(tester.takeException(), isNull);
     },
   );
@@ -4355,15 +4522,14 @@ Future<void> _scrollEditorToMasterData(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-/// Exercises the desktop embedded editor's Save action without relying on
-/// viewport hit testing of a nested Scaffold footer. User-facing save-button
-/// placement is verified separately through desktop/manual layout acceptance.
+/// Verify that a real pointer tap reaches the desktop embedded Save action.
+/// Calling onPressed directly would hide a clipped or intercepted footer.
 Future<void> _submitEmbeddedTransactionSave(WidgetTester tester) async {
   final save = find.byKey(const ValueKey('transaction-save-locally'));
   expect(save, findsOneWidget);
-  final action = tester.widget<FilledButton>(save).onPressed;
-  expect(action, isNotNull);
-  action!();
+  // A fixed desktop footer must be tappable without scrolling it into view.
+  expect(tester.widget<FilledButton>(save).onPressed, isNotNull);
+  await tester.tap(save);
   await tester.pumpAndSettle();
 }
 
