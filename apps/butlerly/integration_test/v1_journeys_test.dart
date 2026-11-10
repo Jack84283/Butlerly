@@ -2186,10 +2186,7 @@ void main() {
       // An indeterminate spinner cannot settle by definition. Observe the
       // production success/error toast with a real-time, bounded poll instead.
       await _awaitProductionRestoreOutcome(tester, harness, success: true);
-      expect(
-        find.byKey(const ValueKey('butlerly-error-toast')),
-        findsNothing,
-      );
+      expect(find.byKey(const ValueKey('butlerly-error-toast')), findsNothing);
 
       expect(
         await harness.finance
@@ -2287,9 +2284,9 @@ void main() {
         final errorContext = tester.element(find.byType(PrivacyDataPage));
         expect(
           find.text(
-            AppLocalizations.of(errorContext).backupText(
-              'restoreFailureDatabaseBusyReason',
-            ),
+            AppLocalizations.of(
+              errorContext,
+            ).backupText('restoreFailureDatabaseBusyReason'),
           ),
           findsOneWidget,
         );
@@ -3015,7 +3012,6 @@ final class _FixtureOcrRecognizer implements OcrRecognizer {
     fullText: 'MARKET\nTOTAL 12.34',
   );
 }
-
 
 Future<void> _confirmProductionReplace(
   WidgetTester tester,
