@@ -213,14 +213,30 @@ final class RawRestoreService {
       }
 
       // Ensure committed WAL pages are in the primary SQLite file before
-      // moving it. Never confuse WAL from the old DB with a replacement file.
-      final checkpoint = await database.database.rawQuery(
-        'PRAGMA wal_checkpoint(TRUNCATE)',
-      );
-      if (checkpoint.isNotEmpty &&
-          checkpoint.first['busy'] is int &&
-          checkpoint.first['busy'] != 0) {
-        throw StateError('SQLite still has active readers; restore deferred.');
+      // moving it. TRUNCATE waits for outstanding readers, so bound SQLite's
+      // busy handler rather than letting a mounted page keep Restore spinning.
+      // Abort *before* creating an activation journal or touching live files.
+      final liveConnection = database.database;
+      final timeoutRows = await liveConnection.rawQuery('PRAGMA busy_timeout');
+      final previousBusyTimeout = timeoutRows.isNotEmpty &&
+              timeoutRows.first.values.first is int
+          ? timeoutRows.first.values.first as int
+          : 5000;
+      try {
+        await liveConnection.execute('PRAGMA busy_timeout = 3000');
+        final checkpoint = await liveConnection.rawQuery(
+          'PRAGMA wal_checkpoint(TRUNCATE)',
+        );
+        if (checkpoint.length != 1 ||
+            checkpoint.single['busy'] != 0) {
+          throw StateError(
+            'SQLite still has active readers; restore deferred.',
+          );
+        }
+      } finally {
+        await liveConnection.execute(
+          'PRAGMA busy_timeout = $previousBusyTimeout',
+        );
       }
 
       // All cooperative application writes are serialized by the workspace
