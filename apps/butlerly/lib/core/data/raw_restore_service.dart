@@ -132,6 +132,7 @@ final class RawRestoreService {
     )?
     prepareStaging,
   }) => EvidenceMutationLock.runExclusive(() async {
+    await onStage?.call('restore lock acquired');
     // Fail closed for any callers of the retired physical-Merge entry point.
     // Only RawMergeService's in-place SQLite transaction can Merge safely
     // while an independent idle SQLite connection remains open.
@@ -191,11 +192,13 @@ final class RawRestoreService {
       // Upgrade only the extracted, disposable database. The encrypted source
       // archive and the active local database remain untouched until activation.
       await _upgradeStagedSqlite(File(path.join(staging.path, 'butlerly.db')));
+      await onStage?.call('staged SQLite upgraded');
       final result = prepareStaging == null
           ? inspection
           : await prepareStaging(staging, inspection);
       final snapshot = File(path.join(staging.path, 'butlerly.db'));
       await _validatePhysicalSqlite(snapshot);
+      await onStage?.call('staged SQLite validated');
 
       await onStage?.call('attachment staging');
       await _stageEvidence(
@@ -216,6 +219,7 @@ final class RawRestoreService {
       // moving it. TRUNCATE waits for outstanding readers, so bound SQLite's
       // busy handler rather than letting a mounted page keep Restore spinning.
       // Abort *before* creating an activation journal or touching live files.
+      await onStage?.call('WAL checkpoint starting');
       final liveConnection = database.database;
       final timeoutRows = await liveConnection.rawQuery('PRAGMA busy_timeout');
       final previousBusyTimeout =
@@ -237,6 +241,7 @@ final class RawRestoreService {
           'PRAGMA busy_timeout = $previousBusyTimeout',
         );
       }
+      await onStage?.call('WAL checkpoint completed');
 
       // All cooperative application writes are serialized by the workspace
       // consistency gate. Fence every other normal persistence connection
@@ -279,8 +284,11 @@ final class RawRestoreService {
       await markerTemp.rename(journal.path);
       journalWritten = true;
       await onStage?.call('restore journal written');
-      // Do not replace a file while any Butlerly connection holds it open.
+      // A stalled close is a separate possible blocker from WAL checkpointing.
+      // Trace it without timing out an uncancellable, journaled file swap.
+      await onStage?.call('live database close starting');
       await database.persistenceDatabase.close();
+      await onStage?.call('live database closed');
       if (preCloseFingerprint != null) {
         // POSIX SQLite uses advisory byte-range locks on the DB file. Take
         // a nonblocking whole-file exclusive lock after the app connection
@@ -347,6 +355,7 @@ final class RawRestoreService {
 
       // Reuse the same ButlerlyDatabase object held by app repositories.
       // On open SQLite applies its normal schema setup, not semantic checks.
+      await onStage?.call('replacement database reopen starting');
       await database.reopenActiveConnection();
       final check = await database
           .persistenceDatabase
