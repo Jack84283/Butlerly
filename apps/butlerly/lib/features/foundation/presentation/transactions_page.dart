@@ -1069,6 +1069,19 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
         ),
         actions: const [ButlerlyContextHelpButton(articleId: 'ch-5')],
       ),
+      // The embedded desktop editor lives inside a retained split view.
+      // Reserve its save action in Scaffold chrome rather than allowing the
+      // nested body/IndexedStack viewport to clip or intercept the footer.
+      bottomNavigationBar: widget.onComplete == null
+          ? null
+          : FutureBuilder<_EditorMasterData>(
+              future: _masterData,
+              builder: (context, snapshot) => _buildSaveAction(
+                context,
+                desktopWide: false,
+                enabled: snapshot.hasData,
+              ),
+            ),
       body: ButlerlyResponsiveBody(
         fullWidth: desktopWide,
         contentKey: const ValueKey('transaction-editor-content'),
@@ -1403,38 +1416,45 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                       },
                     ),
                   ),
-                  SafeArea(
-                    top: false,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        ButlerlySpacing.pagePadding,
-                        0,
-                        ButlerlySpacing.pagePadding,
-                        ButlerlySpacing.standard,
-                      ),
-                      child: Align(
-                        alignment: desktopWide
-                            ? Alignment.centerRight
-                            : Alignment.center,
-                        child: SizedBox(
-                          width: desktopWide ? 240 : double.infinity,
-                          child: FilledButton(
-                            key: const ValueKey('transaction-save-locally'),
-                            onPressed: _saving ? null : _save,
-                            child: Text(
-                              _saving
-                                  ? context.l10n.text('saving')
-                                  : context.l10n.text('saveLocally'),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+                  if (widget.onComplete == null)
+                    _buildSaveAction(context, desktopWide: desktopWide),
                 ],
               ),
             );
           },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSaveAction(
+    BuildContext context, {
+    required bool desktopWide,
+    bool enabled = true,
+  }) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          ButlerlySpacing.pagePadding,
+          0,
+          ButlerlySpacing.pagePadding,
+          ButlerlySpacing.standard,
+        ),
+        child: Align(
+          alignment: desktopWide ? Alignment.centerRight : Alignment.center,
+          child: SizedBox(
+            width: desktopWide ? 240 : double.infinity,
+            child: FilledButton(
+              key: const ValueKey('transaction-save-locally'),
+              onPressed: _saving || !enabled ? null : _save,
+              child: Text(
+                _saving
+                    ? context.l10n.text('saving')
+                    : context.l10n.text('saveLocally'),
+              ),
+            ),
+          ),
         ),
       ),
     );
