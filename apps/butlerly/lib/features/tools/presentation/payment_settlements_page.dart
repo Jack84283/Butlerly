@@ -256,8 +256,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
                   ),
                 )
               : null,
-          pinnedHeaderExtent:
-              96.0 * MediaQuery.textScalerOf(context).scale(1),
+          pinnedHeaderExtent: 96.0 * MediaQuery.textScalerOf(context).scale(1),
           onRefresh: _refresh,
           actions: [
             ButlerlyHeaderAddButton(
