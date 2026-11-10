@@ -1331,10 +1331,10 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
               onTap: _confirmErase,
             ),
             if (_busy)
-          const KeyedSubtree(
-            key: ValueKey('privacy-restore-busy'),
-            child: ButlerlyLoadingState(),
-          ),
+              const KeyedSubtree(
+                key: ValueKey('privacy-restore-busy'),
+                child: ButlerlyLoadingState(),
+              ),
           ],
         ),
       ),
