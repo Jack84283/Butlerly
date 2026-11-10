@@ -2292,7 +2292,7 @@ void main() {
         expect(
           await File(
             path.join(
-              harness.database.persistenceDatabase.path,
+              path.dirname(harness.database.persistenceDatabase.path),
               '.raw-restore-journal.json',
             ),
           ).exists(),
