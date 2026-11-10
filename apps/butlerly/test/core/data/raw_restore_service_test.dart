@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -169,15 +168,12 @@ void main() {
         database.persistenceDatabase.path,
         options: OpenDatabaseOptions(singleInstance: false),
       );
-      final readStarted = Completer<void>();
-      final releaseReader = Completer<void>();
-      final reading = reader.transaction((transaction) async {
-        await transaction.query('restore_probe');
-        readStarted.complete();
-        await releaseReader.future;
-      });
+      // A deferred read transaction retains a WAL snapshot without
+      // obtaining an exclusive writer lock, so live writes can still commit.
+      // sqflite's transaction() may start a write transaction instead.
+      await reader.execute('BEGIN DEFERRED');
+      await reader.query('restore_probe');
       try {
-        await readStarted.future;
         await database.database.update(
           'restore_probe',
           {'value': 'keep-live'},
@@ -198,8 +194,7 @@ void main() {
           isFalse,
         );
       } finally {
-        releaseReader.complete();
-        await reading;
+        await reader.execute('ROLLBACK');
         await reader.close();
       }
     },
