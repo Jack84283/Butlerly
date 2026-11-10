@@ -51,6 +51,9 @@ validate_restore_journeys() (
   local device="${BUTLERLY_IOS_DEVICE_ID:-macos}"
   flutter test -d "$device" integration_test/v1_journeys_test.dart --plain-name "production backup restore page completes an encrypted replacement"
   flutter test -d "$device" integration_test/v1_journeys_test.dart --plain-name "production Replace refuses a blocked WAL reader and safely retries"
+  if [[ "$device" == macos ]]; then
+    flutter test -d "$device" integration_test/v1_journeys_test.dart --plain-name "macOS wide desktop Replace refuses a WAL reader and retries"
+  fi
 )
 
 validate_ios_simulator() (
