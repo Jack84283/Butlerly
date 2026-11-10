@@ -2218,11 +2218,8 @@ void main() {
 
   testWidgets(
     'macOS wide desktop Replace refuses a WAL reader and retries',
-    (tester) => _exerciseProductionReplaceBusyReader(
-      tester,
-      harness,
-      desktop: true,
-    ),
+    (tester) =>
+        _exerciseProductionReplaceBusyReader(tester, harness, desktop: true),
     skip: !Platform.isMacOS,
     timeout: const Timeout(Duration(minutes: 5)),
   );
@@ -3046,7 +3043,7 @@ Future<void> _exerciseProductionReplaceBusyReader(
   await tester.pumpWidget(const SizedBox.shrink());
   await tester.pump();
 }
- 
+
 Future<void> _confirmProductionReplace(
   WidgetTester tester,
   String password, {
