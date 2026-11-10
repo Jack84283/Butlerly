@@ -81,10 +81,7 @@ jobs:
         timeout-minutes: 12
         env:
           BUTLERLY_IOS_DEVICE_ID: ${{ steps.simulator.outputs.device_id }}
-        run: |
-          cd apps/butlerly
-          flutter test -d "$BUTLERLY_IOS_DEVICE_ID" integration_test/v1_journeys_test.dart --plain-name "production backup restore page completes an encrypted replacement"
-          flutter test -d "$BUTLERLY_IOS_DEVICE_ID" integration_test/v1_journeys_test.dart --plain-name "production Replace refuses a blocked WAL reader and safely retries"
+        run: ./tool/validate.sh restore_journeys
       - name: Run iOS integration journeys
         env:
           BUTLERLY_IOS_DEVICE_ID: ${{ steps.simulator.outputs.device_id }}
@@ -106,10 +103,7 @@ jobs:
       - name: Run macOS production Replace journey
         if: github.event_name == 'pull_request' && github.event.pull_request.number == 405
         timeout-minutes: 12
-        run: |
-          cd apps/butlerly
-          flutter test -d macos integration_test/v1_journeys_test.dart --plain-name "production backup restore page completes an encrypted replacement"
-          flutter test -d macos integration_test/v1_journeys_test.dart --plain-name "production Replace refuses a blocked WAL reader and safely retries"
+        run: ./tool/validate.sh restore_journeys
 
   android_smoke:
     name: Android Smoke Build
