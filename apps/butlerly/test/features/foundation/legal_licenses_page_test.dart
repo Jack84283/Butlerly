@@ -200,7 +200,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('compact document title switches with the app language', (
+  testWidgets('compact open document follows runtime language selection', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -208,16 +208,41 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(app(locale: const Locale('en')));
-    await tester.pump();
-    await tester.tap(find.text('Terms of Use'));
-    await tester.pump(const Duration(milliseconds: 350));
-    expect(find.byType(LegalDocumentPage), findsOneWidget);
+    Widget documentApp(Locale locale) => MaterialApp(
+      locale: locale,
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      home: const LegalDocumentPage(
+        document: LegalDocument('termsOfUse', 'assets/legal/terms_of_use.txt'),
+      ),
+    );
 
-    await tester.pumpWidget(app(locale: const Locale('zh', 'CN')));
+    await tester.pumpWidget(documentApp(const Locale('en')));
+    await tester.pump();
+    expect(find.byType(LegalDocumentPage), findsOneWidget);
+    expect(find.text('Terms of Use'), findsWidgets);
+    expect(
+      find.byKey(
+        const ValueKey('legal-document-body-assets/legal/terms_of_use.txt'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.pumpWidget(documentApp(const Locale('zh', 'CN')));
     await tester.pump();
     expect(find.byType(LegalDocumentPage), findsOneWidget);
     expect(find.text('使用条款'), findsWidgets);
+    expect(
+      find.byKey(
+        const ValueKey('legal-document-body-assets/legal/terms_of_use_zh.txt'),
+      ),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 }
