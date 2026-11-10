@@ -3125,8 +3125,28 @@ void main() {
         find.byKey(const ValueKey('transaction-amount-field')),
         '27.00',
       );
+      // An attempted settlement switch displays a warning while this editor
+      // is active. Save must remain physically tappable with it visible.
+      await tester.tap(
+        find.byKey(
+          const ValueKey('desktop-payment-settlement-settlement-panel-next'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('desktop-settlement-edit-warning')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('transaction-editor-content')),
+        findsOneWidget,
+      );
       await _submitEmbeddedTransactionSave(tester);
       await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('desktop-settlement-edit-warning')),
+        findsNothing,
+      );
       expect(
         find.byKey(const ValueKey('transaction-detail-summary-card')),
         findsOneWidget,
