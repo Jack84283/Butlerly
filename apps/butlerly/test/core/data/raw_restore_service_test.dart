@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -152,6 +153,61 @@ void main() {
     await database.close();
     if (await root.exists()) await root.delete(recursive: true);
   });
+
+  test(
+    'Replace rejects a WAL reader without hanging or modifying local data',
+    () async {
+      await database.database.execute('PRAGMA journal_mode=WAL');
+      await setProbe('archived');
+      final archive = File(path.join(root.path, 'reader-blocked.butlerly'));
+      await backups.createBackup(
+        archive,
+        password: 'correct horse battery staple',
+      );
+
+      final reader = await databaseFactoryFfi.openDatabase(
+        database.persistenceDatabase.path,
+        options: OpenDatabaseOptions(singleInstance: false),
+      );
+      final readStarted = Completer<void>();
+      final releaseReader = Completer<void>();
+      final reading = reader.transaction((transaction) async {
+        await transaction.query('restore_probe');
+        readStarted.complete();
+        await releaseReader.future;
+      });
+      try {
+        await readStarted.future;
+        await database.database.update(
+          'restore_probe',
+          {'value': 'keep-live'},
+          where: 'id = ?',
+          whereArgs: ['original'],
+        );
+        await expectLater(
+          restores
+              .restoreReplace(
+                archive,
+                password: 'correct horse battery staple',
+              )
+              .timeout(const Duration(seconds: 15)),
+          throwsA(isA<StateError>()),
+        );
+        expect(await getProbe(), 'keep-live');
+        expect(
+          await File(
+            path.join(databaseDirectory.path, '.raw-restore-journal.json'),
+          ).exists(),
+          isFalse,
+        );
+      } finally {
+        releaseReader.complete();
+        await reading;
+        await reader.close();
+      }
+    },
+    timeout: const Timeout(Duration(seconds: 30)),
+  );
 
   test(
     'Replace restores original SQLite records and attachment bytes',
