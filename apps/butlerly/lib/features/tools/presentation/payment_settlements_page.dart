@@ -38,6 +38,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
   TransactionDto? _selectedDesktopTransaction;
   bool _desktopTransactionChanged = false;
   bool _desktopTransactionEditing = false;
+  bool _showDesktopEditWarning = false;
   int _settlementTransactionRevision = 0;
 
   @override
@@ -59,6 +60,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
       _selectedDesktopTransaction = null;
       _desktopTransactionChanged = false;
       _desktopTransactionEditing = false;
+      _showDesktopEditWarning = false;
       _data = _load();
     });
   }
@@ -69,6 +71,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
       _selectedDesktopTransaction = null;
       _desktopTransactionChanged = false;
       _desktopTransactionEditing = false;
+      _showDesktopEditWarning = false;
     });
   }
 
@@ -153,15 +156,10 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
         ) ==
         ButlerlyLayoutMode.wide) {
       if (_desktopTransactionEditing) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              context.l10n.text(
-                'finishTransactionEditBeforeChangingSettlement',
-              ),
-            ),
-          ),
-        );
+        // The host Scaffold's bottom SnackBar can cover the embedded
+        // editor's Save action. Keep the warning in the results pane instead
+        // so the unsaved draft stays actionable while the message is shown.
+        setState(() => _showDesktopEditWarning = true);
         return;
       }
       final needsRefresh = _desktopTransactionChanged;
@@ -170,6 +168,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
         _selectedDesktopSettlementId = settlement.id;
         _selectedDesktopTransaction = null;
         _desktopTransactionChanged = false;
+        _showDesktopEditWarning = false;
       });
       if (needsRefresh) await _refresh();
       return;
@@ -242,6 +241,25 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
             ),
           ],
           children: [
+            if (desktop && _showDesktopEditWarning) ...[
+              ButlerlyCard(
+                key: const ValueKey('desktop-settlement-edit-warning'),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline_rounded),
+                    const SizedBox(width: ButlerlySpacing.compact),
+                    Expanded(
+                      child: Text(
+                        context.l10n.text(
+                          'finishTransactionEditBeforeChangingSettlement',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: ButlerlySpacing.cardGap),
+            ],
             if (data.settlements.isEmpty && data.activeCardSources.isEmpty)
               ButlerlyEmptyState(
                 icon: Icons.credit_card_off_outlined,
@@ -306,6 +324,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
                           _selectedDesktopTransaction = transaction;
                           _desktopTransactionChanged = false;
                           _desktopTransactionEditing = false;
+                          _showDesktopEditWarning = false;
                         });
                       },
                     ),
@@ -316,8 +335,12 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
                         ),
                         finance: _finance!,
                         transaction: selectedTransaction,
-                        onEditingChanged: (editing) =>
-                            _desktopTransactionEditing = editing,
+                        onEditingChanged: (editing) {
+                          _desktopTransactionEditing = editing;
+                          if (!editing && _showDesktopEditWarning) {
+                            setState(() => _showDesktopEditWarning = false);
+                          }
+                        },
                         onChanged: () => _desktopTransactionChanged = true,
                         onClose: (changed) {
                           final needsRefresh =
@@ -327,6 +350,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
                             _selectedDesktopTransaction = null;
                             _desktopTransactionChanged = false;
                             _desktopTransactionEditing = false;
+                            _showDesktopEditWarning = false;
                           });
                           if (needsRefresh) _refresh();
                         },
