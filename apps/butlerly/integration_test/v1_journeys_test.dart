@@ -34,6 +34,7 @@ import 'package:path/path.dart' as path;
 import 'package:share_plus/share_plus.dart' as share_plus;
 import 'package:share_plus_platform_interface/share_plus_platform_interface.dart'
     as share_platform;
+import 'package:sqflite_common/sqlite_api.dart';
 
 import 'support/v1_integration_harness.dart';
 
@@ -2212,6 +2213,122 @@ void main() {
   );
 
   testWidgets(
+    'production Replace refuses a blocked WAL reader and safely retries',
+    (tester) async {
+      const password = 'correct horse battery staple';
+      final backupDirectory = await Directory.systemTemp.createTemp(
+        'butlerly-restore-busy-e2e-',
+      );
+      addTearDown(() async {
+        if (await backupDirectory.exists()) {
+          await backupDirectory.delete(recursive: true);
+        }
+      });
+      final archive = File(path.join(backupDirectory.path, 'restore.butlerly'));
+      final workspace = _workspaceDataService(harness);
+      await harness.database.database.execute('PRAGMA journal_mode=WAL');
+      await harness.finance.saveUserPreference(
+        UserPreference(
+          locale: 'en',
+          formattingLocale: 'en-US',
+          regionCode: 'US',
+          baseCurrency: CurrencyCode('USD'),
+          timeZoneId: 'UTC',
+          firstUseCompleted: true,
+        ),
+      );
+      expect(
+        await harness.finance.createTransaction(
+          manualCommand(
+            id: 'ui-restore-busy-archive',
+            description: 'Saved before the busy reader',
+            date: '2026-10-02',
+          ),
+        ),
+        isA<ApplicationSuccess<TransactionDto>>(),
+      );
+      await workspace.createPortableBackup(archive.path, password: password);
+
+      final originalSelector = FileSelectorPlatform.instance;
+      FileSelectorPlatform.instance = _FixtureFileSelector(XFile(archive.path));
+      addTearDown(() => FileSelectorPlatform.instance = originalSelector);
+      _setIntegrationView(tester, const Size(390, 844));
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      appRouter.go('/privacy-data');
+      await tester.pumpWidget(const ProviderScope(child: ButlerlyApp()));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final reader = await harness.database.persistenceDatabase.factory
+          .openDatabase(
+            harness.database.persistenceDatabase.path,
+            options: OpenDatabaseOptions(singleInstance: false),
+          );
+      try {
+        await reader.execute('BEGIN DEFERRED');
+        await reader.rawQuery('SELECT COUNT(*) FROM transactions');
+        // Commit a WAL frame after the snapshot is pinned. The checkpoint
+        // must refuse this reader, not replace committed local transactions.
+        expect(
+          await harness.finance.createTransaction(
+            manualCommand(
+              id: 'ui-restore-busy-local',
+              description: 'Preserved when Replace is refused',
+              date: '2026-10-03',
+            ),
+          ),
+          isA<ApplicationSuccess<TransactionDto>>(),
+        );
+
+        await _confirmProductionReplace(tester, password);
+        await _awaitProductionRestoreOutcome(tester, harness, success: false);
+        expect(
+          await harness.finance
+              .getTransaction('ui-restore-busy-local')
+              .timeout(const Duration(seconds: 10)),
+          isA<ApplicationSuccess<TransactionDto>>(),
+        );
+        expect(
+          await File(
+            path.join(
+              harness.database.persistenceDatabase.path,
+              '.raw-restore-journal.json',
+            ),
+          ).exists(),
+          isFalse,
+        );
+      } finally {
+        await reader.execute('ROLLBACK');
+        await reader.close();
+      }
+
+      // A refused restore is retryable after the external read transaction
+      // releases its WAL snapshot. No app restart or data repair is required.
+      await tester.tap(find.byKey(const ValueKey('butlerly-toast-close')));
+      await tester.pump();
+      harness.restoreStages.clear();
+      await _confirmProductionReplace(tester, password);
+      await _awaitProductionRestoreOutcome(tester, harness, success: true);
+      expect(
+        await harness.finance
+            .getTransaction('ui-restore-busy-archive')
+            .timeout(const Duration(seconds: 10)),
+        isA<ApplicationSuccess<TransactionDto>>(),
+      );
+      expect(
+        await harness.finance
+            .getTransaction('ui-restore-busy-local')
+            .timeout(const Duration(seconds: 10)),
+        isA<ApplicationFailure<TransactionDto>>(),
+      );
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
+    },
+    timeout: const Timeout(Duration(minutes: 5)),
+  );
+
+  testWidgets(
     'production backup page creates an encrypted backup through file selection',
     (tester) async {
       const password = 'correct horse battery staple';
@@ -2889,6 +3006,36 @@ final class _FixtureOcrRecognizer implements OcrRecognizer {
   );
 }
 
+
+Future<void> _confirmProductionReplace(
+  WidgetTester tester,
+  String password,
+) async {
+  await tester.tap(
+    find.byKey(const ValueKey('mobile-privacy-restore-replace')),
+  );
+  await tester.pumpAndSettle();
+  await tester.enterText(find.byType(TextField), password);
+  FocusManager.instance.primaryFocus?.unfocus();
+  await tester.pump();
+  await tester.tap(find.text('Unlock').last);
+  await tester.pumpAndSettle();
+  final acknowledgment = find.byKey(
+    const ValueKey('restore-replace-acknowledgement'),
+  );
+  final confirm = find.byKey(const ValueKey('restore-replace-confirm'));
+  await Scrollable.ensureVisible(
+    tester.element(acknowledgment),
+    alignment: 0.5,
+    duration: const Duration(milliseconds: 200),
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(acknowledgment);
+  await tester.pumpAndSettle();
+  expect(tester.widget<CheckboxListTile>(acknowledgment).value, isTrue);
+  await tester.tap(confirm);
+  await tester.pump();
+}
 
 Future<void> _awaitProductionRestoreOutcome(
   WidgetTester tester,
