@@ -421,7 +421,9 @@ class _PaymentSettlementDetailPageState
       widget.finance,
       languageCode: languageCode,
     );
-    setState(() => _detail = detail);
+    setState(() {
+      _detail = detail;
+    });
     await detail;
     final refreshedMasterData = await masterData;
     if (!mounted || _loadedLanguageCode != languageCode) return;
