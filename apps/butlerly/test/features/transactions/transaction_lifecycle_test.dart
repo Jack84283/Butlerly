@@ -4355,15 +4355,15 @@ Future<void> _scrollEditorToMasterData(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
-/// Exercises the desktop embedded editor's Save action without relying on
-/// viewport hit testing of a nested Scaffold footer. User-facing save-button
-/// placement is verified separately through desktop/manual layout acceptance.
+/// Verify that a real pointer tap reaches the desktop embedded Save action.
+/// Calling onPressed directly would hide a clipped or intercepted footer.
 Future<void> _submitEmbeddedTransactionSave(WidgetTester tester) async {
   final save = find.byKey(const ValueKey('transaction-save-locally'));
   expect(save, findsOneWidget);
-  final action = tester.widget<FilledButton>(save).onPressed;
-  expect(action, isNotNull);
-  action!();
+  await tester.ensureVisible(save);
+  await tester.pumpAndSettle();
+  expect(tester.widget<FilledButton>(save).onPressed, isNotNull);
+  await tester.tap(save);
   await tester.pumpAndSettle();
 }
 
