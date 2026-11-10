@@ -93,8 +93,11 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
   }
 
   Future<void> _refresh() async {
-    setState(() => _data = _load());
-    await _data;
+    final reloaded = _load();
+    setState(() {
+      _data = reloaded;
+    });
+    await reloaded;
   }
 
   Future<void> _createSettlement(_SettlementListData data) async {
