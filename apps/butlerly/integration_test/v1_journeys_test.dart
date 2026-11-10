@@ -2180,7 +2180,13 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.widget<CheckboxListTile>(acknowledgment).value, isTrue);
       await tester.tap(confirm);
-      await tester.pumpAndSettle();
+      // This has a deliberately short bound: an indefinite busy spinner after
+      // Replace is an Alpha release failure, not a reason to wait ten minutes.
+      await tester.pumpAndSettle(
+        const Duration(milliseconds: 100),
+        EnginePhase.sendSemanticsUpdate,
+        const Duration(seconds: 45),
+      );
 
       expect(
         await harness.finance.getTransaction('ui-restore-source-e2e'),
