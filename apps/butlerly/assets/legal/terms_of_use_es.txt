@@ -1,0 +1,59 @@
+BUTLERLY — TÉRMINOS DE USO
+LEG-0001 | Edición de revisión Alpha v1.1 | Español | 9 de noviembre de 2026
+NO VIGENTE — REQUIERE APROBACIÓN DEL RESPONSABLE Y ASESORÍA JURÍDICA
+
+Este borrador es exclusivamente para revisión jurídica y de producto. No debe publicarse ni incorporarse como acuerdo definitivo hasta aprobar la identidad del editor, contactos, edades, territorios, legislación, distribución y cláusulas de responsabilidad. Describe el alcance previsto de la versión Alpha sin conexión; las afirmaciones sobre el funcionamiento deben verificarse en la compilación final.
+
+1. Editor, alcance y aceptación
+Butlerly (la «Aplicación») es ofrecida por [NOMBRE Y FORMA JURÍDICA DEL EDITOR], a quien podrán dirigirse las notificaciones legales en [CONTACTO Y DOMICILIO JURÍDICO VERIFICADOS]. Estas Condiciones se aplican a la Aplicación y a los servicios relacionados que se ofrezcan expresamente. Fecha de entrada en vigor: [FECHA APROBADA]. Países y canales de distribución: [DECISIÓN DEL RESPONSABLE]. Si se distribuye a un grupo Alpha cerrado, se aplicarán otras condiciones de prueba únicamente cuando se faciliten expresamente.
+
+El derecho de uso está sujeto a la legislación aplicable, a estas Condiciones cuando se presenten válidamente y a las normas de la tienda correspondiente. La mera lectura de un documento no demuestra un consentimiento separado que exija la ley. Cuando se requiera consentimiento expreso, se solicitará por separado.
+
+2. Finalidad de Butlerly
+Alpha es una aplicación de finanzas personales centrada en el dispositivo, destinada a registrar y revisar transacciones; organizar comercios, categorías y fuentes de pago; importar archivos compatibles descargados y recibos capturados; revisar posibles duplicados y movimientos de extractos; administrar liquidaciones de tarjetas y presupuestos; y consultar resúmenes, análisis y la Encuesta de Perfil Financiero opcional. La disponibilidad depende de la versión Alpha y el dispositivo reales. Las respuestas a la encuesta son datos declarados por el usuario, no transacciones verificadas ni evaluaciones profesionales.
+
+Las funciones principales están diseñadas para funcionar sin cuenta Butlerly, inicio de sesión en la nube ni conexión permanente. El alcance aprobado de Alpha no incluye conexiones directas a cuentas en la nube, sincronización automática, descarga remota de documentos, procesamiento externo de IA/OCR ni derechos de pago Pro/Familiar. Obtenga primero un documento compatible fuera de la Aplicación y selecciónelo expresamente como archivo local para importarlo. Las funciones previstas para el futuro no son servicios ni derechos actuales.
+
+3. Licencia limitada y propiedad
+Sujeto a las leyes imperativas y a las condiciones definitivas de distribución, el editor concede a las personas autorizadas una licencia limitada y no exclusiva para ejecutar la Aplicación en dispositivos compatibles con fines personales lícitos. No la utilice para cometer fraude, acceder a datos ajenos sin autorización, eludir salvaguardas, interferir con su funcionamiento o vulnerar derechos de terceros. Las restricciones de copia, ingeniería inversa o redistribución solo se aplican cuando sean legalmente exigibles y no prevalecen sobre las licencias de código abierto.
+
+El nombre Butlerly y los materiales originales pertenecen a sus respectivos titulares. Los programas, tipografías, ilustraciones y otros recursos de terceros se rigen por sus propias licencias; consulte LEG-0003.
+
+4. Información que introduce o importa
+Usted es responsable de la exactitud de los registros y de contar con autorización para tratar los documentos seleccionados. La extracción de recibos o extractos, la clasificación, la detección de duplicados, las coincidencias, las reglas y los análisis pueden ser erróneos, incompletos o estar desactualizados. Antes de confiar en un resultado, compruebe nombres, fechas, importes, monedas, categorías, justificantes originales y modificaciones propuestas. Utilice las funciones de revisión y corrección cuando estén disponibles.
+
+La Aplicación no verifica independientemente la autenticidad de extractos bancarios, recibos, saldos, pagos, respuestas de encuestas o registros facilitados por usted. Los datos importados y los resúmenes calculados no son estados certificados por un banco.
+
+5. Almacenamiento local, copias y recuperación
+Butlerly está diseñada para conservar los registros financieros principales y sus justificantes en el dispositivo. Si exporta, comparte o guarda una copia de seguridad en un destino que usted elija, esa copia puede salir del espacio privado de la Aplicación y quedar sujeta a las condiciones del destino. La versión Alpha aprobada no sincroniza automáticamente esas copias. Usted debe proteger el dispositivo, las contraseñas de cifrado, los archivos de copia y los datos exportados.
+
+Realice una copia antes de cambios importantes. La pérdida del dispositivo, los daños, fallos de almacenamiento, borrados equivocados o restauraciones interrumpidas pueden ocasionar pérdidas irrecuperables. Las opciones de restauración, incluidas Combinar y Reemplazar, pueden afectar a los registros existentes; lea las advertencias y compruebe el resultado. Borrar un registro local no elimina las copias anteriormente exportadas o conservadas por separado.
+
+6. Automatización e inteligencia artificial
+Alpha puede ofrecer reconocimiento de texto en el dispositivo, clasificación determinista, sugerencias de duplicados y análisis derivados. Un resultado automatizado no implica necesariamente IA generativa, y una puntuación de confianza no garantiza exactitud. El alcance aprobado no autoriza transmitir datos financieros personales a proveedores remotos de IA u OCR. Debe inspeccionarse la compilación distribuida antes de afirmar categóricamente que no se transmiten datos. Cualquier IA conectada en el futuro requerirá revisión, información y, cuando proceda, consentimiento separado. Consulte LEG-0004.
+
+7. Ausencia de asesoramiento profesional
+Butlerly sirve para organizar registros; no es un banco, prestamista, corredor, asesor de inversiones, planificador financiero, contador, asesor fiscal, abogado, aseguradora ni proveedor sanitario. Sus cálculos, resúmenes, clasificaciones, previsiones y sugerencias son informativos; no constituyen asesoramiento profesional regulado para su situación ni garantizan resultados. Acuda a profesionales cualificados para decisiones importantes.
+
+8. Plataformas de terceros y archivos locales
+Su dispositivo, sistema operativo, tienda, origen de documentos y los servicios de almacenamiento que elija tienen condiciones y prácticas de privacidad propias. La descarga desde un banco o servicio en la nube tiene lugar fuera de Butlerly; después, usted selecciona el archivo local para importarlo. Mencionar a un tercero en la Aplicación no significa afiliación, patrocinio ni respaldo.
+
+9. Disponibilidad de Alpha, cambios y comentarios
+Alpha se ofrece para pruebas; puede presentar defectos y cambiar durante el desarrollo. La compatibilidad, los formatos admitidos y las funciones varían según la plataforma y la versión. Pueden ser necesarias actualizaciones por motivos de seguridad, calidad o cumplimiento legal. Al remitir voluntariamente comentarios, capturas o diagnósticos, elimine en lo posible contraseñas, identificadores financieros y datos ajenos. Las condiciones de uso de comentarios, la confidencialidad de pruebas y el canal de contacto requieren [APROBACIÓN DEL RESPONSABLE/ASESORÍA JURÍDICA].
+
+10. Privacidad, permisos y eliminación
+La Política de privacidad (LEG-0002) explica el tratamiento previsto y los límites del almacenamiento local. Usted decide qué datos introducir o importar y cuándo usar las funciones disponibles de exportación, copia, restauración o borrado. Los permisos del dispositivo los gestiona el sistema operativo. La eliminación local, desinstalación o pérdida del dispositivo puede borrar información permanentemente, pero no recupera copias compartidas previamente.
+
+11. Garantías y responsabilidad
+Alpha puede ofrecerse «tal cual» y «según disponibilidad», en la máxima medida permitida por la ley. No se garantiza que los cálculos, clasificaciones, importaciones, copias, restauraciones o funciones estén libres de errores, sin interrupciones o sean idóneos para un fin concreto. Se mantienen las garantías legales y los derechos del consumidor que no puedan excluirse.
+
+[DECISIÓN JURÍDICA PENDIENTE: garantías y limitaciones de responsabilidad exigibles; posibles límites económicos; exclusiones legales; indemnización; reembolsos si corresponden; protección imperativa de consumidores y reglas territoriales. Este borrador no establece arbitraje obligatorio, renuncia a demandas colectivas ni un límite monetario.]
+
+12. Requisitos de edad, legislación y conflictos
+Antes de publicar deben determinarse la edad mínima, consentimiento de tutores, territorios, entidad editora, ley aplicable, tribunales o mecanismos de resolución: [DECISIÓN DEL RESPONSABLE/ASESORÍA JURÍDICA]. Este borrador no impone arbitraje ni renuncia a recursos irrenunciables. Prevalecen las protecciones obligatorias de los consumidores.
+
+13. Modificaciones y contacto
+La edición final indicará editor, versión y fecha de vigencia. Se comunicarán los cambios sustanciales y se recabará consentimiento cuando lo exija la ley. Consultas sobre estas Condiciones: [CONTACTO JURÍDICO VERIFICADO]; privacidad: [CONTACTO DE PRIVACIDAD VERIFICADO]. La copia definitiva debe estar disponible en «Aspectos legales y licencias» de la Aplicación y en los canales exigidos de distribución.
+
+REGISTRO DE APROBACIÓN PREVIA — NO FORMA PARTE DE LAS CONDICIONES PÚBLICAS
+Pendiente: identidad y domicilio legal; contactos; destinatarios, edades, territorios y canales Alpha; responsabilidad, indemnización y controversias; comentarios y condiciones de pruebas; auditoría de red y binario; aprobación del responsable y asesor jurídico; fecha de vigencia; equivalencia EN/zh-Hans/es; lectura sin conexión y accesibilidad. Este texto no constituye asesoramiento ni aprobación jurídica. Incidencia: https://github.com/Jack84283/Butlerly/issues/380.

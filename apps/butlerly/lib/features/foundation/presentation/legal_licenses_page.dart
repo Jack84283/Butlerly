@@ -22,7 +22,10 @@ Future<String> _readBundledVersion() async {
 
 final Future<String> _bundledVersion = _readBundledVersion();
 
-/// Offline reader for the bundled, authoritative Legal document set.
+/// Offline reader for the bundled legal review documents.
+///
+/// LEG-0001–0004 v1.1 are review editions, not published legal agreements.
+/// Do not lift this release gate without issue #380 approval.
 class LegalLicensesPage extends StatelessWidget {
   const LegalLicensesPage({super.key});
 
@@ -57,6 +60,8 @@ class LegalLicensesPage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: ButlerlySpacing.section),
+        const _LegalReviewNotice(),
+        const SizedBox(height: ButlerlySpacing.small),
         ButlerlyCard(
           padding: EdgeInsets.zero,
           child: ButlerlySeparatedList(
@@ -96,15 +101,18 @@ class _DesktopLegalLicensesPage extends StatefulWidget {
 
 class _DesktopLegalLicensesPageState extends State<_DesktopLegalLicensesPage> {
   int _selectedDocument = 0;
-  late final List<Future<String>> _contents = [
-    for (final document in _documents)
-      rootBundle.loadString(document.assetPath),
-  ];
+  final Map<String, Future<String>> _contents = {};
+
+  Future<String> _contentFor(LegalDocument document, Locale locale) {
+    final path = document.assetPathFor(locale);
+    return _contents.putIfAbsent(path, () => rootBundle.loadString(path));
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final selected = _documents[_selectedDocument];
+    final locale = Localizations.localeOf(context);
     final readerHeight = (MediaQuery.sizeOf(context).height - 190).clamp(
       440.0,
       950.0,
@@ -192,10 +200,13 @@ class _DesktopLegalLicensesPageState extends State<_DesktopLegalLicensesPage> {
             ),
           ),
           Divider(height: 1, color: context.colors.cardDivider),
+          const _LegalReviewNotice(),
           Expanded(
             child: FutureBuilder<String>(
-              key: ValueKey('desktop-legal-reader-$_selectedDocument'),
-              future: _contents[_selectedDocument],
+              key: ValueKey(
+                'desktop-legal-reader-$_selectedDocument-${locale.languageCode}',
+              ),
+              future: _contentFor(selected, locale),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return Center(
@@ -303,19 +314,27 @@ class LegalDocumentPage extends StatefulWidget {
 
 class _LegalDocumentPageState extends State<LegalDocumentPage> {
   late Future<String> _contents;
+  String? _loadedPath;
+
+  // didChangeDependencies is needed for a runtime app-language switch while
+  // this document detail route is already open.
+  void _loadForCurrentLocale() {
+    final path = widget.document.assetPathFor(Localizations.localeOf(context));
+    if (path == _loadedPath) return;
+    _loadedPath = path;
+    _contents = rootBundle.loadString(path);
+  }
 
   @override
-  void initState() {
-    super.initState();
-    _contents = rootBundle.loadString(widget.document.assetPath);
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadForCurrentLocale();
   }
 
   @override
   void didUpdateWidget(covariant LegalDocumentPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.document.assetPath != widget.document.assetPath) {
-      _contents = rootBundle.loadString(widget.document.assetPath);
-    }
+    _loadForCurrentLocale();
   }
 
   @override
@@ -328,6 +347,7 @@ class _LegalDocumentPageState extends State<LegalDocumentPage> {
       child: ButlerlyResponsiveBody(
         contentKey: const ValueKey('legal-document-content'),
         child: FutureBuilder<String>(
+          key: ValueKey('legal-document-body-$_loadedPath'),
           future: _contents,
           builder: (context, snapshot) {
             if (snapshot.hasError) {
@@ -358,7 +378,49 @@ class _LegalDocumentPageState extends State<LegalDocumentPage> {
 class LegalDocument {
   const LegalDocument(this.titleKey, this.assetPath);
   final String titleKey;
+
+  /// English asset path; localized variants are bundled alongside it.
   final String assetPath;
+
+  String assetPathFor(Locale locale) {
+    final suffix = switch (locale.languageCode) {
+      'zh' => '_zh',
+      'es' => '_es',
+      _ => '',
+    };
+    return '${assetPath.substring(0, assetPath.length - 4)}$suffix.txt';
+  }
+}
+
+class _LegalReviewNotice extends StatelessWidget {
+  const _LegalReviewNotice();
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(
+      horizontal: ButlerlySpacing.standard,
+      vertical: ButlerlySpacing.small,
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(
+          Icons.info_outline_rounded,
+          size: 18,
+          color: context.colors.secondaryText,
+        ),
+        const SizedBox(width: ButlerlySpacing.compact),
+        Expanded(
+          child: Text(
+            context.l10n.text('legalReviewNotApproved'),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: context.colors.secondaryText,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 const _documents = [

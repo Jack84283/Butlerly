@@ -1,0 +1,52 @@
+BUTLERLY — POLÍTICA DE PRIVACIDAD
+LEG-0002 | Edición de revisión Alpha v1.1 | Español | 9 de noviembre de 2026
+NO VIGENTE — REQUIERE REVISIÓN DEL RESPONSABLE, DEL EQUIPO TÉCNICO Y ASESORÍA JURÍDICA
+
+Este documento es un borrador de revisión, no una política publicada. Toda afirmación sobre recogida de datos, diagnósticos o transmisión debe contrastarse con la compilación Alpha, los SDK incorporados, permisos, comportamiento de plataforma y canal de distribución. La identidad del editor y el contacto de privacidad deben verificarse antes del lanzamiento.
+
+1. Responsable y contacto
+Editor o responsable jurídico del tratamiento: [ENTIDAD JURÍDICA VERIFICADA]. Consultas de privacidad y solicitudes de derechos: [CONTACTO DE PRIVACIDAD VERIFICADO]. Domicilio postal cuando corresponda: [DIRECCIÓN VERIFICADA]. Fecha de vigencia: [FECHA APROBADA]. Regiones y derechos aplicables: [REVISIÓN DEL RESPONSABLE/ASESORÍA JURÍDICA]. Se determinarán las funciones jurídicas, bases legales y procedimientos concretos para cada mercado.
+
+2. Modelo centrado en el dispositivo
+Butlerly Alpha está diseñada para conservar sus principales registros financieros personales en una base de datos local y un espacio privado de justificantes administrados por la Aplicación. Las funciones principales se conciben para funcionar sin conexión ni cuenta Butlerly. Sin embargo, los datos guardados en el dispositivo pueden ser accesibles para el sistema operativo, sus servicios de copia de seguridad o personas con acceso al equipo. El diseño local no supone secreto absoluto, recuperación garantizada ni una afirmación de que nunca exista tratamiento fuera del dispositivo.
+
+El alcance aprobado de Alpha no incluye vinculación de cuentas en la nube, sincronización en segundo plano, obtención remota de documentos ni búsqueda en línea del asistente o ayuda. Debe comprobarse que ningún SDK, OCR, IA, tipo de cambio, analítica, diagnóstico o ruta de red de la compilación final contradiga ese alcance.
+
+3. Información que decide tratar
+Según las funciones utilizadas, los datos pueden incluir importes, monedas, fechas, direcciones y descripciones de transacciones; comercios y categorías; etiquetas y notas; nombres, saldos o identificadores de fuentes de pago que usted introduzca; extractos bancarios o de tarjeta, CSV, recibos, fotografías y documentos importados; texto reconocido y justificantes originales; decisiones de duplicados y conciliación; presupuestos, reglas, informes y análisis locales; preferencias; respuestas de la Encuesta de Perfil Financiero; copias y exportaciones.
+
+Estos datos pueden ser sensibles y contener nombres, direcciones o identificadores de cuentas presentes en los documentos seleccionados. Las respuestas a la encuesta son información declarada, no datos bancarios verificados ni evaluaciones de idoneidad. El flujo Alpha aprobado no exige credenciales de banca en línea. No importe información de otras personas sin autorización.
+
+4. Finalidades del tratamiento
+La Aplicación procesa los registros para permitir introducir, visualizar, modificar, buscar, revisar, comparar, clasificar, conciliar, importar, exportar, respaldar, restaurar y borrar información financiera. Las reglas y cálculos locales pueden generar totales, tendencias, posibles coincidencias o sugerencias. Los resultados derivados pueden contener errores y no deberían sobrescribir silenciosamente los documentos originales. Las preferencias y respuestas voluntarias de la encuesta ayudan a prestar funciones que estén efectivamente disponibles.
+
+5. Cuándo puede salir información de la Aplicación
+Usted puede exportar o compartir archivos, guardar una copia, seleccionar contenido mediante controles del sistema operativo o contactar con soporte fuera de la Aplicación. Los documentos que conserve voluntariamente en iCloud Drive, Google Drive, OneDrive, Dropbox u otro servicio quedan sujetos a las condiciones y prácticas de ese proveedor. Descargar desde dichos servicios o un banco se realiza fuera de Butlerly; después, selecciona un archivo local compatible para importarlo. Alpha no se conecta automáticamente a esas cuentas ni mantiene el archivo sincronizado.
+
+La distribución mediante tiendas, las copias del sistema, los servicios del teclado o cámara y los informes de errores gestionados por el sistema o la tienda pueden implicar a otros proveedores. Los destinatarios efectivos, finalidades y plataformas deben verificarse para la versión distribuida. Este borrador no afirma que exista recogida, cesión o diagnóstico «cero».
+
+6. Cámara, fotos, archivos y reconocimiento
+Al importar o capturar información, Butlerly puede solicitar acceso a cámara, fototeca o selector de archivos. El sistema operativo controla los permisos. Los recibos y extractos pueden contener datos financieros o identificativos sensibles. El OCR ejecutado en el dispositivo y la extracción determinista no equivalen a servicios remotos de IA. El alcance aprobado no autoriza subir documentos ni instrucciones a proveedores externos de OCR/IA; hay que auditar el motor y sus alternativas antes de publicar una afirmación categórica de tratamiento exclusivamente local.
+
+7. Sin sincronización o publicidad conductual autorizadas
+La Alpha prevista no tiene cuentas gestionadas por Butlerly, sincronización de datos en la nube, elaboración remota de perfiles financieros, derechos de pago, seguimiento comercial ni venta de registros financieros. Es una restricción del producto, no una prueba independiente de ausencia de tráfico de todos los SDK. Antes del lanzamiento deben auditarse redes, dependencias, permisos, declaraciones de privacidad de las tiendas y diagnósticos. Si hay destinatarios reales, la política deberá identificar sus categorías, objetivos, conservación y base jurídica o consentimiento. No debe prometerse «nunca recogemos nada» sin comprobarlo.
+
+8. Conservación, eliminación, exportación y copias
+Los datos del dispositivo suelen conservarse hasta que usted los edita, archiva, borra, desinstala o elimina mediante operaciones del dispositivo. Archivar no significa borrar definitivamente. Una restauración puede volver a introducir registros; «Combinar» y «Reemplazar» tienen efectos diferentes. Los justificantes y los registros de base de datos pueden estar en ubicaciones distintas. El borrado local no elimina exportaciones, copias, archivos del dispositivo o almacenamientos externos que haya elegido. La Aplicación no puede borrar copias ajenas a su control.
+
+Si algún servicio externo verificado recibe datos personales, la política definitiva debe indicar quién los conserva, durante cuánto tiempo o según qué criterios y cómo ejercer los derechos de acceso, rectificación, supresión u otros aplicables. Como Alpha no utiliza una cuenta central Butlerly, no existe una cuenta financiera central que eliminar; el borrado local sigue siendo una acción del usuario.
+
+9. Seguridad y límites de recuperación
+El diseño usa almacenamiento local y justificantes controlados por la Aplicación, y admite copias portátiles cifradas cuando están implementadas. La seguridad también depende del bloqueo del dispositivo, del sistema operativo, del destino elegido y de las contraseñas. Ninguna medida garantiza evitar accesos no autorizados, pérdidas accidentales, corrupción o restauraciones fallidas. No envíe contraseñas, claves de copia ni archivos financieros completos en mensajes normales de soporte.
+
+10. Opciones y derechos
+Puede decidir qué datos introducir o importar, revisar transacciones detectadas, corregir registros y usar los controles disponibles de copia, exportación y borrado. Los permisos de cámara, fotos y archivos se administran en el sistema operativo. Los derechos y plazos de respuesta dependen del responsable real, jurisdicción y tratamiento. La edición publicada debe indicar cómo ejercer derechos respecto de datos retenidos por Butlerly o sus proveedores verificados: [CONTACTO/PROCEDIMIENTO PENDIENTE]. Este borrador no limita derechos obligatorios.
+
+11. Menores y usuarios protegidos
+Alpha no está concebida como servicio dirigido a menores. Antes de distribuir públicamente deben aprobarse la edad mínima, eventuales consentimientos de tutores y protecciones territoriales. Este borrador no afirma que ya exista un mecanismo de verificación de edad.
+
+12. Modificaciones, documentos relacionados y contacto
+Los cambios sustanciales en el tratamiento exigirán avisos actualizados y consentimiento cuando la ley lo requiera. Las Condiciones de uso (LEG-0001), Licencias y avisos de terceros (LEG-0003), y Avisos sobre IA y asesoramiento profesional (LEG-0004) complementan esta política. Consultas: [CONTACTO DE PRIVACIDAD VERIFICADO]. Borrador v1.1; solo entrará en vigor tras su aprobación.
+
+REGISTRO DE APROBACIÓN PREVIA — NO FORMA PARTE DE LA POLÍTICA PÚBLICA
+Pendiente: auditoría final de código/SDK/permisos/tráfico (incluidos sistemas y tiendas); inventario de flujos y proveedores; entidad/contactos/derechos/edad/regiones/base jurídica/conservación; declaraciones de privacidad de las tiendas; aprobación responsable y jurídica; revisión EN/zh-Hans/es; versión congelada; lectura offline; y página pública HTTPS cuando la exija la tienda. Un Google Doc privado o editable no sustituye la página oficial. Incidencia: https://github.com/Jack84283/Butlerly/issues/380.

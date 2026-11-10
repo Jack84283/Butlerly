@@ -93,8 +93,11 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
   }
 
   Future<void> _refresh() async {
-    setState(() => _data = _load());
-    await _data;
+    final reloaded = _load();
+    setState(() {
+      _data = reloaded;
+    });
+    await reloaded;
   }
 
   Future<void> _createSettlement(_SettlementListData data) async {
@@ -418,7 +421,9 @@ class _PaymentSettlementDetailPageState
       widget.finance,
       languageCode: languageCode,
     );
-    setState(() => _detail = detail);
+    setState(() {
+      _detail = detail;
+    });
     await detail;
     final refreshedMasterData = await masterData;
     if (!mounted || _loadedLanguageCode != languageCode) return;

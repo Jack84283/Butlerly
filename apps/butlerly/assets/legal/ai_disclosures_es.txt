@@ -1,0 +1,47 @@
+BUTLERLY — AVISOS SOBRE IA Y ASESORAMIENTO PROFESIONAL
+LEG-0004 | Edición de revisión Alpha v1.1 | Español | 9 de noviembre de 2026
+NO VIGENTE — REQUIERE APROBACIÓN DEL RESPONSABLE, EQUIPO TÉCNICO Y ASESORÍA JURÍDICA
+
+Este aviso explica las funciones automatizadas y los límites del asesoramiento profesional en la Alpha prevista. No demuestra que se haya incluido un proveedor, modelo o función remota de IA específicos. Antes de publicar afirmaciones de hecho debe verificarse el binario final. El alcance aprobado de Alpha no autoriza IA/OCR remotos ni tratamiento remoto de datos financieros.
+
+1. Qué significa el tratamiento automatizado
+Butlerly puede ayudar a registrar, organizar, revisar e interpretar los propios datos financieros. Las funciones pueden incluir reconocimiento de texto local en recibos o extractos, reglas deterministas, sugerencias de categorías, detección de posibles duplicados o coincidencias de transacciones, reconocimiento de patrones recurrentes e informes o análisis calculados a partir de registros guardados. La automatización y el OCR no implican necesariamente IA generativa.
+
+El funcionamiento esencial de Alpha está diseñado para mantenerse en el dispositivo y no exigir cuenta. Si un dispositivo o plataforma no puede ejecutar un reconocimiento concreto, esa función puede no estar disponible; las demás operaciones financieras principales deberán seguir accesibles donde sean compatibles.
+
+2. Exactitud e incertidumbre
+El reconocimiento de texto, análisis de archivos, clasificación, identificación de comercios, propuestas de conciliación, detección de pagos periódicos, cálculos, previsiones y explicaciones pueden ser incorrectos, incompletos o desactualizados. Una captura deficiente, una descripción ambigua, datos ausentes, diferencias horarias o divisas extranjeras pueden modificar el resultado. Una puntuación de confianza elevada, un texto convincente o un gráfico plausible no prueban exactitud.
+
+Compruebe documentos de origen, importes, fechas, monedas, fuentes de pago, categorías y otros datos importantes. Si la Aplicación indica incertidumbre, tipo de cambio no disponible o «Requiere revisión», no considere el resultado aprobado ni verificado.
+
+3. Datos originales y control del usuario
+Los justificantes originales y los registros confirmados por el usuario son la fuente principal de información financiera. Las coincidencias, clasificaciones y resúmenes similares a IA deben ser revisables y no sobrescribir silenciosamente las observaciones ni correcciones. Utilice los controles de revisión y corrección disponibles. Una propuesta de unir, consolidar o excluir registros puede afectar a los totales mostrados y debe comprenderse antes de aceptarla.
+
+La Encuesta de Perfil Financiero recoge objetivos, contexto del hogar y preferencias declaradas por el usuario. Las respuestas no son transacciones financieras verificadas y no deben usarse como evaluación de solvencia, elegibilidad para seguros, idoneidad de inversión ni condición jurídica.
+
+4. Lugar de tratamiento y privacidad
+El reconocimiento en el dispositivo y la IA externa constituyen flujos de datos distintos. El alcance aprobado excluye servicios remotos de IA/OCR, envío de instrucciones, consultas del asistente en línea y procesamiento remoto de archivos financieros personales. Se trata de una restricción del producto, no de una garantía de que el binario ya se haya auditado. Antes de publicar deben inspeccionarse el motor OCR real, sus rutas alternativas, tráfico de SDK, diagnósticos, fuentes externas de tipos de cambio y otras llamadas. Si existe una transmisión remota, habrá que identificar destinatarios, datos transmitidos, finalidad, conservación, fundamento jurídico y opción o consentimiento del usuario antes de activarla o describirla.
+
+Ningún aviso provisional autoriza integrar IA externa. Toda futura función conectada exige una decisión independiente, revisión de privacidad y seguridad, explicaciones claras y consentimiento cuando la ley lo requiera, además de actualizar políticas y términos.
+
+5. No constituye asesoramiento profesional regulado
+Butlerly es una herramienta de organización personal. No es un banco, prestamista, corredor, asesor de inversiones, planificador financiero, contador, preparador de impuestos, abogado, aseguradora, médico ni fiduciario. Los totales, tendencias, sugerencias presupuestarias, previsiones, explicaciones financieras y textos automatizados tienen fines informativos y organizativos; no son recomendaciones profesionales de inversión, impuestos, contabilidad, derecho, medicina, crédito o seguros.
+
+Ningún análisis garantiza rendimientos, tratamiento fiscal correcto, elegibilidad normativa, seguridad, conciliación completa, éxito de pagos ni ausencia de pérdidas. Para decisiones con consecuencias importantes financieras, jurídicas o sanitarias consulte a un profesional cualificado.
+
+6. Contenido sensible y seguridad
+No envíe contraseñas bancarias, credenciales, claves de cifrado, secretos de copias ni números de identidad innecesarios mediante comentarios, soporte o futuras instrucciones a IA. Revise los archivos antes de importarlos o compartirlos. Si se aprueba una función de IA en línea en el futuro, deberá reducirse al mínimo la información transmitida y nunca subirse silenciosamente el historial completo de transacciones, extractos o recibos.
+
+7. Cambios y disponibilidad
+Las funciones automáticas pueden cambiar con las reglas, plataformas, formatos o versiones. Que una función no esté disponible no certifica que los datos sean completos o correctos. Los nuevos proveedores de IA, modelos integrados, recomendaciones generadas a distancia o decisiones reguladas necesitan aprobación y avisos adicionales; este documento no los autoriza implícitamente.
+
+8. Aviso contextual breve propuesto
+«Butlerly le ayuda a organizar y comprender sus registros financieros. La extracción automatizada, las categorías, las coincidencias y los análisis pueden contener errores. Revise los documentos originales y las decisiones importantes. Butlerly no ofrece asesoramiento profesional financiero, de inversiones, fiscal, jurídico ni médico».
+
+Este texto es una propuesta, no una prueba de que se haya mostrado o aceptado. El equipo de producto y asesoría jurídica debe decidir su ubicación y si algún flujo exige explicación adicional o una opción de consentimiento. Consulte Condiciones de uso (LEG-0001) y Política de privacidad (LEG-0002).
+
+9. Editor y contacto
+Editor: [ENTIDAD JURÍDICA VERIFICADA]; contacto de soporte/asuntos jurídicos: [CONTACTO VERIFICADO]; privacidad: [CONTACTO DE PRIVACIDAD VERIFICADO]; fecha de vigencia: [TRAS APROBACIÓN]. Borrador v1.1. No debe empaquetarse como texto jurídico definitivo antes de aprobarlo.
+
+REGISTRO DE APROBACIÓN PREVIA — NO FORMA PARTE DEL AVISO PÚBLICO
+Verificar motores y proveedores reales de IA/OCR/extracción, redes y alternativas; contrastar flujos con la Política de privacidad; probar funciones locales/offline; confirmar avisos y consentimientos; revisar edad, regiones y afirmaciones profesionales; obtener aprobaciones jurídica y del editor y revisión lingüística EN/zh-Hans/es; congelar versión y comprobar «Aspectos legales y licencias» sin conexión. Esta revisión no autoriza IA remota. Incidencia: https://github.com/Jack84283/Butlerly/issues/380.
