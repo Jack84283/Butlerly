@@ -2180,20 +2180,25 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.widget<CheckboxListTile>(acknowledgment).value, isTrue);
       await tester.tap(confirm);
-      // This has a deliberately short bound: an indefinite busy spinner after
-      // Replace is an Alpha release failure, not a reason to wait ten minutes.
-      await tester.pumpAndSettle(
-        const Duration(milliseconds: 100),
-        EnginePhase.sendSemanticsUpdate,
-        const Duration(seconds: 45),
+      await tester.pump();
+      // An indeterminate spinner cannot settle by definition. Observe the
+      // production success/error toast with a real-time, bounded poll instead.
+      await _awaitProductionRestoreOutcome(tester, harness, success: true);
+      expect(
+        find.byKey(const ValueKey('butlerly-error-toast')),
+        findsNothing,
       );
 
       expect(
-        await harness.finance.getTransaction('ui-restore-source-e2e'),
+        await harness.finance
+            .getTransaction('ui-restore-source-e2e')
+            .timeout(const Duration(seconds: 10)),
         isA<ApplicationSuccess<TransactionDto>>(),
       );
       expect(
-        await harness.finance.getTransaction('ui-restore-obsolete-e2e'),
+        await harness.finance
+            .getTransaction('ui-restore-obsolete-e2e')
+            .timeout(const Duration(seconds: 10)),
         isA<ApplicationFailure<TransactionDto>>(),
       );
       await tester.pumpWidget(const SizedBox.shrink());
@@ -2203,6 +2208,7 @@ void main() {
       );
       await tester.pump();
     },
+    timeout: const Timeout(Duration(minutes: 4)),
   );
 
   testWidgets(
@@ -2880,6 +2886,34 @@ final class _FixtureOcrRecognizer implements OcrRecognizer {
       visionObservationsRecognized: 2,
     ),
     fullText: 'MARKET\nTOTAL 12.34',
+  );
+}
+
+
+Future<void> _awaitProductionRestoreOutcome(
+  WidgetTester tester,
+  V1IntegrationHarness harness, {
+  required bool success,
+}) async {
+  final resultKey = ValueKey(
+    success ? 'butlerly-success-toast' : 'butlerly-error-toast',
+  );
+  final busy = find.byKey(const ValueKey('privacy-restore-busy'));
+  for (var attempt = 0; attempt < 160; attempt++) {
+    await tester.pump(const Duration(milliseconds: 100));
+    if (find.byKey(resultKey).evaluate().isNotEmpty) {
+      expect(busy, findsNothing);
+      return;
+    }
+    // Actual SQLite/native file work must progress in real time; pumping
+    // simulated frames does not advance its worker threads.
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 250)),
+    );
+  }
+  fail(
+    'Production Replace did not reach a user-visible outcome; '
+    'last safe restore stages: ${harness.restoreStages.join(' > ')}',
   );
 }
 
