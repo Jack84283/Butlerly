@@ -1443,6 +1443,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
         ),
         child: Align(
           alignment: desktopWide ? Alignment.centerRight : Alignment.center,
+          heightFactor: 1,
           child: SizedBox(
             width: desktopWide ? 240 : double.infinity,
             child: FilledButton(
