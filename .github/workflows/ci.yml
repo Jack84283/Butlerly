@@ -48,9 +48,10 @@ jobs:
   # Keep macOS runner usage low for ordinary PRs. Backup/Restore PR #396
   # and desktop/audio PR #399 need native Apple checks before merge because
   # they modify native integrations and platform plugin registration.
+  # Alpha restore gate PR #405 additionally needs native iOS production journeys.
   ios_simulator:
     name: iOS Simulator
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && (github.event.pull_request.number == 396 || github.event.pull_request.number == 399))
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && (github.event.pull_request.number == 396 || github.event.pull_request.number == 399 || github.event.pull_request.number == 405))
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -60,7 +61,7 @@ jobs:
 
   ios_integration:
     name: iOS Integration Journeys
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && (github.event.pull_request.number == 396 || github.event.pull_request.number == 399))
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && (github.event.pull_request.number == 396 || github.event.pull_request.number == 399 || github.event.pull_request.number == 405))
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -85,7 +86,7 @@ jobs:
 
   macos_backup_smoke:
     name: macOS Backup & Restore Smoke Build
-    if: github.event_name == 'pull_request' && (github.event.pull_request.number == 396 || github.event.pull_request.number == 399)
+    if: github.event_name == 'pull_request' && (github.event.pull_request.number == 396 || github.event.pull_request.number == 399 || github.event.pull_request.number == 405)
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
