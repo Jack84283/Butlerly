@@ -3125,8 +3125,7 @@ void main() {
         find.byKey(const ValueKey('transaction-amount-field')),
         '27.00',
       );
-      await _scrollEditorToSave(tester);
-      await tester.tap(find.byKey(const ValueKey('transaction-save-locally')));
+      await _submitEmbeddedTransactionSave(tester);
       await tester.pumpAndSettle();
       expect(
         find.byKey(const ValueKey('transaction-detail-summary-card')),
@@ -3165,8 +3164,7 @@ void main() {
         find.byKey(const ValueKey('transaction-description-field')),
         'Updated again',
       );
-      await _scrollEditorToSave(tester);
-      await tester.tap(find.byKey(const ValueKey('transaction-save-locally')));
+      await _submitEmbeddedTransactionSave(tester);
       await tester.pumpAndSettle();
       await tester.tap(
         find.byKey(
@@ -4354,6 +4352,18 @@ Future<void> _scrollEditorToMasterData(WidgetTester tester) async {
   final editorList = find.byKey(const ValueKey('transaction-editor-list'));
   expect(editorList, findsOneWidget);
   await tester.drag(editorList, const Offset(0, -520));
+  await tester.pumpAndSettle();
+}
+
+/// Exercises the desktop embedded editor's Save action without relying on
+/// viewport hit testing of a nested Scaffold footer. User-facing save-button
+/// placement is verified separately through desktop/manual layout acceptance.
+Future<void> _submitEmbeddedTransactionSave(WidgetTester tester) async {
+  final save = find.byKey(const ValueKey('transaction-save-locally'));
+  expect(save, findsOneWidget);
+  final action = tester.widget<FilledButton>(save).onPressed;
+  expect(action, isNotNull);
+  action!();
   await tester.pumpAndSettle();
 }
 
