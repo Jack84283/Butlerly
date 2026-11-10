@@ -218,8 +218,8 @@ final class RawRestoreService {
       // Abort *before* creating an activation journal or touching live files.
       final liveConnection = database.database;
       final timeoutRows = await liveConnection.rawQuery('PRAGMA busy_timeout');
-      final previousBusyTimeout = timeoutRows.isNotEmpty &&
-              timeoutRows.first.values.first is int
+      final previousBusyTimeout =
+          timeoutRows.isNotEmpty && timeoutRows.first.values.first is int
           ? timeoutRows.first.values.first as int
           : 5000;
       try {
@@ -227,8 +227,7 @@ final class RawRestoreService {
         final checkpoint = await liveConnection.rawQuery(
           'PRAGMA wal_checkpoint(TRUNCATE)',
         );
-        if (checkpoint.length != 1 ||
-            checkpoint.single['busy'] != 0) {
+        if (checkpoint.length != 1 || checkpoint.single['busy'] != 0) {
           throw StateError(
             'SQLite still has active readers; restore deferred.',
           );
