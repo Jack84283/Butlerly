@@ -1428,38 +1428,25 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     ],
   );
 
-  Widget _statementRightPanel(_StatementPanelData selection) => Stack(
-    children: [
-      Navigator(
-        key: ValueKey('statement-review-navigator-${selection.statement.id}'),
-        onGenerateRoute: (_) => MaterialPageRoute<void>(
-          builder: (_) => _StatementReviewPage(
-            statement: selection.statement,
-            rows: selection.rows,
-            sources: _sources,
-            masterData: selection.masterData,
-            service: statement,
-          ),
-        ),
-        onDidRemovePage: (page) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted && _selectedStatementId == selection.statement.id) {
-              _closeStatementPanel();
-            }
-          });
-        },
+  Widget _statementRightPanel(_StatementPanelData selection) => Navigator(
+    key: ValueKey('statement-review-navigator-${selection.statement.id}'),
+    onGenerateRoute: (_) => MaterialPageRoute<void>(
+      builder: (_) => _StatementReviewPage(
+        statement: selection.statement,
+        rows: selection.rows,
+        sources: _sources,
+        masterData: selection.masterData,
+        service: statement,
+        onClose: _closeStatementPanel,
       ),
-      Positioned(
-        right: ButlerlySpacing.compact,
-        top: ButlerlySpacing.compact,
-        child: IconButton(
-          key: const ValueKey('desktop-statement-close'),
-          tooltip: context.l10n.text('close'),
-          onPressed: _closeStatementPanel,
-          icon: const Icon(Icons.close_rounded),
-        ),
-      ),
-    ],
+    ),
+    onDidRemovePage: (page) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _selectedStatementId == selection.statement.id) {
+          _closeStatementPanel();
+        }
+      });
+    },
   );
 }
 
@@ -1477,12 +1464,14 @@ class _StatementReviewPage extends StatefulWidget {
     required this.sources,
     required this.masterData,
     required this.service,
+    this.onClose,
   });
   final FinancialStatement statement;
   final List<StatementRow> rows;
   final List<PaymentSource> sources;
   final TransactionMasterDataSnapshot masterData;
   final StatementServices service;
+  final VoidCallback? onClose;
   @override
   State<_StatementReviewPage> createState() => _StatementReviewPageState();
 }
@@ -2220,6 +2209,12 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
+      leading: widget.onClose == null
+          ? null
+          : ButlerlyPanelCloseButton(
+              buttonKey: const ValueKey('desktop-statement-close'),
+              onPressed: widget.onClose,
+            ),
       title: Text(context.l10n.text('reviewStatementImport')),
       actions: [
         if (!ButlerlyDesktopHeaderScope.isActive(context))
@@ -2429,16 +2424,17 @@ class StatementReviewFooterActions extends StatelessWidget {
       label: Text(context.l10n.text('importData')),
     );
     if (!desktop) return importButton;
-    return ButlerlyButtonBar(
-      alignment: ButlerlyButtonBarAlignment.end,
-      spacing: ButlerlyButtonBarSpacing.none,
+    return Row(
       children: [
-        ButlerlyDestructiveButton(
-          key: const ValueKey('statement-review-footer-abandon'),
-          onPressed: onAbandon,
-          child: Text(context.l10n.text('abandonStatementImport')),
+        Expanded(
+          child: ButlerlyDestructiveButton(
+            key: const ValueKey('statement-review-footer-abandon'),
+            onPressed: onAbandon,
+            child: Text(context.l10n.text('abandonStatementImport')),
+          ),
         ),
-        importButton,
+        const SizedBox(width: ButlerlySpacing.small),
+        Expanded(child: importButton),
       ],
     );
   }

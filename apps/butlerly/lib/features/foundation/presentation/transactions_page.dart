@@ -1060,7 +1060,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                     ? null
                     : () =>
                           _complete(const TransactionEditorResult.cancelled()),
-                icon: const Icon(Icons.arrow_back_rounded),
+                icon: const Icon(Icons.close_rounded),
               ),
         title: Text(
           widget.existing == null
@@ -1793,11 +1793,9 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       appBar: AppBar(
         leading: widget.onClose == null
             ? null
-            : IconButton(
-                key: const ValueKey('transaction-detail-close-panel'),
-                tooltip: context.l10n.text('close'),
+            : ButlerlyPanelCloseButton(
+                buttonKey: const ValueKey('transaction-detail-close-panel'),
                 onPressed: () => _close(),
-                icon: const Icon(Icons.close_rounded),
               ),
         title: Text(context.l10n.text('transactionDetail')),
         actions: [

@@ -620,10 +620,8 @@ class _PaymentSettlementDetailPageState
             appBar: widget.onClose == null
                 ? null
                 : AppBar(
-                    leading: IconButton(
-                      tooltip: context.l10n.text('close'),
+                    leading: ButlerlyPanelCloseButton(
                       onPressed: widget.onClose,
-                      icon: const Icon(Icons.close_rounded),
                     ),
                     title: Text(context.l10n.text('paymentSettlement')),
                   ),
@@ -635,10 +633,8 @@ class _PaymentSettlementDetailPageState
             appBar: AppBar(
               leading: widget.onClose == null
                   ? null
-                  : IconButton(
-                      tooltip: context.l10n.text('close'),
+                  : ButlerlyPanelCloseButton(
                       onPressed: widget.onClose,
-                      icon: const Icon(Icons.close_rounded),
                     ),
               title: Text(context.l10n.text('paymentSettlements')),
             ),
@@ -661,14 +657,13 @@ class _PaymentSettlementDetailPageState
             title: context.l10n.text('paymentSettlement'),
             fullWidth: desktop,
             onRefresh: _refresh,
+            leading: widget.onClose == null
+                ? null
+                : ButlerlyPanelCloseButton(
+                    buttonKey: const ValueKey('desktop-payment-settlement-close'),
+                    onPressed: widget.onClose,
+                  ),
             actions: [
-              if (widget.onClose != null)
-                IconButton(
-                  key: const ValueKey('desktop-payment-settlement-close'),
-                  tooltip: context.l10n.text('close'),
-                  onPressed: widget.onClose,
-                  icon: const Icon(Icons.close_rounded),
-                ),
               IconButton(
                 tooltip: context.l10n.text('editPaymentSettlement'),
                 onPressed: () => _edit(detail),

@@ -47,6 +47,27 @@ class ButlerlyDesktopHeaderScope extends InheritedWidget {
       false;
 }
 
+/// Shared close affordance for embedded desktop detail and editor panels.
+/// Full-page navigation retains its own Back action.
+class ButlerlyPanelCloseButton extends StatelessWidget {
+  const ButlerlyPanelCloseButton({
+    required this.onPressed,
+    this.buttonKey,
+    super.key,
+  });
+
+  final VoidCallback? onPressed;
+  final Key? buttonKey;
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    key: buttonKey,
+    tooltip: context.l10n.text('close'),
+    onPressed: onPressed,
+    icon: const Icon(Icons.close_rounded),
+  );
+}
+
 /// Prominent page-header action, shared by regular pages and custom AppBars.
 /// Router-backed pages navigate to Help; setup/recovery screens use an offline
 /// overlay when no router is available. The Help reader hides its own action.

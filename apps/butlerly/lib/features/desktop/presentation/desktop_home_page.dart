@@ -622,6 +622,8 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                   headerHeight:
                                       _desktopHomeBreakdownHeaderHeight,
                                   trailing: DropdownButton<int>(
+                                    key: const ValueKey('desktop-home-trend-months'),
+                                    alignment: AlignmentDirectional.centerEnd,
                                     isDense: true,
                                     value: _trendMonths,
                                     underline: const SizedBox.shrink(),
@@ -687,13 +689,16 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                   headerHeight:
                                       _desktopHomeBreakdownHeaderHeight,
                                   trailing: TextButton(
+                                    key: const ValueKey('desktop-home-category-view-all'),
                                     style: TextButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 12,
-                                        vertical: 4,
+                                      alignment: Alignment.centerRight,
+                                      padding: const EdgeInsets.only(
+                                        left: ButlerlySpacing.small,
+                                        top: ButlerlySpacing.micro,
+                                        bottom: ButlerlySpacing.micro,
                                       ),
                                       minimumSize: const Size(
-                                        ButlerlyButtonTokens.minimumWidth,
+                                        0,
                                         ButlerlyButtonTokens.height,
                                       ),
                                     ),
