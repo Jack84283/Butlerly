@@ -194,6 +194,11 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
         interactive: brightness == Brightness.dark
             ? const Color(0xFF7DB7E8)
             : const Color(0xFF315B82),
+        focusRing: navy
+            ? const Color(0xFF8CC1FF)
+            : brightness == Brightness.dark
+            ? const Color(0xFF7DB7E8)
+            : const Color(0xFF225DA2),
         navigationSelectedIcon: brightness == Brightness.dark
             ? const Color(0xFF6686A3)
             : const Color(0xFF315B82),
@@ -220,6 +225,11 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
         interactive: brightness == Brightness.dark
             ? const Color(0xFF66C7A0)
             : const Color(0xFF1D5B4B),
+        focusRing: navy
+            ? const Color(0xFF8CC1FF)
+            : brightness == Brightness.dark
+            ? const Color(0xFF66C7A0)
+            : const Color(0xFF225DA2),
         navigationSelectedIcon: brightness == Brightness.dark
             ? const Color(0xFF618B7C)
             : const Color(0xFF246B57),

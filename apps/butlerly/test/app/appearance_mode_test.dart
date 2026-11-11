@@ -74,6 +74,11 @@ void main() {
     expect(dark.primaryText, const Color(0xFFFFFFFF));
     expect(dark.secondaryText, const Color(0xFFB4B4B4));
     expect(dark.border, const Color(0xFF282C30));
+    for (final accent in ButlerlyColorTheme.values) {
+      final themedDark = AppTheme.darkFor(accent);
+      final darkColors = themedDark.extension<ButlerlySemanticColors>()!;
+      expect(darkColors.focusRing, darkColors.interactive);
+    }
   });
 
   test('text and buttons meet AA contrast for every accent and mode', () {

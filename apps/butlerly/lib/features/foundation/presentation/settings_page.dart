@@ -239,10 +239,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               value: ButlerlyAppearance.light,
               child: Text(l10n.text('light')),
             ),
-DropdownMenuItem(
-  value: ButlerlyAppearance.navy,
-  child: Text(l10n.text('navy')),
-),
+            DropdownMenuItem(
+              value: ButlerlyAppearance.navy,
+              child: Text(l10n.text('navy')),
+            ),
             DropdownMenuItem(
               value: ButlerlyAppearance.dark,
               child: Text(l10n.text('dark')),
@@ -566,10 +566,10 @@ DropdownMenuItem(
                   value: ButlerlyAppearance.light,
                   child: Text(context.l10n.text('light')),
                 ),
-DropdownMenuItem(
-  value: ButlerlyAppearance.navy,
-  child: Text(context.l10n.text('navy')),
-),
+                DropdownMenuItem(
+                  value: ButlerlyAppearance.navy,
+                  child: Text(context.l10n.text('navy')),
+                ),
                 DropdownMenuItem(
                   value: ButlerlyAppearance.dark,
                   child: Text(context.l10n.text('dark')),
