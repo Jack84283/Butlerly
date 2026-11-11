@@ -1163,7 +1163,9 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
         comparison?.availability == AnalysisDataAvailability.sufficient &&
         baselineNumber != null &&
         baselineNumber.abs() > 0 &&
-        baselineNumber.abs() < (isCount ? 5 : 10);
+        (isCount
+            ? baselineNumber.abs() < 5
+            : (percentValue?.abs() ?? 0) >= 200);
     final baselineText = baseline == null ||
             comparison?.availability != AnalysisDataAvailability.sufficient
         ? null
