@@ -458,6 +458,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
         if (_management != null)
           ButlerlyHeaderAddButton(
             buttonKey: const ValueKey('budget-add'),
+            closeToHelp: true,
             label: context.l10n.text('add'),
             onPressed: () => _edit(),
           ),
