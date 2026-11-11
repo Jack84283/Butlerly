@@ -105,8 +105,7 @@ class AddPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               for (final (index, section) in sections.indexed) ...[
-                if (index > 0)
-                  const SizedBox(width: ButlerlySpacing.cardGap),
+                if (index > 0) const SizedBox(width: ButlerlySpacing.cardGap),
                 Expanded(
                   child: Column(
                     key: ValueKey(
@@ -139,7 +138,9 @@ class AddPage extends StatelessWidget {
           for (final (index, section) in sections.indexed) ...[
             Padding(
               padding: EdgeInsets.only(
-                top: index == 0 ? ButlerlySpacing.none : ButlerlySpacing.cardGap,
+                top: index == 0
+                    ? ButlerlySpacing.none
+                    : ButlerlySpacing.cardGap,
                 bottom: ButlerlySpacing.small,
               ),
               child: Text(
