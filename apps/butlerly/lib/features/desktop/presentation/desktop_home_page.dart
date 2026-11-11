@@ -1469,6 +1469,7 @@ class _DesktopPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
       decoration: BoxDecoration(
         color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(ButlerlyRadius.card),
@@ -1480,7 +1481,7 @@ class _DesktopPanel extends StatelessWidget {
         ButlerlyDesktopInnerCard.outerGutter,
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           ConstrainedBox(
             constraints: BoxConstraints(minHeight: headerHeight ?? 0),
@@ -1512,15 +1513,10 @@ class _DesktopPanel extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (trailing != null)
-                  Flexible(
-                    fit: FlexFit.loose,
-                    child: FittedBox(
-                      alignment: AlignmentDirectional.centerEnd,
-                      fit: BoxFit.scaleDown,
-                      child: trailing!,
-                    ),
-                  ),
+                if (trailing != null) ...[
+                  const SizedBox(width: ButlerlySpacing.compact),
+                  trailing!,
+                ],
               ],
             ),
           ),

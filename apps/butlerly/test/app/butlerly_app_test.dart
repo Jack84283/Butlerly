@@ -39,7 +39,7 @@ void main() {
     expect(light.cardTheme.color, lightColors.cardSurface);
     expect(lightColors.dashboardSurface, const Color(0xFFFFFFFF));
     expect(darkColors.dashboardSurface, const Color(0xFF181818));
-    expect(lightColors.cardDivider, const Color(0xFFD8DDE6));
+    expect(lightColors.cardDivider, const Color(0xFFD5DEE9));
     expect(darkColors.cardDivider, const Color(0xFF282C30));
   });
 

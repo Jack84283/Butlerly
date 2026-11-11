@@ -64,6 +64,9 @@ class ButlerlyPanelCloseButton extends StatelessWidget {
     key: buttonKey,
     tooltip: context.l10n.text('close'),
     onPressed: onPressed,
+    // Match the visual weight of the regular page Back arrow while retaining
+    // the default AppBar IconButton hit target and accessible tooltip.
+    iconSize: 20,
     icon: const Icon(Icons.close_rounded),
   );
 }

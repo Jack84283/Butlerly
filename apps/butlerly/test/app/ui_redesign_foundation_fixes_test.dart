@@ -72,15 +72,15 @@ void main() {
   test('light theme uses the approved off-white surface palette', () {
     final colors = AppTheme.light.extension<ButlerlySemanticColors>()!;
 
-    expect(colors.background, const Color(0xFFF6F7F8));
-    expect(colors.surface, const Color(0xFFF0F2F5));
-    expect(colors.subtleSurface, const Color(0xFFF2F3F5));
+    expect(colors.background, const Color(0xFFF2F3F7));
+    expect(colors.surface, const Color(0xFFFFFFFF));
+    expect(colors.subtleSurface, const Color(0xFFEBEFF5));
     expect(colors.dashboardSurface, const Color(0xFFFFFFFF));
-    expect(colors.elevatedSurface, const Color(0xFFF0F2F5));
-    expect(colors.cardDivider, const Color(0xFFD8DDE6));
-    expect(colors.border, const Color(0xFFD8DDE6));
-    expect(colors.primaryText, const Color(0xFF14171D));
-    expect(colors.secondaryText, const Color(0xFF4B5563));
+    expect(colors.elevatedSurface, const Color(0xFFFFFFFF));
+    expect(colors.cardDivider, const Color(0xFFD5DEE9));
+    expect(colors.border, const Color(0xFFD5DEE9));
+    expect(colors.primaryText, const Color(0xFF151E2B));
+    expect(colors.secondaryText, const Color(0xFF516278));
   });
 
   test('editorial placeholder keeps cross-platform serif fallbacks', () {

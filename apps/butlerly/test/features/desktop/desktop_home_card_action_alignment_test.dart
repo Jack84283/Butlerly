@@ -1,4 +1,5 @@
 import 'package:butlerly/app/theme/app_theme.dart';
+import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/features/desktop/presentation/desktop_home_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -56,10 +57,13 @@ void main() {
 
     final trendRight = tester.getRect(trendCard).right;
     final categoryRight = tester.getRect(categoryCard).right;
-    expect(trendRight - tester.getRect(month).right, inInclusiveRange(0, 30));
+    expect(
+      trendRight - tester.getRect(month).right,
+      closeTo(ButlerlyDesktopInnerCard.outerGutter, 1),
+    );
     expect(
       categoryRight - tester.getRect(viewAll).right,
-      inInclusiveRange(0, 30),
+      closeTo(ButlerlyDesktopInnerCard.outerGutter, 1),
     );
     expect(tester.takeException(), isNull);
   });
