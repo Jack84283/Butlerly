@@ -482,19 +482,19 @@ class _TransactionsPageState extends State<TransactionsPage> {
                       ],
                       Expanded(
                         child: Text(
-                      context.l10n
-                          .text('transactionsActiveFilterSummary')
-                          .replaceAll('{count}', '$_activeFilterCount')
-                          .replaceAll(
-                            '{dates}',
-                            _from != null || _to != null
-                                ? '${_from == null ? "…" : _transactionFilterDate(_from!)} – '
-                                      '${_to == null ? "…" : _transactionFilterDate(_to!)}'
-                                : context.l10n.text('transactionsAllDates'),
-                          ),
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ),
+                          context.l10n
+                              .text('transactionsActiveFilterSummary')
+                              .replaceAll('{count}', '$_activeFilterCount')
+                              .replaceAll(
+                                '{dates}',
+                                _from != null || _to != null
+                                    ? '${_from == null ? "…" : _transactionFilterDate(_from!)} – '
+                                          '${_to == null ? "…" : _transactionFilterDate(_to!)}'
+                                    : context.l10n.text('transactionsAllDates'),
+                              ),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
                       if (!compact)
                         TextButton(
                           onPressed: _openFilters,
