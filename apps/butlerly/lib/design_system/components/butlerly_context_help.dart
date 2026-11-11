@@ -1,3 +1,4 @@
+import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/help/data/help_catalog.dart';
@@ -61,14 +62,39 @@ class ButlerlyPanelCloseButton extends StatelessWidget {
   final Key? buttonKey;
 
   @override
-  Widget build(BuildContext context) => IconButton(
-    key: buttonKey,
-    tooltip: context.l10n.text('close'),
-    onPressed: onPressed,
-    // Match the visual weight of the regular page Back arrow while retaining
-    // the default AppBar IconButton hit target and accessible tooltip.
-    iconSize: ButlerlyButtonTokens.iconSize,
-    icon: const Icon(Icons.close_rounded),
+  Widget build(BuildContext context) => Center(
+    child: IconButton(
+      key: buttonKey,
+      tooltip: context.l10n.text('close'),
+      onPressed: onPressed,
+      // AppBar.leading can allocate a wider slot than the Back button's
+      // actual visual circle. Keep hit size and painted circle independent.
+      style: IconButton.styleFrom(
+        fixedSize: const Size.square(ButlerlySize.minimumTarget),
+        minimumSize: const Size.square(ButlerlySize.minimumTarget),
+        padding: EdgeInsets.zero,
+        backgroundColor: Colors.transparent,
+        disabledBackgroundColor: Colors.transparent,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      iconSize: ButlerlyButtonTokens.iconSize,
+      icon: SizedBox.square(
+        key: const ValueKey('desktop-panel-close-circle'),
+        dimension: ButlerlyButtonTokens.iconVisualSize,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: context.colors.subtleSurface,
+            shape: BoxShape.circle,
+          ),
+          child: const Center(
+            child: Icon(
+              Icons.close_rounded,
+              size: ButlerlyButtonTokens.iconSize,
+            ),
+          ),
+        ),
+      ),
+    ),
   );
 }
 

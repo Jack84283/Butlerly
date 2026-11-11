@@ -1,4 +1,5 @@
 import 'package:butlerly/app/theme/app_theme.dart';
+import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/features/desktop/presentation/desktop_home_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -50,9 +51,17 @@ void main() {
       tester.widget<DropdownButton<int>>(month).alignment,
       AlignmentDirectional.centerEnd,
     );
+    final buttonStyle = tester.widget<TextButton>(viewAll).style!;
     expect(
-      tester.widget<TextButton>(viewAll).style?.alignment,
-      Alignment.centerRight,
+      buttonStyle.minimumSize?.resolve({}),
+      const Size(
+        ButlerlyButtonTokens.minimumWidth,
+        ButlerlyButtonTokens.height,
+      ),
+    );
+    expect(
+      buttonStyle.padding?.resolve({}),
+      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
     );
 
     final trendRight = tester.getRect(trendCard).right;

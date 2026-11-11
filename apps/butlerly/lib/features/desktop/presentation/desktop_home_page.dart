@@ -695,14 +695,12 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                       'desktop-home-category-view-all',
                                     ),
                                     style: TextButton.styleFrom(
-                                      alignment: Alignment.centerRight,
-                                      padding: const EdgeInsets.only(
-                                        left: ButlerlySpacing.small,
-                                        top: ButlerlySpacing.micro,
-                                        bottom: ButlerlySpacing.micro,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 4,
                                       ),
                                       minimumSize: const Size(
-                                        0,
+                                        ButlerlyButtonTokens.minimumWidth,
                                         ButlerlyButtonTokens.height,
                                       ),
                                     ),

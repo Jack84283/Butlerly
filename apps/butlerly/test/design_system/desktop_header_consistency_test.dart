@@ -187,8 +187,19 @@ void main() {
     expect(tester.getRect(close).right, lessThan(tester.getRect(help).left));
     final closeButton = tester.widget<IconButton>(close);
     expect(closeButton.iconSize, ButlerlyButtonTokens.iconSize);
-    expect(tester.getSize(close).width, greaterThanOrEqualTo(44));
-    expect(tester.getSize(close).height, greaterThanOrEqualTo(44));
+    expect(
+      tester.getSize(close),
+      const Size.square(ButlerlySize.minimumTarget),
+    );
+    final closeCircle = find.descendant(
+      of: close,
+      matching: find.byKey(const ValueKey('desktop-panel-close-circle')),
+    );
+    expect(closeCircle, findsOneWidget);
+    expect(
+      tester.getSize(closeCircle),
+      const Size.square(ButlerlyButtonTokens.iconVisualSize),
+    );
     expect(
       find.descendant(of: close, matching: find.byIcon(Icons.close_rounded)),
       findsOneWidget,
