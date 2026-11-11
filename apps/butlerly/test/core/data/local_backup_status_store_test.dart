@@ -43,6 +43,18 @@ void main() {
     expect(second!.missingAttachments, isFalse);
   });
 
+  test('overlapping writes finish in order and remain readable', () async {
+    await Future.wait([
+      store.recordCompleted(missingAttachments: true),
+      store.recordCompleted(missingAttachments: false),
+    ]);
+    final persisted = await LocalBackupStatusStore(
+      directoryOverride: directory,
+    ).read();
+    expect(persisted, isNotNull);
+    expect(persisted!.missingAttachments, isFalse);
+  });
+
   test(
     'refuses a symlinked status file without modifying its target',
     () async {
