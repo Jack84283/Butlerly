@@ -52,34 +52,34 @@ class _DesktopPrimaryShellState extends State<DesktopPrimaryShell> {
       ),
       child: ButlerlyDesktopHeaderScope(
         child: Scaffold(
-        body: SafeArea(
-          bottom: false,
-          child: Row(
-            children: [
-              _WidePrimaryNavigation(
-                key: const ValueKey('primary-wide-navigation'),
-                expanded: expanded,
-                currentIndex: widget.currentIndex,
-                onToggleExpanded: () => setState(() {
-                  if (narrow) {
-                    _expandedAtNarrowWidths = !expanded;
-                  } else {
-                    _expandedAtWideWidths = !expanded;
-                  }
-                }),
-                onParentSelected: widget.onSelected,
-              ),
-              Expanded(
-                child: ColoredBox(
-                  key: const ValueKey('primary-wide-body-surface'),
-                  color: context.colors.background,
-                  child: SafeArea(bottom: false, child: widget.body),
+          body: SafeArea(
+            bottom: false,
+            child: Row(
+              children: [
+                _WidePrimaryNavigation(
+                  key: const ValueKey('primary-wide-navigation'),
+                  expanded: expanded,
+                  currentIndex: widget.currentIndex,
+                  onToggleExpanded: () => setState(() {
+                    if (narrow) {
+                      _expandedAtNarrowWidths = !expanded;
+                    } else {
+                      _expandedAtWideWidths = !expanded;
+                    }
+                  }),
+                  onParentSelected: widget.onSelected,
                 ),
-              ),
-            ],
+                Expanded(
+                  child: ColoredBox(
+                    key: const ValueKey('primary-wide-body-surface'),
+                    color: context.colors.background,
+                    child: SafeArea(bottom: false, child: widget.body),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
       ),
     );
   }

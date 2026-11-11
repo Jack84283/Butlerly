@@ -2218,21 +2218,20 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final desktop = ButlerlyDesktopHeaderScope.isActive(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(context.l10n.text('reviewStatementImport')),
-        actions: [
-          if (!desktop)
-            IconButton(
-              onPressed: _abandonImport,
-              tooltip: context.l10n.text('abandonStatementImport'),
-              icon: const Icon(Icons.close),
-            ),
-          const ButlerlyContextHelpButton(articleId: 'ch-10'),
-        ],
-      ),
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      title: Text(context.l10n.text('reviewStatementImport')),
+      actions: [
+        if (!ButlerlyDesktopHeaderScope.isActive(context))
+          IconButton(
+            key: const ValueKey('statement-review-header-abandon'),
+            onPressed: _abandonImport,
+            tooltip: context.l10n.text('abandonStatementImport'),
+            icon: const Icon(Icons.close),
+          ),
+        const ButlerlyContextHelpButton(articleId: 'ch-10'),
+      ],
+    ),
     body: ButlerlyResponsiveBody(
       contentKey: const ValueKey('statement-review-content'),
       child: ListView(
@@ -2394,7 +2393,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
             child: SafeArea(
               top: false,
               child: StatementReviewFooterActions(
-                desktop: desktop,
+                desktop: ButlerlyDesktopHeaderScope.isActive(context),
                 onAbandon: _abandonImport,
                 onImport: _sourceId == null || _rows.isEmpty
                     ? null
@@ -2404,12 +2403,11 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
 }
 
-/// The compact view retains the header Abandon action. The desktop split
-/// panel keeps both terminal actions together at the bottom of the review.
+/// Only desktop splits show Abandon beside Import Data at the bottom.
 class StatementReviewFooterActions extends StatelessWidget {
   const StatementReviewFooterActions({
     required this.desktop,
@@ -2436,6 +2434,7 @@ class StatementReviewFooterActions extends StatelessWidget {
       spacing: ButlerlyButtonBarSpacing.none,
       children: [
         ButlerlyDestructiveButton(
+          key: const ValueKey('statement-review-footer-abandon'),
           onPressed: onAbandon,
           child: Text(context.l10n.text('abandonStatementImport')),
         ),
