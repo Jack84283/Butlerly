@@ -459,7 +459,10 @@ final class _HomeContextResolution {
 }
 
 /// Resolves exactly the previous equivalent window used by Home's metric rules.
-AnalysisPeriod? resolveHomeComparisonPeriod(AnalysisContext context, DateTime instant) {
+AnalysisPeriod? resolveHomeComparisonPeriod(
+  AnalysisContext context,
+  DateTime instant,
+) {
   const resolver = AnalysisPeriodResolver();
   final primary = resolver.resolvePrimary(
     type: context.periodType,
@@ -483,4 +486,3 @@ AnalysisPeriod? resolveHomeComparisonPeriod(AnalysisContext context, DateTime in
     timeZoneId: window.timeZoneId,
   );
 }
-
