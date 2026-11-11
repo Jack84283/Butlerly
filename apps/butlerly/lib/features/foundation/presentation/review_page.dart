@@ -598,6 +598,18 @@ class _ReviewPageState extends State<ReviewPage> {
     if (changed == true && mounted) _refresh();
   }
 
+  String _emptyReviewDescription(BuildContext context) {
+    final period = widget.reviewScope.isScoped
+        ? widget.reviewScope.period
+        : null;
+    final scope = period == null
+        ? context.l10n.text('reviewAllEligibleScope')
+        : '${period.startDate} – ${period.endDate}';
+    return '${context.l10n.text('reviewEmptyBody')} '
+        '${context.l10n.text('reviewScopeLabel')}: $scope. '
+        '${context.l10n.text('reviewRefreshHint')}';
+  }
+
   @override
   Widget build(BuildContext context) {
     final desktop =
@@ -616,7 +628,7 @@ class _ReviewPageState extends State<ReviewPage> {
           ButlerlyEmptyState(
             icon: Icons.fact_check_outlined,
             title: context.l10n.text('reviewEmpty'),
-            message: context.l10n.text('reviewEmptyBody'),
+            message: _emptyReviewDescription(context),
           ),
         ],
       );
@@ -684,7 +696,7 @@ class _ReviewPageState extends State<ReviewPage> {
                 return ButlerlyEmptyState(
                   icon: Icons.copy_all_outlined,
                   title: context.l10n.text('noPossibleDuplicates'),
-                  message: context.l10n.text('reviewEmptyBody'),
+                  message: _emptyReviewDescription(context),
                 );
               }
               return Column(
@@ -739,7 +751,7 @@ class _ReviewPageState extends State<ReviewPage> {
                 return ButlerlyEmptyState(
                   icon: Icons.sell_outlined,
                   title: context.l10n.text('reviewEmpty'),
-                  message: context.l10n.text('reviewEmptyBody'),
+                  message: _emptyReviewDescription(context),
                 );
               }
               return FutureBuilder<TransactionMasterDataSnapshot>(
@@ -804,7 +816,7 @@ class _ReviewPageState extends State<ReviewPage> {
                 ? Icons.sell_outlined
                 : Icons.copy_all_outlined,
             title: context.l10n.text('reviewEmpty'),
-            message: context.l10n.text('reviewEmptyBody'),
+            message: _emptyReviewDescription(context),
           )
         else
           FutureBuilder<List<_ReviewEntry>>(
@@ -846,7 +858,7 @@ class _ReviewPageState extends State<ReviewPage> {
                     return ButlerlyEmptyState(
                       icon: Icons.check_circle_outline_rounded,
                       title: context.l10n.text('reviewEmpty'),
-                      message: context.l10n.text('reviewEmptyBody'),
+                      message: _emptyReviewDescription(context),
                     );
                   }
                   final byId = {
