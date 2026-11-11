@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart' show MissingPluginException;
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 
@@ -48,11 +47,8 @@ final class LocalBackupStatusStore {
         completedAtUtc: timestamp,
         missingAttachments: decoded['missingAttachments'] as bool,
       );
-    } on FileSystemException {
-      return null;
-    } on FormatException {
-      return null;
-    } on MissingPluginException {
+    } on Exception {
+      // Status is optional. Unreadable metadata must never block the page.
       return null;
     }
   }
