@@ -112,6 +112,8 @@ void main() {
             ),
           ),
         );
+        // MaterialApp animates ThemeData changes; assert after the transition.
+        await tester.pumpAndSettle();
       }
 
       await tester.binding.setSurfaceSize(const Size(390, 844));
