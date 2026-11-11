@@ -481,7 +481,7 @@ void main() {
       app(shareClient: share_plus.SharePlus.custom(platform)),
     );
     await tester.pump();
-    await tester.tap(find.text('Back up Butlerly'));
+    await tester.tap(find.text('Back up now'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
     final fields = find.byType(TextField);
