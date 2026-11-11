@@ -25,7 +25,8 @@ final class LocalBackupStatusStore {
   final Directory? directoryOverride;
 
   Future<File> _file() async {
-    final directory = directoryOverride ?? await getApplicationSupportDirectory();
+    final directory =
+        directoryOverride ?? await getApplicationSupportDirectory();
     return File(path.join(directory.path, 'backup_status_v1.json'));
   }
 
