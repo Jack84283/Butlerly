@@ -471,6 +471,8 @@ class AppLocalizations {
           'Manage your locally stored financial information',
       'desktopLegalSubtitle': 'View legal information and open source licenses',
       'desktopLegalDocuments': 'Documents',
+      'backupStatusUnknown': 'Last backup: not tracked on this device. A saved backup does not confirm recoverability.',
+      'backUpNowAction': 'Back up now',
       'backupRecoveryTitle': 'Backup & Recovery',
       'backupRecoveryBody':
           'Create and restore encrypted backups of your financial data.',
@@ -1594,6 +1596,8 @@ class AppLocalizations {
       'desktopPrivacySubtitle': '管理本地存储的财务信息',
       'desktopLegalSubtitle': '查看法律信息和开源许可',
       'desktopLegalDocuments': '文档',
+      'backupStatusUnknown': '上次备份：此设备未记录。已保存备份不代表已验证可恢复。',
+      'backUpNowAction': '立即备份',
       'backupRecoveryTitle': '备份与恢复',
       'backupRecoveryBody': '创建和恢复财务数据的加密备份。',
       'dataExportTitle': '数据导出',
@@ -2677,6 +2681,8 @@ class AppLocalizations {
       'desktopLegalSubtitle':
           'Consulte información legal y licencias de código abierto',
       'desktopLegalDocuments': 'Documentos',
+      'backupStatusUnknown': 'Última copia: no registrada en este dispositivo. Guardarla no confirma que pueda restaurarse.',
+      'backUpNowAction': 'Crear copia ahora',
       'backupRecoveryTitle': 'Copia de seguridad y recuperación',
       'backupRecoveryBody':
           'Cree y restaure copias cifradas de sus datos financieros.',
