@@ -154,6 +154,54 @@ void main() {
   });
 
   test(
+    'Replace rejects a WAL reader without hanging or modifying local data',
+    () async {
+      await database.database.execute('PRAGMA journal_mode=WAL');
+      await setProbe('archived');
+      final archive = File(path.join(root.path, 'reader-blocked.butlerly'));
+      await backups.createBackup(
+        archive,
+        password: 'correct horse battery staple',
+      );
+
+      final reader = await databaseFactoryFfi.openDatabase(
+        database.persistenceDatabase.path,
+        options: OpenDatabaseOptions(singleInstance: false),
+      );
+      // A deferred read transaction retains a WAL snapshot without
+      // obtaining an exclusive writer lock, so live writes can still commit.
+      // sqflite's transaction() may start a write transaction instead.
+      await reader.execute('BEGIN DEFERRED');
+      await reader.query('restore_probe');
+      try {
+        await database.database.update(
+          'restore_probe',
+          {'value': 'keep-live'},
+          where: 'id = ?',
+          whereArgs: ['original'],
+        );
+        await expectLater(
+          restores
+              .restoreReplace(archive, password: 'correct horse battery staple')
+              .timeout(const Duration(seconds: 15)),
+          throwsA(isA<StateError>()),
+        );
+        expect(await getProbe(), 'keep-live');
+        expect(
+          await File(
+            path.join(databaseDirectory.path, '.raw-restore-journal.json'),
+          ).exists(),
+          isFalse,
+        );
+      } finally {
+        await reader.execute('ROLLBACK');
+        await reader.close();
+      }
+    },
+    timeout: const Timeout(Duration(seconds: 30)),
+  );
+
+  test(
     'Replace restores original SQLite records and attachment bytes',
     () async {
       final originalPersistence = database.persistenceDatabase;

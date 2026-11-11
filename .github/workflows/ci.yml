@@ -8,6 +8,13 @@ on:
 permissions:
   contents: read
 
+# Only the most recent commit on a PR needs native Alpha verification.
+# Cancel superseded PR runs to prevent stale iOS simulator jobs from
+# monopolizing the macOS runner queue. Never cancel main-branch push CI.
+concurrency:
+  group: butlerly-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   finance_domain:
     name: Finance Domain
@@ -48,10 +55,12 @@ jobs:
   # Keep macOS runner usage low for ordinary PRs. Backup/Restore PR #396
   # and desktop/audio PR #399 need native Apple checks before merge because
   # they modify native integrations and platform plugin registration.
+  # Alpha restore gate PR #405 additionally needs native iOS production journeys.
   ios_simulator:
     name: iOS Simulator
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && (github.event.pull_request.number == 396 || github.event.pull_request.number == 399))
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && (github.event.pull_request.number == 396 || github.event.pull_request.number == 399 || github.event.pull_request.number == 405))
     runs-on: macos-latest
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-toolchain
@@ -60,13 +69,15 @@ jobs:
 
   ios_integration:
     name: iOS Integration Journeys
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && (github.event.pull_request.number == 396 || github.event.pull_request.number == 399))
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && (github.event.pull_request.number == 396 || github.event.pull_request.number == 399 || github.event.pull_request.number == 405))
     runs-on: macos-latest
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-toolchain
       - run: ./tool/setup.sh
       - name: Boot iOS simulator
+        timeout-minutes: 6
         id: simulator
         run: |
           device_id="$(xcrun simctl list devices available | awk -F '[()]' '/iPhone/ {print $2; exit}')"
@@ -74,7 +85,18 @@ jobs:
           xcrun simctl boot "$device_id" 2>/dev/null || true
           xcrun simctl bootstatus "$device_id" -b
           echo "device_id=$device_id" >> "$GITHUB_OUTPUT"
+      - name: Run targeted iOS production Replace journey
+        if: github.event_name == 'pull_request' && github.event.pull_request.number == 405
+        timeout-minutes: 25
+        env:
+          BUTLERLY_IOS_DEVICE_ID: ${{ steps.simulator.outputs.device_id }}
+        run: ./tool/validate.sh restore_journeys
+      # This full-suite run previously blocked Alpha verification after
+      # the targeted restore tests. Keep it for main and other eligible PRs,
+      # but run only focused Replace journeys for PR #405.
       - name: Run iOS integration journeys
+        if: github.event_name == 'push' || github.event.pull_request.number != 405
+        timeout-minutes: 25
         env:
           BUTLERLY_IOS_DEVICE_ID: ${{ steps.simulator.outputs.device_id }}
         run: |
@@ -85,13 +107,18 @@ jobs:
 
   macos_backup_smoke:
     name: macOS Backup & Restore Smoke Build
-    if: github.event_name == 'pull_request' && (github.event.pull_request.number == 396 || github.event.pull_request.number == 399)
+    if: github.event_name == 'pull_request' && (github.event.pull_request.number == 396 || github.event.pull_request.number == 399 || github.event.pull_request.number == 405)
     runs-on: macos-latest
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-toolchain
       - run: ./tool/setup.sh
       - run: ./tool/validate.sh macos_backup
+      - name: Run macOS production Replace journey
+        if: github.event_name == 'pull_request' && github.event.pull_request.number == 405
+        timeout-minutes: 25
+        run: ./tool/validate.sh restore_journeys
 
   android_smoke:
     name: Android Smoke Build

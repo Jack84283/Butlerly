@@ -1227,7 +1227,11 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
             );
           },
         ),
-        if (_busy) const ButlerlyLoadingState(),
+        if (_busy)
+          const KeyedSubtree(
+            key: ValueKey('privacy-restore-busy'),
+            child: ButlerlyLoadingState(),
+          ),
         const SizedBox(height: ButlerlySpacing.section),
       ],
     );
@@ -1326,7 +1330,11 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
               iconColor: Theme.of(context).colorScheme.error,
               onTap: _confirmErase,
             ),
-            if (_busy) const ButlerlyLoadingState(),
+            if (_busy)
+              const KeyedSubtree(
+                key: ValueKey('privacy-restore-busy'),
+                child: ButlerlyLoadingState(),
+              ),
           ],
         ),
       ),

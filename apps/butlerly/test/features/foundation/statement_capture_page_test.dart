@@ -135,14 +135,20 @@ void main() {
         () => Future<void>.delayed(const Duration(milliseconds: 20)),
       );
       await tester.pump(const Duration(milliseconds: 20));
-      if (find.byType(CircularProgressIndicator).evaluate().isEmpty &&
-          find.byType(Card).evaluate().isNotEmpty) {
+      // Capture results use ButlerlyCard; Material Card appears only in
+      // optional recovery surfaces. Wait for the real persisted result row.
+      if (find.byType(ButlerlyLoadingState).evaluate().isEmpty &&
+          find.byType(ButlerlyCard).evaluate().isNotEmpty) {
         completed = true;
         break;
       }
     }
     if (!completed) {
-      fail('Statement capture UI did not finish reloading.');
+      fail(
+        'Statement capture UI did not finish reloading '
+        '(loading: ${find.byType(ButlerlyLoadingState).evaluate().length}, '
+        'results: ${find.byType(ButlerlyCard).evaluate().length}).',
+      );
     }
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 100)),
@@ -273,14 +279,20 @@ void main() {
         () => Future<void>.delayed(const Duration(milliseconds: 20)),
       );
       await tester.pump(const Duration(milliseconds: 20));
-      if (find.byType(CircularProgressIndicator).evaluate().isEmpty &&
-          find.byType(Card).evaluate().isNotEmpty) {
+      // Capture results use ButlerlyCard; Material Card appears only in
+      // optional recovery surfaces. Wait for the real persisted result row.
+      if (find.byType(ButlerlyLoadingState).evaluate().isEmpty &&
+          find.byType(ButlerlyCard).evaluate().isNotEmpty) {
         completed = true;
         break;
       }
     }
     if (!completed) {
-      fail('Statement file intake UI did not finish reloading.');
+      fail(
+        'Statement file intake UI did not finish reloading '
+        '(loading: ${find.byType(ButlerlyLoadingState).evaluate().length}, '
+        'results: ${find.byType(ButlerlyCard).evaluate().length}).',
+      );
     }
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 100)),

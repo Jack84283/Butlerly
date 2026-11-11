@@ -21,6 +21,9 @@ final class V1IntegrationHarness {
   V1IntegrationHarness._(this.root);
 
   final Directory root;
+
+  /// Only fixed phase labels are collected; never include file paths or data.
+  final List<String> restoreStages = <String>[];
   late LocalDatabase database;
   late FinanceServices finance;
   late LocalDataManager data;
@@ -46,6 +49,11 @@ final class V1IntegrationHarness {
       logger: AppLogger(),
       documentsDirectory: documents,
       localEvidenceDirectory: evidence,
+      restoreDiagnosticStage: (stage) async {
+        restoreStages.add(stage);
+        // ignore: avoid_print
+        print('BUTLERLY_RESTORE_STAGE: $stage');
+      },
     );
     finance = services<FinanceServices>();
     data = services<LocalDataManager>();
