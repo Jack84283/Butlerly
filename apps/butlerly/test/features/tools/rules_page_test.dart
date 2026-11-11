@@ -1,6 +1,7 @@
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_desktop_panel_footer.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -149,6 +150,15 @@ void main() {
     final panel = find.byKey(const ValueKey('desktop-rule-details-panel'));
     expect(panel, findsOneWidget);
     expect(find.byType(ButlerlySheet), findsNothing);
+    expect(find.byType(ButlerlyDesktopPanelFooter), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('desktop-rule-details-edit')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('desktop-rule-details-delete')),
+      findsOneWidget,
+    );
     expect(
       find.descendant(of: panel, matching: find.text('Classify fuel')),
       findsOneWidget,
@@ -174,9 +184,11 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('desktop-rule-edit-rule.fuel')));
     await tester.pumpAndSettle();
     expect(find.text('Edit rule'), findsOneWidget);
-    // The editor's footer actions scroll with its content; use the fixed
-    // back button to cancel without tapping an off-screen control.
-    await tester.tap(find.byKey(const ValueKey('desktop-rule-editor-back')));
+    // Rules uses the same fixed, non-scrolling action footer as Budgets.
+    expect(find.byType(ButlerlyDesktopPanelFooter), findsOneWidget);
+    expect(find.byKey(const ValueKey('rule-test-button')), findsOneWidget);
+    expect(find.byKey(const ValueKey('rule-editor-save')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('desktop-rule-editor-close')));
     await tester.pumpAndSettle();
     expect(find.text('Edit rule'), findsNothing);
     // Cancel returns to the selected rule's details panel. Close it before
@@ -191,6 +203,48 @@ void main() {
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect((await rules.listAll()), hasLength(1));
+    _expectNoFlutterError(tester);
+  });
+
+  testWidgets('desktop Add Rule keeps actions visible while form scrolls', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 750);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const _TestApp(child: RulesPage()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('rules-add')));
+    await tester.pumpAndSettle();
+
+    final panel = find.byKey(const ValueKey('desktop-rule-editor-panel'));
+    final scroll = find.byKey(const ValueKey('desktop-rule-editor-scroll'));
+    final footer = find.byType(ButlerlyDesktopPanelFooter);
+    final save = find.byKey(const ValueKey('rule-editor-save'));
+    final close = find.byKey(const ValueKey('desktop-rule-editor-close'));
+    expect(panel, findsOneWidget);
+    expect(scroll, findsOneWidget);
+    expect(footer, findsOneWidget);
+    expect(save, findsOneWidget);
+    expect(find.byKey(const ValueKey('rule-test-button')), findsOneWidget);
+    expect(close, findsOneWidget);
+    final footerBefore = tester.getRect(footer);
+    expect(tester.getRect(save).bottom, lessThanOrEqualTo(footerBefore.bottom));
+    expect(
+      footerBefore.right - tester.getRect(save).right,
+      closeTo(ButlerlySpacing.small, 0.5),
+    );
+
+    await tester.drag(scroll, const Offset(0, -600));
+    await tester.pumpAndSettle();
+    expect(tester.getRect(footer).top, closeTo(footerBefore.top, 0.5));
+    expect(tester.getRect(footer).bottom, closeTo(footerBefore.bottom, 0.5));
+    await tester.tap(close);
+    await tester.pumpAndSettle();
+    expect(panel, findsNothing);
+    expect(find.byKey(const ValueKey('desktop-rules-table')), findsOneWidget);
     _expectNoFlutterError(tester);
   });
 

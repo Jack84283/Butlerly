@@ -7,6 +7,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_desktop_panel_footer.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_payment_source_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
@@ -1053,14 +1054,12 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
       appBar: AppBar(
         leading: widget.onComplete == null
             ? null
-            : IconButton(
-                key: const ValueKey('transaction-editor-cancel-panel'),
-                tooltip: context.l10n.text('cancel'),
+            : ButlerlyPanelCloseButton(
+                buttonKey: const ValueKey('transaction-editor-cancel-panel'),
                 onPressed: _saving
                     ? null
                     : () =>
                           _complete(const TransactionEditorResult.cancelled()),
-                icon: const Icon(Icons.arrow_back_rounded),
               ),
         title: Text(
           widget.existing == null
@@ -1076,10 +1075,13 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
           ? null
           : FutureBuilder<_EditorMasterData>(
               future: _masterData,
-              builder: (context, snapshot) => _buildSaveAction(
-                context,
-                desktopWide: false,
-                enabled: snapshot.hasData,
+              builder: (context, snapshot) => ButlerlyDesktopPanelFooter(
+                child: _buildSaveAction(
+                  context,
+                  desktopWide: false,
+                  enabled: snapshot.hasData,
+                  embeddedPanel: true,
+                ),
               ),
             ),
       body: ButlerlyResponsiveBody(
@@ -1431,7 +1433,24 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
     BuildContext context, {
     required bool desktopWide,
     bool enabled = true,
+    bool embeddedPanel = false,
   }) {
+    final saveButton = FilledButton(
+      key: const ValueKey('transaction-save-locally'),
+      onPressed: _saving || !enabled ? null : _save,
+      child: Text(
+        _saving
+            ? context.l10n.text('saving')
+            : context.l10n.text('saveLocally'),
+      ),
+    );
+    if (embeddedPanel) {
+      return Align(
+        alignment: Alignment.centerRight,
+        heightFactor: 1,
+        child: saveButton,
+      );
+    }
     return SafeArea(
       top: false,
       child: Padding(
@@ -1446,15 +1465,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
           heightFactor: 1,
           child: SizedBox(
             width: desktopWide ? 240 : double.infinity,
-            child: FilledButton(
-              key: const ValueKey('transaction-save-locally'),
-              onPressed: _saving || !enabled ? null : _save,
-              child: Text(
-                _saving
-                    ? context.l10n.text('saving')
-                    : context.l10n.text('saveLocally'),
-              ),
-            ),
+            child: saveButton,
           ),
         ),
       ),
@@ -1793,23 +1804,25 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       appBar: AppBar(
         leading: widget.onClose == null
             ? null
-            : IconButton(
-                key: const ValueKey('transaction-detail-close-panel'),
-                tooltip: context.l10n.text('close'),
+            : ButlerlyPanelCloseButton(
+                buttonKey: const ValueKey('transaction-detail-close-panel'),
                 onPressed: () => _close(),
-                icon: const Icon(Icons.close_rounded),
               ),
         title: Text(context.l10n.text('transactionDetail')),
         actions: [
-          IconButton(
-            key: const ValueKey('transaction-detail-edit-action'),
-            tooltip: context.l10n.text('edit'),
-            onPressed: _editTransaction,
-            icon: const Icon(Icons.edit_outlined),
-          ),
+          if (widget.onClose == null)
+            IconButton(
+              key: const ValueKey('transaction-detail-edit-action'),
+              tooltip: context.l10n.text('edit'),
+              onPressed: _editTransaction,
+              icon: const Icon(Icons.edit_outlined),
+            ),
           const ButlerlyContextHelpButton(articleId: 'ch-5'),
         ],
       ),
+      bottomNavigationBar: widget.onClose == null
+          ? null
+          : ButlerlyDesktopPanelFooter(child: _detailActions(context)),
       body: ButlerlyResponsiveBody(
         contentKey: const ValueKey('transaction-detail-content'),
         child: ListView(
@@ -2108,44 +2121,11 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
                 ],
               ),
             ),
-            const SizedBox(height: ButlerlySpacing.section),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final stackActions =
-                    constraints.maxWidth < 360 ||
-                    MediaQuery.textScalerOf(context).scale(14) > 20;
-                final editButton = OutlinedButton.icon(
-                  key: const ValueKey('transaction-detail-edit-button'),
-                  onPressed: _editTransaction,
-                  icon: const Icon(Icons.edit_outlined),
-                  label: Text(context.l10n.text('edit')),
-                );
-                final deleteButton = ButlerlyDestructiveButton(
-                  key: const ValueKey('transaction-detail-delete-button'),
-                  onPressed: () => _delete(context),
-                  icon: const Icon(Icons.delete_forever_outlined),
-                  child: Text(context.l10n.text('delete')),
-                );
-                if (stackActions) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      editButton,
-                      const SizedBox(height: ButlerlySpacing.small),
-                      deleteButton,
-                    ],
-                  );
-                }
-                return Row(
-                  children: [
-                    Expanded(child: editButton),
-                    const SizedBox(width: ButlerlySpacing.small),
-                    Expanded(child: deleteButton),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: ButlerlySpacing.structural),
+            if (widget.onClose == null) ...[
+              const SizedBox(height: ButlerlySpacing.section),
+              _detailActions(context),
+              const SizedBox(height: ButlerlySpacing.structural),
+            ],
           ],
         ),
       ),
@@ -2159,6 +2139,43 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
       child: detail,
     );
   }
+
+  Widget _detailActions(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final stackActions =
+          constraints.maxWidth < 360 ||
+          MediaQuery.textScalerOf(context).scale(14) > 20;
+      final editButton = OutlinedButton.icon(
+        key: const ValueKey('transaction-detail-edit-button'),
+        onPressed: _editTransaction,
+        icon: const Icon(Icons.edit_outlined),
+        label: Text(context.l10n.text('edit')),
+      );
+      final deleteButton = ButlerlyDestructiveButton(
+        key: const ValueKey('transaction-detail-delete-button'),
+        onPressed: () => _delete(context),
+        icon: const Icon(Icons.delete_forever_outlined),
+        child: Text(context.l10n.text('delete')),
+      );
+      if (stackActions) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            editButton,
+            const SizedBox(height: ButlerlySpacing.small),
+            deleteButton,
+          ],
+        );
+      }
+      return Row(
+        children: [
+          Expanded(child: editButton),
+          const SizedBox(width: ButlerlySpacing.small),
+          Expanded(child: deleteButton),
+        ],
+      );
+    },
+  );
 }
 
 class _EvidenceSection extends StatefulWidget {

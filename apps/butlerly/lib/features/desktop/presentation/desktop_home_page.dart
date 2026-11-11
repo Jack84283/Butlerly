@@ -10,6 +10,7 @@ import 'package:butlerly/design_system/components/butlerly_month_picker.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/theme/butlerly_responsive_design_tokens.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/theme/butlerly_spending_trend_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
@@ -283,8 +284,11 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
           children: [
             Container(
               key: const ValueKey('desktop-home-header'),
-              padding: const EdgeInsets.symmetric(
-                horizontal: ButlerlySize.contentGutter,
+              padding: const EdgeInsets.only(
+                left: ButlerlySize.contentGutter,
+                // Shared AppBars already place Help 18px from the right
+                // border. Do not add a separate Home-only trailing gutter.
+                right: ButlerlySpacing.none,
               ),
               constraints: largeTextToolbar
                   ? const BoxConstraints(
@@ -420,12 +424,14 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                       if (!compactToolbar) const SizedBox(width: 8),
                       if (compactToolbar)
                         IconButton(
+                          key: const ValueKey('desktop-home-header-add'),
                           tooltip: context.l10n.text('add'),
                           onPressed: () => _go('/transactions/add'),
                           icon: const Icon(Icons.add),
                         )
                       else
                         FilledButton.icon(
+                          key: const ValueKey('desktop-home-header-add'),
                           style: FilledButton.styleFrom(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,
@@ -440,7 +446,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                           icon: const Icon(Icons.add),
                           label: Text(context.l10n.text('add')),
                         ),
-                      const ButlerlyContextHelpButton(articleId: 'ch-12'),
+                      const ButlerlyContextHelpButton(
+                        articleId: 'ch-12',
+                        visualGapAfterAdd: ButlerlySpacing.small,
+                      ),
                     ],
                   );
                 },
@@ -622,6 +631,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                   headerHeight:
                                       _desktopHomeBreakdownHeaderHeight,
                                   trailing: DropdownButton<int>(
+                                    key: const ValueKey(
+                                      'desktop-home-trend-months',
+                                    ),
+                                    alignment: AlignmentDirectional.centerEnd,
                                     isDense: true,
                                     value: _trendMonths,
                                     underline: const SizedBox.shrink(),
@@ -687,6 +700,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                   headerHeight:
                                       _desktopHomeBreakdownHeaderHeight,
                                   trailing: TextButton(
+                                    key: const ValueKey(
+                                      'desktop-home-category-view-all',
+                                    ),
                                     style: TextButton.styleFrom(
                                       padding: const EdgeInsets.symmetric(
                                         horizontal: 12,
@@ -1460,6 +1476,7 @@ class _DesktopPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      width: double.infinity,
       decoration: BoxDecoration(
         color: context.colors.cardSurface,
         borderRadius: BorderRadius.circular(ButlerlyRadius.card),
@@ -1471,7 +1488,7 @@ class _DesktopPanel extends StatelessWidget {
         ButlerlyDesktopInnerCard.outerGutter,
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           ConstrainedBox(
             constraints: BoxConstraints(minHeight: headerHeight ?? 0),
@@ -1506,10 +1523,13 @@ class _DesktopPanel extends StatelessWidget {
                 if (trailing != null)
                   Flexible(
                     fit: FlexFit.loose,
-                    child: FittedBox(
+                    child: Align(
                       alignment: AlignmentDirectional.centerEnd,
-                      fit: BoxFit.scaleDown,
-                      child: trailing!,
+                      child: FittedBox(
+                        alignment: AlignmentDirectional.centerEnd,
+                        fit: BoxFit.scaleDown,
+                        child: trailing!,
+                      ),
                     ),
                   ),
               ],
@@ -1721,6 +1741,18 @@ class _DesktopAction extends StatelessWidget {
   }
 }
 
+/// Direct fixture for verifying desktop/device Home chart parity.
+@visibleForTesting
+Widget desktopHomeSpendingTrendForTest({
+  required List<MonthlySpendingTrendPoint> points,
+  required DateTime selectedMonth,
+}) => _DesktopTrend(
+  points: points,
+  selectedMonth: selectedMonth,
+  currency: 'USD',
+  onTap: null,
+);
+
 class _DesktopTrend extends StatelessWidget {
   const _DesktopTrend({
     required this.points,
@@ -1895,23 +1927,13 @@ class _DesktopTrend extends StatelessWidget {
                                                       values[i] /
                                                       chartMaximum,
                                                   decoration: BoxDecoration(
-                                                    color: context
-                                                        .colors
-                                                        .interactive
-                                                        .withValues(
-                                                          alpha:
-                                                              points[i]
-                                                                          .month
-                                                                          .year ==
-                                                                      selectedMonth
-                                                                          .year &&
-                                                                  points[i]
-                                                                          .month
-                                                                          .month ==
-                                                                      selectedMonth
-                                                                          .month
-                                                              ? 1.0
-                                                              : 0.72,
+                                                    color:
+                                                        ButlerlySpendingTrendColors.bar(
+                                                          context,
+                                                          selected: _sameMonth(
+                                                            points[i].month,
+                                                            selectedMonth,
+                                                          ),
                                                         ),
                                                     borderRadius:
                                                         const BorderRadius.vertical(
@@ -1930,15 +1952,18 @@ class _DesktopTrend extends StatelessWidget {
                                     DateFormat.MMM(
                                       locale,
                                     ).format(points[i].month).toUpperCase(),
+                                    key: ValueKey(
+                                      'desktop-home-trend-label-${points[i].month.year}-${points[i].month.month}',
+                                    ),
                                     textAlign: TextAlign.center,
                                     style: monthStyle.copyWith(
-                                      color:
-                                          points[i].month.year ==
-                                                  selectedMonth.year &&
-                                              points[i].month.month ==
-                                                  selectedMonth.month
-                                          ? context.colors.interactive
-                                          : null,
+                                      color: ButlerlySpendingTrendColors.label(
+                                        context,
+                                        selected: _sameMonth(
+                                          points[i].month,
+                                          selectedMonth,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ],

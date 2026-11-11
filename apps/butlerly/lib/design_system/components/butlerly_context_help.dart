@@ -1,3 +1,5 @@
+import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/help/data/help_catalog.dart';
 import 'package:butlerly/features/help/presentation/help_copy.dart';
@@ -32,6 +34,69 @@ String? contextualHelpArticleForPath(String path) => switch (path) {
   // Map it to the navigation overview until its dedicated chapter exists.
   _ => 'ch-3',
 };
+
+/// Identifies pages hosted by the wide desktop shell.
+class ButlerlyDesktopHeaderScope extends InheritedWidget {
+  const ButlerlyDesktopHeaderScope({required super.child, super.key});
+
+  static bool isActive(BuildContext context) =>
+      context
+          .dependOnInheritedWidgetOfExactType<ButlerlyDesktopHeaderScope>() !=
+      null;
+
+  @override
+  bool updateShouldNotify(covariant ButlerlyDesktopHeaderScope oldWidget) =>
+      false;
+}
+
+/// Shared close affordance for embedded desktop detail and editor panels.
+/// Full-page navigation retains its own Back action.
+class ButlerlyPanelCloseButton extends StatelessWidget {
+  const ButlerlyPanelCloseButton({
+    required this.onPressed,
+    this.buttonKey,
+    super.key,
+  });
+
+  final VoidCallback? onPressed;
+  final Key? buttonKey;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: IconButton(
+      key: buttonKey,
+      tooltip: context.l10n.text('close'),
+      onPressed: onPressed,
+      // AppBar.leading can allocate a wider slot than the Back button's
+      // actual visual circle. Keep hit size and painted circle independent.
+      style: IconButton.styleFrom(
+        fixedSize: const Size.square(ButlerlySize.minimumTarget),
+        minimumSize: const Size.square(ButlerlySize.minimumTarget),
+        padding: EdgeInsets.zero,
+        backgroundColor: Colors.transparent,
+        disabledBackgroundColor: Colors.transparent,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      iconSize: ButlerlyButtonTokens.iconSize,
+      icon: SizedBox.square(
+        key: const ValueKey('desktop-panel-close-circle'),
+        dimension: ButlerlyButtonTokens.iconVisualSize,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: context.colors.subtleSurface,
+            shape: BoxShape.circle,
+          ),
+          child: const Center(
+            child: Icon(
+              Icons.close_rounded,
+              size: ButlerlyButtonTokens.iconSize,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
 
 /// Prominent page-header action, shared by regular pages and custom AppBars.
 /// Router-backed pages navigate to Help; setup/recovery screens use an offline
@@ -74,10 +139,14 @@ class ButlerlyContextHelpButton extends StatelessWidget {
     // target for touch and keyboard accessibility. Its left spacing is
     // independent of the visual circle diameter.
     return Padding(
+      key: const ValueKey('page-context-help-padding'),
       padding: EdgeInsets.only(
         left: visualGapAfterAdd == null
             ? ButlerlySpacing.small
             : visualGapAfterAdd! - (ButlerlySize.minimumTarget - 32) / 2,
+        right: ButlerlyDesktopHeaderScope.isActive(context)
+            ? ButlerlySpacing.small
+            : ButlerlySpacing.none,
       ),
       child: IconButton(
         key: const ValueKey('page-context-help'),

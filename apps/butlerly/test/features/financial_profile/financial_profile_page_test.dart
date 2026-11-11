@@ -72,6 +72,70 @@ void main() {
     ),
   );
 
+  testWidgets(
+    'desktop Financial Profile uses twin internally scrolling cards',
+    (tester) async {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(app());
+      await _pumpUntilVisible(
+        tester,
+        find.byKey(const ValueKey('financial-profile-edit')),
+      );
+
+      final overviewScroll = find.byKey(
+        const ValueKey('desktop-financial-profile-overview-scroll'),
+      );
+      final detailScroll = find.byKey(
+        const ValueKey('desktop-financial-profile-detail-scroll'),
+      );
+      expect(overviewScroll, findsOneWidget);
+      expect(detailScroll, findsOneWidget);
+      final overview = find
+          .ancestor(of: overviewScroll, matching: find.byType(Card))
+          .first;
+      final detail = find
+          .ancestor(of: detailScroll, matching: find.byType(Card))
+          .first;
+      final left = tester.getRect(overview);
+      final right = tester.getRect(detail);
+      expect(left.right, lessThan(right.left));
+      expect(left.top, closeTo(right.top, 1));
+      expect(left.bottom, closeTo(right.bottom, 1));
+      expect(
+        find.ancestor(of: overviewScroll, matching: find.byType(Scrollbar)),
+        findsWidgets,
+      );
+      expect(
+        find.ancestor(of: detailScroll, matching: find.byType(Scrollbar)),
+        findsWidgets,
+      );
+
+      await tester.tap(find.byKey(const ValueKey('financial-profile-edit')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('desktop-financial-profile-questions-0')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('financial-profile-continue')),
+        findsOneWidget,
+      );
+      await tester.tap(
+        find.byKey(const ValueKey('financial-profile-continue')),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('desktop-financial-profile-questions-1')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('completes with all optional questions unanswered', (
     tester,
   ) async {

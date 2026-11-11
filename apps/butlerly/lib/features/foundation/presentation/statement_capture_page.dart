@@ -8,6 +8,7 @@ import 'package:butlerly/core/evidence/platform_ocr_recognizer.dart';
 import 'package:butlerly/core/evidence/statement_extractor.dart';
 import 'package:butlerly/core/evidence/statement_source_matcher.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_desktop_panel_footer.dart';
 import 'package:butlerly/design_system/components/butlerly_desktop_table_body.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
@@ -1428,38 +1429,25 @@ class _StatementCapturePageState extends State<StatementCapturePage> {
     ],
   );
 
-  Widget _statementRightPanel(_StatementPanelData selection) => Stack(
-    children: [
-      Navigator(
-        key: ValueKey('statement-review-navigator-${selection.statement.id}'),
-        onGenerateRoute: (_) => MaterialPageRoute<void>(
-          builder: (_) => _StatementReviewPage(
-            statement: selection.statement,
-            rows: selection.rows,
-            sources: _sources,
-            masterData: selection.masterData,
-            service: statement,
-          ),
-        ),
-        onDidRemovePage: (page) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted && _selectedStatementId == selection.statement.id) {
-              _closeStatementPanel();
-            }
-          });
-        },
+  Widget _statementRightPanel(_StatementPanelData selection) => Navigator(
+    key: ValueKey('statement-review-navigator-${selection.statement.id}'),
+    onGenerateRoute: (_) => MaterialPageRoute<void>(
+      builder: (_) => _StatementReviewPage(
+        statement: selection.statement,
+        rows: selection.rows,
+        sources: _sources,
+        masterData: selection.masterData,
+        service: statement,
+        onClose: _closeStatementPanel,
       ),
-      Positioned(
-        right: ButlerlySpacing.compact,
-        top: ButlerlySpacing.compact,
-        child: IconButton(
-          key: const ValueKey('desktop-statement-close'),
-          tooltip: context.l10n.text('close'),
-          onPressed: _closeStatementPanel,
-          icon: const Icon(Icons.close_rounded),
-        ),
-      ),
-    ],
+    ),
+    onDidRemovePage: (page) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _selectedStatementId == selection.statement.id) {
+          _closeStatementPanel();
+        }
+      });
+    },
   );
 }
 
@@ -1477,12 +1465,14 @@ class _StatementReviewPage extends StatefulWidget {
     required this.sources,
     required this.masterData,
     required this.service,
+    this.onClose,
   });
   final FinancialStatement statement;
   final List<StatementRow> rows;
   final List<PaymentSource> sources;
   final TransactionMasterDataSnapshot masterData;
   final StatementServices service;
+  final VoidCallback? onClose;
   @override
   State<_StatementReviewPage> createState() => _StatementReviewPageState();
 }
@@ -2220,16 +2210,35 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
+      leading: widget.onClose == null
+          ? null
+          : ButlerlyPanelCloseButton(
+              buttonKey: const ValueKey('desktop-statement-close'),
+              onPressed: widget.onClose,
+            ),
       title: Text(context.l10n.text('reviewStatementImport')),
       actions: [
-        IconButton(
-          onPressed: _abandonImport,
-          tooltip: context.l10n.text('abandonStatementImport'),
-          icon: const Icon(Icons.close),
-        ),
+        if (widget.onClose == null)
+          IconButton(
+            key: const ValueKey('statement-review-header-abandon'),
+            onPressed: _abandonImport,
+            tooltip: context.l10n.text('abandonStatementImport'),
+            icon: const Icon(Icons.close),
+          ),
         const ButlerlyContextHelpButton(articleId: 'ch-10'),
       ],
     ),
+    bottomNavigationBar: widget.onClose == null
+        ? null
+        : ButlerlyDesktopPanelFooter(
+            child: StatementReviewFooterActions(
+              desktop: true,
+              onAbandon: _abandonImport,
+              onImport: _sourceId == null || _rows.isEmpty
+                  ? null
+                  : _importBatch,
+            ),
+          ),
     body: ButlerlyResponsiveBody(
       contentKey: const ValueKey('statement-review-content'),
       child: ListView(
@@ -2383,26 +2392,65 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                 ),
               ),
             ),
-          Padding(
-            padding: const EdgeInsets.only(
-              top: ButlerlySpacing.micro,
-              bottom: ButlerlySpacing.bottomActionSpacing,
-            ),
-            child: SafeArea(
-              top: false,
-              child: FilledButton.icon(
-                onPressed: _sourceId == null || _rows.isEmpty
-                    ? null
-                    : _importBatch,
-                icon: const Icon(Icons.download_done_outlined),
-                label: Text(context.l10n.text('importData')),
+          if (widget.onClose == null)
+            Padding(
+              padding: const EdgeInsets.only(
+                top: ButlerlySpacing.micro,
+                bottom: ButlerlySpacing.bottomActionSpacing,
+              ),
+              child: SafeArea(
+                top: false,
+                child: StatementReviewFooterActions(
+                  desktop: false,
+                  onAbandon: _abandonImport,
+                  onImport: _sourceId == null || _rows.isEmpty
+                      ? null
+                      : _importBatch,
+                ),
               ),
             ),
-          ),
         ],
       ),
     ),
   );
+}
+
+/// Only desktop splits show Abandon beside Import Data at the bottom.
+class StatementReviewFooterActions extends StatelessWidget {
+  const StatementReviewFooterActions({
+    required this.desktop,
+    required this.onAbandon,
+    required this.onImport,
+    super.key,
+  });
+
+  final bool desktop;
+  final VoidCallback onAbandon;
+  final VoidCallback? onImport;
+
+  @override
+  Widget build(BuildContext context) {
+    final importButton = FilledButton.icon(
+      key: const ValueKey('statement-review-import-data'),
+      onPressed: onImport,
+      icon: const Icon(Icons.download_done_outlined),
+      label: Text(context.l10n.text('importData')),
+    );
+    if (!desktop) return importButton;
+    return Row(
+      children: [
+        Expanded(
+          child: ButlerlyDestructiveButton(
+            key: const ValueKey('statement-review-footer-abandon'),
+            onPressed: onAbandon,
+            child: Text(context.l10n.text('abandonStatementImport')),
+          ),
+        ),
+        const SizedBox(width: ButlerlySpacing.small),
+        Expanded(child: importButton),
+      ],
+    );
+  }
 }
 
 class _ProgressSummary extends StatelessWidget {

@@ -464,7 +464,10 @@ void main() {
     expect(tester.getSize(header).height, ButlerlySize.pageToolbarHeight);
     expect(
       headerWidget.padding,
-      const EdgeInsets.symmetric(horizontal: ButlerlySize.contentGutter),
+      const EdgeInsets.only(
+        left: ButlerlySize.contentGutter,
+        right: ButlerlySpacing.none,
+      ),
     );
     final appBarTitleStyle = Theme.of(
       tester.element(greeting),

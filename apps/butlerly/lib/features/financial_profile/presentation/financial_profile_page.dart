@@ -1,8 +1,10 @@
 import 'package:butlerly/app/locale/locale_provider.dart';
+import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
@@ -27,6 +29,8 @@ final class FinancialProfilePage extends ConsumerStatefulWidget {
 final class _FinancialProfilePageState
     extends ConsumerState<FinancialProfilePage> {
   final _targetController = TextEditingController();
+  final _desktopProfileOverviewScroll = ScrollController();
+  final _desktopProfileDetailScroll = ScrollController();
   FinancialProfile? _profile;
   FinancialProfile? _draft;
   TransactionMasterDataSnapshot? _masterData;
@@ -68,6 +72,8 @@ final class _FinancialProfilePageState
   void dispose() {
     workspaceRestoreChanges.removeListener(_onWorkspaceRestored);
     _targetController.dispose();
+    _desktopProfileOverviewScroll.dispose();
+    _desktopProfileDetailScroll.dispose();
     super.dispose();
   }
 
@@ -373,13 +379,20 @@ final class _FinancialProfilePageState
     return _editing ? _buildSurvey(context) : _buildSummary(context);
   }
 
+  bool _desktopProfile(BuildContext context) =>
+      !widget.onboarding &&
+      effectiveButlerlyLayoutMode(context, MediaQuery.sizeOf(context).width) ==
+          ButlerlyLayoutMode.wide;
+
   Widget _page(
     BuildContext context, {
     required List<Widget> children,
     String? subtitle,
+    bool fullWidth = false,
   }) => ButlerlyPage(
     title: context.l10n.text('financialProfile'),
     subtitle: subtitle ?? context.l10n.text('financialProfileBody'),
+    fullWidth: fullWidth,
     leading: GoRouter.maybeOf(context)?.canPop() == true
         ? IconButton(
             tooltip: context.l10n.text('close'),
@@ -394,6 +407,9 @@ final class _FinancialProfilePageState
     final profile = _profile;
     final status = profile?.status ?? FinancialProfileStatus.notStarted;
     final answered = profile?.answeredQuestionCount ?? 0;
+    if (_desktopProfile(context)) {
+      return _buildDesktopSummary(context, profile, status, answered);
+    }
     return _page(
       context,
       children: [
@@ -477,6 +493,9 @@ final class _FinancialProfilePageState
     final draft = _draft;
     if (draft == null) return _page(context, children: const []);
     final progress = (_step + 1) / 4;
+    if (_desktopProfile(context)) {
+      return _buildDesktopSurvey(context, draft, progress);
+    }
     return _page(
       context,
       subtitle: context.l10n.text('financialProfileBody'),
@@ -563,6 +582,241 @@ final class _FinancialProfilePageState
         ),
       ],
     );
+  }
+
+  /// Legal-page geometry: equal-height, independently scrollable desktop
+  /// cards. Keep the device and first-use survey layouts unchanged.
+  Widget _desktopProfileLayout(
+    BuildContext context, {
+    required Widget overview,
+    required Widget detail,
+  }) => _page(
+    context,
+    fullWidth: true,
+    children: [
+      LayoutBuilder(
+        builder: (context, constraints) {
+          final cardHeight = (MediaQuery.sizeOf(context).height - 190).clamp(
+            440.0,
+            950.0,
+          );
+          if (constraints.maxWidth < 610) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(height: 250, child: overview),
+                const SizedBox(height: ButlerlySpacing.small),
+                SizedBox(height: cardHeight, child: detail),
+              ],
+            );
+          }
+          return SizedBox(
+            height: cardHeight,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(flex: 2, child: overview),
+                const SizedBox(width: ButlerlySpacing.small),
+                Expanded(flex: 4, child: detail),
+              ],
+            ),
+          );
+        },
+      ),
+    ],
+  );
+
+  Widget _desktopProfileCard(
+    BuildContext context, {
+    required String title,
+    required Widget content,
+    required ScrollController controller,
+    required Key scrollKey,
+  }) => ButlerlyCard(
+    padding: EdgeInsets.zero,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(ButlerlySpacing.standard),
+          child: Text(
+            title,
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+          ),
+        ),
+        Divider(height: 1, color: context.colors.cardDivider),
+        Expanded(
+          child: Scrollbar(
+            controller: controller,
+            thumbVisibility: true,
+            child: ListView(
+              key: scrollKey,
+              controller: controller,
+              padding: const EdgeInsets.all(ButlerlySpacing.standard),
+              children: [content],
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+
+  Widget _buildDesktopSummary(
+    BuildContext context,
+    FinancialProfile? profile,
+    FinancialProfileStatus status,
+    int answered,
+  ) {
+    final overview = _desktopProfileCard(
+      context,
+      title: context.l10n.text('financialProfileSummary'),
+      controller: _desktopProfileOverviewScroll,
+      scrollKey: const ValueKey('desktop-financial-profile-overview-scroll'),
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (status != FinancialProfileStatus.completed) ...[
+            Text(
+              context.l10n.text(
+                status == FinancialProfileStatus.notStarted
+                    ? 'financialProfileNoProfile'
+                    : 'financialProfileInProgressBody',
+              ),
+            ),
+            const SizedBox(height: ButlerlySpacing.standard),
+          ],
+          _summaryRow(
+            context.l10n.text('financialProfileStatus'),
+            context.l10n.text(_statusKey(status)),
+          ),
+          _summaryRow(
+            context.l10n.text('financialProfileAnsweredLabel'),
+            context.l10n.text('financialProfileAnswered', {
+              'count': '$answered',
+            }),
+          ),
+          if (profile != null)
+            _summaryRow(
+              context.l10n.text('financialProfileLastUpdated'),
+              MaterialLocalizations.of(
+                context,
+              ).formatMediumDate(profile.updatedAt.toLocal()),
+            ),
+          const SizedBox(height: ButlerlySpacing.standard),
+          FilledButton.icon(
+            key: const ValueKey('financial-profile-edit'),
+            onPressed: _startEditing,
+            icon: Icon(
+              profile == null ? Icons.play_arrow_rounded : Icons.edit_outlined,
+            ),
+            label: Text(
+              context.l10n.text(
+                profile == null ? 'setUpMyProfile' : 'financialProfileEdit',
+              ),
+            ),
+          ),
+          if (profile != null) ...[
+            const SizedBox(height: ButlerlySpacing.small),
+            OutlinedButton(
+              key: const ValueKey('financial-profile-retake'),
+              onPressed: _startRetaking,
+              child: Text(context.l10n.text('financialProfileRetake')),
+            ),
+            const SizedBox(height: ButlerlySpacing.small),
+            TextButton(
+              onPressed: _clearProfile,
+              child: Text(context.l10n.text('financialProfileClear')),
+            ),
+          ],
+        ],
+      ),
+    );
+    final detail = _desktopProfileCard(
+      context,
+      title: context.l10n.text('financialProfileAnsweredLabel'),
+      controller: _desktopProfileDetailScroll,
+      scrollKey: const ValueKey('desktop-financial-profile-detail-scroll'),
+      content: profile != null && answered > 0
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: _summaryAnswers(context, profile),
+            )
+          : Text(
+              context.l10n.text('financialProfileNoProfile'),
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+    );
+    return _desktopProfileLayout(context, overview: overview, detail: detail);
+  }
+
+  Widget _buildDesktopSurvey(
+    BuildContext context,
+    FinancialProfile draft,
+    double progress,
+  ) {
+    final overview = _desktopProfileCard(
+      context,
+      title: context.l10n.text('financialProfileSummary'),
+      controller: _desktopProfileOverviewScroll,
+      scrollKey: const ValueKey('desktop-financial-profile-overview-scroll'),
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            context.l10n.text('financialProfileStep', {'step': '${_step + 1}'}),
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
+          const SizedBox(height: ButlerlySpacing.small),
+          LinearProgressIndicator(value: progress),
+          const SizedBox(height: ButlerlySpacing.section),
+          if (_step > 0) ...[
+            OutlinedButton(
+              key: const ValueKey('financial-profile-back'),
+              onPressed: _saving ? null : () => setState(() => _step -= 1),
+              child: Text(context.l10n.text('financialProfileBack')),
+            ),
+            const SizedBox(height: ButlerlySpacing.small),
+          ],
+          FilledButton(
+            key: ValueKey(
+              _step == 3
+                  ? 'financial-profile-save'
+                  : 'financial-profile-continue',
+            ),
+            onPressed: _saving ? null : _continue,
+            child: Text(
+              context.l10n.text(
+                _step == 3
+                    ? 'financialProfileFinish'
+                    : 'financialProfileContinue',
+              ),
+            ),
+          ),
+          const SizedBox(height: ButlerlySpacing.small),
+          TextButton(
+            key: const ValueKey('financial-profile-cancel'),
+            onPressed: _saving
+                ? null
+                : widget.onboarding
+                ? _skip
+                : _cancelEditing,
+            child: Text(
+              context.l10n.text(widget.onboarding ? 'skip' : 'cancel'),
+            ),
+          ),
+        ],
+      ),
+    );
+    final detail = _desktopProfileCard(
+      context,
+      title: _sectionName(context, _step),
+      controller: _desktopProfileDetailScroll,
+      scrollKey: ValueKey('desktop-financial-profile-questions-$_step'),
+      content: _buildStepQuestions(context, draft),
+    );
+    return _desktopProfileLayout(context, overview: overview, detail: detail);
   }
 
   Widget _buildStepQuestions(BuildContext context, FinancialProfile draft) =>

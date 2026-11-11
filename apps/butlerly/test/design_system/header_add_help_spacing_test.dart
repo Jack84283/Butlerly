@@ -9,10 +9,15 @@ import 'package:go_router/go_router.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  // Rules is the approved visual reference for all three Add/Help headers.
+  // Rules is the approved visual reference for all Add/Help headers.
   // Test both layout modes and themes so device defaults cannot change the
   // 32px filled Add control or the 12px visible-circle gap.
-  for (final path in ['/rules', '/master-data', '/payment-settlements']) {
+  for (final path in [
+    '/rules',
+    '/master-data',
+    '/payment-settlements',
+    '/budgets',
+  ]) {
     for (final width in [390.0, 1400.0]) {
       for (final brightness in [Brightness.light, Brightness.dark]) {
         testWidgets('Header Add/Help at $path, $width, $brightness', (
@@ -111,7 +116,7 @@ void main() {
           expect(
             helpRect.left - addRect.right,
             closeTo(ButlerlySpacing.small, 0.5),
-            reason: 'Rules, Master Data and Settlements must all use 12px',
+            reason: 'All desktop Add/Help header actions must use 12px',
           );
           expect(helpRect.left, greaterThan(addRect.center.dx));
           expect(tester.takeException(), isNull);

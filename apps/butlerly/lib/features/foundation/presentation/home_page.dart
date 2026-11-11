@@ -11,6 +11,7 @@ import 'package:butlerly/design_system/components/butlerly_month_picker.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/theme/butlerly_responsive_design_tokens.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/theme/butlerly_spending_trend_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
@@ -1580,11 +1581,10 @@ class _HomeTrendPlot extends StatelessWidget {
                                               'home-spending-trend-bar-${point.month.year}-${point.month.month}',
                                             ),
                                             decoration: BoxDecoration(
-                                              color: context.colors.interactive
-                                                  .withValues(
-                                                    alpha: point.selected
-                                                        ? 1
-                                                        : 0.35,
+                                              color:
+                                                  ButlerlySpendingTrendColors.bar(
+                                                    context,
+                                                    selected: point.selected,
                                                   ),
                                               borderRadius:
                                                   const BorderRadius.vertical(
@@ -1632,9 +1632,10 @@ class _HomeTrendPlot extends StatelessWidget {
                                       const TextStyle(),
                                 )
                                 .copyWith(
-                                  color: point.selected
-                                      ? context.colors.interactive
-                                      : null,
+                                  color: ButlerlySpendingTrendColors.label(
+                                    context,
+                                    selected: point.selected,
+                                  ),
                                   fontWeight: point.selected
                                       ? FontWeight.w600
                                       : null,

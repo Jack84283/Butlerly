@@ -6,6 +6,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/components/butlerly_budget_scope_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_desktop_panel_footer.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -166,222 +167,222 @@ class _BudgetsPageState extends State<BudgetsPage> {
       final completion = Completer<Budget?>();
       Widget editor(BuildContext dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
-          return ButlerlySheet(
-            title: desktop
-                ? Row(
-                    children: [
-                      Expanded(child: Text(context.l10n.text('budgetEdit'))),
-                      IconButton(
-                        key: const ValueKey('budget-editor-close'),
-                        tooltip: MaterialLocalizations.of(
-                          dialogContext,
-                        ).closeButtonTooltip,
-                        icon: const Icon(Icons.close),
-                        onPressed: () {
-                          if (!completion.isCompleted) {
-                            completion.complete(null);
-                          }
-                        },
+          final form = SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: ButlerlySpacing.standard),
+                DropdownButtonFormField<String>(
+                  initialValue: scope,
+                  decoration: InputDecoration(
+                    labelText: context.l10n.text('budgetScope'),
+                  ),
+                  items: [
+                    for (final value in const [
+                      'overall',
+                      'category',
+                      'subcategory',
+                      'merchant',
+                    ])
+                      DropdownMenuItem(
+                        value: value,
+                        child: Text(_scopeLabel(value)),
                       ),
-                    ],
-                  )
-                : Text(context.l10n.text('budgetEdit')),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const SizedBox(height: ButlerlySpacing.standard),
-                  DropdownButtonFormField<String>(
-                    initialValue: scope,
-                    decoration: InputDecoration(
-                      labelText: context.l10n.text('budgetScope'),
-                    ),
-                    items: [
-                      for (final value in const [
-                        'overall',
-                        'category',
-                        'subcategory',
-                        'merchant',
-                      ])
-                        DropdownMenuItem(
-                          value: value,
-                          child: Text(_scopeLabel(value)),
-                        ),
-                    ],
-                    onChanged: (value) => setDialogState(() {
-                      scope = value ?? scope;
-                      scopeId = null;
-                      selectedParentId = null;
-                    }),
-                  ),
-                  if (scope == 'category') ...[
-                    const SizedBox(height: ButlerlySpacing.standard),
-                    ButlerlyCategorySelector(
-                      key: const ValueKey('budget-category-selector'),
-                      categories: _categories,
-                      masterData: masterData ?? const TransactionMasterData(),
-                      value: scopeId,
-                      label: context.l10n.text('budgetCategory'),
-                      clearLabel: context.l10n.text('clear'),
-                      onChanged: (value) =>
-                          setDialogState(() => scopeId = value),
-                    ),
                   ],
-                  if (scope == 'subcategory') ...[
-                    const SizedBox(height: ButlerlySpacing.standard),
-                    ButlerlyCategorySelector(
-                      key: const ValueKey('budget-parent-category-selector'),
-                      categories: _categories,
-                      masterData: masterData ?? const TransactionMasterData(),
-                      value: selectedParentId,
-                      label: context.l10n.text('budgetCategory'),
-                      clearLabel: context.l10n.text('clear'),
-                      onChanged: (value) => setDialogState(() {
-                        selectedParentId = value;
-                        scopeId = null;
-                      }),
-                    ),
-                    const SizedBox(height: ButlerlySpacing.standard),
-                    ButlerlySubcategorySelector(
-                      key: const ValueKey('budget-subcategory-selector'),
-                      categories: _categories,
-                      masterData: masterData ?? const TransactionMasterData(),
-                      parentId: selectedParentId,
-                      value: scopeId,
-                      label: context.l10n.text('budgetSubcategory'),
-                      clearLabel: context.l10n.text('clear'),
-                      onChanged: (value) =>
-                          setDialogState(() => scopeId = value),
-                    ),
-                  ],
-                  if (scope == 'merchant') ...[
-                    const SizedBox(height: ButlerlySpacing.standard),
-                    ButlerlyMerchantSelector(
-                      key: const ValueKey('budget-merchant-selector'),
-                      merchants: _merchants,
-                      value: scopeId,
-                      label: context.l10n.text('budgetMerchant'),
-                      clearLabel: context.l10n.text('clear'),
-                      onChanged: (value) =>
-                          setDialogState(() => scopeId = value),
-                    ),
-                  ],
+                  onChanged: (value) => setDialogState(() {
+                    scope = value ?? scope;
+                    scopeId = null;
+                    selectedParentId = null;
+                  }),
+                ),
+                if (scope == 'category') ...[
                   const SizedBox(height: ButlerlySpacing.standard),
-                  DropdownButtonFormField<String>(
-                    initialValue: currency,
-                    decoration: InputDecoration(
-                      labelText: context.l10n.text('budgetCurrency'),
-                    ),
-                    items: [
-                      for (final value in const [
-                        'USD',
-                        'CNY',
-                        'EUR',
-                        'GBP',
-                        'JPY',
-                      ])
-                        DropdownMenuItem(value: value, child: Text(value)),
-                    ],
-                    onChanged: (value) =>
-                        setDialogState(() => currency = value ?? currency),
-                  ),
-                  if (suggestionMessage != null) Text(suggestionMessage!),
-                  const SizedBox(height: ButlerlySpacing.standard),
-                  TextFormField(
-                    key: ValueKey('budget-amount-$amountText'),
-                    initialValue: amountText,
-                    onChanged: (value) => amountText = value,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    decoration: InputDecoration(
-                      labelText: context.l10n.text('budgetAmount'),
-                    ),
+                  ButlerlyCategorySelector(
+                    key: const ValueKey('budget-category-selector'),
+                    categories: _categories,
+                    masterData: masterData ?? const TransactionMasterData(),
+                    value: scopeId,
+                    label: context.l10n.text('budgetCategory'),
+                    clearLabel: context.l10n.text('clear'),
+                    onChanged: (value) => setDialogState(() => scopeId = value),
                   ),
                 ],
-              ),
+                if (scope == 'subcategory') ...[
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  ButlerlyCategorySelector(
+                    key: const ValueKey('budget-parent-category-selector'),
+                    categories: _categories,
+                    masterData: masterData ?? const TransactionMasterData(),
+                    value: selectedParentId,
+                    label: context.l10n.text('budgetCategory'),
+                    clearLabel: context.l10n.text('clear'),
+                    onChanged: (value) => setDialogState(() {
+                      selectedParentId = value;
+                      scopeId = null;
+                    }),
+                  ),
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  ButlerlySubcategorySelector(
+                    key: const ValueKey('budget-subcategory-selector'),
+                    categories: _categories,
+                    masterData: masterData ?? const TransactionMasterData(),
+                    parentId: selectedParentId,
+                    value: scopeId,
+                    label: context.l10n.text('budgetSubcategory'),
+                    clearLabel: context.l10n.text('clear'),
+                    onChanged: (value) => setDialogState(() => scopeId = value),
+                  ),
+                ],
+                if (scope == 'merchant') ...[
+                  const SizedBox(height: ButlerlySpacing.standard),
+                  ButlerlyMerchantSelector(
+                    key: const ValueKey('budget-merchant-selector'),
+                    merchants: _merchants,
+                    value: scopeId,
+                    label: context.l10n.text('budgetMerchant'),
+                    clearLabel: context.l10n.text('clear'),
+                    onChanged: (value) => setDialogState(() => scopeId = value),
+                  ),
+                ],
+                const SizedBox(height: ButlerlySpacing.standard),
+                DropdownButtonFormField<String>(
+                  initialValue: currency,
+                  decoration: InputDecoration(
+                    labelText: context.l10n.text('budgetCurrency'),
+                  ),
+                  items: [
+                    for (final value in const [
+                      'USD',
+                      'CNY',
+                      'EUR',
+                      'GBP',
+                      'JPY',
+                    ])
+                      DropdownMenuItem(value: value, child: Text(value)),
+                  ],
+                  onChanged: (value) =>
+                      setDialogState(() => currency = value ?? currency),
+                ),
+                if (suggestionMessage != null) Text(suggestionMessage!),
+                const SizedBox(height: ButlerlySpacing.standard),
+                TextFormField(
+                  key: ValueKey('budget-amount-$amountText'),
+                  initialValue: amountText,
+                  onChanged: (value) => amountText = value,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: InputDecoration(
+                    labelText: context.l10n.text('budgetAmount'),
+                  ),
+                ),
+              ],
             ),
-            actions: [
-              TextButton(
-                onPressed: !services.isRegistered<FinanceServices>()
-                    ? null
-                    : () async {
-                        setDialogState(() => suggestionMessage = null);
-                        final suggestion = await suggestMonthlyBudget(
-                          finance: services<FinanceServices>(),
-                          scope: scope,
-                          scopeId: scopeId,
-                          currency: currency,
-                        );
-                        if (!dialogContext.mounted) return;
-                        setDialogState(() {
-                          if (suggestion == null) {
-                            suggestionMessage = context.l10n.text(
-                              'budgetSuggestionUnavailable',
-                            );
-                          } else {
-                            amountText = suggestion.amount;
-                            suggestionMessage = context.l10n.text(
-                              'budgetSuggestionPreview',
-                            );
-                          }
-                        });
-                      },
-                child: Text(context.l10n.text('budgetSuggest')),
+          );
+          final actions = <Widget>[
+            TextButton(
+              onPressed: !services.isRegistered<FinanceServices>()
+                  ? null
+                  : () async {
+                      setDialogState(() => suggestionMessage = null);
+                      final suggestion = await suggestMonthlyBudget(
+                        finance: services<FinanceServices>(),
+                        scope: scope,
+                        scopeId: scopeId,
+                        currency: currency,
+                      );
+                      if (!dialogContext.mounted) return;
+                      setDialogState(() {
+                        if (suggestion == null) {
+                          suggestionMessage = context.l10n.text(
+                            'budgetSuggestionUnavailable',
+                          );
+                        } else {
+                          amountText = suggestion.amount;
+                          suggestionMessage = context.l10n.text(
+                            'budgetSuggestionPreview',
+                          );
+                        }
+                      });
+                    },
+              child: Text(context.l10n.text('budgetSuggest')),
+            ),
+            ButlerlyCancelButton(
+              onPressed: () {
+                if (desktop) {
+                  if (!completion.isCompleted) completion.complete(null);
+                } else {
+                  Navigator.pop(dialogContext);
+                }
+              },
+              child: Text(context.l10n.text('cancel')),
+            ),
+            FilledButton(
+              onPressed: () {
+                final number = num.tryParse(amountText.trim());
+                if (number == null ||
+                    !number.isFinite ||
+                    number <= 0 ||
+                    (scope != 'overall' && scopeId == null)) {
+                  return;
+                }
+                final budget = Budget(
+                  id:
+                      existing?.id ??
+                      DateTime.now().microsecondsSinceEpoch.toString(),
+                  scope: scope,
+                  scopeId: scope == 'overall' ? null : scopeId,
+                  currency: currency,
+                  amount: amountText.trim(),
+                );
+                if (desktop) {
+                  if (!completion.isCompleted) completion.complete(budget);
+                } else {
+                  Navigator.pop(dialogContext, budget);
+                }
+              },
+              child: Text(context.l10n.text('save')),
+            ),
+          ];
+          if (desktop) {
+            return Scaffold(
+              key: const ValueKey('desktop-budget-editor-panel'),
+              appBar: AppBar(
+                leading: ButlerlyPanelCloseButton(
+                  buttonKey: const ValueKey('budget-editor-close'),
+                  onPressed: () {
+                    if (!completion.isCompleted) completion.complete(null);
+                  },
+                ),
+                title: Text(context.l10n.text('budgetEdit')),
+                actions: const [ButlerlyContextHelpButton(articleId: 'ch-15')],
               ),
-              ButlerlyCancelButton(
-                onPressed: () {
-                  if (desktop) {
-                    completion.complete(null);
-                  } else {
-                    Navigator.pop(dialogContext);
-                  }
-                },
-                child: Text(context.l10n.text('cancel')),
+              body: Padding(
+                padding: const EdgeInsets.all(ButlerlySpacing.standard),
+                child: form,
               ),
-              FilledButton(
-                onPressed: () {
-                  final number = num.tryParse(amountText.trim());
-                  if (number == null ||
-                      !number.isFinite ||
-                      number <= 0 ||
-                      (scope != 'overall' && scopeId == null)) {
-                    return;
-                  }
-                  final budget = Budget(
-                    id:
-                        existing?.id ??
-                        DateTime.now().microsecondsSinceEpoch.toString(),
-                    scope: scope,
-                    scopeId: scope == 'overall' ? null : scopeId,
-                    currency: currency,
-                    amount: amountText.trim(),
-                  );
-                  if (desktop) {
-                    completion.complete(budget);
-                  } else {
-                    Navigator.pop(dialogContext, budget);
-                  }
-                },
-                child: Text(context.l10n.text('save')),
+              bottomNavigationBar: ButlerlyDesktopPanelFooter(
+                child: ButlerlyButtonBar(
+                  alignment: ButlerlyButtonBarAlignment.end,
+                  density: ButlerlyButtonBarDensity.compact,
+                  spacing: ButlerlyButtonBarSpacing.none,
+                  children: actions,
+                ),
               ),
-            ],
+            );
+          }
+          return ButlerlySheet(
+            title: Text(context.l10n.text('budgetEdit')),
+            content: form,
+            actions: actions,
           );
         },
       );
       final Future<Budget?> result;
       if (desktop) {
         setState(() {
-          _desktopEditor = Material(
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: Padding(
-                padding: const EdgeInsets.all(ButlerlySpacing.standard),
-                child: editor(context),
-              ),
-            ),
-          );
+          _desktopEditor = editor(context);
         });
         result = completion.future;
       } else {
@@ -446,6 +447,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
         if (_management != null)
           ButlerlyHeaderAddButton(
             buttonKey: const ValueKey('budget-add'),
+            closeToHelp: true,
             label: context.l10n.text('add'),
             onPressed: () => _edit(),
           ),
