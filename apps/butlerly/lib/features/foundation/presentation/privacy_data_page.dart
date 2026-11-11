@@ -1048,12 +1048,14 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     final backup = _DesktopPrivacyCard(
       key: const ValueKey('desktop-privacy-backup'),
       title: l10n.text('backupRecoveryTitle'),
-      description: l10n.text('backupRecoveryBody'),
+      description:
+          '${l10n.text('backupRecoveryBody')}\n'
+          '${l10n.text('backupStatusUnknown')}',
       icon: Icons.storage_outlined,
       children: [
         _DesktopPrivacyAction(
           icon: Icons.backup_outlined,
-          label: l10n.backupText('backup'),
+          label: l10n.text('backUpNowAction'),
           description: l10n.backupText('backupSubtitle'),
           onTap: _busy ? null : _backup,
         ),
@@ -1269,9 +1271,9 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
             ListTile(
               enabled: !_busy,
               leading: Icon(_privacyIcon(context, Icons.backup_outlined)),
-              title: Text(context.l10n.backupText('backup')),
+              title: Text(context.l10n.text('backUpNowAction')),
               subtitle: Text(
-                context.l10n.backupText('backupSubtitle'),
+                context.l10n.text('backupStatusUnknown'),
                 style: _subtitleStyle(context),
               ),
               trailing: Icon(_privacyIcon(context, Icons.chevron_right)),
