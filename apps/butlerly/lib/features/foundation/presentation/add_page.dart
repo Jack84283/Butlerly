@@ -63,51 +63,73 @@ class AddPage extends StatelessWidget {
       onTap: () => context.push('/budgets'),
     );
 
+    final sections = [
+      (
+        title: context.l10n.text('addRecord'),
+        actions: actions.take(2).toList(),
+      ),
+      (
+        title: context.l10n.text('addImport'),
+        actions: actions.skip(2).toList(),
+      ),
+      (
+        title: context.l10n.text('addManage'),
+        actions: [
+          desktop
+              ? createPaymentSource
+              : ButlerlyActionItem(
+                  icon: Icons.account_balance_wallet_outlined,
+                  title: context.l10n.text('paymentSources'),
+                  subtitle: context.l10n.text('paymentSourcesSubtitle'),
+                  onTap: () => context.push('/payment-sources'),
+                ),
+          manageBudgets,
+        ],
+      ),
+    ];
+
     return ButlerlyPage(
       title: context.l10n.text('add'),
       subtitle: context.l10n.text('addSubtitle'),
       fullWidth: desktop,
       children: [
-        if (desktop)
-          LayoutBuilder(
-            key: const ValueKey('desktop-add-actions'),
-            builder: (context, constraints) {
-              const gap = ButlerlySpacing.cardGap;
-              final columns = constraints.maxWidth >= 1100 ? 3 : 2;
-              final tileWidth =
-                  (constraints.maxWidth - gap * (columns - 1)) / columns;
-              return Wrap(
-                spacing: gap,
-                runSpacing: gap,
-                children: [
-                  for (final action in [
-                    ...actions,
-                    createPaymentSource,
-                    manageBudgets,
-                  ])
-                    SizedBox(
-                      width: tileWidth,
-                      child: _DesktopAddActionCard(action: action),
-                    ),
-                ],
-              );
-            },
-          )
-        else ...[
-          ButlerlyActionGroup(actions: actions),
-          ButlerlySectionHeader(title: context.l10n.text('paymentSources')),
-          ButlerlyActionGroup(
-            actions: [
-              ButlerlyActionItem(
-                icon: Icons.account_balance_wallet_outlined,
-                title: context.l10n.text('paymentSources'),
-                subtitle: context.l10n.text('paymentSourcesSubtitle'),
-                onTap: () => context.push('/payment-sources'),
+        for (final section in sections) ...[
+          ButlerlySectionHeader(title: section.title),
+          if (desktop)
+            LayoutBuilder(
+              key: ValueKey(
+                section.actions.first == actions.first
+                    ? 'desktop-add-actions'
+                    : 'desktop-add-actions-${section.title}',
               ),
-            ],
-          ),
-          ButlerlySectionHeader(title: context.l10n.text('budgets')),
-          ButlerlyActionGroup(actions: [manageBudgets]),
+              builder: (context, constraints) {
+                const gap = ButlerlySpacing.cardGap;
+                final width = constraints.maxWidth > 980
+                    ? 980.0
+                    : constraints.maxWidth;
+                final tileWidth = (width - gap) / 2;
+                return Align(
+                  alignment: Alignment.centerLeft,
+                  child: SizedBox(
+                    width: width,
+                    child: Wrap(
+                      spacing: gap,
+                      runSpacing: gap,
+                      children: [
+                        for (final action in section.actions)
+                          SizedBox(
+                            width: tileWidth,
+                            child: _DesktopAddActionCard(action: action),
+                          ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            )
+          else
+            ButlerlyActionGroup(actions: section.actions),
+          const SizedBox(height: ButlerlySpacing.standard),
         ],
         const SizedBox(height: ButlerlySpacing.structural),
       ],
