@@ -172,9 +172,7 @@ void main() {
                 onPressed: () => closed = true,
               ),
               title: const Text('Review statement import'),
-              actions: const [
-                ButlerlyContextHelpButton(articleId: 'ch-10'),
-              ],
+              actions: const [ButlerlyContextHelpButton(articleId: 'ch-10')],
             ),
           ),
         ),
@@ -187,10 +185,7 @@ void main() {
     expect(help, findsOneWidget);
     expect(tester.getRect(close).right, lessThan(tester.getRect(help).left));
     expect(
-      find.descendant(
-        of: close,
-        matching: find.byIcon(Icons.close_rounded),
-      ),
+      find.descendant(of: close, matching: find.byIcon(Icons.close_rounded)),
       findsOneWidget,
     );
     await tester.tap(close);
@@ -231,10 +226,7 @@ void main() {
       tester.getRect(abandon).right,
       lessThan(tester.getRect(import).left),
     );
-    expect(
-      tester.getRect(import).top,
-      closeTo(tester.getRect(abandon).top, 1),
-    );
+    expect(tester.getRect(import).top, closeTo(tester.getRect(abandon).top, 1));
     expect(tester.widget<FilledButton>(import).onPressed, isNull);
     await tester.tap(abandon);
     expect(abandonCount, 1);

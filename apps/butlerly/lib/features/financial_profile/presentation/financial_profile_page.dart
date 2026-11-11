@@ -381,10 +381,7 @@ final class _FinancialProfilePageState
 
   bool _desktopProfile(BuildContext context) =>
       !widget.onboarding &&
-      effectiveButlerlyLayoutMode(
-            context,
-            MediaQuery.sizeOf(context).width,
-          ) ==
+      effectiveButlerlyLayoutMode(context, MediaQuery.sizeOf(context).width) ==
           ButlerlyLayoutMode.wide;
 
   Widget _page(
@@ -644,9 +641,9 @@ final class _FinancialProfilePageState
           padding: const EdgeInsets.all(ButlerlySpacing.standard),
           child: Text(
             title,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
         ),
         Divider(height: 1, color: context.colors.cardDivider),
@@ -768,9 +765,7 @@ final class _FinancialProfilePageState
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            context.l10n.text('financialProfileStep', {
-              'step': '${_step + 1}',
-            }),
+            context.l10n.text('financialProfileStep', {'step': '${_step + 1}'}),
             style: Theme.of(context).textTheme.labelLarge,
           ),
           const SizedBox(height: ButlerlySpacing.small),

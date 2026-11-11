@@ -33,7 +33,9 @@ void main() {
     await tester.pumpAndSettle();
 
     final trendCard = find.byKey(const ValueKey('desktop-home-trend-card'));
-    final categoryCard = find.byKey(const ValueKey('desktop-home-category-card'));
+    final categoryCard = find.byKey(
+      const ValueKey('desktop-home-category-card'),
+    );
     final month = find.byKey(const ValueKey('desktop-home-trend-months'));
     final viewAll = find.byKey(
       const ValueKey('desktop-home-category-view-all'),

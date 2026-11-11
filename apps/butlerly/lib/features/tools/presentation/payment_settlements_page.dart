@@ -633,9 +633,7 @@ class _PaymentSettlementDetailPageState
             appBar: AppBar(
               leading: widget.onClose == null
                   ? null
-                  : ButlerlyPanelCloseButton(
-                      onPressed: widget.onClose,
-                    ),
+                  : ButlerlyPanelCloseButton(onPressed: widget.onClose),
               title: Text(context.l10n.text('paymentSettlements')),
             ),
             body: ButlerlyErrorState(
@@ -660,7 +658,9 @@ class _PaymentSettlementDetailPageState
             leading: widget.onClose == null
                 ? null
                 : ButlerlyPanelCloseButton(
-                    buttonKey: const ValueKey('desktop-payment-settlement-close'),
+                    buttonKey: const ValueKey(
+                      'desktop-payment-settlement-close',
+                    ),
                     onPressed: widget.onClose,
                   ),
             actions: [
