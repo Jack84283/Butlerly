@@ -55,8 +55,7 @@ class ToolsPage extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               for (final (index, section) in sections.indexed) ...[
-                if (index > 0)
-                  const SizedBox(width: ButlerlySpacing.cardGap),
+                if (index > 0) const SizedBox(width: ButlerlySpacing.cardGap),
                 Expanded(
                   child: Column(
                     key: ValueKey(
@@ -76,8 +75,8 @@ class ToolsPage extends StatelessWidget {
                         ),
                       ),
                       for (final tool in tools.where(
-                            (item) => section.routes.contains(item.route),
-                          )) ...[
+                        (item) => section.routes.contains(item.route),
+                      )) ...[
                         _ToolPanel(tool: tool),
                         const SizedBox(height: ButlerlySpacing.cardGap),
                       ],
@@ -91,7 +90,9 @@ class ToolsPage extends StatelessWidget {
           for (final (index, section) in sections.indexed) ...[
             Padding(
               padding: EdgeInsets.only(
-                top: index == 0 ? ButlerlySpacing.none : ButlerlySpacing.cardGap,
+                top: index == 0
+                    ? ButlerlySpacing.none
+                    : ButlerlySpacing.cardGap,
                 bottom: ButlerlySpacing.small,
               ),
               child: Text(
