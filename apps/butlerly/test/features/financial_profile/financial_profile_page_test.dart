@@ -105,7 +105,7 @@ void main() {
       expect(left.right, lessThan(right.left));
       expect(left.top, closeTo(right.top, 1));
       expect(left.bottom, closeTo(right.bottom, 1));
-        expect(
+      expect(
         find.ancestor(of: overviewScroll, matching: find.byType(Scrollbar)),
         findsWidgets,
       );
