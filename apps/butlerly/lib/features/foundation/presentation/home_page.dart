@@ -975,9 +975,9 @@ class _HomeSummaryCard extends StatelessWidget {
       subtitle: period == null || comparisonPeriod == null
           ? context.l10n.text('vsPreviousPeriod')
           : '${currentMonthToDate ? context.l10n.text('monthToDate') : context.l10n.text('currentPeriod')} · '
-              '${localizedPeriodRange(context, startDate: period!.startDate, endDate: period!.endDate)} '
-              '${context.l10n.text('vsPreviousPeriod')} '
-              '${localizedPeriodRange(context, startDate: comparisonPeriod!.startDate, endDate: comparisonPeriod!.endDate)}',
+                '${localizedPeriodRange(context, startDate: period!.startDate, endDate: period!.endDate)} '
+                '${context.l10n.text('vsPreviousPeriod')} '
+                '${localizedPeriodRange(context, startDate: comparisonPeriod!.startDate, endDate: comparisonPeriod!.endDate)}',
       titleStyle: context.designTokens.homeTypography.sectionTitle(
         Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
       ),
@@ -1058,7 +1058,8 @@ class _HomeSummaryCard extends StatelessWidget {
                       : _homeMoney(context, metric.value!),
                   comparison: metric.comparison,
                   isCount: metric.isCount,
-                  currency: metric.value?.currency?.value ?? baseCurrency?.value,
+                  currency:
+                      metric.value?.currency?.value ?? baseCurrency?.value,
                   icon: metric.icon,
                   color: metric.color,
                 ),
@@ -1156,7 +1157,8 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
         ? '↓ ${percentValue.abs().toStringAsFixed(1)}% ${context.l10n.text('vsPreviousPeriod')}'
         : '0.0% ${context.l10n.text('vsPreviousPeriod')}';
     final baseline = comparison?.baselineValue;
-    final baselineText = baseline == null ||
+    final baselineText =
+        baseline == null ||
             comparison?.availability != AnalysisDataAvailability.sufficient
         ? null
         : '${context.l10n.text('previousPeriod')}: '
@@ -1270,18 +1272,18 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
             Text(
               baselineText,
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: mutedForeground,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(color: mutedForeground),
             ),
           ],
           if (baseline?.isZero == true)
             Text(
               context.l10n.text('zeroComparisonBaseline'),
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: mutedForeground,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.labelSmall?.copyWith(color: mutedForeground),
             ),
         ],
       ),
