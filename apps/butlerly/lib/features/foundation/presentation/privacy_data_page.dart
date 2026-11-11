@@ -573,10 +573,9 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     final time = DateFormat.yMMMd(
       Localizations.localeOf(context).toLanguageTag(),
     ).add_jm().format(status.completedAtUtc.toLocal());
-    final description = context.l10n.text('backupStatusRecorded').replaceAll(
-      '{date}',
-      time,
-    );
+    final description = context.l10n
+        .text('backupStatusRecorded')
+        .replaceAll('{date}', time);
     return status.missingAttachments
         ? '$description ${context.l10n.text('backupStatusMissingAttachments')}'
         : description;
