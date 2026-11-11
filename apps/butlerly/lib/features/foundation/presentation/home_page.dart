@@ -154,6 +154,7 @@ class _HomePageState extends State<HomePage> {
         merchantReviewCount: overview.merchantReviewCount,
         masterData: masterData,
         model: overview.analysis,
+        comparisonPeriod: overview.comparisonPeriod,
         insight: overview.insights.firstOrNull,
         trend: _homeTrendPoints(
           overview.monthlyTrend,
@@ -312,6 +313,9 @@ class _HomePageState extends State<HomePage> {
       children: [
         _HomeSummaryCard(
           model: data.model,
+          period: data.period,
+          comparisonPeriod: data.comparisonPeriod,
+          currentMonthToDate: _sameMonth(data.displayMonth, data.currentFinancialMonth),
           analysisUnavailable: data.analysisUnavailable || overviewUnavailable,
           baseCurrency: data.baseCurrency,
           unavailableTitleKey: overviewUnavailable ? unavailableTitleKey : null,
@@ -940,12 +944,18 @@ String _homeTransactionCount(BuildContext context, AnalysisMetric? metric) {
 class _HomeSummaryCard extends StatelessWidget {
   const _HomeSummaryCard({
     required this.model,
+    this.period,
+    this.comparisonPeriod,
+    this.currentMonthToDate = false,
     required this.analysisUnavailable,
     required this.baseCurrency,
     this.unavailableTitleKey,
   });
 
   final AnalysisModel? model;
+  final AnalysisPeriod? period;
+  final AnalysisPeriod? comparisonPeriod;
+  final bool currentMonthToDate;
   final bool analysisUnavailable;
   final CurrencyCode? baseCurrency;
   final String? unavailableTitleKey;
@@ -959,7 +969,12 @@ class _HomeSummaryCard extends StatelessWidget {
     final compact = context.designTokens.mode == ButlerlyLayoutMode.compact;
     final summaryTitle = ButlerlyCardHeader(
       title: context.l10n.text('monthlySummary'),
-      subtitle: context.l10n.text('vsPreviousPeriod'),
+      subtitle: period == null || comparisonPeriod == null
+          ? context.l10n.text('vsPreviousPeriod')
+          : '${currentMonthToDate ? context.l10n.text('monthToDate') : context.l10n.text('currentPeriod')} · '
+              '${localizedPeriodRange(context, startDate: period!.startDate, endDate: period!.endDate)} '
+              '${context.l10n.text('vsPreviousPeriod')} '
+              '${localizedPeriodRange(context, startDate: comparisonPeriod!.startDate, endDate: comparisonPeriod!.endDate)}',
       titleStyle: context.designTokens.homeTypography.sectionTitle(
         Theme.of(context).textTheme.titleLarge ?? const TextStyle(),
       ),
@@ -1039,6 +1054,7 @@ class _HomeSummaryCard extends StatelessWidget {
                       ? _homeZeroMoney(context, metric.value, baseCurrency)
                       : _homeMoney(context, metric.value!),
                   comparison: metric.comparison,
+                  isCount: metric.isCount,
                   icon: metric.icon,
                   color: metric.color,
                 ),
@@ -1103,6 +1119,7 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
     required this.label,
     required this.amount,
     required this.comparison,
+    this.isCount = false,
     required this.icon,
     required this.color,
     super.key,
@@ -1112,6 +1129,7 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
   final String label;
   final String amount;
   final AnalysisComparison? comparison;
+  final bool isCount;
   final IconData icon;
   final Color color;
 
@@ -1130,6 +1148,14 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
         : percentValue < 0
         ? '↓ ${percentValue.abs().toStringAsFixed(1)}% ${context.l10n.text('vsPreviousPeriod')}'
         : '0.0% ${context.l10n.text('vsPreviousPeriod')}';
+    final baseline = comparison?.baselineValue;
+    final baselineNumber = baseline == null ? null : double.tryParse(baseline.toString());
+    final smallBaseline = baselineNumber != null &&
+        baselineNumber.abs() > 0 &&
+        baselineNumber.abs() < (isCount ? 5 : 10);
+    final baselineText = baseline == null
+        ? null
+        : '${context.l10n.text('previousPeriod')}: ${isCount ? localizedDecimal(context, baseline.toString()) : localizedDecimal(context, baseline.toString())}';
     final compact = context.designTokens.mode == ButlerlyLayoutMode.compact;
     final foreground = context.colors.primaryText;
     final mutedForeground = context.colors.secondaryText;
@@ -1231,6 +1257,24 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
                   maxLines: 1,
                   style: comparisonStyle,
                 ),
+              ),
+            ),
+          if (baselineText != null) ...[
+            const SizedBox(height: ButlerlySpacing.micro),
+            Text(
+              baselineText,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: mutedForeground,
+              ),
+            ),
+          ],
+          if (smallBaseline)
+            Text(
+              context.l10n.text('smallComparisonBaseline'),
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: mutedForeground,
               ),
             ),
         ],
@@ -2815,6 +2859,7 @@ class _HomeData {
     required this.merchantReviewCount,
     required this.masterData,
     required this.model,
+    this.comparisonPeriod,
     required this.insight,
     required this.trend,
     required this.trendUnavailable,
@@ -2912,6 +2957,7 @@ class _HomeData {
   final bool duplicateUnavailable;
   final TransactionMasterData masterData;
   final AnalysisModel? model;
+  final AnalysisPeriod? comparisonPeriod;
   final InsightResult? insight;
   final List<_HomeTrendPoint> trend;
   final bool trendUnavailable;
