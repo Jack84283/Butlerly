@@ -8,7 +8,9 @@ void main() {
   late LocalBackupStatusStore store;
 
   setUp(() async {
-    directory = await Directory.systemTemp.createTemp('butlerly-backup-status-');
+    directory = await Directory.systemTemp.createTemp(
+      'butlerly-backup-status-',
+    );
     store = LocalBackupStatusStore(directoryOverride: directory);
   });
 
@@ -16,9 +18,12 @@ void main() {
     if (await directory.exists()) await directory.delete(recursive: true);
   });
 
-  test('unknown remains unknown when no successful backup was recorded', () async {
-    expect(await store.read(), isNull);
-  });
+  test(
+    'unknown remains unknown when no successful backup was recorded',
+    () async {
+      expect(await store.read(), isNull);
+    },
+  );
 
   test('records successful completion and missing attachment status', () async {
     await store.recordCompleted(missingAttachments: true);
@@ -42,7 +47,9 @@ void main() {
     final statusFile = File('${directory.path}/backup_status_v1.json');
     await statusFile.writeAsString('not valid json');
     expect(await store.read(), isNull);
-    await statusFile.writeAsString('{"version":2,"completedAtUtc":"2026-11-11T12:00:00Z","missingAttachments":false}');
+    await statusFile.writeAsString(
+      '{"version":2,"completedAtUtc":"2026-11-11T12:00:00Z","missingAttachments":false}',
+    );
     expect(await store.read(), isNull);
   });
 }
