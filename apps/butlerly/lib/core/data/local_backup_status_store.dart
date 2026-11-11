@@ -67,7 +67,7 @@ final class LocalBackupStatusStore {
     );
     _writeQueue = operation.then<void>(
       (_) {},
-      onError: (Object _, StackTrace __) {},
+      onError: (Object _, StackTrace stackTrace) {},
     );
     return operation;
   }
