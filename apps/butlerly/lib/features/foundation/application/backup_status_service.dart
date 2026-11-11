@@ -1,4 +1,5 @@
 import 'package:butlerly/core/data/local_backup_status_store.dart';
+export 'package:butlerly/core/data/local_backup_status_store.dart' show LocalBackupStatus;
 
 /// Application-facing contract for optional local backup completion metadata.
 /// This is not evidence that an exported file is still recoverable.
