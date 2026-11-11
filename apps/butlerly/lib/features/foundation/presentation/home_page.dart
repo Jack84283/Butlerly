@@ -1055,6 +1055,7 @@ class _HomeSummaryCard extends StatelessWidget {
                       : _homeMoney(context, metric.value!),
                   comparison: metric.comparison,
                   isCount: metric.isCount,
+                  currency: metric.value?.currency?.value ?? baseCurrency?.value,
                   icon: metric.icon,
                   color: metric.color,
                 ),
@@ -1120,6 +1121,7 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
     required this.amount,
     required this.comparison,
     this.isCount = false,
+    this.currency,
     required this.icon,
     required this.color,
     super.key,
@@ -1130,6 +1132,7 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
   final String amount;
   final AnalysisComparison? comparison;
   final bool isCount;
+  final String? currency;
   final IconData icon;
   final Color color;
 
@@ -1139,6 +1142,7 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
     final usable =
         comparison?.availability == AnalysisDataAvailability.sufficient &&
         comparison?.baselineValue != null &&
+        !comparison!.baselineValue!.isZero &&
         percent != null;
     final percentValue = usable ? double.tryParse(percent.toString()) : null;
     final comparisonText = percentValue == null
@@ -1149,13 +1153,15 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
         ? '↓ ${percentValue.abs().toStringAsFixed(1)}% ${context.l10n.text('vsPreviousPeriod')}'
         : '0.0% ${context.l10n.text('vsPreviousPeriod')}';
     final baseline = comparison?.baselineValue;
-    final baselineNumber = baseline == null ? null : double.tryParse(baseline.toString());
+    final baselineNumber = baseline == null
+        ? null
+        : double.tryParse(baseline.toString());
     final smallBaseline = baselineNumber != null &&
         baselineNumber.abs() > 0 &&
         baselineNumber.abs() < (isCount ? 5 : 10);
     final baselineText = baseline == null
         ? null
-        : '${context.l10n.text('previousPeriod')}: ${isCount ? localizedDecimal(context, baseline.toString()) : localizedDecimal(context, baseline.toString())}';
+        : '${context.l10n.text('previousPeriod')}: ${localizedDecimal(context, baseline.toString())}${isCount || currency == null ? '' : ' $currency'}';
     final compact = context.designTokens.mode == ButlerlyLayoutMode.compact;
     final foreground = context.colors.primaryText;
     final mutedForeground = context.colors.secondaryText;
