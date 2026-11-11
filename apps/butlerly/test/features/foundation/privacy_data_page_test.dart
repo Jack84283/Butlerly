@@ -331,6 +331,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byIcon(CupertinoIcons.archivebox), findsOneWidget);
+      expect(find.text('Back up now'), findsOneWidget);
+      expect(find.textContaining('Last backup: not tracked'), findsOneWidget);
       // The additional Merge action may push later actions below the fold.
       // Scroll until each action is built instead of assuming all are visible.
       await tester.scrollUntilVisible(
@@ -383,6 +385,8 @@ void main() {
     expect(find.text('Merge backup'), findsOneWidget);
     expect(find.text('Replace from backup'), findsOneWidget);
     expect(find.text('Backup & Recovery'), findsOneWidget);
+    expect(find.text('Back up now'), findsOneWidget);
+    expect(find.textContaining('Last backup: not tracked'), findsOneWidget);
     expect(find.text('Data Export'), findsOneWidget);
     expect(find.text('Data Management'), findsOneWidget);
     expect(find.text('Danger Zone'), findsOneWidget);
