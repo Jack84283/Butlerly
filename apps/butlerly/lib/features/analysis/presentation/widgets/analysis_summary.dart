@@ -34,20 +34,23 @@ class AnalysisSummary extends StatelessWidget {
                 : Theme.of(context).textTheme.displaySmall,
           ),
           Text(context.l10n.text('totalSpending')),
-          if (model.comparison != null) ...[
+          if (model.spendingComparison != null) ...[
             Text(
-              analysisComparisonText(context, model.comparison!),
+              analysisComparisonText(context, model.spendingComparison!),
               semanticsLabel: analysisComparisonText(
                 context,
-                model.comparison!,
+                model.spendingComparison!,
               ),
             ),
-            if (model.comparison!.baselineValue != null)
+            if (model.spendingComparison!.baselineValue != null &&
+                isUsableComparison(model.spendingComparison!))
               Text(
                 '${context.l10n.text('previousPeriod')}: '
-                '${localizedDecimal(context, model.comparison!.baselineValue.toString())} '
+                '${localizedDecimal(context, model.spendingComparison!.baselineValue.toString())} '
                 '${model.spending?.currency?.value ?? ''}',
               ),
+            if (model.spendingComparison!.baselineValue?.isZero == true)
+              Text(context.l10n.text('zeroComparisonBaseline')),
           ],
           SizedBox(
             height: _isCompact(context)
