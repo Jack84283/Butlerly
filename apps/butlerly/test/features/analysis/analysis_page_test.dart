@@ -576,7 +576,7 @@ void main() {
     expect(find.text('Insights are unavailable'), findsOneWidget);
   });
 
-  testWidgets('renders a valid comparison without an emitted insight', (
+  testWidgets('does not mislabel a rule-only comparison as spending', (
     tester,
   ) async {
     final rule = AnalysisRuleDefinition(
@@ -617,7 +617,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.textContaining('previous period'), findsOneWidget);
+    expect(find.textContaining('previous period'), findsNothing);
     expect(find.text('Notable'), findsNothing);
   });
 
