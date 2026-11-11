@@ -38,7 +38,7 @@ void main() {
     }
   });
 
-  test('Light and Navy match FinIntel while Butlerly Dark is unchanged', () {
+  test('FinIntel surfaces coexist with Butler Red control accents', () {
     final light = AppTheme.light.extension<ButlerlySemanticColors>()!;
     final navyTheme = AppTheme.navy;
     final navy = navyTheme.extension<ButlerlySemanticColors>()!;
@@ -49,11 +49,11 @@ void main() {
     expect(light.overlaySurface, const Color(0xFFFFFFFF));
     expect(light.primaryText, const Color(0xFF151E2B));
     expect(light.secondaryText, const Color(0xFF516278));
-    expect(light.controlPrimary, const Color(0xFF244D79));
+    expect(light.controlPrimary, const Color(0xFF7A1E3A));
     expect(light.secondaryActionSurface, const Color(0xFFE3EBF6));
     expect(light.border, const Color(0xFFD5DEE9));
     expect(light.inputBorder, const Color(0xFFA8BACD));
-    expect(light.focusRing, const Color(0xFF225DA2));
+    expect(light.focusRing, const Color(0xFF7A1E3A));
     expect(navyTheme.brightness, Brightness.dark);
     expect(navy.background, const Color(0xFF0C1118));
     expect(navy.cardSurface, const Color(0xFF17212E));
@@ -61,12 +61,12 @@ void main() {
     expect(navy.overlaySurface, const Color(0xFF202D3B));
     expect(navy.primaryText, const Color(0xFFE8EEF6));
     expect(navy.secondaryText, const Color(0xFFA5B4C7));
-    expect(navy.controlPrimary, const Color(0xFF294767));
-    expect(navyTheme.colorScheme.onPrimary, const Color(0xFFDBE9FF));
+    expect(navy.controlPrimary, const Color(0xFF813353));
+    expect(navyTheme.colorScheme.onPrimary, Colors.white);
     expect(navy.secondaryActionSurface, const Color(0xFF202F46));
     expect(navy.border, const Color(0xFF2B394B));
     expect(navy.inputBorder, const Color(0xFF436B92));
-    expect(navy.focusRing, const Color(0xFF8CC1FF));
+    expect(navy.focusRing, const Color(0xFFCF7F9A));
     expect(dark.background, const Color(0xFF0D0D0D));
     expect(dark.cardSurface, const Color(0xFF181818));
     expect(dark.subtleSurface, const Color(0xFF222222));
