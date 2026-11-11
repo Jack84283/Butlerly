@@ -155,9 +155,20 @@ void main() {
     expect(find.text('Import from local file'), findsOneWidget);
     expect(find.text('Add payment source'), findsOneWidget);
 
-    final first = tester.getRect(find.byType(ButlerlyCard).at(0));
-    final second = tester.getRect(find.byType(ButlerlyCard).at(1));
-    expect(second.left, greaterThan(first.right));
+    expect(
+      find.byKey(const ValueKey('desktop-add-three-columns')),
+      findsOneWidget,
+    );
+    final cards = find.byType(ButlerlyCard);
+    final first = tester.getRect(cards.at(0));
+    final second = tester.getRect(cards.at(1));
+    final third = tester.getRect(cards.at(2));
+    final fifth = tester.getRect(cards.at(4));
+    expect(second.left, closeTo(first.left, 1));
+    expect(second.top, greaterThan(first.bottom));
+    expect(third.left, greaterThan(first.right));
+    expect(third.top, closeTo(first.top, 1));
+    expect(fifth.left, greaterThan(third.right));
     expect(first.width, greaterThan(350));
 
     await tester.tap(find.text('Import from local file'));
