@@ -283,8 +283,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
           children: [
             Container(
               key: const ValueKey('desktop-home-header'),
-              padding: const EdgeInsets.symmetric(
-                horizontal: ButlerlySize.contentGutter,
+              padding: const EdgeInsets.only(
+                left: ButlerlySize.contentGutter,
+                // Match the trailing inset used by shared desktop AppBars.
+                right: ButlerlySpacing.compact,
               ),
               constraints: largeTextToolbar
                   ? const BoxConstraints(
@@ -420,12 +422,14 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                       if (!compactToolbar) const SizedBox(width: 8),
                       if (compactToolbar)
                         IconButton(
+                          key: const ValueKey('desktop-home-header-add'),
                           tooltip: context.l10n.text('add'),
                           onPressed: () => _go('/transactions/add'),
                           icon: const Icon(Icons.add),
                         )
                       else
                         FilledButton.icon(
+                          key: const ValueKey('desktop-home-header-add'),
                           style: FilledButton.styleFrom(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,
@@ -440,7 +444,10 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                           icon: const Icon(Icons.add),
                           label: Text(context.l10n.text('add')),
                         ),
-                      const ButlerlyContextHelpButton(articleId: 'ch-12'),
+                      const ButlerlyContextHelpButton(
+                        articleId: 'ch-12',
+                        visualGapAfterAdd: ButlerlySpacing.small,
+                      ),
                     ],
                   );
                 },
