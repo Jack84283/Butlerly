@@ -3,6 +3,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_action_group.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_desktop_panel_footer.dart';
 import 'package:butlerly/design_system/components/butlerly_desktop_table_body.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
@@ -431,72 +432,55 @@ class _RuleDesktopDetailsPanel extends StatelessWidget {
   final VoidCallback onDelete;
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.stretch,
-    children: [
-      Row(
-        children: [
-          IconButton(
-            key: const ValueKey('desktop-rule-details-close'),
-            tooltip: context.l10n.text('close'),
-            onPressed: onClose,
-            icon: const Icon(Icons.close_rounded),
-          ),
-          Expanded(
-            child: Text(
-              context.l10n.text('ruleManagement'),
-              style: Theme.of(context).textTheme.titleLarge,
-              overflow: TextOverflow.ellipsis,
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      toolbarHeight: ButlerlySize.pageToolbarHeight,
+      leading: ButlerlyPanelCloseButton(
+        buttonKey: const ValueKey('desktop-rule-details-close'),
+        onPressed: onClose,
+      ),
+      title: Text(context.l10n.text('ruleManagement')),
+      actions: const [ButlerlyContextHelpButton(articleId: 'ch-16')],
+    ),
+    body: SingleChildScrollView(
+      padding: const EdgeInsets.all(ButlerlySpacing.standard),
+      child: ButlerlyCard(
+        key: const ValueKey('desktop-rule-details-panel'),
+        semanticLabel: rule.name,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(rule.name, style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: ButlerlySpacing.standard),
+            _RuleDetailsContent(
+              rule: rule,
+              conditions: conditions,
+              actions: actions,
             ),
-          ),
-          IconButton(
-            key: const ValueKey('desktop-rule-details-edit-icon'),
-            tooltip: context.l10n.text('edit'),
+          ],
+        ),
+      ),
+    ),
+    bottomNavigationBar: ButlerlyDesktopPanelFooter(
+      child: Wrap(
+        alignment: WrapAlignment.end,
+        spacing: ButlerlySpacing.small,
+        runSpacing: ButlerlySpacing.compact,
+        children: [
+          OutlinedButton.icon(
+            key: const ValueKey('desktop-rule-details-edit'),
             onPressed: onEdit,
             icon: const Icon(Icons.edit_outlined),
+            label: Text(context.l10n.text('edit')),
+          ),
+          ButlerlyDestructiveButton(
+            key: const ValueKey('desktop-rule-details-delete'),
+            onPressed: onDelete,
+            child: Text(context.l10n.text('delete')),
           ),
         ],
       ),
-      Expanded(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(ButlerlySpacing.standard),
-          child: ButlerlyCard(
-            key: const ValueKey('desktop-rule-details-panel'),
-            semanticLabel: rule.name,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(rule.name, style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: ButlerlySpacing.standard),
-                _RuleDetailsContent(
-                  rule: rule,
-                  conditions: conditions,
-                  actions: actions,
-                ),
-                const SizedBox(height: ButlerlySpacing.standard),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    OutlinedButton.icon(
-                      key: const ValueKey('desktop-rule-details-edit'),
-                      onPressed: onEdit,
-                      icon: const Icon(Icons.edit_outlined),
-                      label: Text(context.l10n.text('edit')),
-                    ),
-                    const SizedBox(width: ButlerlySpacing.small),
-                    ButlerlyDestructiveButton(
-                      key: const ValueKey('desktop-rule-details-delete'),
-                      onPressed: onDelete,
-                      child: Text(context.l10n.text('delete')),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    ],
+    ),
   );
 }
 
@@ -1395,46 +1379,35 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
     if (widget.onSubmit == null) {
       return ButlerlySheet(title: title, content: content, actions: actions);
     }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            IconButton(
-              key: const ValueKey('desktop-rule-editor-back'),
-              tooltip: context.l10n.text('cancel'),
-              onPressed: widget.onCancel,
-              icon: const Icon(Icons.arrow_back_rounded),
-            ),
-            Expanded(
-              child: DefaultTextStyle(
-                style: Theme.of(context).textTheme.titleLarge!,
-                child: title,
-              ),
-            ),
-          ],
+    return Scaffold(
+      key: const ValueKey('desktop-rule-editor-panel'),
+      appBar: AppBar(
+        toolbarHeight: ButlerlySize.pageToolbarHeight,
+        leading: ButlerlyPanelCloseButton(
+          buttonKey: const ValueKey('desktop-rule-editor-close'),
+          onPressed: widget.onCancel,
         ),
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(ButlerlySpacing.standard),
-            child: ButlerlyCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  content,
-                  const SizedBox(height: ButlerlySpacing.standard),
-                  Wrap(
-                    alignment: WrapAlignment.end,
-                    spacing: ButlerlySpacing.small,
-                    runSpacing: ButlerlySpacing.small,
-                    children: actions,
-                  ),
-                ],
-              ),
-            ),
+        title: title,
+        actions: const [ButlerlyContextHelpButton(articleId: 'ch-16')],
+      ),
+      body: SingleChildScrollView(
+        key: const ValueKey('desktop-rule-editor-scroll'),
+        padding: const EdgeInsets.all(ButlerlySpacing.standard),
+        child: ButlerlyCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [content],
           ),
         ),
-      ],
+      ),
+      bottomNavigationBar: ButlerlyDesktopPanelFooter(
+        child: Wrap(
+          alignment: WrapAlignment.end,
+          spacing: ButlerlySpacing.small,
+          runSpacing: ButlerlySpacing.compact,
+          children: actions,
+        ),
+      ),
     );
   }
 }
