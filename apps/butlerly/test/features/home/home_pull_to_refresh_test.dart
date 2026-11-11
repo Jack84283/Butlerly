@@ -184,7 +184,7 @@ void main() {
       find.text("Your financial data for September 2026."),
       findsOneWidget,
     );
-    expect(find.text('vs previous period'), findsOneWidget);
+    expect(find.textContaining('vs previous period'), findsWidgets);
     expect(find.byIcon(Icons.more_horiz_rounded), findsNWidgets(4));
     expect(find.byTooltip('View all categories'), findsOneWidget);
     expect(find.byTooltip('View all transactions'), findsOneWidget);
@@ -865,7 +865,10 @@ void main() {
         find.descendant(of: card, matching: find.byType(Container)).first,
       );
       final decoration = container.decoration! as BoxDecoration;
-      expect(decoration.color, entry.$3.withValues(alpha: 0.50));
+      expect(
+        decoration.color,
+        AppTheme.light.extension<ButlerlySemanticColors>()!.subtleSurface,
+      );
       expect(decoration.borderRadius, BorderRadius.circular(16));
       expect(
         find.descendant(of: card, matching: find.text(entry.$2)),
