@@ -105,14 +105,14 @@ void main() {
       expect(left.right, lessThan(right.left));
       expect(left.top, closeTo(right.top, 1));
       expect(left.bottom, closeTo(right.bottom, 1));
+        expect(
+        find.ancestor(of: overviewScroll, matching: find.byType(Scrollbar)),
+        findsWidgets,
+      );
       expect(
-      find.ancestor(of: overviewScroll, matching: find.byType(Scrollbar)),
-      findsWidgets,
-    );
-    expect(
-      find.ancestor(of: detailScroll, matching: find.byType(Scrollbar)),
-      findsWidgets,
-    );
+        find.ancestor(of: detailScroll, matching: find.byType(Scrollbar)),
+        findsWidgets,
+      );
 
       await tester.tap(find.byKey(const ValueKey('financial-profile-edit')));
       await tester.pumpAndSettle();
