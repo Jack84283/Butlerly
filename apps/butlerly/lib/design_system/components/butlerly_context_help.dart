@@ -33,6 +33,20 @@ String? contextualHelpArticleForPath(String path) => switch (path) {
   _ => 'ch-3',
 };
 
+/// Identifies pages hosted by the wide desktop shell.
+class ButlerlyDesktopHeaderScope extends InheritedWidget {
+  const ButlerlyDesktopHeaderScope({required super.child, super.key});
+
+  static bool isActive(BuildContext context) =>
+      context
+          .dependOnInheritedWidgetOfExactType<ButlerlyDesktopHeaderScope>() !=
+      null;
+
+  @override
+  bool updateShouldNotify(covariant ButlerlyDesktopHeaderScope oldWidget) =>
+      false;
+}
+
 /// Prominent page-header action, shared by regular pages and custom AppBars.
 /// Router-backed pages navigate to Help; setup/recovery screens use an offline
 /// overlay when no router is available. The Help reader hides its own action.
@@ -74,10 +88,14 @@ class ButlerlyContextHelpButton extends StatelessWidget {
     // target for touch and keyboard accessibility. Its left spacing is
     // independent of the visual circle diameter.
     return Padding(
+      key: const ValueKey('page-context-help-padding'),
       padding: EdgeInsets.only(
         left: visualGapAfterAdd == null
             ? ButlerlySpacing.small
             : visualGapAfterAdd! - (ButlerlySize.minimumTarget - 32) / 2,
+        right: ButlerlyDesktopHeaderScope.isActive(context)
+            ? ButlerlySpacing.small
+            : ButlerlySpacing.none,
       ),
       child: IconButton(
         key: const ValueKey('page-context-help'),

@@ -2218,18 +2218,21 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(context.l10n.text('reviewStatementImport')),
-      actions: [
-        IconButton(
-          onPressed: _abandonImport,
-          tooltip: context.l10n.text('abandonStatementImport'),
-          icon: const Icon(Icons.close),
-        ),
-        const ButlerlyContextHelpButton(articleId: 'ch-10'),
-      ],
-    ),
+  Widget build(BuildContext context) {
+    final desktop = ButlerlyDesktopHeaderScope.isActive(context);
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(context.l10n.text('reviewStatementImport')),
+        actions: [
+          if (!desktop)
+            IconButton(
+              onPressed: _abandonImport,
+              tooltip: context.l10n.text('abandonStatementImport'),
+              icon: const Icon(Icons.close),
+            ),
+          const ButlerlyContextHelpButton(articleId: 'ch-10'),
+        ],
+      ),
     body: ButlerlyResponsiveBody(
       contentKey: const ValueKey('statement-review-content'),
       child: ListView(
@@ -2390,19 +2393,56 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
             ),
             child: SafeArea(
               top: false,
-              child: FilledButton.icon(
-                onPressed: _sourceId == null || _rows.isEmpty
+              child: StatementReviewFooterActions(
+                desktop: desktop,
+                onAbandon: _abandonImport,
+                onImport: _sourceId == null || _rows.isEmpty
                     ? null
                     : _importBatch,
-                icon: const Icon(Icons.download_done_outlined),
-                label: Text(context.l10n.text('importData')),
               ),
             ),
           ),
         ],
       ),
-    ),
-  );
+    );
+  }
+}
+
+/// The compact view retains the header Abandon action. The desktop split
+/// panel keeps both terminal actions together at the bottom of the review.
+class StatementReviewFooterActions extends StatelessWidget {
+  const StatementReviewFooterActions({
+    required this.desktop,
+    required this.onAbandon,
+    required this.onImport,
+    super.key,
+  });
+
+  final bool desktop;
+  final VoidCallback onAbandon;
+  final VoidCallback? onImport;
+
+  @override
+  Widget build(BuildContext context) {
+    final importButton = FilledButton.icon(
+      key: const ValueKey('statement-review-import-data'),
+      onPressed: onImport,
+      icon: const Icon(Icons.download_done_outlined),
+      label: Text(context.l10n.text('importData')),
+    );
+    if (!desktop) return importButton;
+    return ButlerlyButtonBar(
+      alignment: ButlerlyButtonBarAlignment.end,
+      spacing: ButlerlyButtonBarSpacing.none,
+      children: [
+        ButlerlyDestructiveButton(
+          onPressed: onAbandon,
+          child: Text(context.l10n.text('abandonStatementImport')),
+        ),
+        importButton,
+      ],
+    );
+  }
 }
 
 class _ProgressSummary extends StatelessWidget {

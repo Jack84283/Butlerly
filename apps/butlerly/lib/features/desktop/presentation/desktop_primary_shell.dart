@@ -1,4 +1,5 @@
 import 'package:butlerly/design_system/components/butlerly_brand_icon.dart';
+import 'package:butlerly/design_system/components/butlerly_context_help.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
@@ -43,8 +44,14 @@ class _DesktopPrimaryShellState extends State<DesktopPrimaryShell> {
     return Theme(
       data: theme.copyWith(
         textTheme: ButlerlyTypography.desktopTextTheme(theme.textTheme),
+        appBarTheme: theme.appBarTheme.copyWith(
+          shape: Border(
+            bottom: BorderSide(color: context.colors.cardDivider),
+          ),
+        ),
       ),
-      child: Scaffold(
+      child: ButlerlyDesktopHeaderScope(
+        child: Scaffold(
         body: SafeArea(
           bottom: false,
           child: Row(
@@ -72,6 +79,7 @@ class _DesktopPrimaryShellState extends State<DesktopPrimaryShell> {
             ],
           ),
         ),
+      ),
       ),
     );
   }
