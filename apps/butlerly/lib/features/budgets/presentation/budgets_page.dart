@@ -8,6 +8,7 @@ import 'package:butlerly/design_system/components/butlerly_budget_scope_icon.dar
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
+import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/budgets/application/budget_change_notifier.dart';
 import 'package:butlerly/features/budgets/application/budget_suggestions.dart';
@@ -166,27 +167,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
       final completion = Completer<Budget?>();
       Widget editor(BuildContext dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
-          return ButlerlySheet(
-            title: desktop
-                ? Row(
-                    children: [
-                      Expanded(child: Text(context.l10n.text('budgetEdit'))),
-                      IconButton(
-                        key: const ValueKey('budget-editor-close'),
-                        tooltip: MaterialLocalizations.of(
-                          dialogContext,
-                        ).closeButtonTooltip,
-                        icon: const Icon(Icons.close),
-                        onPressed: () {
-                          if (!completion.isCompleted) {
-                            completion.complete(null);
-                          }
-                        },
-                      ),
-                    ],
-                  )
-                : Text(context.l10n.text('budgetEdit')),
-            content: SingleChildScrollView(
+          final form = SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -301,8 +282,8 @@ class _BudgetsPageState extends State<BudgetsPage> {
                   ),
                 ],
               ),
-            ),
-            actions: [
+            );
+          final actions = <Widget>[
               TextButton(
                 onPressed: !services.isRegistered<FinanceServices>()
                     ? null
@@ -333,7 +314,7 @@ class _BudgetsPageState extends State<BudgetsPage> {
               ButlerlyCancelButton(
                 onPressed: () {
                   if (desktop) {
-                    completion.complete(null);
+                    if (!completion.isCompleted) completion.complete(null);
                   } else {
                     Navigator.pop(dialogContext);
                   }
@@ -359,29 +340,65 @@ class _BudgetsPageState extends State<BudgetsPage> {
                     amount: amountText.trim(),
                   );
                   if (desktop) {
-                    completion.complete(budget);
+                    if (!completion.isCompleted) completion.complete(budget);
                   } else {
                     Navigator.pop(dialogContext, budget);
                   }
                 },
                 child: Text(context.l10n.text('save')),
               ),
-            ],
+            ];
+          if (desktop) {
+            return Scaffold(
+              key: const ValueKey('desktop-budget-editor-panel'),
+              appBar: AppBar(
+                leading: ButlerlyPanelCloseButton(
+                  buttonKey: const ValueKey('budget-editor-close'),
+                  onPressed: () {
+                    if (!completion.isCompleted) completion.complete(null);
+                  },
+                ),
+                title: Text(context.l10n.text('budgetEdit')),
+                actions: const [
+                  ButlerlyContextHelpButton(articleId: 'ch-15'),
+                ],
+              ),
+              body: Column(
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(ButlerlySpacing.standard),
+                      child: form,
+                    ),
+                  ),
+                  Divider(height: 1, color: context.colors.cardDivider),
+                  SafeArea(
+                    top: false,
+                    child: Padding(
+                      padding: const EdgeInsets.all(ButlerlySpacing.small),
+                      child: ButlerlyButtonBar(
+                        alignment: ButlerlyButtonBarAlignment.end,
+                        density: ButlerlyButtonBarDensity.compact,
+                        spacing: ButlerlyButtonBarSpacing.none,
+                        children: actions,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+          return ButlerlySheet(
+            title: Text(context.l10n.text('budgetEdit')),
+            content: form,
+            actions: actions,
           );
         },
       );
       final Future<Budget?> result;
       if (desktop) {
         setState(() {
-          _desktopEditor = Material(
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: Padding(
-                padding: const EdgeInsets.all(ButlerlySpacing.standard),
-                child: editor(context),
-              ),
-            ),
-          );
+          _desktopEditor = editor(context);
         });
         result = completion.future;
       } else {
