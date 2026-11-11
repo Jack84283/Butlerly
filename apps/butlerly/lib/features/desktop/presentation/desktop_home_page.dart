@@ -285,8 +285,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
               key: const ValueKey('desktop-home-header'),
               padding: const EdgeInsets.only(
                 left: ButlerlySize.contentGutter,
-                // Match the trailing inset used by shared desktop AppBars.
-                right: ButlerlySpacing.compact,
+                // Shared AppBars already place Help 18px from the right
+                // border. Do not add a separate Home-only trailing gutter.
+                right: ButlerlySpacing.none,
               ),
               constraints: largeTextToolbar
                   ? const BoxConstraints(

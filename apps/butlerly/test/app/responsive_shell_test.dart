@@ -466,7 +466,7 @@ void main() {
       headerWidget.padding,
       const EdgeInsets.only(
         left: ButlerlySize.contentGutter,
-        right: ButlerlySpacing.compact,
+        right: ButlerlySpacing.none,
       ),
     );
     final appBarTitleStyle = Theme.of(
