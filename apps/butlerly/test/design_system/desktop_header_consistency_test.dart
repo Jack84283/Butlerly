@@ -130,13 +130,10 @@ void main() {
 
     await tester.pumpWidget(
       app(
-        const Scaffold(
-          appBar: PreferredSize(
-            preferredSize: Size.fromHeight(kToolbarHeight),
-            child: AppBar(
-              title: Text('Statements'),
-              actions: [ButlerlyContextHelpButton(articleId: 'ch-10')],
-            ),
+        Scaffold(
+          appBar: AppBar(
+            title: const Text('Statements'),
+            actions: const [ButlerlyContextHelpButton(articleId: 'ch-10')],
           ),
         ),
       ),
