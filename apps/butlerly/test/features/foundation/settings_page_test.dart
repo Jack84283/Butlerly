@@ -252,7 +252,11 @@ void main() {
       of: find.text('Manage privacy & data'),
       matching: find.byType(InkWell),
     );
-    await tester.ensureVisible(privacyRow.first);
+    await Scrollable.ensureVisible(
+      tester.element(privacyRow.first),
+      alignment: 0.3,
+      duration: const Duration(milliseconds: 1),
+    );
     await tester.pumpAndSettle();
     await tester.tap(privacyRow.first);
     await tester.pumpAndSettle();
