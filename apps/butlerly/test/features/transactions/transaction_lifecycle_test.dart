@@ -3233,10 +3233,7 @@ void main() {
         const ValueKey('transaction-detail-delete-button'),
       );
       // Desktop detail actions are fixed outside the scrolling content.
-      expect(
-        find.byType(ButlerlyDesktopPanelFooter),
-        findsOneWidget,
-      );
+      expect(find.byType(ButlerlyDesktopPanelFooter), findsOneWidget);
       await tester.tap(deleteButton);
       await tester.pumpAndSettle();
       final confirmDelete = find.text('Delete permanently').last;

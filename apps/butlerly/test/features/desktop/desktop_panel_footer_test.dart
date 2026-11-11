@@ -48,10 +48,7 @@ void main() {
     final initialRect = tester.getRect(footer);
     expect(initialRect.bottom, closeTo(700, 1));
     expect(tester.getRect(save).bottom, lessThan(initialRect.bottom));
-    final divider = find.descendant(
-      of: footer,
-      matching: find.byType(Divider),
-    );
+    final divider = find.descendant(of: footer, matching: find.byType(Divider));
     expect(divider, findsOneWidget);
     expect(tester.widget<Divider>(divider).height, 1);
     expect(

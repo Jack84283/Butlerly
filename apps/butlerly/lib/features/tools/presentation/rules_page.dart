@@ -1374,7 +1374,11 @@ class _RuleEditorSheetState extends State<_RuleEditorSheet> {
         onPressed: widget.onCancel ?? () => Navigator.pop(context),
         child: Text(context.l10n.text('cancel')),
       ),
-      FilledButton(onPressed: _save, child: Text(context.l10n.text('save'))),
+      FilledButton(
+        key: const ValueKey('rule-editor-save'),
+        onPressed: _save,
+        child: Text(context.l10n.text('save')),
+      ),
     ];
     if (widget.onSubmit == null) {
       return ButlerlySheet(title: title, content: content, actions: actions);

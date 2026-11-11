@@ -1439,7 +1439,9 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
       key: const ValueKey('transaction-save-locally'),
       onPressed: _saving || !enabled ? null : _save,
       child: Text(
-        _saving ? context.l10n.text('saving') : context.l10n.text('saveLocally'),
+        _saving
+            ? context.l10n.text('saving')
+            : context.l10n.text('saveLocally'),
       ),
     );
     if (embeddedPanel) {
