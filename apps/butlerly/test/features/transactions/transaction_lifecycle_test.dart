@@ -6,6 +6,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_compact_section_selector.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_desktop_panel_footer.dart';
 import 'package:butlerly/design_system/components/butlerly_desktop_transaction_table.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
@@ -237,14 +238,14 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.byKey(const ValueKey('transaction-detail-edit-action')),
+      find.byKey(const ValueKey('transaction-detail-edit-button')),
       findsOneWidget,
     );
     expect(row, findsOneWidget);
 
     // Edit keeps the same panel and leaves the transactions table mounted.
     await tester.tap(
-      find.byKey(const ValueKey('transaction-detail-edit-action')),
+      find.byKey(const ValueKey('transaction-detail-edit-button')),
     );
     await tester.pumpAndSettle();
     expect(
@@ -271,7 +272,7 @@ void main() {
 
     // Saving returns to the current detail in place with updated values.
     await tester.tap(
-      find.byKey(const ValueKey('transaction-detail-edit-action')),
+      find.byKey(const ValueKey('transaction-detail-edit-button')),
     );
     await tester.pumpAndSettle();
     await tester.enterText(
@@ -458,7 +459,7 @@ void main() {
       findsOneWidget,
     );
     await tester.tap(
-      find.byKey(const ValueKey('transaction-detail-edit-action')),
+      find.byKey(const ValueKey('transaction-detail-edit-button')),
     );
     await tester.pumpAndSettle();
     expect(
@@ -3072,7 +3073,7 @@ void main() {
       await tester.tap(find.byType(TransactionRow));
       await tester.pumpAndSettle();
       await tester.tap(
-        find.byKey(const ValueKey('transaction-detail-edit-action')),
+        find.byKey(const ValueKey('transaction-detail-edit-button')),
       );
       await tester.pumpAndSettle();
       await tester.enterText(
@@ -3114,7 +3115,7 @@ void main() {
       await tester.tap(find.byType(TransactionRow));
       await tester.pumpAndSettle();
       await tester.tap(
-        find.byKey(const ValueKey('transaction-detail-edit-action')),
+        find.byKey(const ValueKey('transaction-detail-edit-button')),
       );
       await tester.pumpAndSettle();
       await tester.enterText(
@@ -3177,7 +3178,7 @@ void main() {
       await tester.tap(find.byType(TransactionRow));
       await tester.pumpAndSettle();
       await tester.tap(
-        find.byKey(const ValueKey('transaction-detail-edit-action')),
+        find.byKey(const ValueKey('transaction-detail-edit-button')),
       );
       await tester.pumpAndSettle();
       await tester.enterText(
@@ -3212,12 +3213,11 @@ void main() {
       final deleteButton = find.byKey(
         const ValueKey('transaction-detail-delete-button'),
       );
-      await tester.scrollUntilVisible(
-        deleteButton,
-        200,
-        scrollable: _transactionDetailScrollable(tester),
+      // Desktop detail actions are fixed outside the scrolling content.
+      expect(
+        find.byType(ButlerlyDesktopPanelFooter),
+        findsOneWidget,
       );
-      await tester.ensureVisible(deleteButton);
       await tester.tap(deleteButton);
       await tester.pumpAndSettle();
       final confirmDelete = find.text('Delete permanently').last;
@@ -3330,7 +3330,7 @@ void main() {
       await tester.tap(find.byType(TransactionRow));
       await tester.pumpAndSettle();
       await tester.tap(
-        find.byKey(const ValueKey('transaction-detail-edit-action')),
+        find.byKey(const ValueKey('transaction-detail-edit-button')),
       );
       await tester.pumpAndSettle();
       await tester.enterText(

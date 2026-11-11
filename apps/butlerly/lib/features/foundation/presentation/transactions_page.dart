@@ -1808,12 +1808,13 @@ class _TransactionDetailPageState extends State<TransactionDetailPage> {
               ),
         title: Text(context.l10n.text('transactionDetail')),
         actions: [
-          IconButton(
-            key: const ValueKey('transaction-detail-edit-action'),
-            tooltip: context.l10n.text('edit'),
-            onPressed: _editTransaction,
-            icon: const Icon(Icons.edit_outlined),
-          ),
+          if (widget.onClose == null)
+            IconButton(
+              key: const ValueKey('transaction-detail-edit-action'),
+              tooltip: context.l10n.text('edit'),
+              onPressed: _editTransaction,
+              icon: const Icon(Icons.edit_outlined),
+            ),
           const ButlerlyContextHelpButton(articleId: 'ch-5'),
         ],
       ),
