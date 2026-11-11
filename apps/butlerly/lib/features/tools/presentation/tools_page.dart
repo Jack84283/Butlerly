@@ -23,44 +23,74 @@ class ToolsPage extends StatelessWidget {
         ButlerlyLayoutMode.wide;
     final tools = _tools(context);
 
+    final sections = [
+      (
+        title: context.l10n.text('toolsActNow'),
+        routes: const ['/review', '/payment-settlements'],
+      ),
+      (
+        title: context.l10n.text('toolsUnderstand'),
+        routes: const ['/analysis', '/insights'],
+      ),
+      (
+        title: context.l10n.text('toolsMaintain'),
+        routes: const ['/master-data', '/rules'],
+      ),
+    ];
+
     return ButlerlyPage(
       title: context.l10n.text('tools'),
       subtitle: context.l10n.text('toolsSubtitle'),
       fullWidth: desktop,
       children: [
-        if (desktop)
-          LayoutBuilder(
-            key: const ValueKey('desktop-tools-actions'),
-            builder: (context, constraints) {
-              const gap = ButlerlySpacing.cardGap;
-              final columns = constraints.maxWidth >= 1100 ? 3 : 2;
-              final tileWidth =
-                  (constraints.maxWidth - gap * (columns - 1)) / columns;
-              return Wrap(
-                spacing: gap,
-                runSpacing: gap,
-                children: [
-                  for (final tool in tools)
-                    SizedBox(
-                      width: tileWidth,
-                      child: _ToolPanel(tool: tool),
+        for (final section in sections) ...[
+          ButlerlySectionHeader(title: section.title),
+          if (desktop)
+            LayoutBuilder(
+              key: const ValueKey('desktop-tools-actions'),
+              builder: (context, constraints) {
+                const gap = ButlerlySpacing.cardGap;
+                final width = constraints.maxWidth > 980
+                    ? 980.0
+                    : constraints.maxWidth;
+                final tileWidth = (width - gap) / 2;
+                return Align(
+                  alignment: Alignment.centerLeft,
+                  child: SizedBox(
+                    width: width,
+                    child: Wrap(
+                      spacing: gap,
+                      runSpacing: gap,
+                      children: [
+                        for (final tool in tools.where(
+                          (item) => section.routes.contains(item.route),
+                        ))
+                          SizedBox(
+                            width: tileWidth,
+                            child: _ToolPanel(tool: tool),
+                          ),
+                      ],
                     ),
-                ],
-              );
-            },
-          )
-        else
-          ButlerlyActionGroup(
-            actions: [
-              for (final tool in tools)
-                ButlerlyActionItem(
-                  icon: tool.icon,
-                  title: tool.title,
-                  subtitle: tool.description,
-                  onTap: () => context.push(tool.route),
-                ),
-            ],
-          ),
+                  ),
+                );
+              },
+            )
+          else
+            ButlerlyActionGroup(
+              actions: [
+                for (final tool in tools.where(
+                  (item) => section.routes.contains(item.route),
+                ))
+                  ButlerlyActionItem(
+                    icon: tool.icon,
+                    title: tool.title,
+                    subtitle: tool.description,
+                    onTap: () => context.push(tool.route),
+                  ),
+              ],
+            ),
+          const SizedBox(height: ButlerlySpacing.standard),
+        ],
         const SizedBox(height: ButlerlySpacing.structural),
       ],
     );
