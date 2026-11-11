@@ -98,6 +98,8 @@ void main() {
     router.pop();
     await tester.pumpAndSettle();
 
+    await tester.ensureVisible(find.byIcon(Icons.account_balance_wallet_outlined));
+    await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.account_balance_wallet_outlined));
     await tester.pumpAndSettle();
     expect(find.text('payment source destination'), findsOneWidget);
