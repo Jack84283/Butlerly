@@ -44,7 +44,19 @@ class ToolsPage extends StatelessWidget {
       fullWidth: desktop,
       children: [
         for (final section in sections) ...[
-          ButlerlySectionHeader(title: section.title),
+          if (desktop)
+            Padding(
+              padding: const EdgeInsets.only(
+                top: ButlerlySpacing.small,
+                bottom: ButlerlySpacing.small,
+              ),
+              child: Text(
+                section.title,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            )
+          else
+            ButlerlySectionHeader(title: section.title),
           if (desktop)
             LayoutBuilder(
               key: ValueKey(
@@ -93,7 +105,6 @@ class ToolsPage extends StatelessWidget {
                   ),
               ],
             ),
-          const SizedBox(height: ButlerlySpacing.standard),
         ],
         const SizedBox(height: ButlerlySpacing.structural),
       ],
