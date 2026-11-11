@@ -1549,6 +1549,8 @@ class _DesktopMetric extends StatelessWidget {
     required this.value,
     required this.icon,
     required this.comparison,
+    this.isCount = false,
+    this.currency,
     this.accentColor,
     super.key,
   });
@@ -1557,6 +1559,8 @@ class _DesktopMetric extends StatelessWidget {
   final String value;
   final IconData icon;
   final AnalysisComparison? comparison;
+  final bool isCount;
+  final String? currency;
   final Color? accentColor;
 
   @override
@@ -1575,6 +1579,7 @@ class _DesktopMetric extends StatelessWidget {
     final usable =
         comparison?.availability == AnalysisDataAvailability.sufficient &&
         comparison?.baselineValue != null &&
+        !comparison!.baselineValue!.isZero &&
         percent != null;
     final percentValue = usable ? double.tryParse(percent.toString()) : null;
     final comparisonText = percentValue == null
@@ -1584,6 +1589,24 @@ class _DesktopMetric extends StatelessWidget {
         : percentValue < 0
         ? '↓ ${percentValue.abs().toStringAsFixed(1)}% ${context.l10n.text('vsPreviousPeriod')}'
         : '0.0% ${context.l10n.text('vsPreviousPeriod')}';
+
+    final baseline = comparison?.baselineValue;
+    final baselineNumber = baseline == null
+        ? null
+        : double.tryParse(baseline.toString());
+    final smallBaseline =
+        comparison?.availability == AnalysisDataAvailability.sufficient &&
+        baselineNumber != null &&
+        baselineNumber.abs() > 0 &&
+        (isCount
+            ? baselineNumber.abs() < 5
+            : (percentValue?.abs() ?? 0) >= 200);
+    final baselineText = baseline == null ||
+            comparison?.availability != AnalysisDataAvailability.sufficient
+        ? null
+        : '${context.l10n.text('previousPeriod')}: '
+              '${localizedDecimal(context, baseline.toString())}'
+              '${isCount || currency == null ? '' : ' $currency'}';
 
     return Container(
       decoration: BoxDecoration(
@@ -1640,6 +1663,30 @@ class _DesktopMetric extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+                if (baselineText != null)
+                  Text(
+                    baselineText,
+                    maxLines: 2,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: mutedForeground,
+                    ),
+                  ),
+                if (baseline?.isZero == true)
+                  Text(
+                    context.l10n.text('zeroComparisonBaseline'),
+                    softWrap: true,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: mutedForeground,
+                    ),
+                  ),
+                if (smallBaseline)
+                  Text(
+                    context.l10n.text('smallComparisonBaseline'),
+                    softWrap: true,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: mutedForeground,
+                    ),
+                  ),
               ],
             ),
           ),
