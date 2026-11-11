@@ -464,18 +464,40 @@ AnalysisPeriod? resolveHomeComparisonPeriod(
   DateTime instant,
 ) {
   const resolver = AnalysisPeriodResolver();
-  final primary = resolver.resolvePrimary(
-    type: context.periodType,
-    context: context,
-    now: instant,
+  // Match AnalysisDatasetBuilder._windowForContext and the analysis rule
+  // engine's elapsed anchor. Use the authoritative resolved context dates,
+  // not the device clock, to avoid an off-by-one at timezone boundaries.
+  final start = DateTime.parse(context.period.startDate);
+  final endExclusive =
+      DateTime.parse(context.period.endDate).add(const Duration(days: 1));
+  final partial = {
+    'current_month',
+    'year_to_date',
+    'rolling_30_days',
+    'rolling_90_days',
+  }.contains(context.periodType);
+  final primary = ResolvedAnalysisWindow(
+    start: DateTime.utc(start.year, start.month, start.day),
+    endExclusive: DateTime.utc(
+      endExclusive.year,
+      endExclusive.month,
+      endExclusive.day,
+    ),
+    timeZoneId: context.period.timeZoneId,
+    coverage: partial
+        ? AnalysisCoverageState.partial
+        : AnalysisCoverageState.complete,
+    periodType: switch (context.periodType) {
+      'current_month' || 'previous_month' || 'selected_month' => 'month',
+      'year_to_date' || 'previous_year' => 'year',
+      _ => 'custom',
+    },
   );
-  if (primary is! AnalysisPeriodResolved) return null;
   final previous = resolver.resolvePreviousEquivalent(
-    primary: primary.window,
-    // The current period already includes today's financial date. Advance
-    // the elapsed anchor by one day so the baseline includes the same number
-    // of complete calendar dates (Nov 1–11 versus Oct 1–11).
-    elapsedAnchor: instant.add(const Duration(days: 1)),
+    primary: primary,
+    elapsedAnchor: context.periodType == 'selected_period'
+        ? null
+        : endExclusive,
   );
   if (previous is! AnalysisPeriodResolved) return null;
   final window = previous.window;
