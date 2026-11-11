@@ -1,10 +1,19 @@
 import 'package:butlerly/core/data/local_backup_status_store.dart';
-export 'package:butlerly/core/data/local_backup_status_store.dart' show LocalBackupStatus;
 
-/// Application-facing contract for optional local backup completion metadata.
-/// This is not evidence that an exported file is still recoverable.
+/// Application projection, separate from the platform persistence adapter.
+final class BackupStatusRecord {
+  const BackupStatusRecord({
+    required this.completedAtUtc,
+    required this.missingAttachments,
+  });
+
+  final DateTime completedAtUtc;
+  final bool missingAttachments;
+}
+
+/// Optional local metadata: a created backup is not a verified restore.
 abstract interface class BackupStatusService {
-  Future<LocalBackupStatus?> read();
+  Future<BackupStatusRecord?> read();
   Future<void> recordCompleted({required bool missingAttachments});
 }
 
@@ -15,7 +24,14 @@ final class LocalBackupStatusService implements BackupStatusService {
   final LocalBackupStatusStore _store;
 
   @override
-  Future<LocalBackupStatus?> read() => _store.read();
+  Future<BackupStatusRecord?> read() async {
+    final record = await _store.read();
+    if (record == null) return null;
+    return BackupStatusRecord(
+      completedAtUtc: record.completedAtUtc,
+      missingAttachments: record.missingAttachments,
+    );
+  }
 
   @override
   Future<void> recordCompleted({required bool missingAttachments}) =>
