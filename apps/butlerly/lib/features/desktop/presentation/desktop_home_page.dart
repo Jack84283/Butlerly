@@ -1628,7 +1628,8 @@ class _DesktopMetric extends StatelessWidget {
         : '0.0% ${context.l10n.text('vsPreviousPeriod')}';
 
     final baseline = comparison?.baselineValue;
-    final baselineText = baseline == null ||
+    final baselineText =
+        baseline == null ||
             comparison?.availability != AnalysisDataAvailability.sufficient
         ? null
         : '${context.l10n.text('previousPeriod')}: '
@@ -1694,17 +1695,17 @@ class _DesktopMetric extends StatelessWidget {
                   Text(
                     baselineText,
                     maxLines: 2,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: mutedForeground,
-                    ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelSmall?.copyWith(color: mutedForeground),
                   ),
                 if (baseline?.isZero == true)
                   Text(
                     context.l10n.text('zeroComparisonBaseline'),
                     softWrap: true,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: mutedForeground,
-                    ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelSmall?.copyWith(color: mutedForeground),
                   ),
               ],
             ),
