@@ -43,25 +43,28 @@ void main() {
     expect(second!.missingAttachments, isFalse);
   });
 
-  test('refuses a symlinked status file without modifying its target', () async {
-    if (Platform.isWindows) return;
-    final outside = await Directory.systemTemp.createTemp(
-      'butlerly-external-backup-status-',
-    );
-    addTearDown(() async {
-      if (await outside.exists()) await outside.delete(recursive: true);
-    });
-    final target = File('${outside.path}/sentinel.json');
-    await target.writeAsString('private sentinel');
-    final link = Link('${directory.path}/backup_status_v1.json');
-    await link.create(target.path);
-    expect(await store.read(), isNull);
-    await expectLater(
-      store.recordCompleted(missingAttachments: false),
-      throwsA(isA<FileSystemException>()),
-    );
-    expect(await target.readAsString(), 'private sentinel');
-  });
+  test(
+    'refuses a symlinked status file without modifying its target',
+    () async {
+      if (Platform.isWindows) return;
+      final outside = await Directory.systemTemp.createTemp(
+        'butlerly-external-backup-status-',
+      );
+      addTearDown(() async {
+        if (await outside.exists()) await outside.delete(recursive: true);
+      });
+      final target = File('${outside.path}/sentinel.json');
+      await target.writeAsString('private sentinel');
+      final link = Link('${directory.path}/backup_status_v1.json');
+      await link.create(target.path);
+      expect(await store.read(), isNull);
+      await expectLater(
+        store.recordCompleted(missingAttachments: false),
+        throwsA(isA<FileSystemException>()),
+      );
+      expect(await target.readAsString(), 'private sentinel');
+    },
+  );
 
   test('corrupt or mismatched status file never implies success', () async {
     final statusFile = File('${directory.path}/backup_status_v1.json');
