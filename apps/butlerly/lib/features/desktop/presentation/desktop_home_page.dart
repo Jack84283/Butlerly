@@ -1513,10 +1513,18 @@ class _DesktopPanel extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (trailing != null) ...[
-                  const SizedBox(width: ButlerlySpacing.compact),
-                  trailing!,
-                ],
+                if (trailing != null)
+                  Flexible(
+                    fit: FlexFit.loose,
+                    child: Align(
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: FittedBox(
+                        alignment: AlignmentDirectional.centerEnd,
+                        fit: BoxFit.scaleDown,
+                        child: trailing!,
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
