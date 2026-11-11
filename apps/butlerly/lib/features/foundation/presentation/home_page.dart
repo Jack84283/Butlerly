@@ -1195,8 +1195,8 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 16,
-            backgroundColor: context.colors.elevatedSurface,
-            child: Icon(icon, color: context.colors.primaryText, size: 18),
+            backgroundColor: color.withValues(alpha: .18),
+            child: Icon(icon, color: foreground, size: 18),
           ),
           SizedBox(
             height: compact
