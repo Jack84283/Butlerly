@@ -121,6 +121,54 @@ void main() {
     }
   });
 
+  test('Butler Red uses red accents in Light, Dark and Navy', () {
+    const selectedRed = Color(0xFFCF7F9A);
+    final light = AppTheme.lightFor(ButlerlyColorTheme.butlerRed);
+    final dark = AppTheme.darkFor(ButlerlyColorTheme.butlerRed);
+    final navy = AppTheme.navyFor(ButlerlyColorTheme.butlerRed);
+    final lightColors = light.extension<ButlerlySemanticColors>()!;
+    final darkColors = dark.extension<ButlerlySemanticColors>()!;
+    final navyColors = navy.extension<ButlerlySemanticColors>()!;
+
+    // The Light palette previously filled primary buttons blue.
+    expect(lightColors.controlPrimary, const Color(0xFF7A1E3A));
+    expect(lightColors.interactive, const Color(0xFF7A1E3A));
+    expect(lightColors.focusRing, const Color(0xFF7A1E3A));
+    expect(light.colorScheme.primary, lightColors.controlPrimary);
+
+    // Dark previously used a white selected accent instead of Butler Red.
+    expect(darkColors.interactive, selectedRed);
+    expect(darkColors.navigationSelectedIcon, selectedRed);
+    expect(darkColors.focusRing, selectedRed);
+
+    // Navy keeps the same dark background but does not force blue controls.
+    expect(navyColors.background, const Color(0xFF0C1118));
+    expect(navyColors.interactive, selectedRed);
+    expect(navyColors.navigationSelectedIcon, selectedRed);
+    expect(navyColors.focusRing, selectedRed);
+    expect(navyColors.controlPrimary, const Color(0xFF813353));
+    expect(navy.colorScheme.primary, navyColors.controlPrimary);
+    expect(navy.colorScheme.onPrimary, Colors.white);
+    expect(navyColors.selection, const Color(0xFF2F1723));
+
+    // Financial status colors are semantic, not replaceable brand accents.
+    for (final theme in [light, dark, navy]) {
+      final colors = theme.extension<ButlerlySemanticColors>()!;
+      final blue = switch (theme) {
+        _ when identical(theme, light) =>
+          AppTheme.lightFor(ButlerlyColorTheme.skyBlue),
+        _ when identical(theme, dark) =>
+          AppTheme.darkFor(ButlerlyColorTheme.skyBlue),
+        _ => AppTheme.navyFor(ButlerlyColorTheme.skyBlue),
+      };
+      final blueColors = blue.extension<ButlerlySemanticColors>()!;
+      expect(colors.success, blueColors.success);
+      expect(colors.warning, blueColors.warning);
+      expect(colors.error, blueColors.error);
+      expect(colors.info, blueColors.info);
+    }
+  });
+
   test('editorial typography prefers Times New Roman with serif fallbacks', () {
     expect(ButlerlyTypography.editorialFontFamily, 'Times New Roman');
     expect(ButlerlyTypography.editorialFontFallback, const [
