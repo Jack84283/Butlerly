@@ -1610,7 +1610,7 @@ class _DesktopMetric extends StatelessWidget {
             : icon == Icons.arrow_downward
             ? const Color(0xFFE24247)
             : const Color(0xFF1769E8));
-    final fill = color.withValues(alpha: _desktopHomeTintOpacity);
+    final fill = context.colors.subtleSurface;
     final foreground = context.colors.primaryText;
     final mutedForeground = context.colors.secondaryText;
     final percent = comparison?.percentageChange;
@@ -1649,7 +1649,7 @@ class _DesktopMetric extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 20,
-            backgroundColor: foreground.withValues(alpha: .20),
+            backgroundColor: context.colors.elevatedSurface,
             child: Icon(icon, color: foreground, size: 22),
           ),
           const SizedBox(width: 8),
