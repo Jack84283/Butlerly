@@ -1,10 +1,10 @@
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:flutter/material.dart';
 
-/// Paint-only bottom border for every desktop AppBar and SliverAppBar.
+/// Two solid gold bands at the bottom of desktop AppBars and SliverAppBars.
 ///
-/// Material's shape renderer paints this gold gradient across the full width
-/// of the header. Device layouts do not receive the desktop AppBar theme.
+/// Each band is 1px high (deep gold above light gold), with no gradient.
+/// The desktop-only theme keeps device AppBars unchanged.
 class ButlerlyDesktopGoldBottomBorder extends ShapeBorder {
   const ButlerlyDesktopGoldBottomBorder({
     this.thickness = ButlerlyGoldAccentTokens.thickness,
@@ -26,15 +26,25 @@ class ButlerlyDesktopGoldBottomBorder extends ShapeBorder {
   @override
   void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {
     if (rect.isEmpty || thickness <= 0) return;
-    final line = Rect.fromLTWH(
-      rect.left,
-      rect.bottom - thickness,
-      rect.width,
-      thickness,
+    final stripeHeight = thickness / 2;
+    canvas.drawRect(
+      Rect.fromLTWH(
+        rect.left,
+        rect.bottom - thickness,
+        rect.width,
+        stripeHeight,
+      ),
+      Paint()..color = ButlerlyGoldAccentTokens.deepGold,
     );
-    final paint = Paint()
-      ..shader = ButlerlyGoldAccentTokens.gradient.createShader(line);
-    canvas.drawRect(line, paint);
+    canvas.drawRect(
+      Rect.fromLTWH(
+        rect.left,
+        rect.bottom - stripeHeight,
+        rect.width,
+        stripeHeight,
+      ),
+      Paint()..color = ButlerlyGoldAccentTokens.lightGold,
+    );
   }
 
   @override
@@ -42,15 +52,26 @@ class ButlerlyDesktopGoldBottomBorder extends ShapeBorder {
       ButlerlyDesktopGoldBottomBorder(thickness: thickness * t);
 }
 
-/// Full-width gold separator above the pinned action footer in desktop panels.
+/// Full-width, two-stripe solid separator above desktop panel action footers.
 class ButlerlyDesktopGoldDivider extends StatelessWidget {
   const ButlerlyDesktopGoldDivider({super.key});
 
   @override
   Widget build(BuildContext context) => const SizedBox(
     height: ButlerlyGoldAccentTokens.thickness,
-    child: DecoratedBox(
-      decoration: BoxDecoration(gradient: ButlerlyGoldAccentTokens.gradient),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          height: ButlerlyGoldAccentTokens.stripeHeight,
+          child: ColoredBox(color: ButlerlyGoldAccentTokens.deepGold),
+        ),
+        SizedBox(
+          height: ButlerlyGoldAccentTokens.stripeHeight,
+          child: ColoredBox(color: ButlerlyGoldAccentTokens.lightGold),
+        ),
+      ],
     ),
   );
 }

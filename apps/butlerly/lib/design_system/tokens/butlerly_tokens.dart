@@ -41,13 +41,14 @@ abstract final class ButlerlySpacing {
   static const headerActionTrailing = standard;
 }
 
-/// Shared gold accent used by the device navigation pill and desktop dividers.
-/// Keep both treatments in sync without changing the device pill geometry.
+/// Shared gold colors. Device navigation retains its horizontal gradient;
+/// desktop header/footer separators use two discrete horizontal color bands.
 abstract final class ButlerlyGoldAccentTokens {
+  static const deepGold = Color(0xFFC0974C);
+  static const lightGold = Color(0xFFF3C670);
   static const thickness = 2.0;
-  static const gradient = LinearGradient(
-    colors: [Color(0xFFC0974C), Color(0xFFF3C670)],
-  );
+  static const stripeHeight = thickness / 2;
+  static const gradient = LinearGradient(colors: [deepGold, lightGold]);
 }
 
 /// Compact layout shared by desktop transaction and payment-source tables.

@@ -65,10 +65,9 @@ void main() {
     final divider =
         headerTheme.appBarTheme.shape as ButlerlyDesktopGoldBottomBorder;
     expect(divider.thickness, ButlerlyGoldAccentTokens.thickness);
-    expect(ButlerlyGoldAccentTokens.gradient.colors, const [
-      Color(0xFFC0974C),
-      Color(0xFFF3C670),
-    ]);
+    expect(ButlerlyGoldAccentTokens.deepGold, const Color(0xFFC0974C));
+    expect(ButlerlyGoldAccentTokens.lightGold, const Color(0xFFF3C670));
+    expect(ButlerlyGoldAccentTokens.stripeHeight, 1);
     final helpPadding = tester.widget<Padding>(
       find.byKey(const ValueKey('page-context-help-padding')),
     );
