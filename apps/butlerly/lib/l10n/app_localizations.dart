@@ -474,7 +474,8 @@ class AppLocalizations {
       'backupStatusUnknown':
           'Last backup: not tracked on this device. A saved backup does not confirm recoverability.',
       'backUpNowAction': 'Back up now',
-      'backupStatusRecorded': 'Last backup created: {date}. Not restore-tested; confirm the exported file is still available.',
+      'backupStatusRecorded':
+          'Last backup created: {date}. Not restore-tested; confirm the exported file is still available.',
       'backupStatusMissingAttachments': 'Some attachments were missing.',
       'backupRecoveryTitle': 'Backup & Recovery',
       'backupRecoveryBody':
@@ -2699,7 +2700,8 @@ class AppLocalizations {
       'backupStatusUnknown':
           'Última copia: no registrada en este dispositivo. Guardarla no confirma que pueda restaurarse.',
       'backUpNowAction': 'Crear copia ahora',
-      'backupStatusRecorded': 'Última copia creada: {date}. Restauración no comprobada; confirme que conserva el archivo.',
+      'backupStatusRecorded':
+          'Última copia creada: {date}. Restauración no comprobada; confirme que conserva el archivo.',
       'backupStatusMissingAttachments': 'Faltaban algunos archivos adjuntos.',
       'backupRecoveryTitle': 'Copia de seguridad y recuperación',
       'backupRecoveryBody':
