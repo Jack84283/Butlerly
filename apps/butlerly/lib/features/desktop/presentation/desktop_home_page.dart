@@ -583,6 +583,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                         icon: Icons.receipt_long_outlined,
                                         comparison: analysis
                                             ?.transactionCountComparison,
+                                        isCount: true,
                                         accentColor: ButlerlyHomeColorTokens
                                             .standard
                                             .transactions,
