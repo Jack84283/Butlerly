@@ -108,8 +108,9 @@ void main() {
     final homeAdd = find.byKey(const ValueKey('desktop-home-header-add'));
     final homeHelp = find.byKey(const ValueKey('page-context-help-visual'));
     expect(homeHeader, findsOneWidget);
-    final foreground = tester.widget<Container>(homeHeader)
-        .foregroundDecoration as ShapeDecoration;
+    final foreground =
+        tester.widget<Container>(homeHeader).foregroundDecoration
+            as ShapeDecoration;
     expect(foreground.shape, isA<ButlerlyDesktopGoldBottomBorder>());
     expect(
       (foreground.shape as ButlerlyDesktopGoldBottomBorder).thickness,
