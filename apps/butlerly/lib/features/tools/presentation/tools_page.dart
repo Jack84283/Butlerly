@@ -1,4 +1,9 @@
 import 'package:butlerly/app/shell/adaptive_shell.dart';
+import 'package:butlerly/core/di/finance_services.dart';
+import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:butlerly/design_system/components/butlerly_action_group.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -7,11 +12,93 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-class ToolsPage extends StatelessWidget {
+class ToolsPage extends StatefulWidget {
   const ToolsPage({super.key});
+
+  @override
+  State<ToolsPage> createState() => _ToolsPageState();
+}
+
+class _ToolsActionCounts {
+  const _ToolsActionCounts(this.reviewTransactions, this.duplicateGroups);
+
+  final int? reviewTransactions;
+  final int? duplicateGroups;
+}
+
+class _ToolsPageState extends State<ToolsPage> {
+  _ToolsActionCounts? _counts;
+
+  @override
+  void initState() {
+    super.initState();
+    transactionChanges.addListener(_refreshCounts);
+    _refreshCounts();
+  }
+
+  @override
+  void dispose() {
+    transactionChanges.removeListener(_refreshCounts);
+    super.dispose();
+  }
+
+  void _refreshCounts() {
+    _counts = null;
+    _loadCounts();
+  }
+
+  Future<void> _loadCounts() async {
+    if (!services.isRegistered<FinanceServices>()) return;
+    final finance = services<FinanceServices>();
+    int? reviews;
+    int? duplicates;
+    try {
+      final result = await finance.listReviewItems(
+        ListReviewItemsQuery(scope: const ReviewPeriodScope.unscoped()),
+      );
+      if (result is ApplicationSuccess<List<ReviewItemDto>>) {
+        reviews = result.value.map((item) => item.transactionId).toSet().length;
+      }
+    } catch (_) {
+      // A failed read never becomes a confirmed zero.
+    }
+    try {
+      final list = finance.listDuplicateCandidateGroups;
+      if (list != null) {
+        final result = await list(scope: const ReviewPeriodScope.unscoped());
+        if (result is ApplicationSuccess<List<DuplicateCandidateGroup>>) {
+          duplicates = result.value.where((group) => group.isUnresolved).length;
+        }
+      }
+    } catch (_) {
+      // A failed read never becomes a confirmed zero.
+    }
+    if (mounted) {
+      setState(() => _counts = _ToolsActionCounts(reviews, duplicates));
+    }
+  }
 
   List<ToolNavigationItem> _tools(BuildContext context) =>
       toolNavigationItems(context);
+
+  String? _reviewCountsLabel(BuildContext context) {
+    final counts = _counts;
+    if (counts == null ||
+        (counts.reviewTransactions == null && counts.duplicateGroups == null)) {
+      return null;
+    }
+    final parts = <String>[
+      if (counts.reviewTransactions != null)
+        context.l10n
+            .text('toolsReviewPendingCount')
+            .replaceAll('{count}', '${counts.reviewTransactions}'),
+      if (counts.duplicateGroups != null)
+        context.l10n
+            .text('toolsDuplicatePendingCount')
+            .replaceAll('{count}', '${counts.duplicateGroups}'),
+    ];
+    return parts.join(' · ');
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,6 +109,7 @@ class ToolsPage extends StatelessWidget {
         ) ==
         ButlerlyLayoutMode.wide;
     final tools = _tools(context);
+    final reviewStatus = _reviewCountsLabel(context);
 
     final sections = [
       (
@@ -77,7 +165,12 @@ class ToolsPage extends StatelessWidget {
                       for (final tool in tools.where(
                         (item) => section.routes.contains(item.route),
                       )) ...[
-                        _ToolPanel(tool: tool),
+                        _ToolPanel(
+                          tool: tool,
+                          reviewStatus: tool.route == '/review'
+                              ? reviewStatus
+                              : null,
+                        ),
                         const SizedBox(height: ButlerlySpacing.cardGap),
                       ],
                     ],
@@ -108,7 +201,9 @@ class ToolsPage extends StatelessWidget {
                   ButlerlyActionItem(
                     icon: tool.icon,
                     title: tool.title,
-                    subtitle: tool.description,
+                    subtitle: tool.route == '/review' && reviewStatus != null
+                        ? reviewStatus
+                        : tool.description,
                     onTap: () => context.push(tool.route),
                   ),
               ],
@@ -121,8 +216,9 @@ class ToolsPage extends StatelessWidget {
 }
 
 class _ToolPanel extends StatelessWidget {
-  const _ToolPanel({required this.tool});
+  const _ToolPanel({required this.tool, this.reviewStatus});
   final ToolNavigationItem tool;
+  final String? reviewStatus;
 
   @override
   Widget build(BuildContext context) => ButlerlyCard(
@@ -149,7 +245,7 @@ class _ToolPanel extends StatelessWidget {
           ),
           const SizedBox(height: ButlerlySpacing.micro),
           Text(
-            tool.description,
+            reviewStatus ?? tool.description,
             style: Theme.of(context).textTheme.bodySmall,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
