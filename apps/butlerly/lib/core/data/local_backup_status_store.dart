@@ -33,7 +33,11 @@ final class LocalBackupStatusStore {
   Future<LocalBackupStatus?> read() async {
     try {
       final file = await _file();
-      if (!await file.exists()) return null;
+      // An untrusted symlink must never be treated as our status file.
+      if (await FileSystemEntity.type(file.path, followLinks: false) !=
+          FileSystemEntityType.file) {
+        return null;
+      }
       final decoded = jsonDecode(await file.readAsString());
       if (decoded is! Map<String, dynamic> ||
           decoded['version'] != 1 ||
@@ -57,6 +61,13 @@ final class LocalBackupStatusStore {
     final file = await _file();
     await file.parent.create(recursive: true);
     final temporary = File('${file.path}.tmp');
+    // Avoid writing through links or overwriting a foreign file.
+    for (final target in [file, temporary]) {
+      if (await FileSystemEntity.type(target.path, followLinks: false) ==
+          FileSystemEntityType.link) {
+        throw FileSystemException('Unsafe backup status link', target.path);
+      }
+    }
     try {
       await temporary.writeAsString(
         jsonEncode({
