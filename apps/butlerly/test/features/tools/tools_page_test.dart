@@ -42,6 +42,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.text('Act now'), findsOneWidget);
+    expect(find.text('Understand'), findsOneWidget);
+    expect(find.text('Maintain'), findsOneWidget);
     expect(find.text('Payment settlements'), findsOneWidget);
     expect(find.text('Review'), findsOneWidget);
     expect(find.text('Master data'), findsOneWidget);
