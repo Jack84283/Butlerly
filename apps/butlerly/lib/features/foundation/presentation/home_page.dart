@@ -1172,7 +1172,7 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
     );
     return Container(
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.50),
+        color: context.colors.subtleSurface,
         borderRadius: BorderRadius.circular(16),
       ),
       padding: compact
@@ -1195,8 +1195,8 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 16,
-            backgroundColor: foreground.withValues(alpha: .20),
-            child: Icon(icon, color: foreground, size: 18),
+            backgroundColor: context.colors.elevatedSurface,
+            child: Icon(icon, color: context.colors.primaryText, size: 18),
           ),
           SizedBox(
             height: compact
