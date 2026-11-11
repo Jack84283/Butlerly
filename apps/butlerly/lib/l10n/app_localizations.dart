@@ -471,7 +471,8 @@ class AppLocalizations {
           'Manage your locally stored financial information',
       'desktopLegalSubtitle': 'View legal information and open source licenses',
       'desktopLegalDocuments': 'Documents',
-      'backupStatusUnknown': 'Last backup: not tracked on this device. A saved backup does not confirm recoverability.',
+      'backupStatusUnknown':
+          'Last backup: not tracked on this device. A saved backup does not confirm recoverability.',
       'backUpNowAction': 'Back up now',
       'backupRecoveryTitle': 'Backup & Recovery',
       'backupRecoveryBody':
@@ -670,7 +671,8 @@ class AppLocalizations {
           'Resolve only the records that genuinely need attention.',
       'reviewAllEligibleScope': 'All eligible transactions',
       'reviewScopeLabel': 'Scope',
-      'reviewRefreshHint': 'Refresh to check for changes; last scan time is not recorded here.',
+      'reviewRefreshHint':
+          'Refresh to check for changes; last scan time is not recorded here.',
       'reviewEmpty': 'You’re all caught up',
       'reviewEmptyBody':
           'Butlerly will show incomplete, uncertain, or conflicting records here.',
@@ -813,7 +815,8 @@ class AppLocalizations {
       'toolsMaintain': 'Maintain',
       'monthToDate': 'Month to date',
       'previousSpending': 'Previous spending',
-      'backupShortcutDescription': 'Back up, restore, or export; local data is not a backup',
+      'backupShortcutDescription':
+          'Back up, restore, or export; local data is not a backup',
       'zeroComparisonBaseline': 'No percentage change: previous value was zero',
       'desktopFinancialOverview': 'Financial overview',
       'desktopExpenses': 'Expenses',
@@ -2681,7 +2684,8 @@ class AppLocalizations {
       'desktopLegalSubtitle':
           'Consulte información legal y licencias de código abierto',
       'desktopLegalDocuments': 'Documentos',
-      'backupStatusUnknown': 'Última copia: no registrada en este dispositivo. Guardarla no confirma que pueda restaurarse.',
+      'backupStatusUnknown':
+          'Última copia: no registrada en este dispositivo. Guardarla no confirma que pueda restaurarse.',
       'backUpNowAction': 'Crear copia ahora',
       'backupRecoveryTitle': 'Copia de seguridad y recuperación',
       'backupRecoveryBody':
@@ -2886,7 +2890,8 @@ class AppLocalizations {
       'reviewSubtitle': 'Resuelve solo los registros que requieren atención.',
       'reviewAllEligibleScope': 'Todas las transacciones elegibles',
       'reviewScopeLabel': 'Alcance',
-      'reviewRefreshHint': 'Actualiza para comprobar cambios; aquí no se registra la hora del último análisis.',
+      'reviewRefreshHint':
+          'Actualiza para comprobar cambios; aquí no se registra la hora del último análisis.',
       'reviewEmpty': 'Todo está al día',
       'reviewEmptyBody':
           'Los registros incompletos o inciertos aparecerán aquí.',
