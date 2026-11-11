@@ -4,11 +4,7 @@ import 'package:test/test.dart';
 
 AnalysisContext _context(String type, String start, String end) =>
     AnalysisContext(
-      period: AnalysisPeriod(
-        startDate: start,
-        endDate: end,
-        timeZoneId: 'UTC',
-      ),
+      period: AnalysisPeriod(startDate: start, endDate: end, timeZoneId: 'UTC'),
       datasetMode: DatasetMode.allEligible,
       currencyBasis: CurrencyBasis.baseCurrency,
       periodType: type,
