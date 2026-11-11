@@ -3,6 +3,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_action_group.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_desktop_panel_footer.dart';
 import 'package:butlerly/design_system/components/butlerly_desktop_transaction_table.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
@@ -651,6 +652,33 @@ class _PaymentSettlementDetailPageState
             widget.sourceNames[settlement.paymentSourceId] ??
             settlement.paymentSourceId;
         return Scaffold(
+          bottomNavigationBar: widget.onClose == null
+              ? null
+              : ButlerlyDesktopPanelFooter(
+                  child: Wrap(
+                    alignment: WrapAlignment.end,
+                    spacing: ButlerlySpacing.small,
+                    runSpacing: ButlerlySpacing.compact,
+                    children: [
+                      OutlinedButton.icon(
+                        key: const ValueKey(
+                          'desktop-payment-settlement-edit-button',
+                        ),
+                        onPressed: () => _edit(detail),
+                        icon: const Icon(Icons.edit_outlined),
+                        label: Text(context.l10n.text('edit')),
+                      ),
+                      TextButton.icon(
+                        key: const ValueKey(
+                          'desktop-payment-settlement-actions-button',
+                        ),
+                        onPressed: () => _showActions(context),
+                        icon: const Icon(Icons.more_vert),
+                        label: Text(context.l10n.text('more')),
+                      ),
+                    ],
+                  ),
+                ),
           body: ButlerlyPage(
             title: context.l10n.text('paymentSettlement'),
             fullWidth: desktop,
@@ -664,16 +692,18 @@ class _PaymentSettlementDetailPageState
                     onPressed: widget.onClose,
                   ),
             actions: [
-              IconButton(
-                tooltip: context.l10n.text('editPaymentSettlement'),
-                onPressed: () => _edit(detail),
-                icon: const Icon(Icons.edit_outlined),
-              ),
-              IconButton(
-                tooltip: context.l10n.text('more'),
-                onPressed: () => _showActions(context),
-                icon: const Icon(Icons.more_vert),
-              ),
+              if (widget.onClose == null) ...[
+                IconButton(
+                  tooltip: context.l10n.text('editPaymentSettlement'),
+                  onPressed: () => _edit(detail),
+                  icon: const Icon(Icons.edit_outlined),
+                ),
+                IconButton(
+                  tooltip: context.l10n.text('more'),
+                  onPressed: () => _showActions(context),
+                  icon: const Icon(Icons.more_vert),
+                ),
+              ],
             ],
             children: [
               _SettlementBasicInfoCard(detail: detail, sourceName: sourceName),
