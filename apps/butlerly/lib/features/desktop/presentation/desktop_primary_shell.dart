@@ -45,9 +45,7 @@ class _DesktopPrimaryShellState extends State<DesktopPrimaryShell> {
       data: theme.copyWith(
         textTheme: ButlerlyTypography.desktopTextTheme(theme.textTheme),
         appBarTheme: theme.appBarTheme.copyWith(
-          shape: Border(
-            bottom: BorderSide(color: context.colors.cardDivider),
-          ),
+          shape: Border(bottom: BorderSide(color: context.colors.cardDivider)),
         ),
       ),
       child: ButlerlyDesktopHeaderScope(

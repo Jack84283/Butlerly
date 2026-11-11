@@ -181,10 +181,11 @@ void main() {
     final abandon = find.byKey(
       const ValueKey('statement-review-footer-abandon'),
     );
-    final import = find.byKey(
-      const ValueKey('statement-review-import-data'),
+    final import = find.byKey(const ValueKey('statement-review-import-data'));
+    expect(
+      tester.getRect(abandon).right,
+      lessThan(tester.getRect(import).left),
     );
-    expect(tester.getRect(abandon).right, lessThan(tester.getRect(import).left));
     expect(tester.widget<FilledButton>(import).onPressed, isNull);
     await tester.tap(abandon);
     expect(abandonCount, 1);
