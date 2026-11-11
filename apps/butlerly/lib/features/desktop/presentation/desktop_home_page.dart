@@ -1629,16 +1629,6 @@ class _DesktopMetric extends StatelessWidget {
         : '0.0% ${context.l10n.text('vsPreviousPeriod')}';
 
     final baseline = comparison?.baselineValue;
-    final baselineNumber = baseline == null
-        ? null
-        : double.tryParse(baseline.toString());
-    final smallBaseline =
-        comparison?.availability == AnalysisDataAvailability.sufficient &&
-        baselineNumber != null &&
-        baselineNumber.abs() > 0 &&
-        (isCount
-            ? baselineNumber.abs() < 5
-            : (percentValue?.abs() ?? 0) >= 200);
     final baselineText = baseline == null ||
             comparison?.availability != AnalysisDataAvailability.sufficient
         ? null
@@ -1712,14 +1702,6 @@ class _DesktopMetric extends StatelessWidget {
                 if (baseline?.isZero == true)
                   Text(
                     context.l10n.text('zeroComparisonBaseline'),
-                    softWrap: true,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: mutedForeground,
-                    ),
-                  ),
-                if (smallBaseline)
-                  Text(
-                    context.l10n.text('smallComparisonBaseline'),
                     softWrap: true,
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                       color: mutedForeground,
