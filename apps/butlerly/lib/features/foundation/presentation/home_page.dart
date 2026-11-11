@@ -315,7 +315,10 @@ class _HomePageState extends State<HomePage> {
           model: data.model,
           period: data.period,
           comparisonPeriod: data.comparisonPeriod,
-          currentMonthToDate: _sameMonth(data.displayMonth, data.currentFinancialMonth),
+          currentMonthToDate: _sameMonth(
+            data.displayMonth,
+            data.currentFinancialMonth,
+          ),
           analysisUnavailable: data.analysisUnavailable || overviewUnavailable,
           baseCurrency: data.baseCurrency,
           unavailableTitleKey: overviewUnavailable ? unavailableTitleKey : null,
@@ -1156,12 +1159,17 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
     final baselineNumber = baseline == null
         ? null
         : double.tryParse(baseline.toString());
-    final smallBaseline = baselineNumber != null &&
+    final smallBaseline =
+        comparison?.availability == AnalysisDataAvailability.sufficient &&
+        baselineNumber != null &&
         baselineNumber.abs() > 0 &&
         baselineNumber.abs() < (isCount ? 5 : 10);
-    final baselineText = baseline == null
+    final baselineText = baseline == null ||
+            comparison?.availability != AnalysisDataAvailability.sufficient
         ? null
-        : '${context.l10n.text('previousPeriod')}: ${localizedDecimal(context, baseline.toString())}${isCount || currency == null ? '' : ' $currency'}';
+        : '${context.l10n.text('previousPeriod')}: '
+              '${localizedDecimal(context, baseline.toString())}'
+              '${isCount || currency == null ? '' : ' $currency'}';
     final compact = context.designTokens.mode == ButlerlyLayoutMode.compact;
     final foreground = context.colors.primaryText;
     final mutedForeground = context.colors.secondaryText;
@@ -1275,6 +1283,14 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
               ),
             ),
           ],
+          if (baseline?.isZero == true)
+            Text(
+              context.l10n.text('zeroComparisonBaseline'),
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: mutedForeground,
+              ),
+            ),
           if (smallBaseline)
             Text(
               context.l10n.text('smallComparisonBaseline'),
