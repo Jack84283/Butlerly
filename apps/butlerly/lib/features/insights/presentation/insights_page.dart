@@ -601,6 +601,11 @@ class _PeriodSummaryCard extends StatelessWidget {
         label: context.l10n.text('eligibleTransactions'),
         value: '${summary.eligibleTransactionCount}',
       ),
+      if (summary.expenseChange?.baselineValue != null)
+        _InsightValue(
+          label: context.l10n.text('previousPeriod'),
+          value: amount(summary.expenseChange!.baselineValue),
+        ),
       if (summary.expenseChange?.absoluteChange != null)
         _InsightValue(
           label: context.l10n.text('difference'),
