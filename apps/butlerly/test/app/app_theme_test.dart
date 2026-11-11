@@ -152,15 +152,12 @@ void main() {
     expect(navyColors.selection, const Color(0xFF2F1723));
 
     // Financial status colors are semantic, not replaceable brand accents.
-    for (final theme in [light, dark, navy]) {
+    for (final (theme, blue) in [
+      (light, AppTheme.lightFor(ButlerlyColorTheme.skyBlue)),
+      (dark, AppTheme.darkFor(ButlerlyColorTheme.skyBlue)),
+      (navy, AppTheme.navyFor(ButlerlyColorTheme.skyBlue)),
+    ]) {
       final colors = theme.extension<ButlerlySemanticColors>()!;
-      final blue = switch (theme) {
-        _ when identical(theme, light) =>
-          AppTheme.lightFor(ButlerlyColorTheme.skyBlue),
-        _ when identical(theme, dark) =>
-          AppTheme.darkFor(ButlerlyColorTheme.skyBlue),
-        _ => AppTheme.navyFor(ButlerlyColorTheme.skyBlue),
-      };
       final blueColors = blue.extension<ButlerlySemanticColors>()!;
       expect(colors.success, blueColors.success);
       expect(colors.warning, blueColors.warning);

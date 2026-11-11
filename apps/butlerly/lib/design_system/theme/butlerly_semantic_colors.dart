@@ -187,27 +187,28 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
       // accent theme. Keep Butler Red's interactive, focused, and primary
       // controls red in Light, Dark, and Navy instead of inheriting the
       // neutral white or FinIntel-blue appearance defaults.
-      ButlerlyColorTheme.butlerRed => brightness == Brightness.light
-          ? base.copyWith(
-              controlPrimary: const Color(0xFF7A1E3A),
-              focusRing: const Color(0xFF7A1E3A),
-            )
-          : navy
-          ? base.copyWith(
-              interactive: const Color(0xFFCF7F9A),
-              navigationSelectedIcon: const Color(0xFFCF7F9A),
-              focusRing: const Color(0xFFCF7F9A),
-              controlPrimary: const Color(0xFF813353),
-              controlPrimaryText: Colors.white,
-              interactiveStrong: const Color(0xFFD58DA5),
-              selection: const Color(0xFF2F1723),
-            )
-          : base.copyWith(
-              interactive: const Color(0xFFCF7F9A),
-              navigationSelectedIcon: const Color(0xFFCF7F9A),
-              focusRing: const Color(0xFFCF7F9A),
-              interactiveStrong: const Color(0xFFD58DA5),
-            ),
+      ButlerlyColorTheme.butlerRed =>
+        brightness == Brightness.light
+            ? base.copyWith(
+                controlPrimary: const Color(0xFF7A1E3A),
+                focusRing: const Color(0xFF7A1E3A),
+              )
+            : navy
+            ? base.copyWith(
+                interactive: const Color(0xFFCF7F9A),
+                navigationSelectedIcon: const Color(0xFFCF7F9A),
+                focusRing: const Color(0xFFCF7F9A),
+                controlPrimary: const Color(0xFF813353),
+                controlPrimaryText: Colors.white,
+                interactiveStrong: const Color(0xFFD58DA5),
+                selection: const Color(0xFF2F1723),
+              )
+            : base.copyWith(
+                interactive: const Color(0xFFCF7F9A),
+                navigationSelectedIcon: const Color(0xFFCF7F9A),
+                focusRing: const Color(0xFFCF7F9A),
+                interactiveStrong: const Color(0xFFD58DA5),
+              ),
       ButlerlyColorTheme.skyBlue => base.copyWith(
         brand: brightness == Brightness.dark
             ? const Color(0xFF315B82)
