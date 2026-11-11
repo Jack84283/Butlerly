@@ -100,18 +100,18 @@ class ToolsPage extends StatelessWidget {
               ),
             ),
             ButlerlyActionGroup(
-                actions: [
-                  for (final tool in tools.where(
-                    (item) => section.routes.contains(item.route),
-                  ))
-                    ButlerlyActionItem(
-                      icon: tool.icon,
-                      title: tool.title,
-                      subtitle: tool.description,
-                      onTap: () => context.push(tool.route),
-                    ),
-                ],
-              ),
+              actions: [
+                for (final tool in tools.where(
+                  (item) => section.routes.contains(item.route),
+                ))
+                  ButlerlyActionItem(
+                    icon: tool.icon,
+                    title: tool.title,
+                    subtitle: tool.description,
+                    onTap: () => context.push(tool.route),
+                  ),
+              ],
+            ),
           ],
         const SizedBox(height: ButlerlySpacing.structural),
       ],
