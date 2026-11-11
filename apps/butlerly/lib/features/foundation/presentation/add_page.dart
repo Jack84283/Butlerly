@@ -92,21 +92,26 @@ class AddPage extends StatelessWidget {
       title: context.l10n.text('add'),
       subtitle: context.l10n.text('addSubtitle'),
       fullWidth: desktop,
+      padding: const EdgeInsets.fromLTRB(
+        ButlerlySize.contentGutter,
+        ButlerlySpacing.cardGap,
+        ButlerlySize.contentGutter,
+        ButlerlySpacing.large,
+      ),
       children: [
-        for (final section in sections) ...[
-          if (desktop)
-            Padding(
-              padding: const EdgeInsets.only(
-                top: ButlerlySpacing.small,
-                bottom: ButlerlySpacing.small,
-              ),
-              child: Text(
-                section.title,
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-            )
-          else
-            ButlerlySectionHeader(title: section.title),
+        for (final (index, section) in sections.indexed) ...[
+          Padding(
+            padding: EdgeInsets.only(
+              top: index == 0
+                  ? ButlerlySpacing.none
+                  : ButlerlySpacing.cardGap,
+              bottom: ButlerlySpacing.small,
+            ),
+            child: Text(
+              section.title,
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+          ),
           if (desktop)
             LayoutBuilder(
               key: ValueKey(
