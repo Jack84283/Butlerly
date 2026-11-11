@@ -282,7 +282,7 @@ final class GetHomeOverview {
         currentFinancialMonth: homePeriod.currentFinancialMonth,
         displayMonth: homePeriod.displayMonth,
         analysis: analysis,
-        comparisonPeriod: _homeComparisonPeriod(context, instant),
+        comparisonPeriod: resolveHomeComparisonPeriod(context, instant),
         monthlyTrend: monthlyTrend,
         monthlyTrendUnavailable: monthlyTrendUnavailable,
         reviewCount: reviewCount,
@@ -297,28 +297,6 @@ final class GetHomeOverview {
         reviewUnavailable: reviewResult is! ApplicationSuccess,
         duplicateUnavailable: duplicateUnavailable,
       ),
-    );
-  }
-
-  AnalysisPeriod? _homeComparisonPeriod(AnalysisContext context, DateTime instant) {
-    const resolver = AnalysisPeriodResolver();
-    final primary = resolver.resolvePrimary(
-      type: context.periodType,
-      context: context,
-      now: instant,
-    );
-    if (primary is! AnalysisPeriodResolved) return null;
-    final previous = resolver.resolvePreviousEquivalent(
-      primary: primary.window,
-      elapsedAnchor: instant,
-    );
-    if (previous is! AnalysisPeriodResolved) return null;
-    final window = previous.window;
-    if (!window.endExclusive.isAfter(window.start)) return null;
-    return AnalysisPeriod(
-      startDate: _date(window.start),
-      endDate: _date(window.endExclusive.subtract(const Duration(days: 1))),
-      timeZoneId: window.timeZoneId,
     );
   }
 
@@ -479,3 +457,27 @@ final class _HomeContextResolution {
   final AnalysisContext context;
   final bool analysisContextUnavailable;
 }
+
+/// Resolves exactly the previous equivalent window used by Home's metric rules.
+AnalysisPeriod? resolveHomeComparisonPeriod(AnalysisContext context, DateTime instant) {
+  const resolver = AnalysisPeriodResolver();
+  final primary = resolver.resolvePrimary(
+    type: context.periodType,
+    context: context,
+    now: instant,
+  );
+  if (primary is! AnalysisPeriodResolved) return null;
+  final previous = resolver.resolvePreviousEquivalent(
+    primary: primary.window,
+    elapsedAnchor: instant,
+  );
+  if (previous is! AnalysisPeriodResolved) return null;
+  final window = previous.window;
+  if (!window.endExclusive.isAfter(window.start)) return null;
+  return AnalysisPeriod(
+    startDate: _date(window.start),
+    endDate: _date(window.endExclusive.subtract(const Duration(days: 1))),
+    timeZoneId: window.timeZoneId,
+  );
+}
+
