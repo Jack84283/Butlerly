@@ -28,6 +28,7 @@ class _ToolsActionCounts {
 
 class _ToolsPageState extends State<ToolsPage> {
   _ToolsActionCounts? _counts;
+  int _countRequestGeneration = 0;
 
   @override
   void initState() {
@@ -38,16 +39,18 @@ class _ToolsPageState extends State<ToolsPage> {
 
   @override
   void dispose() {
+    ++_countRequestGeneration;
     transactionChanges.removeListener(_refreshCounts);
     super.dispose();
   }
 
   void _refreshCounts() {
-    _counts = null;
-    _loadCounts();
+    final generation = ++_countRequestGeneration;
+    if (mounted) setState(() => _counts = null);
+    _loadCounts(generation);
   }
 
-  Future<void> _loadCounts() async {
+  Future<void> _loadCounts(int generation) async {
     if (!services.isRegistered<FinanceServices>()) return;
     final finance = services<FinanceServices>();
     int? reviews;
@@ -73,7 +76,7 @@ class _ToolsPageState extends State<ToolsPage> {
     } catch (_) {
       // A failed read never becomes a confirmed zero.
     }
-    if (mounted) {
+    if (mounted && generation == _countRequestGeneration) {
       setState(() => _counts = _ToolsActionCounts(reviews, duplicates));
     }
   }
