@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/core/data/local_backup_status_store.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
@@ -20,6 +21,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show MissingPluginException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -550,6 +552,48 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
   );
 
   bool _busy = false;
+  final _backupStatusStore = const LocalBackupStatusStore();
+  LocalBackupStatus? _lastCompletedBackup;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBackupStatus();
+  }
+
+  Future<void> _loadBackupStatus() async {
+    if (kIsWeb) return;
+    final result = await _backupStatusStore.read();
+    if (mounted) setState(() => _lastCompletedBackup = result);
+  }
+
+  String _backupStatusDescription(BuildContext context) {
+    final status = _lastCompletedBackup;
+    if (status == null) return context.l10n.text('backupStatusUnknown');
+    final time = DateFormat.yMMMd(
+      Localizations.localeOf(context).toLanguageTag(),
+    ).add_jm().format(status.completedAtUtc.toLocal());
+    final description = context.l10n.text('backupStatusRecorded').replaceAll(
+      '{date}',
+      time,
+    );
+    return status.missingAttachments
+        ? '$description ${context.l10n.text('backupStatusMissingAttachments')}'
+        : description;
+  }
+
+  Future<void> _recordCompletedBackup(BackupCreationResult backup) async {
+    try {
+      await _backupStatusStore.recordCompleted(
+        missingAttachments: backup.hasMissingAttachments,
+      );
+      await _loadBackupStatus();
+    } on FileSystemException {
+      // Keep unknown status if writing metadata fails.
+    } on MissingPluginException {
+      // Platform storage can be unavailable in tests.
+    }
+  }
 
   bool get _usesNativeMobileShare =>
       !kIsWeb &&
@@ -676,6 +720,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       final backup = await services<WorkspaceDataService>()
           .createPortableBackup(location.path, password: password);
       if (mounted) {
+        await _recordCompletedBackup(backup);
         if (backup.hasMissingAttachments) {
           await _warnAboutMissingAttachments(backup);
         } else {
@@ -720,6 +765,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
             ),
           );
       if (mounted && result.status == share.ShareResultStatus.success) {
+        await _recordCompletedBackup(temporary.backup);
         if (temporary.backup.hasMissingAttachments) {
           await _warnAboutMissingAttachments(temporary.backup);
         } else {
@@ -1050,7 +1096,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       title: l10n.text('backupRecoveryTitle'),
       description:
           '${l10n.text('backupRecoveryBody')}\n'
-          '${l10n.text('backupStatusUnknown')}',
+          '${_backupStatusDescription(context)}',
       icon: Icons.storage_outlined,
       children: [
         _DesktopPrivacyAction(
@@ -1273,7 +1319,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
               leading: Icon(_privacyIcon(context, Icons.backup_outlined)),
               title: Text(context.l10n.text('backUpNowAction')),
               subtitle: Text(
-                context.l10n.text('backupStatusUnknown'),
+                _backupStatusDescription(context),
                 style: _subtitleStyle(context),
               ),
               trailing: Icon(_privacyIcon(context, Icons.chevron_right)),
