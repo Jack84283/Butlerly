@@ -468,8 +468,9 @@ AnalysisPeriod? resolveHomeComparisonPeriod(
   // engine's elapsed anchor. Use the authoritative resolved context dates,
   // not the device clock, to avoid an off-by-one at timezone boundaries.
   final start = DateTime.parse(context.period.startDate);
-  final endExclusive =
-      DateTime.parse(context.period.endDate).add(const Duration(days: 1));
+  final endExclusive = DateTime.parse(
+    context.period.endDate,
+  ).add(const Duration(days: 1));
   final partial = {
     'current_month',
     'year_to_date',
