@@ -144,7 +144,11 @@ void main() {
     expect(find.text('Master data'), findsOneWidget);
     expect(find.text('Rules'), findsOneWidget);
 
-    await tester.ensureVisible(find.text('Master data'));
+    await Scrollable.ensureVisible(
+      tester.element(find.text('Master data')),
+      alignment: 0.3,
+      duration: const Duration(milliseconds: 1),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Master data'));
     await tester.pumpAndSettle();
@@ -156,7 +160,11 @@ void main() {
     final toolsScrollable = find.byType(Scrollable).first;
     await tester.drag(toolsScrollable, const Offset(0, -500));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Rules'));
+    await Scrollable.ensureVisible(
+      tester.element(find.text('Rules')),
+      alignment: 0.3,
+      duration: const Duration(milliseconds: 1),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Rules'));
     await tester.pumpAndSettle();
@@ -172,7 +180,11 @@ void main() {
     await tester.tap(find.bySemanticsLabel('Add transaction'));
     await tester.pumpAndSettle();
     expect(find.text('Payment sources'), findsOneWidget);
-    await tester.ensureVisible(find.text('Payment sources'));
+    await Scrollable.ensureVisible(
+      tester.element(find.text('Payment sources')),
+      alignment: 0.3,
+      duration: const Duration(milliseconds: 1),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Payment sources'));
     await tester.pumpAndSettle();
