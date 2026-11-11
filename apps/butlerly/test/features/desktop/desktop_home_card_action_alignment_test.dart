@@ -137,12 +137,12 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    final sharedAppBar = find.byType(SliverAppBar);
     final sharedHelp = find.byKey(const ValueKey('page-context-help-visual'));
-    expect(sharedAppBar, findsOneWidget);
+    expect(find.byType(SliverAppBar), findsOneWidget);
     expect(sharedHelp, findsOneWidget);
     final sharedRightInset =
-        tester.getRect(sharedAppBar).right - tester.getRect(sharedHelp).right;
+        tester.getRect(find.byType(Scaffold).first).right -
+        tester.getRect(sharedHelp).right;
 
     expect(homeAddGap, closeTo(ButlerlySpacing.small, 0.5));
     expect(homeRightInset, closeTo(sharedRightInset, 0.5));
