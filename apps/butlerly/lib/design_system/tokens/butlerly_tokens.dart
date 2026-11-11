@@ -41,13 +41,13 @@ abstract final class ButlerlySpacing {
   static const headerActionTrailing = standard;
 }
 
-/// Shared gold colors. Device navigation retains its horizontal gradient;
-/// desktop header/footer separators use two discrete horizontal color bands.
+/// Device navigation retains its gold gradient. Desktop separators use one
+/// restrained, solid gold tone at 1px across all horizontal/vertical edges.
 abstract final class ButlerlyGoldAccentTokens {
   static const deepGold = Color(0xFFC0974C);
   static const lightGold = Color(0xFFF3C670);
-  static const thickness = 2.0;
-  static const stripeHeight = thickness / 2;
+  static const desktopDividerGold = deepGold;
+  static const thickness = 1.0;
   static const gradient = LinearGradient(colors: [deepGold, lightGold]);
 }
 

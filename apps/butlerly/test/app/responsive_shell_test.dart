@@ -2261,7 +2261,7 @@ void _expectCollapsedBrandCentered(WidgetTester tester) {
     matching: find.byType(ButlerlyBrandIcon),
   );
   expect(brand, findsOneWidget);
-  // The 2px gold divider occupies the trailing edge of the rail.
+  // The 1px gold divider occupies the trailing edge of the rail.
   // Center the brand in the remaining content box, like the navigation icons.
   final railContainer = find
       .descendant(of: rail, matching: find.byType(Container))

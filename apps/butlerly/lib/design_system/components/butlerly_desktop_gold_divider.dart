@@ -1,10 +1,9 @@
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:flutter/material.dart';
 
-/// Two solid gold bands at the bottom of desktop AppBars and SliverAppBars.
+/// Single 1px solid gold rule at the bottom of desktop AppBars and SliverAppBars.
 ///
-/// Each band is 1px high (deep gold above light gold), with no gradient.
-/// The desktop-only theme keeps device AppBars unchanged.
+/// The desktop-only AppBar theme leaves device headers unchanged.
 class ButlerlyDesktopGoldBottomBorder extends ShapeBorder {
   const ButlerlyDesktopGoldBottomBorder({
     this.thickness = ButlerlyGoldAccentTokens.thickness,
@@ -26,24 +25,14 @@ class ButlerlyDesktopGoldBottomBorder extends ShapeBorder {
   @override
   void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {
     if (rect.isEmpty || thickness <= 0) return;
-    final stripeHeight = thickness / 2;
     canvas.drawRect(
       Rect.fromLTWH(
         rect.left,
         rect.bottom - thickness,
         rect.width,
-        stripeHeight,
+        thickness,
       ),
-      Paint()..color = ButlerlyGoldAccentTokens.deepGold,
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(
-        rect.left,
-        rect.bottom - stripeHeight,
-        rect.width,
-        stripeHeight,
-      ),
-      Paint()..color = ButlerlyGoldAccentTokens.lightGold,
+      Paint()..color = ButlerlyGoldAccentTokens.desktopDividerGold,
     );
   }
 
@@ -52,34 +41,21 @@ class ButlerlyDesktopGoldBottomBorder extends ShapeBorder {
       ButlerlyDesktopGoldBottomBorder(thickness: thickness * t);
 }
 
-/// Full-width, two-stripe solid separator above desktop panel action footers.
+/// Single 1px solid gold line above desktop right-panel action footers.
 class ButlerlyDesktopGoldDivider extends StatelessWidget {
   const ButlerlyDesktopGoldDivider({super.key});
 
   @override
   Widget build(BuildContext context) => const SizedBox(
     height: ButlerlyGoldAccentTokens.thickness,
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SizedBox(
-          height: ButlerlyGoldAccentTokens.stripeHeight,
-          child: ColoredBox(color: ButlerlyGoldAccentTokens.deepGold),
-        ),
-        SizedBox(
-          height: ButlerlyGoldAccentTokens.stripeHeight,
-          child: ColoredBox(color: ButlerlyGoldAccentTokens.lightGold),
-        ),
-      ],
-    ),
+    child: ColoredBox(color: ButlerlyGoldAccentTokens.desktopDividerGold),
   );
 }
 
-/// Two solid vertical gold bands separating the desktop navigation from body.
+/// Solid 1px gold line along the desktop navigation panel's right edge.
 ///
-/// This is a ShapeBorder so the 2px width participates in the navigation's
-/// content inset, preserving the collapsed rail's optical alignment.
+/// The shape border reserves its width within the rail so collapsed icons stay
+/// centered consistently, without affecting device navigation.
 class ButlerlyDesktopGoldRightBorder extends ShapeBorder {
   const ButlerlyDesktopGoldRightBorder({
     this.thickness = ButlerlyGoldAccentTokens.thickness,
@@ -101,19 +77,9 @@ class ButlerlyDesktopGoldRightBorder extends ShapeBorder {
   @override
   void paint(Canvas canvas, Rect rect, {TextDirection? textDirection}) {
     if (rect.isEmpty || thickness <= 0) return;
-    final stripeWidth = thickness / 2;
     canvas.drawRect(
-      Rect.fromLTWH(rect.right - thickness, rect.top, stripeWidth, rect.height),
-      Paint()..color = ButlerlyGoldAccentTokens.deepGold,
-    );
-    canvas.drawRect(
-      Rect.fromLTWH(
-        rect.right - stripeWidth,
-        rect.top,
-        stripeWidth,
-        rect.height,
-      ),
-      Paint()..color = ButlerlyGoldAccentTokens.lightGold,
+      Rect.fromLTWH(rect.right - thickness, rect.top, thickness, rect.height),
+      Paint()..color = ButlerlyGoldAccentTokens.desktopDividerGold,
     );
   }
 
@@ -122,8 +88,7 @@ class ButlerlyDesktopGoldRightBorder extends ShapeBorder {
       ButlerlyDesktopGoldRightBorder(thickness: thickness * t);
 }
 
-/// Full-height, 2px two-tone gold split-view divider.
-/// Left 1px is deep gold, right 1px is light gold; no gradient.
+/// Full-height single 1px gold line separating desktop results/details.
 class ButlerlyDesktopGoldVerticalDivider extends StatelessWidget {
   const ButlerlyDesktopGoldVerticalDivider({super.key});
 
@@ -131,18 +96,6 @@ class ButlerlyDesktopGoldVerticalDivider extends StatelessWidget {
   Widget build(BuildContext context) => const SizedBox(
     width: ButlerlyGoldAccentTokens.thickness,
     height: double.infinity,
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SizedBox(
-          width: ButlerlyGoldAccentTokens.stripeHeight,
-          child: ColoredBox(color: ButlerlyGoldAccentTokens.deepGold),
-        ),
-        SizedBox(
-          width: ButlerlyGoldAccentTokens.stripeHeight,
-          child: ColoredBox(color: ButlerlyGoldAccentTokens.lightGold),
-        ),
-      ],
-    ),
+    child: ColoredBox(color: ButlerlyGoldAccentTokens.desktopDividerGold),
   );
 }

@@ -50,7 +50,7 @@ class _DesktopPrimaryShellState extends State<DesktopPrimaryShell> {
           // right detail pane must have exactly the same header height.
           toolbarHeight: ButlerlySize.pageToolbarHeight,
           // Regular AppBars and ButlerlyPage SliverAppBars inherit the same
-          // two-pixel gold separator, scoped to the desktop shell.
+          // single-pixel solid gold separator, scoped to the desktop shell.
           shape: const ButlerlyDesktopGoldBottomBorder(),
         ),
       ),

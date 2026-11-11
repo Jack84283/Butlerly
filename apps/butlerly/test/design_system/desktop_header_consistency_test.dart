@@ -65,9 +65,11 @@ void main() {
     final divider =
         headerTheme.appBarTheme.shape as ButlerlyDesktopGoldBottomBorder;
     expect(divider.thickness, ButlerlyGoldAccentTokens.thickness);
-    expect(ButlerlyGoldAccentTokens.deepGold, const Color(0xFFC0974C));
-    expect(ButlerlyGoldAccentTokens.lightGold, const Color(0xFFF3C670));
-    expect(ButlerlyGoldAccentTokens.stripeHeight, 1);
+    expect(ButlerlyGoldAccentTokens.thickness, 1);
+    expect(
+      ButlerlyGoldAccentTokens.desktopDividerGold,
+      const Color(0xFFC0974C),
+    );
     final helpPadding = tester.widget<Padding>(
       find.byKey(const ValueKey('page-context-help-padding')),
     );
@@ -129,21 +131,16 @@ void main() {
     final separator = find.byType(ButlerlyDesktopGoldVerticalDivider);
     expect(separator, findsOneWidget);
     expect(tester.getSize(separator).width, ButlerlyGoldAccentTokens.thickness);
-    final stripeBoxes = find.descendant(
+    final goldLine = find.descendant(
       of: separator,
       matching: find.byType(ColoredBox),
     );
-    expect(stripeBoxes, findsNWidgets(2));
+    expect(goldLine, findsOneWidget);
     expect(
-      tester.widget<ColoredBox>(stripeBoxes.at(0)).color,
-      ButlerlyGoldAccentTokens.deepGold,
+      tester.widget<ColoredBox>(goldLine).color,
+      ButlerlyGoldAccentTokens.desktopDividerGold,
     );
-    expect(
-      tester.widget<ColoredBox>(stripeBoxes.at(1)).color,
-      ButlerlyGoldAccentTokens.lightGold,
-    );
-    expect(tester.getSize(stripeBoxes.at(0)).width, 1);
-    expect(tester.getSize(stripeBoxes.at(1)).width, 1);
+    expect(tester.getSize(goldLine).width, 1);
     expect(tester.getRect(separator).height, 900);
     expect(tester.takeException(), isNull);
   });

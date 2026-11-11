@@ -56,21 +56,16 @@ void main() {
     expect(divider, findsOneWidget);
     expect(tester.getSize(divider).height, ButlerlyGoldAccentTokens.thickness);
     expect(tester.getRect(divider).width, tester.getRect(footer).width);
-    final stripes = find.descendant(
+    final goldLine = find.descendant(
       of: divider,
       matching: find.byType(ColoredBox),
     );
-    expect(stripes, findsNWidgets(2));
+    expect(goldLine, findsOneWidget);
     expect(
-      tester.widget<ColoredBox>(stripes.at(0)).color,
-      ButlerlyGoldAccentTokens.deepGold,
+      tester.widget<ColoredBox>(goldLine).color,
+      ButlerlyGoldAccentTokens.desktopDividerGold,
     );
-    expect(
-      tester.widget<ColoredBox>(stripes.at(1)).color,
-      ButlerlyGoldAccentTokens.lightGold,
-    );
-    expect(tester.getSize(stripes.at(0)).height, 1);
-    expect(tester.getSize(stripes.at(1)).height, 1);
+    expect(tester.getSize(goldLine).height, 1);
 
     await tester.drag(
       find.byKey(const ValueKey('desktop-panel-scrolling-body')),
