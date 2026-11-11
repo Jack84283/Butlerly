@@ -25,9 +25,38 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+
+/// Formats the exact application-resolved periods for the desktop summary.
+@visibleForTesting
+String desktopHomePeriodSubtitle(
+  BuildContext context, {
+  required AnalysisPeriod? period,
+  required AnalysisPeriod? baseline,
+  required bool monthToDate,
+}) {
+  if (period == null || baseline == null) {
+    return context.l10n.text('vsPreviousPeriod');
+  }
+  final label = context.l10n.text(
+    monthToDate ? 'monthToDate' : 'currentPeriod',
+  );
+  final currentRange = localizedPeriodRange(
+    context,
+    startDate: period.startDate,
+    endDate: period.endDate,
+  );
+  final previousRange = localizedPeriodRange(
+    context,
+    startDate: baseline.startDate,
+    endDate: baseline.endDate,
+  );
+  return '$label · $currentRange '
+      '${context.l10n.text('vsPreviousPeriod')} $previousRange';
+}
 
 /// A desktop-only presentation surface. No device Home widgets are imported.
 class DesktopHomePage extends StatefulWidget {
@@ -508,7 +537,15 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                           _DesktopPanel(
                             key: const ValueKey('desktop-home-summary-card'),
                             title: context.l10n.text('monthlySummary'),
-                            subtitle: context.l10n.text('vsPreviousPeriod'),
+                            subtitle: desktopHomePeriodSubtitle(
+                              context,
+                              period: data?.context?.period,
+                              baseline: data?.comparisonPeriod,
+                              monthToDate: _sameMonth(
+                                current,
+                                currentFinancialMonth,
+                              ),
+                            ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
