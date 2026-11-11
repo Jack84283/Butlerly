@@ -20,6 +20,24 @@ void main() {
     expect(baseline?.endDate, '2026-10-11');
   });
 
+  test('first day of month compares against first previous-month day', () {
+    final baseline = resolveHomeComparisonPeriod(
+      _context('current_month', '2024-03-01', '2024-03-01'),
+      DateTime.utc(2024, 3, 1, 23, 59),
+    );
+    expect(baseline?.startDate, '2024-02-01');
+    expect(baseline?.endDate, '2024-02-01');
+  });
+
+  test('complete month compares to leap-year February without truncation', () {
+    final baseline = resolveHomeComparisonPeriod(
+      _context('selected_month', '2024-03-01', '2024-03-31'),
+      DateTime.utc(2024, 11, 11),
+    );
+    expect(baseline?.startDate, '2024-02-01');
+    expect(baseline?.endDate, '2024-02-29');
+  });
+
   test('selected complete month uses a complete previous month', () {
     final baseline = resolveHomeComparisonPeriod(
       _context('selected_month', '2026-10-01', '2026-10-31'),
