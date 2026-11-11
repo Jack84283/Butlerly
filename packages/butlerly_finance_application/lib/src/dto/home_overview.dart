@@ -20,6 +20,7 @@ final class HomeOverview {
     required DateTime currentFinancialMonth,
     required DateTime displayMonth,
     required AnalysisOverview? analysis,
+    AnalysisPeriod? comparisonPeriod,
     required List<MonthlySpendingTrendPoint> monthlyTrend,
     required bool monthlyTrendUnavailable,
     required int reviewCount,
@@ -37,6 +38,7 @@ final class HomeOverview {
          currentFinancialMonth: currentFinancialMonth,
          displayMonth: displayMonth,
          analysis: analysis,
+         comparisonPeriod: comparisonPeriod,
          monthlyTrend: monthlyTrend,
          monthlyTrendUnavailable: monthlyTrendUnavailable,
          reviewCount: reviewCount,
@@ -70,6 +72,7 @@ final class HomeOverview {
     this.currentFinancialMonth,
     this.displayMonth,
     this.analysis,
+    this.comparisonPeriod,
     this.monthlyTrend = const [],
     this.monthlyTrendUnavailable = true,
     this.reviewCount = 0,
@@ -95,6 +98,9 @@ final class HomeOverview {
   final DateTime? displayMonth;
 
   final AnalysisOverview? analysis;
+
+  /// Application-resolved equivalent baseline window for Home comparisons.
+  final AnalysisPeriod? comparisonPeriod;
 
   final List<MonthlySpendingTrendPoint> monthlyTrend;
   final bool monthlyTrendUnavailable;
