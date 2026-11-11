@@ -153,6 +153,51 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('embedded X Close is separate from trailing Help', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    var closed = false;
+
+    await tester.pumpWidget(
+      app(
+        desktop(
+          Scaffold(
+            appBar: AppBar(
+              leading: ButlerlyPanelCloseButton(
+                buttonKey: const ValueKey('test-panel-close'),
+                onPressed: () => closed = true,
+              ),
+              title: const Text('Review statement import'),
+              actions: const [
+                ButlerlyContextHelpButton(articleId: 'ch-10'),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final close = find.byKey(const ValueKey('test-panel-close'));
+    final help = find.byKey(const ValueKey('page-context-help-visual'));
+    expect(close, findsOneWidget);
+    expect(help, findsOneWidget);
+    expect(tester.getRect(close).right, lessThan(tester.getRect(help).left));
+    expect(
+      find.descendant(
+        of: close,
+        matching: find.byIcon(Icons.close_rounded),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(close);
+    expect(closed, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('desktop statement footer pairs Abandon and Import', (
     tester,
   ) async {
