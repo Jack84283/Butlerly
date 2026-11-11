@@ -551,7 +551,8 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
   );
 
   bool _busy = false;
-  final BackupStatusService _backupStatusStore = const LocalBackupStatusService();
+  final BackupStatusService _backupStatusStore =
+      const LocalBackupStatusService();
   BackupStatusRecord? _lastCompletedBackup;
 
   @override
