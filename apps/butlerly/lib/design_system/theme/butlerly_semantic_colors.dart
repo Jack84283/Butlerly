@@ -286,7 +286,8 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
     border: border ?? this.border,
     inputBorder: inputBorder ?? this.inputBorder,
     focusRing: focusRing ?? this.focusRing,
-    secondaryActionSurface: secondaryActionSurface ?? this.secondaryActionSurface,
+    secondaryActionSurface:
+        secondaryActionSurface ?? this.secondaryActionSurface,
     brand: brand ?? this.brand,
     brandStrong: brandStrong ?? this.brandStrong,
     interactive: interactive ?? this.interactive,
@@ -329,7 +330,11 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
       border: Color.lerp(border, other.border, t)!,
       inputBorder: Color.lerp(inputBorder, other.inputBorder, t)!,
       focusRing: Color.lerp(focusRing, other.focusRing, t)!,
-      secondaryActionSurface: Color.lerp(secondaryActionSurface, other.secondaryActionSurface, t)!,
+      secondaryActionSurface: Color.lerp(
+        secondaryActionSurface,
+        other.secondaryActionSurface,
+        t,
+      )!,
       brand: Color.lerp(brand, other.brand, t)!,
       brandStrong: Color.lerp(brandStrong, other.brandStrong, t)!,
       interactive: Color.lerp(interactive, other.interactive, t)!,
@@ -339,7 +344,11 @@ class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
         t,
       )!,
       controlPrimary: Color.lerp(controlPrimary, other.controlPrimary, t)!,
-      controlPrimaryText: Color.lerp(controlPrimaryText, other.controlPrimaryText, t),
+      controlPrimaryText: Color.lerp(
+        controlPrimaryText,
+        other.controlPrimaryText,
+        t,
+      ),
       interactiveStrong: Color.lerp(
         interactiveStrong,
         other.interactiveStrong,

@@ -35,19 +35,19 @@ void main() {
     'light mode matches the approved off-white background specification',
     () {
       final colors = AppTheme.light.extension<ButlerlySemanticColors>()!;
-      expect(colors.background, const Color(0xFFF6F7F8));
+      expect(colors.background, const Color(0xFFF2F3F7));
       expect(colors.cardSurface, const Color(0xFFFFFFFF));
-      expect(colors.surface, const Color(0xFFF0F2F5));
-      expect(colors.elevatedSurface, const Color(0xFFF0F2F5));
-      expect(colors.subtleSurface, const Color(0xFFF2F3F5));
+      expect(colors.surface, const Color(0xFFFFFFFF));
+      expect(colors.elevatedSurface, const Color(0xFFFFFFFF));
+      expect(colors.subtleSurface, const Color(0xFFEBEFF5));
       expect(colors.overlaySurface, const Color(0xFFFFFFFF));
-      expect(colors.sheetSurface, const Color(0xFFF2F3F5));
-      expect(colors.footerSurface, const Color(0xFFF2F3F5));
-      expect(colors.primaryText, const Color(0xFF14171D));
-      expect(colors.secondaryText, const Color(0xFF4B5563));
-      expect(colors.tertiaryText, const Color(0xFF6B7280));
-      expect(colors.cardDivider, const Color(0xFFD8DDE6));
-      expect(colors.border, const Color(0xFFD8DDE6));
+      expect(colors.sheetSurface, const Color(0xFFFFFFFF));
+      expect(colors.footerSurface, const Color(0xFFF2F3F7));
+      expect(colors.primaryText, const Color(0xFF151E2B));
+      expect(colors.secondaryText, const Color(0xFF516278));
+      expect(colors.tertiaryText, const Color(0xFF516278));
+      expect(colors.cardDivider, const Color(0xFFD5DEE9));
+      expect(colors.border, const Color(0xFFD5DEE9));
       expect(colors.brand, const Color(0xFF7A1E3A));
       expect(
         colors.cardSurface.computeLuminance(),
@@ -55,7 +55,7 @@ void main() {
       );
       expect(
         colors.background.computeLuminance(),
-        greaterThan(colors.elevatedSurface.computeLuminance()),
+        greaterThan(colors.subtleSurface.computeLuminance()),
       );
     },
   );
@@ -63,7 +63,7 @@ void main() {
   test('shared controls use the approved light and dark color roles', () {
     expect(
       ButlerlySemanticColors.light.controlPrimary,
-      const Color(0xFF541127),
+      const Color(0xFF244D79),
     );
     expect(ButlerlySemanticColors.dark.controlPrimary, const Color(0xFFC76F8B));
 
@@ -79,7 +79,7 @@ void main() {
         );
         final dark = theme.brightness == Brightness.dark;
         expect(buttons.primaryFill, colors.controlPrimary);
-        expect(buttons.secondaryFill, colors.cardSurface);
+        expect(buttons.secondaryFill, colors.secondaryActionSurface);
         expect(buttons.secondaryBorder, colors.border);
         expect(buttons.secondaryText, colors.primaryText);
         expect(

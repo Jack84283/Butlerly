@@ -54,7 +54,8 @@ abstract final class AppTheme {
     final scheme = ColorScheme(
       brightness: brightness,
       primary: buttons.primaryFill,
-      onPrimary: colors.controlPrimaryText ?? _onColor(buttons.primaryFill),
+      onPrimary:
+          colors.controlPrimaryText ?? _onColor(buttons.primaryFill),
       primaryContainer: colors.selection,
       onPrimaryContainer: colors.primaryText,
       secondary: colors.brand,
