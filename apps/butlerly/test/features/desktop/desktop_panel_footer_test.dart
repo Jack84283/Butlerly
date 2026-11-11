@@ -1,6 +1,7 @@
 import 'package:butlerly/app/theme/app_theme.dart';
+import 'package:butlerly/design_system/components/butlerly_desktop_gold_divider.dart';
 import 'package:butlerly/design_system/components/butlerly_desktop_panel_footer.dart';
-import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -48,13 +49,20 @@ void main() {
     final initialRect = tester.getRect(footer);
     expect(initialRect.bottom, closeTo(700, 1));
     expect(tester.getRect(save).bottom, lessThan(initialRect.bottom));
-    final divider = find.descendant(of: footer, matching: find.byType(Divider));
-    expect(divider, findsOneWidget);
-    expect(tester.widget<Divider>(divider).height, 1);
-    expect(
-      tester.widget<Divider>(divider).color,
-      AppTheme.dark.extension<ButlerlySemanticColors>()!.cardDivider,
+    final divider = find.descendant(
+      of: footer,
+      matching: find.byType(ButlerlyDesktopGoldDivider),
     );
+    expect(divider, findsOneWidget);
+    expect(
+      tester.getSize(divider).height,
+      ButlerlyGoldAccentTokens.thickness,
+    );
+    expect(tester.getRect(divider).width, tester.getRect(footer).width);
+    final decoration = tester.widget<DecoratedBox>(
+      find.descendant(of: divider, matching: find.byType(DecoratedBox)),
+    ).decoration as BoxDecoration;
+    expect(decoration.gradient, ButlerlyGoldAccentTokens.gradient);
 
     await tester.drag(
       find.byKey(const ValueKey('desktop-panel-scrolling-body')),

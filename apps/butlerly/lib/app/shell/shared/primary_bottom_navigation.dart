@@ -245,9 +245,7 @@ class PrimaryBottomNavigation extends StatelessWidget {
                       ButlerlySize.primaryNavigationBorderWidth,
                     ),
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFC0974C), Color(0xFFF3C670)],
-                      ),
+                      gradient: ButlerlyGoldAccentTokens.gradient,
                       borderRadius: BorderRadius.circular(ButlerlyRadius.pill),
                     ),
                     child: DecoratedBox(

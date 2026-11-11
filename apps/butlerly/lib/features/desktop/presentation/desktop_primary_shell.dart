@@ -1,5 +1,6 @@
 import 'package:butlerly/design_system/components/butlerly_brand_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_context_help.dart';
+import 'package:butlerly/design_system/components/butlerly_desktop_gold_divider.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
@@ -48,7 +49,9 @@ class _DesktopPrimaryShellState extends State<DesktopPrimaryShell> {
           // ButlerlyPage uses a 48px SliverAppBar. Ordinary AppBars in the
           // right detail pane must have exactly the same header height.
           toolbarHeight: ButlerlySize.pageToolbarHeight,
-          shape: Border(bottom: BorderSide(color: context.colors.cardDivider)),
+          // Regular AppBars and ButlerlyPage SliverAppBars inherit the same
+          // two-pixel gold separator, scoped to the desktop shell.
+          shape: const ButlerlyDesktopGoldBottomBorder(),
         ),
       ),
       child: ButlerlyDesktopHeaderScope(

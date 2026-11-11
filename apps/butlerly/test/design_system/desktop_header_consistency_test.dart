@@ -1,5 +1,6 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_desktop_gold_divider.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -62,11 +63,12 @@ void main() {
     await tester.pumpAndSettle();
 
     final headerTheme = Theme.of(tester.element(find.byType(AppBar).first));
-    final divider = headerTheme.appBarTheme.shape as Border;
-    expect(divider.bottom.width, 1);
+    final divider =
+        headerTheme.appBarTheme.shape as ButlerlyDesktopGoldBottomBorder;
+    expect(divider.thickness, ButlerlyGoldAccentTokens.thickness);
     expect(
-      divider.bottom.color,
-      headerTheme.extension<ButlerlySemanticColors>()!.cardDivider,
+      ButlerlyGoldAccentTokens.gradient.colors,
+      const [Color(0xFFC0974C), Color(0xFFF3C670)],
     );
     final helpPadding = tester.widget<Padding>(
       find.byKey(const ValueKey('page-context-help-padding')),
@@ -155,10 +157,10 @@ void main() {
     final shape = Theme.of(
       tester.element(find.byType(SliverAppBar)),
     ).appBarTheme.shape;
-    expect(shape, isA<Border>());
+    expect(shape, isA<ButlerlyDesktopGoldBottomBorder>());
     expect(
-      (shape! as Border).bottom.color,
-      AppTheme.dark.extension<ButlerlySemanticColors>()!.cardDivider,
+      (shape! as ButlerlyDesktopGoldBottomBorder).thickness,
+      ButlerlyGoldAccentTokens.thickness,
     );
     expect(tester.takeException(), isNull);
   });

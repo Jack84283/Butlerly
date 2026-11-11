@@ -5,6 +5,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_desktop_gold_divider.dart';
 import 'package:butlerly/design_system/components/butlerly_desktop_transaction_table.dart';
 import 'package:butlerly/design_system/components/butlerly_month_picker.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
@@ -297,11 +298,9 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                       minHeight: ButlerlySize.pageToolbarHeight,
                       maxHeight: ButlerlySize.pageToolbarHeight,
                     ),
-              decoration: BoxDecoration(
-                color: context.colors.background,
-                border: Border(
-                  bottom: BorderSide(color: context.colors.cardDivider),
-                ),
+              decoration: BoxDecoration(color: context.colors.background),
+              foregroundDecoration: const ShapeDecoration(
+                shape: ButlerlyDesktopGoldBottomBorder(),
               ),
               child: LayoutBuilder(
                 builder: (context, constraints) {
