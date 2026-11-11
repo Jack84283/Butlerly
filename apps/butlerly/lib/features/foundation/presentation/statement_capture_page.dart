@@ -2217,7 +2217,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
             ),
       title: Text(context.l10n.text('reviewStatementImport')),
       actions: [
-        if (!ButlerlyDesktopHeaderScope.isActive(context))
+        if (widget.onClose == null)
           IconButton(
             key: const ValueKey('statement-review-header-abandon'),
             onPressed: _abandonImport,
@@ -2388,7 +2388,7 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
             child: SafeArea(
               top: false,
               child: StatementReviewFooterActions(
-                desktop: ButlerlyDesktopHeaderScope.isActive(context),
+                desktop: widget.onClose != null,
                 onAbandon: _abandonImport,
                 onImport: _sourceId == null || _rows.isEmpty
                     ? null

@@ -1053,14 +1053,12 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
       appBar: AppBar(
         leading: widget.onComplete == null
             ? null
-            : IconButton(
-                key: const ValueKey('transaction-editor-cancel-panel'),
-                tooltip: context.l10n.text('cancel'),
+            : ButlerlyPanelCloseButton(
+                buttonKey: const ValueKey('transaction-editor-cancel-panel'),
                 onPressed: _saving
                     ? null
                     : () =>
                           _complete(const TransactionEditorResult.cancelled()),
-                icon: const Icon(Icons.close_rounded),
               ),
         title: Text(
           widget.existing == null
