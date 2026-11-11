@@ -1330,7 +1330,6 @@ class _DesktopCategoryLeadingIcon extends StatelessWidget {
 }
 
 // Applies to colored fills only; text and icons stay fully opaque for contrast.
-const double _desktopHomeTintOpacity = 0.50;
 // Match device Home: the selected month is solid, other months are muted.
 const double _desktopHomeActionTintOpacity = 0.18;
 const TextStyle _desktopHomeCardTitleStyle = TextStyle(
