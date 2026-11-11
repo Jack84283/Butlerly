@@ -102,9 +102,7 @@ class AddPage extends StatelessWidget {
         for (final (index, section) in sections.indexed) ...[
           Padding(
             padding: EdgeInsets.only(
-              top: index == 0
-                  ? ButlerlySpacing.none
-                  : ButlerlySpacing.cardGap,
+              top: index == 0 ? ButlerlySpacing.none : ButlerlySpacing.cardGap,
               bottom: ButlerlySpacing.small,
             ),
             child: Text(
