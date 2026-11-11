@@ -6,6 +6,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/components/butlerly_budget_scope_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_desktop_panel_footer.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
@@ -358,28 +359,17 @@ class _BudgetsPageState extends State<BudgetsPage> {
                 title: Text(context.l10n.text('budgetEdit')),
                 actions: const [ButlerlyContextHelpButton(articleId: 'ch-15')],
               ),
-              body: Column(
-                children: [
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(ButlerlySpacing.standard),
-                      child: form,
-                    ),
-                  ),
-                  Divider(height: 1, color: context.colors.cardDivider),
-                  SafeArea(
-                    top: false,
-                    child: Padding(
-                      padding: const EdgeInsets.all(ButlerlySpacing.small),
-                      child: ButlerlyButtonBar(
-                        alignment: ButlerlyButtonBarAlignment.end,
-                        density: ButlerlyButtonBarDensity.compact,
-                        spacing: ButlerlyButtonBarSpacing.none,
-                        children: actions,
-                      ),
-                    ),
-                  ),
-                ],
+              body: Padding(
+                padding: const EdgeInsets.all(ButlerlySpacing.standard),
+                child: form,
+              ),
+              bottomNavigationBar: ButlerlyDesktopPanelFooter(
+                child: ButlerlyButtonBar(
+                  alignment: ButlerlyButtonBarAlignment.end,
+                  density: ButlerlyButtonBarDensity.compact,
+                  spacing: ButlerlyButtonBarSpacing.none,
+                  children: actions,
+                ),
               ),
             );
           }

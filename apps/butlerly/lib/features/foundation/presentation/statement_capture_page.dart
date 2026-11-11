@@ -8,6 +8,7 @@ import 'package:butlerly/core/evidence/platform_ocr_recognizer.dart';
 import 'package:butlerly/core/evidence/statement_extractor.dart';
 import 'package:butlerly/core/evidence/statement_source_matcher.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_desktop_panel_footer.dart';
 import 'package:butlerly/design_system/components/butlerly_desktop_table_body.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
@@ -2227,6 +2228,17 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
         const ButlerlyContextHelpButton(articleId: 'ch-10'),
       ],
     ),
+    bottomNavigationBar: widget.onClose == null
+        ? null
+        : ButlerlyDesktopPanelFooter(
+            child: StatementReviewFooterActions(
+              desktop: true,
+              onAbandon: _abandonImport,
+              onImport: _sourceId == null || _rows.isEmpty
+                  ? null
+                  : _importBatch,
+            ),
+          ),
     body: ButlerlyResponsiveBody(
       contentKey: const ValueKey('statement-review-content'),
       child: ListView(
@@ -2380,22 +2392,23 @@ class _StatementReviewPageState extends State<_StatementReviewPage> {
                 ),
               ),
             ),
-          Padding(
-            padding: const EdgeInsets.only(
-              top: ButlerlySpacing.micro,
-              bottom: ButlerlySpacing.bottomActionSpacing,
-            ),
-            child: SafeArea(
-              top: false,
-              child: StatementReviewFooterActions(
-                desktop: widget.onClose != null,
-                onAbandon: _abandonImport,
-                onImport: _sourceId == null || _rows.isEmpty
-                    ? null
-                    : _importBatch,
+          if (widget.onClose == null)
+            Padding(
+              padding: const EdgeInsets.only(
+                top: ButlerlySpacing.micro,
+                bottom: ButlerlySpacing.bottomActionSpacing,
+              ),
+              child: SafeArea(
+                top: false,
+                child: StatementReviewFooterActions(
+                  desktop: false,
+                  onAbandon: _abandonImport,
+                  onImport: _sourceId == null || _rows.isEmpty
+                      ? null
+                      : _importBatch,
+                ),
               ),
             ),
-          ),
         ],
       ),
     ),
