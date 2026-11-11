@@ -469,7 +469,10 @@ AnalysisPeriod? resolveHomeComparisonPeriod(AnalysisContext context, DateTime in
   if (primary is! AnalysisPeriodResolved) return null;
   final previous = resolver.resolvePreviousEquivalent(
     primary: primary.window,
-    elapsedAnchor: instant,
+    // The current period already includes today's financial date. Advance
+    // the elapsed anchor by one day so the baseline includes the same number
+    // of complete calendar dates (Nov 1–11 versus Oct 1–11).
+    elapsedAnchor: instant.add(const Duration(days: 1)),
   );
   if (previous is! AnalysisPeriodResolved) return null;
   final window = previous.window;
