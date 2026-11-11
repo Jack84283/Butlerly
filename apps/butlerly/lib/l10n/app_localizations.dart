@@ -666,6 +666,9 @@ class AppLocalizations {
       'undo': 'Undo',
       'reviewSubtitle':
           'Resolve only the records that genuinely need attention.',
+      'reviewAllEligibleScope': 'All eligible transactions',
+      'reviewScopeLabel': 'Scope',
+      'reviewRefreshHint': 'Refresh to check for changes; last scan time is not recorded here.',
       'reviewEmpty': 'You’re all caught up',
       'reviewEmptyBody':
           'Butlerly will show incomplete, uncertain, or conflicting records here.',
@@ -1768,6 +1771,9 @@ class AppLocalizations {
       'transactionArchived': '交易已归档',
       'undo': '撤销',
       'reviewSubtitle': '仅处理确实需要关注的记录。',
+      'reviewAllEligibleScope': '所有符合条件的交易',
+      'reviewScopeLabel': '范围',
+      'reviewRefreshHint': '刷新以检查更新；此处不记录上次扫描时间。',
       'reviewEmpty': '已全部处理完毕',
       'reviewEmptyBody': '“账房先生” 会在此显示不完整、不确定或存在冲突的记录。',
       'reviewLoadError': '无法加载审核项目',
@@ -2874,6 +2880,9 @@ class AppLocalizations {
       'transactionArchived': 'Transacción archivada',
       'undo': 'Deshacer',
       'reviewSubtitle': 'Resuelve solo los registros que requieren atención.',
+      'reviewAllEligibleScope': 'Todas las transacciones elegibles',
+      'reviewScopeLabel': 'Alcance',
+      'reviewRefreshHint': 'Actualiza para comprobar cambios; aquí no se registra la hora del último análisis.',
       'reviewEmpty': 'Todo está al día',
       'reviewEmptyBody':
           'Los registros incompletos o inciertos aparecerán aquí.',
