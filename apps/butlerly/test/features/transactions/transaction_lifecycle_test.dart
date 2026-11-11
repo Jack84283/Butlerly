@@ -241,6 +241,11 @@ void main() {
       find.byKey(const ValueKey('transaction-detail-edit-button')),
       findsOneWidget,
     );
+    expect(
+      find.byKey(const ValueKey('transaction-detail-delete-button')),
+      findsOneWidget,
+    );
+    expect(find.byType(ButlerlyDesktopPanelFooter), findsOneWidget);
     expect(row, findsOneWidget);
 
     // Edit keeps the same panel and leaves the transactions table mounted.
@@ -256,6 +261,11 @@ void main() {
       find.byKey(const ValueKey('transaction-editor-content')),
       findsOneWidget,
     );
+    expect(
+      find.byKey(const ValueKey('transaction-save-locally')),
+      findsOneWidget,
+    );
+    expect(find.byType(ButlerlyDesktopPanelFooter), findsOneWidget);
     expect(
       find.byKey(const ValueKey('transaction-detail-summary-card')),
       findsNothing,
@@ -3033,6 +3043,15 @@ void main() {
       );
       expect(find.byType(PaymentSettlementDetailPage), findsOneWidget);
       expect(find.byType(TransactionRow), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('desktop-payment-settlement-edit-button')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('desktop-payment-settlement-actions-button')),
+        findsOneWidget,
+      );
+      expect(find.byType(ButlerlyDesktopPanelFooter), findsOneWidget);
       expect(settlementRow, findsOneWidget);
       final originalDetailState = tester.state(
         find.byType(PaymentSettlementDetailPage),
