@@ -474,6 +474,8 @@ class AppLocalizations {
       'backupStatusUnknown':
           'Last backup: not tracked on this device. A saved backup does not confirm recoverability.',
       'backUpNowAction': 'Back up now',
+      'backupStatusRecorded': 'Last backup created: {date}. Not restore-tested; confirm the exported file is still available.',
+      'backupStatusMissingAttachments': 'Some attachments were missing.',
       'backupRecoveryTitle': 'Backup & Recovery',
       'backupRecoveryBody':
           'Create and restore encrypted backups of your financial data.',
@@ -1601,6 +1603,8 @@ class AppLocalizations {
       'desktopLegalDocuments': '文档',
       'backupStatusUnknown': '上次备份：此设备未记录。已保存备份不代表已验证可恢复。',
       'backUpNowAction': '立即备份',
+      'backupStatusRecorded': '上次创建备份：{date}。尚未验证恢复，请确认导出的文件仍然存在。',
+      'backupStatusMissingAttachments': '部分附件缺失。',
       'backupRecoveryTitle': '备份与恢复',
       'backupRecoveryBody': '创建和恢复财务数据的加密备份。',
       'dataExportTitle': '数据导出',
@@ -2687,6 +2691,8 @@ class AppLocalizations {
       'backupStatusUnknown':
           'Última copia: no registrada en este dispositivo. Guardarla no confirma que pueda restaurarse.',
       'backUpNowAction': 'Crear copia ahora',
+      'backupStatusRecorded': 'Última copia creada: {date}. Restauración no comprobada; confirme que conserva el archivo.',
+      'backupStatusMissingAttachments': 'Faltaban algunos archivos adjuntos.',
       'backupRecoveryTitle': 'Copia de seguridad y recuperación',
       'backupRecoveryBody':
           'Cree y restaure copias cifradas de sus datos financieros.',
