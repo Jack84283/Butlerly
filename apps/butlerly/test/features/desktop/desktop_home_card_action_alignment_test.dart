@@ -97,9 +97,7 @@ void main() {
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate,
         ],
-        home: ButlerlyDesktopHeaderScope(
-          child: Scaffold(body: body),
-        ),
+        home: ButlerlyDesktopHeaderScope(child: Scaffold(body: body)),
       ),
     );
 
@@ -107,9 +105,7 @@ void main() {
     await tester.pumpAndSettle();
     final homeHeader = find.byKey(const ValueKey('desktop-home-header'));
     final homeAdd = find.byKey(const ValueKey('desktop-home-header-add'));
-    final homeHelp = find.byKey(
-      const ValueKey('page-context-help-visual'),
-    );
+    final homeHelp = find.byKey(const ValueKey('page-context-help-visual'));
     expect(homeHeader, findsOneWidget);
     expect(homeAdd, findsOneWidget);
     expect(homeHelp, findsOneWidget);
@@ -142,9 +138,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     final sharedAppBar = find.byType(SliverAppBar);
-    final sharedHelp = find.byKey(
-      const ValueKey('page-context-help-visual'),
-    );
+    final sharedHelp = find.byKey(const ValueKey('page-context-help-visual'));
     expect(sharedAppBar, findsOneWidget);
     expect(sharedHelp, findsOneWidget);
     final sharedRightInset =
