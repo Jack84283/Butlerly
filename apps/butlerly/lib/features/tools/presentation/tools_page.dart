@@ -49,66 +49,70 @@ class ToolsPage extends StatelessWidget {
         ButlerlySpacing.large,
       ),
       children: [
-        for (final (index, section) in sections.indexed) ...[
-          Padding(
-            padding: EdgeInsets.only(
-              top: index == 0 ? ButlerlySpacing.none : ButlerlySpacing.cardGap,
-              bottom: ButlerlySpacing.small,
-            ),
-            child: Text(
-              section.title,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-          ),
-          if (desktop)
-            LayoutBuilder(
-              key: ValueKey(
-                section.routes.first == '/review'
-                    ? 'desktop-tools-actions'
-                    : 'desktop-tools-actions-${section.routes.first}',
-              ),
-              builder: (context, constraints) {
-                const gap = ButlerlySpacing.cardGap;
-                final width = constraints.maxWidth > 980
-                    ? 980.0
-                    : constraints.maxWidth;
-                final tileWidth = (width - gap) / 2;
-                return Align(
-                  alignment: Alignment.centerLeft,
-                  child: SizedBox(
-                    width: width,
-                    child: Wrap(
-                      spacing: gap,
-                      runSpacing: gap,
-                      children: [
-                        for (final tool in tools.where(
-                          (item) => section.routes.contains(item.route),
-                        ))
-                          SizedBox(
-                            width: tileWidth,
-                            child: _ToolPanel(tool: tool),
-                          ),
-                      ],
+        if (desktop)
+          Row(
+            key: const ValueKey('desktop-tools-three-columns'),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final (index, section) in sections.indexed) ...[
+                if (index > 0)
+                  const SizedBox(width: ButlerlySpacing.cardGap),
+                Expanded(
+                  child: Column(
+                    key: ValueKey(
+                      index == 0
+                          ? 'desktop-tools-actions'
+                          : 'desktop-tools-actions-$index',
                     ),
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          bottom: ButlerlySpacing.small,
+                        ),
+                        child: Text(
+                          section.title,
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                      ),
+                      for (final tool in tools.where(
+                            (item) => section.routes.contains(item.route),
+                          )) ...[
+                        _ToolPanel(tool: tool),
+                        const SizedBox(height: ButlerlySpacing.cardGap),
+                      ],
+                    ],
                   ),
-                );
-              },
-            )
-          else
-            ButlerlyActionGroup(
-              actions: [
-                for (final tool in tools.where(
-                  (item) => section.routes.contains(item.route),
-                ))
-                  ButlerlyActionItem(
-                    icon: tool.icon,
-                    title: tool.title,
-                    subtitle: tool.description,
-                    onTap: () => context.push(tool.route),
-                  ),
+                ),
               ],
+            ],
+          )
+        else
+          for (final (index, section) in sections.indexed) ...[
+            Padding(
+              padding: EdgeInsets.only(
+                top: index == 0 ? ButlerlySpacing.none : ButlerlySpacing.cardGap,
+                bottom: ButlerlySpacing.small,
+              ),
+              child: Text(
+                section.title,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
             ),
-        ],
+            ButlerlyActionGroup(
+                actions: [
+                  for (final tool in tools.where(
+                    (item) => section.routes.contains(item.route),
+                  ))
+                    ButlerlyActionItem(
+                      icon: tool.icon,
+                      title: tool.title,
+                      subtitle: tool.description,
+                      onTap: () => context.push(tool.route),
+                    ),
+                ],
+              ),
+          ],
         const SizedBox(height: ButlerlySpacing.structural),
       ],
     );
