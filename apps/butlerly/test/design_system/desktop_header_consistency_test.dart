@@ -126,6 +126,28 @@ void main() {
     expect(rightHeader.height, ButlerlySize.pageToolbarHeight);
     expect(leftHeader.top, closeTo(rightHeader.top, 0.5));
     expect(leftHeader.bottom, closeTo(rightHeader.bottom, 0.5));
+    final separator = find.byType(ButlerlyDesktopGoldVerticalDivider);
+    expect(separator, findsOneWidget);
+    expect(
+      tester.getSize(separator).width,
+      ButlerlyGoldAccentTokens.thickness,
+    );
+    final stripeBoxes = find.descendant(
+      of: separator,
+      matching: find.byType(ColoredBox),
+    );
+    expect(stripeBoxes, findsNWidgets(2));
+    expect(
+      tester.widget<ColoredBox>(stripeBoxes.at(0)).color,
+      ButlerlyGoldAccentTokens.deepGold,
+    );
+    expect(
+      tester.widget<ColoredBox>(stripeBoxes.at(1)).color,
+      ButlerlyGoldAccentTokens.lightGold,
+    );
+    expect(tester.getSize(stripeBoxes.at(0)).width, 1);
+    expect(tester.getSize(stripeBoxes.at(1)).width, 1);
+    expect(tester.getRect(separator).height, 900);
     expect(tester.takeException(), isNull);
   });
 

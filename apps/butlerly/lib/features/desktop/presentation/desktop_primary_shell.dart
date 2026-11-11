@@ -112,9 +112,9 @@ class _WidePrimaryNavigation extends StatelessWidget {
     width: expanded
         ? ButlerlySize.wideNavigationExpandedWidth
         : ButlerlySize.wideNavigationCollapsedWidth,
-    decoration: BoxDecoration(
+    decoration: ShapeDecoration(
       color: context.colors.surface,
-      border: Border(right: BorderSide(color: context.colors.cardDivider)),
+      shape: const ButlerlyDesktopGoldRightBorder(),
     ),
     child: SafeArea(
       bottom: false,
