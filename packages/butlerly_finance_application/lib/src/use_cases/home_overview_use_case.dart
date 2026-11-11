@@ -7,6 +7,7 @@ import '../dto/review_item_dto.dart';
 import '../dto/review_period_scope.dart';
 import '../dto/transaction_dto.dart';
 import '../analysis/invalidation.dart';
+import '../analysis/period_resolver.dart';
 import '../result/application_result.dart';
 import 'analysis_use_cases.dart';
 import '../commands/transaction_commands.dart';
@@ -281,6 +282,7 @@ final class GetHomeOverview {
         currentFinancialMonth: homePeriod.currentFinancialMonth,
         displayMonth: homePeriod.displayMonth,
         analysis: analysis,
+        comparisonPeriod: _homeComparisonPeriod(context, instant),
         monthlyTrend: monthlyTrend,
         monthlyTrendUnavailable: monthlyTrendUnavailable,
         reviewCount: reviewCount,
@@ -295,6 +297,28 @@ final class GetHomeOverview {
         reviewUnavailable: reviewResult is! ApplicationSuccess,
         duplicateUnavailable: duplicateUnavailable,
       ),
+    );
+  }
+
+  AnalysisPeriod? _homeComparisonPeriod(AnalysisContext context, DateTime instant) {
+    const resolver = AnalysisPeriodResolver();
+    final primary = resolver.resolvePrimary(
+      type: context.periodType,
+      context: context,
+      now: instant,
+    );
+    if (primary is! AnalysisPeriodResolved) return null;
+    final previous = resolver.resolvePreviousEquivalent(
+      primary: primary.window,
+      elapsedAnchor: instant,
+    );
+    if (previous is! AnalysisPeriodResolved) return null;
+    final window = previous.window;
+    if (!window.endExclusive.isAfter(window.start)) return null;
+    return AnalysisPeriod(
+      startDate: _date(window.start),
+      endDate: _date(window.endExclusive.subtract(const Duration(days: 1))),
+      timeZoneId: window.timeZoneId,
     );
   }
 
