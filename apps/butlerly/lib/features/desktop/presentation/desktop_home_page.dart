@@ -25,7 +25,6 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
-import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -566,6 +565,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                         icon: Icons.arrow_downward,
                                         comparison:
                                             analysis?.spendingComparison,
+                                        currency: currency,
                                       ),
                                     ),
                                     const SizedBox(width: 8),
@@ -602,6 +602,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                         ),
                                         icon: Icons.arrow_upward,
                                         comparison: analysis?.incomeComparison,
+                                        currency: currency,
                                       ),
                                     ),
                                     const SizedBox(width: 8),
@@ -614,6 +615,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                         value: _money(analysis?.net, currency),
                                         icon: Icons.show_chart,
                                         comparison: analysis?.netComparison,
+                                        currency: currency,
                                       ),
                                     ),
                                   ],
