@@ -99,52 +99,56 @@ class AddPage extends StatelessWidget {
         ButlerlySpacing.large,
       ),
       children: [
-        for (final (index, section) in sections.indexed) ...[
-          Padding(
-            padding: EdgeInsets.only(
-              top: index == 0 ? ButlerlySpacing.none : ButlerlySpacing.cardGap,
-              bottom: ButlerlySpacing.small,
-            ),
-            child: Text(
-              section.title,
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-          ),
-          if (desktop)
-            LayoutBuilder(
-              key: ValueKey(
-                section.actions.first == actions.first
-                    ? 'desktop-add-actions'
-                    : 'desktop-add-actions-${section.title}',
-              ),
-              builder: (context, constraints) {
-                const gap = ButlerlySpacing.cardGap;
-                final width = constraints.maxWidth > 980
-                    ? 980.0
-                    : constraints.maxWidth;
-                final tileWidth = (width - gap) / 2;
-                return Align(
-                  alignment: Alignment.centerLeft,
-                  child: SizedBox(
-                    width: width,
-                    child: Wrap(
-                      spacing: gap,
-                      runSpacing: gap,
-                      children: [
-                        for (final action in section.actions)
-                          SizedBox(
-                            width: tileWidth,
-                            child: _DesktopAddActionCard(action: action),
-                          ),
-                      ],
+        if (desktop)
+          Row(
+            key: const ValueKey('desktop-add-three-columns'),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final (index, section) in sections.indexed) ...[
+                if (index > 0)
+                  const SizedBox(width: ButlerlySpacing.cardGap),
+                Expanded(
+                  child: Column(
+                    key: ValueKey(
+                      index == 0
+                          ? 'desktop-add-actions'
+                          : 'desktop-add-actions-$index',
                     ),
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          bottom: ButlerlySpacing.small,
+                        ),
+                        child: Text(
+                          section.title,
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                      ),
+                      for (final action in section.actions) ...[
+                        _DesktopAddActionCard(action: action),
+                        const SizedBox(height: ButlerlySpacing.cardGap),
+                      ],
+                    ],
                   ),
-                );
-              },
-            )
-          else
+                ),
+              ],
+            ],
+          )
+        else
+          for (final (index, section) in sections.indexed) ...[
+            Padding(
+              padding: EdgeInsets.only(
+                top: index == 0 ? ButlerlySpacing.none : ButlerlySpacing.cardGap,
+                bottom: ButlerlySpacing.small,
+              ),
+              child: Text(
+                section.title,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
             ButlerlyActionGroup(actions: section.actions),
-        ],
+          ],
         const SizedBox(height: ButlerlySpacing.structural),
       ],
     );
