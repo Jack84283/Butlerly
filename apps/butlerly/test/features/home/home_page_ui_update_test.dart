@@ -2,11 +2,14 @@ import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_brand_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/theme/butlerly_spending_trend_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
+import 'package:butlerly/features/desktop/presentation/desktop_home_page.dart';
 import 'package:butlerly/features/foundation/presentation/home_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
+import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -694,6 +697,104 @@ void main() {
     expect(uri.queryParameters['timeZoneId'], 'UTC');
     expect(uri.queryParameters['includeUndated'], isNull);
   });
+
+  testWidgets(
+    'Device and desktop Spending Trend share selected accent and disabled gray',
+    (tester) async {
+      tester.view.physicalSize = const Size(1200, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final months = [
+        DateTime(2026, 6),
+        DateTime(2026, 7),
+        DateTime(2026, 8),
+      ];
+      const activeMonth = 8;
+      final appearances = [
+        for (final colorTheme in ButlerlyColorTheme.values) ...[
+          AppTheme.lightFor(colorTheme),
+          AppTheme.darkFor(colorTheme),
+          AppTheme.navyFor(colorTheme),
+        ],
+      ];
+
+      for (final theme in appearances) {
+        final device = homeSpendingTrendForTest([
+          for (final month in months)
+            (
+              month: month,
+              value: 42.0,
+              selected: month.month == activeMonth,
+            ),
+        ]);
+        final desktop = desktopHomeSpendingTrendForTest(
+          points: [
+            for (final month in months)
+              MonthlySpendingTrendPoint(month: month, spending: _trendMetric()),
+          ],
+          selectedMonth: months.last,
+        );
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: theme,
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            home: Scaffold(
+              body: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    SizedBox(width: 760, child: device),
+                    SizedBox(width: 760, child: desktop),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final semantic = theme.extension<ButlerlySemanticColors>()!;
+        for (final month in [6, 7, 8]) {
+          final selected = month == activeMonth;
+          final expected = ButlerlySpendingTrendColors.bar(
+            tester.element(
+              find.byKey(ValueKey('home-spending-trend-bar-2026-$month')),
+            ),
+            selected: selected,
+          );
+          expect(
+            expected,
+            selected
+                ? semantic.interactive
+                : semantic.tertiaryText.withValues(alpha: 0.55),
+          );
+          final deviceBar = tester.widget<DecoratedBox>(
+            find.byKey(ValueKey('home-spending-trend-bar-2026-$month')),
+          );
+          final desktopBar = tester.widget<Container>(
+            find.byKey(ValueKey('desktop-home-trend-bar-2026-$month')),
+          );
+          expect((deviceBar.decoration as BoxDecoration).color, expected);
+          expect((desktopBar.decoration as BoxDecoration).color, expected);
+
+          final expectedLabel = selected
+              ? semantic.interactive
+              : semantic.tertiaryText;
+          final deviceLabel = tester.widget<Text>(
+            find.byKey(ValueKey('home-spending-trend-label-2026-$month')),
+          );
+          expect(deviceLabel.style?.color, expectedLabel);
+        }
+        expect(tester.takeException(), isNull);
+      }
+    },
+  );
 
   testWidgets('Home spending trend grid uses the bar baseline', (tester) async {
     await tester.pumpWidget(

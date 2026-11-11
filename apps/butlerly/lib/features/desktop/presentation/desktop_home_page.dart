@@ -9,6 +9,7 @@ import 'package:butlerly/design_system/components/butlerly_desktop_transaction_t
 import 'package:butlerly/design_system/components/butlerly_month_picker.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/theme/butlerly_responsive_design_tokens.dart';
+import 'package:butlerly/design_system/theme/butlerly_spending_trend_colors.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -24,6 +25,7 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -1740,6 +1742,18 @@ class _DesktopAction extends StatelessWidget {
   }
 }
 
+/// Direct fixture for verifying desktop/device Home chart parity.
+@visibleForTesting
+Widget desktopHomeSpendingTrendForTest({
+  required List<MonthlySpendingTrendPoint> points,
+  required DateTime selectedMonth,
+}) => _DesktopTrend(
+  points: points,
+  selectedMonth: selectedMonth,
+  currency: 'USD',
+  onTap: null,
+);
+
 class _DesktopTrend extends StatelessWidget {
   const _DesktopTrend({
     required this.points,
@@ -1914,24 +1928,14 @@ class _DesktopTrend extends StatelessWidget {
                                                       values[i] /
                                                       chartMaximum,
                                                   decoration: BoxDecoration(
-                                                    color: context
-                                                        .colors
-                                                        .interactive
-                                                        .withValues(
-                                                          alpha:
-                                                              points[i]
-                                                                          .month
-                                                                          .year ==
-                                                                      selectedMonth
-                                                                          .year &&
-                                                                  points[i]
-                                                                          .month
-                                                                          .month ==
-                                                                      selectedMonth
-                                                                          .month
-                                                              ? 1.0
-                                                              : 0.72,
-                                                        ),
+                                                    color: ButlerlySpendingTrendColors.bar(
+                                                      context,
+                                                      selected:
+                                                          points[i].month.year ==
+                                                              selectedMonth.year &&
+                                                          points[i].month.month ==
+                                                              selectedMonth.month,
+                                                    ),
                                                     borderRadius:
                                                         const BorderRadius.vertical(
                                                           top: Radius.circular(
@@ -1951,13 +1955,13 @@ class _DesktopTrend extends StatelessWidget {
                                     ).format(points[i].month).toUpperCase(),
                                     textAlign: TextAlign.center,
                                     style: monthStyle.copyWith(
-                                      color:
-                                          points[i].month.year ==
-                                                  selectedMonth.year &&
-                                              points[i].month.month ==
-                                                  selectedMonth.month
-                                          ? context.colors.interactive
-                                          : null,
+                                      color: ButlerlySpendingTrendColors.label(
+                                        context,
+                                        selected: points[i].month.year ==
+                                                selectedMonth.year &&
+                                            points[i].month.month ==
+                                                selectedMonth.month,
+                                      ),
                                     ),
                                   ),
                                 ],
