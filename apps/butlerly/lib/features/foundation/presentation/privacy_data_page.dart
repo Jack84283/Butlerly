@@ -21,7 +21,6 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show MissingPluginException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -587,10 +586,9 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
         missingAttachments: backup.hasMissingAttachments,
       );
       await _loadBackupStatus();
-    } on FileSystemException {
-      // Keep unknown status if writing metadata fails.
-    } on MissingPluginException {
-      // Platform storage can be unavailable in tests.
+    } on Exception {
+      // Backup creation succeeded even if optional status persistence fails.
+      // Keep unknown status rather than presenting a false backup error.
     }
   }
 
