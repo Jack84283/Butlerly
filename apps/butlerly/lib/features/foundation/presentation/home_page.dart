@@ -1581,10 +1581,11 @@ class _HomeTrendPlot extends StatelessWidget {
                                               'home-spending-trend-bar-${point.month.year}-${point.month.month}',
                                             ),
                                             decoration: BoxDecoration(
-                                              color: ButlerlySpendingTrendColors.bar(
-                                                context,
-                                                selected: point.selected,
-                                              ),
+                                              color:
+                                                  ButlerlySpendingTrendColors.bar(
+                                                    context,
+                                                    selected: point.selected,
+                                                  ),
                                               borderRadius:
                                                   const BorderRadius.vertical(
                                                     top: Radius.circular(

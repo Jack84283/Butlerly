@@ -1928,14 +1928,14 @@ class _DesktopTrend extends StatelessWidget {
                                                       values[i] /
                                                       chartMaximum,
                                                   decoration: BoxDecoration(
-                                                    color: ButlerlySpendingTrendColors.bar(
-                                                      context,
-                                                      selected:
-                                                          points[i].month.year ==
-                                                              selectedMonth.year &&
-                                                          points[i].month.month ==
-                                                              selectedMonth.month,
-                                                    ),
+                                                    color:
+                                                        ButlerlySpendingTrendColors.bar(
+                                                          context,
+                                                          selected: _sameMonth(
+                                                            points[i].month,
+                                                            selectedMonth,
+                                                          ),
+                                                        ),
                                                     borderRadius:
                                                         const BorderRadius.vertical(
                                                           top: Radius.circular(
@@ -1953,14 +1953,17 @@ class _DesktopTrend extends StatelessWidget {
                                     DateFormat.MMM(
                                       locale,
                                     ).format(points[i].month).toUpperCase(),
+                                    key: ValueKey(
+                                      'desktop-home-trend-label-${points[i].month.year}-${points[i].month.month}',
+                                    ),
                                     textAlign: TextAlign.center,
                                     style: monthStyle.copyWith(
                                       color: ButlerlySpendingTrendColors.label(
                                         context,
-                                        selected: points[i].month.year ==
-                                                selectedMonth.year &&
-                                            points[i].month.month ==
-                                                selectedMonth.month,
+                                        selected: _sameMonth(
+                                          points[i].month,
+                                          selectedMonth,
+                                        ),
                                       ),
                                     ),
                                   ),

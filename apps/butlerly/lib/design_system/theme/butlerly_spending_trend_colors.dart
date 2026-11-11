@@ -7,8 +7,7 @@ import 'package:flutter/material.dart';
 /// accent. All other valid months use a neutral, muted gray independent of
 /// the accent hue. Missing/unavailable months keep their separate icon.
 abstract final class ButlerlySpendingTrendColors {
-  static Color bar(BuildContext context, {required bool selected}) =>
-      selected
+  static Color bar(BuildContext context, {required bool selected}) => selected
       ? context.colors.interactive
       : context.colors.tertiaryText.withValues(alpha: 0.55);
 

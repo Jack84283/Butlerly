@@ -706,11 +706,7 @@ void main() {
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
 
-      final months = [
-        DateTime(2026, 6),
-        DateTime(2026, 7),
-        DateTime(2026, 8),
-      ];
+      final months = [DateTime(2026, 6), DateTime(2026, 7), DateTime(2026, 8)];
       const activeMonth = 8;
       final appearances = [
         for (final colorTheme in ButlerlyColorTheme.values) ...[
@@ -723,11 +719,7 @@ void main() {
       for (final theme in appearances) {
         final device = homeSpendingTrendForTest([
           for (final month in months)
-            (
-              month: month,
-              value: 42.0,
-              selected: month.month == activeMonth,
-            ),
+            (month: month, value: 42.0, selected: month.month == activeMonth),
         ]);
         final desktop = desktopHomeSpendingTrendForTest(
           points: [
@@ -790,6 +782,10 @@ void main() {
             find.byKey(ValueKey('home-spending-trend-label-2026-$month')),
           );
           expect(deviceLabel.style?.color, expectedLabel);
+          final desktopLabel = tester.widget<Text>(
+            find.byKey(ValueKey('desktop-home-trend-label-2026-$month')),
+          );
+          expect(desktopLabel.style?.color, expectedLabel);
         }
         expect(tester.takeException(), isNull);
       }
