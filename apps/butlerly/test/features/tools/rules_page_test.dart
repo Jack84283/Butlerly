@@ -232,6 +232,10 @@ void main() {
     expect(close, findsOneWidget);
     final footerBefore = tester.getRect(footer);
     expect(tester.getRect(save).bottom, lessThanOrEqualTo(footerBefore.bottom));
+    expect(
+      footerBefore.right - tester.getRect(save).right,
+      closeTo(ButlerlySpacing.small, 0.5),
+    );
 
     await tester.drag(scroll, const Offset(0, -600));
     await tester.pumpAndSettle();
