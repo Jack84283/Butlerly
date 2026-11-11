@@ -151,8 +151,14 @@ void main() {
     expect(panel, findsOneWidget);
     expect(find.byType(ButlerlySheet), findsNothing);
     expect(find.byType(ButlerlyDesktopPanelFooter), findsOneWidget);
-    expect(find.byKey(const ValueKey('desktop-rule-details-edit')), findsOneWidget);
-    expect(find.byKey(const ValueKey('desktop-rule-details-delete')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('desktop-rule-details-edit')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('desktop-rule-details-delete')),
+      findsOneWidget,
+    );
     expect(
       find.descendant(of: panel, matching: find.text('Classify fuel')),
       findsOneWidget,
@@ -225,10 +231,7 @@ void main() {
     expect(find.byKey(const ValueKey('rule-test-button')), findsOneWidget);
     expect(close, findsOneWidget);
     final footerBefore = tester.getRect(footer);
-    expect(
-      tester.getRect(save).bottom,
-      lessThanOrEqualTo(footerBefore.bottom),
-    );
+    expect(tester.getRect(save).bottom, lessThanOrEqualTo(footerBefore.bottom));
 
     await tester.drag(scroll, const Offset(0, -600));
     await tester.pumpAndSettle();
