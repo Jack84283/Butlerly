@@ -107,11 +107,15 @@ void main() {
     for (final colorTheme in ButlerlyColorTheme.values) {
       final light = AppTheme.lightFor(colorTheme);
       final dark = AppTheme.darkFor(colorTheme);
+      final navy = AppTheme.navyFor(colorTheme);
       final lightColors = light.extension<ButlerlySemanticColors>()!;
       final darkColors = dark.extension<ButlerlySemanticColors>()!;
+      final navyColors = navy.extension<ButlerlySemanticColors>()!;
 
       expect(light.brightness, Brightness.light);
       expect(dark.brightness, Brightness.dark);
+      expect(navy.brightness, Brightness.dark);
+      expect(navyColors.background, const Color(0xFF0C1118));
       expect(lightColors.interactive, isNotNull);
       expect(darkColors.interactive, isNotNull);
     }
@@ -265,6 +269,7 @@ void main() {
       for (final theme in [
         AppTheme.lightFor(colorTheme),
         AppTheme.darkFor(colorTheme),
+        AppTheme.navyFor(colorTheme),
       ]) {
         final colors = theme.extension<ButlerlySemanticColors>()!;
         expect(
