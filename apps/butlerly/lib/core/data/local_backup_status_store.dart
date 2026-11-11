@@ -21,6 +21,10 @@ final class LocalBackupStatus {
 final class LocalBackupStatusStore {
   const LocalBackupStatusStore({this.directoryOverride});
 
+  // Backup creation may be initiated from different page instances.
+  // Serialize writes so they cannot overwrite the same staging sidecar.
+  static Future<void> _writeQueue = Future<void>.value();
+
   /// Allows tests to use an isolated temporary directory.
   final Directory? directoryOverride;
 
@@ -57,7 +61,18 @@ final class LocalBackupStatusStore {
     }
   }
 
-  Future<void> recordCompleted({required bool missingAttachments}) async {
+  Future<void> recordCompleted({required bool missingAttachments}) {
+    final operation = _writeQueue.then(
+      (_) => _writeCompleted(missingAttachments: missingAttachments),
+    );
+    _writeQueue = operation.then<void>(
+      (_) {},
+      onError: (Object _, StackTrace __) {},
+    );
+    return operation;
+  }
+
+  Future<void> _writeCompleted({required bool missingAttachments}) async {
     final file = await _file();
     await file.parent.create(recursive: true);
     final temporary = File('${file.path}.tmp');
