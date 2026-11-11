@@ -169,7 +169,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Widget _buildDesktopMore(BuildContext context) {
-    final themeMode = ref.watch(themeModeProvider);
+    final appearance = ref.watch(appearanceProvider);
     final preference = ref.watch(userPreferenceProvider).value;
     final locale = preference == null
         ? Localizations.localeOf(context)
@@ -226,21 +226,25 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       tile(
         Icons.palette_outlined,
         l10n.text('appearance'),
-        l10n.text(themeMode.name),
-        () => _chooseDesktopValue<ThemeMode>(
+        l10n.text(appearance.name),
+        () => _chooseDesktopValue<ButlerlyAppearance>(
           label: l10n.text('appearance'),
-          value: themeMode,
+          value: appearance,
           options: [
             DropdownMenuItem(
-              value: ThemeMode.system,
+              value: ButlerlyAppearance.system,
               child: Text(l10n.text('system')),
             ),
             DropdownMenuItem(
-              value: ThemeMode.light,
+              value: ButlerlyAppearance.light,
               child: Text(l10n.text('light')),
             ),
+DropdownMenuItem(
+  value: ButlerlyAppearance.navy,
+  child: Text(l10n.text('navy')),
+),
             DropdownMenuItem(
-              value: ThemeMode.dark,
+              value: ButlerlyAppearance.dark,
               child: Text(l10n.text('dark')),
             ),
           ],
@@ -494,7 +498,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final themeMode = ref.watch(themeModeProvider);
+    final appearance = ref.watch(appearanceProvider);
     final preference = ref.watch(userPreferenceProvider).value;
     final locale = preference == null
         ? Localizations.localeOf(context)
@@ -549,21 +553,25 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   : context.l10n.text('displayNameNotSet'),
               onTap: () => _editDisplayName(preference?.displayName ?? ''),
             ),
-            _SettingsDropdownRow<ThemeMode>(
-              value: themeMode,
+            _SettingsDropdownRow<ButlerlyAppearance>(
+              value: appearance,
               label: context.l10n.text('appearance'),
               icon: Icons.palette_outlined,
               items: [
                 DropdownMenuItem(
-                  value: ThemeMode.system,
+                  value: ButlerlyAppearance.system,
                   child: Text(context.l10n.text('system')),
                 ),
                 DropdownMenuItem(
-                  value: ThemeMode.light,
+                  value: ButlerlyAppearance.light,
                   child: Text(context.l10n.text('light')),
                 ),
+DropdownMenuItem(
+  value: ButlerlyAppearance.navy,
+  child: Text(context.l10n.text('navy')),
+),
                 DropdownMenuItem(
-                  value: ThemeMode.dark,
+                  value: ButlerlyAppearance.dark,
                   child: Text(context.l10n.text('dark')),
                 ),
               ],

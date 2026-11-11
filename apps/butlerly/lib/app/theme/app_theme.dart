@@ -20,6 +20,17 @@ abstract final class AppTheme {
     colors: ButlerlySemanticColors.palette(Brightness.dark, theme),
   );
 
+  static ThemeData get navy => navyFor(ButlerlyColorTheme.butlerRed);
+
+  static ThemeData navyFor(ButlerlyColorTheme theme) => _build(
+    brightness: Brightness.dark,
+    colors: ButlerlySemanticColors.palette(
+      Brightness.dark,
+      theme,
+      navy: true,
+    ),
+  );
+
   static ThemeData _build({
     required Brightness brightness,
     required ButlerlySemanticColors colors,
@@ -43,7 +54,7 @@ abstract final class AppTheme {
     final scheme = ColorScheme(
       brightness: brightness,
       primary: buttons.primaryFill,
-      onPrimary: _onColor(buttons.primaryFill),
+      onPrimary: colors.controlPrimaryText ?? _onColor(buttons.primaryFill),
       primaryContainer: colors.selection,
       onPrimaryContainer: colors.primaryText,
       secondary: colors.brand,
@@ -112,15 +123,15 @@ abstract final class AppTheme {
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-          borderSide: BorderSide(color: colors.border),
+          borderSide: BorderSide(color: colors.inputBorder),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-          borderSide: BorderSide(color: colors.border),
+          borderSide: BorderSide(color: colors.inputBorder),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-          borderSide: BorderSide(color: colors.interactive, width: 1.5),
+          borderSide: BorderSide(color: colors.focusRing, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(ButlerlyRadius.standard),

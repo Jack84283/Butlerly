@@ -51,7 +51,7 @@ final class ButlerlyButtonPalette {
     // Keep existing component treatments; only their colors come from the
     // shared light/dark semantic palette.
     final primaryFill = colors.controlPrimary;
-    final secondaryFill = colors.cardSurface;
+    final secondaryFill = colors.secondaryActionSurface;
     final tertiaryFill = dark ? colors.elevatedSurface : colors.subtleSurface;
     final destructiveFill = Color.alphaBlend(
       colors.error.withValues(alpha: dark ? 0.2 : 0.09),

@@ -25,6 +25,7 @@ class ButlerlyApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final appearance = ref.watch(appearanceProvider);
     final themeMode = ref.watch(themeModeProvider);
     final locale = ref.watch(localeProvider);
     final preference = ref.watch(userPreferenceProvider);
@@ -50,7 +51,9 @@ class ButlerlyApp extends ConsumerWidget {
       title: 'Butlerly',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightFor(colorTheme),
-      darkTheme: AppTheme.darkFor(colorTheme),
+      darkTheme: appearance == ButlerlyAppearance.navy
+          ? AppTheme.navyFor(colorTheme)
+          : AppTheme.darkFor(colorTheme),
       themeMode: themeMode,
       locale: locale,
       routerConfig: appRouter,
