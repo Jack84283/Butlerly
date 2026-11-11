@@ -50,7 +50,7 @@ void main() {
       AlignmentDirectional.centerEnd,
     );
     expect(
-      tester.widget<TextButton>(viewAll).style?.alignment?.resolve({}),
+      tester.widget<TextButton>(viewAll).style?.alignment,
       Alignment.centerRight,
     );
 
