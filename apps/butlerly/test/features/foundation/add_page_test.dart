@@ -48,6 +48,9 @@ void main() {
 
     expect(find.byType(ButlerlyCard), findsNWidgets(2));
     expect(find.byType(Divider), findsNWidgets(3));
+    expect(find.text('Record'), findsOneWidget);
+    expect(find.text('Import'), findsOneWidget);
+    expect(find.text('Manage'), findsOneWidget);
     expect(find.text('Add transaction manually'), findsOneWidget);
     expect(find.text('Budgets'), findsWidgets);
     expect(find.text('Enter transaction details yourself'), findsOneWidget);
