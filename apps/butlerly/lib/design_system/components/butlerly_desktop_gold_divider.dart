@@ -103,12 +103,7 @@ class ButlerlyDesktopGoldRightBorder extends ShapeBorder {
     if (rect.isEmpty || thickness <= 0) return;
     final stripeWidth = thickness / 2;
     canvas.drawRect(
-      Rect.fromLTWH(
-        rect.right - thickness,
-        rect.top,
-        stripeWidth,
-        rect.height,
-      ),
+      Rect.fromLTWH(rect.right - thickness, rect.top, stripeWidth, rect.height),
       Paint()..color = ButlerlyGoldAccentTokens.deepGold,
     );
     canvas.drawRect(

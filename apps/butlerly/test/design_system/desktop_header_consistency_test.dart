@@ -128,10 +128,7 @@ void main() {
     expect(leftHeader.bottom, closeTo(rightHeader.bottom, 0.5));
     final separator = find.byType(ButlerlyDesktopGoldVerticalDivider);
     expect(separator, findsOneWidget);
-    expect(
-      tester.getSize(separator).width,
-      ButlerlyGoldAccentTokens.thickness,
-    );
+    expect(tester.getSize(separator).width, ButlerlyGoldAccentTokens.thickness);
     final stripeBoxes = find.descendant(
       of: separator,
       matching: find.byType(ColoredBox),
