@@ -1,6 +1,7 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
+import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/desktop/presentation/desktop_primary_shell.dart';
 import 'package:butlerly/features/foundation/presentation/statement_capture_page.dart';
@@ -185,7 +186,7 @@ void main() {
     expect(help, findsOneWidget);
     expect(tester.getRect(close).right, lessThan(tester.getRect(help).left));
     final closeButton = tester.widget<IconButton>(close);
-    expect(closeButton.iconSize, 20);
+    expect(closeButton.iconSize, ButlerlyButtonTokens.iconSize);
     expect(tester.getSize(close).width, greaterThanOrEqualTo(44));
     expect(tester.getSize(close).height, greaterThanOrEqualTo(44));
     expect(

@@ -1,3 +1,4 @@
+import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/help/data/help_catalog.dart';
 import 'package:butlerly/features/help/presentation/help_copy.dart';
@@ -66,7 +67,7 @@ class ButlerlyPanelCloseButton extends StatelessWidget {
     onPressed: onPressed,
     // Match the visual weight of the regular page Back arrow while retaining
     // the default AppBar IconButton hit target and accessible tooltip.
-    iconSize: 20,
+    iconSize: ButlerlyButtonTokens.iconSize,
     icon: const Icon(Icons.close_rounded),
   );
 }
