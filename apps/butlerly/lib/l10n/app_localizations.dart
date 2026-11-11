@@ -3060,7 +3060,8 @@ class AppLocalizations {
       'previousSpending': 'Gasto anterior',
       'backupShortcutDescription':
           'Crear copia, restaurar o exportar; los datos locales no son una copia de seguridad',
-      'zeroComparisonBaseline': 'No se puede calcular el cambio porcentual: el valor anterior era cero',
+      'zeroComparisonBaseline':
+          'No se puede calcular el cambio porcentual: el valor anterior era cero',
       'desktopFinancialOverview': 'Resumen financiero',
       'desktopExpenses': 'Gastos',
       'desktopCategoryBreakdown': 'Desglose por categoría',
