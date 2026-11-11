@@ -466,17 +466,22 @@ class _TransactionsPageState extends State<TransactionsPage> {
           pinnedHeader: _transactionSearchControls(context),
           children: [
             if (_activeFilterCount > 0 || _search.text.trim().isNotEmpty) ...[
-              Row(
-                key: const ValueKey('transactions-active-filter-summary'),
-                children: [
-                  Icon(
-                    Icons.filter_alt_outlined,
-                    size: 18,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: ButlerlySpacing.micro),
-                  Expanded(
-                    child: Text(
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final compact = constraints.maxWidth < 240;
+                  return Row(
+                    key: const ValueKey('transactions-active-filter-summary'),
+                    children: [
+                      if (!compact) ...[
+                        Icon(
+                          Icons.filter_alt_outlined,
+                          size: 18,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: ButlerlySpacing.micro),
+                      ],
+                      Expanded(
+                        child: Text(
                       context.l10n
                           .text('transactionsActiveFilterSummary')
                           .replaceAll('{count}', '$_activeFilterCount')
@@ -490,11 +495,14 @@ class _TransactionsPageState extends State<TransactionsPage> {
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ),
-                  TextButton(
-                    onPressed: _openFilters,
-                    child: Text(context.l10n.text('filters')),
-                  ),
-                ],
+                      if (!compact)
+                        TextButton(
+                          onPressed: _openFilters,
+                          child: Text(context.l10n.text('filters')),
+                        ),
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: ButlerlySpacing.small),
             ],
