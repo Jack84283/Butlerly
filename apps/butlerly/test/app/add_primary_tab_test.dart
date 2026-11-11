@@ -156,6 +156,8 @@ void main() {
     final toolsScrollable = find.byType(Scrollable).first;
     await tester.drag(toolsScrollable, const Offset(0, -500));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Rules'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Rules'));
     await tester.pumpAndSettle();
     expect(find.text('Rules'), findsOneWidget);
