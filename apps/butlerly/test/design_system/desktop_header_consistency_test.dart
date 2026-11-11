@@ -99,7 +99,7 @@ void main() {
     await tester.pumpWidget(
       app(
         desktop(
-          const DesktopTransactionDetailSplitView(
+          DesktopTransactionDetailSplitView(
             results: Scaffold(
               body: ButlerlyPage(
                 title: 'Transactions',
