@@ -13,7 +13,6 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/core/logging/app_logger.dart';
 import 'package:butlerly/design_system/components/butlerly_brand_icon.dart';
-import 'package:butlerly/design_system/components/butlerly_desktop_gold_divider.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -2261,17 +2260,14 @@ void _expectCollapsedBrandCentered(WidgetTester tester) {
     matching: find.byType(ButlerlyBrandIcon),
   );
   expect(brand, findsOneWidget);
-  // The 1px gold divider occupies the trailing edge of the rail.
-  // Center the brand in the remaining content box, like the navigation icons.
+  // The 1px right divider is outside the rail's content box. Center
+  // the brand in the same content box as the collapsed navigation icons.
   final railContainer = find
       .descendant(of: rail, matching: find.byType(Container))
       .first;
   final railDecoration =
-      tester.widget<Container>(railContainer).decoration! as ShapeDecoration;
-  expect(railDecoration.shape, isA<ButlerlyDesktopGoldRightBorder>());
-  final dividerWidth =
-      (railDecoration.shape as ButlerlyDesktopGoldRightBorder).thickness;
-  expect(dividerWidth, ButlerlyGoldAccentTokens.thickness);
+      tester.widget<Container>(railContainer).decoration! as BoxDecoration;
+  final dividerWidth = (railDecoration.border! as Border).right.width;
   final contentCenterX = tester.getCenter(rail).dx - dividerWidth / 2;
   expect(tester.getCenter(brand).dx, closeTo(contentCenterX, 0.01));
   for (final (key, icon) in [

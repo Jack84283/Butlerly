@@ -1,6 +1,6 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
-import 'package:butlerly/design_system/components/butlerly_desktop_gold_divider.dart';
+import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/desktop/presentation/desktop_primary_shell.dart';
@@ -62,13 +62,11 @@ void main() {
     await tester.pumpAndSettle();
 
     final headerTheme = Theme.of(tester.element(find.byType(AppBar).first));
-    final divider =
-        headerTheme.appBarTheme.shape as ButlerlyDesktopGoldBottomBorder;
-    expect(divider.thickness, ButlerlyGoldAccentTokens.thickness);
-    expect(ButlerlyGoldAccentTokens.thickness, 1);
+    final divider = headerTheme.appBarTheme.shape as Border;
+    expect(divider.bottom.width, 1);
     expect(
-      ButlerlyGoldAccentTokens.desktopDividerGold,
-      const Color(0xFFC0974C),
+      divider.bottom.color,
+      headerTheme.extension<ButlerlySemanticColors>()!.cardDivider,
     );
     final helpPadding = tester.widget<Padding>(
       find.byKey(const ValueKey('page-context-help-padding')),
@@ -128,20 +126,6 @@ void main() {
     expect(rightHeader.height, ButlerlySize.pageToolbarHeight);
     expect(leftHeader.top, closeTo(rightHeader.top, 0.5));
     expect(leftHeader.bottom, closeTo(rightHeader.bottom, 0.5));
-    final separator = find.byType(ButlerlyDesktopGoldVerticalDivider);
-    expect(separator, findsOneWidget);
-    expect(tester.getSize(separator).width, ButlerlyGoldAccentTokens.thickness);
-    final goldLine = find.descendant(
-      of: separator,
-      matching: find.byType(ColoredBox),
-    );
-    expect(goldLine, findsOneWidget);
-    expect(
-      tester.widget<ColoredBox>(goldLine).color,
-      ButlerlyGoldAccentTokens.desktopDividerGold,
-    );
-    expect(tester.getSize(goldLine).width, 1);
-    expect(tester.getRect(separator).height, 900);
     expect(tester.takeException(), isNull);
   });
 
@@ -171,10 +155,10 @@ void main() {
     final shape = Theme.of(
       tester.element(find.byType(SliverAppBar)),
     ).appBarTheme.shape;
-    expect(shape, isA<ButlerlyDesktopGoldBottomBorder>());
+    expect(shape, isA<Border>());
     expect(
-      (shape! as ButlerlyDesktopGoldBottomBorder).thickness,
-      ButlerlyGoldAccentTokens.thickness,
+      (shape! as Border).bottom.color,
+      AppTheme.dark.extension<ButlerlySemanticColors>()!.cardDivider,
     );
     expect(tester.takeException(), isNull);
   });

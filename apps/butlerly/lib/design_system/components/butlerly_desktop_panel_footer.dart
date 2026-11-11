@@ -1,4 +1,3 @@
-import 'package:butlerly/design_system/components/butlerly_desktop_gold_divider.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:flutter/material.dart';
@@ -20,7 +19,7 @@ class ButlerlyDesktopPanelFooter extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const ButlerlyDesktopGoldDivider(),
+        Divider(height: 1, color: context.colors.cardDivider),
         SafeArea(
           top: false,
           child: Padding(

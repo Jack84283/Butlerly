@@ -1,6 +1,5 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
-import 'package:butlerly/design_system/components/butlerly_desktop_gold_divider.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -108,14 +107,6 @@ void main() {
     final homeAdd = find.byKey(const ValueKey('desktop-home-header-add'));
     final homeHelp = find.byKey(const ValueKey('page-context-help-visual'));
     expect(homeHeader, findsOneWidget);
-    final foreground =
-        tester.widget<Container>(homeHeader).foregroundDecoration
-            as ShapeDecoration;
-    expect(foreground.shape, isA<ButlerlyDesktopGoldBottomBorder>());
-    expect(
-      (foreground.shape as ButlerlyDesktopGoldBottomBorder).thickness,
-      ButlerlyGoldAccentTokens.thickness,
-    );
     expect(homeAdd, findsOneWidget);
     expect(homeHelp, findsOneWidget);
     final homeRightInset =
