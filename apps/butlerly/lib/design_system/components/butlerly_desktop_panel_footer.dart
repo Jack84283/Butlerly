@@ -17,6 +17,7 @@ class ButlerlyDesktopPanelFooter extends StatelessWidget {
     color: context.colors.background,
     child: Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Divider(height: 1, color: context.colors.cardDivider),
         SafeArea(
