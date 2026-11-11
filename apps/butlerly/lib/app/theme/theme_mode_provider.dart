@@ -21,12 +21,11 @@ enum ButlerlyAppearance {
     ButlerlyAppearance.navy || ButlerlyAppearance.dark => ThemeMode.dark,
   };
 
-  Brightness resolveBrightness(Brightness platformBrightness) =>
-      switch (this) {
-        ButlerlyAppearance.system => platformBrightness,
-        ButlerlyAppearance.light => Brightness.light,
-        ButlerlyAppearance.navy || ButlerlyAppearance.dark => Brightness.dark,
-      };
+  Brightness resolveBrightness(Brightness platformBrightness) => switch (this) {
+    ButlerlyAppearance.system => platformBrightness,
+    ButlerlyAppearance.light => Brightness.light,
+    ButlerlyAppearance.navy || ButlerlyAppearance.dark => Brightness.dark,
+  };
 }
 
 final appearanceProvider = Provider<ButlerlyAppearance>((ref) {

@@ -98,10 +98,7 @@ void main() {
           greaterThanOrEqualTo(4.5),
         );
         expect(
-          _contrast(
-            theme.colorScheme.primary,
-            theme.colorScheme.onPrimary,
-          ),
+          _contrast(theme.colorScheme.primary, theme.colorScheme.onPrimary),
           greaterThanOrEqualTo(4.5),
         );
         expect(

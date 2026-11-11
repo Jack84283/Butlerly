@@ -8,45 +8,50 @@ import 'package:test/test.dart';
 void main() {
   setUpAll(sqfliteFfiInit);
 
-  test('all appearance identifiers persist through SQLite cold reload', () async {
-    final directory = await Directory.systemTemp.createTemp('butlerly-theme-');
-    final path = '${directory.path}/preferences.db';
-    final schema = await File('database/schema/v1.sql').readAsString();
-
-    Future<ButlerlyDatabase> open() async {
-      final database = ButlerlyDatabase(
-        factory: databaseFactoryFfi,
-        path: path,
-        schemaSql: schema,
+  test(
+    'all appearance identifiers persist through SQLite cold reload',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'butlerly-theme-',
       );
-      await database.open();
-      return database;
-    }
+      final path = '${directory.path}/preferences.db';
+      final schema = await File('database/schema/v1.sql').readAsString();
 
-    try {
-      for (final appearance in const ['system', 'light', 'navy', 'dark']) {
-        var database = await open();
-        var repository = SqliteUserPreferenceRepository(database);
-        await repository.save(
-          UserPreference(
-            locale: 'en',
-            baseCurrency: CurrencyCode('USD'),
-            timeZoneId: 'UTC',
-            appearance: appearance,
-            colorTheme: 'skyBlue',
-          ),
+      Future<ButlerlyDatabase> open() async {
+        final database = ButlerlyDatabase(
+          factory: databaseFactoryFfi,
+          path: path,
+          schemaSql: schema,
         );
-        await database.close();
-
-        database = await open();
-        repository = SqliteUserPreferenceRepository(database);
-        final saved = await repository.load();
-        expect(saved?.appearance, appearance);
-        expect(saved?.colorTheme, 'skyBlue');
-        await database.close();
+        await database.open();
+        return database;
       }
-    } finally {
-      await directory.delete(recursive: true);
-    }
-  });
+
+      try {
+        for (final appearance in const ['system', 'light', 'navy', 'dark']) {
+          var database = await open();
+          var repository = SqliteUserPreferenceRepository(database);
+          await repository.save(
+            UserPreference(
+              locale: 'en',
+              baseCurrency: CurrencyCode('USD'),
+              timeZoneId: 'UTC',
+              appearance: appearance,
+              colorTheme: 'skyBlue',
+            ),
+          );
+          await database.close();
+
+          database = await open();
+          repository = SqliteUserPreferenceRepository(database);
+          final saved = await repository.load();
+          expect(saved?.appearance, appearance);
+          expect(saved?.colorTheme, 'skyBlue');
+          await database.close();
+        }
+      } finally {
+        await directory.delete(recursive: true);
+      }
+    },
+  );
 }

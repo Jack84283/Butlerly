@@ -24,11 +24,7 @@ abstract final class AppTheme {
 
   static ThemeData navyFor(ButlerlyColorTheme theme) => _build(
     brightness: Brightness.dark,
-    colors: ButlerlySemanticColors.palette(
-      Brightness.dark,
-      theme,
-      navy: true,
-    ),
+    colors: ButlerlySemanticColors.palette(Brightness.dark, theme, navy: true),
   );
 
   static ThemeData _build({
@@ -54,8 +50,7 @@ abstract final class AppTheme {
     final scheme = ColorScheme(
       brightness: brightness,
       primary: buttons.primaryFill,
-      onPrimary:
-          colors.controlPrimaryText ?? _onColor(buttons.primaryFill),
+      onPrimary: colors.controlPrimaryText ?? _onColor(buttons.primaryFill),
       primaryContainer: colors.selection,
       onPrimaryContainer: colors.primaryText,
       secondary: colors.brand,
