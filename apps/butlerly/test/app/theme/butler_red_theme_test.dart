@@ -76,67 +76,67 @@ void main() {
     });
   });
 
-  testWidgets('device bottom navigation follows Butler Red appearance changes', (
-    tester,
-  ) async {
-    Future<void> pumpDeviceNavigation(ThemeData theme) async {
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: theme,
-          locale: const Locale('en'),
-          supportedLocales: AppLocalizations.supportedLocales,
-          localizationsDelegates: const [
-            AppLocalizations.delegate,
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          home: Scaffold(
-            body: const SizedBox.shrink(),
-            bottomNavigationBar: PrimaryBottomNavigation(
-              navigationKey: const ValueKey('device-navigation'),
-              destinations: const {
-                0: NavigationDestination(
-                  icon: Icon(Icons.home),
-                  label: 'Home',
-                ),
-                1: NavigationDestination(
-                  icon: Icon(Icons.receipt_long),
-                  label: 'Transactions',
-                ),
-              },
-              visualBranchIndexes: const [0, 1],
-              currentIndex: 0,
-              onSelected: (_) {},
+  testWidgets(
+    'device bottom navigation follows Butler Red appearance changes',
+    (tester) async {
+      Future<void> pumpDeviceNavigation(ThemeData theme) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: theme,
+            locale: const Locale('en'),
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            home: Scaffold(
+              body: const SizedBox.shrink(),
+              bottomNavigationBar: PrimaryBottomNavigation(
+                navigationKey: const ValueKey('device-navigation'),
+                destinations: const {
+                  0: NavigationDestination(
+                    icon: Icon(Icons.home),
+                    label: 'Home',
+                  ),
+                  1: NavigationDestination(
+                    icon: Icon(Icons.receipt_long),
+                    label: 'Transactions',
+                  ),
+                },
+                visualBranchIndexes: const [0, 1],
+                currentIndex: 0,
+                onSelected: (_) {},
+              ),
             ),
           ),
-        ),
+        );
+      }
+
+      await tester.binding.setSurfaceSize(const Size(390, 844));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await pumpDeviceNavigation(
+        AppTheme.lightFor(ButlerlyColorTheme.butlerRed),
       );
-    }
+      expect(find.byKey(const ValueKey('device-navigation')), findsOneWidget);
+      expect(
+        IconTheme.of(tester.element(find.byIcon(Icons.home))).color,
+        const Color(0xFF7A1E3A),
+      );
 
-    await tester.binding.setSurfaceSize(const Size(390, 844));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-
-    await pumpDeviceNavigation(
-      AppTheme.lightFor(ButlerlyColorTheme.butlerRed),
-    );
-    expect(find.byKey(const ValueKey('device-navigation')), findsOneWidget);
-    expect(
-      IconTheme.of(tester.element(find.byIcon(Icons.home))).color,
-      const Color(0xFF7A1E3A),
-    );
-
-    await pumpDeviceNavigation(
-      AppTheme.navyFor(ButlerlyColorTheme.butlerRed),
-    );
-    expect(
-      IconTheme.of(tester.element(find.byIcon(Icons.home))).color,
-      const Color(0xFFCF7F9A),
-    );
-    expect(
-      IconTheme.of(tester.element(find.byIcon(Icons.receipt_long))).color,
-      ButlerlySemanticColors.navy.tertiaryText,
-    );
-  });
-
+      await pumpDeviceNavigation(
+        AppTheme.navyFor(ButlerlyColorTheme.butlerRed),
+      );
+      expect(
+        IconTheme.of(tester.element(find.byIcon(Icons.home))).color,
+        const Color(0xFFCF7F9A),
+      );
+      expect(
+        IconTheme.of(tester.element(find.byIcon(Icons.receipt_long))).color,
+        ButlerlySemanticColors.navy.tertiaryText,
+      );
+    },
+  );
 }
