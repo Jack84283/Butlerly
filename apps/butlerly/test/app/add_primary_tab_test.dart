@@ -144,6 +144,8 @@ void main() {
     expect(find.text('Master data'), findsOneWidget);
     expect(find.text('Rules'), findsOneWidget);
 
+    await tester.ensureVisible(find.text('Master data'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Master data'));
     await tester.pumpAndSettle();
     expect(find.text('Master data'), findsOneWidget);
@@ -167,8 +169,10 @@ void main() {
 
     await tester.tap(find.bySemanticsLabel('Add transaction'));
     await tester.pumpAndSettle();
-    expect(find.text('Payment sources'), findsNWidgets(2));
-    await tester.tap(find.text('Payment sources').last);
+    expect(find.text('Payment sources'), findsOneWidget);
+    await tester.ensureVisible(find.text('Payment sources'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Payment sources'));
     await tester.pumpAndSettle();
     expect(find.text('Payment sources'), findsOneWidget);
     expect(find.bySemanticsLabel('Add transaction'), findsNothing);
