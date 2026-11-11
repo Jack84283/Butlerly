@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/app/shell/adaptive_shell.dart';
-import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/data/local_backup_status_store.dart';
+import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
@@ -720,6 +720,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           .createPortableBackup(location.path, password: password);
       if (mounted) {
         await _recordCompletedBackup(backup);
+        if (!mounted) return;
         if (backup.hasMissingAttachments) {
           await _warnAboutMissingAttachments(backup);
         } else {
@@ -765,6 +766,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           );
       if (mounted && result.status == share.ShareResultStatus.success) {
         await _recordCompletedBackup(temporary.backup);
+        if (!mounted) return;
         if (temporary.backup.hasMissingAttachments) {
           await _warnAboutMissingAttachments(temporary.backup);
         } else {
