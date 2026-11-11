@@ -109,9 +109,7 @@ void main() {
               ),
             ),
             detail: Scaffold(
-              appBar: AppBar(
-                title: Text('Transaction detail'),
-              ),
+              appBar: AppBar(title: Text('Transaction detail')),
               body: Center(child: Text('Detail')),
             ),
           ),
