@@ -45,6 +45,9 @@ class _DesktopPrimaryShellState extends State<DesktopPrimaryShell> {
       data: theme.copyWith(
         textTheme: ButlerlyTypography.desktopTextTheme(theme.textTheme),
         appBarTheme: theme.appBarTheme.copyWith(
+          // ButlerlyPage uses a 48px SliverAppBar. Ordinary AppBars in the
+          // right detail pane must have exactly the same header height.
+          toolbarHeight: ButlerlySize.pageToolbarHeight,
           shape: Border(bottom: BorderSide(color: context.colors.cardDivider)),
         ),
       ),

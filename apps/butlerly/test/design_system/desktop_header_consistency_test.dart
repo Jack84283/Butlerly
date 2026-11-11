@@ -4,6 +4,7 @@ import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/desktop/presentation/desktop_primary_shell.dart';
+import 'package:butlerly/features/desktop/presentation/desktop_transaction_detail_split_view.dart';
 import 'package:butlerly/features/foundation/presentation/statement_capture_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -84,6 +85,49 @@ void main() {
       find.byKey(const ValueKey('page-context-help')),
     );
     expect(help.left - action.right, closeTo(ButlerlySpacing.small, 0.5));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('desktop split-view headers share height and vertical edges', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      app(
+        desktop(
+          const DesktopTransactionDetailSplitView(
+            results: Scaffold(
+              body: ButlerlyPage(
+                title: 'Transactions',
+                pinnedSpacing: ButlerlyPinnedPageSpacing.tightHeader,
+                showContextHelp: false,
+                children: [Text('Results')],
+              ),
+            ),
+            detail: Scaffold(
+              appBar: AppBar(
+                title: Text('Transaction detail'),
+              ),
+              body: Center(child: Text('Detail')),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final appBars = find.byType(AppBar);
+    expect(appBars, findsNWidgets(2));
+    final leftHeader = tester.getRect(appBars.first);
+    final rightHeader = tester.getRect(appBars.last);
+    expect(leftHeader.height, ButlerlySize.pageToolbarHeight);
+    expect(rightHeader.height, ButlerlySize.pageToolbarHeight);
+    expect(leftHeader.top, closeTo(rightHeader.top, 0.5));
+    expect(leftHeader.bottom, closeTo(rightHeader.bottom, 0.5));
     expect(tester.takeException(), isNull);
   });
 
