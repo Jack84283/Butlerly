@@ -603,7 +603,7 @@ class _PeriodSummaryCard extends StatelessWidget {
       ),
       if (summary.expenseChange?.baselineValue != null)
         _InsightValue(
-          label: context.l10n.text('previousPeriod'),
+          label: context.l10n.text('previousSpending'),
           value: amount(summary.expenseChange!.baselineValue),
         ),
       if (summary.expenseChange?.absoluteChange != null)
@@ -611,7 +611,8 @@ class _PeriodSummaryCard extends StatelessWidget {
           label: context.l10n.text('difference'),
           value: amount(summary.expenseChange!.absoluteChange),
         ),
-      if (summary.expenseChange?.percentageChange != null)
+      if (summary.expenseChange?.percentageChange != null &&
+          summary.expenseChange?.baselineValue?.isZero == false)
         _InsightValue(
           label: context.l10n.text('percentageChange'),
           value:
