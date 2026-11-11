@@ -1887,7 +1887,7 @@ void main() {
     expect(find.byKey(const ValueKey('desktop-tools-actions')), findsOneWidget);
     await tester.tap(
       find.descendant(
-        of: find.byKey(const ValueKey('desktop-tools-actions')),
+        of: find.byKey(const ValueKey('desktop-tools-actions-1')),
         matching: find.text('Analysis'),
       ),
     );
