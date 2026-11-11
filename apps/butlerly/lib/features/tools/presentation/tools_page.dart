@@ -47,7 +47,11 @@ class ToolsPage extends StatelessWidget {
           ButlerlySectionHeader(title: section.title),
           if (desktop)
             LayoutBuilder(
-              key: const ValueKey('desktop-tools-actions'),
+              key: ValueKey(
+                section.routes.first == '/review'
+                    ? 'desktop-tools-actions'
+                    : 'desktop-tools-actions-${section.routes.first}',
+              ),
               builder: (context, constraints) {
                 const gap = ButlerlySpacing.cardGap;
                 final width = constraints.maxWidth > 980
