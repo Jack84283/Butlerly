@@ -136,7 +136,7 @@ final class ReceiptLayoutFixture {
       ReceiptExtractor.extract(document.text, document.observations);
 
   /// A readable approximation only. Never synthesize missing OCR geometry.
-  /// A page with no usable bounds remains in native OCR reading order.
+  /// A page with missing bounds remains in native OCR reading order.
   String get layout {
     final output = <String>[];
     for (final page in document.pages) {
@@ -174,7 +174,24 @@ final class ReceiptLayoutFixture {
           groups.add([item]);
         }
       }
+      OcrBounds? previousRow;
       for (final group in groups) {
+        final bounds = group.first.normalizedBounds;
+        if (previousRow != null) {
+          final gap = bounds.top - previousRow.top - previousRow.height;
+          final height = math.max(
+            0.03,
+            math.max(previousRow.height, bounds.height),
+          );
+          final blanks = math.min(
+            3,
+            math.max(0, (gap / height).floor() - 1),
+          );
+          for (var i = 0; i < blanks; i++) {
+            output.add('');
+          }
+        }
+        previousRow = bounds;
         group.sort(
           (a, b) => a.normalizedBounds.left.compareTo(b.normalizedBounds.left),
         );
