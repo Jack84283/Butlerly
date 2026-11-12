@@ -763,6 +763,11 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
               sharePositionOrigin: shareOrigin,
             ),
           );
+      // A successful share handoff no longer needs the exported temporary
+      // file. Dispose of it before optional status persistence, which may
+      // involve slower platform I/O. The outer finally still handles errors.
+      await services<WorkspaceDataService>().discardTemporaryBackup(filePath);
+      filePath = null;
       if (mounted && result.status == share.ShareResultStatus.success) {
         await _recordCompletedBackup(temporary.backup);
         if (!mounted) return;
