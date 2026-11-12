@@ -838,6 +838,9 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           notifyBudgetsChanged();
         },
       );
+      // Update persistent Home views again once the restore has completed.
+      notifyWorkspaceRestored();
+      notifyBudgetsChanged();
       if (!mounted) return;
       final summary =
           (mode == LocalRestoreMode.merge
