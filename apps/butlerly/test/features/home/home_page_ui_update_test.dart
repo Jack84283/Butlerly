@@ -488,7 +488,7 @@ void main() {
       for (final metric in [spending, transactions, income, net]) {
         final comparison = find.descendant(
           of: metric,
-          matching: find.text('Comparison unavailable'),
+          matching: find.text('N/A'),
         );
         expect(comparison, findsOneWidget);
         expect(tester.widget<Text>(comparison).maxLines, 1);
