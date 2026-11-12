@@ -881,10 +881,7 @@ void main() {
         AppTheme.light.extension<ButlerlySemanticColors>()!.primaryText,
       );
       expect(
-        find.descendant(
-          of: card,
-          matching: find.text('N/A'),
-        ),
+        find.descendant(of: card, matching: find.text('N/A')),
         findsOneWidget,
       );
     }
@@ -951,10 +948,7 @@ void main() {
       expect((content.children[4] as SizedBox).height, 24);
       expect((content.children[5] as SizedBox).height, 0);
 
-      final comparison = find.descendant(
-        of: tile,
-        matching: find.text('N/A'),
-      );
+      final comparison = find.descendant(of: tile, matching: find.text('N/A'));
       final text = tester.widget<Text>(comparison);
       expect(text.softWrap, isNot(true));
       expect(text.maxLines, 1);
@@ -1003,10 +997,7 @@ void main() {
     expect((content.children[3] as SizedBox).height, 4);
     expect((content.children[4] as SizedBox).height, 28);
     expect((content.children[5] as SizedBox).height, 4);
-    final comparison = find.descendant(
-      of: tile,
-      matching: find.text('N/A'),
-    );
+    final comparison = find.descendant(of: tile, matching: find.text('N/A'));
     expect(tester.widget<Text>(comparison).maxLines, 1);
     expect(tester.takeException(), isNull);
   });
