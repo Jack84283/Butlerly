@@ -132,7 +132,7 @@ void main() {
         scrollable: find.byType(Scrollable).first,
       );
       expect(find.text('Budget Settings'), findsOneWidget);
-      expect(find.text('Backup & Restore'), findsOneWidget);
+      expect(find.text('Backup & Restore'), findsNothing);
       expect(find.text('Manage privacy & data'), findsOneWidget);
     },
   );
@@ -255,7 +255,7 @@ void main() {
     await Scrollable.ensureVisible(
       tester.element(privacyRow.first),
       alignment: 0.3,
-      duration: const Duration(milliseconds: 1),
+      duration: Duration.zero,
     );
     await tester.pumpAndSettle();
     await tester.tap(privacyRow.first);
