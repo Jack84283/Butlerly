@@ -94,11 +94,11 @@ void main() {
         isCount: false,
         currency: 'USD',
       ),
-      'Comparison unavailable (vs 0.00 USD)',
+      'N/A (vs 0.00 USD)',
     );
     expect(
       localizedHomeComparisonLine(context, null, isCount: true),
-      'Comparison unavailable',
+      'N/A',
     );
   });
 
