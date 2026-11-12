@@ -1627,26 +1627,12 @@ class _DesktopMetric extends StatelessWidget {
         !comparison!.baselineValue!.isZero &&
         percent != null;
     final percentValue = usable ? double.tryParse(percent.toString()) : null;
-    final comparisonText = percentValue == null
-        ? context.l10n.text('comparisonUnavailable')
-        : percentValue > 0
-        ? '↑ ${percentValue.abs().toStringAsFixed(1)}% ${context.l10n.text('vsPreviousPeriod')}'
-        : percentValue < 0
-        ? '↓ ${percentValue.abs().toStringAsFixed(1)}% ${context.l10n.text('vsPreviousPeriod')}'
-        : '0.0% ${context.l10n.text('vsPreviousPeriod')}';
-
-    final baseline = comparison?.baselineValue;
-    final baselineAvailable =
-        baseline != null &&
-        comparison?.availability == AnalysisDataAvailability.sufficient;
-    final baselineAmount = localizedHomeBaseline(
+    final comparisonText = localizedHomeComparisonLine(
       context,
-      baselineAvailable ? baseline.toString() : null,
+      comparison,
       isCount: isCount,
       currency: currency,
     );
-    final baselineText =
-        '${context.l10n.text('previousPeriod')}: $baselineAmount';
 
     return Container(
       decoration: BoxDecoration(
@@ -1694,30 +1680,22 @@ class _DesktopMetric extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  comparisonText,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: percentValue == null ? mutedForeground : foreground,
-                    fontWeight: FontWeight.w600,
+                SizedBox(
+                  width: double.infinity,
+                  height: 16,
+                  child: FittedBox(
+                    alignment: Alignment.centerLeft,
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      comparisonText,
+                      maxLines: 1,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: percentValue == null ? mutedForeground : foreground,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
-                Text(
-                  baselineText,
-                  maxLines: 2,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.labelSmall?.copyWith(color: mutedForeground),
-                ),
-                if (baseline?.isZero == true)
-                  Text(
-                    context.l10n.text('zeroComparisonBaseline'),
-                    softWrap: true,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.labelSmall?.copyWith(color: mutedForeground),
-                  ),
               ],
             ),
           ),
