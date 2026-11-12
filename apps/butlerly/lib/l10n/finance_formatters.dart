@@ -76,7 +76,7 @@ String localizedHomeComparisonLine(
       ? '↓ '
       : '';
   final comparisonText = formatted == null
-      ? AppLocalizations.of(context).text('comparisonUnavailable')
+      ? 'N/A'
       : '$direction$formatted%';
   if (!hasBaseline) return comparisonText;
   return AppLocalizations.of(
