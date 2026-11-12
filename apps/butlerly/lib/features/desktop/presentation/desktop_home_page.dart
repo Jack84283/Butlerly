@@ -1633,10 +1633,16 @@ class _DesktopMetric extends StatelessWidget {
     final baselineAvailable =
         baseline != null &&
         comparison?.availability == AnalysisDataAvailability.sufficient;
+    final baselineAmount = !baselineAvailable
+        ? '-'
+        : isCount
+        ? localizedCompactDecimal(context, baseline.toString())
+        : localizedDecimal(context, baseline.toString());
+    final baselineCurrency = baselineAvailable && !isCount && currency != null
+        ? ' $currency'
+        : '';
     final baselineText =
-        '${context.l10n.text('previousPeriod')}: '
-        '${baselineAvailable ? (isCount ? localizedCompactDecimal(context, baseline.toString()) : localizedDecimal(context, baseline.toString())) : '-'}'
-        '${baselineAvailable && !isCount && currency != null ? ' $currency' : ''}';
+        '${context.l10n.text('previousPeriod')}: $baselineAmount$baselineCurrency';
 
     return Container(
       decoration: BoxDecoration(
@@ -1693,14 +1699,13 @@ class _DesktopMetric extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                
-                  Text(
-                    baselineText,
-                    maxLines: 2,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.labelSmall?.copyWith(color: mutedForeground),
-                  ),
+                Text(
+                  baselineText,
+                  maxLines: 2,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: mutedForeground),
+                ),
                 if (baseline?.isZero == true)
                   Text(
                     context.l10n.text('zeroComparisonBaseline'),
