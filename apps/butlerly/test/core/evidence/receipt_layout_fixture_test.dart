@@ -40,6 +40,26 @@ void main() {
     },
   );
 
+  test('companion text file reproduces the JSON OCR coordinates', () {
+    final fixture = load();
+    final textPath = path.substring(0, path.length - 5) + '.txt';
+    final snapshot = File(textPath).readAsStringSync();
+    expect(snapshot, '${fixture.layout}\n');
+    final lines = snapshot.split('\n');
+    expect(
+      lines.firstWhere((line) => line.contains('Organic Milk')),
+      contains('5.99'),
+    );
+    expect(
+      lines.firstWhere((line) => line.contains('TOTAL') && !line.contains('SUB')),
+      contains(r'$10.91'),
+    );
+    expect(
+      lines.where((line) => line.isEmpty).length,
+      greaterThanOrEqualTo(2),
+    );
+  });
+
   test('production extractor runs against original OCR observations', () {
     final fixture = load();
     final result = fixture.extract();
