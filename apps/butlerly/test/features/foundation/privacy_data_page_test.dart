@@ -489,8 +489,11 @@ void main() {
     await tester.enterText(fields.at(0), 'correct horse battery staple');
     await tester.enterText(fields.at(1), 'correct horse battery staple');
     await tester.tap(find.text('Create encrypted backup'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pumpAndSettle();
+    // The password sheet defers controller disposal until its closing
+    // animation finishes. Advance the fake clock past that delay.
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
 
     expect(platform.params, isNotNull);
     expect(platform.sawFileDuringShare, isTrue);
