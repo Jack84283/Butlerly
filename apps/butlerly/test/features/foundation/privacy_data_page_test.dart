@@ -499,6 +499,15 @@ void main() {
 
     expect(platform.params, isNotNull);
     expect(platform.sawFileDuringShare, isTrue);
+    // File deletion may complete on the real I/O event loop even when the
+    // widget test's fake clock has already advanced through sheet animations.
+    await tester.runAsync(() async {
+      for (var attempt = 0;
+          attempt < 50 && gateway.discardedPath == null;
+          attempt++) {
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+      }
+    });
     debugDefaultTargetPlatformOverride = null;
     expect(gateway.discardedPath, isNotNull);
     expect(File(gateway.discardedPath!).existsSync(), isFalse);
