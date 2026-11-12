@@ -891,7 +891,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Compact summary metrics keep one comparison line and tighten gaps', (
+  testWidgets('Compact summary metrics show one-line comparison, tight gaps', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(320, 568);
