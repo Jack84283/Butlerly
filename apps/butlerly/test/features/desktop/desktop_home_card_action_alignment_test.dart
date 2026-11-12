@@ -89,10 +89,7 @@ void main() {
 
     final expense = find.byKey(const ValueKey('desktop-home-summary-expenses'));
     expect(expense, findsOneWidget);
-    final comparison = find.descendant(
-      of: expense,
-      matching: find.text('N/A'),
-    );
+    final comparison = find.descendant(of: expense, matching: find.text('N/A'));
     expect(comparison, findsOneWidget);
     expect(tester.widget<Text>(comparison).maxLines, 1);
     expect(
