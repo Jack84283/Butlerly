@@ -1630,13 +1630,13 @@ class _DesktopMetric extends StatelessWidget {
         : '0.0% ${context.l10n.text('vsPreviousPeriod')}';
 
     final baseline = comparison?.baselineValue;
+    final baselineAvailable =
+        baseline != null &&
+        comparison?.availability == AnalysisDataAvailability.sufficient;
     final baselineText =
-        baseline == null ||
-            comparison?.availability != AnalysisDataAvailability.sufficient
-        ? null
-        : '${context.l10n.text('previousPeriod')}: '
-              '${localizedDecimal(context, baseline.toString())}'
-              '${isCount || currency == null ? '' : ' $currency'}';
+        '${context.l10n.text('previousPeriod')}: '
+        '${baselineAvailable ? (isCount ? localizedCompactDecimal(context, baseline.toString()) : localizedDecimal(context, baseline.toString())) : '-'}'
+        '${baselineAvailable && !isCount && currency != null ? ' $currency' : ''}';
 
     return Container(
       decoration: BoxDecoration(
@@ -1693,7 +1693,7 @@ class _DesktopMetric extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                if (baselineText != null)
+                
                   Text(
                     baselineText,
                     maxLines: 2,
