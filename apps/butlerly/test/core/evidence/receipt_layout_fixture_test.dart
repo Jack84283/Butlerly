@@ -51,13 +51,12 @@ void main() {
       contains('5.99'),
     );
     expect(
-      lines.firstWhere((line) => line.contains('TOTAL') && !line.contains('SUB')),
+      lines.firstWhere(
+        (line) => line.contains('TOTAL') && !line.contains('SUB'),
+      ),
       contains(r'$10.91'),
     );
-    expect(
-      lines.where((line) => line.isEmpty).length,
-      greaterThanOrEqualTo(2),
-    );
+    expect(lines.where((line) => line.isEmpty).length, greaterThanOrEqualTo(2));
   });
 
   test('production extractor runs against original OCR observations', () {
