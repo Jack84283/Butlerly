@@ -337,7 +337,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                   // At the narrow end of the wide shell, or with large text,
                   // icon-only actions preserve the toolbar's touch targets.
                   final compactToolbar =
-                      constraints.maxWidth < 760 || largeTextToolbar;
+                      constraints.maxWidth < 820 || largeTextToolbar;
                   return Row(
                     children: [
                       Expanded(
