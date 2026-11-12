@@ -642,6 +642,7 @@ class AppLocalizations {
       'statementCouldNotBeStored': 'The statement could not be stored.',
       'statementAlreadyImported': 'This statement file was already imported.',
       'retry': 'Retry',
+      'refreshHome': 'Refresh Home',
       'statementCouldNotBeCreated': 'The statement could not be created.',
       'paymentSourceCouldNotBeCreated':
           'The payment source could not be created.',
@@ -1762,6 +1763,7 @@ class AppLocalizations {
       'statementCouldNotBeStored': '无法存储账单。',
       'statementAlreadyImported': '此账单文件已经导入。',
       'retry': '重试',
+      'refreshHome': '刷新首页',
       'statementCouldNotBeCreated': '无法创建账单。',
       'paymentSourceCouldNotBeCreated': '无法创建付款来源。',
       'sourceCreatedCouldNotBeLinked': '来源已创建，但无法关联。请选择它后重试。',
@@ -2877,6 +2879,7 @@ class AppLocalizations {
       'statementCouldNotBeStored': 'No se pudo guardar el extracto.',
       'statementAlreadyImported': 'Este archivo de extracto ya se importó.',
       'retry': 'Reintentar',
+      'refreshHome': 'Actualizar inicio',
       'statementCouldNotBeCreated': 'No se pudo crear el extracto.',
       'paymentSourceCouldNotBeCreated': 'No se pudo crear la fuente de pago.',
       'sourceCreatedCouldNotBeLinked':
