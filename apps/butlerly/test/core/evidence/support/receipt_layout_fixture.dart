@@ -139,7 +139,7 @@ final class ReceiptLayoutFixture {
       if (output.isNotEmpty) output.add('--- PAGE ${page.index + 1} ---');
       final observations = [...page.observations]
         ..sort((a, b) => a.order.compareTo(b.order));
-      if (observations.every((value) => value.normalizedBounds.width <= 0)) {
+      if (observations.any((value) => value.normalizedBounds.width <= 0)) {
         output.addAll(observations.map((value) => value.text));
         continue;
       }
@@ -177,9 +177,10 @@ final class ReceiptLayoutFixture {
         final buffer = StringBuffer();
         var column = 0;
         for (final observation in group) {
-          final target = (observation.normalizedBounds.left * 64)
-              .round()
-              .clamp(0, 64);
+          final target = math.min(
+            64,
+            math.max(0, (observation.normalizedBounds.left * 64).round()),
+          );
           if (target > column) {
             buffer.write(' ' * (target - column));
             column = target;
