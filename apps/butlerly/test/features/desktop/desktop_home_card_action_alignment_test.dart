@@ -87,9 +87,7 @@ void main() {
     expect(month, findsOneWidget);
     expect(viewAll, findsOneWidget);
 
-    final expense = find.byKey(
-      const ValueKey('desktop-home-summary-expenses'),
-    );
+    final expense = find.byKey(const ValueKey('desktop-home-summary-expenses'));
     expect(expense, findsOneWidget);
     final comparison = find.descendant(
       of: expense,
