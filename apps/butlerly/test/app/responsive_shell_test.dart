@@ -250,6 +250,11 @@ void main() {
       addTearDown(tester.view.resetPadding);
       tester.view.physicalSize = const Size(900, 600);
       await tester.pumpAndSettle();
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'Landscape rotation must not overflow before rail expansion.',
+      );
 
       expect(find.byType(DesktopPrimaryShell), findsOneWidget);
       final rail = find.byKey(const ValueKey('primary-wide-navigation'));
@@ -270,6 +275,11 @@ void main() {
       expect(
         appRouter.routeInformationProvider.value.uri.path,
         '/transactions',
+      );
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'Transaction navigation must not overflow the collapsed rail.',
       );
 
       await tester.tap(find.byIcon(Icons.keyboard_double_arrow_right_rounded));
