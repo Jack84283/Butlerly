@@ -1149,25 +1149,12 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
         !comparison!.baselineValue!.isZero &&
         percent != null;
     final percentValue = usable ? double.tryParse(percent.toString()) : null;
-    final comparisonText = percentValue == null
-        ? context.l10n.text('comparisonUnavailable')
-        : percentValue > 0
-        ? '↑ ${percentValue.abs().toStringAsFixed(1)}% ${context.l10n.text('vsPreviousPeriod')}'
-        : percentValue < 0
-        ? '↓ ${percentValue.abs().toStringAsFixed(1)}% ${context.l10n.text('vsPreviousPeriod')}'
-        : '0.0% ${context.l10n.text('vsPreviousPeriod')}';
-    final baseline = comparison?.baselineValue;
-    final baselineAvailable =
-        baseline != null &&
-        comparison?.availability == AnalysisDataAvailability.sufficient;
-    final baselineAmount = localizedHomeBaseline(
+    final comparisonText = localizedHomeComparisonLine(
       context,
-      baselineAvailable ? baseline.toString() : null,
+      comparison,
       isCount: isCount,
       currency: currency,
     );
-    final baselineText =
-        '${context.l10n.text('previousPeriod')}: $baselineAmount';
     final compact = context.designTokens.mode == ButlerlyLayoutMode.compact;
     final foreground = context.colors.primaryText;
     final mutedForeground = context.colors.secondaryText;
@@ -1248,45 +1235,19 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
           SizedBox(
             height: compact ? ButlerlySpacing.none : ButlerlySpacing.micro,
           ),
-          if (compact)
-            SizedBox(
-              width: double.infinity,
+          SizedBox(
+            width: double.infinity,
+            height: compact ? 18 : 16,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
               child: Text(
                 comparisonText,
+                maxLines: 1,
                 textAlign: TextAlign.center,
-                softWrap: true,
                 style: comparisonStyle,
               ),
-            )
-          else
-            SizedBox(
-              width: double.infinity,
-              height: 16,
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  comparisonText,
-                  maxLines: 1,
-                  style: comparisonStyle,
-                ),
-              ),
             ),
-          const SizedBox(height: ButlerlySpacing.micro),
-          Text(
-            baselineText,
-            textAlign: TextAlign.center,
-            style: Theme.of(
-              context,
-            ).textTheme.labelSmall?.copyWith(color: mutedForeground),
           ),
-          if (baseline?.isZero == true)
-            Text(
-              context.l10n.text('zeroComparisonBaseline'),
-              textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.labelSmall?.copyWith(color: mutedForeground),
-            ),
         ],
       ),
     );

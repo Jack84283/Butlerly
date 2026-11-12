@@ -87,6 +87,19 @@ void main() {
     expect(month, findsOneWidget);
     expect(viewAll, findsOneWidget);
 
+    final expense = find.byKey(const ValueKey('desktop-home-summary-expenses'));
+    expect(expense, findsOneWidget);
+    final comparison = find.descendant(of: expense, matching: find.text('N/A'));
+    expect(comparison, findsOneWidget);
+    expect(tester.widget<Text>(comparison).maxLines, 1);
+    expect(
+      find.descendant(
+        of: expense,
+        matching: find.textContaining('Previous period:'),
+      ),
+      findsNothing,
+    );
+
     expect(
       tester.widget<DropdownButton<int>>(month).alignment,
       AlignmentDirectional.centerEnd,

@@ -1,4 +1,6 @@
+import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -31,6 +33,115 @@ void main() {
       expect(localizedHomeBaseline(context, '0', isCount: false), '0.00');
     },
   );
+
+  testWidgets('Home combines comparison and baseline into one line', (
+    tester,
+  ) async {
+    late BuildContext context;
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('en', 'US'),
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [AppLocalizations.delegate],
+        home: Builder(
+          builder: (value) {
+            context = value;
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+
+    final higher = AnalysisComparison(
+      currentValue: DecimalValue.parse('1200'),
+      baselineValue: DecimalValue.parse('1000'),
+      absoluteChange: DecimalValue.parse('200'),
+      percentageChange: DecimalValue.parse('20'),
+      availability: AnalysisDataAvailability.sufficient,
+    );
+    final lower = AnalysisComparison(
+      currentValue: DecimalValue.parse('80'),
+      baselineValue: DecimalValue.parse('100'),
+      absoluteChange: DecimalValue.parse('-20'),
+      percentageChange: DecimalValue.parse('-20'),
+      availability: AnalysisDataAvailability.sufficient,
+    );
+    final zero = AnalysisComparison(
+      currentValue: DecimalValue.parse('1'),
+      baselineValue: DecimalValue.parse('0'),
+      absoluteChange: DecimalValue.parse('1'),
+      percentageChange: DecimalValue.parse('0'),
+      availability: AnalysisDataAvailability.sufficient,
+    );
+
+    expect(
+      localizedHomeComparisonLine(
+        context,
+        higher,
+        isCount: false,
+        currency: 'USD',
+      ),
+      '↑ 20.0% (vs 1,000.00 USD)',
+    );
+    expect(
+      localizedHomeComparisonLine(context, lower, isCount: true),
+      '↓ 20.0% (vs 100)',
+    );
+    expect(
+      localizedHomeComparisonLine(
+        context,
+        zero,
+        isCount: false,
+        currency: 'USD',
+      ),
+      'N/A (vs 0.00 USD)',
+    );
+    expect(localizedHomeComparisonLine(context, null, isCount: true), 'N/A');
+  });
+
+  testWidgets('Home comparison line respects Chinese and Spanish locale', (
+    tester,
+  ) async {
+    final comparison = AnalysisComparison(
+      currentValue: DecimalValue.parse('1388.5'),
+      baselineValue: DecimalValue.parse('1234.5'),
+      absoluteChange: DecimalValue.parse('154'),
+      percentageChange: DecimalValue.parse('12.5'),
+      availability: AnalysisDataAvailability.sufficient,
+    );
+    for (final locale in [const Locale('zh', 'CN'), const Locale('es', 'ES')]) {
+      late BuildContext context;
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: locale,
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          home: Builder(
+            builder: (value) {
+              context = value;
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      );
+      final actual = localizedHomeComparisonLine(
+        context,
+        comparison,
+        isCount: false,
+        currency: 'USD',
+      );
+      if (locale.languageCode == 'zh') {
+        expect(actual, '↑ 12.5%（较 1,234.50 USD）');
+      } else {
+        expect(actual, '↑ 12,5% (vs. 1.234,50 USD)');
+      }
+    }
+  });
 
   testWidgets('transaction amounts always render two decimal places', (
     tester,

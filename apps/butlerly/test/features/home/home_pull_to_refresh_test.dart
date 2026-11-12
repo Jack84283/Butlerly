@@ -881,17 +881,14 @@ void main() {
         AppTheme.light.extension<ButlerlySemanticColors>()!.primaryText,
       );
       expect(
-        find.descendant(
-          of: card,
-          matching: find.text('Comparison unavailable'),
-        ),
+        find.descendant(of: card, matching: find.text('N/A')),
         findsOneWidget,
       );
     }
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Compact summary metrics wrap comparison text and tighten gaps', (
+  testWidgets('Compact summary metrics show one-line comparison, tight gaps', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(320, 568);
@@ -951,13 +948,10 @@ void main() {
       expect((content.children[4] as SizedBox).height, 24);
       expect((content.children[5] as SizedBox).height, 0);
 
-      final comparison = find.descendant(
-        of: tile,
-        matching: find.text('Comparison unavailable'),
-      );
+      final comparison = find.descendant(of: tile, matching: find.text('N/A'));
       final text = tester.widget<Text>(comparison);
-      expect(text.softWrap, isTrue);
-      expect(text.maxLines, isNull);
+      expect(text.softWrap, isNot(true));
+      expect(text.maxLines, 1);
       expect(text.textAlign, TextAlign.center);
       expect(text.style?.height, 1.1);
       expect(tester.getSize(comparison).height, greaterThan(10));
@@ -1003,10 +997,7 @@ void main() {
     expect((content.children[3] as SizedBox).height, 4);
     expect((content.children[4] as SizedBox).height, 28);
     expect((content.children[5] as SizedBox).height, 4);
-    final comparison = find.descendant(
-      of: tile,
-      matching: find.text('Comparison unavailable'),
-    );
+    final comparison = find.descendant(of: tile, matching: find.text('N/A'));
     expect(tester.widget<Text>(comparison).maxLines, 1);
     expect(tester.takeException(), isNull);
   });

@@ -42,6 +42,54 @@ String localizedHomeBaseline(
   return !isCount && currency != null ? '$amount $currency' : amount;
 }
 
+/// A single, honest comparison line for Home summary metrics on all layouts.
+/// An absent baseline never becomes a fabricated zero; a zero baseline
+/// displays the prior value without a misleading percentage change.
+String localizedHomeComparisonLine(
+  BuildContext context,
+  AnalysisComparison? comparison, {
+  required bool isCount,
+  String? currency,
+}) {
+  final baseline = comparison?.baselineValue;
+  final hasBaseline =
+      baseline != null &&
+      comparison?.availability == AnalysisDataAvailability.sufficient;
+  final percent = comparison?.percentageChange;
+  final rawPercentage = hasBaseline && !baseline.isZero && percent != null
+      ? double.tryParse(percent.toString())
+      : null;
+  final percentage = rawPercentage != null && rawPercentage.isFinite
+      ? rawPercentage
+      : null;
+  final formatted = percentage == null
+      ? null
+      : NumberFormat.decimalPatternDigits(
+          locale: Localizations.localeOf(context).toLanguageTag(),
+          decimalDigits: 1,
+        ).format(percentage.abs());
+  final direction = percentage == null
+      ? ''
+      : percentage > 0
+      ? '↑ '
+      : percentage < 0
+      ? '↓ '
+      : '';
+  final comparisonText = formatted == null ? 'N/A' : '$direction$formatted%';
+  if (!hasBaseline) return comparisonText;
+  return AppLocalizations.of(
+    context,
+  ).text('homeSummaryComparisonWithBaseline', {
+    'percentage': comparisonText,
+    'baseline': localizedHomeBaseline(
+      context,
+      baseline.toString(),
+      isCount: isCount,
+      currency: currency,
+    ),
+  });
+}
+
 String localizedCompactPercentage(
   BuildContext context,
   String canonicalValue, {
