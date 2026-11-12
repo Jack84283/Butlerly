@@ -485,6 +485,21 @@ void main() {
         tester.getTopRight(net).dx,
         closeTo(tester.getTopRight(section).dx, 0.01),
       );
+      for (final metric in [spending, transactions, income, net]) {
+        final comparison = find.descendant(
+          of: metric,
+          matching: find.text('Comparison unavailable'),
+        );
+        expect(comparison, findsOneWidget);
+        expect(tester.widget<Text>(comparison).maxLines, 1);
+        expect(
+          find.descendant(
+            of: metric,
+            matching: find.textContaining('Previous period:'),
+          ),
+          findsNothing,
+        );
+      }
       final title = find.text('Monthly summary');
       final subtitle = find.text('vs previous period');
       final summaryTitle = tester.widget<Text>(title);
