@@ -1157,13 +1157,13 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
         ? '↓ ${percentValue.abs().toStringAsFixed(1)}% ${context.l10n.text('vsPreviousPeriod')}'
         : '0.0% ${context.l10n.text('vsPreviousPeriod')}';
     final baseline = comparison?.baselineValue;
+    final baselineAvailable =
+        baseline != null &&
+        comparison?.availability == AnalysisDataAvailability.sufficient;
     final baselineText =
-        baseline == null ||
-            comparison?.availability != AnalysisDataAvailability.sufficient
-        ? null
-        : '${context.l10n.text('previousPeriod')}: '
-              '${localizedDecimal(context, baseline.toString())}'
-              '${isCount || currency == null ? '' : ' $currency'}';
+        '${context.l10n.text('previousPeriod')}: '
+        '${baselineAvailable ? (isCount ? localizedCompactDecimal(context, baseline.toString()) : localizedDecimal(context, baseline.toString())) : '-'}'
+        '${baselineAvailable && !isCount && currency != null ? ' $currency' : ''}';
     final compact = context.designTokens.mode == ButlerlyLayoutMode.compact;
     final foreground = context.colors.primaryText;
     final mutedForeground = context.colors.secondaryText;
@@ -1267,7 +1267,7 @@ class _DeviceDesktopSummaryMetric extends StatelessWidget {
                 ),
               ),
             ),
-          if (baselineText != null) ...[
+          ...[
             const SizedBox(height: ButlerlySpacing.micro),
             Text(
               baselineText,
