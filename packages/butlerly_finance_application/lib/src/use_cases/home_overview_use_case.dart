@@ -7,6 +7,7 @@ import '../dto/review_item_dto.dart';
 import '../dto/review_period_scope.dart';
 import '../dto/transaction_dto.dart';
 import '../analysis/invalidation.dart';
+import '../analysis/period_resolver.dart';
 import '../result/application_result.dart';
 import 'analysis_use_cases.dart';
 import '../commands/transaction_commands.dart';
@@ -281,6 +282,7 @@ final class GetHomeOverview {
         currentFinancialMonth: homePeriod.currentFinancialMonth,
         displayMonth: homePeriod.displayMonth,
         analysis: analysis,
+        comparisonPeriod: resolveHomeComparisonPeriod(context, instant),
         monthlyTrend: monthlyTrend,
         monthlyTrendUnavailable: monthlyTrendUnavailable,
         reviewCount: reviewCount,
@@ -454,4 +456,56 @@ final class _HomeContextResolution {
   final HomePeriodResolution homePeriod;
   final AnalysisContext context;
   final bool analysisContextUnavailable;
+}
+
+/// Resolves exactly the previous equivalent window used by Home's metric rules.
+AnalysisPeriod? resolveHomeComparisonPeriod(
+  AnalysisContext context,
+  DateTime instant,
+) {
+  const resolver = AnalysisPeriodResolver();
+  // Match AnalysisDatasetBuilder._windowForContext and the analysis rule
+  // engine's elapsed anchor. Use the authoritative resolved context dates,
+  // not the device clock, to avoid an off-by-one at timezone boundaries.
+  final start = DateTime.parse(context.period.startDate);
+  final endExclusive = DateTime.parse(
+    context.period.endDate,
+  ).add(const Duration(days: 1));
+  final partial = {
+    'current_month',
+    'year_to_date',
+    'rolling_30_days',
+    'rolling_90_days',
+  }.contains(context.periodType);
+  final primary = ResolvedAnalysisWindow(
+    start: DateTime.utc(start.year, start.month, start.day),
+    endExclusive: DateTime.utc(
+      endExclusive.year,
+      endExclusive.month,
+      endExclusive.day,
+    ),
+    timeZoneId: context.period.timeZoneId,
+    coverage: partial
+        ? AnalysisCoverageState.partial
+        : AnalysisCoverageState.complete,
+    periodType: switch (context.periodType) {
+      'current_month' || 'previous_month' || 'selected_month' => 'month',
+      'year_to_date' || 'previous_year' => 'year',
+      _ => 'custom',
+    },
+  );
+  final previous = resolver.resolvePreviousEquivalent(
+    primary: primary,
+    elapsedAnchor: context.periodType == 'selected_period'
+        ? null
+        : endExclusive,
+  );
+  if (previous is! AnalysisPeriodResolved) return null;
+  final window = previous.window;
+  if (!window.endExclusive.isAfter(window.start)) return null;
+  return AnalysisPeriod(
+    startDate: _date(window.start),
+    endDate: _date(window.endExclusive.subtract(const Duration(days: 1))),
+    timeZoneId: window.timeZoneId,
+  );
 }

@@ -27,6 +27,21 @@ String localizedCompactDecimal(BuildContext context, String canonicalValue) {
   return formatter.format(value);
 }
 
+/// Formats a Home comparison's previous-period amount without inventing data.
+/// Counts are whole numbers; monetary values retain two fractional digits.
+String localizedHomeBaseline(
+  BuildContext context,
+  String? canonicalValue, {
+  required bool isCount,
+  String? currency,
+}) {
+  if (canonicalValue == null) return '-';
+  final amount = isCount
+      ? localizedCompactDecimal(context, canonicalValue)
+      : localizedDecimal(context, canonicalValue);
+  return !isCount && currency != null ? '$amount $currency' : amount;
+}
+
 String localizedCompactPercentage(
   BuildContext context,
   String canonicalValue, {

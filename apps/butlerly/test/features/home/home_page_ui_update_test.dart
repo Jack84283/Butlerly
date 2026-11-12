@@ -388,7 +388,10 @@ void main() {
         find.descendant(of: metric, matching: find.byType(Container)).first,
       );
       final decoration = container.decoration! as BoxDecoration;
-      expect(decoration.color!.a, closeTo(0.5, 0.001));
+      final neutral = Theme.of(
+        tester.element(metric),
+      ).extension<ButlerlySemanticColors>()!.subtleSurface;
+      expect(decoration.color, neutral);
     }
 
     expect(

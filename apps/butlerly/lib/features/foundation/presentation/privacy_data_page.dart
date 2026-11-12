@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/app/shell/adaptive_shell.dart';
+import 'package:butlerly/core/application/backup_status_service.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
@@ -550,6 +551,47 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
   );
 
   bool _busy = false;
+  final BackupStatusService _backupStatusStore =
+      const LocalBackupStatusService();
+  BackupStatusRecord? _lastCompletedBackup;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBackupStatus();
+  }
+
+  Future<void> _loadBackupStatus() async {
+    if (kIsWeb) return;
+    final result = await _backupStatusStore.read();
+    if (mounted) setState(() => _lastCompletedBackup = result);
+  }
+
+  String _backupStatusDescription(BuildContext context) {
+    final status = _lastCompletedBackup;
+    if (status == null) return context.l10n.text('backupStatusUnknown');
+    final time = DateFormat.yMMMd(
+      Localizations.localeOf(context).toLanguageTag(),
+    ).add_jm().format(status.completedAtUtc.toLocal());
+    final description = context.l10n
+        .text('backupStatusRecorded')
+        .replaceAll('{date}', time);
+    return status.missingAttachments
+        ? '$description ${context.l10n.text('backupStatusMissingAttachments')}'
+        : description;
+  }
+
+  Future<void> _recordCompletedBackup(BackupCreationResult backup) async {
+    try {
+      await _backupStatusStore.recordCompleted(
+        missingAttachments: backup.hasMissingAttachments,
+      );
+      await _loadBackupStatus();
+    } on Exception {
+      // Backup creation succeeded even if optional status persistence fails.
+      // Keep unknown status rather than presenting a false backup error.
+    }
+  }
 
   bool get _usesNativeMobileShare =>
       !kIsWeb &&
@@ -676,6 +718,8 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
       final backup = await services<WorkspaceDataService>()
           .createPortableBackup(location.path, password: password);
       if (mounted) {
+        await _recordCompletedBackup(backup);
+        if (!mounted) return;
         if (backup.hasMissingAttachments) {
           await _warnAboutMissingAttachments(backup);
         } else {
@@ -719,7 +763,14 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
               sharePositionOrigin: shareOrigin,
             ),
           );
+      // A successful share handoff no longer needs the exported temporary
+      // file. Dispose of it before optional status persistence, which may
+      // involve slower platform I/O. The outer finally still handles errors.
+      await services<WorkspaceDataService>().discardTemporaryBackup(filePath);
+      filePath = null;
       if (mounted && result.status == share.ShareResultStatus.success) {
+        await _recordCompletedBackup(temporary.backup);
+        if (!mounted) return;
         if (temporary.backup.hasMissingAttachments) {
           await _warnAboutMissingAttachments(temporary.backup);
         } else {
@@ -792,6 +843,9 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           notifyBudgetsChanged();
         },
       );
+      // Update persistent Home views again once the restore has completed.
+      notifyWorkspaceRestored();
+      notifyBudgetsChanged();
       if (!mounted) return;
       final summary =
           (mode == LocalRestoreMode.merge
@@ -1048,12 +1102,14 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
     final backup = _DesktopPrivacyCard(
       key: const ValueKey('desktop-privacy-backup'),
       title: l10n.text('backupRecoveryTitle'),
-      description: l10n.text('backupRecoveryBody'),
+      description:
+          '${l10n.text('backupRecoveryBody')}\n'
+          '${_backupStatusDescription(context)}',
       icon: Icons.storage_outlined,
       children: [
         _DesktopPrivacyAction(
           icon: Icons.backup_outlined,
-          label: l10n.backupText('backup'),
+          label: l10n.text('backUpNowAction'),
           description: l10n.backupText('backupSubtitle'),
           onTap: _busy ? null : _backup,
         ),
@@ -1269,9 +1325,9 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
             ListTile(
               enabled: !_busy,
               leading: Icon(_privacyIcon(context, Icons.backup_outlined)),
-              title: Text(context.l10n.backupText('backup')),
+              title: Text(context.l10n.text('backUpNowAction')),
               subtitle: Text(
-                context.l10n.backupText('backupSubtitle'),
+                _backupStatusDescription(context),
                 style: _subtitleStyle(context),
               ),
               trailing: Icon(_privacyIcon(context, Icons.chevron_right)),

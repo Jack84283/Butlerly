@@ -46,8 +46,11 @@ void main() {
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     await tester.pumpAndSettle();
 
-    expect(find.byType(ButlerlyCard), findsNWidgets(2));
+    expect(find.byType(ButlerlyCard), findsNWidgets(3));
     expect(find.byType(Divider), findsNWidgets(3));
+    expect(find.text('Record'), findsOneWidget);
+    expect(find.text('Import'), findsOneWidget);
+    expect(find.text('Manage'), findsOneWidget);
     expect(find.text('Add transaction manually'), findsOneWidget);
     expect(find.text('Budgets'), findsWidgets);
     expect(find.text('Enter transaction details yourself'), findsOneWidget);
@@ -95,6 +98,10 @@ void main() {
     router.pop();
     await tester.pumpAndSettle();
 
+    await tester.ensureVisible(
+      find.byIcon(Icons.account_balance_wallet_outlined),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.byIcon(Icons.account_balance_wallet_outlined));
     await tester.pumpAndSettle();
     expect(find.text('payment source destination'), findsOneWidget);
@@ -152,9 +159,20 @@ void main() {
     expect(find.text('Import from local file'), findsOneWidget);
     expect(find.text('Add payment source'), findsOneWidget);
 
-    final first = tester.getRect(find.byType(ButlerlyCard).at(0));
-    final second = tester.getRect(find.byType(ButlerlyCard).at(1));
-    expect(second.left, greaterThan(first.right));
+    expect(
+      find.byKey(const ValueKey('desktop-add-three-columns')),
+      findsOneWidget,
+    );
+    final cards = find.byType(ButlerlyCard);
+    final first = tester.getRect(cards.at(0));
+    final second = tester.getRect(cards.at(1));
+    final third = tester.getRect(cards.at(2));
+    final fifth = tester.getRect(cards.at(4));
+    expect(second.left, closeTo(first.left, 1));
+    expect(second.top, greaterThan(first.bottom));
+    expect(third.left, greaterThan(first.right));
+    expect(third.top, closeTo(first.top, 1));
+    expect(fifth.left, greaterThan(third.right));
     expect(first.width, greaterThan(350));
 
     await tester.tap(find.text('Import from local file'));

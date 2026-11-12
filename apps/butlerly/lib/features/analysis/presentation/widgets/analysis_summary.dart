@@ -3,6 +3,7 @@ import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_formatters.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_model.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 
@@ -33,14 +34,24 @@ class AnalysisSummary extends StatelessWidget {
                 : Theme.of(context).textTheme.displaySmall,
           ),
           Text(context.l10n.text('totalSpending')),
-          if (model.comparison != null)
+          if (model.spendingComparison != null) ...[
             Text(
-              analysisComparisonText(context, model.comparison!),
+              analysisComparisonText(context, model.spendingComparison!),
               semanticsLabel: analysisComparisonText(
                 context,
-                model.comparison!,
+                model.spendingComparison!,
               ),
             ),
+            if (model.spendingComparison!.baselineValue != null &&
+                isUsableComparison(model.spendingComparison!))
+              Text(
+                '${context.l10n.text('previousPeriod')}: '
+                '${localizedDecimal(context, model.spendingComparison!.baselineValue.toString())} '
+                '${model.spending?.currency?.value ?? ''}',
+              ),
+            if (model.spendingComparison!.baselineValue?.isZero == true)
+              Text(context.l10n.text('zeroComparisonBaseline')),
+          ],
           SizedBox(
             height: _isCompact(context)
                 ? ButlerlySpacing.micro

@@ -250,6 +250,11 @@ void main() {
       addTearDown(tester.view.resetPadding);
       tester.view.physicalSize = const Size(900, 600);
       await tester.pumpAndSettle();
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'Landscape rotation must not overflow before rail expansion.',
+      );
 
       expect(find.byType(DesktopPrimaryShell), findsOneWidget);
       final rail = find.byKey(const ValueKey('primary-wide-navigation'));
@@ -271,6 +276,11 @@ void main() {
         appRouter.routeInformationProvider.value.uri.path,
         '/transactions',
       );
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'Transaction navigation must not overflow the collapsed rail.',
+      );
 
       await tester.tap(find.byIcon(Icons.keyboard_double_arrow_right_rounded));
       await tester.pumpAndSettle();
@@ -279,7 +289,14 @@ void main() {
         ButlerlySize.wideNavigationExpandedWidth,
       );
       debugDefaultTargetPlatformOverride = null;
-      expect(tester.takeException(), isNull);
+      final layoutError = tester.takeException();
+      if (layoutError is FlutterError) {
+        debugPrint(
+          'Android landscape overflow diagnostics: '
+          '${layoutError.diagnostics.map((node) => node.toStringDeep()).join(' | ')}',
+        );
+      }
+      expect(layoutError, isNull);
     },
   );
 
@@ -1887,7 +1904,7 @@ void main() {
     expect(find.byKey(const ValueKey('desktop-tools-actions')), findsOneWidget);
     await tester.tap(
       find.descendant(
-        of: find.byKey(const ValueKey('desktop-tools-actions')),
+        of: find.byKey(const ValueKey('desktop-tools-actions-1')),
         matching: find.text('Analysis'),
       ),
     );
@@ -1924,7 +1941,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(
       find.descendant(
-        of: find.byKey(const ValueKey('desktop-tools-actions')),
+        of: find.byKey(const ValueKey('desktop-tools-actions-1')),
         matching: find.text('Analysis'),
       ),
     );

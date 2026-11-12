@@ -331,6 +331,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byIcon(CupertinoIcons.archivebox), findsOneWidget);
+      expect(find.text('Back up now'), findsOneWidget);
+      expect(find.textContaining('Last backup: not tracked'), findsOneWidget);
       // The additional Merge action may push later actions below the fold.
       // Scroll until each action is built instead of assuming all are visible.
       await tester.scrollUntilVisible(
@@ -383,6 +385,8 @@ void main() {
     expect(find.text('Merge backup'), findsOneWidget);
     expect(find.text('Replace from backup'), findsOneWidget);
     expect(find.text('Backup & Recovery'), findsOneWidget);
+    expect(find.text('Back up now'), findsOneWidget);
+    expect(find.textContaining('Last backup: not tracked'), findsOneWidget);
     expect(find.text('Data Export'), findsOneWidget);
     expect(find.text('Data Management'), findsOneWidget);
     expect(find.text('Danger Zone'), findsOneWidget);
@@ -477,7 +481,7 @@ void main() {
       app(shareClient: share_plus.SharePlus.custom(platform)),
     );
     await tester.pump();
-    await tester.tap(find.text('Back up Butlerly'));
+    await tester.tap(find.text('Back up now'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
     final fields = find.byType(TextField);
@@ -485,11 +489,27 @@ void main() {
     await tester.enterText(fields.at(0), 'correct horse battery staple');
     await tester.enterText(fields.at(1), 'correct horse battery staple');
     await tester.tap(find.text('Create encrypted backup'));
+    // Do not use pumpAndSettle: the backup progress animation can remain
+    // active while the asynchronous share operation completes. Advance
+    // enough frames for the sheet exit and delayed controller disposal.
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pump(const Duration(milliseconds: 350));
 
     expect(platform.params, isNotNull);
     expect(platform.sawFileDuringShare, isTrue);
+    // File deletion may complete on the real I/O event loop even when the
+    // widget test's fake clock has already advanced through sheet animations.
+    await tester.runAsync(() async {
+      for (
+        var attempt = 0;
+        attempt < 50 && gateway.discardedPath == null;
+        attempt++
+      ) {
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+      }
+    });
     debugDefaultTargetPlatformOverride = null;
     expect(gateway.discardedPath, isNotNull);
     expect(File(gateway.discardedPath!).existsSync(), isFalse);

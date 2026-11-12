@@ -252,7 +252,12 @@ void main() {
       of: find.text('Manage privacy & data'),
       matching: find.byType(InkWell),
     );
-    await tester.ensureVisible(privacyRow.first);
+    await Scrollable.ensureVisible(
+      tester.element(privacyRow.first),
+      alignment: 0.3,
+      duration: Duration.zero,
+    );
+    await tester.pumpAndSettle();
     await tester.tap(privacyRow.first);
     await tester.pumpAndSettle();
     expect(appRouter.routeInformationProvider.value.uri.path, '/privacy-data');
@@ -327,7 +332,7 @@ void main() {
     expect(find.text('预算设置'), findsOneWidget);
     expect(find.text('财务档案'), findsOneWidget);
     expect(find.text('管理隐私和数据'), findsOneWidget);
-    expect(find.text('备份与恢复'), findsNothing);
+    expect(find.text('备份与恢复'), findsOneWidget);
   });
 
   testWidgets('display-name sheet saves and can reopen without crashing', (
@@ -433,9 +438,9 @@ void main() {
     final valueColumns = find.byKey(
       const ValueKey('desktop-more-value-column'),
     );
-    expect(valueColumns, findsNWidgets(8));
+    expect(valueColumns, findsNWidgets(9));
     final firstRight = tester.getRect(valueColumns.at(0)).right;
-    for (var index = 0; index < 8; index++) {
+    for (var index = 0; index < 9; index++) {
       expect(tester.getSize(valueColumns.at(index)).width, 140);
       final valueText = tester.widget<Text>(
         find.descendant(
@@ -444,7 +449,7 @@ void main() {
         ),
       );
       expect(valueText.textAlign, TextAlign.end);
-      if (index < 7) {
+      if (index < 8) {
         expect(
           tester.getRect(valueColumns.at(index)).right,
           closeTo(firstRight, 0.1),

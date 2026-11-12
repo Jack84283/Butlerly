@@ -201,6 +201,10 @@ result:
     expect(definitions['ANL-R016'].measures, hasLength(3));
     expect(definitions['ANL-R001'].role, 'expenseTotal');
     expect(definitions['ANL-R002'].role, 'incomeTotal');
+    final netCashFlow = definitions['ANL-R003'] as AnalysisRuleDefinition;
+    expect(netCashFlow.role, 'netCashFlow');
+    expect(netCashFlow.version.value, '1.4.0');
+    expect(netCashFlow.baseline, RuleBaseline.previousEquivalentPeriod);
     expect(definitions['ANL-R021'].outputType, InsightOutputType.pattern);
     expect(definitions['ANL-R024'].outputType, InsightOutputType.alert);
     final r024 = definitions['ANL-R024'] as AnalysisRuleDefinition;

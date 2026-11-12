@@ -29,6 +29,34 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+/// Formats the exact application-resolved periods for the desktop summary.
+@visibleForTesting
+String desktopHomePeriodSubtitle(
+  BuildContext context, {
+  required AnalysisPeriod? period,
+  required AnalysisPeriod? baseline,
+  required bool monthToDate,
+}) {
+  if (period == null || baseline == null) {
+    return context.l10n.text('vsPreviousPeriod');
+  }
+  final label = context.l10n.text(
+    monthToDate ? 'monthToDate' : 'currentPeriod',
+  );
+  final currentRange = localizedPeriodRange(
+    context,
+    startDate: period.startDate,
+    endDate: period.endDate,
+  );
+  final previousRange = localizedPeriodRange(
+    context,
+    startDate: baseline.startDate,
+    endDate: baseline.endDate,
+  );
+  return '$label · $currentRange '
+      '${context.l10n.text('vsPreviousPeriod')} $previousRange';
+}
+
 /// A desktop-only presentation surface. No device Home widgets are imported.
 class DesktopHomePage extends StatefulWidget {
   const DesktopHomePage({super.key});
@@ -309,7 +337,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                   // At the narrow end of the wide shell, or with large text,
                   // icon-only actions preserve the toolbar's touch targets.
                   final compactToolbar =
-                      constraints.maxWidth < 760 || largeTextToolbar;
+                      constraints.maxWidth < 820 || largeTextToolbar;
                   return Row(
                     children: [
                       Expanded(
@@ -422,6 +450,12 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                           ),
                         ),
                       if (!compactToolbar) const SizedBox(width: 8),
+                      IconButton(
+                        key: const ValueKey('desktop-home-header-refresh'),
+                        tooltip: context.l10n.text('refreshHome'),
+                        onPressed: _retry,
+                        icon: const Icon(Icons.refresh_outlined),
+                      ),
                       if (compactToolbar)
                         IconButton(
                           key: const ValueKey('desktop-home-header-add'),
@@ -508,7 +542,15 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                           _DesktopPanel(
                             key: const ValueKey('desktop-home-summary-card'),
                             title: context.l10n.text('monthlySummary'),
-                            subtitle: context.l10n.text('vsPreviousPeriod'),
+                            subtitle: desktopHomePeriodSubtitle(
+                              context,
+                              period: data?.context?.period,
+                              baseline: data?.comparisonPeriod,
+                              monthToDate: _sameMonth(
+                                current,
+                                currentFinancialMonth,
+                              ),
+                            ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
@@ -529,6 +571,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                         icon: Icons.arrow_downward,
                                         comparison:
                                             analysis?.spendingComparison,
+                                        currency: currency,
                                       ),
                                     ),
                                     const SizedBox(width: 8),
@@ -546,6 +589,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                         icon: Icons.receipt_long_outlined,
                                         comparison: analysis
                                             ?.transactionCountComparison,
+                                        isCount: true,
                                         accentColor: ButlerlyHomeColorTokens
                                             .standard
                                             .transactions,
@@ -564,6 +608,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                         ),
                                         icon: Icons.arrow_upward,
                                         comparison: analysis?.incomeComparison,
+                                        currency: currency,
                                       ),
                                     ),
                                     const SizedBox(width: 8),
@@ -576,6 +621,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                         value: _money(analysis?.net, currency),
                                         icon: Icons.show_chart,
                                         comparison: analysis?.netComparison,
+                                        currency: currency,
                                       ),
                                     ),
                                   ],
@@ -1292,7 +1338,6 @@ class _DesktopCategoryLeadingIcon extends StatelessWidget {
 }
 
 // Applies to colored fills only; text and icons stay fully opaque for contrast.
-const double _desktopHomeTintOpacity = 0.50;
 // Match device Home: the selected month is solid, other months are muted.
 const double _desktopHomeActionTintOpacity = 0.18;
 const TextStyle _desktopHomeCardTitleStyle = TextStyle(
@@ -1549,6 +1594,8 @@ class _DesktopMetric extends StatelessWidget {
     required this.value,
     required this.icon,
     required this.comparison,
+    this.isCount = false,
+    this.currency,
     this.accentColor,
     super.key,
   });
@@ -1557,6 +1604,8 @@ class _DesktopMetric extends StatelessWidget {
   final String value;
   final IconData icon;
   final AnalysisComparison? comparison;
+  final bool isCount;
+  final String? currency;
   final Color? accentColor;
 
   @override
@@ -1568,13 +1617,14 @@ class _DesktopMetric extends StatelessWidget {
             : icon == Icons.arrow_downward
             ? const Color(0xFFE24247)
             : const Color(0xFF1769E8));
-    final fill = color.withValues(alpha: _desktopHomeTintOpacity);
+    final fill = context.colors.subtleSurface;
     final foreground = context.colors.primaryText;
     final mutedForeground = context.colors.secondaryText;
     final percent = comparison?.percentageChange;
     final usable =
         comparison?.availability == AnalysisDataAvailability.sufficient &&
         comparison?.baselineValue != null &&
+        !comparison!.baselineValue!.isZero &&
         percent != null;
     final percentValue = usable ? double.tryParse(percent.toString()) : null;
     final comparisonText = percentValue == null
@@ -1584,6 +1634,19 @@ class _DesktopMetric extends StatelessWidget {
         : percentValue < 0
         ? '↓ ${percentValue.abs().toStringAsFixed(1)}% ${context.l10n.text('vsPreviousPeriod')}'
         : '0.0% ${context.l10n.text('vsPreviousPeriod')}';
+
+    final baseline = comparison?.baselineValue;
+    final baselineAvailable =
+        baseline != null &&
+        comparison?.availability == AnalysisDataAvailability.sufficient;
+    final baselineAmount = localizedHomeBaseline(
+      context,
+      baselineAvailable ? baseline.toString() : null,
+      isCount: isCount,
+      currency: currency,
+    );
+    final baselineText =
+        '${context.l10n.text('previousPeriod')}: $baselineAmount';
 
     return Container(
       decoration: BoxDecoration(
@@ -1598,7 +1661,7 @@ class _DesktopMetric extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 20,
-            backgroundColor: foreground.withValues(alpha: .20),
+            backgroundColor: color.withValues(alpha: .18),
             child: Icon(icon, color: foreground, size: 22),
           ),
           const SizedBox(width: 8),
@@ -1640,6 +1703,21 @@ class _DesktopMetric extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+                Text(
+                  baselineText,
+                  maxLines: 2,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: mutedForeground),
+                ),
+                if (baseline?.isZero == true)
+                  Text(
+                    context.l10n.text('zeroComparisonBaseline'),
+                    softWrap: true,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelSmall?.copyWith(color: mutedForeground),
+                  ),
               ],
             ),
           ),

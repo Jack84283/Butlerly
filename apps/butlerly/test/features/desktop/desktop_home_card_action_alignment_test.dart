@@ -5,12 +5,50 @@ import 'package:butlerly/design_system/tokens/butlerly_button.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/desktop/presentation/desktop_home_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 void main() {
+  setUpAll(() async => initializeDateFormatting('en'));
+  testWidgets('desktop financial subtitle shows matched month-to-date dates', (
+    tester,
+  ) async {
+    late String subtitle;
+    await tester.pumpWidget(
+      MaterialApp(
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [AppLocalizations.delegate],
+        home: Builder(
+          builder: (context) {
+            subtitle = desktopHomePeriodSubtitle(
+              context,
+              period: AnalysisPeriod(
+                startDate: '2026-11-01',
+                endDate: '2026-11-11',
+                timeZoneId: 'UTC',
+              ),
+              baseline: AnalysisPeriod(
+                startDate: '2026-10-01',
+                endDate: '2026-10-11',
+                timeZoneId: 'UTC',
+              ),
+              monthToDate: true,
+            );
+            return const SizedBox.shrink();
+          },
+        ),
+      ),
+    );
+    expect(subtitle, contains('Month to date'));
+    expect(subtitle, contains('Nov'));
+    expect(subtitle, contains('Oct'));
+    expect(subtitle, contains('11'));
+  });
+
   testWidgets('Home breakdown header actions align to the right edge', (
     tester,
   ) async {
@@ -105,10 +143,17 @@ void main() {
     await tester.pumpAndSettle();
     final homeHeader = find.byKey(const ValueKey('desktop-home-header'));
     final homeAdd = find.byKey(const ValueKey('desktop-home-header-add'));
+    final homeRefresh = find.byKey(
+      const ValueKey('desktop-home-header-refresh'),
+    );
     final homeHelp = find.byKey(const ValueKey('page-context-help-visual'));
     expect(homeHeader, findsOneWidget);
     expect(homeAdd, findsOneWidget);
+    expect(homeRefresh, findsOneWidget);
     expect(homeHelp, findsOneWidget);
+    await tester.tap(homeRefresh);
+    await tester.pump();
+    expect(tester.takeException(), isNull);
     final homeRightInset =
         tester.getRect(homeHeader).right - tester.getRect(homeHelp).right;
     final homeAddGap =

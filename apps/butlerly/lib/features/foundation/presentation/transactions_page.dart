@@ -465,6 +465,47 @@ class _TransactionsPageState extends State<TransactionsPage> {
           pinnedHeaderExtent: ButlerlySize.searchPinnedHeaderHeight,
           pinnedHeader: _transactionSearchControls(context),
           children: [
+            if (_activeFilterCount > 0 || _search.text.trim().isNotEmpty) ...[
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final compact = constraints.maxWidth < 240;
+                  return Row(
+                    key: const ValueKey('transactions-active-filter-summary'),
+                    children: [
+                      if (!compact) ...[
+                        Icon(
+                          Icons.filter_alt_outlined,
+                          size: 18,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: ButlerlySpacing.micro),
+                      ],
+                      Expanded(
+                        child: Text(
+                          context.l10n
+                              .text('transactionsActiveFilterSummary')
+                              .replaceAll('{count}', '$_activeFilterCount')
+                              .replaceAll(
+                                '{dates}',
+                                _from != null || _to != null
+                                    ? '${_from == null ? "…" : _transactionFilterDate(_from!)} – '
+                                          '${_to == null ? "…" : _transactionFilterDate(_to!)}'
+                                    : context.l10n.text('transactionsAllDates'),
+                              ),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                      if (!compact)
+                        TextButton(
+                          onPressed: _openFilters,
+                          child: Text(context.l10n.text('filters')),
+                        ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: ButlerlySpacing.small),
+            ],
             if (values.isEmpty)
               ButlerlyEmptyState(
                 icon: Icons.receipt_long_outlined,

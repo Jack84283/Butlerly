@@ -213,8 +213,8 @@ void main() {
     await tester.tap(find.bySemanticsLabel('Add transaction'));
     await tester.pumpAndSettle();
 
-    expect(find.byType(ButlerlyActionGroup), findsNWidgets(2));
-    expect(find.byType(ButlerlyActionRow), findsNWidgets(5));
+    expect(find.byType(ButlerlyActionGroup), findsNWidgets(3));
+    expect(find.byType(ButlerlyActionRow), findsNWidgets(6));
     final addSubtitle = tester.widget<Text>(
       find.text('Enter transaction details yourself'),
     );
@@ -226,7 +226,7 @@ void main() {
     appRouter.go('/tools');
     await tester.pumpAndSettle();
 
-    expect(find.byType(ButlerlyActionGroup), findsOneWidget);
+    expect(find.byType(ButlerlyActionGroup), findsNWidgets(3));
     expect(find.byType(ButlerlyActionRow), findsNWidgets(6));
     expect(find.text('Payment settlements'), findsOneWidget);
     expect(find.text('Search'), findsNothing);

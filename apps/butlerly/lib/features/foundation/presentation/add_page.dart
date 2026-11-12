@@ -63,52 +63,93 @@ class AddPage extends StatelessWidget {
       onTap: () => context.push('/budgets'),
     );
 
+    final sections = [
+      (
+        title: context.l10n.text('addRecord'),
+        actions: actions.take(2).toList(),
+      ),
+      (
+        title: context.l10n.text('addImport'),
+        actions: actions.skip(2).toList(),
+      ),
+      (
+        title: context.l10n.text('addManage'),
+        actions: [
+          desktop
+              ? createPaymentSource
+              : ButlerlyActionItem(
+                  icon: Icons.account_balance_wallet_outlined,
+                  title: context.l10n.text('paymentSources'),
+                  subtitle: context.l10n.text('paymentSourcesSubtitle'),
+                  onTap: () => context.push('/payment-sources'),
+                ),
+          manageBudgets,
+        ],
+      ),
+    ];
+
     return ButlerlyPage(
       title: context.l10n.text('add'),
       subtitle: context.l10n.text('addSubtitle'),
       fullWidth: desktop,
+      padding: const EdgeInsets.fromLTRB(
+        ButlerlySize.contentGutter,
+        ButlerlySpacing.cardGap,
+        ButlerlySize.contentGutter,
+        ButlerlySpacing.large,
+      ),
       children: [
         if (desktop)
-          LayoutBuilder(
-            key: const ValueKey('desktop-add-actions'),
-            builder: (context, constraints) {
-              const gap = ButlerlySpacing.cardGap;
-              final columns = constraints.maxWidth >= 1100 ? 3 : 2;
-              final tileWidth =
-                  (constraints.maxWidth - gap * (columns - 1)) / columns;
-              return Wrap(
-                spacing: gap,
-                runSpacing: gap,
-                children: [
-                  for (final action in [
-                    ...actions,
-                    createPaymentSource,
-                    manageBudgets,
-                  ])
-                    SizedBox(
-                      width: tileWidth,
-                      child: _DesktopAddActionCard(action: action),
+          Row(
+            key: const ValueKey('desktop-add-three-columns'),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final (index, section) in sections.indexed) ...[
+                if (index > 0) const SizedBox(width: ButlerlySpacing.cardGap),
+                Expanded(
+                  child: Column(
+                    key: ValueKey(
+                      index == 0
+                          ? 'desktop-add-actions'
+                          : 'desktop-add-actions-$index',
                     ),
-                ],
-              );
-            },
-          )
-        else ...[
-          ButlerlyActionGroup(actions: actions),
-          ButlerlySectionHeader(title: context.l10n.text('paymentSources')),
-          ButlerlyActionGroup(
-            actions: [
-              ButlerlyActionItem(
-                icon: Icons.account_balance_wallet_outlined,
-                title: context.l10n.text('paymentSources'),
-                subtitle: context.l10n.text('paymentSourcesSubtitle'),
-                onTap: () => context.push('/payment-sources'),
-              ),
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(
+                          bottom: ButlerlySpacing.small,
+                        ),
+                        child: Text(
+                          section.title,
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                      ),
+                      for (final action in section.actions) ...[
+                        _DesktopAddActionCard(action: action),
+                        const SizedBox(height: ButlerlySpacing.cardGap),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
             ],
-          ),
-          ButlerlySectionHeader(title: context.l10n.text('budgets')),
-          ButlerlyActionGroup(actions: [manageBudgets]),
-        ],
+          )
+        else
+          for (final (index, section) in sections.indexed) ...[
+            Padding(
+              padding: EdgeInsets.only(
+                top: index == 0
+                    ? ButlerlySpacing.none
+                    : ButlerlySpacing.cardGap,
+                bottom: ButlerlySpacing.small,
+              ),
+              child: Text(
+                section.title,
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ),
+            ButlerlyActionGroup(actions: section.actions),
+          ],
         const SizedBox(height: ButlerlySpacing.structural),
       ],
     );
