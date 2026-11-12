@@ -56,6 +56,38 @@ coordinates, not a pixel-perfect reconstruction. If positions are absent,
 the output uses the untouched OCR reading order rather than inventing
 columns. Multi-page fixtures have visible page separators.
 
+## Companion aligned text file
+
+Each JSON fixture can have a generated `.txt` file next to it:
+
+```text
+receipt_layout_grocery.json   # Original OCR observations + expected fields
+receipt_layout_grocery.txt    # Generated spatial preview, NOT parser input
+```
+
+From `apps/butlerly`, run:
+
+```bash
+dart run tool/generate_receipt_layout.dart test/core/evidence/fixtures/receipt_layout_grocery.json
+```
+
+The command writes or updates `receipt_layout_grocery.txt` next to the JSON,
+keeping recognized text in its approximate horizontal and vertical positions.
+The output is plain UTF-8 text; open it using a **monospaced font** with
+whitespace preservation. Incomplete geometry falls back to the OCR reading
+order rather than inventing an alignment. It cannot reconstruct icons or
+images; original image data is not embedded in the text.
+
+The checked-in sample `.txt` is asserted in tests to be identical to the
+rendering produced from the corresponding `.json`, preventing stale or
+manually altered snapshots. Do not feed the formatted text back into
+`ReceiptExtractor`: the JSON observations retain authoritative coordinates
+and are the sole source for extraction regression tests.
+
+**Privacy:** Both files can contain readable financial and personal
+information. Generate locally and redact source observations *before*
+exporting fixtures for review or committing them. The sample is synthetic.
+
 ## Running
 
 From `apps/butlerly`:
