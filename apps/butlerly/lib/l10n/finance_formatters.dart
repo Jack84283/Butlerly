@@ -56,7 +56,7 @@ String localizedHomeComparisonLine(
       baseline != null &&
       comparison?.availability == AnalysisDataAvailability.sufficient;
   final percent = comparison?.percentageChange;
-  final rawPercentage = hasBaseline && !baseline.isZero && percent != null
+  final rawPercentage = hasBaseline && baseline != null && !baseline.isZero && percent != null
       ? double.tryParse(percent.toString())
       : null;
   final percentage = rawPercentage != null && rawPercentage.isFinite
@@ -78,7 +78,7 @@ String localizedHomeComparisonLine(
   final comparisonText = formatted == null
       ? AppLocalizations.of(context).text('comparisonUnavailable')
       : '$direction$formatted%';
-  if (!hasBaseline) return comparisonText;
+  if (!hasBaseline || baseline == null) return comparisonText;
   return AppLocalizations.of(context).text('homeSummaryComparisonWithBaseline', {
     'percentage': comparisonText,
     'baseline': localizedHomeBaseline(
