@@ -1924,7 +1924,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(
       find.descendant(
-        of: find.byKey(const ValueKey('desktop-tools-actions')),
+        of: find.byKey(const ValueKey('desktop-tools-actions-1')),
         matching: find.text('Analysis'),
       ),
     );
