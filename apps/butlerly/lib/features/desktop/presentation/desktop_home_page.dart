@@ -450,6 +450,12 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                           ),
                         ),
                       if (!compactToolbar) const SizedBox(width: 8),
+                      IconButton(
+                        key: const ValueKey('desktop-home-header-refresh'),
+                        tooltip: context.l10n.text('refreshHome'),
+                        onPressed: _retry,
+                        icon: const Icon(Icons.refresh_outlined),
+                      ),
                       if (compactToolbar)
                         IconButton(
                           key: const ValueKey('desktop-home-header-add'),
