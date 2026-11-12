@@ -891,7 +891,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Compact summary metrics wrap comparison text and tighten gaps', (
+  testWidgets('Compact summary metrics keep one comparison line and tighten gaps', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(320, 568);
@@ -956,8 +956,8 @@ void main() {
         matching: find.text('Comparison unavailable'),
       );
       final text = tester.widget<Text>(comparison);
-      expect(text.softWrap, isTrue);
-      expect(text.maxLines, isNull);
+      expect(text.softWrap, isNot(true));
+      expect(text.maxLines, 1);
       expect(text.textAlign, TextAlign.center);
       expect(text.style?.height, 1.1);
       expect(tester.getSize(comparison).height, greaterThan(10));
