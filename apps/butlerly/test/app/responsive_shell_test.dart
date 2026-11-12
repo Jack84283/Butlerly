@@ -279,7 +279,14 @@ void main() {
         ButlerlySize.wideNavigationExpandedWidth,
       );
       debugDefaultTargetPlatformOverride = null;
-      expect(tester.takeException(), isNull);
+      final layoutError = tester.takeException();
+      if (layoutError is FlutterError) {
+        debugPrint(
+          'Android landscape overflow diagnostics: '
+          '${layoutError.diagnostics.map((node) => node.toStringDeep()).join(' | ')}',
+        );
+      }
+      expect(layoutError, isNull);
     },
   );
 
