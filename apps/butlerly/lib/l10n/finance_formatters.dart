@@ -56,8 +56,7 @@ String localizedHomeComparisonLine(
       baseline != null &&
       comparison?.availability == AnalysisDataAvailability.sufficient;
   final percent = comparison?.percentageChange;
-  final rawPercentage =
-      hasBaseline && !baseline.isZero && percent != null
+  final rawPercentage = hasBaseline && !baseline.isZero && percent != null
       ? double.tryParse(percent.toString())
       : null;
   final percentage = rawPercentage != null && rawPercentage.isFinite
