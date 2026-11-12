@@ -502,9 +502,11 @@ void main() {
     // File deletion may complete on the real I/O event loop even when the
     // widget test's fake clock has already advanced through sheet animations.
     await tester.runAsync(() async {
-      for (var attempt = 0;
-          attempt < 50 && gateway.discardedPath == null;
-          attempt++) {
+      for (
+        var attempt = 0;
+        attempt < 50 && gateway.discardedPath == null;
+        attempt++
+      ) {
         await Future<void>.delayed(const Duration(milliseconds: 20));
       }
     });
