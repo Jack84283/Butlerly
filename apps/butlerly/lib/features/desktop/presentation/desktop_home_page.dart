@@ -1690,7 +1690,9 @@ class _DesktopMetric extends StatelessWidget {
                       comparisonText,
                       maxLines: 1,
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: percentValue == null ? mutedForeground : foreground,
+                        color: percentValue == null
+                            ? mutedForeground
+                            : foreground,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
