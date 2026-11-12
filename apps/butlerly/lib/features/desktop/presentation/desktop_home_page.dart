@@ -1633,16 +1633,14 @@ class _DesktopMetric extends StatelessWidget {
     final baselineAvailable =
         baseline != null &&
         comparison?.availability == AnalysisDataAvailability.sufficient;
-    final baselineAmount = !baselineAvailable
-        ? '-'
-        : isCount
-        ? localizedCompactDecimal(context, baseline.toString())
-        : localizedDecimal(context, baseline.toString());
-    final baselineCurrency = baselineAvailable && !isCount && currency != null
-        ? ' $currency'
-        : '';
+    final baselineAmount = localizedHomeBaseline(
+      context,
+      baselineAvailable ? baseline.toString() : null,
+      isCount: isCount,
+      currency: currency,
+    );
     final baselineText =
-        '${context.l10n.text('previousPeriod')}: $baselineAmount$baselineCurrency';
+        '${context.l10n.text('previousPeriod')}: $baselineAmount';
 
     return Container(
       decoration: BoxDecoration(
