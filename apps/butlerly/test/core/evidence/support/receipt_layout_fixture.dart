@@ -17,38 +17,42 @@ final class ReceiptLayoutFixture {
   final Map<String, String?> expected;
 
   factory ReceiptLayoutFixture.fromJson(Map<String, dynamic> json) {
-    final pages = (json['pages'] as List<dynamic>).map((value) {
-      final page = value as Map<String, dynamic>;
-      final index = (page['index'] as num).toInt();
-      return OcrPage(
-        index: index,
-        pixelWidth: (page['pixelWidth'] as num?)?.toInt(),
-        pixelHeight: (page['pixelHeight'] as num?)?.toInt(),
-        orientation: page['orientation'] as String?,
-        observations: (page['observations'] as List<dynamic>).map((value) {
-          final item = value as Map<String, dynamic>;
-          final bounds = item['bounds'] as Map<String, dynamic>?;
-          return OcrObservation(
-            text: item['text'] as String,
-            confidence: (item['confidence'] as num).toDouble(),
-            bounds: bounds == null
-                ? null
-                : OcrBounds(
-                    left: (bounds['left'] as num).toDouble(),
-                    top: (bounds['top'] as num).toDouble(),
-                    width: (bounds['width'] as num).toDouble(),
-                    height: (bounds['height'] as num).toDouble(),
-                  ),
-            left: (item['left'] as num?)?.toDouble() ?? 0,
-            top: (item['top'] as num?)?.toDouble() ?? 0,
-            width: (item['width'] as num?)?.toDouble() ?? 0,
-            height: (item['height'] as num?)?.toDouble() ?? 0,
-            pageIndex: (item['pageIndex'] as num?)?.toInt() ?? index,
-            order: (item['order'] as num).toInt(),
+    final pages = (json['pages'] as List<dynamic>)
+        .map((value) {
+          final page = value as Map<String, dynamic>;
+          final index = (page['index'] as num).toInt();
+          return OcrPage(
+            index: index,
+            pixelWidth: (page['pixelWidth'] as num?)?.toInt(),
+            pixelHeight: (page['pixelHeight'] as num?)?.toInt(),
+            orientation: page['orientation'] as String?,
+            observations: (page['observations'] as List<dynamic>)
+                .map((value) {
+                  final item = value as Map<String, dynamic>;
+                  final bounds = item['bounds'] as Map<String, dynamic>?;
+                  return OcrObservation(
+                    text: item['text'] as String,
+                    confidence: (item['confidence'] as num).toDouble(),
+                    bounds: bounds == null
+                        ? null
+                        : OcrBounds(
+                            left: (bounds['left'] as num).toDouble(),
+                            top: (bounds['top'] as num).toDouble(),
+                            width: (bounds['width'] as num).toDouble(),
+                            height: (bounds['height'] as num).toDouble(),
+                          ),
+                    left: (item['left'] as num?)?.toDouble() ?? 0,
+                    top: (item['top'] as num?)?.toDouble() ?? 0,
+                    width: (item['width'] as num?)?.toDouble() ?? 0,
+                    height: (item['height'] as num?)?.toDouble() ?? 0,
+                    pageIndex: (item['pageIndex'] as num?)?.toInt() ?? index,
+                    order: (item['order'] as num).toInt(),
+                  );
+                })
+                .toList(growable: false),
           );
-        }).toList(growable: false),
-      );
-    }).toList(growable: false);
+        })
+        .toList(growable: false);
     final observations = [for (final page in pages) ...page.observations];
     final meta = json['diagnostics'] as Map<String, dynamic>?;
     final diagnostics = OcrDiagnostics(
