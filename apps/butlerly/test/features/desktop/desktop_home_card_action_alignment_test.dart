@@ -143,10 +143,17 @@ void main() {
     await tester.pumpAndSettle();
     final homeHeader = find.byKey(const ValueKey('desktop-home-header'));
     final homeAdd = find.byKey(const ValueKey('desktop-home-header-add'));
+    final homeRefresh = find.byKey(
+      const ValueKey('desktop-home-header-refresh'),
+    );
     final homeHelp = find.byKey(const ValueKey('page-context-help-visual'));
     expect(homeHeader, findsOneWidget);
     expect(homeAdd, findsOneWidget);
+    expect(homeRefresh, findsOneWidget);
     expect(homeHelp, findsOneWidget);
+    await tester.tap(homeRefresh);
+    await tester.pump();
+    expect(tester.takeException(), isNull);
     final homeRightInset =
         tester.getRect(homeHeader).right - tester.getRect(homeHelp).right;
     final homeAddGap =
