@@ -883,7 +883,7 @@ void main() {
       expect(
         find.descendant(
           of: card,
-          matching: find.text('Comparison unavailable'),
+          matching: find.text('N/A'),
         ),
         findsOneWidget,
       );
@@ -953,7 +953,7 @@ void main() {
 
       final comparison = find.descendant(
         of: tile,
-        matching: find.text('Comparison unavailable'),
+        matching: find.text('N/A'),
       );
       final text = tester.widget<Text>(comparison);
       expect(text.softWrap, isNot(true));
@@ -1005,7 +1005,7 @@ void main() {
     expect((content.children[5] as SizedBox).height, 4);
     final comparison = find.descendant(
       of: tile,
-      matching: find.text('Comparison unavailable'),
+      matching: find.text('N/A'),
     );
     expect(tester.widget<Text>(comparison).maxLines, 1);
     expect(tester.takeException(), isNull);
