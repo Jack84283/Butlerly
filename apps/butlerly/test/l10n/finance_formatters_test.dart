@@ -96,10 +96,7 @@ void main() {
       ),
       'N/A (vs 0.00 USD)',
     );
-    expect(
-      localizedHomeComparisonLine(context, null, isCount: true),
-      'N/A',
-    );
+    expect(localizedHomeComparisonLine(context, null, isCount: true), 'N/A');
   });
 
   testWidgets('Home comparison line respects Chinese and Spanish locale', (
