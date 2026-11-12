@@ -4,40 +4,33 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('Home previous-period values show missing data and whole counts', (
-    tester,
-  ) async {
-    late BuildContext context;
-    await tester.pumpWidget(
-      MaterialApp(
-        locale: const Locale('en', 'US'),
-        home: Builder(
-          builder: (value) {
-            context = value;
-            return const SizedBox.shrink();
-          },
+  testWidgets(
+    'Home previous-period values show missing data and whole counts',
+    (tester) async {
+      late BuildContext context;
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: const Locale('en', 'US'),
+          home: Builder(
+            builder: (value) {
+              context = value;
+              return const SizedBox.shrink();
+            },
+          ),
         ),
-      ),
-    );
+      );
 
-    expect(localizedHomeBaseline(context, null, isCount: false), '-');
-    expect(localizedHomeBaseline(context, null, isCount: true), '-');
-    expect(localizedHomeBaseline(context, '9.00', isCount: true), '9');
-    expect(localizedHomeBaseline(context, '1234.00', isCount: true), '1,234');
-    expect(
-      localizedHomeBaseline(
-        context,
-        '9',
-        isCount: false,
-        currency: 'USD',
-      ),
-      '9.00 USD',
-    );
-    expect(
-      localizedHomeBaseline(context, '0', isCount: false),
-      '0.00',
-    );
-  });
+      expect(localizedHomeBaseline(context, null, isCount: false), '-');
+      expect(localizedHomeBaseline(context, null, isCount: true), '-');
+      expect(localizedHomeBaseline(context, '9.00', isCount: true), '9');
+      expect(localizedHomeBaseline(context, '1234.00', isCount: true), '1,234');
+      expect(
+        localizedHomeBaseline(context, '9', isCount: false, currency: 'USD'),
+        '9.00 USD',
+      );
+      expect(localizedHomeBaseline(context, '0', isCount: false), '0.00');
+    },
+  );
 
   testWidgets('transaction amounts always render two decimal places', (
     tester,
