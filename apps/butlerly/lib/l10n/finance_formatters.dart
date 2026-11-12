@@ -75,9 +75,7 @@ String localizedHomeComparisonLine(
       : percentage < 0
       ? '↓ '
       : '';
-  final comparisonText = formatted == null
-      ? 'N/A'
-      : '$direction$formatted%';
+  final comparisonText = formatted == null ? 'N/A' : '$direction$formatted%';
   if (!hasBaseline) return comparisonText;
   return AppLocalizations.of(
     context,
