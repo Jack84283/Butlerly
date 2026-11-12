@@ -183,10 +183,7 @@ final class ReceiptLayoutFixture {
             0.03,
             math.max(previousRow.height, bounds.height),
           );
-          final blanks = math.min(
-            3,
-            math.max(0, (gap / height).floor() - 1),
-          );
+          final blanks = math.min(3, math.max(0, (gap / height).floor() - 1));
           for (var i = 0; i < blanks; i++) {
             output.add('');
           }
