@@ -105,7 +105,7 @@ void main() {
         expect(after.normalizedBounds.top, before.normalizedBounds.top);
         expect(after.normalizedBounds.width, before.normalizedBounds.width);
         expect(after.normalizedBounds.height, before.normalizedBounds.height);
-        }
+      }
     },
   );
 
