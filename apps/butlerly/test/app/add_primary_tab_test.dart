@@ -147,7 +147,7 @@ void main() {
     await Scrollable.ensureVisible(
       tester.element(find.text('Master data')),
       alignment: 0.3,
-      duration: const Duration(milliseconds: 1),
+      duration: Duration.zero,
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Master data'));
@@ -163,7 +163,7 @@ void main() {
     await Scrollable.ensureVisible(
       tester.element(find.text('Rules')),
       alignment: 0.3,
-      duration: const Duration(milliseconds: 1),
+      duration: Duration.zero,
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Rules'));
@@ -183,7 +183,7 @@ void main() {
     await Scrollable.ensureVisible(
       tester.element(find.text('Payment sources')),
       alignment: 0.3,
-      duration: const Duration(milliseconds: 1),
+      duration: Duration.zero,
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Payment sources'));
