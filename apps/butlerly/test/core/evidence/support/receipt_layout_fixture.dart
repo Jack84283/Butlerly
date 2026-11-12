@@ -12,10 +12,6 @@ final class ReceiptLayoutFixture {
     required this.expected,
   });
 
-  final String id;
-  final OcrDocument document;
-  final Map<String, String?> expected;
-
   factory ReceiptLayoutFixture.fromJson(Map<String, dynamic> json) {
     final pages = (json['pages'] as List<dynamic>)
         .map((value) {
@@ -81,6 +77,10 @@ final class ReceiptLayoutFixture {
       ),
     );
   }
+
+  final String id;
+  final OcrDocument document;
+  final Map<String, String?> expected;
 
   /// Export observations from the actual OCR interface without flattening
   /// their geometry. Use only redacted, consented examples in the repository.
