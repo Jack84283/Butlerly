@@ -77,9 +77,7 @@ void main() {
       (entry) => entry['field'] == 'subtotal',
     );
     expect(subtotal['valueText'], '10.49');
-    final total = candidates.singleWhere(
-      (entry) => entry['field'] == 'total',
-    );
+    final total = candidates.singleWhere((entry) => entry['field'] == 'total');
     expect(total['valueText'], r'$10.91');
     expect(total['sourceText'], contains('TOTAL'));
     expect(total['sourceLine'], isA<int>());
@@ -92,7 +90,8 @@ void main() {
   });
 
   test('missing labeled amounts remain unparsed, not guessed', () {
-    const text = '      SHOP NAME\n'
+    const text =
+        '      SHOP NAME\n'
         '      TOTAL\n'
         '      VISA                  20.00\n';
     final parsed = ReceiptTextJson.parse(text);
