@@ -106,7 +106,7 @@ void main() {
       const ValueKey('receipt-ocr-horizontal-scroll'),
     );
     expect(horizontal, findsOneWidget);
-    final scrollable = tester.widget<Scrollable>(
+    final scrollable = tester.state<ScrollableState>(
       find.descendant(of: horizontal, matching: find.byType(Scrollable)),
     );
     expect(scrollable.position.maxScrollExtent, greaterThan(0));
