@@ -19,7 +19,7 @@
       "sourceText": "      Date: 11/12/2026"
     },
     {
-      "field": "total",
+      "field": "subtotal",
       "label": "SUBTOTAL",
       "valueText": "10.49",
       "page": 1,
