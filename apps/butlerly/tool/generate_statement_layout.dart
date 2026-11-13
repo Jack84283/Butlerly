@@ -2,9 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../test/core/evidence/support/statement_layout_fixture.dart';
+import '../test/core/evidence/support/statement_text_json.dart';
 
-/// Outputs an aligned UTF-8 diagnostic TXT from a redacted statement OCR JSON.
-/// This does not modify production statement recognition or extraction.
+/// Writes aligned TXT first from raw OCR evidence, then transcribes TXT rows
+/// into a separate .extracted.json. Production extraction remains unchanged.
 void main(List<String> args) {
   if (args.length != 1 || !args.single.toLowerCase().endsWith('.json')) {
     stderr.writeln(
@@ -21,20 +22,27 @@ void main(List<String> args) {
     exitCode = 66;
     return;
   }
-  final destination = File(
-    '${source.path.substring(0, source.path.length - 5)}.txt',
-  );
+  final stem = source.path.substring(0, source.path.length - 5);
+  final destination = File('$stem.txt');
+  final structured = File('$stem.extracted.json');
   try {
     final fixture = StatementLayoutFixture.fromJson(
       jsonDecode(source.readAsStringSync()) as Map<String, dynamic>,
     );
     final output = '${fixture.layout}\n';
-    if (destination.existsSync() && destination.readAsStringSync() == output) {
-      stdout.writeln('Already up to date: ${destination.path}');
-      return;
+    // Materialize TXT *before* constructing the semantic JSON. The JSON is
+    // derived from the exact bytes saved to the TXT file, not from the
+    // original OCR geometry or any preexisting expected transaction values.
+    if (!destination.existsSync() || destination.readAsStringSync() != output) {
+      destination.writeAsStringSync(output);
     }
-    destination.writeAsStringSync(output);
-    stdout.writeln('Created statement layout: ${destination.path}');
+    final savedText = destination.readAsStringSync();
+    final derived = '${StatementTextJson.encode(savedText)}\n';
+    if (!structured.existsSync() || structured.readAsStringSync() != derived) {
+      structured.writeAsStringSync(derived);
+    }
+    stdout.writeln('Aligned text: ${destination.path}');
+    stdout.writeln('JSON derived from saved text: ${structured.path}');
     stdout.writeln(
       'Reminder: redact account and financial information before sharing.',
     );
