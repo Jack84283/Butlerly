@@ -14,12 +14,14 @@ abstract final class ReceiptTextJson {
     final amountLine = RegExp(
       r'^\s*(SUB\s*TOTAL|GRAND\s+TOTAL|TOTAL\s+DUE|AMOUNT\s+DUE|'
       r'TOTAL\s+AMOUNT|BALANCE\s+DUE|TOTAL|SALES\s+TAX|TAX|TIP|'
-      r'GRATUITY)\s*:?\s+'
+      r'GRATUITY)(?:\s*:\s*|\s+)'
       r'([+-]?(?:[$€£¥]\s*)?(?:\d{1,3}(?:,\d{3})+|\d+)'
       r'(?:[.,]\d{2})?|\([€£¥$]?\s*\d+(?:[.,]\d{2})?\))\s*$',
       caseSensitive: false,
     );
-    final datePattern = RegExp(r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b');
+    final datePattern = RegExp(
+      r'\b(?:\d{4}-\d{2}-\d{2}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4})\b',
+    );
     final genericHeader = RegExp(
       r'^(?:receipt|sales receipt|invoice|thank you|welcome|copy|'
       r'customer copy|merchant copy|store receipt|transaction)$',
@@ -95,7 +97,8 @@ abstract final class ReceiptTextJson {
 
       final date = datePattern.firstMatch(line);
       if (date != null) {
-        inHeader = false;
+        // A date may precede the merchant heading. Keep the header region
+        // open until a financial amount or a table label is encountered.
         final context = line.substring(0, date.start).toLowerCase();
         final expiration = RegExp(
           r'(?:\bexp(?:iration|iry)?\b|\bvalid\s+(?:thru|through)\b|'
