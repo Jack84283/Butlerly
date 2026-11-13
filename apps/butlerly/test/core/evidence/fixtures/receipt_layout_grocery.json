@@ -1,0 +1,195 @@
+{
+  "id": "synthetic-grocery-spatial-v1",
+  "diagnostics": {
+    "sourceKind": "image",
+    "sourceOpened": true,
+    "recognizedLineCount": 17
+  },
+  "pages": [
+    {
+      "index": 0,
+      "pixelWidth": 1200,
+      "pixelHeight": 1800,
+      "orientation": "up",
+      "observations": [
+        {
+          "text": "WHOLE FOODS MARKET",
+          "confidence": 0.96,
+          "left": 0.16,
+          "top": 0.03,
+          "width": 0.67,
+          "height": 0.045,
+          "pageIndex": 0,
+          "order": 0
+        },
+        {
+          "text": "Palo Alto, CA",
+          "confidence": 0.96,
+          "left": 0.26,
+          "top": 0.09,
+          "width": 0.43,
+          "height": 0.034,
+          "pageIndex": 0,
+          "order": 1
+        },
+        {
+          "text": "Date: 11/12/2026",
+          "confidence": 0.96,
+          "left": 0.1,
+          "top": 0.16,
+          "width": 0.53,
+          "height": 0.033,
+          "pageIndex": 0,
+          "order": 2
+        },
+        {
+          "text": "Organic Milk",
+          "confidence": 0.96,
+          "left": 0.1,
+          "top": 0.33,
+          "width": 0.52,
+          "height": 0.032,
+          "pageIndex": 0,
+          "order": 3
+        },
+        {
+          "text": "5.99",
+          "confidence": 0.96,
+          "left": 0.82,
+          "top": 0.33,
+          "width": 0.13,
+          "height": 0.032,
+          "pageIndex": 0,
+          "order": 4
+        },
+        {
+          "text": "Bread",
+          "confidence": 0.96,
+          "left": 0.1,
+          "top": 0.39,
+          "width": 0.42,
+          "height": 0.032,
+          "pageIndex": 0,
+          "order": 5
+        },
+        {
+          "text": "4.50",
+          "confidence": 0.96,
+          "left": 0.82,
+          "top": 0.39,
+          "width": 0.13,
+          "height": 0.032,
+          "pageIndex": 0,
+          "order": 6
+        },
+        {
+          "text": "SUBTOTAL",
+          "confidence": 0.96,
+          "left": 0.1,
+          "top": 0.58,
+          "width": 0.52,
+          "height": 0.035,
+          "pageIndex": 0,
+          "order": 7
+        },
+        {
+          "text": "10.49",
+          "confidence": 0.96,
+          "left": 0.8,
+          "top": 0.58,
+          "width": 0.15,
+          "height": 0.035,
+          "pageIndex": 0,
+          "order": 8
+        },
+        {
+          "text": "TAX",
+          "confidence": 0.96,
+          "left": 0.1,
+          "top": 0.64,
+          "width": 0.35,
+          "height": 0.035,
+          "pageIndex": 0,
+          "order": 9
+        },
+        {
+          "text": "0.42",
+          "confidence": 0.96,
+          "left": 0.82,
+          "top": 0.64,
+          "width": 0.13,
+          "height": 0.035,
+          "pageIndex": 0,
+          "order": 10
+        },
+        {
+          "text": "TOTAL",
+          "confidence": 0.96,
+          "left": 0.1,
+          "top": 0.71,
+          "width": 0.42,
+          "height": 0.04,
+          "pageIndex": 0,
+          "order": 11
+        },
+        {
+          "text": "$10.91",
+          "confidence": 0.96,
+          "left": 0.76,
+          "top": 0.71,
+          "width": 0.19,
+          "height": 0.04,
+          "pageIndex": 0,
+          "order": 12
+        },
+        {
+          "text": "VISA",
+          "confidence": 0.96,
+          "left": 0.1,
+          "top": 0.82,
+          "width": 0.4,
+          "height": 0.035,
+          "pageIndex": 0,
+          "order": 13
+        },
+        {
+          "text": "10.91",
+          "confidence": 0.96,
+          "left": 0.8,
+          "top": 0.82,
+          "width": 0.15,
+          "height": 0.035,
+          "pageIndex": 0,
+          "order": 14
+        },
+        {
+          "text": "CHANGE",
+          "confidence": 0.96,
+          "left": 0.1,
+          "top": 0.88,
+          "width": 0.4,
+          "height": 0.035,
+          "pageIndex": 0,
+          "order": 15
+        },
+        {
+          "text": "0.00",
+          "confidence": 0.96,
+          "left": 0.82,
+          "top": 0.88,
+          "width": 0.13,
+          "height": 0.035,
+          "pageIndex": 0,
+          "order": 16
+        }
+      ]
+    }
+  ],
+  "expected": {
+    "merchant": "WHOLE FOODS MARKET",
+    "amount": "10.91",
+    "currency": "USD",
+    "date": "2026-11-12",
+    "tax": "0.42"
+  }
+}
