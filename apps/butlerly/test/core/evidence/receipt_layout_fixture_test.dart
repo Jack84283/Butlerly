@@ -184,10 +184,11 @@ void main() {
         candidates.where((entry) => entry['field'] == 'date'),
         hasLength(1),
       );
-      expect(
-        candidates.where((entry) => entry['field'] == 'dateCandidate'),
-        isEmpty,
+      final isoDates = candidates.where(
+        (entry) => entry['field'] == 'dateCandidate',
       );
+      expect(isoDates, hasLength(1));
+      expect(isoDates.single['valueText'], '2026-11-13');
       final unparsed = (parsed['unparsedLines'] as List<dynamic>)
           .cast<Map<String, dynamic>>();
       expect(
@@ -235,6 +236,86 @@ void main() {
       );
     },
   );
+
+  test('dates preceding merchant names retain header merchant candidates', () {
+    const text =
+        'RECEIPT\n'
+        'Date: 11/13/2026\n'
+        'WHOLE FOODS MARKET\n'
+        'Palo Alto, CA\n'
+        'TOTAL 25.00\n'
+        'CASHIER\n';
+    final parsed = ReceiptTextJson.parse(text);
+    final candidates = (parsed['candidates'] as List<dynamic>)
+        .cast<Map<String, dynamic>>();
+    expect(
+      candidates.where((entry) => entry['field'] == 'date').single['valueText'],
+      '11/13/2026',
+    );
+    final merchants = candidates.where(
+      (entry) => entry['field'] == 'merchantCandidate',
+    );
+    expect(merchants, hasLength(1));
+    expect(merchants.single['valueText'], 'WHOLE FOODS MARKET');
+    expect(
+      candidates.where((entry) => entry['field'] == 'total').single['valueText'],
+      '25.00',
+    );
+  });
+
+  test('compact labels parse amounts but cannot promote discount totals', () {
+    const text =
+        'MARKET\n'
+        'TOTAL:10.91\n'
+        'TAX:0.42\n'
+        'TOTAL SAVINGS:3.00\n'
+        'TOTAL DISCOUNT:2.00\n';
+    final parsed = ReceiptTextJson.parse(text);
+    final candidates = (parsed['candidates'] as List<dynamic>)
+        .cast<Map<String, dynamic>>();
+    final totals = candidates.where((entry) => entry['field'] == 'total');
+    expect(totals, hasLength(1));
+    expect(totals.single['valueText'], '10.91');
+    final tax = candidates.where((entry) => entry['field'] == 'tax');
+    expect(tax, hasLength(1));
+    expect(tax.single['valueText'], '0.42');
+    final unparsed = (parsed['unparsedLines'] as List<dynamic>)
+        .cast<Map<String, dynamic>>();
+    expect(
+      unparsed.where(
+        (entry) => (entry['sourceText'] as String).startsWith('TOTAL '),
+      ),
+      hasLength(2),
+    );
+  });
+
+  test('ISO and slash dates remain independent candidates with source lines', () {
+    const text =
+        'RECEIPT\n'
+        '2026-11-13\n'
+        'MERCHANT NAME\n'
+        'TRANSACTION DATE: 11/12/2026\n'
+        'TOTAL: 15.00\n';
+    final parsed = ReceiptTextJson.parse(text);
+    final candidates = (parsed['candidates'] as List<dynamic>)
+        .cast<Map<String, dynamic>>();
+    final dates = candidates.where(
+      (entry) =>
+          entry['field'] == 'date' || entry['field'] == 'dateCandidate',
+    );
+    expect(dates, hasLength(2));
+    expect(
+      dates.map((entry) => entry['valueText']).toList(),
+      ['2026-11-13', '11/12/2026'],
+    );
+    expect(dates.first['sourceLine'], 2);
+    expect(dates.last['sourceLine'], 4);
+    expect(
+      candidates.where((entry) => entry['field'] == 'merchantCandidate').single[
+          'valueText'],
+      'MERCHANT NAME',
+    );
+  });
 
   test('production extractor runs against original OCR observations', () {
     final fixture = load();
