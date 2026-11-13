@@ -48,10 +48,10 @@ abstract final class ReceiptTextJson {
       final amount = amountLine.firstMatch(source);
       if (amount != null) {
         inHeader = false;
-        final label = amount.group(1)!.toUpperCase().replaceAll(
-          RegExp(r'\s+'),
-          ' ',
-        );
+        final label = amount
+            .group(1)!
+            .toUpperCase()
+            .replaceAll(RegExp(r'\s+'), ' ');
         final field = switch (label) {
           'SUB TOTAL' || 'SUBTOTAL' => 'subtotal',
           'SALES TAX' || 'TAX' => 'tax',
