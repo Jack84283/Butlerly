@@ -60,7 +60,8 @@ void main() {
         order: 8,
       ),
     ];
-    const raw = 'Amount: \$2.99\n9988\nCard\nEnding In\n'
+    const raw =
+        'Amount: \$2.99\n9988\nCard\nEnding In\n'
         'Merchant\nDate\nAPPLE.COM/BILL\n866-712-7753 US\n11/13/2026';
     final positioned = OcrSpatialText.render(
       rawText: raw,
