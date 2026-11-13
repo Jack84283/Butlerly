@@ -119,19 +119,68 @@ void main() {
       ),
       raw,
     );
-    expect(
-      OcrSpatialText.render(
-        rawText: raw,
-        observations: const [
-          OcrObservation(
-            text: 'Card',
-            confidence: .9,
-            bounds: OcrBounds(left: .1, top: .2, width: .2, height: .03),
-          ),
-          OcrObservation(text: '9988', confidence: .9),
-        ],
+    final partiallyPositioned = OcrSpatialText.render(
+      rawText: raw,
+      observations: const [
+        OcrObservation(
+          text: 'Card',
+          confidence: .9,
+          bounds: OcrBounds(left: .1, top: .2, width: .2, height: .03),
+        ),
+        OcrObservation(text: '9988', confidence: .9),
+      ],
+    );
+    expect(partiallyPositioned, contains('Card'));
+    expect(partiallyPositioned, contains('--- TEXT WITHOUT POSITION ---'));
+    expect(partiallyPositioned, contains('9988'));
+    expect(OcrSpatialText.hasGeometry(const [
+      OcrObservation(
+        text: 'Card',
+        bounds: OcrBounds(left: .1, top: .2, width: .2, height: .03),
       ),
-      raw,
+      OcrObservation(text: '9988'),
+    ]), isTrue);
+  });
+
+  test('large and small fonts share baselines, wrapped text stays separate', () {
+    const lines = [
+      OcrObservation(
+        text: 'MERCHANT',
+        bounds: OcrBounds(left: .10, top: .20, width: .25, height: .065),
+      ),
+      OcrObservation(
+        text: 'APPLE.COM/BILL',
+        bounds: OcrBounds(left: .48, top: .235, width: .39, height: .03),
+      ),
+      OcrObservation(
+        text: '866-712-7753 US',
+        bounds: OcrBounds(left: .48, top: .274, width: .39, height: .029),
+      ),
+      OcrObservation(
+        text: 'Date',
+        bounds: OcrBounds(left: .10, top: .35, width: .1, height: .035),
+      ),
+      OcrObservation(
+        text: '11/13/2026',
+        bounds: OcrBounds(left: .48, top: .35, width: .22, height: .035),
+      ),
+    ];
+    final rendered = OcrSpatialText.render(
+      rawText: 'MERCHANT APPLE.COM/BILL 866-712-7753 US Date 11/13/2026',
+      observations: lines,
+    );
+    final rows = rendered.split('\\n');
+    expect(
+      rows.singleWhere((line) => line.contains('MERCHANT')),
+      matches(RegExp(r'MERCHANT\\s+APPLE.COM/BILL')),
+    );
+    expect(
+      rows.singleWhere((line) => line.contains('866-712-7753')),
+      isNot(contains('MERCHANT')),
+    );
+    expect(
+      rows.singleWhere((line) => line.contains('Date')),
+      matches(RegExp(r'Date\\s+11/13/2026')),
     );
   });
 
