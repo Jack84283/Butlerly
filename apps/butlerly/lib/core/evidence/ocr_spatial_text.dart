@@ -29,13 +29,14 @@ abstract final class OcrSpatialText {
       observations.any(_hasBounds);
 
   static bool _sameRow(OcrBounds a, OcrBounds b) {
-    final overlap = math.min(a.top + a.height, b.top + b.height) -
-        math.max(a.top, b.top);
+    final overlap =
+        math.min(a.top + a.height, b.top + b.height) - math.max(a.top, b.top);
     if (overlap <= 0) return false;
     final fraction = overlap / math.min(a.height, b.height);
     final baselineDifference = ((a.top + a.height) - (b.top + b.height)).abs();
     return fraction >= .55 &&
-        baselineDifference <= math.max(.012, math.max(a.height, b.height) * .55);
+        baselineDifference <=
+            math.max(.012, math.max(a.height, b.height) * .55);
   }
 
   static String render({
@@ -136,11 +137,11 @@ abstract final class OcrSpatialText {
     }
     // Never guess coordinates for partial OCR observations. Display their
     // original text afterward in the OCR-provided reading order.
-    final unpositioned = observations.where((item) => !_hasBounds(item)).toList()
-      ..sort((a, b) {
-        final page = a.pageIndex.compareTo(b.pageIndex);
-        return page != 0 ? page : a.order.compareTo(b.order);
-      });
+    final unpositioned =
+        observations.where((item) => !_hasBounds(item)).toList()..sort((a, b) {
+          final page = a.pageIndex.compareTo(b.pageIndex);
+          return page != 0 ? page : a.order.compareTo(b.order);
+        });
     if (unpositioned.isNotEmpty) {
       output.add('');
       output.add('--- TEXT WITHOUT POSITION ---');
