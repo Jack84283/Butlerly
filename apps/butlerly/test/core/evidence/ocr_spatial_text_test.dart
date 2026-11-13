@@ -123,6 +123,7 @@ void main() {
       rawText: raw,
       observations: const [
         OcrObservation(
+          confidence: .9,
           text: 'Card',
           confidence: .9,
           bounds: OcrBounds(left: .1, top: .2, width: .2, height: .03),
@@ -136,10 +137,11 @@ void main() {
     expect(
       OcrSpatialText.hasGeometry(const [
         OcrObservation(
+          confidence: .9,
           text: 'Card',
           bounds: OcrBounds(left: .1, top: .2, width: .2, height: .03),
         ),
-        OcrObservation(text: '9988'),
+        OcrObservation(text: '9988', confidence: .9),
       ]),
       isTrue,
     );
@@ -150,22 +152,27 @@ void main() {
     () {
       const lines = [
         OcrObservation(
+          confidence: .9,
           text: 'MERCHANT',
           bounds: OcrBounds(left: .10, top: .20, width: .25, height: .065),
         ),
         OcrObservation(
+          confidence: .9,
           text: 'APPLE.COM/BILL',
           bounds: OcrBounds(left: .48, top: .235, width: .39, height: .03),
         ),
         OcrObservation(
+          confidence: .9,
           text: '866-712-7753 US',
           bounds: OcrBounds(left: .48, top: .274, width: .39, height: .029),
         ),
         OcrObservation(
+          confidence: .9,
           text: 'Date',
           bounds: OcrBounds(left: .10, top: .35, width: .1, height: .035),
         ),
         OcrObservation(
+          confidence: .9,
           text: '11/13/2026',
           bounds: OcrBounds(left: .48, top: .35, width: .22, height: .035),
         ),
