@@ -8,16 +8,15 @@ import 'receipt_layout_fixture.dart';
 /// Statement-specific test fixture; reuses the exact OCR geometry serializer
 /// and text-layout renderer validated for receipts.
 final class StatementLayoutFixture {
-  const StatementLayoutFixture({
-    required this.ocr,
-    required this.expectedRows,
-  });
+  const StatementLayoutFixture({required this.ocr, required this.expectedRows});
 
   factory StatementLayoutFixture.fromJson(Map<String, dynamic> json) {
-    final rows = (json['expectedRows'] as List<dynamic>).map((value) {
-      final row = value as Map<String, dynamic>;
-      return row.map((key, value) => MapEntry(key, value as String?));
-    }).toList(growable: false);
+    final rows = (json['expectedRows'] as List<dynamic>)
+        .map((value) {
+          final row = value as Map<String, dynamic>;
+          return row.map((key, value) => MapEntry(key, value as String?));
+        })
+        .toList(growable: false);
     return StatementLayoutFixture(
       ocr: ReceiptLayoutFixture.fromJson({
         ...json,
@@ -79,13 +78,15 @@ final class StatementLayoutFixture {
     required OcrDocument document,
     required List<Map<String, String?>> expectedRows,
   }) {
-    final raw = jsonDecode(
-      ReceiptLayoutFixture.encodeDocument(
-        id: id,
-        document: document,
-        expected: const {},
-      ),
-    ) as Map<String, dynamic>;
+    final raw =
+        jsonDecode(
+              ReceiptLayoutFixture.encodeDocument(
+                id: id,
+                document: document,
+                expected: const {},
+              ),
+            )
+            as Map<String, dynamic>;
     raw.remove('expected');
     raw['expectedRows'] = expectedRows;
     return const JsonEncoder.withIndent('  ').convert(raw);
