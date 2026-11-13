@@ -258,7 +258,9 @@ void main() {
     expect(merchants, hasLength(1));
     expect(merchants.single['valueText'], 'WHOLE FOODS MARKET');
     expect(
-      candidates.where((entry) => entry['field'] == 'total').single['valueText'],
+      candidates
+          .where((entry) => entry['field'] == 'total')
+          .single['valueText'],
       '25.00',
     );
   });
@@ -289,33 +291,37 @@ void main() {
     );
   });
 
-  test('ISO and slash dates remain independent candidates with source lines', () {
-    const text =
-        'RECEIPT\n'
-        '2026-11-13\n'
-        'MERCHANT NAME\n'
-        'TRANSACTION DATE: 11/12/2026\n'
-        'TOTAL: 15.00\n';
-    final parsed = ReceiptTextJson.parse(text);
-    final candidates = (parsed['candidates'] as List<dynamic>)
-        .cast<Map<String, dynamic>>();
-    final dates = candidates.where(
-      (entry) =>
-          entry['field'] == 'date' || entry['field'] == 'dateCandidate',
-    );
-    expect(dates, hasLength(2));
-    expect(
-      dates.map((entry) => entry['valueText']).toList(),
-      ['2026-11-13', '11/12/2026'],
-    );
-    expect(dates.first['sourceLine'], 2);
-    expect(dates.last['sourceLine'], 4);
-    expect(
-      candidates.where((entry) => entry['field'] == 'merchantCandidate').single[
-          'valueText'],
-      'MERCHANT NAME',
-    );
-  });
+  test(
+    'ISO and slash dates remain independent candidates with source lines',
+    () {
+      const text =
+          'RECEIPT\n'
+          '2026-11-13\n'
+          'MERCHANT NAME\n'
+          'TRANSACTION DATE: 11/12/2026\n'
+          'TOTAL: 15.00\n';
+      final parsed = ReceiptTextJson.parse(text);
+      final candidates = (parsed['candidates'] as List<dynamic>)
+          .cast<Map<String, dynamic>>();
+      final dates = candidates.where(
+        (entry) =>
+            entry['field'] == 'date' || entry['field'] == 'dateCandidate',
+      );
+      expect(dates, hasLength(2));
+      expect(dates.map((entry) => entry['valueText']).toList(), [
+        '2026-11-13',
+        '11/12/2026',
+      ]);
+      expect(dates.first['sourceLine'], 2);
+      expect(dates.last['sourceLine'], 4);
+      expect(
+        candidates
+            .where((entry) => entry['field'] == 'merchantCandidate')
+            .single['valueText'],
+        'MERCHANT NAME',
+      );
+    },
+  );
 
   test('production extractor runs against original OCR observations', () {
     final fixture = load();
