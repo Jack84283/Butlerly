@@ -75,6 +75,24 @@ abstract final class ReceiptTextJson {
         continue;
       }
 
+      // A financial label without its amount is unresolved evidence, never
+      // another merchant header or a guessed transaction amount.
+      final financialLabel = RegExp(
+        r'^(?:SUB\s*TOTAL|GRAND\s+TOTAL|TOTAL\s+DUE|AMOUNT\s+DUE|'
+        r'TOTAL\s+AMOUNT|BALANCE\s+DUE|TOTAL|SALES\s+TAX|TAX|TIP|'
+        r'GRATUITY)\b',
+        caseSensitive: false,
+      );
+      if (financialLabel.hasMatch(line)) {
+        inHeader = false;
+        unparsed.add({
+          'page': page,
+          'sourceLine': index + 1,
+          'sourceText': source,
+        });
+        continue;
+      }
+
       final date = datePattern.firstMatch(line);
       if (date != null) {
         inHeader = false;
