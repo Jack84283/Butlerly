@@ -33,6 +33,10 @@ void main() {
     final source = XFile(path, name: 'receipt.png');
 
     _resetView(tester);
+    tester.view.physicalSize = const Size(320, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
       _localizedApp(
         ReceiptCapturePage(
@@ -98,10 +102,17 @@ void main() {
       lines.singleWhere((line) => line.contains('Merchant')),
       matches(RegExp(r'Merchant\s+APPLE.COM/BILL')),
     );
-    expect(
-      find.byKey(const ValueKey('receipt-ocr-horizontal-scroll')),
-      findsOneWidget,
+    final horizontal = find.byKey(
+      const ValueKey('receipt-ocr-horizontal-scroll'),
     );
+    expect(horizontal, findsOneWidget);
+    final scrollable = tester.widget<Scrollable>(
+      find.descendant(of: horizontal, matching: find.byType(Scrollable)),
+    );
+    expect(scrollable.position.maxScrollExtent, greaterThan(0));
+    await tester.drag(horizontal, const Offset(-150, 0));
+    await tester.pumpAndSettle();
+    expect(scrollable.position.pixels, greaterThan(0));
     expect(tester.takeException(), isNull);
   });
 
