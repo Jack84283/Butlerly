@@ -89,7 +89,7 @@ abstract final class ReceiptTextJson {
           ).hasMatch(context);
           candidates.add({
             'field': labeled ? 'date' : 'dateCandidate',
-            'label': labeled ? context.trim() : null,
+            'label': null,
             'valueText': date.group(0)!,
             'page': page,
             'sourceLine': index + 1,
