@@ -8,23 +8,34 @@ import 'ocr_contract.dart';
 abstract final class OcrSpatialText {
   static const int _columns = 64;
 
-  static bool hasGeometry(List<OcrObservation> observations) {
-    if (observations.isEmpty) return false;
-    return observations.every((item) {
-      final bounds = item.normalizedBounds;
-      return bounds.left.isFinite &&
-          bounds.top.isFinite &&
-          bounds.width.isFinite &&
-          bounds.height.isFinite &&
-          bounds.left >= 0 &&
-          bounds.top >= 0 &&
-          bounds.left <= 1 &&
-          bounds.top <= 1 &&
-          bounds.width > 0 &&
-          bounds.height > 0 &&
-          bounds.left + bounds.width <= 1.01 &&
-          bounds.top + bounds.height <= 1.01;
-    });
+  static bool _hasBounds(OcrObservation item) {
+    final bounds = item.normalizedBounds;
+    return bounds.left.isFinite &&
+        bounds.top.isFinite &&
+        bounds.width.isFinite &&
+        bounds.height.isFinite &&
+        bounds.left >= 0 &&
+        bounds.top >= 0 &&
+        bounds.left <= 1 &&
+        bounds.top <= 1 &&
+        bounds.width > 0 &&
+        bounds.height > 0 &&
+        bounds.left + bounds.width <= 1.01 &&
+        bounds.top + bounds.height <= 1.01;
+  }
+
+  /// At least one positioned observation enables a partial spatial preview.
+  static bool hasGeometry(List<OcrObservation> observations) =>
+      observations.any(_hasBounds);
+
+  static bool _sameRow(OcrBounds a, OcrBounds b) {
+    final overlap = math.min(a.top + a.height, b.top + b.height) -
+        math.max(a.top, b.top);
+    if (overlap <= 0) return false;
+    final fraction = overlap / math.min(a.height, b.height);
+    final baselineDifference = ((a.top + a.height) - (b.top + b.height)).abs();
+    return fraction >= .55 &&
+        baselineDifference <= math.max(.012, math.max(a.height, b.height) * .55);
   }
 
   static String render({
@@ -35,7 +46,9 @@ abstract final class OcrSpatialText {
 
     final pages = <int, List<OcrObservation>>{};
     for (final item in observations) {
-      pages.putIfAbsent(item.pageIndex, () => <OcrObservation>[]).add(item);
+      if (_hasBounds(item)) {
+        pages.putIfAbsent(item.pageIndex, () => <OcrObservation>[]).add(item);
+      }
     }
     final pageIndexes = pages.keys.toList()..sort();
     final output = <String>[];
@@ -62,12 +75,14 @@ abstract final class OcrSpatialText {
           rows.add([item]);
           continue;
         }
-        final anchor = rows.last.first.normalizedBounds;
+        // Match the entire row, not just its first item. Vertical overlap
+        // and baseline agreement handle mixed fonts without joining a
+        // closely-spaced line above or below.
         final bounds = item.normalizedBounds;
-        final center = anchor.top + anchor.height / 2;
-        final nextCenter = bounds.top + bounds.height / 2;
-        if ((center - nextCenter).abs() <=
-            math.max(anchor.height, bounds.height) * .6) {
+        final sameRow = rows.last.every(
+          (member) => _sameRow(member.normalizedBounds, bounds),
+        );
+        if (sameRow) {
           rows.last.add(item);
         } else {
           rows.add([item]);
@@ -118,6 +133,18 @@ abstract final class OcrSpatialText {
         }
         output.add(line.toString().trimRight());
       }
+    }
+    // Never guess coordinates for partial OCR observations. Display their
+    // original text afterward in the OCR-provided reading order.
+    final unpositioned = observations.where((item) => !_hasBounds(item)).toList()
+      ..sort((a, b) {
+        final page = a.pageIndex.compareTo(b.pageIndex);
+        return page != 0 ? page : a.order.compareTo(b.order);
+      });
+    if (unpositioned.isNotEmpty) {
+      output.add('');
+      output.add('--- TEXT WITHOUT POSITION ---');
+      output.addAll(unpositioned.map((item) => item.text));
     }
     return output.join('\n');
   }
