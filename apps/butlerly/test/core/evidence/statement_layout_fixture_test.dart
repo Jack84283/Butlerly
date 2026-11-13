@@ -50,8 +50,11 @@ void main() {
   test('fixture extraction uses original observations, not TXT alignment', () {
     final fixture = load();
     final result = fixture.extract();
-    expect(result.rows, hasLength(fixture.expectedRows.length),
-        reason: fixture.diagnosticReport);
+    expect(
+      result.rows,
+      hasLength(fixture.expectedRows.length),
+      reason: fixture.diagnosticReport,
+    );
     for (var i = 0; i < fixture.expectedRows.length; i++) {
       final expected = fixture.expectedRows[i];
       final row = result.rows[i];
@@ -65,8 +68,11 @@ void main() {
         expected['postingDate'],
         reason: fixture.diagnosticReport,
       );
-      expect(row.description, expected['description'],
-          reason: fixture.diagnosticReport);
+      expect(
+        row.description,
+        expected['description'],
+        reason: fixture.diagnosticReport,
+      );
       expect(row.amount, expected['amount'], reason: fixture.diagnosticReport);
     }
   });
@@ -119,10 +125,13 @@ void main() {
     expect(fixture.layout, 'PAGE ONE\n--- PAGE 2 ---\nPAGE TWO');
   });
 
-  test('the original OCR document can be passed to the statement extractor', () {
-    final fixture = load();
-    expect(fixture.ocr.document, isA<OcrDocument>());
-    expect(fixture.ocr.document.text, contains('Statement period:'));
-    expect(fixture.ocr.document.text, contains('SAFEWAY STORE'));
-  });
+  test(
+    'the original OCR document can be passed to the statement extractor',
+    () {
+      final fixture = load();
+      expect(fixture.ocr.document, isA<OcrDocument>());
+      expect(fixture.ocr.document.text, contains('Statement period:'));
+      expect(fixture.ocr.document.text, contains('SAFEWAY STORE'));
+    },
+  );
 }
