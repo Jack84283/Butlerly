@@ -25,6 +25,106 @@ import '../transactions/transaction_lifecycle_test.dart'
         MemoryUserPreferences;
 
 void main() {
+  testWidgets('shows aligned OCR text using image coordinates on iPhone', (
+    tester,
+  ) async {
+    final finance = _finance(_ReceiptTransactionRepository());
+    final path = _fixturePath();
+    final source = XFile(path, name: 'receipt.png');
+
+    _resetView(tester);
+    await tester.pumpWidget(
+      _localizedApp(
+        ReceiptCapturePage(
+          finance: finance,
+          evidenceStore: _evidenceStore(finance),
+          pickImage: (_) async => source,
+          preserveEvidence: (_) async => _preservedReceipt,
+          fileForPreserved: (_) async => File(path),
+          discardPreserved: (_) async {},
+          preparePendingReceipt: (_, _) async {},
+          completePendingReceipt: (_) async => true,
+          ocr: (_) async => ReceiptOcrResult(
+            rawText: '9988\nCard\nMerchant\nAPPLE.COM/BILL',
+            merchant: 'APPLE.COM/BILL',
+            amount: '2.99',
+            currency: 'USD',
+            date: DateTime(2026, 11, 13),
+            observations: const [
+              OcrObservation(
+                text: '9988',
+                confidence: .9,
+                bounds: OcrBounds(
+                  left: .45,
+                  top: .25,
+                  width: .11,
+                  height: .04,
+                ),
+                order: 0,
+              ),
+              OcrObservation(
+                text: 'Card',
+                confidence: .9,
+                bounds: OcrBounds(
+                  left: .20,
+                  top: .25,
+                  width: .10,
+                  height: .04,
+                ),
+                order: 1,
+              ),
+              OcrObservation(
+                text: 'Merchant',
+                confidence: .9,
+                bounds: OcrBounds(
+                  left: .20,
+                  top: .45,
+                  width: .20,
+                  height: .04,
+                ),
+                order: 2,
+              ),
+              OcrObservation(
+                text: 'APPLE.COM/BILL',
+                confidence: .9,
+                bounds: OcrBounds(
+                  left: .45,
+                  top: .45,
+                  width: .35,
+                  height: .04,
+                ),
+                order: 3,
+              ),
+            ],
+          ),
+          loadInitialData: _emptyInitialData,
+        ),
+      ),
+    );
+    await tester.pump();
+    await _captureAndAcceptReceipt(tester);
+    await _scrollToAndTap(tester, find.text('Extracted source text'));
+    await tester.pumpAndSettle();
+
+    final preview = tester.widget<SelectableText>(
+      find.byKey(const ValueKey('receipt-ocr-layout-preview')),
+    );
+    final lines = preview.data!.split('\n');
+    expect(
+      lines.singleWhere((line) => line.contains('Card')),
+      matches(RegExp(r'Card\s+9988')),
+    );
+    expect(
+      lines.singleWhere((line) => line.contains('Merchant')),
+      matches(RegExp(r'Merchant\s+APPLE.COM/BILL')),
+    );
+    expect(
+      find.byKey(const ValueKey('receipt-ocr-horizontal-scroll')),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('consumes injected OCR and exposes missing date for review', (
     tester,
   ) async {
