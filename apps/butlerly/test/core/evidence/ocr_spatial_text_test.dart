@@ -104,10 +104,7 @@ void main() {
     expect(restored.normalizedBounds.left, .45);
     expect(restored.normalizedBounds.top, .4);
     expect(restored.order, 3);
-    expect(
-      OcrSpatialText.hasGeometry(receipt.observations),
-      isTrue,
-    );
+    expect(OcrSpatialText.hasGeometry(receipt.observations), isTrue);
   });
 
   test('missing or partial geometry preserves original OCR text', () {
