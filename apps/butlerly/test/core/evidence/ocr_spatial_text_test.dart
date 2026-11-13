@@ -6,7 +6,7 @@ void main() {
   test('side-by-side labels and values preserve receipt geometry', () {
     final observations = [
       const OcrObservation(
-        text: 'Amount: $2.99',
+        text: r'Amount: $2.99',
         confidence: .96,
         bounds: OcrBounds(left: .28, top: .05, width: .46, height: .05),
         order: 0,
@@ -60,7 +60,7 @@ void main() {
         order: 8,
       ),
     ];
-    const raw = 'Amount: $2.99\n9988\nCard\nEnding In\n'
+    const raw = 'Amount: \$2.99\n9988\nCard\nEnding In\n'
         'Merchant\nDate\nAPPLE.COM/BILL\n866-712-7753 US\n11/13/2026';
     final positioned = OcrSpatialText.render(
       rawText: raw,
