@@ -1,8 +1,8 @@
 import 'dart:convert';
 
-/// Test-only, conservative field candidates from an aligned UTF-8 receipt TXT.
-/// All candidates are traceable to literal source lines. This is not a
-/// replacement for the production OCR/receipt interpreter.
+/// Test-only, conservative field candidates from aligned UTF-8 receipt TXT.
+/// All candidates are traceable to source lines. No field is silently chosen
+/// as the final payable amount, merchant, or transaction date.
 abstract final class ReceiptTextJson {
   static String encode(String text) =>
       const JsonEncoder.withIndent('  ').convert(parse(text));
@@ -11,14 +11,28 @@ abstract final class ReceiptTextJson {
     final candidates = <Map<String, Object?>>[];
     final unparsed = <Map<String, Object>>[];
     final lines = text.split(RegExp(r'\r?\n'));
-    var page = 1;
-    var headerSeen = false;
-    final currencyAmount = RegExp(r'([$€£¥]?\s*\d[\d,]*\.\d{2})\s*$');
-    final labeledAmount = RegExp(
-      r'^\s*(SUB\s*TOTAL|GRAND\s+TOTAL|TOTAL\s+DUE|AMOUNT\s+DUE|TOTAL|SALES\s+TAX|TAX|TIP|GRATUITY)\b',
+    final amountLine = RegExp(
+      r'^\s*(SUB\s*TOTAL|GRAND\s+TOTAL|TOTAL\s+DUE|AMOUNT\s+DUE|'
+      r'TOTAL\s+AMOUNT|BALANCE\s+DUE|TOTAL|SALES\s+TAX|TAX|TIP|'
+      r'GRATUITY)\s*:?\s+'
+      r'([+-]?(?:[$€£¥]\s*)?(?:\d{1,3}(?:,\d{3})+|\d+)'
+      r'(?:[.,]\d{2})?|\([€£¥$]?\s*\d+(?:[.,]\d{2})?\))\s*$',
       caseSensitive: false,
     );
     final datePattern = RegExp(r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b');
+    final genericHeader = RegExp(
+      r'^(?:receipt|sales receipt|invoice|thank you|welcome|copy|'
+      r'customer copy|merchant copy|store receipt|transaction)$',
+      caseSensitive: false,
+    );
+    final address = RegExp(
+      r'(?:\b(?:street|st\.|avenue|ave\.|road|rd\.|suite|ste\.|'
+      r'blvd|boulevard|zip|phone|tel)\b|,\s*[A-Z]{2}\b)',
+      caseSensitive: false,
+    );
+    var page = 1;
+    var inHeader = true;
+    var merchantCount = 0;
 
     for (var index = 0; index < lines.length; index++) {
       final source = lines[index];
@@ -27,52 +41,74 @@ abstract final class ReceiptTextJson {
       final separator = RegExp(r'^--- PAGE (\d+) ---$').firstMatch(line);
       if (separator != null) {
         page = int.parse(separator.group(1)!);
-        headerSeen = false;
+        inHeader = false;
         continue;
       }
 
-      final number = currencyAmount.firstMatch(source);
-      final label = labeledAmount.firstMatch(source);
-      if (label != null && number != null && number.start >= label.end) {
-        final name = label
-            .group(1)!
-            .toUpperCase()
-            .replaceAll(RegExp(r'\s+'), ' ');
-        final field = switch (name) {
+      final amount = amountLine.firstMatch(source);
+      if (amount != null) {
+        inHeader = false;
+        final label = amount.group(1)!.toUpperCase().replaceAll(
+          RegExp(r'\s+'),
+          ' ',
+        );
+        final field = switch (label) {
           'SUB TOTAL' || 'SUBTOTAL' => 'subtotal',
-          'SALES TAX' => 'tax',
-          'GRAND TOTAL' || 'TOTAL DUE' || 'AMOUNT DUE' || 'TOTAL' => 'total',
-          'TAX' => 'tax',
+          'SALES TAX' || 'TAX' => 'tax',
           'TIP' || 'GRATUITY' => 'tip',
+          'GRAND TOTAL' ||
+          'TOTAL DUE' ||
+          'AMOUNT DUE' ||
+          'TOTAL AMOUNT' ||
+          'BALANCE DUE' ||
+          'TOTAL' => 'total',
           _ => 'unresolved',
         };
         candidates.add({
           'field': field,
-          'label': name,
-          'valueText': number.group(1)!.trim(),
+          'label': label,
+          'valueText': amount.group(2)!.trim(),
           'page': page,
           'sourceLine': index + 1,
           'sourceText': source,
         });
         continue;
       }
+
       final date = datePattern.firstMatch(line);
       if (date != null) {
-        candidates.add({
-          'field': 'date',
-          'label': null,
-          'valueText': date.group(0)!,
-          'page': page,
-          'sourceLine': index + 1,
-          'sourceText': source,
-        });
-        continue;
+        inHeader = false;
+        final context = line.substring(0, date.start).toLowerCase();
+        final expiration = RegExp(
+          r'(?:\bexp(?:iration|iry)?\b|\bvalid\s+(?:thru|through)\b|'
+          r'\bexpires?\b)',
+        ).hasMatch(context);
+        if (!expiration) {
+          final labeled = RegExp(
+            r'\b(?:transaction|purchase|receipt)?\s*date\s*:?\s*$',
+          ).hasMatch(context);
+          candidates.add({
+            'field': labeled ? 'date' : 'dateCandidate',
+            'label': labeled ? context.trim() : null,
+            'valueText': date.group(0)!,
+            'page': page,
+            'sourceLine': index + 1,
+            'sourceText': source,
+          });
+          continue;
+        }
       }
-      if (!headerSeen &&
-          page == 1 &&
-          label == null &&
-          line.length >= 3 &&
-          RegExp(r'[A-Za-z]').hasMatch(line)) {
+
+      // Keep several plausible names, rather than treating the first line
+      // (often just "RECEIPT") as the actual merchant.
+      if (page == 1 &&
+          inHeader &&
+          merchantCount < 3 &&
+          !genericHeader.hasMatch(line) &&
+          !address.hasMatch(line) &&
+          !RegExp(r'\d').hasMatch(line) &&
+          RegExp(r'[A-Za-z]').hasMatch(line) &&
+          line.length >= 3) {
         candidates.add({
           'field': 'merchantCandidate',
           'label': null,
@@ -81,7 +117,7 @@ abstract final class ReceiptTextJson {
           'sourceLine': index + 1,
           'sourceText': source,
         });
-        headerSeen = true;
+        merchantCount++;
         continue;
       }
       unparsed.add({
