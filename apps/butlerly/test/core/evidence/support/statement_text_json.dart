@@ -82,5 +82,4 @@ abstract final class StatementTextJson {
       'unparsedLines': unparsed,
     };
   }
-
 }
