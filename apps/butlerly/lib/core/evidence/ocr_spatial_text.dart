@@ -103,7 +103,8 @@ abstract final class OcrSpatialText {
           // handling keeps every recognized word readable.
           final column = (item.normalizedBounds.left * _columns)
               .round()
-              .clamp(0, _columns);
+              .clamp(0, _columns)
+              .toInt();
           if (column > position) {
             line.write(' ' * (column - position));
             position = column;
