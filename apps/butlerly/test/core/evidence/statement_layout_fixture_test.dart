@@ -5,6 +5,7 @@ import 'package:butlerly/core/evidence/local_ocr_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/statement_layout_fixture.dart';
+import 'support/statement_text_json.dart';
 
 void main() {
   const path = 'test/core/evidence/fixtures/statement_layout_card.json';
@@ -32,6 +33,41 @@ void main() {
       lines.indexWhere((line) => line.contains('HARBOR CARD')),
       lessThan(lines.indexWhere((line) => line.contains('SAFEWAY STORE'))),
     );
+  });
+
+  test('semantic JSON is built from the saved TXT, not OCR fixture fields', () {
+    final text = File(
+      '${path.substring(0, path.length - 5)}.txt',
+    ).readAsStringSync();
+    final snapshot = File(
+      '${path.substring(0, path.length - 5)}.extracted.json',
+    ).readAsStringSync();
+    expect(snapshot, '${StatementTextJson.encode(text)}\n');
+    final result = jsonDecode(snapshot) as Map<String, dynamic>;
+    expect(result['source'], 'position-aligned-text');
+    final rows = result['rows'] as List<dynamic>;
+    expect(rows, hasLength(2));
+    final first = rows.first as Map<String, dynamic>;
+    expect(first['transactionDateText'], '8/15');
+    expect(first['postingDateText'], '8/17');
+    expect(first['description'], 'SAFEWAY STORE');
+    expect(first['amountText'], r'$42.19');
+    expect(first['status'], 'transcribed');
+    expect(first['sourceText'], contains('SAFEWAY STORE'));
+    expect(first.containsKey('confidence'), isFalse);
+    expect(first.containsKey('bounds'), isFalse);
+  });
+
+  test('incomplete statement rows remain unresolved when TXT lacks amount', () {
+    const text = 'Purchase Date Post Date   Description             Amount\n'
+        '8/15          8/17         GROCER\n';
+    final result = StatementTextJson.parse(text);
+    final rows = result['rows']! as List<dynamic>;
+    expect(rows, hasLength(1));
+    final row = rows.first as Map<String, dynamic>;
+    expect(row['amountText'], isNull);
+    expect(row['status'], 'unresolved');
+    expect(row['description'], 'GROCER');
   });
 
   test('OCR statement observations retain geometry and order', () {
