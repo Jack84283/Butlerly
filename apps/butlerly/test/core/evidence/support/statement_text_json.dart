@@ -42,17 +42,26 @@ abstract final class StatementTextJson {
       // Ignore non-row headings before the table. They remain available
       // verbatim in the original TXT; never treat them as transactions.
       if (!headerFound || starts == null) continue;
-      final positions = starts;
-      final first = _part(line, positions[0], positions[1]);
-      if (!RegExp(r'^\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?$').hasMatch(first)) {
-        if (trimmed.isNotEmpty) {
-          unparsed.add({'page': page, 'line': index + 1, 'text': line});
-        }
+      // Date columns on a monospaced line can start one character before a
+      // long OCR header: do not slice the date itself at a guessed offset.
+      final datePattern = RegExp(r'\b\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b');
+      final matches = datePattern.allMatches(line).toList(growable: false);
+      if (matches.length < 2 ||
+          (matches.first.start - starts[0]).abs() > 4 ||
+          (matches[1].start - starts[1]).abs() > 4) {
+        unparsed.add({'page': page, 'line': index + 1, 'text': line});
         continue;
       }
-      final post = _part(line, positions[1], positions[2]);
-      final merchant = _part(line, positions[2], positions[3]);
-      final amountText = _part(line, positions[3], line.length);
+      final amountMatch = RegExp(
+        r'(?:[$€£¥]|USD\s*)?\d[\d,]*(?:\.\d{2})?\s*$',
+      ).firstMatch(line);
+      final amountStart = amountMatch?.start ?? line.length;
+      final merchant = amountStart > matches[1].end
+          ? line.substring(matches[1].end, amountStart).trim()
+          : '';
+      final first = matches.first.group(0)!;
+      final post = matches[1].group(0)!;
+      final amountText = amountMatch?.group(0)?.trim() ?? '';
       entries.add({
         'page': page,
         'sourceLine': index + 1,
@@ -74,9 +83,4 @@ abstract final class StatementTextJson {
     };
   }
 
-  static String _part(String line, int start, int end) {
-    if (start >= line.length || end <= start) return '';
-    final right = end < line.length ? end : line.length;
-    return line.substring(start, right).trim();
-  }
 }
