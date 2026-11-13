@@ -82,7 +82,7 @@ void main() {
     );
     expect(
       lines.singleWhere((line) => line.contains('866-712-7753')),
-      startsWith(' ' * 43),
+      startsWith(' ' * 29),
     );
     expect(positioned, isNot(raw));
   });
