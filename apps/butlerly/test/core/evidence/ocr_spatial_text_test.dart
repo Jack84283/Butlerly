@@ -169,10 +169,10 @@ void main() {
       rawText: 'MERCHANT APPLE.COM/BILL 866-712-7753 US Date 11/13/2026',
       observations: lines,
     );
-    final rows = rendered.split('\\n');
+    final rows = rendered.split('\n');
     expect(
       rows.singleWhere((line) => line.contains('MERCHANT')),
-      matches(RegExp(r'MERCHANT\\s+APPLE.COM/BILL')),
+      matches(RegExp(r'MERCHANT\s+APPLE.COM/BILL')),
     );
     expect(
       rows.singleWhere((line) => line.contains('866-712-7753')),
@@ -180,7 +180,7 @@ void main() {
     );
     expect(
       rows.singleWhere((line) => line.contains('Date')),
-      matches(RegExp(r'Date\\s+11/13/2026')),
+      matches(RegExp(r'Date\s+11/13/2026')),
     );
   });
 
