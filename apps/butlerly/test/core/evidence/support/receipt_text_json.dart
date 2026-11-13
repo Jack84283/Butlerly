@@ -38,7 +38,7 @@ abstract final class ReceiptTextJson {
       if (label != null && number != null && number.start >= label.end) {
         final name = label.group(1)!.toUpperCase().replaceAll(RegExp(r'\s+'), ' ');
         final field = switch (name) {
-          'SUB TOTAL' => 'subtotal',
+          'SUB TOTAL' || 'SUBTOTAL' => 'subtotal',
           'SALES TAX' => 'tax',
           'GRAND TOTAL' || 'TOTAL DUE' || 'AMOUNT DUE' || 'TOTAL' => 'total',
           'TAX' => 'tax',
