@@ -88,6 +88,41 @@ and are the sole source for extraction regression tests.
 information. Generate locally and redact source observations *before*
 exporting fixtures for review or committing them. The sample is synthetic.
 
+## TXT-first derived JSON (developer workflow)
+
+Receipt scan diagnostics now use the same two-stage workflow as statement
+fixtures:
+
+```text
+Original receipt OCR evidence (*.json, including coordinates)
+  -> render and write position-aligned *.txt FIRST
+  -> read the saved TXT contents back from disk
+  -> derive *.extracted.json from that saved TXT
+```
+
+The new `receipt_layout_grocery.extracted.json` contains conservative,
+line-referenced candidates for merchant, date, subtotal, tax, tip and total,
+plus unparsed source lines. It distinguishes SUBTOTAL from TOTAL and does not
+invent missing amounts or OCR confidence. Ambiguous names are explicitly
+labeled `merchantCandidate`, not treated as verified merchants.
+
+Run from `apps/butlerly`:
+
+```bash
+dart run tool/generate_receipt_layout.dart test/core/evidence/fixtures/receipt_layout_grocery.json
+```
+
+This writes `receipt_layout_grocery.txt` and then derives
+`receipt_layout_grocery.extracted.json` from the text **as saved**. The
+original OCR evidence JSON remains necessary because exact bounding boxes,
+reading order and confidence cannot be reconstructed from plain text.
+
+This functionality is developer/test tooling only. It does **not** yet change
+the live iPhone receipt scanning pipeline, saved transactions, or production
+extraction heuristics. Tests compare the derived JSON to the TXT snapshot
+without using fixture expected values. Do not share generated outputs before
+redacting private receipt or card information.
+
 ## Running
 
 From `apps/butlerly`:
