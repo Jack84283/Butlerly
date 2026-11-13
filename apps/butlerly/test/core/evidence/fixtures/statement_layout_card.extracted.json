@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "source": "position-aligned-text",
+  "rows": [
+    {
+      "page": 1,
+      "sourceLine": 7,
+      "sourceText": "   8/15         8/17         SAFEWAY STORE          $42.19",
+      "transactionDateText": "8/15",
+      "postingDateText": "8/17",
+      "description": "SAFEWAY STORE",
+      "amountText": "$42.19",
+      "status": "transcribed"
+    },
+    {
+      "page": 1,
+      "sourceLine": 8,
+      "sourceText": "   8/16         8/18         CAFE                   $8.25",
+      "transactionDateText": "8/16",
+      "postingDateText": "8/18",
+      "description": "CAFE",
+      "amountText": "$8.25",
+      "status": "transcribed"
+    }
+  ],
+  "unparsedLines": []
+}
