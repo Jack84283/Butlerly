@@ -2,9 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../test/core/evidence/support/receipt_layout_fixture.dart';
+import '../test/core/evidence/support/receipt_text_json.dart';
 
-/// Generates a readable, position-preserving .txt beside an OCR fixture JSON.
-/// Only the JSON is used by production extraction regression tests.
+/// Writes aligned TXT first from original OCR evidence and then derives a
+/// separate .extracted.json from the saved TXT. Developer/test tooling only.
 void main(List<String> args) {
   if (args.length != 1 || !args.single.toLowerCase().endsWith('.json')) {
     stderr.writeln(
@@ -22,23 +23,29 @@ void main(List<String> args) {
     return;
   }
 
-  final destination = File(
-    '${source.path.substring(0, source.path.length - 5)}.txt',
-  );
+  final stem = source.path.substring(0, source.path.length - 5);
+  final destination = File('$stem.txt');
+  final structured = File('$stem.extracted.json');
 
   try {
     final fixture = ReceiptLayoutFixture.fromJson(
       jsonDecode(source.readAsStringSync()) as Map<String, dynamic>,
     );
     final output = '${fixture.layout}\n';
-    if (destination.existsSync() && destination.readAsStringSync() == output) {
-      stdout.writeln('Already up to date: ${destination.path}');
-      return;
+    // Read exactly what was written. The extracted JSON is never based on
+    // the expected fields or original OCR geometry.
+    if (!destination.existsSync() || destination.readAsStringSync() != output) {
+      destination.writeAsStringSync(output);
     }
-    destination.writeAsStringSync(output);
-    stdout.writeln('Created receipt layout: ${destination.path}');
+    final savedText = destination.readAsStringSync();
+    final json = '${ReceiptTextJson.encode(savedText)}\n';
+    if (!structured.existsSync() || structured.readAsStringSync() != json) {
+      structured.writeAsStringSync(json);
+    }
+    stdout.writeln('Aligned text: ${destination.path}');
+    stdout.writeln('JSON derived from saved text: ${structured.path}');
     stdout.writeln(
-      'Reminder: review and redact receipt text before committing files.',
+      'Reminder: redact personal and payment information before sharing.',
     );
   } on FormatException catch (error) {
     stderr.writeln('Invalid fixture JSON: $error');
