@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:butlerly/core/evidence/local_ocr_service.dart';
 import 'package:butlerly/core/evidence/statement_extractor.dart';
 
 import 'receipt_layout_fixture.dart';
