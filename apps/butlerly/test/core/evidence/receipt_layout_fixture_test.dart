@@ -5,6 +5,7 @@ import 'package:butlerly/core/evidence/local_ocr_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'support/receipt_layout_fixture.dart';
+import 'support/receipt_text_json.dart';
 
 void main() {
   final path = 'test/core/evidence/fixtures/receipt_layout_grocery.json';
@@ -57,6 +58,53 @@ void main() {
       contains(r'$10.91'),
     );
     expect(lines.where((line) => line.isEmpty).length, greaterThanOrEqualTo(2));
+  });
+
+  test('derived JSON is generated from the saved aligned TXT', () {
+    final text = File(
+      '${path.substring(0, path.length - 5)}.txt',
+    ).readAsStringSync();
+    final snapshot = File(
+      '${path.substring(0, path.length - 5)}.extracted.json',
+    ).readAsStringSync();
+    expect(snapshot, '${ReceiptTextJson.encode(text)}\n');
+
+    final parsed = jsonDecode(snapshot) as Map<String, dynamic>;
+    expect(parsed['source'], 'position-aligned-text');
+    final candidates = (parsed['candidates'] as List<dynamic>)
+        .cast<Map<String, dynamic>>();
+    final subtotal = candidates.singleWhere(
+      (entry) => entry['field'] == 'subtotal',
+    );
+    expect(subtotal['valueText'], '10.49');
+    final total = candidates.singleWhere(
+      (entry) => entry['field'] == 'total',
+    );
+    expect(total['valueText'], r'$10.91');
+    expect(total['sourceText'], contains('TOTAL'));
+    expect(total['sourceLine'], isA<int>());
+    final merchant = candidates.singleWhere(
+      (entry) => entry['field'] == 'merchantCandidate',
+    );
+    expect(merchant['valueText'], 'WHOLE FOODS MARKET');
+    expect(merchant.containsKey('confidence'), isFalse);
+    expect(merchant.containsKey('bounds'), isFalse);
+  });
+
+  test('missing labeled amounts remain unparsed, not guessed', () {
+    const text = '      SHOP NAME\n'
+        '      TOTAL\n'
+        '      VISA                  20.00\n';
+    final parsed = ReceiptTextJson.parse(text);
+    final candidates = (parsed['candidates'] as List<dynamic>)
+        .cast<Map<String, dynamic>>();
+    expect(candidates.where((row) => row['field'] == 'total'), isEmpty);
+    expect(
+      (parsed['unparsedLines'] as List<dynamic>)
+          .cast<Map<String, dynamic>>()
+          .any((row) => row['sourceText'] == '      TOTAL'),
+      isTrue,
+    );
   });
 
   test('production extractor runs against original OCR observations', () {
