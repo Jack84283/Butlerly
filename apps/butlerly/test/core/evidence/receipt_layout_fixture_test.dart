@@ -106,116 +106,135 @@ void main() {
     );
   });
 
-  test('savings, discounts and pre-discount totals never become payable totals', () {
-    const text =
-        '      RECEIPT\n'
-        '      MARKET\n'
-        '      TOTAL SAVINGS               5.00\n'
-        '      TOTAL DISCOUNT              4.00\n'
-        '      TOTAL BEFORE DISCOUNT      18.00\n'
-        '      SUBTOTAL                   14.00\n'
-        '      TAX                         1.12\n'
-        '      TOTAL                      15.12\n';
-    final parsed = ReceiptTextJson.parse(text);
-    final candidates = (parsed['candidates'] as List<dynamic>)
-        .cast<Map<String, dynamic>>();
-    final totals = candidates.where((entry) => entry['field'] == 'total');
-    expect(totals, hasLength(1));
-    expect(totals.single['valueText'], '15.12');
-    final unparsed = (parsed['unparsedLines'] as List<dynamic>)
-        .cast<Map<String, dynamic>>();
-    expect(
-      unparsed.where(
-        (entry) => (entry['sourceText'] as String).contains('TOTAL '),
-      ),
-      hasLength(3),
-    );
-    expect(
-      candidates.singleWhere((entry) => entry['field'] == 'subtotal')['valueText'],
-      '14.00',
-    );
-  });
+  test(
+    'savings, discounts and pre-discount totals never become payable totals',
+    () {
+      const text =
+          '      RECEIPT\n'
+          '      MARKET\n'
+          '      TOTAL SAVINGS               5.00\n'
+          '      TOTAL DISCOUNT              4.00\n'
+          '      TOTAL BEFORE DISCOUNT      18.00\n'
+          '      SUBTOTAL                   14.00\n'
+          '      TAX                         1.12\n'
+          '      TOTAL                      15.12\n';
+      final parsed = ReceiptTextJson.parse(text);
+      final candidates = (parsed['candidates'] as List<dynamic>)
+          .cast<Map<String, dynamic>>();
+      final totals = candidates.where((entry) => entry['field'] == 'total');
+      expect(totals, hasLength(1));
+      expect(totals.single['valueText'], '15.12');
+      final unparsed = (parsed['unparsedLines'] as List<dynamic>)
+          .cast<Map<String, dynamic>>();
+      expect(
+        unparsed.where(
+          (entry) => (entry['sourceText'] as String).contains('TOTAL '),
+        ),
+        hasLength(3),
+      );
+      expect(
+        candidates.singleWhere(
+          (entry) => entry['field'] == 'subtotal',
+        )['valueText'],
+        '14.00',
+      );
+    },
+  );
 
-  test('generic headings are not merchant names; preserve alternative candidates', () {
-    const text =
-        'RECEIPT\n'
-        'WHOLE FOODS MARKET\n'
-        'FOODS GROUP LLC\n'
-        'Palo Alto, CA\n'
-        'Date: 11/12/2026\n'
-        'TOTAL 10.91\n';
-    final parsed = ReceiptTextJson.parse(text);
-    final candidates = (parsed['candidates'] as List<dynamic>)
-        .cast<Map<String, dynamic>>();
-    final merchants = candidates
-        .where((entry) => entry['field'] == 'merchantCandidate')
-        .map((entry) => entry['valueText'])
-        .toList();
-    expect(merchants, ['WHOLE FOODS MARKET', 'FOODS GROUP LLC']);
-    expect(
-      candidates.singleWhere((entry) => entry['field'] == 'date')['valueText'],
-      '11/12/2026',
-    );
-  });
+  test(
+    'generic headings are not merchant names; preserve alternative candidates',
+    () {
+      const text =
+          'RECEIPT\n'
+          'WHOLE FOODS MARKET\n'
+          'FOODS GROUP LLC\n'
+          'Palo Alto, CA\n'
+          'Date: 11/12/2026\n'
+          'TOTAL 10.91\n';
+      final parsed = ReceiptTextJson.parse(text);
+      final candidates = (parsed['candidates'] as List<dynamic>)
+          .cast<Map<String, dynamic>>();
+      final merchants = candidates
+          .where((entry) => entry['field'] == 'merchantCandidate')
+          .map((entry) => entry['valueText'])
+          .toList();
+      expect(merchants, ['WHOLE FOODS MARKET', 'FOODS GROUP LLC']);
+      expect(
+        candidates.singleWhere(
+          (entry) => entry['field'] == 'date',
+        )['valueText'],
+        '11/12/2026',
+      );
+    },
+  );
 
-  test('card expiry is not a transaction date; unlabeled dates remain candidates', () {
-    const text =
-        'MARKET\n'
-        'CARD EXP 12/25/2028\n'
-        '2026-11-13\n'
-        'PURCHASE DATE: 11/12/2026\n'
-        'TOTAL 22.00\n';
-    final parsed = ReceiptTextJson.parse(text);
-    final candidates = (parsed['candidates'] as List<dynamic>)
-        .cast<Map<String, dynamic>>();
-    expect(candidates.where((entry) => entry['field'] == 'date'), hasLength(1));
-    expect(
-      candidates.where((entry) => entry['field'] == 'dateCandidate'),
-      isEmpty,
-    );
-    final unparsed = (parsed['unparsedLines'] as List<dynamic>)
-        .cast<Map<String, dynamic>>();
-    expect(
-      unparsed.any((entry) => (entry['sourceText'] as String).contains('CARD EXP')),
-      isTrue,
-    );
-  });
+  test(
+    'card expiry is not a transaction date; unlabeled dates remain candidates',
+    () {
+      const text =
+          'MARKET\n'
+          'CARD EXP 12/25/2028\n'
+          '2026-11-13\n'
+          'PURCHASE DATE: 11/12/2026\n'
+          'TOTAL 22.00\n';
+      final parsed = ReceiptTextJson.parse(text);
+      final candidates = (parsed['candidates'] as List<dynamic>)
+          .cast<Map<String, dynamic>>();
+      expect(
+        candidates.where((entry) => entry['field'] == 'date'),
+        hasLength(1),
+      );
+      expect(
+        candidates.where((entry) => entry['field'] == 'dateCandidate'),
+        isEmpty,
+      );
+      final unparsed = (parsed['unparsedLines'] as List<dynamic>)
+          .cast<Map<String, dynamic>>();
+      expect(
+        unparsed.any(
+          (entry) => (entry['sourceText'] as String).contains('CARD EXP'),
+        ),
+        isTrue,
+      );
+    },
+  );
 
-  test('restaurant tips, credits, international decimals and absent totals', () {
-    const text =
-        'RESTAURANT\n'
-        'SUBTOTAL                   20.00\n'
-        'TIP                         3.00\n'
-        'GRAND TOTAL                23.00\n'
-        'REFUND                     -5.00\n'
-        'TOTAL                     -12.50\n'
-        'TAX                          1,50\n';
-    final parsed = ReceiptTextJson.parse(text);
-    final candidates = (parsed['candidates'] as List<dynamic>)
-        .cast<Map<String, dynamic>>();
-    expect(
-      candidates.singleWhere((entry) => entry['field'] == 'tip')['valueText'],
-      '3.00',
-    );
-    expect(
-      candidates.where((entry) => entry['field'] == 'total').length,
-      2,
-    );
-    expect(
-      candidates.lastWhere((entry) => entry['field'] == 'total')['valueText'],
-      '-12.50',
-    );
-    expect(
-      candidates.singleWhere((entry) => entry['field'] == 'tax')['valueText'],
-      '1,50',
-    );
-    final unresolved = ReceiptTextJson.parse('TOTAL\nPAYMENT 23.00\n');
-    expect(
-      (unresolved['candidates'] as List<dynamic>)
-          .where((entry) => (entry as Map<String, dynamic>)['field'] == 'total'),
-      isEmpty,
-    );
-  });
+  test(
+    'restaurant tips, credits, international decimals and absent totals',
+    () {
+      const text =
+          'RESTAURANT\n'
+          'SUBTOTAL                   20.00\n'
+          'TIP                         3.00\n'
+          'GRAND TOTAL                23.00\n'
+          'REFUND                     -5.00\n'
+          'TOTAL                     -12.50\n'
+          'TAX                          1,50\n';
+      final parsed = ReceiptTextJson.parse(text);
+      final candidates = (parsed['candidates'] as List<dynamic>)
+          .cast<Map<String, dynamic>>();
+      expect(
+        candidates.singleWhere((entry) => entry['field'] == 'tip')['valueText'],
+        '3.00',
+      );
+      expect(candidates.where((entry) => entry['field'] == 'total').length, 2);
+      expect(
+        candidates.lastWhere((entry) => entry['field'] == 'total')['valueText'],
+        '-12.50',
+      );
+      expect(
+        candidates.singleWhere((entry) => entry['field'] == 'tax')['valueText'],
+        '1,50',
+      );
+      final unresolved = ReceiptTextJson.parse('TOTAL\nPAYMENT 23.00\n');
+      expect(
+        (unresolved['candidates'] as List<dynamic>).where(
+          (entry) => (entry as Map<String, dynamic>)['field'] == 'total',
+        ),
+        isEmpty,
+      );
+    },
+  );
 
   test('production extractor runs against original OCR observations', () {
     final fixture = load();
