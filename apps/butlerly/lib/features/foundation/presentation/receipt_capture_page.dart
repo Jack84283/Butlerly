@@ -5,6 +5,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
 import 'package:butlerly/core/evidence/local_ocr_service.dart';
+import 'package:butlerly/core/evidence/ocr_spatial_text.dart';
 import 'package:butlerly/core/evidence/platform_ocr_recognizer.dart';
 import 'package:butlerly/design_system/components/butlerly_context_help.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
@@ -1477,11 +1478,30 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
           if (_ocrResult != null)
             ExpansionTile(
               title: Text(context.l10n.text('extractedSourceText')),
-              subtitle: Text(context.l10n.text('originalOcrPreserved')),
+              subtitle: Text(
+                OcrSpatialText.hasGeometry(_ocrResult!.observations)
+                    ? context.l10n.text('ocrLayoutApproximate')
+                    : context.l10n.text('originalOcrPreserved'),
+              ),
               children: [
                 Padding(
                   padding: const EdgeInsets.all(ButlerlySpacing.small),
-                  child: SelectableText(_ocrResult!.rawText),
+                  child: SingleChildScrollView(
+                    key: const ValueKey('receipt-ocr-horizontal-scroll'),
+                    scrollDirection: Axis.horizontal,
+                    child: SelectableText(
+                      OcrSpatialText.render(
+                        rawText: _ocrResult!.rawText,
+                        observations: _ocrResult!.observations,
+                      ),
+                      key: const ValueKey('receipt-ocr-layout-preview'),
+                      style: const TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 13,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
