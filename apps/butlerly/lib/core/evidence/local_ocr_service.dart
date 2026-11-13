@@ -109,6 +109,7 @@ final class ReceiptOcrResult {
              (value) => OcrObservation(
                text: redactPanLikeText(value.text),
                confidence: value.confidence,
+               bounds: value.bounds,
                left: value.left,
                top: value.top,
                width: value.width,
