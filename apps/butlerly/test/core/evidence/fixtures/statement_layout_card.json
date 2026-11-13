@@ -1,0 +1,173 @@
+{
+  "id": "synthetic-statement-spatial-v1",
+  "diagnostics": {
+    "sourceKind": "image",
+    "sourceOpened": true,
+    "recognizedLineCount": 14
+  },
+  "fullText": "HARBOR CARD\nStatement period: 2026-08-01 - 2026-08-31\nPurchase Date Post Date Description Amount\n8/15 8/17 SAFEWAY STORE $42.19\n8/16 8/18 CAFE $8.25",
+  "pages": [
+    {
+      "index": 0,
+      "pixelWidth": 1200,
+      "pixelHeight": 1800,
+      "orientation": "up",
+      "observations": [
+        {
+          "text": "HARBOR CARD",
+          "confidence": 0.96,
+          "left": 0.29,
+          "top": 0.04,
+          "width": 0.41,
+          "height": 0.035,
+          "pageIndex": 0,
+          "order": 0
+        },
+        {
+          "text": "Statement period: 2026-08-01 - 2026-08-31",
+          "confidence": 0.96,
+          "left": 0.05,
+          "top": 0.13,
+          "width": 0.9,
+          "height": 0.028,
+          "pageIndex": 0,
+          "order": 1
+        },
+        {
+          "text": "Purchase Date",
+          "confidence": 0.96,
+          "left": 0.05,
+          "top": 0.25,
+          "width": 0.18,
+          "height": 0.025,
+          "pageIndex": 0,
+          "order": 2
+        },
+        {
+          "text": "Post Date",
+          "confidence": 0.96,
+          "left": 0.25,
+          "top": 0.25,
+          "width": 0.14,
+          "height": 0.025,
+          "pageIndex": 0,
+          "order": 3
+        },
+        {
+          "text": "Description",
+          "confidence": 0.96,
+          "left": 0.45,
+          "top": 0.25,
+          "width": 0.29,
+          "height": 0.025,
+          "pageIndex": 0,
+          "order": 4
+        },
+        {
+          "text": "Amount",
+          "confidence": 0.96,
+          "left": 0.83,
+          "top": 0.25,
+          "width": 0.13,
+          "height": 0.025,
+          "pageIndex": 0,
+          "order": 5
+        },
+        {
+          "text": "8/15",
+          "confidence": 0.96,
+          "left": 0.05,
+          "top": 0.34,
+          "width": 0.12,
+          "height": 0.025,
+          "pageIndex": 0,
+          "order": 6
+        },
+        {
+          "text": "8/17",
+          "confidence": 0.96,
+          "left": 0.25,
+          "top": 0.34,
+          "width": 0.12,
+          "height": 0.025,
+          "pageIndex": 0,
+          "order": 7
+        },
+        {
+          "text": "SAFEWAY STORE",
+          "confidence": 0.96,
+          "left": 0.45,
+          "top": 0.34,
+          "width": 0.32,
+          "height": 0.025,
+          "pageIndex": 0,
+          "order": 8
+        },
+        {
+          "text": "$42.19",
+          "confidence": 0.96,
+          "left": 0.82,
+          "top": 0.34,
+          "width": 0.14,
+          "height": 0.025,
+          "pageIndex": 0,
+          "order": 9
+        },
+        {
+          "text": "8/16",
+          "confidence": 0.96,
+          "left": 0.05,
+          "top": 0.41,
+          "width": 0.12,
+          "height": 0.025,
+          "pageIndex": 0,
+          "order": 10
+        },
+        {
+          "text": "8/18",
+          "confidence": 0.96,
+          "left": 0.25,
+          "top": 0.41,
+          "width": 0.12,
+          "height": 0.025,
+          "pageIndex": 0,
+          "order": 11
+        },
+        {
+          "text": "CAFE",
+          "confidence": 0.96,
+          "left": 0.45,
+          "top": 0.41,
+          "width": 0.29,
+          "height": 0.025,
+          "pageIndex": 0,
+          "order": 12
+        },
+        {
+          "text": "$8.25",
+          "confidence": 0.96,
+          "left": 0.82,
+          "top": 0.41,
+          "width": 0.14,
+          "height": 0.025,
+          "pageIndex": 0,
+          "order": 13
+        }
+      ]
+    }
+  ],
+  "expectedRows": [
+    {
+      "date": "2026-08-15",
+      "postingDate": "2026-08-17",
+      "description": "SAFEWAY STORE",
+      "amount": "42.19"
+    },
+    {
+      "date": "2026-08-16",
+      "postingDate": "2026-08-18",
+      "description": "CAFE",
+      "amount": "8.25"
+    }
+  ]
+}
