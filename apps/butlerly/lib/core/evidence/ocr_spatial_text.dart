@@ -6,7 +6,7 @@ import 'ocr_contract.dart';
 /// Financial parsing and durable evidence retain the original OCR stream.
 /// Missing geometry falls back to original reading order, not fake positions.
 abstract final class OcrSpatialText {
-  static const int _columns = 96;
+  static const int _columns = 64;
 
   static bool hasGeometry(List<OcrObservation> observations) {
     if (observations.isEmpty) return false;
