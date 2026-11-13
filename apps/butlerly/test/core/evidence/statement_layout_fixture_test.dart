@@ -59,7 +59,8 @@ void main() {
   });
 
   test('incomplete statement rows remain unresolved when TXT lacks amount', () {
-    const text = 'Purchase Date Post Date   Description             Amount\n'
+    const text =
+        'Purchase Date Post Date   Description             Amount\n'
         '8/15          8/17         GROCER\n';
     final result = StatementTextJson.parse(text);
     final rows = result['rows']! as List<dynamic>;
