@@ -1,4 +1,4 @@
-import 'package:butlerly/core/evidence/ocr_contract.dart';
+import 'package:butlerly/core/evidence/local_ocr_service.dart';
 import 'package:butlerly/core/evidence/ocr_spatial_text.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -86,6 +86,28 @@ void main() {
       startsWith(' ' * 29),
     );
     expect(positioned, isNot(raw));
+  });
+
+  test('receipt OCR result keeps explicit bounding boxes after sanitizing', () {
+    const source = OcrObservation(
+      text: 'APPLE.COM/BILL',
+      confidence: .9,
+      bounds: OcrBounds(left: .45, top: .4, width: .35, height: .03),
+      order: 3,
+    );
+    final receipt = ReceiptOcrResult(
+      rawText: 'APPLE.COM/BILL',
+      observations: const [source],
+    );
+    final restored = receipt.observations.single;
+    expect(restored.bounds, isNotNull);
+    expect(restored.normalizedBounds.left, .45);
+    expect(restored.normalizedBounds.top, .4);
+    expect(restored.order, 3);
+    expect(
+      OcrSpatialText.hasGeometry(receipt.observations),
+      isTrue,
+    );
   });
 
   test('missing or partial geometry preserves original OCR text', () {
