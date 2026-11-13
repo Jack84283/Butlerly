@@ -132,8 +132,9 @@ left-hand labels and right-hand values are not flattened into reading order.
 
 This **only changes the live diagnostic preview**. The original OCR text and
 observations remain the inputs for parsing and the original source evidence
-remains preserved. Missing or incomplete geometry falls back to the unchanged
-reading-order text; the UI then displays the original OCR subtitle.
+remains preserved. If all geometry is missing, the preview falls back to unchanged reading-order
+text. With partial geometry, bounded observations remain position-aligned and
+unbounded lines are listed in a clearly marked reading-order fallback section.
 
 The on-device view is a selectable approximation, not a new persisted TXT
 attachment. The offline developer generator above is still the tool for
