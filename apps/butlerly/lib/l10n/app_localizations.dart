@@ -1175,7 +1175,7 @@ class AppLocalizations {
       'purchaseDate': 'Purchase date',
       'extractedSourceText': 'Extracted source text',
       'ocrLayoutApproximate':
-          'Approximate OCR text positions. Scroll sideways; original OCR is preserved.',
+          'Approximate OCR text positions. Scroll sideways; original OCR is preserved.',,
       'originalOcrPreserved':
           'Original OCR text is preserved without translation.',
       'addPaymentTransaction': 'Add payment transaction',
@@ -2210,7 +2210,7 @@ class AppLocalizations {
       'replace': '替换',
       'purchaseDate': '购买日期',
       'extractedSourceText': '提取的源文本',
-      'ocrLayoutApproximate': '根据 OCR 坐标近似排列文字。横向滚动查看；原始 OCR 内容仍会保留。',
+      'ocrLayoutApproximate': '根据 OCR 坐标近似排列文字。横向滚动查看；原始 OCR 内容仍会保留。',,
       'originalOcrPreserved': '原始 OCR 文本会保留，不进行翻译。',
       'addPaymentTransaction': '添加支付交易',
       'addPaymentTransactionBody': '没有账单时，手动输入一笔卡交易。',
@@ -3429,7 +3429,7 @@ class AppLocalizations {
       'purchaseDate': 'Fecha de compra',
       'extractedSourceText': 'Texto fuente extraído',
       'ocrLayoutApproximate':
-          'Posiciones aproximadas del OCR. Desplázate a los lados; se conserva el OCR original.'
+          'Posiciones aproximadas del OCR. Desplázate a los lados; se conserva el OCR original.',
       'originalOcrPreserved': 'El texto OCR original se conserva sin traducir.',
       'addPaymentTransaction': 'Añadir transacción de pago',
       'addPaymentTransactionBody':
