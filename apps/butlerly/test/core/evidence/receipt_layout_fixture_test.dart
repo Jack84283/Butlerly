@@ -42,7 +42,7 @@ void main() {
 
   test('companion text file reproduces the JSON OCR coordinates', () {
     final fixture = load();
-    final textPath = path.substring(0, path.length - 5) + '.txt';
+    final textPath = '${path.substring(0, path.length - 5)}.txt';
     final snapshot = File(textPath).readAsStringSync();
     expect(snapshot, '${fixture.layout}\n');
     final lines = snapshot.split('\n');
