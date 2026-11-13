@@ -18,9 +18,7 @@ abstract final class ReceiptTextJson {
       r'^\s*(SUB\s*TOTAL|GRAND\s+TOTAL|TOTAL\s+DUE|AMOUNT\s+DUE|TOTAL|SALES\s+TAX|TAX|TIP|GRATUITY)\b',
       caseSensitive: false,
     );
-    final datePattern = RegExp(
-      r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b',
-    );
+    final datePattern = RegExp(r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b');
 
     for (var index = 0; index < lines.length; index++) {
       final source = lines[index];
@@ -36,7 +34,10 @@ abstract final class ReceiptTextJson {
       final number = currencyAmount.firstMatch(source);
       final label = labeledAmount.firstMatch(source);
       if (label != null && number != null && number.start >= label.end) {
-        final name = label.group(1)!.toUpperCase().replaceAll(RegExp(r'\s+'), ' ');
+        final name = label
+            .group(1)!
+            .toUpperCase()
+            .replaceAll(RegExp(r'\s+'), ' ');
         final field = switch (name) {
           'SUB TOTAL' || 'SUBTOTAL' => 'subtotal',
           'SALES TAX' => 'tax',
@@ -83,7 +84,11 @@ abstract final class ReceiptTextJson {
         headerSeen = true;
         continue;
       }
-      unparsed.add({'page': page, 'sourceLine': index + 1, 'sourceText': source});
+      unparsed.add({
+        'page': page,
+        'sourceLine': index + 1,
+        'sourceText': source,
+      });
     }
     return {
       'schemaVersion': 1,
