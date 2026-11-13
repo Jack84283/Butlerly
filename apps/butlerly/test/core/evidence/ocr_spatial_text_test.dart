@@ -123,7 +123,6 @@ void main() {
       rawText: raw,
       observations: const [
         OcrObservation(
-          confidence: .9,
           text: 'Card',
           confidence: .9,
           bounds: OcrBounds(left: .1, top: .2, width: .2, height: .03),
