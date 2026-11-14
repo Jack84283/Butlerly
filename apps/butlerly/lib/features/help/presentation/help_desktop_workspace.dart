@@ -420,7 +420,6 @@ class _HelpDesktopItem {
   final HelpFaqEntry? faq;
 }
 
-
 /// Keeps the source article and browse/search context for Related Topic Back.
 class _HelpLocation {
   const _HelpLocation({
