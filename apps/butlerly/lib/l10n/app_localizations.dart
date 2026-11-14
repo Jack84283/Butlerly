@@ -1093,6 +1093,11 @@ class AppLocalizations {
           'Your finance records and evidence stay on this device. Review the scope before exporting or erasing them.',
       'exportScopeBody':
           'Exports finance records, preferences, provenance, and locally stored evidence to the Butlerly Documents folder.',
+      'exportWarningBody':
+          'Warning: Exported data is saved locally as readable JSON and evidence files, '
+          'without encryption or password protection. This export is for review only '
+          'and cannot be imported back into Butlerly. Store these files securely. '
+          'If you do not need them, avoid exporting or delete the exported files from storage.',
       'eraseScopeBody':
           'Permanently removes finance records, preferences, and every locally stored evidence file.',
       'eraseAllTitle': 'Erase all local Butlerly data?',
@@ -2148,6 +2153,9 @@ class AppLocalizations {
       'localDataControls': '本地数据控制',
       'privacyScopeBody': '您的财务记录和凭证保留在此设备上。导出或清除前请检查范围。',
       'exportScopeBody': '将财务记录、偏好、来源记录和本地凭证导出到 “账房先生” 文档文件夹。',
+      'exportWarningBody':
+          '警告：导出数据会以未加密、无密码保护的可读 JSON 文件和凭证文件保存在本地，仅供查看，'
+          '且无法重新导入账房先生。请妥善保管。如不需要，请勿导出；已导出的文件请从存储空间删除。',
       'eraseScopeBody': '永久删除财务记录、偏好和所有本地存储的凭证文件。',
       'eraseAllTitle': '清除所有 “账房先生” 本地数据？',
       'eraseAllBody': '此操作会永久删除此设备上的所有财务记录、偏好和凭证文件，且无法撤销。',
@@ -3342,6 +3350,11 @@ class AppLocalizations {
           'Tus registros financieros y comprobantes permanecen en este dispositivo. Revisa el alcance antes de exportarlos o borrarlos.',
       'exportScopeBody':
           'Exporta registros, preferencias, procedencia y comprobantes locales a la carpeta Documentos de Butlerly.',
+      'exportWarningBody':
+          'Advertencia: los datos se guardan localmente como archivos JSON y comprobantes '
+          'legibles, sin cifrado ni protección por contraseña. Esta exportación es solo '
+          'para consulta y no se puede volver a importar en Butlerly. Guárdalos en un lugar '
+          'seguro. Si no los necesitas, evita exportarlos o elimina los archivos del almacenamiento.',
       'eraseScopeBody':
           'Elimina permanentemente los registros, preferencias y todos los comprobantes almacenados localmente.',
       'eraseAllTitle': '¿Borrar todos los datos locales de Butlerly?',
