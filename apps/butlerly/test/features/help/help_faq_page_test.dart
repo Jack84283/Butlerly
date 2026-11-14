@@ -264,6 +264,16 @@ void main() {
           ),
           findsWidgets,
         );
+        await tester.tap(find.byIcon(Icons.arrow_back_rounded).last);
+        await tester.pumpAndSettle();
+        expect(
+          find.text(
+            catalog
+                .articleById('home.overview', languageCode: locale.languageCode)!
+                .title,
+          ),
+          findsWidgets,
+        );
         expect(tester.takeException(), isNull);
       },
     );
@@ -299,6 +309,27 @@ void main() {
         find.byKey(const ValueKey('help-desktop-article-home.summary')),
         findsOneWidget,
       );
+      final next = find.byKey(const ValueKey('help-related-home.trends'));
+      await tester.ensureVisible(next);
+      await tester.tap(next);
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('help-desktop-article-home.trends')),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const ValueKey('help-related-back')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('help-desktop-article-home.summary')),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const ValueKey('help-related-back')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('help-desktop-article-home.overview')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('help-related-back')), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );
