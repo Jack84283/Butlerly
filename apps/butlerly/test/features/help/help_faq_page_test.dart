@@ -253,6 +253,12 @@ void main() {
         );
         await tester.pumpAndSettle();
         final link = find.byKey(const ValueKey('help-related-home.summary'));
+        // Related Topics are below a lazily built guide article.
+        await tester.scrollUntilVisible(
+          link,
+          250,
+          scrollable: find.byType(Scrollable).first,
+        );
         await tester.ensureVisible(link);
         await tester.tap(link);
         await tester.pumpAndSettle();
@@ -305,6 +311,14 @@ void main() {
       await tester.tap(first);
       await tester.pumpAndSettle();
       final related = find.byKey(const ValueKey('help-related-home.summary'));
+      await tester.scrollUntilVisible(
+        related,
+        300,
+        scrollable: find.descendant(
+          of: find.byKey(const ValueKey('help-desktop-detail-home.overview')),
+          matching: find.byType(Scrollable),
+        ),
+      );
       await tester.ensureVisible(related);
       await tester.tap(related);
       await tester.pumpAndSettle();
@@ -313,6 +327,14 @@ void main() {
         findsOneWidget,
       );
       final next = find.byKey(const ValueKey('help-related-home.trends'));
+      await tester.scrollUntilVisible(
+        next,
+        300,
+        scrollable: find.descendant(
+          of: find.byKey(const ValueKey('help-desktop-detail-home.summary')),
+          matching: find.byType(Scrollable),
+        ),
+      );
       await tester.ensureVisible(next);
       await tester.tap(next);
       await tester.pumpAndSettle();

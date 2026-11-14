@@ -341,13 +341,13 @@ final appRouter = GoRouter(
   ],
   errorBuilder: (context, state) => _responsiveStateScaffold(
     contentKey: const ValueKey('router-error-content'),
-    helpArticleId: 'ch-3',
+    helpArticleId: 'guide.getting-started',
     // Unknown paths have no valid GoRouter match to push from. Open Help
     // as a local route so Back returns to the original error screen.
     onHelpPressed: (buttonContext) {
       Navigator.of(buttonContext).push<void>(
         MaterialPageRoute<void>(
-          builder: (_) => const HelpFaqPage(articleId: 'ch-3'),
+          builder: (_) => const HelpFaqPage(articleId: 'guide.getting-started'),
         ),
       );
     },

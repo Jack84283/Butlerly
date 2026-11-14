@@ -315,7 +315,7 @@ void main() {
   for (final recovery in const <String, String>{
     'restore': 'more.restore',
     'portable backup': 'more.backup',
-    'evidence deletion': 'guide.getting-started1',
+    'evidence deletion': 'guide.help-reference',
   }.entries) {
     testWidgets('${recovery.key} recovery Help returns to the blocked flow', (
       tester,
