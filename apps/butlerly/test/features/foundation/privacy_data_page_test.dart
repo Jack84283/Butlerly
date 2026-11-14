@@ -455,7 +455,6 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-
   testWidgets('wide export action shows the unencrypted non-importable warning', (
     tester,
   ) async {
@@ -472,14 +471,18 @@ void main() {
     expect(
       find.descendant(
         of: warning,
-        matching: find.textContaining('without encryption or password protection'),
+        matching: find.textContaining(
+          'without encryption or password protection',
+        ),
       ),
       findsOneWidget,
     );
     expect(
       find.descendant(
         of: warning,
-        matching: find.textContaining('cannot be imported back into Butlerly'),
+        matching: find.textContaining(
+          'cannot be imported back into Butlerly',
+        ),
       ),
       findsOneWidget,
     );
@@ -495,7 +498,7 @@ void main() {
 
   for (final locale in AppLocalizations.supportedLocales) {
     testWidgets(
-      'compact export action shows localized privacy warning in ${locale.languageCode}',
+      'compact export warning in ${locale.languageCode}',
       (tester) async {
         tester.view.physicalSize = const Size(390, 844);
         tester.view.devicePixelRatio = 1;
