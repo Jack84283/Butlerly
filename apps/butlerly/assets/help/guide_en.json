@@ -140,7 +140,14 @@
       "id": "add.overview",
       "title": "5.1 Choose what to add",
       "part": "Add",
-      "body": "Overview — Select a new-record or file-intake workflow.\n\nWhat's on this screen — Available actions for manual transaction, receipt, statement, local file, payment source and other supported entries.\n\nHow to use it — Choose the source and review any confirmation before saving.\n\nImportant notes — Choosing a file is not the same as confirming a transaction.\n\nRelated topics — 5.2–5.6."
+      "body": "Overview — Select a new-record or file-intake workflow.\n\nWhat's on this screen — Available actions for manual transaction, receipt, statement, local file, payment source and other supported entries.\n\nHow to use it — Choose the source and review any confirmation before saving.\n\nImportant notes — Choosing a file is not the same as confirming a transaction.",
+      "relatedIds": [
+        "add.manual",
+        "add.payment-source",
+        "add.receipt",
+        "add.statement",
+        "add.import"
+      ]
     },
     {
       "id": "add.manual",
@@ -191,7 +198,20 @@
       "id": "tools.overview",
       "title": "6.1 Tools overview",
       "part": "Tools",
-      "body": "Overview — Reach dedicated review, analysis and finance-management functions.\n\nWhat's on this screen — Available Tools entry points, which may vary by edition.\n\nHow to use it — Choose the intended function rather than relying on the screen's physical position.\n\nImportant notes — Business operations are kept separate from app preferences.\n\nRelated topics — 6.2–6.12."
+      "body": "Overview — Reach dedicated review, analysis and finance-management functions.\n\nWhat's on this screen — Available Tools entry points, which may vary by edition.\n\nHow to use it — Choose the intended function rather than relying on the screen's physical position.\n\nImportant notes — Business operations are kept separate from app preferences.",
+      "relatedIds": [
+        "tools.review",
+        "tools.duplicates",
+        "tools.analysis",
+        "tools.insights",
+        "tools.reports",
+        "tools.calendar",
+        "tools.budgets",
+        "tools.master-data",
+        "tools.rules",
+        "tools.settlements",
+        "tools.assistant"
+      ]
     },
     {
       "id": "tools.review",
@@ -296,7 +316,20 @@
       "id": "more.overview",
       "title": "7.1 What's in More",
       "part": "More",
-      "body": "Overview — Configure Butlerly and access privacy and product information.\n\nWhat's on this screen — Preferences, Financial Profile, Appearance, Privacy & Data, financial options, optional features, About/Legal and Help where available.\n\nHow to use it — Choose the applicable settings area; financial record management generally belongs in Transactions, Add or Tools.\n\nImportant notes — Some entries may be grouped differently between phone and desktop.\n\nRelated topics — 7.2–7.12."
+      "body": "Overview — Configure Butlerly and access privacy and product information.\n\nWhat's on this screen — Preferences, Financial Profile, Appearance, Privacy & Data, financial options, optional features, About/Legal and Help where available.\n\nHow to use it — Choose the applicable settings area; financial record management generally belongs in Transactions, Add or Tools.\n\nImportant notes — Some entries may be grouped differently between phone and desktop.",
+      "relatedIds": [
+        "more.preferences",
+        "more.appearance",
+        "more.financial-profile",
+        "more.financial-settings",
+        "more.privacy",
+        "more.backup",
+        "more.restore",
+        "more.export",
+        "more.erase",
+        "more.operational-features",
+        "more.about"
+      ]
     },
     {
       "id": "more.preferences",
@@ -311,13 +344,19 @@
       "id": "more.appearance",
       "title": "7.3 Appearance and accessibility",
       "part": "More",
-      "body": "Overview — Choose visual presentation and accessibility options.\n\nWhat's on this screen — System, Light, Navy, Dark where implemented, plus accessible display settings.\n\nHow to use it — Choose an appearance; System follows OS Light/Dark, not Navy.\n\nImportant notes — Theme names and behavior must be verified in the installed build; do not assume all modes are released.\n\nRelated topics — 7.2."
+      "body": "Overview — Choose visual presentation and accessibility options.\n\nWhat's on this screen — System, Light, Navy, Dark where implemented, plus accessible display settings.\n\nHow to use it — Choose an appearance; System follows OS Light/Dark, not Navy.\n\nImportant notes — Theme names and behavior must be verified in the installed build; do not assume all modes are released.",
+      "relatedIds": [
+        "more.preferences"
+      ]
     },
     {
       "id": "more.financial-profile",
       "title": "7.4 Financial Profile",
       "part": "More",
-      "body": "Overview — Review optional personal finance survey answers and profile setup.\n\nWhat's on this screen — Profile questions, prior answers and available edit controls.\n\nHow to use it — Open the survey/profile and update answers as needed.\n\nImportant notes — Survey answers do not automatically change the underlying transaction history.\n\nRelated topics — 2.2."
+      "body": "Overview — Review optional personal finance survey answers and profile setup.\n\nWhat's on this screen — Profile questions, prior answers and available edit controls.\n\nHow to use it — Open the survey/profile and update answers as needed.\n\nImportant notes — Survey answers do not automatically change the underlying transaction history.",
+      "relatedIds": [
+        "guide.getting-started"
+      ]
     },
     {
       "id": "more.financial-settings",
@@ -332,7 +371,13 @@
       "id": "more.privacy",
       "title": "7.6 Privacy & Data",
       "part": "More",
-      "body": "Overview — Understand where Butlerly keeps data and how you control it.\n\nWhat's on this screen — Local storage, backup, restore, export and erase controls.\n\nHow to use it — Review data safety, select the intended operation and read the warnings before proceeding.\n\nImportant notes — An external file saved or shared outside Butlerly is controlled by its destination.\n\nRelated topics — 7.7–7.10."
+      "body": "Overview — Understand where Butlerly keeps data and how you control it.\n\nWhat's on this screen — Local storage, backup, restore, export and erase controls.\n\nHow to use it — Review data safety, select the intended operation and read the warnings before proceeding.\n\nImportant notes — An external file saved or shared outside Butlerly is controlled by its destination.",
+      "relatedIds": [
+        "more.backup",
+        "more.restore",
+        "more.export",
+        "more.erase"
+      ]
     },
     {
       "id": "more.backup",
@@ -374,13 +419,19 @@
       "id": "more.operational-features",
       "title": "7.11 Operational features and sounds",
       "part": "More",
-      "body": "Overview — Configure supported optional application behaviors.\n\nWhat's on this screen — Operation features, save/update sounds and other available toggles.\n\nHow to use it — Change a toggle and verify the behavior in a safe test action.\n\nImportant notes — Feature availability and platform sound behavior may vary.\n\nRelated topics — 7.2."
+      "body": "Overview — Configure supported optional application behaviors.\n\nWhat's on this screen — Operation features, save/update sounds and other available toggles.\n\nHow to use it — Change a toggle and verify the behavior in a safe test action.\n\nImportant notes — Feature availability and platform sound behavior may vary.",
+      "relatedIds": [
+        "more.preferences"
+      ]
     },
     {
       "id": "more.about",
       "title": "7.12 About Butlerly, legal and licenses",
       "part": "More",
-      "body": "Overview — Check app identity, version and legal information.\n\nWhat's on this screen — About, app version, legal documents, licenses and support links.\n\nHow to use it — Open the specific item you need and verify version/terms when relevant.\n\nImportant notes — This user guide does not replace the official terms or privacy policy.\n\nRelated topics — 8.3."
+      "body": "Overview — Check app identity, version and legal information.\n\nWhat's on this screen — About, app version, legal documents, licenses and support links.\n\nHow to use it — Open the specific item you need and verify version/terms when relevant.\n\nImportant notes — This user guide does not replace the official terms or privacy policy.",
+      "relatedIds": [
+        "guide.help-reference"
+      ]
     },
     {
       "id": "guide.help-reference",

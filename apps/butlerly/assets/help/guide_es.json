@@ -140,7 +140,14 @@
       "id": "add.overview",
       "title": "5.1 Elegir qué añadir",
       "part": "Añadir",
-      "body": "Elige transacción manual, recibo, extracto, archivo local u origen de pago. Seleccionar un archivo no confirma una transacción.\n\nConsulta también la sección de referencia ch-5."
+      "body": "Elige transacción manual, recibo, extracto, archivo local u origen de pago. Seleccionar un archivo no confirma una transacción.\n\nConsulta también la sección de referencia ch-5.",
+      "relatedIds": [
+        "add.manual",
+        "add.payment-source",
+        "add.receipt",
+        "add.statement",
+        "add.import"
+      ]
     },
     {
       "id": "add.manual",
@@ -191,7 +198,20 @@
       "id": "tools.overview",
       "title": "6.1 Resumen de Herramientas",
       "part": "Herramientas",
-      "body": "Herramientas reúne Revisión, Análisis, Información, Presupuestos, Datos maestros, Reglas y Liquidaciones disponibles.\n\nConsulta también la sección de referencia ch-16."
+      "body": "Herramientas reúne Revisión, Análisis, Información, Presupuestos, Datos maestros, Reglas y Liquidaciones disponibles.\n\nConsulta también la sección de referencia ch-16.",
+      "relatedIds": [
+        "tools.review",
+        "tools.duplicates",
+        "tools.analysis",
+        "tools.insights",
+        "tools.reports",
+        "tools.calendar",
+        "tools.budgets",
+        "tools.master-data",
+        "tools.rules",
+        "tools.settlements",
+        "tools.assistant"
+      ]
     },
     {
       "id": "tools.review",
@@ -296,7 +316,20 @@
       "id": "more.overview",
       "title": "7.1 Qué hay en Más",
       "part": "Más",
-      "body": "En Más puedes configurar preferencias, apariencia, privacidad, funciones opcionales y consultar información legal.\n\nConsulta también la sección de referencia ch-17."
+      "body": "En Más puedes configurar preferencias, apariencia, privacidad, funciones opcionales y consultar información legal.\n\nConsulta también la sección de referencia ch-17.",
+      "relatedIds": [
+        "more.preferences",
+        "more.appearance",
+        "more.financial-profile",
+        "more.financial-settings",
+        "more.privacy",
+        "more.backup",
+        "more.restore",
+        "more.export",
+        "more.erase",
+        "more.operational-features",
+        "more.about"
+      ]
     },
     {
       "id": "more.preferences",
@@ -311,13 +344,19 @@
       "id": "more.appearance",
       "title": "7.3 Apariencia y accesibilidad",
       "part": "Más",
-      "body": "Elige entre los temas disponibles: Claro, Azul marino, Oscuro o Sistema. Sistema sigue el modo claro/oscuro del dispositivo.\n\nConsulta también la sección de referencia ch-17."
+      "body": "Elige entre los temas disponibles: Claro, Azul marino, Oscuro o Sistema. Sistema sigue el modo claro/oscuro del dispositivo.\n\nConsulta también la sección de referencia ch-17.",
+      "relatedIds": [
+        "more.preferences"
+      ]
     },
     {
       "id": "more.financial-profile",
       "title": "7.4 Perfil financiero",
       "part": "Más",
-      "body": "El cuestionario de perfil financiero es opcional y no modifica automáticamente las transacciones existentes.\n\nConsulta también la sección de referencia ch-2."
+      "body": "El cuestionario de perfil financiero es opcional y no modifica automáticamente las transacciones existentes.\n\nConsulta también la sección de referencia ch-2.",
+      "relatedIds": [
+        "guide.getting-started"
+      ]
     },
     {
       "id": "more.financial-settings",
@@ -332,7 +371,13 @@
       "id": "more.privacy",
       "title": "7.6 Privacidad y datos",
       "part": "Más",
-      "body": "Revisa datos locales, copias, restauración, exportación y borrado. Los archivos guardados fuera dependen del destino.\n\nConsulta también la sección de referencia ch-20."
+      "body": "Revisa datos locales, copias, restauración, exportación y borrado. Los archivos guardados fuera dependen del destino.\n\nConsulta también la sección de referencia ch-20.",
+      "relatedIds": [
+        "more.backup",
+        "more.restore",
+        "more.export",
+        "more.erase"
+      ]
     },
     {
       "id": "more.backup",
@@ -374,13 +419,19 @@
       "id": "more.operational-features",
       "title": "7.11 Funciones operativas y sonidos",
       "part": "Más",
-      "body": "Activa sonidos de guardar/actualizar u otras opciones disponibles y comprueba su funcionamiento.\n\nConsulta también la sección de referencia ch-17."
+      "body": "Activa sonidos de guardar/actualizar u otras opciones disponibles y comprueba su funcionamiento.\n\nConsulta también la sección de referencia ch-17.",
+      "relatedIds": [
+        "more.preferences"
+      ]
     },
     {
       "id": "more.about",
       "title": "7.12 Acerca de Butlerly, avisos legales y licencias",
       "part": "Más",
-      "body": "Consulta la versión, condiciones, política de privacidad y licencias. La guía no sustituye los documentos legales.\n\nConsulta también la sección de referencia ch-17."
+      "body": "Consulta la versión, condiciones, política de privacidad y licencias. La guía no sustituye los documentos legales.\n\nConsulta también la sección de referencia ch-17.",
+      "relatedIds": [
+        "guide.help-reference"
+      ]
     },
     {
       "id": "guide.help-reference",

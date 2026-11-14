@@ -485,12 +485,12 @@ class HelpGuideIndexPage extends StatelessWidget {
 class HelpGuideArticlePage extends StatelessWidget {
   const HelpGuideArticlePage({
     required this.article,
-    required this.catalog,
+    this.catalog,
     super.key,
   });
 
   final HelpGuideArticle article;
-  final HelpCatalog catalog;
+  final HelpCatalog? catalog;
 
   @override
   Widget build(BuildContext context) {
@@ -508,11 +508,12 @@ class HelpGuideArticlePage extends StatelessWidget {
           helpGuideSection(context, section),
           const SizedBox(height: ButlerlySpacing.standard),
         ],
-        HelpRelatedTopics(
-          catalog: catalog,
-          article: article,
-          onOpen: (target) => _openArticle(context, target, catalog),
-        ),
+        if (catalog ?? HelpCatalog.cachedBundle case final HelpCatalog available)
+          HelpRelatedTopics(
+            catalog: available,
+            article: article,
+            onOpen: (target) => _openArticle(context, target, available),
+          ),
       ],
     );
   }

@@ -254,6 +254,29 @@ void main() {
     });
   }
 
+  testWidgets('desktop related links select a new topic in the same workspace', (tester) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(app(const Locale('en')));
+    await tester.pumpAndSettle();
+    final first = find.byKey(const ValueKey('help-desktop-item-home.overview'));
+    await tester.scrollUntilVisible(
+      first,
+      220,
+      scrollable: find.byKey(const ValueKey('help-desktop-item-list')),
+    );
+    await tester.tap(first);
+    await tester.pumpAndSettle();
+    final related = find.byKey(const ValueKey('help-related-home.summary'));
+    await tester.ensureVisible(related);
+    await tester.tap(related);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('help-desktop-article-home.summary')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('full User Guide is browsable on a wide layout', (tester) async {
     tester.view.physicalSize = const Size(1440, 900);
     tester.view.devicePixelRatio = 1;

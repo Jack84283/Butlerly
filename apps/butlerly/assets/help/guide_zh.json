@@ -140,7 +140,14 @@
       "id": "add.overview",
       "title": "5.1 选择添加方式",
       "part": "添加",
-      "body": "选择手动交易、收据、账单、本地文件或支付来源。选择文件不代表交易已经确认。\n\n相关详细说明见参考章节 ch-5。"
+      "body": "选择手动交易、收据、账单、本地文件或支付来源。选择文件不代表交易已经确认。\n\n相关详细说明见参考章节 ch-5。",
+      "relatedIds": [
+        "add.manual",
+        "add.payment-source",
+        "add.receipt",
+        "add.statement",
+        "add.import"
+      ]
     },
     {
       "id": "add.manual",
@@ -191,7 +198,20 @@
       "id": "tools.overview",
       "title": "6.1 工具总览",
       "part": "工具",
-      "body": "工具区提供审核、分析、洞察、预算、主数据、规则及支付结算等可用功能。\n\n相关详细说明见参考章节 ch-16。"
+      "body": "工具区提供审核、分析、洞察、预算、主数据、规则及支付结算等可用功能。\n\n相关详细说明见参考章节 ch-16。",
+      "relatedIds": [
+        "tools.review",
+        "tools.duplicates",
+        "tools.analysis",
+        "tools.insights",
+        "tools.reports",
+        "tools.calendar",
+        "tools.budgets",
+        "tools.master-data",
+        "tools.rules",
+        "tools.settlements",
+        "tools.assistant"
+      ]
     },
     {
       "id": "tools.review",
@@ -296,7 +316,20 @@
       "id": "more.overview",
       "title": "7.1 更多页面内容",
       "part": "更多",
-      "body": "在更多中调整应用偏好、外观、隐私与数据、可选功能，并查看版本和法律信息。\n\n相关详细说明见参考章节 ch-17。"
+      "body": "在更多中调整应用偏好、外观、隐私与数据、可选功能，并查看版本和法律信息。\n\n相关详细说明见参考章节 ch-17。",
+      "relatedIds": [
+        "more.preferences",
+        "more.appearance",
+        "more.financial-profile",
+        "more.financial-settings",
+        "more.privacy",
+        "more.backup",
+        "more.restore",
+        "more.export",
+        "more.erase",
+        "more.operational-features",
+        "more.about"
+      ]
     },
     {
       "id": "more.preferences",
@@ -311,13 +344,19 @@
       "id": "more.appearance",
       "title": "7.3 外观与无障碍",
       "part": "更多",
-      "body": "选择当前版本支持的浅色、海军蓝、深色或系统模式。系统模式仅跟随操作系统明暗模式。\n\n相关详细说明见参考章节 ch-17。"
+      "body": "选择当前版本支持的浅色、海军蓝、深色或系统模式。系统模式仅跟随操作系统明暗模式。\n\n相关详细说明见参考章节 ch-17。",
+      "relatedIds": [
+        "more.preferences"
+      ]
     },
     {
       "id": "more.financial-profile",
       "title": "7.4 财务档案",
       "part": "更多",
-      "body": "财务档案问卷可选填，答案不会自动改写现有交易。\n\n相关详细说明见参考章节 ch-2。"
+      "body": "财务档案问卷可选填，答案不会自动改写现有交易。\n\n相关详细说明见参考章节 ch-2。",
+      "relatedIds": [
+        "guide.getting-started"
+      ]
     },
     {
       "id": "more.financial-settings",
@@ -332,7 +371,13 @@
       "id": "more.privacy",
       "title": "7.6 隐私与数据",
       "part": "更多",
-      "body": "查看本地数据、备份、恢复、导出和清除选项。应用外文件由所选保存位置管理。\n\n相关详细说明见参考章节 ch-20。"
+      "body": "查看本地数据、备份、恢复、导出和清除选项。应用外文件由所选保存位置管理。\n\n相关详细说明见参考章节 ch-20。",
+      "relatedIds": [
+        "more.backup",
+        "more.restore",
+        "more.export",
+        "more.erase"
+      ]
     },
     {
       "id": "more.backup",
@@ -374,13 +419,19 @@
       "id": "more.operational-features",
       "title": "7.11 操作功能与提示音",
       "part": "更多",
-      "body": "按需开启保存或更新提示音等功能，并在实际操作中验证效果。\n\n相关详细说明见参考章节 ch-17。"
+      "body": "按需开启保存或更新提示音等功能，并在实际操作中验证效果。\n\n相关详细说明见参考章节 ch-17。",
+      "relatedIds": [
+        "more.preferences"
+      ]
     },
     {
       "id": "more.about",
       "title": "7.12 关于账房先生、法律与许可",
       "part": "更多",
-      "body": "查看应用版本、条款、隐私政策及软件许可。帮助指南不能取代正式法律文件。\n\n相关详细说明见参考章节 ch-17。"
+      "body": "查看应用版本、条款、隐私政策及软件许可。帮助指南不能取代正式法律文件。\n\n相关详细说明见参考章节 ch-17。",
+      "relatedIds": [
+        "guide.help-reference"
+      ]
     },
     {
       "id": "guide.help-reference",
