@@ -125,6 +125,8 @@ void main() {
     expect(scrollable.position.maxScrollExtent, greaterThan(0));
     await tester.drag(horizontal, const Offset(-150, 0));
     await tester.pumpAndSettle();
+    // Debug globals are verified before addTearDown callbacks are invoked.
+    debugDefaultTargetPlatformOverride = null;
     expect(scrollable.position.pixels, greaterThan(0));
     expect(tester.takeException(), isNull);
   });
