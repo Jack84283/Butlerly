@@ -284,7 +284,7 @@ void _openStandaloneHelp(BuildContext context, String articleId) {
   overlay.insert(entry);
 }
 
-class _StandaloneHelpReader extends StatelessWidget {
+class _StandaloneHelpReader extends StatefulWidget {
   const _StandaloneHelpReader({
     required this.articleId,
     required this.future,
@@ -296,64 +296,130 @@ class _StandaloneHelpReader extends StatelessWidget {
   final VoidCallback onClose;
 
   @override
-  Widget build(BuildContext context) => CallbackShortcuts(
-    bindings: {const SingleActivator(LogicalKeyboardKey.escape): onClose},
-    child: Focus(
-      autofocus: true,
-      child: Material(
-        child: Scaffold(
-          appBar: AppBar(
-            leading: IconButton(
-              key: const ValueKey('context-help-close'),
-              tooltip: HelpCopy.text(context, 'back'),
-              onPressed: onClose,
-              icon: const Icon(Icons.arrow_back_rounded),
+  State<_StandaloneHelpReader> createState() => _StandaloneHelpReaderState();
+}
+
+class _StandaloneHelpReaderState extends State<_StandaloneHelpReader> {
+  late String _currentArticleId;
+  final List<String> _history = [];
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _currentArticleId = widget.articleId;
+  }
+
+  @override
+  void didUpdateWidget(covariant _StandaloneHelpReader oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.articleId != widget.articleId) {
+      _currentArticleId = widget.articleId;
+      _history.clear();
+      _resetScroll();
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _resetScroll() {
+    if (_scrollController.hasClients) _scrollController.jumpTo(0);
+  }
+
+  void _openArticle(HelpGuideArticle article) {
+    if (article.id == _currentArticleId) return;
+    setState(() {
+      _history.add(_currentArticleId);
+      _currentArticleId = article.id;
+    });
+    _resetScroll();
+  }
+
+  void _back() {
+    if (_history.isEmpty) {
+      widget.onClose();
+      return;
+    }
+    setState(() => _currentArticleId = _history.removeLast());
+    _resetScroll();
+  }
+
+  @override
+  Widget build(BuildContext context) => PopScope<void>(
+    canPop: _history.isEmpty,
+    onPopInvokedWithResult: (didPop, _) {
+      if (!didPop && _history.isNotEmpty) _back();
+    },
+    child: CallbackShortcuts(
+      bindings: {const SingleActivator(LogicalKeyboardKey.escape): _back},
+      child: Focus(
+        autofocus: true,
+        child: Material(
+          child: Scaffold(
+            appBar: AppBar(
+              leading: IconButton(
+                key: const ValueKey('context-help-close'),
+                tooltip: HelpCopy.text(context, 'back'),
+                onPressed: _back,
+                icon: const Icon(Icons.arrow_back_rounded),
+              ),
+              title: Text(HelpCopy.text(context, 'guide')),
             ),
-            title: Text(HelpCopy.text(context, 'guide')),
-          ),
-          body: SafeArea(
-            child: FutureBuilder<HelpCatalog>(
-              future: future,
-              initialData: HelpCatalog.cachedBundle,
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Text(HelpCopy.text(context, 'loadFailed')),
+            body: SafeArea(
+              child: FutureBuilder<HelpCatalog>(
+                future: widget.future,
+                initialData: HelpCatalog.cachedBundle,
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text(HelpCopy.text(context, 'loadFailed')),
+                    );
+                  }
+                  final catalog = snapshot.data;
+                  if (catalog == null) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  final language = Localizations.localeOf(context).languageCode;
+                  final article = catalog.articleById(
+                    _currentArticleId,
+                    languageCode: language,
                   );
-                }
-                final catalog = snapshot.data;
-                if (catalog == null) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final language = Localizations.localeOf(context).languageCode;
-                final article = catalog.articleById(
-                  articleId,
-                  languageCode: language,
-                );
-                if (article == null) {
-                  return Center(
-                    child: Text(HelpCopy.text(context, 'noResults')),
+                  if (article == null) {
+                    return Center(
+                      child: Text(HelpCopy.text(context, 'noResults')),
+                    );
+                  }
+                  return ListView(
+                    key: const ValueKey('context-help-offline-reader'),
+                    controller: _scrollController,
+                    padding: const EdgeInsets.all(16),
+                    children: [
+                      Text(
+                        article.title,
+                        key: ValueKey('context-help-article-' + article.id),
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 16),
+                      for (final paragraph in article.body.split(
+                        RegExp(r'\n\s*\n'),
+                      ))
+                        if (paragraph.trim().isNotEmpty) ...[
+                          helpGuideSection(context, paragraph),
+                          const SizedBox(height: 12),
+                        ],
+                      HelpRelatedTopics(
+                        catalog: catalog,
+                        article: article,
+                        onOpen: _openArticle,
+                      ),
+                    ],
                   );
-                }
-                return ListView(
-                  key: const ValueKey('context-help-offline-reader'),
-                  padding: const EdgeInsets.all(16),
-                  children: [
-                    Text(
-                      article.title,
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 16),
-                    for (final paragraph in article.body.split(
-                      RegExp(r'\n\s*\n'),
-                    ))
-                      if (paragraph.trim().isNotEmpty) ...[
-                        helpGuideSection(context, paragraph),
-                        const SizedBox(height: 12),
-                      ],
-                  ],
-                );
-              },
+                },
+              ),
             ),
           ),
         ),

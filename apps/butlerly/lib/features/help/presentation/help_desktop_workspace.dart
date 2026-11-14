@@ -394,7 +394,7 @@ class _HelpDesktopWorkspaceState extends State<HelpDesktopWorkspace> {
             alignment: Alignment.centerLeft,
             child: OutlinedButton.icon(
               key: const ValueKey('help-desktop-read-guide'),
-              onPressed: () => _selectGuide(articleId: faq.guideId),
+              onPressed: () => _openRelatedTopic(faq.guideId, faq.id),
               icon: const Icon(Icons.menu_book_outlined),
               label: Text(HelpCopy.text(context, 'readMore')),
             ),

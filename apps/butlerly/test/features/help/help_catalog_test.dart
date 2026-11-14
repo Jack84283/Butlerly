@@ -114,6 +114,31 @@ void main() {
     },
   );
 
+  test('guide text contains no references to deleted chapters', () async {
+    final catalog = await HelpCatalog.load();
+    final staleId = RegExp(r'\bch-\d+\b');
+    final staleChapter = RegExp(
+      r'(?:\bChapters?\s+(?:1[0-9]|2[0-9])\b|'
+      r'\bcapítulo\s+(?:1[0-9]|2[0-9])\b|'
+      r'第\s*(?:1[0-9]|2[0-9])\s*章)',
+      caseSensitive: false,
+    );
+    for (final locale in ['en', 'zh', 'es']) {
+      for (final article in catalog.guideForLanguage(locale)) {
+        expect(
+          staleId.hasMatch(article.body),
+          isFalse,
+          reason: locale + ': ' + article.id,
+        );
+        expect(
+          staleChapter.hasMatch(article.body),
+          isFalse,
+          reason: locale + ': ' + article.id,
+        );
+      }
+    }
+  });
+
   test('guide contains no developer-only issue or code references', () async {
     final catalog = await HelpCatalog.load();
     final guideText = ['en', 'zh', 'es']
