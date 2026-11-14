@@ -314,10 +314,14 @@ void main() {
       await tester.scrollUntilVisible(
         related,
         300,
-        scrollable: find.descendant(
-          of: find.byKey(const ValueKey('help-desktop-detail-home.overview')),
-          matching: find.byType(Scrollable),
-        ).first,
+        scrollable: find
+            .descendant(
+              of: find.byKey(
+                const ValueKey('help-desktop-detail-home.overview'),
+              ),
+              matching: find.byType(Scrollable),
+            )
+            .first,
       );
       await tester.ensureVisible(related);
       await tester.tap(related);
@@ -330,10 +334,14 @@ void main() {
       await tester.scrollUntilVisible(
         next,
         300,
-        scrollable: find.descendant(
-          of: find.byKey(const ValueKey('help-desktop-detail-home.summary')),
-          matching: find.byType(Scrollable),
-        ).first,
+        scrollable: find
+            .descendant(
+              of: find.byKey(
+                const ValueKey('help-desktop-detail-home.summary'),
+              ),
+              matching: find.byType(Scrollable),
+            )
+            .first,
       );
       await tester.ensureVisible(next);
       await tester.tap(next);
