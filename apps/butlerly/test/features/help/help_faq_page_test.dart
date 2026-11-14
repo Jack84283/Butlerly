@@ -425,7 +425,9 @@ void main() {
         .toList();
     expect(faqHits.length, greaterThan(1));
     final selectedFaq = faqHits[1].faq!;
-    final selectedFinder = find.byKey(ValueKey('help-desktop-item-${selectedFaq.id}'));
+    final selectedFinder = find.byKey(
+      ValueKey('help-desktop-item-${selectedFaq.id}'),
+    );
     await tester.scrollUntilVisible(
       selectedFinder,
       200,
