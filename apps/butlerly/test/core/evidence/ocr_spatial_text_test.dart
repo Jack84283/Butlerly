@@ -218,4 +218,72 @@ void main() {
     expect(text.indexOf('FIRST PAGE'), lessThan(text.indexOf('SECOND PAGE')));
     expect(text, contains('--- PAGE 2 ---'));
   });
+  test('partial geometry retains page order and page-local fallback', () {
+    const observations = [
+      OcrObservation(
+        text: 'THIRD PAGE',
+        confidence: .9,
+        pageIndex: 2,
+        order: 0,
+      ),
+      OcrObservation(
+        text: 'SECOND POSITIONED',
+        confidence: .9,
+        pageIndex: 1,
+        order: 0,
+        bounds: OcrBounds(left: .15, top: .2, width: .4, height: .04),
+      ),
+      OcrObservation(
+        text: 'FIRST PAGE',
+        confidence: .9,
+        pageIndex: 0,
+        order: 0,
+      ),
+      OcrObservation(
+        text: 'SECOND UNPOSITIONED',
+        confidence: .9,
+        pageIndex: 1,
+        order: 1,
+      ),
+    ];
+    final rendered = OcrSpatialText.render(
+      rawText: 'THIRD PAGE\nSECOND POSITIONED\nFIRST PAGE\nSECOND UNPOSITIONED',
+      observations: observations,
+    );
+    expect(
+      rendered.indexOf('FIRST PAGE'),
+      lessThan(rendered.indexOf('SECOND POSITIONED')),
+    );
+    expect(
+      rendered.indexOf('SECOND POSITIONED'),
+      lessThan(rendered.indexOf('SECOND UNPOSITIONED')),
+    );
+    expect(
+      rendered.indexOf('SECOND UNPOSITIONED'),
+      lessThan(rendered.indexOf('THIRD PAGE')),
+    );
+    expect(rendered, contains('--- PAGE 2 ---'));
+    expect(rendered, contains('--- PAGE 3 ---'));
+  });
+
+  test('CJK and mixed Latin text use display cells for spacing', () {
+    const observations = [
+      OcrObservation(
+        text: '商户A',
+        confidence: .9,
+        bounds: OcrBounds(left: .10, top: .20, width: .10, height: .04),
+      ),
+      OcrObservation(
+        text: '9988',
+        confidence: .9,
+        bounds: OcrBounds(left: .22, top: .20, width: .10, height: .04),
+      ),
+    ];
+    final rendered = OcrSpatialText.render(
+      rawText: '商户A 9988',
+      observations: observations,
+    );
+    expect(rendered, '      商户A   9988');
+  });
+
 }
