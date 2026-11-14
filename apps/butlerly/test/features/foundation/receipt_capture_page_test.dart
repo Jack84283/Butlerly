@@ -11,6 +11,7 @@ import 'package:butlerly/features/foundation/presentation/transaction_master_dat
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
@@ -33,6 +34,10 @@ void main() {
     final source = XFile(path, name: 'receipt.png');
 
     _resetView(tester);
+    // iOS deliberately lets the ancestor horizontal scroll gesture win over
+    // SelectableText's text-selection drag recognizer.
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
     tester.view.physicalSize = const Size(320, 700);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
