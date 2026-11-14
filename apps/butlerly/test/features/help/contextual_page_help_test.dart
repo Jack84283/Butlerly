@@ -19,30 +19,30 @@ void main() {
   });
 
   const paths = <String, String>{
-    '/': 'ch-12',
     '/welcome': 'ch-2',
-    '/transactions': 'ch-5',
-    '/transactions/add': 'ch-5',
-    '/add': 'ch-5',
-    '/tools': 'ch-16',
-    '/settings': 'ch-17',
-    '/legal-licenses': 'ch-17',
-    '/analysis': 'ch-14',
-    '/insights': 'ch-14',
-    '/budgets': 'ch-15',
-    '/financial-profile': 'ch-4',
-    '/review': 'ch-11',
-    '/search': 'ch-13',
-    '/payment-settlements': 'ch-16',
-    '/rules': 'ch-16',
-    '/payment-sources': 'ch-7',
-    '/import-export': 'ch-10',
-    '/statements': 'ch-10',
-    '/receipts/capture': 'ch-9',
-    '/privacy-data': 'ch-20',
-    '/master-data': 'ch-8',
-    '/notifications': 'ch-3',
-    '/assistant': 'ch-25',
+    '/': 'home.overview',
+    '/transactions': 'transactions.list',
+    '/transactions/add': 'add.manual',
+    '/add': 'add.overview',
+    '/tools': 'tools.overview',
+    '/rules': 'tools.rules',
+    '/payment-settlements': 'tools.settlements',
+    '/settings': 'more.overview',
+    '/legal-licenses': 'more.about',
+    '/analysis': 'tools.analysis',
+    '/insights': 'tools.insights',
+    '/budgets': 'tools.budgets',
+    '/financial-profile': 'more.financial-profile',
+    '/review': 'tools.review',
+    '/search': 'transactions.search',
+    '/payment-sources': 'add.payment-source',
+    '/import-export': 'add.import',
+    '/statements': 'add.statement',
+    '/receipts/capture': 'add.receipt',
+    '/privacy-data': 'more.privacy',
+    '/master-data': 'tools.master-data',
+    '/notifications': 'more.operational-features',
+    '/assistant': 'tools.assistant',
   };
 
   test('all active destinations have existing, localized guide chapters', () {
@@ -59,7 +59,7 @@ void main() {
     for (final path in ['/help', '/launch']) {
       expect(contextualHelpArticleForPath(path), isNull);
     }
-    expect(contextualHelpArticleForPath('/future-page'), 'ch-3');
+    expect(contextualHelpArticleForPath('/future-page'), 'guide-navigation');
   });
 
   for (final size in [const Size(390, 844), const Size(1440, 900)]) {
@@ -137,18 +137,18 @@ void main() {
       // Verify the actual destination and selected article instead.
       expect(
         tester.widget<HelpFaqPage>(find.byType(HelpFaqPage)).articleId,
-        'ch-14',
+        'tools.analysis',
       );
       if (size.width >= 1024) {
         expect(find.byType(HelpDesktopWorkspace), findsOneWidget);
         expect(
-          find.byKey(const ValueKey('help-desktop-article-ch-14')),
+          find.byKey(const ValueKey('help-desktop-article-tools.analysis')),
           findsOneWidget,
         );
       } else {
         expect(find.byType(HelpGuideArticlePage), findsOneWidget);
       }
-      expect(find.text(catalog.articleById('ch-14')!.title), findsWidgets);
+      expect(find.text(catalog.articleById('tools.analysis')!.title), findsWidgets);
       // The Help page must not show a link that points to itself.
       expect(find.byKey(const ValueKey('page-context-help')), findsNothing);
 
@@ -223,7 +223,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         tester.widget<HelpFaqPage>(find.byType(HelpFaqPage)).articleId,
-        'ch-16',
+        'tools.settlements',
       );
       await tester.tap(find.byTooltip('Back'));
       await tester.pumpAndSettle();
@@ -637,7 +637,7 @@ void main() {
     expect(find.byType(HelpDesktopWorkspace), findsOneWidget);
     expect(find.byType(DesktopPrimaryShell), findsNothing);
     expect(
-      find.byKey(const ValueKey('help-desktop-article-ch-14')),
+      find.byKey(const ValueKey('help-desktop-article-tools.analysis')),
       findsOneWidget,
     );
     expect(find.byKey(const ValueKey('help-desktop-content')), findsOneWidget);
