@@ -272,16 +272,13 @@ void main() {
         );
         await tester.tap(find.byIcon(Icons.arrow_back_rounded).last);
         await tester.pumpAndSettle();
+        // The original article can remain scrolled to its related links;
+        // verify the restored route's article instead of offscreen text.
         expect(
-          find.text(
-            catalog
-                .articleById(
-                  'home.overview',
-                  languageCode: locale.languageCode,
-                )!
-                .title,
-          ),
-          findsWidgets,
+          tester.widget<HelpGuideArticlePage>(
+            find.byType(HelpGuideArticlePage),
+          ).article.id,
+          'home.overview',
         );
         expect(tester.takeException(), isNull);
       },
