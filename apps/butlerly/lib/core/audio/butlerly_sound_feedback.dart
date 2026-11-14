@@ -12,6 +12,14 @@ final class ButlerlySoundFeedback {
   @visibleForTesting
   static Future<void> Function()? playbackForTesting;
 
+  /// Explicitly enabled confirmation feedback should be audible on iPhone
+  /// even when the Ring/Silent switch is on, without interrupting other audio.
+  @visibleForTesting
+  static AudioContext confirmationAudioContext() => AudioContextConfig(
+    focus: AudioContextConfigFocus.mixWithOthers,
+    respectSilence: false,
+  ).build();
+
   static Future<void> play() async {
     final override = playbackForTesting;
     if (override != null) {
@@ -22,13 +30,10 @@ final class ButlerlySoundFeedback {
       // Keep the short local sound buffered across interactions. AudioPlayer
       // replaces an active source before starting the next one.
       if (!_configured) {
-        // Only iOS needs an explicit ambient audio session so feedback
-        // honors the Ring/Silent switch. Other platforms keep their default
-        // routing and do not depend on session APIs being implemented.
+        // iOS otherwise silences the confirmation tone in Silent mode.
+        // Other platforms keep their default audio routing.
         if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
-          await _player.setAudioContext(
-            AudioContextConfig(respectSilence: true).build(),
-          );
+          await _player.setAudioContext(confirmationAudioContext());
         }
         await _player.setReleaseMode(ReleaseMode.stop);
         _configured = true;
