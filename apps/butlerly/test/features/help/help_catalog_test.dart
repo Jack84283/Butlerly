@@ -48,6 +48,33 @@ void main() {
     }
   });
 
+  test('screen-based topics have matching English Chinese and Spanish IDs', () async {
+    final catalog = await HelpCatalog.load();
+    final english = catalog.guide
+        .where((article) => RegExp(r'^(home|transactions|add|tools|more)\.').hasMatch(article.id))
+        .toList();
+    expect(english.length, 42);
+    final ids = english.map((article) => article.id).toSet();
+    expect(ids.length, 42);
+    for (final language in ['en', 'zh', 'es']) {
+      for (final id in ids) {
+        final article = catalog.articleById(id, languageCode: language);
+        expect(article, isNotNull, reason: '$language: $id');
+        expect(article!.title.trim(), isNotEmpty);
+        expect(article.body.trim(), isNotEmpty);
+      }
+    }
+    for (final language in ['en', 'zh', 'es']) {
+      final export = catalog.articleById(
+        'more.export',
+        languageCode: language,
+      );
+      expect(export, isNotNull);
+      expect(export!.body.trim(), isNotEmpty);
+    }
+    expect(catalog.articleById('guide-navigation'), isNotNull);
+  });
+
   test('guide contains no developer-only issue or code references', () async {
     final catalog = await HelpCatalog.load();
     final guideText = ['en', 'zh', 'es']
