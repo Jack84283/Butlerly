@@ -269,7 +269,10 @@ void main() {
         expect(
           find.text(
             catalog
-                .articleById('home.overview', languageCode: locale.languageCode)!
+                .articleById(
+                  'home.overview',
+                  languageCode: locale.languageCode,
+                )!
                 .title,
           ),
           findsWidgets,
