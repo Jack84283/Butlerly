@@ -275,9 +275,10 @@ void main() {
         // The original article can remain scrolled to its related links;
         // verify the restored route's article instead of offscreen text.
         expect(
-          tester.widget<HelpGuideArticlePage>(
-            find.byType(HelpGuideArticlePage),
-          ).article.id,
+          tester
+              .widget<HelpGuideArticlePage>(find.byType(HelpGuideArticlePage))
+              .article
+              .id,
           'home.overview',
         );
         expect(tester.takeException(), isNull);
