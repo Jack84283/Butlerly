@@ -400,7 +400,7 @@ class _StandaloneHelpReaderState extends State<_StandaloneHelpReader> {
                     children: [
                       Text(
                         article.title,
-                        key: ValueKey('context-help-article-' + article.id),
+                        key: ValueKey('context-help-article-${article.id}'),
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                       const SizedBox(height: 16),

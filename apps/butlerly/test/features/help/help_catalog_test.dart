@@ -128,12 +128,12 @@ void main() {
         expect(
           staleId.hasMatch(article.body),
           isFalse,
-          reason: locale + ': ' + article.id,
+          reason: '$locale: ${article.id}',
         );
         expect(
           staleChapter.hasMatch(article.body),
           isFalse,
-          reason: locale + ': ' + article.id,
+          reason: '$locale: ${article.id}',
         );
       }
     }
