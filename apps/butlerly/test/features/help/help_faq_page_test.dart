@@ -392,7 +392,8 @@ void main() {
       findsOneWidget,
     );
     expect(
-      tester.widget<TextField>(find.byKey(const ValueKey('help-search')))
+      tester
+          .widget<TextField>(find.byKey(const ValueKey('help-search')))
           .controller!
           .text,
       'merge replace',

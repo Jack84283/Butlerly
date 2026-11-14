@@ -355,7 +355,10 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('context-help-close')));
     await tester.pumpAndSettle();
     expect(find.text('Recovery remains active'), findsOneWidget);
-    expect(find.byKey(const ValueKey('context-help-offline-reader')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('context-help-offline-reader')),
+      findsNothing,
+    );
     expect(tester.takeException(), isNull);
   });
 
