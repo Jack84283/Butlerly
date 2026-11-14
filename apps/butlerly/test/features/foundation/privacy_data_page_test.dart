@@ -455,6 +455,80 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets(
+    'wide export action shows the unencrypted non-importable warning',
+    (tester) async {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(app());
+      await tester.pumpAndSettle();
+
+      final warning = find.byKey(const ValueKey('privacy-export-warning'));
+      expect(warning, findsOneWidget);
+      expect(
+        find.descendant(
+          of: warning,
+          matching: find.textContaining(
+            'without encryption or password protection',
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: warning,
+          matching: find.textContaining(
+            'cannot be imported back into Butlerly',
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: warning,
+          matching: find.textContaining('delete the exported files'),
+        ),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  for (final locale in AppLocalizations.supportedLocales) {
+    testWidgets('compact export warning in ${locale.languageCode}', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(app(locale: locale));
+      await tester.pumpAndSettle();
+
+      final warning = find.byKey(const ValueKey('privacy-export-warning'));
+      await tester.scrollUntilVisible(warning, 150);
+      expect(warning, findsOneWidget);
+      final copy = AppLocalizations(locale).text('exportWarningBody');
+      expect(copy, isNot('exportWarningBody'));
+      expect(
+        find.descendant(of: warning, matching: find.text(copy)),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: warning,
+          matching: find.byIcon(Icons.warning_amber_rounded),
+        ),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets('mobile backup shares and then removes its temporary file', (
     tester,
   ) async {
