@@ -5,92 +5,114 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('bundled guide has nine chapters and no legacy duplicate articles', () async {
-    final catalog = await HelpCatalog.load();
-    final chapters = [
-      'guide.introduction',
-      'guide.getting-started',
-      'guide.home',
-      'guide.transactions',
-      'guide.add',
-      'guide.tools',
-      'guide.more',
-      'guide.help-reference',
-      'guide.appendix',
-    ];
-    expect(catalog.guide.length, 51);
-    expect(catalog.faqs.length, 30);
-    final englishIds = catalog.guide.map((article) => article.id).toList();
-    expect(englishIds.toSet().length, englishIds.length);
-    expect(englishIds.where((id) => id.startsWith('ch-')), isEmpty);
-    expect(englishIds.where((id) => id.startsWith('appendix-')), isEmpty);
-    expect(englishIds.where((id) => id.startsWith('intro-')), isEmpty);
-    for (final locale in ['en', 'zh', 'es']) {
-      final translated = catalog.guideForLanguage(locale);
-      expect(translated.map((article) => article.id).toList(), englishIds);
-      for (final chapter in chapters) {
-        expect(catalog.articleById(chapter, languageCode: locale), isNotNull);
-      }
-      expect(
-        catalog.articleById('more.restore', languageCode: locale)!.body.length,
-        greaterThan(500),
-      );
-      expect(
-        catalog.articleById('guide.appendix', languageCode: locale)!.body.length,
-        greaterThan(800),
-      );
-      for (final faq in catalog.faqs) {
-        expect(catalog.articleById(faq.guideId, languageCode: locale), isNotNull);
-        expect(faq.translations[locale]?.question.isNotEmpty, isTrue);
-        expect(faq.translations[locale]?.answer.isNotEmpty, isTrue);
-      }
-    }
-  });
-
-  test('screen-based topics have matching English Chinese and Spanish IDs', () async {
-    final catalog = await HelpCatalog.load();
-    final english = catalog.guide
-        .where((article) => RegExp(r'^(home|transactions|add|tools|more)\.').hasMatch(article.id))
-        .toList();
-    expect(english.length, 42);
-    final ids = english.map((article) => article.id).toSet();
-    expect(ids.length, 42);
-    for (final language in ['en', 'zh', 'es']) {
-      for (final id in ids) {
-        final article = catalog.articleById(id, languageCode: language);
-        expect(article, isNotNull, reason: '$language: $id');
-        expect(article!.title.trim(), isNotEmpty);
-        expect(article.body.trim(), isNotEmpty);
-      }
-    }
-    for (final language in ['en', 'zh', 'es']) {
-      final export = catalog.articleById(
-        'more.export',
-        languageCode: language,
-      );
-      expect(export, isNotNull);
-      expect(export!.body.trim(), isNotEmpty);
-    }
-    expect(catalog.articleById('guide.home'), isNotNull);
-  });
-
-  test('related topic IDs resolve in every locale without self-links', () async {
-    final catalog = await HelpCatalog.load();
-    for (final locale in ['en', 'zh', 'es']) {
-      for (final article in catalog.guideForLanguage(locale)) {
-        expect(article.relatedIds.toSet().length, article.relatedIds.length);
-        expect(article.relatedIds, isNot(contains(article.id)));
-        for (final id in article.relatedIds) {
+  test(
+    'bundled guide has nine chapters and no legacy duplicate articles',
+    () async {
+      final catalog = await HelpCatalog.load();
+      final chapters = [
+        'guide.introduction',
+        'guide.getting-started',
+        'guide.home',
+        'guide.transactions',
+        'guide.add',
+        'guide.tools',
+        'guide.more',
+        'guide.help-reference',
+        'guide.appendix',
+      ];
+      expect(catalog.guide.length, 51);
+      expect(catalog.faqs.length, 30);
+      final englishIds = catalog.guide.map((article) => article.id).toList();
+      expect(englishIds.toSet().length, englishIds.length);
+      expect(englishIds.where((id) => id.startsWith('ch-')), isEmpty);
+      expect(englishIds.where((id) => id.startsWith('appendix-')), isEmpty);
+      expect(englishIds.where((id) => id.startsWith('intro-')), isEmpty);
+      for (final locale in ['en', 'zh', 'es']) {
+        final translated = catalog.guideForLanguage(locale);
+        expect(translated.map((article) => article.id).toList(), englishIds);
+        for (final chapter in chapters) {
+          expect(catalog.articleById(chapter, languageCode: locale), isNotNull);
+        }
+        expect(
+          catalog
+              .articleById('more.restore', languageCode: locale)!
+              .body
+              .length,
+          greaterThan(500),
+        );
+        expect(
+          catalog
+              .articleById('guide.appendix', languageCode: locale)!
+              .body
+              .length,
+          greaterThan(800),
+        );
+        for (final faq in catalog.faqs) {
           expect(
-            catalog.articleById(id, languageCode: locale),
+            catalog.articleById(faq.guideId, languageCode: locale),
             isNotNull,
-            reason: '$locale: ${article.id} → $id',
           );
+          expect(faq.translations[locale]?.question.isNotEmpty, isTrue);
+          expect(faq.translations[locale]?.answer.isNotEmpty, isTrue);
         }
       }
-    }
-    expect(catalog.articleById('home.overview')!.relatedIds, isNotEmpty);
-  });
+    },
+  );
+
+  test(
+    'screen-based topics have matching English Chinese and Spanish IDs',
+    () async {
+      final catalog = await HelpCatalog.load();
+      final english = catalog.guide
+          .where(
+            (article) => RegExp(
+              r'^(home|transactions|add|tools|more)\.',
+            ).hasMatch(article.id),
+          )
+          .toList();
+      expect(english.length, 42);
+      final ids = english.map((article) => article.id).toSet();
+      expect(ids.length, 42);
+      for (final language in ['en', 'zh', 'es']) {
+        for (final id in ids) {
+          final article = catalog.articleById(id, languageCode: language);
+          expect(article, isNotNull, reason: '$language: $id');
+          expect(article!.title.trim(), isNotEmpty);
+          expect(article.body.trim(), isNotEmpty);
+        }
+      }
+      for (final language in ['en', 'zh', 'es']) {
+        final export = catalog.articleById(
+          'more.export',
+          languageCode: language,
+        );
+        expect(export, isNotNull);
+        expect(export!.body.trim(), isNotEmpty);
+      }
+      expect(catalog.articleById('guide.home'), isNotNull);
+    },
+  );
+
+  test(
+    'related topic IDs resolve in every locale without self-links',
+    () async {
+      final catalog = await HelpCatalog.load();
+      for (final locale in ['en', 'zh', 'es']) {
+        for (final article in catalog.guideForLanguage(locale)) {
+          expect(article.relatedIds.toSet().length, article.relatedIds.length);
+          expect(article.relatedIds, isNot(contains(article.id)));
+          for (final id in article.relatedIds) {
+            expect(
+              catalog.articleById(id, languageCode: locale),
+              isNotNull,
+              reason: '$locale: ${article.id} → $id',
+            );
+          }
+        }
+      }
+      expect(catalog.articleById('home.overview')!.relatedIds, isNotEmpty);
+    },
+  );
 
   test('guide contains no developer-only issue or code references', () async {
     final catalog = await HelpCatalog.load();

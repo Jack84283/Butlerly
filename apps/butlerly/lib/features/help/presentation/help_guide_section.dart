@@ -27,7 +27,6 @@ Widget helpGuideSection(BuildContext context, String section) {
   );
 }
 
-
 /// Local, typed links to related articles. No network access is required.
 class HelpRelatedTopics extends StatelessWidget {
   const HelpRelatedTopics({

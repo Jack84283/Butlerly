@@ -229,56 +229,79 @@ void main() {
     const Locale('zh', 'CN'),
     const Locale('es'),
   ]) {
-    testWidgets('related topics open localized article on phone: ${locale.languageCode}', (tester) async {
-      await tester.pumpWidget(MaterialApp(
-        locale: locale,
-        supportedLocales: AppLocalizations.supportedLocales,
-        localizationsDelegates: const [
-          AppLocalizations.delegate,
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        home: HelpGuideArticlePage(
-          article: catalog.articleById('home.overview', languageCode: locale.languageCode)!,
-          catalog: catalog,
-        ),
-      ));
-      await tester.pumpAndSettle();
-      final link = find.byKey(const ValueKey('help-related-home.summary'));
-      await tester.ensureVisible(link);
-      await tester.tap(link);
-      await tester.pumpAndSettle();
-      expect(find.text(catalog.articleById('home.summary', languageCode: locale.languageCode)!.title), findsWidgets);
-      expect(tester.takeException(), isNull);
-    });
+    testWidgets(
+      'related topics open localized article on phone: ${locale.languageCode}',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            locale: locale,
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            home: HelpGuideArticlePage(
+              article: catalog.articleById(
+                'home.overview',
+                languageCode: locale.languageCode,
+              )!,
+              catalog: catalog,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final link = find.byKey(const ValueKey('help-related-home.summary'));
+        await tester.ensureVisible(link);
+        await tester.tap(link);
+        await tester.pumpAndSettle();
+        expect(
+          find.text(
+            catalog
+                .articleById('home.summary', languageCode: locale.languageCode)!
+                .title,
+          ),
+          findsWidgets,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
   }
 
-  testWidgets('desktop related links select a new topic in the same workspace', (tester) async {
-    tester.view.physicalSize = const Size(1440, 900);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    await tester.pumpWidget(app(const Locale('en')));
-    await tester.pumpAndSettle();
-    final first = find.byKey(const ValueKey('help-desktop-item-home.overview'));
-    await tester.scrollUntilVisible(
-      first,
-      220,
-      scrollable: find.descendant(
-        of: find.byKey(const ValueKey('help-desktop-item-list')),
-        matching: find.byType(Scrollable),
-      ),
-    );
-    await tester.tap(first);
-    await tester.pumpAndSettle();
-    final related = find.byKey(const ValueKey('help-related-home.summary'));
-    await tester.ensureVisible(related);
-    await tester.tap(related);
-    await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('help-desktop-article-home.summary')), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
+  testWidgets(
+    'desktop related links select a new topic in the same workspace',
+    (tester) async {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(app(const Locale('en')));
+      await tester.pumpAndSettle();
+      final first = find.byKey(
+        const ValueKey('help-desktop-item-home.overview'),
+      );
+      await tester.scrollUntilVisible(
+        first,
+        220,
+        scrollable: find.descendant(
+          of: find.byKey(const ValueKey('help-desktop-item-list')),
+          matching: find.byType(Scrollable),
+        ),
+      );
+      await tester.tap(first);
+      await tester.pumpAndSettle();
+      final related = find.byKey(const ValueKey('help-related-home.summary'));
+      await tester.ensureVisible(related);
+      await tester.tap(related);
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('help-desktop-article-home.summary')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('full User Guide is browsable on a wide layout', (tester) async {
     tester.view.physicalSize = const Size(1440, 900);
@@ -299,7 +322,9 @@ void main() {
       findsOneWidget,
     );
     // The first displayed chapter need not be guide.introduction; choose it explicitly.
-    await tester.tap(find.byKey(const ValueKey('help-desktop-item-guide.introduction')));
+    await tester.tap(
+      find.byKey(const ValueKey('help-desktop-item-guide.introduction')),
+    );
     await tester.pumpAndSettle();
     expect(
       find.byKey(const ValueKey('help-desktop-article-guide.introduction')),

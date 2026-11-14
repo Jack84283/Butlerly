@@ -59,7 +59,10 @@ void main() {
     for (final path in ['/help', '/launch']) {
       expect(contextualHelpArticleForPath(path), isNull);
     }
-    expect(contextualHelpArticleForPath('/future-page'), 'guide.getting-started');
+    expect(
+      contextualHelpArticleForPath('/future-page'),
+      'guide.getting-started',
+    );
   });
 
   for (final size in [const Size(390, 844), const Size(1440, 900)]) {
@@ -148,7 +151,10 @@ void main() {
       } else {
         expect(find.byType(HelpGuideArticlePage), findsOneWidget);
       }
-      expect(find.text(catalog.articleById('tools.analysis')!.title), findsWidgets);
+      expect(
+        find.text(catalog.articleById('tools.analysis')!.title),
+        findsWidgets,
+      );
       // The Help page must not show a link that points to itself.
       expect(find.byKey(const ValueKey('page-context-help')), findsNothing);
 
@@ -245,14 +251,19 @@ void main() {
             GlobalCupertinoLocalizations.delegate,
           ],
           home: Scaffold(
-            body: HelpFaqPage(preloadedCatalog: catalog, articleId: 'tools.budgets'),
+            body: HelpFaqPage(
+              preloadedCatalog: catalog,
+              articleId: 'tools.budgets',
+            ),
           ),
         ),
       );
       await tester.pumpAndSettle();
       expect(find.byType(HelpGuideArticlePage), findsOneWidget);
       expect(
-        find.text(catalog.articleById('tools.budgets', languageCode: language)!.title),
+        find.text(
+          catalog.articleById('tools.budgets', languageCode: language)!.title,
+        ),
         findsWidgets,
       );
       expect(tester.takeException(), isNull);
@@ -475,7 +486,10 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('page-context-help')));
     await tester.pumpAndSettle();
     expect(find.byType(HelpGuideArticlePage), findsOneWidget);
-    expect(find.text(catalog.articleById('guide.getting-started')!.title), findsWidgets);
+    expect(
+      find.text(catalog.articleById('guide.getting-started')!.title),
+      findsWidgets,
+    );
 
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();

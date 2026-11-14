@@ -483,11 +483,7 @@ class HelpGuideIndexPage extends StatelessWidget {
 }
 
 class HelpGuideArticlePage extends StatelessWidget {
-  const HelpGuideArticlePage({
-    required this.article,
-    this.catalog,
-    super.key,
-  });
+  const HelpGuideArticlePage({required this.article, this.catalog, super.key});
 
   final HelpGuideArticle article;
   final HelpCatalog? catalog;
