@@ -106,9 +106,17 @@ void main() {
       const ValueKey('receipt-ocr-horizontal-scroll'),
     );
     expect(horizontal, findsOneWidget);
-    final scrollable = tester.state<ScrollableState>(
-      find.descendant(of: horizontal, matching: find.byType(Scrollable)),
+    final horizontalScrollable = find.descendant(
+      of: horizontal,
+      matching: find.byWidgetPredicate(
+        (widget) =>
+            widget is Scrollable &&
+            (widget.axisDirection == AxisDirection.left ||
+                widget.axisDirection == AxisDirection.right),
+      ),
     );
+    expect(horizontalScrollable, findsOneWidget);
+    final scrollable = tester.state<ScrollableState>(horizontalScrollable);
     expect(scrollable.position.maxScrollExtent, greaterThan(0));
     await tester.drag(horizontal, const Offset(-150, 0));
     await tester.pumpAndSettle();
