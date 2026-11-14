@@ -8,7 +8,7 @@ The application bundles three offline Help languages (English, Simplified Chines
 
 | Route | Topic ID |
 | --- | --- |
-| `/welcome` | `ch-2` |
+| `/welcome` | `guide.getting-started` |
 | `/` | `home.overview` |
 | `/transactions` | `transactions.list` |
 | `/transactions/add` | `add.manual` |
