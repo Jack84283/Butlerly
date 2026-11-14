@@ -1139,6 +1139,7 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
           icon: Icons.download_outlined,
           label: l10n.text('exportToFile'),
           description: l10n.text('exportScopeBody'),
+          warning: l10n.text('exportWarningBody'),
           onTap: _busy ? null : _export,
         ),
       ],
@@ -1361,12 +1362,24 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
             ),
             const Divider(),
             ListTile(
+              key: const ValueKey('mobile-privacy-export'),
               enabled: !_busy,
+              isThreeLine: true,
               leading: Icon(_privacyIcon(context, Icons.download_outlined)),
               title: Text(context.l10n.text('exportToFile')),
-              subtitle: Text(
-                context.l10n.text('exportScopeBody'),
-                style: _subtitleStyle(context),
+              subtitle: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    context.l10n.text('exportScopeBody'),
+                    style: _subtitleStyle(context),
+                  ),
+                  const SizedBox(height: ButlerlySpacing.micro),
+                  _ExportPrivacyWarning(
+                    message: context.l10n.text('exportWarningBody'),
+                  ),
+                ],
               ),
               trailing: Icon(_privacyIcon(context, Icons.chevron_right)),
               onTap: _export,
@@ -1468,6 +1481,7 @@ class _DesktopPrivacyAction extends StatelessWidget {
     required this.label,
     required this.description,
     required this.onTap,
+    this.warning,
     this.danger = false,
     super.key,
   });
@@ -1476,6 +1490,7 @@ class _DesktopPrivacyAction extends StatelessWidget {
   final String label;
   final String description;
   final VoidCallback? onTap;
+  final String? warning;
   final bool danger;
 
   @override
@@ -1513,6 +1528,10 @@ class _DesktopPrivacyAction extends StatelessWidget {
                   ),
                   const SizedBox(height: ButlerlySpacing.xxs),
                   Text(description, style: _subtitleStyle(context)),
+                  if (warning case final warningText?) ...[
+                    const SizedBox(height: ButlerlySpacing.micro),
+                    _ExportPrivacyWarning(message: warningText),
+                  ],
                 ],
               ),
             ),
@@ -1527,6 +1546,31 @@ class _DesktopPrivacyAction extends StatelessWidget {
       ),
     ),
   );
+}
+
+class _ExportPrivacyWarning extends StatelessWidget {
+  const _ExportPrivacyWarning({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final warningColor = Theme.of(context).colorScheme.error;
+    return Row(
+      key: const ValueKey('privacy-export-warning'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(Icons.warning_amber_rounded, color: warningColor, size: 16),
+        const SizedBox(width: ButlerlySpacing.micro),
+        Expanded(
+          child: Text(
+            message,
+            style: _subtitleStyle(context)?.copyWith(color: warningColor),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 TextStyle? _subtitleStyle(BuildContext context) => Theme.of(
