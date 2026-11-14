@@ -83,8 +83,10 @@ abstract final class OcrSpatialText {
     final pageIndexes = pages.keys.toList()..sort();
     final output = <String>[];
     for (final page in pageIndexes) {
-      if (output.isNotEmpty) {
-        output.add('');
+      if (output.isNotEmpty) output.add('');
+      // Page 1 is implicit only when it actually contains observations.
+      // If earlier pages were empty, label the first rendered page too.
+      if (output.isNotEmpty || page > 0) {
         output.add('--- PAGE ${page + 1} ---');
       }
       final sorted = pages[page]!.where(_hasBounds).toList()
