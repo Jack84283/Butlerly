@@ -334,7 +334,10 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     try {
       final group = files.XTypeGroup(
         label: context.l10n.text('receiptImages'),
+        // iOS Files requires UTIs; Android and desktop use extensions.
+        // Supply both filters so the same picker works on every platform.
         extensions: ['jpg', 'jpeg', 'png', 'heic', 'webp'],
+        uniformTypeIdentifiers: ['public.image'],
       );
       final source = widget.openFile != null
           ? await widget.openFile!(group)
