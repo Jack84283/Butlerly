@@ -310,6 +310,55 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('routerless Related Topics return to the recovery Help article', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          appBar: AppBar(
+            actions: const [
+              ButlerlyContextHelpButton(articleId: 'home.overview'),
+            ],
+          ),
+          body: const Text('Recovery remains active'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('page-context-help')));
+    await tester.pumpAndSettle();
+
+    final link = find.byKey(const ValueKey('help-related-home.summary'));
+    await tester.scrollUntilVisible(
+      link,
+      260,
+      scrollable: find
+          .descendant(
+            of: find.byKey(const ValueKey('context-help-offline-reader')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.tap(link);
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('context-help-article-home.summary')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const ValueKey('context-help-close')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('context-help-article-home.overview')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const ValueKey('context-help-close')));
+    await tester.pumpAndSettle();
+    expect(find.text('Recovery remains active'), findsOneWidget);
+    expect(find.byKey(const ValueKey('context-help-offline-reader')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   // Mirrors MaterialApp.router.builder in ButlerlyApp: the recovery workflow
   // replaces the GoRouter child and is hosted in a local Navigator.
   for (final recovery in const <String, String>{

@@ -365,6 +365,42 @@ void main() {
     },
   );
 
+  testWidgets('desktop FAQ Read more returns to search and originating FAQ', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(app(const Locale('en')));
+    await tester.pumpAndSettle();
+    await enterHelpQuery(tester, 'merge replace');
+    final faq = find.byKey(const ValueKey('help-desktop-item-FAQ-022'));
+    expect(faq, findsOneWidget);
+    await tester.tap(faq);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('help-desktop-read-guide')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('help-desktop-article-more.restore')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const ValueKey('help-related-back')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('help-desktop-faq-FAQ-022')),
+      findsOneWidget,
+    );
+    expect(
+      tester.widget<TextField>(find.byKey(const ValueKey('help-search')))
+          .controller!
+          .text,
+      'merge replace',
+    );
+    expect(find.byKey(const ValueKey('help-related-back')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('full User Guide is browsable on a wide layout', (tester) async {
     tester.view.physicalSize = const Size(1440, 900);
     tester.view.devicePixelRatio = 1;
