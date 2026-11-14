@@ -317,7 +317,7 @@ void main() {
         scrollable: find.descendant(
           of: find.byKey(const ValueKey('help-desktop-detail-home.overview')),
           matching: find.byType(Scrollable),
-        ),
+        ).first,
       );
       await tester.ensureVisible(related);
       await tester.tap(related);
@@ -333,7 +333,7 @@ void main() {
         scrollable: find.descendant(
           of: find.byKey(const ValueKey('help-desktop-detail-home.summary')),
           matching: find.byType(Scrollable),
-        ),
+        ).first,
       );
       await tester.ensureVisible(next);
       await tester.tap(next);
