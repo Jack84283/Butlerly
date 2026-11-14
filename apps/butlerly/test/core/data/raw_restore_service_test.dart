@@ -172,8 +172,9 @@ void main() {
       // must restore this exact per-connection setting before returning.
       await database.database.rawQuery('PRAGMA busy_timeout = 0');
       expect(
-        (await database.database.rawQuery('PRAGMA busy_timeout'))
-            .single['timeout'],
+        (await database.database.rawQuery(
+          'PRAGMA busy_timeout',
+        )).single['timeout'],
         0,
       );
       // A deferred read transaction retains a WAL snapshot without
@@ -196,8 +197,9 @@ void main() {
         );
         expect(await getProbe(), 'keep-live');
         expect(
-          (await database.database.rawQuery('PRAGMA busy_timeout'))
-              .single['timeout'],
+          (await database.database.rawQuery(
+            'PRAGMA busy_timeout',
+          )).single['timeout'],
           0,
         );
         expect(
