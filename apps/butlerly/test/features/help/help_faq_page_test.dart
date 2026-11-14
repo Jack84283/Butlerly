@@ -224,6 +224,36 @@ void main() {
     );
   }
 
+  for (final locale in [
+    const Locale('en'),
+    const Locale('zh', 'CN'),
+    const Locale('es'),
+  ]) {
+    testWidgets('related topics open localized article on phone: ${locale.languageCode}', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        locale: locale,
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        home: HelpGuideArticlePage(
+          article: catalog.articleById('home.overview', languageCode: locale.languageCode)!,
+          catalog: catalog,
+        ),
+      ));
+      await tester.pumpAndSettle();
+      final link = find.byKey(const ValueKey('help-related-home.summary'));
+      await tester.ensureVisible(link);
+      await tester.tap(link);
+      await tester.pumpAndSettle();
+      expect(find.text(catalog.articleById('home.summary', languageCode: locale.languageCode)!.title), findsWidgets);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets('full User Guide is browsable on a wide layout', (tester) async {
     tester.view.physicalSize = const Size(1440, 900);
     tester.view.devicePixelRatio = 1;

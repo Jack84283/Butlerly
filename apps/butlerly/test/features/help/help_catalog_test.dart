@@ -75,6 +75,24 @@ void main() {
     expect(catalog.articleById('guide-navigation'), isNotNull);
   });
 
+  test('related topic IDs resolve in every locale without self-links', () async {
+    final catalog = await HelpCatalog.load();
+    for (final locale in ['en', 'zh', 'es']) {
+      for (final article in catalog.guideForLanguage(locale)) {
+        expect(article.relatedIds.toSet().length, article.relatedIds.length);
+        expect(article.relatedIds, isNot(contains(article.id)));
+        for (final id in article.relatedIds) {
+          expect(
+            catalog.articleById(id, languageCode: locale),
+            isNotNull,
+            reason: '$locale: ${article.id} → $id',
+          );
+        }
+      }
+    }
+    expect(catalog.articleById('home.overview')!.relatedIds, isNotEmpty);
+  });
+
   test('guide contains no developer-only issue or code references', () async {
     final catalog = await HelpCatalog.load();
     final guideText = ['en', 'zh', 'es']

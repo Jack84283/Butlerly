@@ -317,6 +317,11 @@ class _HelpDesktopWorkspaceState extends State<HelpDesktopWorkspace> {
               helpGuideSection(context, section),
               const SizedBox(height: ButlerlySpacing.standard),
             ],
+          HelpRelatedTopics(
+            catalog: widget.catalog,
+            article: article,
+            onOpen: (target) => _selectGuide(articleId: target.id),
+          ),
         ],
       );
     }

@@ -24,73 +24,117 @@
       "id": "home.overview",
       "title": "3.1 What's on Home",
       "part": "Home",
-      "body": "Overview — A high-level view of financial activity for the selected period.\n\nWhat's on this screen — Summary, spending and income, trends, category breakdown, attention items, recent transactions and insights preview when data is available.\n\nHow to use it — Select a period, inspect cards and open a card to see its supporting records.\n\nImportant notes — Home shows a summary, not a replacement for source statements; empty cards are normal for a new workspace.\n\nRelated topics — 3.2–3.6; Transactions; Tools → Analysis."
+      "body": "Overview — A high-level view of financial activity for the selected period.\n\nWhat's on this screen — Summary, spending and income, trends, category breakdown, attention items, recent transactions and insights preview when data is available.\n\nHow to use it — Select a period, inspect cards and open a card to see its supporting records.\n\nImportant notes — Home shows a summary, not a replacement for source statements; empty cards are normal for a new workspace.",
+      "relatedIds": [
+        "home.summary",
+        "home.trends",
+        "home.attention",
+        "home.recent",
+        "home.states",
+        "transactions.list"
+      ]
     },
     {
       "id": "home.summary",
       "title": "3.2 Financial summary and selected period",
       "part": "Home",
-      "body": "Overview — Understand summary amounts for the active period.\n\nWhat's on this screen — Selected period, spending, income and other available summary metrics.\n\nHow to use it — Change the period, then compare a displayed amount with the underlying transactions.\n\nImportant notes — Original transaction currencies are preserved; missing FX rates may prevent aggregate totals.\n\nRelated topics — 3.3; 4.4; 6.4."
+      "body": "Overview — Understand summary amounts for the active period.\n\nWhat's on this screen — Selected period, spending, income and other available summary metrics.\n\nHow to use it — Change the period, then compare a displayed amount with the underlying transactions.\n\nImportant notes — Original transaction currencies are preserved; missing FX rates may prevent aggregate totals.",
+      "relatedIds": [
+        "home.trends",
+        "transactions.search"
+      ]
     },
     {
       "id": "home.trends",
       "title": "3.3 Spending trends and categories",
       "part": "Home",
-      "body": "Overview — See which categories and periods account for financial activity.\n\nWhat's on this screen — Trend charts and top category cards when available.\n\nHow to use it — Open a category or chart segment to inspect matching records.\n\nImportant notes — Changing filters, classifications, or duplicate decisions can change these comparisons.\n\nRelated topics — 6.4; 6.5; 6.9."
+      "body": "Overview — See which categories and periods account for financial activity.\n\nWhat's on this screen — Trend charts and top category cards when available.\n\nHow to use it — Open a category or chart segment to inspect matching records.\n\nImportant notes — Changing filters, classifications, or duplicate decisions can change these comparisons.",
+      "relatedIds": [
+        "tools.analysis",
+        "tools.insights"
+      ]
     },
     {
       "id": "home.attention",
       "title": "3.4 Needs attention",
       "part": "Home",
-      "body": "Overview — Review issues that may affect how data is understood.\n\nWhat's on this screen — Cards for missing classifications, possible duplicates or other review tasks when present.\n\nHow to use it — Select an attention item and continue in Tools → Review.\n\nImportant notes — A review recommendation does not automatically change a confirmed financial event.\n\nRelated topics — 6.2; 6.3."
+      "body": "Overview — Review issues that may affect how data is understood.\n\nWhat's on this screen — Cards for missing classifications, possible duplicates or other review tasks when present.\n\nHow to use it — Select an attention item and continue in Tools → Review.\n\nImportant notes — A review recommendation does not automatically change a confirmed financial event.",
+      "relatedIds": [
+        "tools.review"
+      ]
     },
     {
       "id": "home.recent",
       "title": "3.5 Recent transactions and insights",
       "part": "Home",
-      "body": "Overview — Quickly move from the dashboard into records and relevant insights.\n\nWhat's on this screen — Recent transaction rows and insight previews where offered.\n\nHow to use it — Open a transaction for details or use the available View All/drill-through action.\n\nImportant notes — The visible list may reflect the selected date and filters.\n\nRelated topics — 4.1; 6.5."
+      "body": "Overview — Quickly move from the dashboard into records and relevant insights.\n\nWhat's on this screen — Recent transaction rows and insight previews where offered.\n\nHow to use it — Open a transaction for details or use the available View All/drill-through action.\n\nImportant notes — The visible list may reflect the selected date and filters.",
+      "relatedIds": [
+        "transactions.list"
+      ]
     },
     {
       "id": "home.states",
       "title": "3.6 Empty states and multi-currency behavior",
       "part": "Home",
-      "body": "Overview — Understand why figures are missing or incomplete.\n\nWhat's on this screen — No-data/insufficient-history messages, missing-rate notices and relevant recovery actions.\n\nHow to use it — Add a first transaction, check filters, then verify original currencies and available exchange-rate information.\n\nImportant notes — Do not interpret a missing converted total as zero.\n\nRelated topics — 2.1; 5.2; 6.4."
+      "body": "Overview — Understand why figures are missing or incomplete.\n\nWhat's on this screen — No-data/insufficient-history messages, missing-rate notices and relevant recovery actions.\n\nHow to use it — Add a first transaction, check filters, then verify original currencies and available exchange-rate information.\n\nImportant notes — Do not interpret a missing converted total as zero.",
+      "relatedIds": [
+        "add.manual"
+      ]
     },
     {
       "id": "transactions.list",
       "title": "4.1 List and navigation",
       "part": "Transactions",
-      "body": "Overview — Find and browse transactions.\n\nWhat's on this screen — Transaction rows, search, filters, selection and available list actions.\n\nHow to use it — Choose a row to open its details; desktop layouts may keep the list and detail visible side by side.\n\nImportant notes — A filtered-out row is not necessarily deleted.\n\nRelated topics — 4.2; 4.4."
+      "body": "Overview — Find and browse transactions.\n\nWhat's on this screen — Transaction rows, search, filters, selection and available list actions.\n\nHow to use it — Choose a row to open its details; desktop layouts may keep the list and detail visible side by side.\n\nImportant notes — A filtered-out row is not necessarily deleted.",
+      "relatedIds": [
+        "transactions.detail"
+      ]
     },
     {
       "id": "transactions.detail",
       "title": "4.2 Transaction detail and source evidence",
       "part": "Transactions",
-      "body": "Overview — Verify an individual financial event.\n\nWhat's on this screen — Amount, date, currency, direction, merchant/category, payment source, notes, tags and linked evidence where present.\n\nHow to use it — Compare the record to source evidence before modifying it.\n\nImportant notes — A receipt and a payment for the same event should not be counted twice.\n\nRelated topics — 4.3; 6.3; 5.4."
+      "body": "Overview — Verify an individual financial event.\n\nWhat's on this screen — Amount, date, currency, direction, merchant/category, payment source, notes, tags and linked evidence where present.\n\nHow to use it — Compare the record to source evidence before modifying it.\n\nImportant notes — A receipt and a payment for the same event should not be counted twice.",
+      "relatedIds": [
+        "transactions.edit",
+        "tools.duplicates"
+      ]
     },
     {
       "id": "transactions.edit",
       "title": "4.3 Edit and save",
       "part": "Transactions",
-      "body": "Overview — Correct a confirmed transaction.\n\nWhat's on this screen — Editable fields, validation and Save Locally or equivalent action.\n\nHow to use it — Open Edit, change the supported fields and save; return to Details to check the result.\n\nImportant notes — Amount, date, category and currency changes may affect Analysis, budgets and duplicate detection.\n\nRelated topics — 4.2; 6.4."
+      "body": "Overview — Correct a confirmed transaction.\n\nWhat's on this screen — Editable fields, validation and Save Locally or equivalent action.\n\nHow to use it — Open Edit, change the supported fields and save; return to Details to check the result.\n\nImportant notes — Amount, date, category and currency changes may affect Analysis, budgets and duplicate detection.",
+      "relatedIds": [
+        "transactions.detail"
+      ]
     },
     {
       "id": "transactions.search",
       "title": "4.4 Search and filters",
       "part": "Transactions",
-      "body": "Overview — Find relevant transactions across records.\n\nWhat's on this screen — Free-text query and available date, amount, merchant, category, payment source, direction and currency filters.\n\nHow to use it — Enter search criteria, apply filters, open a result and clear criteria if results are empty.\n\nImportant notes — Do not conclude a record is lost until filters and archived state are checked.\n\nRelated topics — 4.1; 4.5."
+      "body": "Overview — Find relevant transactions across records.\n\nWhat's on this screen — Free-text query and available date, amount, merchant, category, payment source, direction and currency filters.\n\nHow to use it — Enter search criteria, apply filters, open a result and clear criteria if results are empty.\n\nImportant notes — Do not conclude a record is lost until filters and archived state are checked.",
+      "relatedIds": [
+        "transactions.list"
+      ]
     },
     {
       "id": "transactions.archive",
       "title": "4.5 Archive and restore a record",
       "part": "Transactions",
-      "body": "Overview — Remove an item from everyday active views without permanently deleting it.\n\nWhat's on this screen — Archive, archived-state view and Restore actions where available.\n\nHow to use it — Select the correct item, archive it; open the archived view and restore it if needed.\n\nImportant notes — Archived economic history may still contribute to relevant historical calculations.\n\nRelated topics — 4.6; 6.4."
+      "body": "Overview — Remove an item from everyday active views without permanently deleting it.\n\nWhat's on this screen — Archive, archived-state view and Restore actions where available.\n\nHow to use it — Select the correct item, archive it; open the archived view and restore it if needed.\n\nImportant notes — Archived economic history may still contribute to relevant historical calculations.",
+      "relatedIds": [
+        "transactions.delete"
+      ]
     },
     {
       "id": "transactions.delete",
       "title": "4.6 Delete a record",
       "part": "Transactions",
-      "body": "Overview — Permanently remove a record through the available controlled workflow.\n\nWhat's on this screen — Deletion action, impact warning and confirmation.\n\nHow to use it — Back up first, review related evidence and confirm only when certain.\n\nImportant notes — Deletion is different from archiving and may affect totals and source relationships.\n\nRelated topics — 4.5; 7.6."
+      "body": "Overview — Permanently remove a record through the available controlled workflow.\n\nWhat's on this screen — Deletion action, impact warning and confirmation.\n\nHow to use it — Back up first, review related evidence and confirm only when certain.\n\nImportant notes — Deletion is different from archiving and may affect totals and source relationships.",
+      "relatedIds": [
+        "transactions.archive"
+      ]
     },
     {
       "id": "add.overview",
@@ -102,31 +146,46 @@
       "id": "add.manual",
       "title": "5.2 Add a transaction manually",
       "part": "Add",
-      "body": "Overview — Record an income, expense or other supported movement.\n\nWhat's on this screen — Amount, currency, direction, date, description and optional classification fields.\n\nHow to use it — Enter source-accurate information and use Save Locally; verify the record in Transactions.\n\nImportant notes — Avoid guessing unclear merchant, category, or date values.\n\nRelated topics — 4.2; 5.3."
+      "body": "Overview — Record an income, expense or other supported movement.\n\nWhat's on this screen — Amount, currency, direction, date, description and optional classification fields.\n\nHow to use it — Enter source-accurate information and use Save Locally; verify the record in Transactions.\n\nImportant notes — Avoid guessing unclear merchant, category, or date values.",
+      "relatedIds": [
+        "transactions.detail"
+      ]
     },
     {
       "id": "add.payment-source",
       "title": "5.3 Add or edit a payment source",
       "part": "Add",
-      "body": "Overview — Describe a card, account, wallet or cash source locally.\n\nWhat's on this screen — Name, type and optional issuer, last four digits and currency.\n\nHow to use it — Create or edit the payment source and associate it with transactions.\n\nImportant notes — Payment sources do not sign in to banks; never enter passwords, PINs or full credentials.\n\nRelated topics — 5.2; 6.9."
+      "body": "Overview — Describe a card, account, wallet or cash source locally.\n\nWhat's on this screen — Name, type and optional issuer, last four digits and currency.\n\nHow to use it — Create or edit the payment source and associate it with transactions.\n\nImportant notes — Payment sources do not sign in to banks; never enter passwords, PINs or full credentials.",
+      "relatedIds": [
+        "add.manual"
+      ]
     },
     {
       "id": "add.receipt",
       "title": "5.4 Capture a receipt",
       "part": "Add",
-      "body": "Overview — Create or attach evidence using a photo or file.\n\nWhat's on this screen — Camera/photo/file choice, preview, extraction, review and potential existing-record match.\n\nHow to use it — Capture a readable source, correct extracted data and select the intended save/link action.\n\nImportant notes — Check for existing transactions before creating a second expense.\n\nRelated topics — 4.2; 6.3."
+      "body": "Overview — Create or attach evidence using a photo or file.\n\nWhat's on this screen — Camera/photo/file choice, preview, extraction, review and potential existing-record match.\n\nHow to use it — Capture a readable source, correct extracted data and select the intended save/link action.\n\nImportant notes — Check for existing transactions before creating a second expense.",
+      "relatedIds": [
+        "transactions.detail"
+      ]
     },
     {
       "id": "add.statement",
       "title": "5.5 Capture a statement",
       "part": "Add",
-      "body": "Overview — Bring a locally selected statement into the review workflow.\n\nWhat's on this screen — Statement source selector, preview, extraction/mapping and confirmation where supported.\n\nHow to use it — Save the statement outside Butlerly, select it from Add and review all proposed rows.\n\nImportant notes — A statement is source evidence, not proof that every row has been confirmed.\n\nRelated topics — 5.6; 6.3."
+      "body": "Overview — Bring a locally selected statement into the review workflow.\n\nWhat's on this screen — Statement source selector, preview, extraction/mapping and confirmation where supported.\n\nHow to use it — Save the statement outside Butlerly, select it from Add and review all proposed rows.\n\nImportant notes — A statement is source evidence, not proof that every row has been confirmed.",
+      "relatedIds": [
+        "add.import"
+      ]
     },
     {
       "id": "add.import",
       "title": "5.6 Import a local file",
       "part": "Add",
-      "body": "Overview — Import supported local CSV or other explicitly accepted files.\n\nWhat's on this screen — File type, template, field mapping/preview, warnings and result summary.\n\nHow to use it — Select a supported saved file, inspect preview and duplicates, then confirm the import.\n\nImportant notes — Re-importing the same source may create duplicate candidates. Unsupported formats must not be assumed to work.\n\nRelated topics — 6.3; 9.3."
+      "body": "Overview — Import supported local CSV or other explicitly accepted files.\n\nWhat's on this screen — File type, template, field mapping/preview, warnings and result summary.\n\nHow to use it — Select a supported saved file, inspect preview and duplicates, then confirm the import.\n\nImportant notes — Re-importing the same source may create duplicate candidates. Unsupported formats must not be assumed to work.",
+      "relatedIds": [
+        "tools.duplicates"
+      ]
     },
     {
       "id": "tools.overview",
@@ -138,67 +197,100 @@
       "id": "tools.review",
       "title": "6.2 Review: missing or uncertain information",
       "part": "Tools",
-      "body": "Overview — Resolve records that need checking.\n\nWhat's on this screen — Needs Review, Uncategorized and available issue queues.\n\nHow to use it — Open a finding, compare the original source and correct the affected record.\n\nImportant notes — Some recommendations are suggestions rather than automatically confirmed changes.\n\nRelated topics — 4.2; 6.3."
+      "body": "Overview — Resolve records that need checking.\n\nWhat's on this screen — Needs Review, Uncategorized and available issue queues.\n\nHow to use it — Open a finding, compare the original source and correct the affected record.\n\nImportant notes — Some recommendations are suggestions rather than automatically confirmed changes.",
+      "relatedIds": [
+        "transactions.detail"
+      ]
     },
     {
       "id": "tools.duplicates",
       "title": "6.3 Possible duplicates and reconciliation",
       "part": "Tools",
-      "body": "Overview — Decide whether sources describe one event or separate events.\n\nWhat's on this screen — Candidate pairs, evidence comparisons, duplicate/link/keep-both decisions and reconciliation status.\n\nHow to use it — Inspect date, amount, currency and payment source before choosing a decision.\n\nImportant notes — Merging/linking changes financial representation; preserve the original evidence.\n\nRelated topics — 6.2; 5.6."
+      "body": "Overview — Decide whether sources describe one event or separate events.\n\nWhat's on this screen — Candidate pairs, evidence comparisons, duplicate/link/keep-both decisions and reconciliation status.\n\nHow to use it — Inspect date, amount, currency and payment source before choosing a decision.\n\nImportant notes — Merging/linking changes financial representation; preserve the original evidence.",
+      "relatedIds": [
+        "tools.review"
+      ]
     },
     {
       "id": "tools.analysis",
       "title": "6.4 Analysis",
       "part": "Tools",
-      "body": "Overview — Compare financial totals, periods and classifications.\n\nWhat's on this screen — Period selectors, charts, available breakdowns and financial metrics.\n\nHow to use it — Choose a reporting period and drill into the records supporting a result.\n\nImportant notes — Missing FX or changed duplicate decisions can affect comparisons.\n\nRelated topics — 3.2; 4.4."
+      "body": "Overview — Compare financial totals, periods and classifications.\n\nWhat's on this screen — Period selectors, charts, available breakdowns and financial metrics.\n\nHow to use it — Choose a reporting period and drill into the records supporting a result.\n\nImportant notes — Missing FX or changed duplicate decisions can affect comparisons.",
+      "relatedIds": [
+        "home.summary"
+      ]
     },
     {
       "id": "tools.insights",
       "title": "6.5 Insights",
       "part": "Tools",
-      "body": "Overview — Review observations based on recorded history.\n\nWhat's on this screen — Insight messages, evidence or links and available review actions.\n\nHow to use it — Open an insight and verify that it corresponds to your underlying records.\n\nImportant notes — Insights are informational, not professional financial advice.\n\nRelated topics — 6.4; 4.2."
+      "body": "Overview — Review observations based on recorded history.\n\nWhat's on this screen — Insight messages, evidence or links and available review actions.\n\nHow to use it — Open an insight and verify that it corresponds to your underlying records.\n\nImportant notes — Insights are informational, not professional financial advice.",
+      "relatedIds": [
+        "tools.analysis"
+      ]
     },
     {
       "id": "tools.reports",
       "title": "6.6 Reports",
       "part": "Tools",
-      "body": "Overview — Review structured summaries or outputs where the current build provides them.\n\nWhat's on this screen — Report selector, scope, period and output actions when available.\n\nHow to use it — Choose the report, review period and filters, and verify against source records.\n\nImportant notes — Do not assume every planned report is implemented.\n\nRelated topics — 6.4; 7.8."
+      "body": "Overview — Review structured summaries or outputs where the current build provides them.\n\nWhat's on this screen — Report selector, scope, period and output actions when available.\n\nHow to use it — Choose the report, review period and filters, and verify against source records.\n\nImportant notes — Do not assume every planned report is implemented.",
+      "relatedIds": [
+        "tools.analysis"
+      ]
     },
     {
       "id": "tools.calendar",
       "title": "6.7 Financial calendar and recurring activity",
       "part": "Tools",
-      "body": "Overview — Understand timing and repeat patterns where available.\n\nWhat's on this screen — Calendar entries and recurring pattern views.\n\nHow to use it — Select a date or recurring item to inspect the supporting events.\n\nImportant notes — A detected recurrence does not authorize or schedule payments.\n\nRelated topics — 4.2; 6.4."
+      "body": "Overview — Understand timing and repeat patterns where available.\n\nWhat's on this screen — Calendar entries and recurring pattern views.\n\nHow to use it — Select a date or recurring item to inspect the supporting events.\n\nImportant notes — A detected recurrence does not authorize or schedule payments.",
+      "relatedIds": [
+        "transactions.detail"
+      ]
     },
     {
       "id": "tools.budgets",
       "title": "6.8 Budgets",
       "part": "Tools",
-      "body": "Overview — Plan and compare spending against targets.\n\nWhat's on this screen — Budget list, amount, period, category and current progress.\n\nHow to use it — Create a budget, select its scope, then revisit spending against its target.\n\nImportant notes — Editing a budget does not change original transactions.\n\nRelated topics — 6.4; 4.2."
+      "body": "Overview — Plan and compare spending against targets.\n\nWhat's on this screen — Budget list, amount, period, category and current progress.\n\nHow to use it — Create a budget, select its scope, then revisit spending against its target.\n\nImportant notes — Editing a budget does not change original transactions.",
+      "relatedIds": [
+        "tools.analysis"
+      ]
     },
     {
       "id": "tools.master-data",
       "title": "6.9 Master Data",
       "part": "Tools",
-      "body": "Overview — Maintain categories, subcategories, merchants and tags.\n\nWhat's on this screen — Local master-data lists and supported add/edit controls.\n\nHow to use it — Choose a record type and update a specific item.\n\nImportant notes — Existing transactions may depend on these values; review downstream classifications.\n\nRelated topics — 4.3; 6.10."
+      "body": "Overview — Maintain categories, subcategories, merchants and tags.\n\nWhat's on this screen — Local master-data lists and supported add/edit controls.\n\nHow to use it — Choose a record type and update a specific item.\n\nImportant notes — Existing transactions may depend on these values; review downstream classifications.",
+      "relatedIds": [
+        "transactions.edit"
+      ]
     },
     {
       "id": "tools.rules",
       "title": "6.10 Rule Management",
       "part": "Tools",
-      "body": "Overview — Manage classification suggestions and configured rules.\n\nWhat's on this screen — Built-in and user rules, conditions, outcomes and enable/repair controls if supported.\n\nHow to use it — Inspect a rule, change supported configuration, test/repair when appropriate and verify actual results.\n\nImportant notes — A success message alone does not prove a rule fixed related data; verify the affected outcome.\n\nRelated topics — 6.2; 6.9."
+      "body": "Overview — Manage classification suggestions and configured rules.\n\nWhat's on this screen — Built-in and user rules, conditions, outcomes and enable/repair controls if supported.\n\nHow to use it — Inspect a rule, change supported configuration, test/repair when appropriate and verify actual results.\n\nImportant notes — A success message alone does not prove a rule fixed related data; verify the affected outcome.",
+      "relatedIds": [
+        "tools.review"
+      ]
     },
     {
       "id": "tools.settlements",
       "title": "6.11 Payment Settlements",
       "part": "Tools",
-      "body": "Overview — Track settlement records associated with payment sources.\n\nWhat's on this screen — Settlement list, detail, create/edit controls and related payment sources.\n\nHow to use it — Open the intended settlement, inspect details and edit or add through the platform-appropriate form.\n\nImportant notes — On mobile, a bottom sheet may be used; on desktop, a detail/editor panel may be used. Do not treat a settlement as a bank connection.\n\nRelated topics — 5.3; 4.2."
+      "body": "Overview — Track settlement records associated with payment sources.\n\nWhat's on this screen — Settlement list, detail, create/edit controls and related payment sources.\n\nHow to use it — Open the intended settlement, inspect details and edit or add through the platform-appropriate form.\n\nImportant notes — On mobile, a bottom sheet may be used; on desktop, a detail/editor panel may be used. Do not treat a settlement as a bank connection.",
+      "relatedIds": [
+        "add.payment-source"
+      ]
     },
     {
       "id": "tools.assistant",
       "title": "6.12 Assistant and optional AI",
       "part": "Tools",
-      "body": "Overview — Understand any available assistance without surrendering control of financial decisions.\n\nWhat's on this screen — Available assistant entry point, local capability status, output and supporting evidence.\n\nHow to use it — Ask a supported question, inspect evidence and perform any action explicitly yourself.\n\nImportant notes — Features may vary in Alpha; do not describe unavailable cloud features as installed.\n\nRelated topics — 6.4; 7.9."
+      "body": "Overview — Understand any available assistance without surrendering control of financial decisions.\n\nWhat's on this screen — Available assistant entry point, local capability status, output and supporting evidence.\n\nHow to use it — Ask a supported question, inspect evidence and perform any action explicitly yourself.\n\nImportant notes — Features may vary in Alpha; do not describe unavailable cloud features as installed.",
+      "relatedIds": [
+        "tools.analysis"
+      ]
     },
     {
       "id": "more.overview",
@@ -210,7 +302,10 @@
       "id": "more.preferences",
       "title": "7.2 Preferences: language, currency and time zone",
       "part": "More",
-      "body": "Overview — Set how information is presented.\n\nWhat's on this screen — Language, base/reference currency, time zone, date and number preferences.\n\nHow to use it — Change the setting, save if required and review relevant views.\n\nImportant notes — Display currency changes do not rewrite original transaction currency.\n\nRelated topics — 3.2; 7.3."
+      "body": "Overview — Set how information is presented.\n\nWhat's on this screen — Language, base/reference currency, time zone, date and number preferences.\n\nHow to use it — Change the setting, save if required and review relevant views.\n\nImportant notes — Display currency changes do not rewrite original transaction currency.",
+      "relatedIds": [
+        "home.summary"
+      ]
     },
     {
       "id": "more.appearance",
@@ -228,7 +323,10 @@
       "id": "more.financial-settings",
       "title": "7.5 Financial settings",
       "part": "More",
-      "body": "Overview — Configure available finance-specific defaults without managing individual transactions.\n\nWhat's on this screen — Relevant financial preferences shown in More.\n\nHow to use it — Change only the intended setting and verify how reports display afterward.\n\nImportant notes — Distinguish configuration from Payment Sources and Master Data management under Add/Tools.\n\nRelated topics — 5.3; 6.9."
+      "body": "Overview — Configure available finance-specific defaults without managing individual transactions.\n\nWhat's on this screen — Relevant financial preferences shown in More.\n\nHow to use it — Change only the intended setting and verify how reports display afterward.\n\nImportant notes — Distinguish configuration from Payment Sources and Master Data management under Add/Tools.",
+      "relatedIds": [
+        "add.payment-source"
+      ]
     },
     {
       "id": "more.privacy",
@@ -240,25 +338,37 @@
       "id": "more.backup",
       "title": "7.7 Encrypted backup",
       "part": "More",
-      "body": "Overview — Create a restorable protected backup.\n\nWhat's on this screen — Backup creation, password and destination selection.\n\nHow to use it — Make an encrypted backup, store it securely and verify that the file exists.\n\nImportant notes — Keep the password separate; a plain export is not a backup.\n\nRelated topics — 7.8; 7.9."
+      "body": "Overview — Create a restorable protected backup.\n\nWhat's on this screen — Backup creation, password and destination selection.\n\nHow to use it — Make an encrypted backup, store it securely and verify that the file exists.\n\nImportant notes — Keep the password separate; a plain export is not a backup.",
+      "relatedIds": [
+        "more.restore"
+      ]
     },
     {
       "id": "more.restore",
       "title": "7.8 Restore: Merge, Replace and failure recovery",
       "part": "More",
-      "body": "Overview — Recover data from an encrypted backup.\n\nWhat's on this screen — Backup chooser, password, summary, Merge, Replace and confirmation.\n\nHow to use it — Read the preview; choose Merge to retain eligible existing records or Replace only when full replacement is intended.\n\nImportant notes — A failed restore should not trigger repeated Replace attempts; retain original backups.\n\nRelated topics — 7.7; 8.1."
+      "body": "Overview — Recover data from an encrypted backup.\n\nWhat's on this screen — Backup chooser, password, summary, Merge, Replace and confirmation.\n\nHow to use it — Read the preview; choose Merge to retain eligible existing records or Replace only when full replacement is intended.\n\nImportant notes — A failed restore should not trigger repeated Replace attempts; retain original backups.",
+      "relatedIds": [
+        "more.backup"
+      ]
     },
     {
       "id": "more.export",
       "title": "7.9 Export to File (unencrypted)",
       "part": "More",
-      "body": "Overview — Create an accessible review copy of local data.\n\nWhat's on this screen — Export action, output-file selection and result.\n\nHow to use it — Export only when necessary; store the resulting plain-text file in a secure location and delete it when no longer needed.\n\nImportant notes — WARNING: Export to File produces plain text with no encryption or file protection. Anyone with file access can read it. The file cannot be imported back into Butlerly. Use encrypted Backup for recovery.\n\nRelated topics — 7.7; 7.6."
+      "body": "Overview — Create an accessible review copy of local data.\n\nWhat's on this screen — Export action, output-file selection and result.\n\nHow to use it — Export only when necessary; store the resulting plain-text file in a secure location and delete it when no longer needed.\n\nImportant notes — WARNING: Export to File produces plain text with no encryption or file protection. Anyone with file access can read it. The file cannot be imported back into Butlerly. Use encrypted Backup for recovery.",
+      "relatedIds": [
+        "more.backup"
+      ]
     },
     {
       "id": "more.erase",
       "title": "7.10 Erase All Data",
       "part": "More",
-      "body": "Overview — Delete locally held information through the controlled app workflow.\n\nWhat's on this screen — Erase scope and destructive confirmation.\n\nHow to use it — Back up first, review the impact and confirm only if intentional.\n\nImportant notes — Erasing data is not an alternative to archiving a transaction.\n\nRelated topics — 7.7; 4.5."
+      "body": "Overview — Delete locally held information through the controlled app workflow.\n\nWhat's on this screen — Erase scope and destructive confirmation.\n\nHow to use it — Back up first, review the impact and confirm only if intentional.\n\nImportant notes — Erasing data is not an alternative to archiving a transaction.",
+      "relatedIds": [
+        "more.backup"
+      ]
     },
     {
       "id": "more.operational-features",

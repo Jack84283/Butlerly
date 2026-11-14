@@ -24,73 +24,117 @@
       "id": "home.overview",
       "title": "3.1 Qué hay en Inicio",
       "part": "Inicio",
-      "body": "Inicio resume ingresos, gastos, tendencias, categorías, asuntos pendientes y transacciones recientes. Abre una tarjeta para consultar los registros.\n\nConsulta también la sección de referencia ch-12."
+      "body": "Inicio resume ingresos, gastos, tendencias, categorías, asuntos pendientes y transacciones recientes. Abre una tarjeta para consultar los registros.\n\nConsulta también la sección de referencia ch-12.",
+      "relatedIds": [
+        "home.summary",
+        "home.trends",
+        "home.attention",
+        "home.recent",
+        "home.states",
+        "transactions.list"
+      ]
     },
     {
       "id": "home.summary",
       "title": "3.2 Resumen financiero y período",
       "part": "Inicio",
-      "body": "Selecciona el período para ver ingresos, gastos y totales. Comprueba los registros; sin tipos de cambio puede faltar el total entre monedas.\n\nConsulta también la sección de referencia ch-12."
+      "body": "Selecciona el período para ver ingresos, gastos y totales. Comprueba los registros; sin tipos de cambio puede faltar el total entre monedas.\n\nConsulta también la sección de referencia ch-12.",
+      "relatedIds": [
+        "home.trends",
+        "transactions.search"
+      ]
     },
     {
       "id": "home.trends",
       "title": "3.3 Tendencias y categorías",
       "part": "Inicio",
-      "body": "Revisa tendencias y categorías principales. Abre gráficos o categorías para verificar los registros; los filtros modifican el resultado.\n\nConsulta también la sección de referencia ch-12."
+      "body": "Revisa tendencias y categorías principales. Abre gráficos o categorías para verificar los registros; los filtros modifican el resultado.\n\nConsulta también la sección de referencia ch-12.",
+      "relatedIds": [
+        "tools.analysis",
+        "tools.insights"
+      ]
     },
     {
       "id": "home.attention",
       "title": "3.4 Asuntos pendientes",
       "part": "Inicio",
-      "body": "Revisa registros sin categoría, posibles duplicados y tareas pendientes. Comprueba las pruebas antes de decidir.\n\nConsulta también la sección de referencia ch-11."
+      "body": "Revisa registros sin categoría, posibles duplicados y tareas pendientes. Comprueba las pruebas antes de decidir.\n\nConsulta también la sección de referencia ch-11.",
+      "relatedIds": [
+        "tools.review"
+      ]
     },
     {
       "id": "home.recent",
       "title": "3.5 Transacciones recientes e información",
       "part": "Inicio",
-      "body": "Abre los detalles desde las transacciones recientes y consulta la evidencia detrás de una observación.\n\nConsulta también la sección de referencia ch-12."
+      "body": "Abre los detalles desde las transacciones recientes y consulta la evidencia detrás de una observación.\n\nConsulta también la sección de referencia ch-12.",
+      "relatedIds": [
+        "transactions.list"
+      ]
     },
     {
       "id": "home.states",
       "title": "3.6 Estados vacíos y varias monedas",
       "part": "Inicio",
-      "body": "Una instalación nueva puede carecer de datos. Añade registros y revisa período, filtros y tipos de cambio; un total ausente no equivale a cero.\n\nConsulta también la sección de referencia ch-12."
+      "body": "Una instalación nueva puede carecer de datos. Añade registros y revisa período, filtros y tipos de cambio; un total ausente no equivale a cero.\n\nConsulta también la sección de referencia ch-12.",
+      "relatedIds": [
+        "add.manual"
+      ]
     },
     {
       "id": "transactions.list",
       "title": "4.1 Lista y navegación",
       "part": "Transacciones",
-      "body": "Consulta la lista y abre un registro. En escritorio pueden aparecer lista y detalle juntos.\n\nConsulta también la sección de referencia ch-5."
+      "body": "Consulta la lista y abre un registro. En escritorio pueden aparecer lista y detalle juntos.\n\nConsulta también la sección de referencia ch-5.",
+      "relatedIds": [
+        "transactions.detail"
+      ]
     },
     {
       "id": "transactions.detail",
       "title": "4.2 Detalles y comprobantes",
       "part": "Transacciones",
-      "body": "Verifica importe, fecha, moneda, comercio, categoría, origen de pago y recibo. Un recibo vinculado no debe duplicar el gasto.\n\nConsulta también la sección de referencia ch-5."
+      "body": "Verifica importe, fecha, moneda, comercio, categoría, origen de pago y recibo. Un recibo vinculado no debe duplicar el gasto.\n\nConsulta también la sección de referencia ch-5.",
+      "relatedIds": [
+        "transactions.edit",
+        "tools.duplicates"
+      ]
     },
     {
       "id": "transactions.edit",
       "title": "4.3 Editar y guardar",
       "part": "Transacciones",
-      "body": "Edita los campos usando datos verificables y guarda localmente. Los cambios pueden afectar análisis, presupuestos y duplicados.\n\nConsulta también la sección de referencia ch-5."
+      "body": "Edita los campos usando datos verificables y guarda localmente. Los cambios pueden afectar análisis, presupuestos y duplicados.\n\nConsulta también la sección de referencia ch-5.",
+      "relatedIds": [
+        "transactions.detail"
+      ]
     },
     {
       "id": "transactions.search",
       "title": "4.4 Buscar y filtrar",
       "part": "Transacciones",
-      "body": "Filtra por texto, fecha, importe, comercio, categoría u origen de pago. Si no aparece un registro, limpia los filtros.\n\nConsulta también la sección de referencia ch-13."
+      "body": "Filtra por texto, fecha, importe, comercio, categoría u origen de pago. Si no aparece un registro, limpia los filtros.\n\nConsulta también la sección de referencia ch-13.",
+      "relatedIds": [
+        "transactions.list"
+      ]
     },
     {
       "id": "transactions.archive",
       "title": "4.5 Archivar y restaurar",
       "part": "Transacciones",
-      "body": "Archivar retira el registro de vistas habituales sin eliminarlo; puedes restaurarlo desde la vista de archivados.\n\nConsulta también la sección de referencia ch-6."
+      "body": "Archivar retira el registro de vistas habituales sin eliminarlo; puedes restaurarlo desde la vista de archivados.\n\nConsulta también la sección de referencia ch-6.",
+      "relatedIds": [
+        "transactions.delete"
+      ]
     },
     {
       "id": "transactions.delete",
       "title": "4.6 Eliminar un registro",
       "part": "Transacciones",
-      "body": "Haz una copia de seguridad y revisa el impacto antes de eliminar. Eliminar no es lo mismo que archivar.\n\nConsulta también la sección de referencia ch-6."
+      "body": "Haz una copia de seguridad y revisa el impacto antes de eliminar. Eliminar no es lo mismo que archivar.\n\nConsulta también la sección de referencia ch-6.",
+      "relatedIds": [
+        "transactions.archive"
+      ]
     },
     {
       "id": "add.overview",
@@ -102,31 +146,46 @@
       "id": "add.manual",
       "title": "5.2 Añadir una transacción manualmente",
       "part": "Añadir",
-      "body": "Introduce importe, tipo, moneda original, fecha y descripción; añade clasificación y origen de pago y guarda localmente.\n\nConsulta también la sección de referencia ch-5."
+      "body": "Introduce importe, tipo, moneda original, fecha y descripción; añade clasificación y origen de pago y guarda localmente.\n\nConsulta también la sección de referencia ch-5.",
+      "relatedIds": [
+        "transactions.detail"
+      ]
     },
     {
       "id": "add.payment-source",
       "title": "5.3 Añadir o editar un origen de pago",
       "part": "Añadir",
-      "body": "Registra tarjetas, cuentas o efectivo localmente. Nunca introduzcas contraseñas, PIN ni credenciales bancarias completas.\n\nConsulta también la sección de referencia ch-7."
+      "body": "Registra tarjetas, cuentas o efectivo localmente. Nunca introduzcas contraseñas, PIN ni credenciales bancarias completas.\n\nConsulta también la sección de referencia ch-7.",
+      "relatedIds": [
+        "add.manual"
+      ]
     },
     {
       "id": "add.receipt",
       "title": "5.4 Capturar un recibo",
       "part": "Añadir",
-      "body": "Captura un recibo legible y revisa la extracción; vincúlalo a una transacción existente cuando corresponda para evitar duplicados.\n\nConsulta también la sección de referencia ch-9."
+      "body": "Captura un recibo legible y revisa la extracción; vincúlalo a una transacción existente cuando corresponda para evitar duplicados.\n\nConsulta también la sección de referencia ch-9.",
+      "relatedIds": [
+        "transactions.detail"
+      ]
     },
     {
       "id": "add.statement",
       "title": "5.5 Incorporar un extracto",
       "part": "Añadir",
-      "body": "Descarga el extracto de su servicio original, selecciona el archivo y revisa las filas antes de confirmar.\n\nConsulta también la sección de referencia ch-10."
+      "body": "Descarga el extracto de su servicio original, selecciona el archivo y revisa las filas antes de confirmar.\n\nConsulta también la sección de referencia ch-10.",
+      "relatedIds": [
+        "add.import"
+      ]
     },
     {
       "id": "add.import",
       "title": "5.6 Importar un archivo local",
       "part": "Añadir",
-      "body": "Selecciona un formato compatible, revisa asignaciones, vista previa y posibles duplicados antes de confirmar.\n\nConsulta también la sección de referencia ch-10."
+      "body": "Selecciona un formato compatible, revisa asignaciones, vista previa y posibles duplicados antes de confirmar.\n\nConsulta también la sección de referencia ch-10.",
+      "relatedIds": [
+        "tools.duplicates"
+      ]
     },
     {
       "id": "tools.overview",
@@ -138,67 +197,100 @@
       "id": "tools.review",
       "title": "6.2 Revisar datos incompletos",
       "part": "Herramientas",
-      "body": "Abre los elementos pendientes, consulta la evidencia original y corrige los datos o categorías inciertos.\n\nConsulta también la sección de referencia ch-11."
+      "body": "Abre los elementos pendientes, consulta la evidencia original y corrige los datos o categorías inciertos.\n\nConsulta también la sección de referencia ch-11.",
+      "relatedIds": [
+        "transactions.detail"
+      ]
     },
     {
       "id": "tools.duplicates",
       "title": "6.3 Duplicados y conciliación",
       "part": "Herramientas",
-      "body": "Compara importe, fecha, moneda y origen de pago antes de vincular o conservar ambos registros.\n\nConsulta también la sección de referencia ch-11."
+      "body": "Compara importe, fecha, moneda y origen de pago antes de vincular o conservar ambos registros.\n\nConsulta también la sección de referencia ch-11.",
+      "relatedIds": [
+        "tools.review"
+      ]
     },
     {
       "id": "tools.analysis",
       "title": "6.4 Análisis",
       "part": "Herramientas",
-      "body": "Selecciona un período, revisa los resúmenes financieros y abre los registros subyacentes.\n\nConsulta también la sección de referencia ch-14."
+      "body": "Selecciona un período, revisa los resúmenes financieros y abre los registros subyacentes.\n\nConsulta también la sección de referencia ch-14.",
+      "relatedIds": [
+        "home.summary"
+      ]
     },
     {
       "id": "tools.insights",
       "title": "6.5 Información y tendencias",
       "part": "Herramientas",
-      "body": "Lee observaciones derivadas de tus registros y comprueba la evidencia antes de actuar.\n\nConsulta también la sección de referencia ch-14."
+      "body": "Lee observaciones derivadas de tus registros y comprueba la evidencia antes de actuar.\n\nConsulta también la sección de referencia ch-14.",
+      "relatedIds": [
+        "tools.analysis"
+      ]
     },
     {
       "id": "tools.reports",
       "title": "6.6 Informes",
       "part": "Herramientas",
-      "body": "Si tu versión incluye informes, elige alcance y período y comprueba las fuentes; algunas funciones podrían no estar disponibles.\n\nConsulta también la sección de referencia ch-14."
+      "body": "Si tu versión incluye informes, elige alcance y período y comprueba las fuentes; algunas funciones podrían no estar disponibles.\n\nConsulta también la sección de referencia ch-14.",
+      "relatedIds": [
+        "tools.analysis"
+      ]
     },
     {
       "id": "tools.calendar",
       "title": "6.7 Calendario y actividad recurrente",
       "part": "Herramientas",
-      "body": "Consulta fechas y patrones recurrentes. Detectar una recurrencia no autoriza pagos automáticos.\n\nConsulta también la sección de referencia ch-14."
+      "body": "Consulta fechas y patrones recurrentes. Detectar una recurrencia no autoriza pagos automáticos.\n\nConsulta también la sección de referencia ch-14.",
+      "relatedIds": [
+        "transactions.detail"
+      ]
     },
     {
       "id": "tools.budgets",
       "title": "6.8 Presupuestos",
       "part": "Herramientas",
-      "body": "Crea presupuestos por categoría y período y compáralos con gastos reales. Editar un presupuesto no modifica transacciones.\n\nConsulta también la sección de referencia ch-15."
+      "body": "Crea presupuestos por categoría y período y compáralos con gastos reales. Editar un presupuesto no modifica transacciones.\n\nConsulta también la sección de referencia ch-15.",
+      "relatedIds": [
+        "tools.analysis"
+      ]
     },
     {
       "id": "tools.master-data",
       "title": "6.9 Datos maestros",
       "part": "Herramientas",
-      "body": "Administra comercios, categorías, subcategorías y etiquetas. Revisa las transacciones afectadas tras los cambios.\n\nConsulta también la sección de referencia ch-8."
+      "body": "Administra comercios, categorías, subcategorías y etiquetas. Revisa las transacciones afectadas tras los cambios.\n\nConsulta también la sección de referencia ch-8.",
+      "relatedIds": [
+        "transactions.edit"
+      ]
     },
     {
       "id": "tools.rules",
       "title": "6.10 Administración de reglas",
       "part": "Herramientas",
-      "body": "Revisa las reglas de clasificación. Aunque una reparación indique éxito, verifica los resultados reales.\n\nConsulta también la sección de referencia ch-16."
+      "body": "Revisa las reglas de clasificación. Aunque una reparación indique éxito, verifica los resultados reales.\n\nConsulta también la sección de referencia ch-16.",
+      "relatedIds": [
+        "tools.review"
+      ]
     },
     {
       "id": "tools.settlements",
       "title": "6.11 Liquidaciones de pago",
       "part": "Herramientas",
-      "body": "Consulta, crea y edita liquidaciones. Móvil puede usar un panel inferior y escritorio un panel de detalle; no implica conexión bancaria.\n\nConsulta también la sección de referencia ch-16."
+      "body": "Consulta, crea y edita liquidaciones. Móvil puede usar un panel inferior y escritorio un panel de detalle; no implica conexión bancaria.\n\nConsulta también la sección de referencia ch-16.",
+      "relatedIds": [
+        "add.payment-source"
+      ]
     },
     {
       "id": "tools.assistant",
       "title": "6.12 Asistente e IA opcional",
       "part": "Herramientas",
-      "body": "El asistente ofrece ayuda opcional; verifica siempre los resultados. La disponibilidad depende de la versión y configuración.\n\nConsulta también la sección de referencia ch-25."
+      "body": "El asistente ofrece ayuda opcional; verifica siempre los resultados. La disponibilidad depende de la versión y configuración.\n\nConsulta también la sección de referencia ch-25.",
+      "relatedIds": [
+        "tools.analysis"
+      ]
     },
     {
       "id": "more.overview",
@@ -210,7 +302,10 @@
       "id": "more.preferences",
       "title": "7.2 Idioma, moneda y zona horaria",
       "part": "Más",
-      "body": "Cambiar idioma, moneda base o zona horaria no reescribe la moneda original de las transacciones.\n\nConsulta también la sección de referencia ch-17."
+      "body": "Cambiar idioma, moneda base o zona horaria no reescribe la moneda original de las transacciones.\n\nConsulta también la sección de referencia ch-17.",
+      "relatedIds": [
+        "home.summary"
+      ]
     },
     {
       "id": "more.appearance",
@@ -228,7 +323,10 @@
       "id": "more.financial-settings",
       "title": "7.5 Configuración financiera",
       "part": "Más",
-      "body": "Tras cambiar preferencias financieras, verifica los resúmenes. Gestiona transacciones y comercios en sus pantallas correspondientes.\n\nConsulta también la sección de referencia ch-17."
+      "body": "Tras cambiar preferencias financieras, verifica los resúmenes. Gestiona transacciones y comercios en sus pantallas correspondientes.\n\nConsulta también la sección de referencia ch-17.",
+      "relatedIds": [
+        "add.payment-source"
+      ]
     },
     {
       "id": "more.privacy",
@@ -240,25 +338,37 @@
       "id": "more.backup",
       "title": "7.7 Copia de seguridad cifrada",
       "part": "Más",
-      "body": "Crea una copia cifrada restaurable y protege contraseña y archivo. Una exportación común no sirve para restaurar.\n\nConsulta también la sección de referencia ch-18."
+      "body": "Crea una copia cifrada restaurable y protege contraseña y archivo. Una exportación común no sirve para restaurar.\n\nConsulta también la sección de referencia ch-18.",
+      "relatedIds": [
+        "more.restore"
+      ]
     },
     {
       "id": "more.restore",
       "title": "7.8 Restaurar: Combinar o Reemplazar",
       "part": "Más",
-      "body": "Revisa el archivo y la vista previa. Combinar conserva datos elegibles; Reemplazar sustituye los datos actuales y requiere cuidado.\n\nConsulta también la sección de referencia ch-19."
+      "body": "Revisa el archivo y la vista previa. Combinar conserva datos elegibles; Reemplazar sustituye los datos actuales y requiere cuidado.\n\nConsulta también la sección de referencia ch-19.",
+      "relatedIds": [
+        "more.backup"
+      ]
     },
     {
       "id": "more.export",
       "title": "7.9 Exportar a archivo (sin cifrar)",
       "part": "Más",
-      "body": "Advertencia: el archivo exportado es texto sin cifrado ni protección. Cualquiera con acceso puede leerlo. Es solo para revisión y no se puede volver a importar. Guárdalo con seguridad, evita exportarlo si no es necesario y elimínalo después. Para restaurar usa una copia cifrada.\n\nConsulta también la sección de referencia ch-20."
+      "body": "Advertencia: el archivo exportado es texto sin cifrado ni protección. Cualquiera con acceso puede leerlo. Es solo para revisión y no se puede volver a importar. Guárdalo con seguridad, evita exportarlo si no es necesario y elimínalo después. Para restaurar usa una copia cifrada.\n\nConsulta también la sección de referencia ch-20.",
+      "relatedIds": [
+        "more.backup"
+      ]
     },
     {
       "id": "more.erase",
       "title": "7.10 Borrar todos los datos",
       "part": "Más",
-      "body": "Crea una copia de seguridad cifrada y revisa la confirmación antes de borrar. Borrar no equivale a archivar.\n\nConsulta también la sección de referencia ch-20."
+      "body": "Crea una copia de seguridad cifrada y revisa la confirmación antes de borrar. Borrar no equivale a archivar.\n\nConsulta también la sección de referencia ch-20.",
+      "relatedIds": [
+        "more.backup"
+      ]
     },
     {
       "id": "more.operational-features",
