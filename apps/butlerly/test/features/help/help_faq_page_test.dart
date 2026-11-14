@@ -12,7 +12,7 @@ void main() {
     catalog = await HelpCatalog.load();
   });
 
-  Widget app(Locale locale) => MaterialApp(
+  Widget app(Locale locale, {String? articleId}) => MaterialApp(
     locale: locale,
     supportedLocales: AppLocalizations.supportedLocales,
     localizationsDelegates: const [
@@ -21,7 +21,7 @@ void main() {
       GlobalWidgetsLocalizations.delegate,
       GlobalCupertinoLocalizations.delegate,
     ],
-    home: HelpFaqPage(preloadedCatalog: catalog),
+    home: HelpFaqPage(preloadedCatalog: catalog, articleId: articleId),
   );
 
   Future<void> enterHelpQuery(WidgetTester tester, String query) async {
@@ -399,6 +399,69 @@ void main() {
       'merge replace',
     );
     expect(find.byKey(const ValueKey('help-related-back')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('desktop FAQ history returns to actual selected result after deep link', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      app(const Locale('en'), articleId: 'home.overview'),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('help-desktop-article-home.overview')),
+      findsOneWidget,
+    );
+
+    await enterHelpQuery(tester, 'backup');
+    final faqHits = catalog
+        .search('backup')
+        .where((hit) => hit.faq != null)
+        .toList();
+    expect(faqHits.length, greaterThan(1));
+    final selectedFaq = faqHits[1].faq!;
+    final selectedFinder = find.byKey(ValueKey('help-desktop-item-${selectedFaq.id}'));
+    await tester.scrollUntilVisible(
+      selectedFinder,
+      200,
+      scrollable: find
+          .descendant(
+            of: find.byKey(const ValueKey('help-desktop-item-list')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await tester.tap(selectedFinder);
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(ValueKey('help-desktop-faq-${selectedFaq.id}')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const ValueKey('help-desktop-read-guide')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(ValueKey('help-desktop-article-${selectedFaq.guideId}')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const ValueKey('help-related-back')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(ValueKey('help-desktop-faq-${selectedFaq.id}')),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const ValueKey('help-search')))
+          .controller!
+          .text,
+      'backup',
+    );
     expect(tester.takeException(), isNull);
   });
 

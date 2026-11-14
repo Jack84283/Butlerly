@@ -73,7 +73,7 @@ class _HelpDesktopWorkspaceState extends State<HelpDesktopWorkspace> {
       showGuide: _showGuide,
       category: _category,
       query: _query,
-      selectedId: _selectedId ?? sourceId,
+      selectedId: sourceId,
     );
     _searchController.clear();
     setState(() {
