@@ -168,6 +168,14 @@ void main() {
         database.persistenceDatabase.path,
         options: OpenDatabaseOptions(singleInstance: false),
       );
+      // Exercise native SQLite's default zero timeout. A failed checkpoint
+      // must restore this exact per-connection setting before returning.
+      await database.database.rawQuery('PRAGMA busy_timeout = 0');
+      expect(
+        (await database.database.rawQuery('PRAGMA busy_timeout'))
+            .single['timeout'],
+        0,
+      );
       // A deferred read transaction retains a WAL snapshot without
       // obtaining an exclusive writer lock, so live writes can still commit.
       // sqflite's transaction() may start a write transaction instead.
@@ -187,6 +195,11 @@ void main() {
           throwsA(isA<StateError>()),
         );
         expect(await getProbe(), 'keep-live');
+        expect(
+          (await database.database.rawQuery('PRAGMA busy_timeout'))
+              .single['timeout'],
+          0,
+        );
         expect(
           await File(
             path.join(databaseDirectory.path, '.raw-restore-journal.json'),
