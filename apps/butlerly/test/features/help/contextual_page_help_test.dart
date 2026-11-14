@@ -59,7 +59,7 @@ void main() {
     for (final path in ['/help', '/launch']) {
       expect(contextualHelpArticleForPath(path), isNull);
     }
-    expect(contextualHelpArticleForPath('/future-page'), 'guide-navigation');
+    expect(contextualHelpArticleForPath('/future-page'), 'guide.getting-started');
   });
 
   for (final size in [const Size(390, 844), const Size(1440, 900)]) {
