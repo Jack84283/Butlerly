@@ -267,6 +267,43 @@ void main() {
     expect(rendered, contains('--- PAGE 3 ---'));
   });
 
+  test('labels the first visible page when earlier PDF pages are empty', () {
+    const observations = [
+      OcrObservation(
+        text: 'SECOND PAGE ONLY',
+        confidence: .9,
+        pageIndex: 1,
+        bounds: OcrBounds(left: .1, top: .2, width: .4, height: .04),
+      ),
+    ];
+    final rendered = OcrSpatialText.render(
+      rawText: 'SECOND PAGE ONLY',
+      observations: observations,
+    );
+
+    expect(rendered, startsWith('--- PAGE 2 ---\n'));
+    expect(rendered, contains('SECOND PAGE ONLY'));
+    expect(rendered, isNot(contains('--- PAGE 1 ---')));
+  });
+
+  test('keeps the first page header-free for a regular receipt', () {
+    const observations = [
+      OcrObservation(
+        text: 'FIRST PAGE',
+        confidence: .9,
+        pageIndex: 0,
+        bounds: OcrBounds(left: .1, top: .2, width: .4, height: .04),
+      ),
+    ];
+    final rendered = OcrSpatialText.render(
+      rawText: 'FIRST PAGE',
+      observations: observations,
+    );
+
+    expect(rendered, startsWith('      FIRST PAGE'));
+    expect(rendered, isNot(contains('--- PAGE 1 ---')));
+  });
+
   test('CJK and mixed Latin text use display cells for spacing', () {
     const observations = [
       OcrObservation(
