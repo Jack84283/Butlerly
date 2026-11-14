@@ -31,7 +31,8 @@
         "home.attention",
         "home.recent",
         "home.states",
-        "transactions.list"
+        "transactions.list",
+        "tools.analysis"
       ]
     },
     {

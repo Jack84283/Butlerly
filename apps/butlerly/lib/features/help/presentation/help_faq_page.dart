@@ -508,11 +508,15 @@ class HelpGuideArticlePage extends StatelessWidget {
           helpGuideSection(context, section),
           const SizedBox(height: ButlerlySpacing.standard),
         ],
-        if (catalog ?? HelpCatalog.cachedBundle case final HelpCatalog available)
+        if ((catalog ?? HelpCatalog.cachedBundle) != null)
           HelpRelatedTopics(
-            catalog: available,
+            catalog: (catalog ?? HelpCatalog.cachedBundle)!,
             article: article,
-            onOpen: (target) => _openArticle(context, target, available),
+            onOpen: (target) => _openArticle(
+              context,
+              target,
+              (catalog ?? HelpCatalog.cachedBundle)!,
+            ),
           ),
       ],
     );

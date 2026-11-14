@@ -265,7 +265,10 @@ void main() {
     await tester.scrollUntilVisible(
       first,
       220,
-      scrollable: find.byKey(const ValueKey('help-desktop-item-list')),
+      scrollable: find.descendant(
+        of: find.byKey(const ValueKey('help-desktop-item-list')),
+        matching: find.byType(Scrollable),
+      ),
     );
     await tester.tap(first);
     await tester.pumpAndSettle();
