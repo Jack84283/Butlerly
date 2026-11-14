@@ -74,6 +74,9 @@ void main() {
     expect(chineseText, contains(quotedBrand));
     expect(chineseText, isNot(contains('Butlerly')));
     expect(chineseText.replaceAll(quotedBrand, ''), isNot(contains('账房先生')));
-    expect(catalog.articleById('guide.introduction')!.body, contains('Butlerly'));
+    expect(
+      catalog.articleById('guide.introduction')!.body,
+      contains('Butlerly'),
+    );
   });
 }
