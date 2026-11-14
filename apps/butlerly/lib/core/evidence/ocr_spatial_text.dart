@@ -165,10 +165,9 @@ abstract final class OcrSpatialText {
       }
       // Keep missing-geometry lines on their original page, not after all
       // positioned pages. Their local reading order remains unchanged.
-      final unpositioned = pages[page]!
-          .where((item) => !_hasBounds(item))
-          .toList()
-        ..sort((a, b) => a.order.compareTo(b.order));
+      final unpositioned =
+          pages[page]!.where((item) => !_hasBounds(item)).toList()
+            ..sort((a, b) => a.order.compareTo(b.order));
       if (unpositioned.isNotEmpty) {
         if (sorted.isNotEmpty) output.add('');
         output.add('--- TEXT WITHOUT POSITION ---');
