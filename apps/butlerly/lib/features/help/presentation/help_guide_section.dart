@@ -1,6 +1,6 @@
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
-import 'package:flutter/material.dart';
 import 'package:butlerly/features/help/data/help_catalog.dart';
+import 'package:flutter/material.dart';
 
 /// Renders a bundled guide paragraph consistently in the full Help reader and
 /// in a standalone setup/recovery overlay, without changing article contents.
