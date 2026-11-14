@@ -11,6 +11,7 @@ import 'package:butlerly/features/foundation/presentation/transaction_master_dat
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
+import 'package:file_selector/file_selector.dart' as files;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -234,6 +235,65 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tester.pump();
   });
+
+  testWidgets(
+    'iPhone Files receipt picker accepts image UTIs and handles cancel or select',
+    (tester) async {
+      final finance = _finance(_ReceiptTransactionRepository());
+      final path = _fixturePath();
+      files.XTypeGroup? requestedTypes;
+      String? preservedPath;
+      var pickerCalls = 0;
+
+      _resetView(tester);
+      await tester.pumpWidget(
+        _localizedApp(
+          ReceiptCapturePage(
+            finance: finance,
+            evidenceStore: _evidenceStore(finance),
+            openFile: (group) async {
+              requestedTypes = group;
+              pickerCalls++;
+              // Cancelling Files must not display a capture error.
+              if (pickerCalls == 1) return null;
+              return files.XFile(path, name: 'receipt.png');
+            },
+            preserveEvidence: (source) async {
+              preservedPath = source.path;
+              return _preservedReceipt;
+            },
+            discardPreserved: (_) async {},
+            loadInitialData: _emptyInitialData,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Choose image from Files'));
+      await tester.pumpAndSettle();
+      expect(pickerCalls, 1);
+      expect(requestedTypes?.uniformTypeIdentifiers, contains('public.image'));
+      expect(
+        requestedTypes?.extensions,
+        containsAll(['jpg', 'jpeg', 'png', 'heic', 'webp']),
+      );
+      expect(
+        find.text('Receipt capture could not be opened. Please retry.'),
+        findsNothing,
+      );
+
+      await tester.tap(find.text('Choose image from Files'));
+      await tester.pumpAndSettle();
+      expect(pickerCalls, 2);
+      expect(preservedPath, path);
+      expect(find.text('Use receipt'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.text('Retake / replace'));
+      await tester.pumpAndSettle();
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+  );
 
   testWidgets(
     'preserves a receipt before confirmation and cleans up explicit replacement',
