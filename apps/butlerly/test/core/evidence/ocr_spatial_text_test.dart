@@ -218,6 +218,7 @@ void main() {
     expect(text.indexOf('FIRST PAGE'), lessThan(text.indexOf('SECOND PAGE')));
     expect(text, contains('--- PAGE 2 ---'));
   });
+
   test('partial geometry retains page order and page-local fallback', () {
     const observations = [
       OcrObservation(
@@ -285,5 +286,4 @@ void main() {
     );
     expect(rendered, '      商户A   9988');
   });
-
 }
