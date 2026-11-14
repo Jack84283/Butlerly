@@ -13,7 +13,7 @@ import 'package:go_router/go_router.dart';
 /// Chapters live in the bundled offline, trilingual Help catalog.
 String? contextualHelpArticleForPath(String path) => switch (path) {
   '/launch' || '/help' => null,
-  '/welcome' => 'ch-2',
+  '/welcome' => 'guide.getting-started',
   '/' => 'home.overview',
   '/transactions' => 'transactions.list',
   '/transactions/add' => 'add.manual',
@@ -38,7 +38,7 @@ String? contextualHelpArticleForPath(String path) => switch (path) {
   '/notifications' => 'more.operational-features',
   '/assistant' => 'tools.assistant',
   // Always fall back to the screen-based navigation guide for new routes.
-  _ => 'guide-navigation',
+  _ => 'guide.getting-started',
 };
 
 /// Identifies pages hosted by the wide desktop shell.

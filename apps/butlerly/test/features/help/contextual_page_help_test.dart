@@ -19,7 +19,7 @@ void main() {
   });
 
   const paths = <String, String>{
-    '/welcome': 'ch-2',
+    '/welcome': 'guide.getting-started',
     '/': 'home.overview',
     '/transactions': 'transactions.list',
     '/transactions/add': 'add.manual',
@@ -245,14 +245,14 @@ void main() {
             GlobalCupertinoLocalizations.delegate,
           ],
           home: Scaffold(
-            body: HelpFaqPage(preloadedCatalog: catalog, articleId: 'ch-15'),
+            body: HelpFaqPage(preloadedCatalog: catalog, articleId: 'tools.budgets'),
           ),
         ),
       );
       await tester.pumpAndSettle();
       expect(find.byType(HelpGuideArticlePage), findsOneWidget);
       expect(
-        find.text(catalog.articleById('ch-15', languageCode: language)!.title),
+        find.text(catalog.articleById('tools.budgets', languageCode: language)!.title),
         findsWidgets,
       );
       expect(tester.takeException(), isNull);
@@ -270,7 +270,7 @@ void main() {
               builder: (context) => Scaffold(
                 appBar: AppBar(
                   actions: const [
-                    ButlerlyContextHelpButton(articleId: 'ch-19'),
+                    ButlerlyContextHelpButton(articleId: 'more.restore'),
                   ],
                 ),
                 body: const Text('Safe recovery screen'),
@@ -288,7 +288,7 @@ void main() {
       find.byKey(const ValueKey('context-help-offline-reader')),
       findsOneWidget,
     );
-    expect(find.text(catalog.articleById('ch-19')!.title), findsWidgets);
+    expect(find.text(catalog.articleById('more.restore')!.title), findsWidgets);
     await tester.tap(find.byKey(const ValueKey('context-help-close')));
     await tester.pumpAndSettle();
     expect(find.text('Safe recovery screen'), findsOneWidget);
@@ -302,9 +302,9 @@ void main() {
   // Mirrors MaterialApp.router.builder in ButlerlyApp: the recovery workflow
   // replaces the GoRouter child and is hosted in a local Navigator.
   for (final recovery in const <String, String>{
-    'restore': 'ch-19',
-    'portable backup': 'ch-18',
-    'evidence deletion': 'ch-21',
+    'restore': 'more.restore',
+    'portable backup': 'more.backup',
+    'evidence deletion': 'guide.getting-started1',
   }.entries) {
     testWidgets('${recovery.key} recovery Help returns to the blocked flow', (
       tester,
@@ -378,8 +378,8 @@ void main() {
   // The app root now uses ButlerlyRouterlessRecoveryHost for first-use,
   // rather than injecting its setup screen into a raw OverlayEntry.
   for (final stage in const <String, String>{
-    'preferences': 'ch-2',
-    'financial profile introduction': 'ch-4',
+    'preferences': 'guide.getting-started',
+    'financial profile introduction': 'more.financial-profile',
   }.entries) {
     testWidgets('${stage.key} Help dismisses via system Back and Escape', (
       tester,
@@ -475,7 +475,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('page-context-help')));
     await tester.pumpAndSettle();
     expect(find.byType(HelpGuideArticlePage), findsOneWidget);
-    expect(find.text(catalog.articleById('ch-3')!.title), findsWidgets);
+    expect(find.text(catalog.articleById('guide.getting-started')!.title), findsWidgets);
 
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
@@ -617,7 +617,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    appRouter.go('/help?article=ch-14');
+    appRouter.go('/help?article=tools.analysis');
     addTearDown(() => appRouter.go('/'));
 
     await tester.pumpWidget(

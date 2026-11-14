@@ -49,7 +49,7 @@ void main() {
     expect(find.text('Read detailed guide'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('help-read-guide')));
     await tester.pumpAndSettle();
-    expect(find.textContaining('19. RESTORE'), findsWidgets);
+    expect(find.textContaining('Restore'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 
@@ -197,7 +197,7 @@ void main() {
         await tester.ensureVisible(guide);
         await tester.tap(guide);
         await tester.pumpAndSettle();
-        final chapter = find.byKey(const ValueKey('help-article-ch-19'));
+        final chapter = find.byKey(const ValueKey('help-article-more.restore'));
         await tester.scrollUntilVisible(chapter, 300);
         // The ValueKey is attached directly to the ListTile, not a child.
         // An ancestor lookup therefore incorrectly returns zero matches.
@@ -205,7 +205,7 @@ void main() {
         final title = tester.widget<ListTile>(chapter).title! as Text;
         expect(
           title.data,
-          locale.languageCode == 'zh' ? contains('恢复') : contains('RESTAURAR'),
+          locale.languageCode == 'zh' ? contains('恢复') : contains('Restaurar'),
         );
         // Open the localized article, not just its table-of-contents entry.
         await tester.tap(chapter);
@@ -214,7 +214,7 @@ void main() {
         expect(
           find.text(
             catalog
-                .articleById('ch-19', languageCode: locale.languageCode)!
+                .articleById('more.restore', languageCode: locale.languageCode)!
                 .title,
           ),
           findsWidgets,
@@ -295,14 +295,14 @@ void main() {
     );
     expect(find.byKey(const ValueKey('help-desktop-menu')), findsOneWidget);
     expect(
-      find.byKey(const ValueKey('help-desktop-item-ch-1')),
+      find.byKey(const ValueKey('help-desktop-item-guide.introduction')),
       findsOneWidget,
     );
-    // The first displayed chapter need not be ch-1; choose it explicitly.
-    await tester.tap(find.byKey(const ValueKey('help-desktop-item-ch-1')));
+    // The first displayed chapter need not be guide.introduction; choose it explicitly.
+    await tester.tap(find.byKey(const ValueKey('help-desktop-item-guide.introduction')));
     await tester.pumpAndSettle();
     expect(
-      find.byKey(const ValueKey('help-desktop-article-ch-1')),
+      find.byKey(const ValueKey('help-desktop-article-guide.introduction')),
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);

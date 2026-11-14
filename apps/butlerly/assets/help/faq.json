@@ -1,5 +1,5 @@
 {
-  "version": "2026-11-06",
+  "version": "2026-11-14",
   "faqs": [
     {
       "id": "FAQ-001",
@@ -10,7 +10,7 @@
         "login",
         "offline"
       ],
-      "guideId": "ch-1",
+      "guideId": "guide.introduction",
       "translations": {
         "en": {
           "question": "Do I need an account?",
@@ -35,7 +35,7 @@
         "airplane",
         "offline"
       ],
-      "guideId": "ch-1",
+      "guideId": "guide.introduction",
       "translations": {
         "en": {
           "question": "Does Butlerly work without internet?",
@@ -60,7 +60,7 @@
         "chinese",
         "english"
       ],
-      "guideId": "ch-17",
+      "guideId": "more.preferences",
       "translations": {
         "en": {
           "question": "How can I change the language?",
@@ -85,7 +85,7 @@
         "timezone",
         "financial day"
       ],
-      "guideId": "ch-2",
+      "guideId": "more.preferences",
       "translations": {
         "en": {
           "question": "Where do I set currency and time zone?",
@@ -110,7 +110,7 @@
         "expense",
         "income"
       ],
-      "guideId": "ch-5",
+      "guideId": "add.manual",
       "translations": {
         "en": {
           "question": "How do I add a transaction?",
@@ -135,7 +135,7 @@
         "wrong amount",
         "merchant"
       ],
-      "guideId": "ch-5",
+      "guideId": "transactions.edit",
       "translations": {
         "en": {
           "question": "How do I fix a wrong amount or category?",
@@ -160,7 +160,7 @@
         "history",
         "delete"
       ],
-      "guideId": "ch-6",
+      "guideId": "transactions.archive",
       "translations": {
         "en": {
           "question": "Is archiving the same as deleting?",
@@ -184,7 +184,7 @@
         "card",
         "bank account"
       ],
-      "guideId": "ch-7",
+      "guideId": "add.payment-source",
       "translations": {
         "en": {
           "question": "Do payment sources connect to my bank?",
@@ -225,7 +225,7 @@
         "sincronización",
         "documentos"
       ],
-      "guideId": "ch-10",
+      "guideId": "add.import",
       "translations": {
         "en": {
           "question": "Can Butlerly sync documents from Google Drive or iCloud?",
@@ -249,7 +249,7 @@
         "online statement",
         "download"
       ],
-      "guideId": "ch-10",
+      "guideId": "add.import",
       "translations": {
         "en": {
           "question": "Can Butlerly download my bank statements automatically?",
@@ -276,7 +276,7 @@
         "importar archivos",
         "importo archivos"
       ],
-      "guideId": "ch-10",
+      "guideId": "add.statement",
       "translations": {
         "en": {
           "question": "What CSV file format is supported?",
@@ -300,7 +300,7 @@
         "invalid row",
         "error"
       ],
-      "guideId": "ch-10",
+      "guideId": "add.import",
       "translations": {
         "en": {
           "question": "Why did my CSV import fail?",
@@ -326,7 +326,7 @@
         "format",
         "unsupported"
       ],
-      "guideId": "ch-10",
+      "guideId": "add.import",
       "translations": {
         "en": {
           "question": "Can I import an online Google Doc or any bank spreadsheet?",
@@ -352,7 +352,7 @@
         "scan",
         "attach"
       ],
-      "guideId": "ch-9",
+      "guideId": "add.receipt",
       "translations": {
         "en": {
           "question": "Does adding a receipt create an expense automatically?",
@@ -375,7 +375,7 @@
         "duplicate",
         "keep both"
       ],
-      "guideId": "ch-11",
+      "guideId": "tools.review",
       "translations": {
         "en": {
           "question": "What does Keep Both mean?",
@@ -399,7 +399,7 @@
         "consolidate",
         "use one"
       ],
-      "guideId": "ch-11",
+      "guideId": "tools.duplicates",
       "translations": {
         "en": {
           "question": "What does Consolidate / Use One mean?",
@@ -423,7 +423,7 @@
         "uncategorized",
         "stale"
       ],
-      "guideId": "ch-11",
+      "guideId": "tools.duplicates",
       "translations": {
         "en": {
           "question": "Why is a record marked Needs Review?",
@@ -448,7 +448,7 @@
         "unavailable",
         "zero"
       ],
-      "guideId": "ch-14",
+      "guideId": "tools.analysis",
       "translations": {
         "en": {
           "question": "Why is a total unavailable instead of zero?",
@@ -472,7 +472,7 @@
         "transactions",
         "chart"
       ],
-      "guideId": "ch-13",
+      "guideId": "transactions.search",
       "translations": {
         "en": {
           "question": "How do I see the transactions behind a chart?",
@@ -497,7 +497,7 @@
         "monthly",
         "suggest"
       ],
-      "guideId": "ch-15",
+      "guideId": "tools.budgets",
       "translations": {
         "en": {
           "question": "How do I make a monthly budget?",
@@ -521,7 +521,7 @@
         "password",
         "encrypted"
       ],
-      "guideId": "ch-18",
+      "guideId": "more.backup",
       "translations": {
         "en": {
           "question": "How do I create an encrypted backup?",
@@ -555,7 +555,7 @@
         "合并",
         "替换"
       ],
-      "guideId": "ch-19",
+      "guideId": "more.restore",
       "translations": {
         "en": {
           "question": "What is the difference between Merge and Replace?",
@@ -589,7 +589,7 @@
         "contraseña",
         "recuperar contraseña"
       ],
-      "guideId": "ch-18",
+      "guideId": "more.backup",
       "translations": {
         "en": {
           "question": "Can Butlerly recover a lost backup password?",
@@ -613,7 +613,7 @@
         "move devices",
         "transfer"
       ],
-      "guideId": "ch-19",
+      "guideId": "more.restore",
       "translations": {
         "en": {
           "question": "How do I move Butlerly data to another device?",
@@ -638,7 +638,7 @@
         "erase",
         "delete"
       ],
-      "guideId": "ch-20",
+      "guideId": "more.privacy",
       "translations": {
         "en": {
           "question": "How do I export or erase my data?",
@@ -662,7 +662,7 @@
         "cloud",
         "privacy"
       ],
-      "guideId": "ch-1",
+      "guideId": "guide.introduction",
       "translations": {
         "en": {
           "question": "Where is my financial data stored?",
@@ -687,7 +687,7 @@
         "purchase",
         "subscription"
       ],
-      "guideId": "ch-1",
+      "guideId": "guide.introduction",
       "translations": {
         "en": {
           "question": "Is Pro or Family licensing available in Alpha?",
@@ -712,7 +712,7 @@
         "search",
         "online assistant"
       ],
-      "guideId": "ch-3",
+      "guideId": "guide.getting-started",
       "translations": {
         "en": {
           "question": "Does Help Search send questions online?",
@@ -737,7 +737,7 @@
         "archive",
         "missing"
       ],
-      "guideId": "ch-6",
+      "guideId": "transactions.delete",
       "translations": {
         "en": {
           "question": "Why can't I find a saved transaction?",
@@ -762,7 +762,7 @@
         "support",
         "alpha"
       ],
-      "guideId": "ch-21",
+      "guideId": "guide.help-reference",
       "translations": {
         "en": {
           "question": "How do I report an Alpha problem safely?",

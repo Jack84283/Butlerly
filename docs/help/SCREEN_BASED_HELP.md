@@ -2,7 +2,7 @@
 
 Source approved for implementation: https://docs.google.com/document/d/1Ja-o0oqlYivVvWFoxVeHYxguCg5XgmuGCJbZlxJkVtM/edit
 
-The app bundles three offline Help languages (English, Simplified Chinese, Spanish). Screen-based articles are added before the retained legacy chapters, so FAQ references to `ch-1` through `ch-25` remain valid. Each topic uses the same stable ID in each language. The English screen topic uses the approved Google Doc text; the Chinese and Spanish editions include localized screen guidance and retain the existing detailed translated reference chapters.
+The application bundles three offline Help languages (English, Simplified Chinese, Spanish). The approved nine chapters are the sole visible guide structure, with 42 screen/function topics nested in the appropriate chapter. Detailed instructions formerly stored in chapters 1–25 and appendices A–D have been migrated into their new target articles; the legacy entries are removed. FAQ links have been migrated to new stable topic IDs. Each topic uses the same stable ID in each language. The English screen topic uses the approved Google Doc text; the Chinese and Spanish editions include localized screen guidance and retain the existing detailed translated reference chapters.
 
 ## Routes and contextual Help
 
@@ -33,7 +33,7 @@ The app bundles three offline Help languages (English, Simplified Chinese, Spani
 | `/notifications` | `more.operational-features` |
 | `/assistant` | `tools.assistant` |
 
-Fallback for a new route: `guide-navigation`. `/help` and `/launch` intentionally have no contextual Help button.
+Fallback for a new route: `guide.getting-started`. `/help` and `/launch` intentionally have no contextual Help button.
 
 ## Verification before merging
 
