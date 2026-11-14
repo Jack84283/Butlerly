@@ -28,6 +28,37 @@ abstract final class OcrSpatialText {
   static bool hasGeometry(List<OcrObservation> observations) =>
       observations.any(_hasBounds);
 
+  /// Approximate rendered monospace cell widths, not Unicode rune counts.
+  /// CJK/fullwidth glyphs occupy two cells; combining marks occupy none.
+  static int _displayCells(String value) {
+    var cells = 0;
+    for (final rune in value.runes) {
+      if ((rune >= 0x0300 && rune <= 0x036F) ||
+          (rune >= 0x1AB0 && rune <= 0x1AFF) ||
+          (rune >= 0x1DC0 && rune <= 0x1DFF) ||
+          (rune >= 0x20D0 && rune <= 0x20FF) ||
+          (rune >= 0xFE00 && rune <= 0xFE0F) ||
+          (rune >= 0xFE20 && rune <= 0xFE2F) ||
+          (rune >= 0x200B && rune <= 0x200F)) {
+        continue;
+      }
+      final wide =
+          (rune >= 0x1100 && rune <= 0x115F) ||
+          (rune >= 0x2329 && rune <= 0x232A) ||
+          (rune >= 0x2E80 && rune <= 0xA4CF) ||
+          (rune >= 0xAC00 && rune <= 0xD7A3) ||
+          (rune >= 0xF900 && rune <= 0xFAFF) ||
+          (rune >= 0xFE10 && rune <= 0xFE19) ||
+          (rune >= 0xFE30 && rune <= 0xFE6F) ||
+          (rune >= 0xFF01 && rune <= 0xFF60) ||
+          (rune >= 0xFFE0 && rune <= 0xFFE6) ||
+          (rune >= 0x1F000 && rune <= 0x1FAFF) ||
+          (rune >= 0x20000 && rune <= 0x3FFFD);
+      cells += wide ? 2 : 1;
+    }
+    return cells;
+  }
+
   static bool _sameRow(OcrBounds a, OcrBounds b) {
     final overlap =
         math.min(a.top + a.height, b.top + b.height) - math.max(a.top, b.top);
@@ -47,9 +78,7 @@ abstract final class OcrSpatialText {
 
     final pages = <int, List<OcrObservation>>{};
     for (final item in observations) {
-      if (_hasBounds(item)) {
-        pages.putIfAbsent(item.pageIndex, () => <OcrObservation>[]).add(item);
-      }
+      pages.putIfAbsent(item.pageIndex, () => <OcrObservation>[]).add(item);
     }
     final pageIndexes = pages.keys.toList()..sort();
     final output = <String>[];
@@ -58,7 +87,7 @@ abstract final class OcrSpatialText {
         output.add('');
         output.add('--- PAGE ${page + 1} ---');
       }
-      final sorted = [...pages[page]!]
+      final sorted = pages[page]!.where(_hasBounds).toList()
         ..sort((a, b) {
           final aBounds = a.normalizedBounds;
           final bBounds = b.normalizedBounds;
@@ -130,22 +159,21 @@ abstract final class OcrSpatialText {
           }
           final value = item.text.replaceAll(RegExp(r'[\r\n]+'), ' ').trim();
           line.write(value);
-          position += value.runes.length;
+          position += _displayCells(value);
         }
         output.add(line.toString().trimRight());
       }
-    }
-    // Never guess coordinates for partial OCR observations. Display their
-    // original text afterward in the OCR-provided reading order.
-    final unpositioned =
-        observations.where((item) => !_hasBounds(item)).toList()..sort((a, b) {
-          final page = a.pageIndex.compareTo(b.pageIndex);
-          return page != 0 ? page : a.order.compareTo(b.order);
-        });
-    if (unpositioned.isNotEmpty) {
-      output.add('');
-      output.add('--- TEXT WITHOUT POSITION ---');
-      output.addAll(unpositioned.map((item) => item.text));
+      // Keep missing-geometry lines on their original page, not after all
+      // positioned pages. Their local reading order remains unchanged.
+      final unpositioned = pages[page]!
+          .where((item) => !_hasBounds(item))
+          .toList()
+        ..sort((a, b) => a.order.compareTo(b.order));
+      if (unpositioned.isNotEmpty) {
+        if (sorted.isNotEmpty) output.add('');
+        output.add('--- TEXT WITHOUT POSITION ---');
+        output.addAll(unpositioned.map((item) => item.text));
+      }
     }
     return output.join('\n');
   }
