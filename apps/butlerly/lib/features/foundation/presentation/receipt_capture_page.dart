@@ -1774,7 +1774,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
                       const SizedBox(height: ButlerlySpacing.compact),
                       Text(context.l10n.text('readingReceipt')),
                     ] else ...[
-                      Row(
+                      Wrap(
+                        spacing: ButlerlySpacing.compact,
+                        runSpacing: ButlerlySpacing.micro,
                         children: [
                           TextButton.icon(
                             onPressed: _saving ? null : _camera,
