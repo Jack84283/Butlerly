@@ -55,26 +55,31 @@ class HelpRelatedTopics extends StatelessWidget {
       'es' => 'Temas relacionados',
       _ => 'Related topics',
     };
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Divider(),
-        Text(heading, style: Theme.of(context).textTheme.titleMedium),
-        const SizedBox(height: ButlerlySpacing.small),
-        Wrap(
-          spacing: ButlerlySpacing.small,
-          runSpacing: ButlerlySpacing.small,
-          children: [
-            for (final target in targets)
-              ActionChip(
-                key: ValueKey('help-related-${target.id}'),
-                avatar: const Icon(Icons.arrow_forward_rounded, size: 16),
-                label: Text(target.title),
-                onPressed: () => onOpen(target),
-              ),
-          ],
-        ),
-      ],
+    // ButlerlyPage uses a CustomScrollView with no guaranteed Material
+    // ancestor. ActionChip needs its own Material in mobile Help readers.
+    return Material(
+      type: MaterialType.transparency,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Divider(),
+          Text(heading, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: ButlerlySpacing.small),
+          Wrap(
+            spacing: ButlerlySpacing.small,
+            runSpacing: ButlerlySpacing.small,
+            children: [
+              for (final target in targets)
+                ActionChip(
+                  key: ValueKey('help-related-${target.id}'),
+                  avatar: const Icon(Icons.arrow_forward_rounded, size: 16),
+                  label: Text(target.title),
+                  onPressed: () => onOpen(target),
+                ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
