@@ -77,7 +77,7 @@ class _HelpFaqPageState extends State<HelpFaqPage> {
     if (hit.faq != null) {
       _openFaq(context, catalog, hit.faq!);
     } else if (hit.article != null) {
-      _openArticle(context, hit.article!);
+      _openArticle(context, hit.article!, catalog);
     }
   }
 
@@ -107,7 +107,9 @@ class _HelpFaqPageState extends State<HelpFaqPage> {
               widget.articleId!,
               languageCode: language,
             );
-            if (article != null) return HelpGuideArticlePage(article: article);
+            if (article != null) {
+              return HelpGuideArticlePage(article: article, catalog: catalog);
+            }
           }
           return ButlerlyPage(
             showContextHelp: false,
@@ -384,12 +386,16 @@ void _openFaq(BuildContext context, HelpCatalog catalog, HelpFaqEntry faq) {
   );
 }
 
-void _openArticle(BuildContext context, HelpGuideArticle article) {
+void _openArticle(
+  BuildContext context,
+  HelpGuideArticle article,
+  HelpCatalog catalog,
+) {
   Navigator.of(context).push(
     MaterialPageRoute<void>(
       builder: (_) => Material(
         type: MaterialType.transparency,
-        child: HelpGuideArticlePage(article: article),
+        child: HelpGuideArticlePage(article: article, catalog: catalog),
       ),
     ),
   );
@@ -426,7 +432,7 @@ class HelpFaqDetailPage extends StatelessWidget {
           const SizedBox(height: ButlerlySpacing.section),
           OutlinedButton.icon(
             key: const ValueKey('help-read-guide'),
-            onPressed: () => _openArticle(context, linked),
+            onPressed: () => _openArticle(context, linked, catalog),
             icon: const Icon(Icons.menu_book_outlined),
             label: Text(HelpCopy.text(context, 'readMore')),
           ),
@@ -461,7 +467,7 @@ class HelpGuideIndexPage extends StatelessWidget {
               key: ValueKey('help-article-${article.id}'),
               title: Text(article.title),
               trailing: const Icon(Icons.chevron_right_rounded),
-              onTap: () => _openArticle(context, article),
+              onTap: () => _openArticle(context, article, catalog),
             ),
           ),
         ),
@@ -477,9 +483,10 @@ class HelpGuideIndexPage extends StatelessWidget {
 }
 
 class HelpGuideArticlePage extends StatelessWidget {
-  const HelpGuideArticlePage({required this.article, super.key});
+  const HelpGuideArticlePage({required this.article, this.catalog, super.key});
 
   final HelpGuideArticle article;
+  final HelpCatalog? catalog;
 
   @override
   Widget build(BuildContext context) {
@@ -497,6 +504,16 @@ class HelpGuideArticlePage extends StatelessWidget {
           helpGuideSection(context, section),
           const SizedBox(height: ButlerlySpacing.standard),
         ],
+        if ((catalog ?? HelpCatalog.cachedBundle) != null)
+          HelpRelatedTopics(
+            catalog: (catalog ?? HelpCatalog.cachedBundle)!,
+            article: article,
+            onOpen: (target) => _openArticle(
+              context,
+              target,
+              (catalog ?? HelpCatalog.cachedBundle)!,
+            ),
+          ),
       ],
     );
   }

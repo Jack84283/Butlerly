@@ -5,48 +5,114 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('bundled guide has all 25 chapters and locally linked FAQs', () async {
-    final catalog = await HelpCatalog.load();
-    expect(
-      catalog.guide.where((item) => item.id.startsWith('ch-')),
-      hasLength(25),
-    );
-    expect(
-      catalog.guide.where((item) => item.id.startsWith('appendix-')),
-      hasLength(4),
-    );
-    expect(catalog.faqs, hasLength(30));
-    expect(catalog.articleById('ch-19'), isNotNull);
-    final englishIds = catalog.guide.map((article) => article.id).toList();
-    for (final locale in ['en', 'zh', 'es']) {
-      final translated = catalog.guideForLanguage(locale);
-      expect(translated.map((article) => article.id).toList(), englishIds);
-      expect(
-        translated.where((article) => article.id.startsWith('ch-')),
-        hasLength(25),
-      );
-      expect(
-        translated.where((article) => article.id.startsWith('appendix-')),
-        hasLength(4),
-      );
-      expect(catalog.articleById('ch-19', languageCode: locale), isNotNull);
-    }
-    expect(
-      catalog.articleById('ch-19', languageCode: 'zh')!.title,
-      contains('恢复'),
-    );
-    expect(
-      catalog.articleById('ch-19', languageCode: 'es')!.title,
-      contains('RESTAURAR'),
-    );
-    for (final faq in catalog.faqs) {
-      expect(catalog.articleById(faq.guideId), isNotNull);
-      for (final language in ['en', 'zh', 'es']) {
-        expect(faq.translations[language]?.question.isNotEmpty, isTrue);
-        expect(faq.translations[language]?.answer.isNotEmpty, isTrue);
+  test(
+    'bundled guide has nine chapters and no legacy duplicate articles',
+    () async {
+      final catalog = await HelpCatalog.load();
+      final chapters = [
+        'guide.introduction',
+        'guide.getting-started',
+        'guide.home',
+        'guide.transactions',
+        'guide.add',
+        'guide.tools',
+        'guide.more',
+        'guide.help-reference',
+        'guide.appendix',
+      ];
+      expect(catalog.guide.length, 51);
+      expect(catalog.faqs.length, 30);
+      final englishIds = catalog.guide.map((article) => article.id).toList();
+      expect(englishIds.toSet().length, englishIds.length);
+      expect(englishIds.where((id) => id.startsWith('ch-')), isEmpty);
+      expect(englishIds.where((id) => id.startsWith('appendix-')), isEmpty);
+      expect(englishIds.where((id) => id.startsWith('intro-')), isEmpty);
+      for (final locale in ['en', 'zh', 'es']) {
+        final translated = catalog.guideForLanguage(locale);
+        expect(translated.map((article) => article.id).toList(), englishIds);
+        for (final chapter in chapters) {
+          expect(catalog.articleById(chapter, languageCode: locale), isNotNull);
+        }
+        expect(
+          catalog
+              .articleById('more.restore', languageCode: locale)!
+              .body
+              .length,
+          greaterThan(500),
+        );
+        expect(
+          catalog
+              .articleById('guide.appendix', languageCode: locale)!
+              .body
+              .length,
+          greaterThan(800),
+        );
+        for (final faq in catalog.faqs) {
+          expect(
+            catalog.articleById(faq.guideId, languageCode: locale),
+            isNotNull,
+          );
+          expect(faq.translations[locale]?.question.isNotEmpty, isTrue);
+          expect(faq.translations[locale]?.answer.isNotEmpty, isTrue);
+        }
       }
-    }
-  });
+    },
+  );
+
+  test(
+    'screen-based topics have matching English Chinese and Spanish IDs',
+    () async {
+      final catalog = await HelpCatalog.load();
+      final english = catalog.guide
+          .where(
+            (article) => RegExp(
+              r'^(home|transactions|add|tools|more)\.',
+            ).hasMatch(article.id),
+          )
+          .toList();
+      expect(english.length, 42);
+      final ids = english.map((article) => article.id).toSet();
+      expect(ids.length, 42);
+      for (final language in ['en', 'zh', 'es']) {
+        for (final id in ids) {
+          final article = catalog.articleById(id, languageCode: language);
+          expect(article, isNotNull, reason: '$language: $id');
+          expect(article!.title.trim(), isNotEmpty);
+          expect(article.body.trim(), isNotEmpty);
+        }
+      }
+      for (final language in ['en', 'zh', 'es']) {
+        final export = catalog.articleById(
+          'more.export',
+          languageCode: language,
+        );
+        expect(export, isNotNull);
+        expect(export!.body.trim(), isNotEmpty);
+      }
+      expect(catalog.articleById('guide.home'), isNotNull);
+    },
+  );
+
+  test(
+    'related topic IDs resolve in every locale without self-links',
+    () async {
+      final catalog = await HelpCatalog.load();
+      for (final locale in ['en', 'zh', 'es']) {
+        for (final article in catalog.guideForLanguage(locale)) {
+          expect(article.relatedIds.toSet().length, article.relatedIds.length);
+          expect(article.relatedIds, isNot(contains(article.id)));
+          for (final id in article.relatedIds) {
+            expect(
+              catalog.articleById(id, languageCode: locale),
+              isNotNull,
+              reason: '$locale: ${article.id} → $id',
+            );
+          }
+        }
+      }
+      expect(catalog.articleById('home.overview')!.relatedIds, isNotEmpty);
+    },
+  );
 
   test('guide contains no developer-only issue or code references', () async {
     final catalog = await HelpCatalog.load();
@@ -70,11 +136,11 @@ void main() {
       expect(catalog.search('MERGE replace').first.id, 'FAQ-022');
       expect(
         catalog.search('加密备份', languageCode: 'zh').map((hit) => hit.id),
-        contains('ch-18'),
+        contains('more.backup'),
       );
       expect(
         catalog.search('PRESUPUESTOS', languageCode: 'es').map((hit) => hit.id),
-        contains('ch-15'),
+        contains('tools.budgets'),
       );
       expect(
         catalog.search('How do I restore a backup?').map((hit) => hit.id),
@@ -128,7 +194,7 @@ void main() {
       catalog
           .search('¿Cómo importo archivos?', languageCode: 'es')
           .map((hit) => hit.id),
-      contains('ch-10'),
+      contains('add.import'),
     );
     expect(
       catalog.search('contraseña', languageCode: 'es').map((hit) => hit.id),

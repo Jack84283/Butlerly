@@ -28,6 +28,7 @@ class _HelpDesktopWorkspaceState extends State<HelpDesktopWorkspace> {
   String? _category;
   String? _selectedId;
   String _query = '';
+  final List<_HelpLocation> _relatedHistory = [];
 
   @override
   void initState() {
@@ -42,6 +43,7 @@ class _HelpDesktopWorkspaceState extends State<HelpDesktopWorkspace> {
       _showGuide = true;
       _category = null;
       _selectedId = widget.articleId;
+      _relatedHistory.clear();
       _query = '';
       _searchController.clear();
     }
@@ -56,6 +58,7 @@ class _HelpDesktopWorkspaceState extends State<HelpDesktopWorkspace> {
   void _selectGuide({String? articleId}) {
     _searchController.clear();
     setState(() {
+      _relatedHistory.clear();
       _showGuide = true;
       _category = null;
       _query = '';
@@ -63,9 +66,41 @@ class _HelpDesktopWorkspaceState extends State<HelpDesktopWorkspace> {
     });
   }
 
+  /// Follow a related topic while preserving the source and browse context.
+  void _openRelatedTopic(String targetId, String sourceId) {
+    if (targetId == sourceId) return;
+    final location = _HelpLocation(
+      showGuide: _showGuide,
+      category: _category,
+      query: _query,
+      selectedId: _selectedId ?? sourceId,
+    );
+    _searchController.clear();
+    setState(() {
+      _relatedHistory.add(location);
+      _showGuide = true;
+      _category = null;
+      _query = '';
+      _selectedId = targetId;
+    });
+  }
+
+  void _backToRelatedSource() {
+    if (_relatedHistory.isEmpty) return;
+    final previous = _relatedHistory.removeLast();
+    _searchController.text = previous.query;
+    setState(() {
+      _showGuide = previous.showGuide;
+      _category = previous.category;
+      _query = previous.query;
+      _selectedId = previous.selectedId;
+    });
+  }
+
   void _selectCategory(String category) {
     _searchController.clear();
     setState(() {
+      _relatedHistory.clear();
       _showGuide = false;
       _category = category;
       _query = '';
@@ -265,8 +300,10 @@ class _HelpDesktopWorkspaceState extends State<HelpDesktopWorkspace> {
                                     trailing: const Icon(
                                       Icons.chevron_right_rounded,
                                     ),
-                                    onTap: () =>
-                                        setState(() => _selectedId = item.id),
+                                    onTap: () => setState(() {
+                                      _relatedHistory.clear();
+                                      _selectedId = item.id;
+                                    }),
                                   );
                                 },
                               ),
@@ -306,6 +343,18 @@ class _HelpDesktopWorkspaceState extends State<HelpDesktopWorkspace> {
         key: ValueKey('help-desktop-detail-${item.id}'),
         padding: const EdgeInsets.all(ButlerlySpacing.section),
         children: [
+          if (_relatedHistory.isNotEmpty) ...[
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                key: const ValueKey('help-related-back'),
+                onPressed: _backToRelatedSource,
+                icon: const Icon(Icons.arrow_back_rounded),
+                label: Text(HelpCopy.text(context, 'back')),
+              ),
+            ),
+            const SizedBox(height: ButlerlySpacing.small),
+          ],
           Text(
             article.title,
             key: ValueKey('help-desktop-article-${article.id}'),
@@ -317,6 +366,11 @@ class _HelpDesktopWorkspaceState extends State<HelpDesktopWorkspace> {
               helpGuideSection(context, section),
               const SizedBox(height: ButlerlySpacing.standard),
             ],
+          HelpRelatedTopics(
+            catalog: widget.catalog,
+            article: article,
+            onOpen: (target) => _openRelatedTopic(target.id, article.id),
+          ),
         ],
       );
     }
@@ -364,4 +418,19 @@ class _HelpDesktopItem {
   final String subtitle;
   final HelpGuideArticle? article;
   final HelpFaqEntry? faq;
+}
+
+/// Keeps the source article and browse/search context for Related Topic Back.
+class _HelpLocation {
+  const _HelpLocation({
+    required this.showGuide,
+    required this.category,
+    required this.query,
+    required this.selectedId,
+  });
+
+  final bool showGuide;
+  final String? category;
+  final String query;
+  final String? selectedId;
 }

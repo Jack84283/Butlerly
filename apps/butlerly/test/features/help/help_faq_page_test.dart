@@ -49,7 +49,7 @@ void main() {
     expect(find.text('Read detailed guide'), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('help-read-guide')));
     await tester.pumpAndSettle();
-    expect(find.textContaining('19. RESTORE'), findsWidgets);
+    expect(find.textContaining('Restore'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 
@@ -197,7 +197,7 @@ void main() {
         await tester.ensureVisible(guide);
         await tester.tap(guide);
         await tester.pumpAndSettle();
-        final chapter = find.byKey(const ValueKey('help-article-ch-19'));
+        final chapter = find.byKey(const ValueKey('help-article-more.restore'));
         await tester.scrollUntilVisible(chapter, 300);
         // The ValueKey is attached directly to the ListTile, not a child.
         // An ancestor lookup therefore incorrectly returns zero matches.
@@ -205,7 +205,7 @@ void main() {
         final title = tester.widget<ListTile>(chapter).title! as Text;
         expect(
           title.data,
-          locale.languageCode == 'zh' ? contains('恢复') : contains('RESTAURAR'),
+          locale.languageCode == 'zh' ? contains('恢复') : contains('Restaurar'),
         );
         // Open the localized article, not just its table-of-contents entry.
         await tester.tap(chapter);
@@ -214,7 +214,7 @@ void main() {
         expect(
           find.text(
             catalog
-                .articleById('ch-19', languageCode: locale.languageCode)!
+                .articleById('more.restore', languageCode: locale.languageCode)!
                 .title,
           ),
           findsWidgets,
@@ -223,6 +223,147 @@ void main() {
       },
     );
   }
+
+  for (final locale in [
+    const Locale('en'),
+    const Locale('zh', 'CN'),
+    const Locale('es'),
+  ]) {
+    testWidgets(
+      'related topics open localized article on phone: ${locale.languageCode}',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            locale: locale,
+            supportedLocales: AppLocalizations.supportedLocales,
+            localizationsDelegates: const [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            home: HelpGuideArticlePage(
+              article: catalog.articleById(
+                'home.overview',
+                languageCode: locale.languageCode,
+              )!,
+              catalog: catalog,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final link = find.byKey(const ValueKey('help-related-home.summary'));
+        // Related Topics are below a lazily built guide article.
+        await tester.scrollUntilVisible(
+          link,
+          250,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.ensureVisible(link);
+        await tester.tap(link);
+        await tester.pumpAndSettle();
+        expect(
+          find.text(
+            catalog
+                .articleById('home.summary', languageCode: locale.languageCode)!
+                .title,
+          ),
+          findsWidgets,
+        );
+        await tester.tap(find.byIcon(Icons.arrow_back_rounded).last);
+        await tester.pumpAndSettle();
+        // The original article can remain scrolled to its related links;
+        // verify the restored route's article instead of offscreen text.
+        expect(
+          tester
+              .widget<HelpGuideArticlePage>(find.byType(HelpGuideArticlePage))
+              .article
+              .id,
+          'home.overview',
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
+  testWidgets(
+    'desktop related links select a new topic in the same workspace',
+    (tester) async {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(app(const Locale('en')));
+      await tester.pumpAndSettle();
+      final first = find.byKey(
+        const ValueKey('help-desktop-item-home.overview'),
+      );
+      await tester.scrollUntilVisible(
+        first,
+        220,
+        scrollable: find.descendant(
+          of: find.byKey(const ValueKey('help-desktop-item-list')),
+          matching: find.byType(Scrollable),
+        ),
+      );
+      await tester.tap(first);
+      await tester.pumpAndSettle();
+      final related = find.byKey(const ValueKey('help-related-home.summary'));
+      await tester.scrollUntilVisible(
+        related,
+        300,
+        scrollable: find
+            .descendant(
+              of: find.byKey(
+                const ValueKey('help-desktop-detail-home.overview'),
+              ),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      await tester.ensureVisible(related);
+      await tester.tap(related);
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('help-desktop-article-home.summary')),
+        findsOneWidget,
+      );
+      final next = find.byKey(const ValueKey('help-related-home.trends'));
+      await tester.scrollUntilVisible(
+        next,
+        300,
+        scrollable: find
+            .descendant(
+              of: find.byKey(
+                const ValueKey('help-desktop-detail-home.summary'),
+              ),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      await tester.ensureVisible(next);
+      await tester.tap(next);
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('help-desktop-article-home.trends')),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const ValueKey('help-related-back')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('help-desktop-article-home.summary')),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const ValueKey('help-related-back')));
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('help-desktop-article-home.overview')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const ValueKey('help-related-back')), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('full User Guide is browsable on a wide layout', (tester) async {
     tester.view.physicalSize = const Size(1440, 900);
@@ -239,14 +380,16 @@ void main() {
     );
     expect(find.byKey(const ValueKey('help-desktop-menu')), findsOneWidget);
     expect(
-      find.byKey(const ValueKey('help-desktop-item-ch-1')),
+      find.byKey(const ValueKey('help-desktop-item-guide.introduction')),
       findsOneWidget,
     );
-    // The first displayed chapter need not be ch-1; choose it explicitly.
-    await tester.tap(find.byKey(const ValueKey('help-desktop-item-ch-1')));
+    // The first displayed chapter need not be guide.introduction; choose it explicitly.
+    await tester.tap(
+      find.byKey(const ValueKey('help-desktop-item-guide.introduction')),
+    );
     await tester.pumpAndSettle();
     expect(
-      find.byKey(const ValueKey('help-desktop-article-ch-1')),
+      find.byKey(const ValueKey('help-desktop-article-guide.introduction')),
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);

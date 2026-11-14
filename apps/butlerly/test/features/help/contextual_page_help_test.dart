@@ -19,30 +19,30 @@ void main() {
   });
 
   const paths = <String, String>{
-    '/': 'ch-12',
-    '/welcome': 'ch-2',
-    '/transactions': 'ch-5',
-    '/transactions/add': 'ch-5',
-    '/add': 'ch-5',
-    '/tools': 'ch-16',
-    '/settings': 'ch-17',
-    '/legal-licenses': 'ch-17',
-    '/analysis': 'ch-14',
-    '/insights': 'ch-14',
-    '/budgets': 'ch-15',
-    '/financial-profile': 'ch-4',
-    '/review': 'ch-11',
-    '/search': 'ch-13',
-    '/payment-settlements': 'ch-16',
-    '/rules': 'ch-16',
-    '/payment-sources': 'ch-7',
-    '/import-export': 'ch-10',
-    '/statements': 'ch-10',
-    '/receipts/capture': 'ch-9',
-    '/privacy-data': 'ch-20',
-    '/master-data': 'ch-8',
-    '/notifications': 'ch-3',
-    '/assistant': 'ch-25',
+    '/welcome': 'guide.getting-started',
+    '/': 'home.overview',
+    '/transactions': 'transactions.list',
+    '/transactions/add': 'add.manual',
+    '/add': 'add.overview',
+    '/tools': 'tools.overview',
+    '/rules': 'tools.rules',
+    '/payment-settlements': 'tools.settlements',
+    '/settings': 'more.overview',
+    '/legal-licenses': 'more.about',
+    '/analysis': 'tools.analysis',
+    '/insights': 'tools.insights',
+    '/budgets': 'tools.budgets',
+    '/financial-profile': 'more.financial-profile',
+    '/review': 'tools.review',
+    '/search': 'transactions.search',
+    '/payment-sources': 'add.payment-source',
+    '/import-export': 'add.import',
+    '/statements': 'add.statement',
+    '/receipts/capture': 'add.receipt',
+    '/privacy-data': 'more.privacy',
+    '/master-data': 'tools.master-data',
+    '/notifications': 'more.operational-features',
+    '/assistant': 'tools.assistant',
   };
 
   test('all active destinations have existing, localized guide chapters', () {
@@ -59,7 +59,10 @@ void main() {
     for (final path in ['/help', '/launch']) {
       expect(contextualHelpArticleForPath(path), isNull);
     }
-    expect(contextualHelpArticleForPath('/future-page'), 'ch-3');
+    expect(
+      contextualHelpArticleForPath('/future-page'),
+      'guide.getting-started',
+    );
   });
 
   for (final size in [const Size(390, 844), const Size(1440, 900)]) {
@@ -137,18 +140,21 @@ void main() {
       // Verify the actual destination and selected article instead.
       expect(
         tester.widget<HelpFaqPage>(find.byType(HelpFaqPage)).articleId,
-        'ch-14',
+        'tools.analysis',
       );
       if (size.width >= 1024) {
         expect(find.byType(HelpDesktopWorkspace), findsOneWidget);
         expect(
-          find.byKey(const ValueKey('help-desktop-article-ch-14')),
+          find.byKey(const ValueKey('help-desktop-article-tools.analysis')),
           findsOneWidget,
         );
       } else {
         expect(find.byType(HelpGuideArticlePage), findsOneWidget);
       }
-      expect(find.text(catalog.articleById('ch-14')!.title), findsWidgets);
+      expect(
+        find.text(catalog.articleById('tools.analysis')!.title),
+        findsWidgets,
+      );
       // The Help page must not show a link that points to itself.
       expect(find.byKey(const ValueKey('page-context-help')), findsNothing);
 
@@ -223,7 +229,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         tester.widget<HelpFaqPage>(find.byType(HelpFaqPage)).articleId,
-        'ch-16',
+        'tools.settlements',
       );
       await tester.tap(find.byTooltip('Back'));
       await tester.pumpAndSettle();
@@ -245,14 +251,19 @@ void main() {
             GlobalCupertinoLocalizations.delegate,
           ],
           home: Scaffold(
-            body: HelpFaqPage(preloadedCatalog: catalog, articleId: 'ch-15'),
+            body: HelpFaqPage(
+              preloadedCatalog: catalog,
+              articleId: 'tools.budgets',
+            ),
           ),
         ),
       );
       await tester.pumpAndSettle();
       expect(find.byType(HelpGuideArticlePage), findsOneWidget);
       expect(
-        find.text(catalog.articleById('ch-15', languageCode: language)!.title),
+        find.text(
+          catalog.articleById('tools.budgets', languageCode: language)!.title,
+        ),
         findsWidgets,
       );
       expect(tester.takeException(), isNull);
@@ -270,7 +281,7 @@ void main() {
               builder: (context) => Scaffold(
                 appBar: AppBar(
                   actions: const [
-                    ButlerlyContextHelpButton(articleId: 'ch-19'),
+                    ButlerlyContextHelpButton(articleId: 'more.restore'),
                   ],
                 ),
                 body: const Text('Safe recovery screen'),
@@ -288,7 +299,7 @@ void main() {
       find.byKey(const ValueKey('context-help-offline-reader')),
       findsOneWidget,
     );
-    expect(find.text(catalog.articleById('ch-19')!.title), findsWidgets);
+    expect(find.text(catalog.articleById('more.restore')!.title), findsWidgets);
     await tester.tap(find.byKey(const ValueKey('context-help-close')));
     await tester.pumpAndSettle();
     expect(find.text('Safe recovery screen'), findsOneWidget);
@@ -302,9 +313,9 @@ void main() {
   // Mirrors MaterialApp.router.builder in ButlerlyApp: the recovery workflow
   // replaces the GoRouter child and is hosted in a local Navigator.
   for (final recovery in const <String, String>{
-    'restore': 'ch-19',
-    'portable backup': 'ch-18',
-    'evidence deletion': 'ch-21',
+    'restore': 'more.restore',
+    'portable backup': 'more.backup',
+    'evidence deletion': 'guide.help-reference',
   }.entries) {
     testWidgets('${recovery.key} recovery Help returns to the blocked flow', (
       tester,
@@ -378,8 +389,8 @@ void main() {
   // The app root now uses ButlerlyRouterlessRecoveryHost for first-use,
   // rather than injecting its setup screen into a raw OverlayEntry.
   for (final stage in const <String, String>{
-    'preferences': 'ch-2',
-    'financial profile introduction': 'ch-4',
+    'preferences': 'guide.getting-started',
+    'financial profile introduction': 'more.financial-profile',
   }.entries) {
     testWidgets('${stage.key} Help dismisses via system Back and Escape', (
       tester,
@@ -475,7 +486,10 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('page-context-help')));
     await tester.pumpAndSettle();
     expect(find.byType(HelpGuideArticlePage), findsOneWidget);
-    expect(find.text(catalog.articleById('ch-3')!.title), findsWidgets);
+    expect(
+      find.text(catalog.articleById('guide.getting-started')!.title),
+      findsWidgets,
+    );
 
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
@@ -617,7 +631,7 @@ void main() {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    appRouter.go('/help?article=ch-14');
+    appRouter.go('/help?article=tools.analysis');
     addTearDown(() => appRouter.go('/'));
 
     await tester.pumpWidget(
@@ -637,7 +651,7 @@ void main() {
     expect(find.byType(HelpDesktopWorkspace), findsOneWidget);
     expect(find.byType(DesktopPrimaryShell), findsNothing);
     expect(
-      find.byKey(const ValueKey('help-desktop-article-ch-14')),
+      find.byKey(const ValueKey('help-desktop-article-tools.analysis')),
       findsOneWidget,
     );
     expect(find.byKey(const ValueKey('help-desktop-content')), findsOneWidget);

@@ -10,6 +10,7 @@ class HelpGuideArticle {
     required this.title,
     required this.part,
     required this.body,
+    this.relatedIds = const [],
   });
 
   factory HelpGuideArticle.fromJson(Map<String, dynamic> json) =>
@@ -18,12 +19,15 @@ class HelpGuideArticle {
         title: json['title'] as String,
         part: json['part'] as String,
         body: json['body'] as String,
+        relatedIds: (json['relatedIds'] as List<dynamic>? ?? const [])
+            .cast<String>(),
       );
 
   final String id;
   final String title;
   final String part;
   final String body;
+  final List<String> relatedIds;
 }
 
 class HelpFaqTranslation {
