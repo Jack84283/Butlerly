@@ -11,6 +11,7 @@ import 'package:butlerly/features/foundation/presentation/transaction_master_dat
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
@@ -25,6 +26,111 @@ import '../transactions/transaction_lifecycle_test.dart'
         MemoryUserPreferences;
 
 void main() {
+  testWidgets('shows aligned OCR text using image coordinates on iPhone', (
+    tester,
+  ) async {
+    final finance = _finance(_ReceiptTransactionRepository());
+    final path = _fixturePath();
+    final source = XFile(path, name: 'receipt.png');
+
+    _resetView(tester);
+    // iOS deliberately lets the ancestor horizontal scroll gesture win over
+    // SelectableText's text-selection drag recognizer.
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    tester.view.physicalSize = const Size(320, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      _localizedApp(
+        ReceiptCapturePage(
+          finance: finance,
+          evidenceStore: _evidenceStore(finance),
+          pickImage: (_) async => source,
+          preserveEvidence: (_) async => _preservedReceipt,
+          fileForPreserved: (_) async => File(path),
+          discardPreserved: (_) async {},
+          preparePendingReceipt: (_, _) async {},
+          completePendingReceipt: (_) async => true,
+          ocr: (_) async => ReceiptOcrResult(
+            rawText: '9988\nCard\nMerchant\nAPPLE.COM/BILL',
+            merchant: 'APPLE.COM/BILL',
+            amount: '2.99',
+            currency: 'USD',
+            date: DateTime(2026, 11, 13),
+            observations: const [
+              OcrObservation(
+                text: '9988',
+                confidence: .9,
+                bounds: OcrBounds(left: .45, top: .25, width: .11, height: .04),
+                order: 0,
+              ),
+              OcrObservation(
+                text: 'Card',
+                confidence: .9,
+                bounds: OcrBounds(left: .20, top: .25, width: .10, height: .04),
+                order: 1,
+              ),
+              OcrObservation(
+                text: 'Merchant',
+                confidence: .9,
+                bounds: OcrBounds(left: .20, top: .45, width: .20, height: .04),
+                order: 2,
+              ),
+              OcrObservation(
+                text: 'APPLE.COM/BILL',
+                confidence: .9,
+                bounds: OcrBounds(left: .45, top: .45, width: .35, height: .04),
+                order: 3,
+              ),
+            ],
+          ),
+          loadInitialData: _emptyInitialData,
+        ),
+      ),
+    );
+    await tester.pump();
+    await _captureAndAcceptReceipt(tester);
+    await _scrollToAndTap(tester, find.text('Extracted source text'));
+    await tester.pumpAndSettle();
+
+    final preview = tester.widget<SelectableText>(
+      find.byKey(const ValueKey('receipt-ocr-layout-preview')),
+    );
+    final lines = preview.data!.split('\n');
+    expect(
+      lines.singleWhere((line) => line.contains('Card')),
+      matches(RegExp(r'Card\s+9988')),
+    );
+    expect(
+      lines.singleWhere((line) => line.contains('Merchant')),
+      matches(RegExp(r'Merchant\s+APPLE.COM/BILL')),
+    );
+    final horizontal = find.byKey(
+      const ValueKey('receipt-ocr-horizontal-scroll'),
+    );
+    expect(horizontal, findsOneWidget);
+    final horizontalScrollable = find.descendant(
+      of: horizontal,
+      matching: find.byWidgetPredicate(
+        (widget) =>
+            widget is Scrollable &&
+            (widget.axisDirection == AxisDirection.left ||
+                widget.axisDirection == AxisDirection.right),
+      ),
+    );
+    expect(horizontalScrollable, findsOneWidget);
+    final scrollable = tester.state<ScrollableState>(horizontalScrollable);
+    expect(scrollable.position.maxScrollExtent, greaterThan(0));
+    await tester.drag(horizontal, const Offset(-150, 0));
+    await tester.pumpAndSettle();
+    // Debug globals are verified before addTearDown callbacks are invoked.
+    debugDefaultTargetPlatformOverride = null;
+    expect(scrollable.position.pixels, greaterThan(0));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('consumes injected OCR and exposes missing date for review', (
     tester,
   ) async {

@@ -123,6 +123,25 @@ extraction heuristics. Tests compare the derived JSON to the TXT snapshot
 without using fixture expected values. Do not share generated outputs before
 redacting private receipt or card information.
 
+## iPhone receipt capture: position-aligned preview
+
+The receipt capture page now uses the original OCR observations' normalized
+bounding boxes to display `Extracted source text` approximately as laid out
+in the scanned receipt. It uses a monospaced font and horizontal scrolling so
+left-hand labels and right-hand values are not flattened into reading order.
+
+This **only changes the live diagnostic preview**. The original OCR text and
+observations remain the inputs for parsing and the original source evidence
+remains preserved. If all geometry is missing, the preview falls back to unchanged reading-order
+text. With partial geometry, bounded observations remain position-aligned and
+unbounded lines are listed in a clearly marked reading-order fallback section.
+
+The on-device view is a selectable approximation, not a new persisted TXT
+attachment. The offline developer generator above is still the tool for
+creating paired `.txt` and `.extracted.json` regression artifacts. OCR may
+misread or miss labels; no coordinates are fabricated and no existing
+transaction values are silently rewritten.
+
 ## Running
 
 From `apps/butlerly`:
