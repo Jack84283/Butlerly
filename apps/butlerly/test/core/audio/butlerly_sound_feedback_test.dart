@@ -12,7 +12,10 @@ void main() {
       'assets/${ButlerlySoundFeedback.soundAssetPath}',
     );
     expect(data.lengthInBytes, greaterThan(44));
-    final bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+    final bytes = data.buffer.asUint8List(
+      data.offsetInBytes,
+      data.lengthInBytes,
+    );
     expect(String.fromCharCodes(bytes.sublist(0, 4)), 'RIFF');
     expect(String.fromCharCodes(bytes.sublist(8, 12)), 'WAVE');
   });
