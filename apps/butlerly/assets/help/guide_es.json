@@ -9,6 +9,18 @@
       "body": "Esta guía sigue Inicio, Transacciones, Añadir, Herramientas y Más. Usa ? para abrir la ayuda contextual."
     },
     {
+      "id": "guide.introduction",
+      "title": "1. Introducción",
+      "part": "Introducción",
+      "body": "Butlerly permite registrar y revisar tus finanzas en el dispositivo. Los datos principales permanecen locales. Conserva las pruebas originales y copias cifradas; los informes no sustituyen los documentos bancarios."
+    },
+    {
+      "id": "guide.getting-started",
+      "title": "2. Primeros pasos",
+      "part": "Primeros pasos",
+      "body": "Instala Butlerly, elige idioma, moneda de referencia y zona horaria, registra una transacción y compruébala. Después crea una copia de seguridad cifrada. Las funciones básicas no requieren cuenta ni conexión continua."
+    },
+    {
       "id": "home.overview",
       "title": "3.1 Qué hay en Inicio",
       "part": "Inicio",
@@ -259,6 +271,18 @@
       "title": "7.12 Acerca de Butlerly, avisos legales y licencias",
       "part": "Más",
       "body": "Consulta la versión, condiciones, política de privacidad y licencias. La guía no sustituye los documentos legales.\n\nConsulta también la sección de referencia ch-17."
+    },
+    {
+      "id": "guide.help-reference",
+      "title": "8. Ayuda y referencias",
+      "part": "Ayuda y referencias",
+      "body": "Usa la búsqueda sin conexión, preguntas frecuentes y solución de problemas cuando una operación falle. El botón ? abre el tema correspondiente a la pantalla."
+    },
+    {
+      "id": "guide.appendix",
+      "title": "9. Apéndices",
+      "part": "Apéndices",
+      "body": "Los apéndices incluyen glosario, ejemplos, formato CSV, diferencias entre dispositivos, importación sin conexión y una lista de comprobación de copias y restauración."
     },
     {
       "id": "intro-about-this-guide",

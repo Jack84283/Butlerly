@@ -9,6 +9,18 @@
       "body": "The guide follows Home, Transactions, Add, Tools and More. Open ? on any page for contextual help."
     },
     {
+      "id": "guide.introduction",
+      "title": "1. Introduction",
+      "part": "Introduction",
+      "body": "Butlerly helps you record and review financial activity on your own device. Financial data stays local for core workflows. Keep original evidence and encrypted backups; reports do not replace bank records."
+    },
+    {
+      "id": "guide.getting-started",
+      "title": "2. Getting Started",
+      "part": "Getting Started",
+      "body": "Install Butlerly, choose language, reference currency and time zone, then create a small manual transaction. Check it in Transactions and create an encrypted backup. You can begin without an account or continuous Internet access."
+    },
+    {
       "id": "home.overview",
       "title": "3.1 What's on Home",
       "part": "Home",
@@ -259,6 +271,18 @@
       "title": "7.12 About Butlerly, legal and licenses",
       "part": "More",
       "body": "Overview — Check app identity, version and legal information.\n\nWhat's on this screen — About, app version, legal documents, licenses and support links.\n\nHow to use it — Open the specific item you need and verify version/terms when relevant.\n\nImportant notes — This user guide does not replace the official terms or privacy policy.\n\nRelated topics — 8.3."
+    },
+    {
+      "id": "guide.help-reference",
+      "title": "8. Help and Reference",
+      "part": "Help and Reference",
+      "body": "Use offline Help search, FAQs and troubleshooting when a task fails or a result is unclear. The ? action on a screen opens its matching function topic. Keep your source files when requesting assistance."
+    },
+    {
+      "id": "guide.appendix",
+      "title": "9. Appendix",
+      "part": "Appendix",
+      "body": "The reference appendix contains a glossary, worked examples, CSV import reference, device differences, offline import steps and the safe backup/restore checklist."
     },
     {
       "id": "intro-about-this-guide",
