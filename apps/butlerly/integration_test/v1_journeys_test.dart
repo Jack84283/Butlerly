@@ -3099,6 +3099,7 @@ Future<void> _waitForRestorePassword(WidgetTester tester) async {
   }
   fail('Restore password sheet never appeared after file selection.');
 }
+
 /// Native archive inspection displays an indeterminate spinner. Waiting for
 /// animation settlement can block a real-device test until its timeout.
 Future<void> _waitForReplaceConfirmation(
