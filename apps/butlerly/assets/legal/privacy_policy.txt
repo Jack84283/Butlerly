@@ -1,52 +1,23 @@
 BUTLERLY — PRIVACY POLICY
-LEG-0002 | Alpha review edition v1.1 | English | 9 November 2026
-NOT EFFECTIVE — OWNER, TECHNICAL AND COUNSEL REVIEW REQUIRED
+LEG-0002 | Alpha review edition v1.2 | English | 15 November 2026
+DRAFT FOR PRIVATE ALPHA REVIEW — NOT EFFECTIVE FOR PUBLIC DISTRIBUTION
 
-This is a review draft, not a published privacy policy. Any claim about data collection, diagnostics or external transmission must be reconciled with the exact Alpha binary, bundled SDKs, permissions, platform behavior and distribution channel. The publisher and privacy contact below must be confirmed before release.
+This draft describes Butlerly's approved offline-first design, not a certified audit of its final binary. Before external distribution, actual network traffic, third-party SDKs, permissions, platform services and recipients must be verified; the published edition must identify the responsible publisher and privacy contact.
 
-1. Who is responsible and how to contact us
-Publisher/data controller or other legally responsible operator: [VERIFIED LEGAL ENTITY]. Privacy inquiries and applicable rights requests: [VERIFIED PRIVACY CONTACT]. Postal address, where required: [VERIFIED ADDRESS]. Effective date: [APPROVED DATE]. Distribution regions and applicable legal rights: [OWNER/COUNSEL REVIEW]. The exact legal role, lawful bases and response procedures must be determined for each actual release market.
+1. Information processed
+You may enter transactions, currencies, descriptions, merchants, payment sources, categories, budgets, rules, preferences and optional Financial Profile Survey answers. You may import statements, CSV files, receipts, images and other supported local files. The App may retain original evidence, extracted text, review decisions, analysis and backup metadata. Selected documents may contain sensitive names or financial identifiers.
 
-2. The local-first model
-Butlerly Alpha is designed to keep its core personal-finance records on the device in an app-controlled local database and private evidence storage. Core finance operations are intended to work offline without a Butlerly account. Data stored on a device can nevertheless be accessible to its operating system, device backup services or anyone with access to the device. Butlerly's local-first design does not mean absolute secrecy, guaranteed recovery, or a blanket assertion that no data is ever processed outside the device.
+2. Local processing
+Butlerly is designed to store core finance records and evidence in app-managed storage on your device and to work without a Butlerly account. The approved Alpha does not include direct bank/cloud account connections, automatic sync, online Help searches or remote processing of your financial files by AI/OCR services. Actual SDK and operating-system behavior must be checked before any categorical statement that information never leaves the device.
 
-The approved Alpha does not include built-in cloud-account linking, automatic background synchronization, remote document retrieval or online assistant/help search. The release engineer must verify that no unintended SDK, OCR, AI, currency-rate, analytics, diagnostics or networking path changes these statements in the actual binary.
+3. When copies leave your device
+You control whether to export, share or back up data. Export to file creates readable, unencrypted material that cannot be imported back into Butlerly. The separate portable-backup workflow uses encryption; protect its password and destination. Files shared to another app or saved in a cloud folder are then subject to that destination's practices. Device or app-store services may also process data independently of Butlerly.
 
-3. Information you choose to process
-Depending on the features you use, information may include transaction amounts, currencies, dates, directions and descriptions; merchant and category names; tags and notes; payment-source names, balances or identifiers entered by you; imported bank or card statements, CSV files, receipts, photos and documents; recognized text and original evidence; duplicate and reconciliation decisions; budgets and rules; locally derived reports and insights; preferences; Financial Profile Survey answers; backups and exports.
+4. Permissions and purposes
+When you choose capture or import, your device may ask permission for camera, photos or files. You can manage applicable permissions in device settings. Butlerly uses selected information to display, edit, search, review, classify, reconcile, summarize, back up, restore or delete your records. Automated extraction and insights can be inaccurate.
 
-These records may be sensitive and may include names, addresses or account identifiers present in documents you select. Survey responses are self-reported context, not verified bank data or suitability assessments. Butlerly does not require you to provide bank login credentials for the approved Alpha workflow. Do not import data about other people unless authorized.
+5. Retention, deletion and safety
+Local records remain until changed or removed using available controls or device operations. Archive is not permanent deletion. Restoring a backup can bring records back. Deleting Butlerly or erasing local records does not remove independently exported, shared or backed-up copies. Device security, storage permissions and password choices also affect protection; no backup or recovery outcome is guaranteed.
 
-4. Why the App uses this information
-The App processes records to let you enter, display, amend, search, review, compare, classify, reconcile, import, export, back up, restore and delete financial information. Local rules and calculations may derive totals, trends, likely matches or suggestions; derived outputs can contain errors and should not silently replace original evidence. Preferences and optional survey responses support available in-app experiences. Each of these purposes depends on your actions and the implemented features.
-
-5. When information can leave the App
-You may choose to export or share files, save a backup, attach content through operating-system selectors, or contact support outside the App. A file you independently store in iCloud Drive, Google Drive, OneDrive, Dropbox or another service is governed by that service's terms and privacy practices. Downloading a document from such a provider or a bank occurs outside Butlerly; you then select a locally available supported file to import. Butlerly does not automatically connect to that account or keep the file synchronized in the approved Alpha.
-
-OS-level app distribution, device cloud backup, keyboard/camera services, crash reporting controlled by a store or operating system, or other system functions may involve separate providers. Which recipients actually receive App data, for what purpose, and on which platforms must be verified for the release. The current draft does not assert that there is zero collection, zero sharing or zero diagnostics.
-
-6. Camera, photos, files and recognition
-If you invoke import or capture, Butlerly may request access through the camera, photo library or file picker. Platform permission settings control the access afforded to the App. Receipts and statements may contain sensitive financial or identity information. On-device OCR and deterministic extraction are distinct from remote AI services. The approved Alpha does not authorize uploading financial documents or prompts to external OCR/AI providers; the shipped engine and fallback behavior must be audited before publishing a categorical local-only claim.
-
-7. No authorized cloud sync or behavioral advertising
-The intended Alpha has no Butlerly-operated accounts, cloud data syncing, remote financial profiling, paid entitlements, marketing tracking or sale of user finance records. This is a product restriction and not independent proof that every included SDK is free of network activity. Before release, audit network traffic, third-party SDKs, permission manifests, data-safety declarations and any diagnostics; if any actual recipient exists, update the policy to identify recipient categories, purposes, retention and consent or legal basis. Do not advertise an unverified “we never collect anything” guarantee.
-
-8. Retention, deletion, exports and backups
-On-device data is generally retained until you edit, archive, erase, uninstall or otherwise remove it through available controls or device operations. Archiving is not the same as permanent deletion. Restoring a backup can reintroduce records; “Merge” and “Replace” have different consequences. Evidence files and database records may be stored separately. Deleted local content can remain in independent exports, backups, device copies or external services you selected. The App cannot delete copies beyond its control.
-
-Where a verified external service receives personal data, the final policy must state who holds it, the retention period or criteria, and a verified request route for access, correction, deletion and other applicable rights. Without a Butlerly account in the approved Alpha, requests to delete a central Butlerly finance account do not apply; local erasure still requires user action.
-
-9. Security and recovery limitations
-The design uses local storage and app-controlled evidence files and supports encrypted portable backups where implemented. Protection also depends on device locks, OS security, the storage destination and your password practices. No product guarantees prevention of unauthorized access, accidental loss, corruption or unsuccessful recovery. Do not send passwords, backup keys or complete financial archives in ordinary support messages.
-
-10. Your choices and rights
-You can choose what to enter/import, review detected transactions, correct records, and use supported backup/export/erase controls. You may manage camera/photo/file permissions in the operating system. Rights and response deadlines under privacy law depend on the actual controller, jurisdiction and nature of processing. The published version must explain how rights relating to any data held by Butlerly or its verified providers can be exercised; [CONTACT/PROCESS PENDING]. Mandatory rights are not limited by this draft.
-
-11. Children and protected users
-Alpha is not designed as a service directed to children. The publisher must approve minimum eligibility age, any parental consent procedure and regional protections before public distribution. This draft does not represent an age-gating mechanism that has not been implemented.
-
-12. Changes, cross-references and contact
-Material changes to data collection or processing will require revised notices and consent where applicable. Terms of Use (LEG-0001), Software License & Third-Party Notices (LEG-0003) and AI & Professional-Advice Disclosures (LEG-0004) provide additional context. Contact for privacy matters: [VERIFIED PRIVACY CONTACT]. Current draft: v1.1; effective only after approval.
-
-PRE-PUBLICATION APPROVAL RECORD — NOT PART OF PUBLIC POLICY
-Complete final code/SDK/permission/network audit, including any OS and store services; data-flow and processor inventory; controller/contact/rights/age/regions/legal bases/retention review; verified store privacy disclosures; owner and counsel sign-off; English/Chinese/Spanish review; exact frozen app version; offline legal reader; and an active public HTTPS policy webpage if required by the intended store. A private/editable Google Doc is not the required public policy page. Issue: https://github.com/Jack84283/Butlerly/issues/380.
+6. Your choices and release contact
+You control which records to import, edit, export, back up or erase. A final public policy must state the verified publisher, privacy-contact method, applicable rights and any confirmed external processing or retention practices for the released platforms and regions. No account-based deletion route is implied where Butlerly has no account.
