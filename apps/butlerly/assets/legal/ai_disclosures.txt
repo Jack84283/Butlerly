@@ -9,7 +9,7 @@ Butlerly may use on-device text recognition, rules and calculations to extract i
 Extraction, classifications, matches and analysis can be wrong or incomplete, including where source data or currency conversion is missing. Check original receipts, statements, amounts, dates, currencies and review decisions. A suggested match or fluent summary is not proof of a correct result. User-confirmed records and original evidence should not be silently overwritten.
 
 3. No professional advice
-Butlerly is an information-organization tool, not a bank or professional adviser. Its summaries and suggestions do not constitute investment, tax, accounting, legal, credit, insurance or medical advice and do not guarantee outcomes. Seek qualified advice before consequential decisions.
+Butlerly is an information-organization tool, not a bank or professional adviser. Its summaries and suggestions do not constitute investment, tax, accounting, legal or credit advice and do not guarantee outcomes. Seek qualified advice before consequential decisions.
 
 4. Sensitive information
 Do not share passwords, bank login credentials, backup secrets or unnecessary identifying information in feedback. Exported and shared copies may be readable outside Butlerly; see the Privacy Policy. Remote AI or other connected processing would require separate approval and updated disclosures before introduction.
