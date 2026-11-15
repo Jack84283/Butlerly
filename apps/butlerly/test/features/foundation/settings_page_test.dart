@@ -375,9 +375,9 @@ void main() {
   testWidgets('More sound preview plays only on an enabled transition', (
     tester,
   ) async {
-    var playbackCount = 0;
-    ButlerlySoundFeedback.playbackForTesting = () async {
-      playbackCount += 1;
+    final playedAssets = <String>[];
+    ButlerlySoundFeedback.playbackForTesting = (assetPath) async {
+      playedAssets.add(assetPath);
     };
     addTearDown(() => ButlerlySoundFeedback.playbackForTesting = null);
     await tester.pumpWidget(app());
@@ -393,13 +393,13 @@ void main() {
     // Reordered writes must never result in a stale enable chime.
     tile.onChanged!(true);
     await tester.pumpAndSettle();
-    expect(playbackCount, 0);
+    expect(playedAssets, isEmpty);
 
     tile = tester.widget<SwitchListTile>(setting);
     expect(tile.value, isFalse);
     tile.onChanged!(true);
     await tester.pumpAndSettle();
-    expect(playbackCount, 1);
+    expect(playedAssets, <String>[ButlerlySoundFeedback.createdSoundAssetPath]);
     expect(tester.widget<SwitchListTile>(setting).value, isTrue);
   });
 

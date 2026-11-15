@@ -143,7 +143,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ref.read(userPreferenceProvider).value?.transactionSaveSoundEnabled ==
             true) {
       // Preview only the committed, still-enabled preference.
-      unawaited(ButlerlySoundFeedback.play());
+      unawaited(ButlerlySoundFeedback.playCreated());
     }
   }
 

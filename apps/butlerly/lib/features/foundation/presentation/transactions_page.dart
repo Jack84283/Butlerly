@@ -1075,7 +1075,11 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
       }
       if (soundEnabled) {
         // Feedback is noncritical and never changes the committed result.
-        unawaited(ButlerlySoundFeedback.play());
+        unawaited(
+          existing == null
+              ? ButlerlySoundFeedback.playCreated()
+              : ButlerlySoundFeedback.playUpdated(),
+        );
       }
       _complete(TransactionEditorResult.saved(saved));
     }
