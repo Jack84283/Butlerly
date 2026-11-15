@@ -6,15 +6,19 @@ import 'package:flutter/foundation.dart';
 final class ButlerlySoundFeedback {
   ButlerlySoundFeedback._();
 
-  // A bundled app sound, shared by iPhone, Android and desktop builds.
-  // AudioPlayer's asset cache prefixes this path with "assets/".
-  static const String soundAssetPath = 'audio/transaction_confirmation.wav';
+  // Distinct offline sounds for successful create and update operations.
+  // AudioPlayer's asset cache prefixes these paths with "assets/".
+  static const String createdSoundAssetPath = 'audio/item_created.wav';
+  static const String updatedSoundAssetPath = 'audio/item_updated.wav';
+
+  // Kept for callers that previously used the single confirmation sound.
+  static const String soundAssetPath = createdSoundAssetPath;
 
   static final AudioPlayer _player = AudioPlayer();
   static bool _configured = false;
 
   @visibleForTesting
-  static Future<void> Function()? playbackForTesting;
+  static Future<void> Function(String assetPath)? playbackForTesting;
 
   /// Play Butlerly's own confirmation WAV, not a device ringtone or
   /// notification sound. On mobile, do not interrupt music or podcasts.
@@ -25,13 +29,20 @@ final class ButlerlySoundFeedback {
     respectSilence: false,
   ).build();
 
-  static Future<void> play() async {
-    final override = playbackForTesting;
-    if (override != null) {
-      await override();
-      return;
-    }
+  static Future<void> playCreated() => _play(createdSoundAssetPath);
+
+  static Future<void> playUpdated() => _play(updatedSoundAssetPath);
+
+  /// Backward-compatible confirmation entrypoint: preview the create sound.
+  static Future<void> play() => playCreated();
+
+  static Future<void> _play(String assetPath) async {
     try {
+      final override = playbackForTesting;
+      if (override != null) {
+        await override(assetPath);
+        return;
+      }
       // Keep the short local sound buffered across interactions. AudioPlayer
       // replaces an active source before starting the next one.
       if (!_configured) {
@@ -45,7 +56,7 @@ final class ButlerlySoundFeedback {
         await _player.setReleaseMode(ReleaseMode.stop);
         _configured = true;
       }
-      await _player.play(AssetSource(soundAssetPath), volume: 0.65);
+      await _player.play(AssetSource(assetPath), volume: 0.65);
     } catch (error, stackTrace) {
       // Sound is optional feedback. Never fail an already-committed save or
       // setting change because the device cannot play audio.
