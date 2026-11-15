@@ -1,59 +1,23 @@
 BUTLERLY — TERMS OF USE
-LEG-0001 | Alpha review edition v1.1 | English | 9 November 2026
-NOT EFFECTIVE — OWNER AND COUNSEL APPROVAL REQUIRED
+LEG-0001 | Alpha review edition v1.2 | English | 15 November 2026
+DRAFT FOR PRIVATE ALPHA REVIEW — NOT EFFECTIVE FOR PUBLIC DISTRIBUTION
 
-This draft is for legal and product review only. It must not be installed as a final legal agreement or published until the publisher, contact details, age requirements, regions, applicable law, distribution rules, and liability terms are approved. The provisions below describe the planned offline-first Butlerly Alpha; factual statements are conditional on verification of the release build.
+These brief Terms describe Butlerly as currently intended for private Alpha testing. They are not an approved end-user agreement. A released edition must identify the verified publisher, contact channel, effective date and applicable distribution terms.
 
-1. Publisher, scope and acceptance
-Butlerly (the “App”) is provided by [LEGAL PUBLISHER NAME AND ENTITY TYPE], with legal notices directed to [VERIFIED LEGAL CONTACT AND ADDRESS]. These Terms apply to the App and any separately identified services actually made available to you. Effective date: [APPROVED DATE]. Approved distribution regions and channels: [OWNER DECISION]. If the App is distributed to a restricted Alpha group, separate tester terms apply only if they are expressly provided.
+1. What Butlerly is
+Butlerly is a local-first personal-finance organizer for transactions, receipts, statements, payments, budgets and analysis. You may choose to import supported files that you first obtain outside the App. The approved Alpha scope has no Butlerly account, built-in cloud synchronization or automatic download from banks or storage providers. Available features depend on the installed build and device.
 
-Your right to use the App is subject to applicable laws, these Terms as lawfully presented, and any applicable app-store terms. Viewing a document is not, by itself, proof of a separately required consent. We will request any express consent required by law or the released feature.
+2. Your records and decisions
+You decide what to enter or import and must have permission to use the information. Check extracted text, amounts, dates, currencies, duplicate suggestions, settlement entries and reports before relying on them. Butlerly does not verify bank balances, source documents or survey answers independently. Automated results may be wrong.
 
-2. What Butlerly does
-The Alpha is a local-first personal-finance application for entering and reviewing transactions; organizing merchants, categories and payment sources; importing supported downloaded files and captured receipts; reviewing possible duplicates and statement rows; managing settlements and budgets; and viewing financial summaries, insights and an optional Financial Profile Survey. Feature availability depends on the actual Alpha build and device. Survey answers are information you provide, not verified financial transactions or professional assessments.
+3. Files, backups and recovery
+Core records are designed to remain on your device. If you choose to share or export a file, copies may exist outside Butlerly. Export to file produces readable, unencrypted information and is for review, not re-import into Butlerly. Portable backups use their own encrypted backup workflow. Keep passwords and exported files secure; deleting app data does not erase copies you have stored elsewhere. Backup and Restore (Merge or Replace) can affect records; review confirmations and check recovery.
 
-Core Alpha operation is intended to work without a Butlerly account, cloud login or continuous network access. The approved Alpha does not include direct cloud-account connections, automatic synchronization, remote document retrieval, external AI/OCR processing, or purchase-based Pro/Family entitlements. Obtain a supported document outside the App and deliberately select the locally available file for import. A future feature is not a present service or entitlement.
+4. Use, third-party materials and limitations
+Use Butlerly lawfully and respect other people's information and rights. Original Butlerly materials and third-party components have separate ownership and license terms; the third-party licenses retain their own force. Alpha software may have bugs, change or become unavailable. To the extent allowed by law, no error-free operation or guaranteed recovery is promised. Mandatory consumer rights remain unaffected.
 
-3. Limited use and ownership
-Subject to mandatory law and final distribution terms, the publisher grants authorized users a limited, non-exclusive license to run the App on supported devices for lawful personal purposes. Do not use the App to commit fraud, access another person's data without authority, circumvent safeguards, interfere with its operation, or infringe others' rights. Restrictions on copying, reverse engineering and redistribution apply only to the extent legally enforceable and do not override open-source license rights.
+5. Informational use
+Butlerly helps organize personal records. Its calculations, summaries and suggestions are not personalized investment, tax, legal, credit or other professional advice. Consult a qualified professional before important decisions.
 
-The Butlerly name and original app materials belong to their respective rightsholders. Third-party software, fonts, artwork and other materials are governed by their own licenses; see LEG-0003.
-
-4. Information you enter and import
-You are responsible for the accuracy of records you enter, the documents you select, and having permission to process them. Receipt and statement extraction, category suggestions, duplicate detection, matching, rules and analysis may be incorrect, incomplete or outdated. Review important names, dates, amounts, currencies, classifications, original evidence and proposed changes before relying on a result. When the App offers review or correction, use it.
-
-The App does not independently verify the authenticity of a bank statement, receipt, account balance, payment, household survey answer or user-provided record. Imported data and computed summaries are not bank-certified statements.
-
-5. Local storage, backups and recovery
-Butlerly is designed to store its core financial records and supporting evidence on the device. If you export, share or back up a file to a destination you choose, that copy can be accessible outside the App and subject to the destination's terms. Butlerly does not automatically synchronize those copies in the approved Alpha. You are responsible for protecting your device, encryption passwords, backup files and exported records.
-
-Back up before major changes. Loss, device damage, storage failure, incorrect deletion or an interrupted restore may make information unrecoverable. Backup and restore procedures, including Merge and Replace choices, can affect existing records; review warnings and verify successful recovery. Removing an item from the App does not delete previously exported or independently stored copies.
-
-6. Automated assistance and AI
-The Alpha may include device-based text recognition, deterministic categorization, duplicate suggestions and derived insights. An automated result is not necessarily generative AI, and a confidence score does not guarantee accuracy. The approved Alpha does not authorize sending personal finance data to remote AI or OCR providers. The shipped build must be checked before a definitive no-transmission representation is published. Any later externally connected AI requires separate review, notice and, where required, consent. See LEG-0004.
-
-7. No financial or other professional advice
-Butlerly is a record-organization tool, not a bank, lender, broker, investment adviser, financial planner, accountant, tax adviser, attorney, insurer or healthcare provider. Its calculations, summaries, classifications, forecasts and suggestions are informational and are not individualized regulated advice or a guarantee of results. Seek qualified professional advice for consequential decisions.
-
-8. Third-party platforms and local files
-Your device, operating system, app store, document source, and any storage service you independently select have their own terms and privacy practices. Downloading a document from a bank or cloud-storage provider occurs outside Butlerly before user-selected local import. Butlerly is not affiliated with or endorsed by a bank, cloud provider, platform operator or other third party merely because a name appears in the App.
-
-9. Alpha availability, updates and feedback
-Alpha software is offered for testing and may contain defects or change during development. Availability, compatibility, supported formats and features may vary across builds and platforms. Updates may be needed for safety, quality and legal compliance. If you voluntarily send feedback, screenshots or diagnostic material, remove passwords, financial identifiers and third-party information wherever possible. The feedback contact, processing terms and any tester confidentiality obligations remain subject to [OWNER/COUNSEL APPROVAL].
-
-10. Privacy, permissions and deletion
-The Privacy Policy (LEG-0002) explains the App's planned data handling and the limits of local storage. You control whether to provide or import records and whether to use supported export, backup, restore and erase controls. Platform permissions are managed by the operating system. Deleting local data, uninstalling the App or erasing a device can permanently remove information, but cannot recall independently shared copies.
-
-11. Warranty and liability
-The Alpha may be provided “as is” and “as available,” to the maximum extent law permits. No promise is made that every calculation, classification, file import, backup, restore or feature is error-free, uninterrupted or suitable for a particular purpose. Mandatory statutory warranties and consumer rights remain unaffected.
-
-[COUNSEL DECISION REQUIRED: enforceable warranty wording, limitation of liability and monetary cap, permitted exclusions, indemnification, refunds if relevant, mandatory consumer-law carve-outs, and jurisdiction-specific language. No arbitration requirement, class-action waiver or liability amount is imposed by this unapproved draft.]
-
-12. Eligible users, governing law and disputes
-The minimum age, parental or guardian requirements, permitted territories, legal publisher, applicable law, competent courts or other dispute process will be established before publication: [OWNER/COUNSEL DECISION]. This draft does not impose arbitration or waive non-waivable legal remedies. Mandatory consumer protections continue to apply.
-
-13. Changes and contact
-A finalized edition will identify its publisher, version and effective date. Material changes will be communicated and consent requested when required by law. Questions about these Terms or legal notices: [VERIFIED LEGAL CONTACT]. Privacy questions: [VERIFIED PRIVACY CONTACT]. The final published copy must be available through the App's Legal & Licenses section and any required distribution channels.
-
-PRE-PUBLICATION APPROVAL RECORD — NOT PART OF PUBLIC TERMS
-Confirm: publisher/entity and physical or legally valid notice address; support/privacy channels; closed Alpha audience, region, age and distribution; enforceable liability/indemnity/dispute language; feedback/tester terms; release binary and network audit; legal and owner sign-off; effective date; parity of English, Simplified Chinese and Spanish; accessibility and offline reader. This draft does not constitute legal advice or approval. Issue: https://github.com/Jack84283/Butlerly/issues/380.
+6. Privacy and future publication
+The Privacy Policy explains local data handling, permissions, sharing and deletion. An externally distributed release will need approved publisher details, contact information, effective date and any applicable tester or distribution terms. This review text does not impose arbitration, a class-action waiver or a new monetary liability limit.

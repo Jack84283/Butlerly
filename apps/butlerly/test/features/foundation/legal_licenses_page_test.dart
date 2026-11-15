@@ -97,13 +97,13 @@ void main() {
           final path = documents[i].assetPathFor(locale);
           final text = await File(path).readAsString();
           expect(text, contains(ids[i]), reason: path);
-          expect(text, contains('v1.1'), reason: path);
+          expect(text, contains('v1.2'), reason: path);
           if (locale.languageCode == 'zh') {
             expect(text, contains('审阅稿'), reason: path);
           } else if (locale.languageCode == 'es') {
             expect(text, contains('revisión Alpha'), reason: path);
           } else {
-            expect(text, contains('review edition v1.1'), reason: path);
+            expect(text, contains('review edition v1.2'), reason: path);
           }
         }
       }

@@ -1,35 +1,9 @@
 BUTLERLY — SOFTWARE LICENSE & THIRD-PARTY NOTICES
-LEG-0003 | Alpha review edition v1.1 | English | 9 November 2026
-INCOMPLETE RELEASE INVENTORY — NOT A COMPLETE LICENSE NOTICE
+LEG-0003 | Alpha review edition v1.2 | English | 15 November 2026
+DRAFT — THIRD-PARTY RELEASE LICENSE INVENTORY INCOMPLETE
 
-This is an explanatory review draft only, not a replacement for third-party license texts or a certified attribution inventory. Required original copyright notices, license terms, attribution, source-code offers and modification notices must be included as dictated by each shipped component's actual license. Publication is blocked until the complete inventory is verified against the frozen release.
+Butlerly includes its own materials and may distribute third-party software and assets, such as Flutter/Dart packages, SQLite, platform plugins, icons and media. Each third-party component is governed by its actual license. Butlerly's Terms do not override rights granted by open-source or other third-party licenses.
 
-1. Butlerly original materials
-Original Butlerly application code, product names, designs, content and branding are owned or licensed by [VERIFIED RIGHTS HOLDER]. Copyright © [VERIFIED YEAR AND HOLDER]. All rights not granted to users remain reserved to the extent permitted by law. The terms governing use of the Butlerly App appear in LEG-0001 and any applicable platform distribution conditions. This paragraph does not claim ownership of third-party code or assets.
+This short notice is not a replacement for required original copyright statements, license texts, attribution, modification notices or source-code offers. Before external release, those materials must be checked against the exact shipped dependencies and assets, and provided in the form and location required by each license. The final license inventory has not yet been certified.
 
-2. Open-source and other third-party components
-The App may include Flutter/Dart components, SQLite libraries, platform plugins, localization, navigation, cryptography, file selection, image and audio handling, icons, fonts and other materials developed by third parties. Each component is governed by its own license. The App's proprietary terms do not remove rights granted under an open-source license. The final distributed build must preserve and make accessible all copyright notices, license texts and other required acknowledgments in the form that the relevant licenses require.
-
-Do not assume all components use permissive licenses; a list of package names is not a license inventory and may omit native and transitive dependencies. Where a license requires an unmodified original text, the official original text must be provided, even if an explanatory translation accompanies it.
-
-3. Inventory requirements for the exact release
-The release engineer must derive the inventory from the actual dependency resolution and delivered binaries: Flutter/Dart pubspec.lock, Android Gradle dependencies, Apple/iOS/macOS native packages and lockfiles, any dynamically included platform components, generated code and bundled assets. For each distributed item record package/component name, exact version, source URL, rights holder, SPDX identifier or actual license, original full license/notice text, required attribution, modifications, source-offer obligations, distribution location and verification evidence.
-
-Any unknown, contradictory, custom, copyleft or commercially restricted license needs qualified review. Do not publish a claim of full license compliance based only on the presence of this draft.
-
-4. Assets, typography, models and media
-Verify the origin, rights and redistribution conditions of icons, branded images, example data, templates, screenshots, audio, fonts and any AI/OCR model shipped with the App. System font names appearing in code do not prove that those fonts are bundled or redistributable. Butlerly's designs must not accidentally include a third party's protected logo, dataset or other copyrighted work without authorization. A resource accessible online is not necessarily licensed for inclusion in an app.
-
-5. Accessing actual license texts
-For a released version, the Legal & Licenses interface and any accompanying distribution mechanism must make the required notice inventory and license texts available offline where applicable. A summarized legal document is not a substitute for the actual license. Some licenses additionally require a working source-code offer, modification details or attribution in a particular location. These obligations must be satisfied independently of a general app footer or optional website.
-
-This v1.1 review edition deliberately does not claim that a finished release-specific inventory already exists. The current app's four bundled legal text assets remain older working drafts; do not silently replace them with this document until approved.
-
-6. Names of other companies
-Third-party product, service, bank, operating-system and library names may be used solely to identify compatibility, data sources or dependencies. Such references do not imply sponsorship, affiliation or endorsement. Trademark rights remain with their respective owners. API service terms can apply independently of a software library's open-source license.
-
-7. Corrections, contact and versioning
-A shipped notice must match its frozen app commit and dependency set; a package update, asset replacement or platform build change can require an attribution refresh. Software-license inquiries or notices: [VERIFIED LEGAL CONTACT]. Publisher/rightsholder: [VERIFIED ENTITY]. Effective version/date: [APPROVAL PENDING]. Where a component's original license contradicts an explanatory summary, its applicable license controls to the extent required by law.
-
-PRE-PUBLICATION INVENTORY AND APPROVAL RECORD — NOT PART OF THE PUBLIC NOTICE
-PENDING: exact release commit/build IDs; resolved direct/transitive/native dependencies; original third-party license texts and copyrights; attribution and source-offer obligations; assets, fonts, media and models provenance; owner/counsel decisions on unknown licenses; offline access on all shipped platforms; complete EN/zh-Hans/es explanatory text, with original license terms unchanged; publisher/contact verification; sign-off. No certified inventory was produced as part of this text revision. Issue: https://github.com/Jack84283/Butlerly/issues/380.
+Product names and trademarks mentioned only to describe compatibility do not imply endorsement. A future approved edition must identify the verified Butlerly rights holder and any required license contact.
