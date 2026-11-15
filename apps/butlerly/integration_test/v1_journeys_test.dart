@@ -2156,7 +2156,7 @@ void main() {
       await tester.tap(
         find.byKey(const ValueKey('mobile-privacy-restore-replace')),
       );
-      await tester.pumpAndSettle();
+      await _waitForRestorePassword(tester);
       expect(find.byType(TextField), findsOneWidget);
       await tester.enterText(find.byType(TextField), password);
       FocusManager.instance.primaryFocus?.unfocus();
@@ -3061,7 +3061,7 @@ Future<void> _confirmProductionReplace(
   );
   expect(action, findsOneWidget);
   await tester.tap(action);
-  await tester.pumpAndSettle();
+  await _waitForRestorePassword(tester);
   await tester.enterText(find.byType(TextField), password);
   FocusManager.instance.primaryFocus?.unfocus();
   await tester.pump();
@@ -3084,6 +3084,21 @@ Future<void> _confirmProductionReplace(
   await tester.pump();
 }
 
+/// The native file picker and backup-header inspection may run while a
+/// loading animation is active. Avoid pumpAndSettle until the sheet opens.
+Future<void> _waitForRestorePassword(WidgetTester tester) async {
+  for (var attempt = 0; attempt < 120; attempt++) {
+    await tester.pump(const Duration(milliseconds: 100));
+    if (find.byType(TextField).evaluate().length == 1 &&
+        find.text('Unlock').evaluate().isNotEmpty) {
+      return;
+    }
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 250)),
+    );
+  }
+  fail('Restore password sheet never appeared after file selection.');
+}
 /// Native archive inspection displays an indeterminate spinner. Waiting for
 /// animation settlement can block a real-device test until its timeout.
 Future<void> _waitForReplaceConfirmation(
