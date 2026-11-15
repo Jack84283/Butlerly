@@ -24,7 +24,7 @@ import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:file_selector_platform_interface/file_selector_platform_interface.dart';
 import 'package:flutter/foundation.dart'
-    show TargetPlatform, defaultTargetPlatform;
+    show TargetPlatform, debugPrint, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -2134,6 +2134,7 @@ void main() {
         ),
       );
       await workspace.createPortableBackup(backup.path, password: password);
+      debugPrint('[replace-journey] encrypted archive created');
       await harness.finance.createTransaction(
         manualCommand(
           id: 'ui-restore-obsolete-e2e',
@@ -2157,12 +2158,14 @@ void main() {
         find.byKey(const ValueKey('mobile-privacy-restore-replace')),
       );
       await _waitForRestorePassword(tester);
+      debugPrint('[replace-journey] password sheet opened');
       expect(find.byType(TextField), findsOneWidget);
       await tester.enterText(find.byType(TextField), password);
       FocusManager.instance.primaryFocus?.unfocus();
       await tester.pump();
       await tester.tap(find.text('Unlock').last);
       await _waitForReplaceConfirmation(tester, harness);
+      debugPrint('[replace-journey] replace confirmation opened');
       final acknowledgment = find.byKey(
         const ValueKey('restore-replace-acknowledgement'),
       );
@@ -2175,17 +2178,19 @@ void main() {
       await Scrollable.ensureVisible(
         tester.element(acknowledgment),
         alignment: 0.5,
-        duration: const Duration(milliseconds: 200),
+        duration: Duration.zero,
       );
-      await tester.pumpAndSettle();
+      await tester.pump();
       await tester.tap(acknowledgment);
-      await tester.pumpAndSettle();
+      await tester.pump();
       expect(tester.widget<CheckboxListTile>(acknowledgment).value, isTrue);
       await tester.tap(confirm);
       await tester.pump();
+      debugPrint('[replace-journey] replace action confirmed');
       // An indeterminate spinner cannot settle by definition. Observe the
       // production success/error toast with a real-time, bounded poll instead.
       await _awaitProductionRestoreOutcome(tester, harness, success: true);
+      debugPrint('[replace-journey] restore success toast observed');
       expect(find.byKey(const ValueKey('butlerly-error-toast')), findsNothing);
 
       expect(
@@ -2201,7 +2206,7 @@ void main() {
         isA<ApplicationFailure<TransactionDto>>(),
       );
       await tester.pumpWidget(const SizedBox.shrink());
-      await tester.pumpAndSettle();
+      await tester.pump();
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 250)),
       );
@@ -3074,11 +3079,11 @@ Future<void> _confirmProductionReplace(
   await Scrollable.ensureVisible(
     tester.element(acknowledgment),
     alignment: 0.5,
-    duration: const Duration(milliseconds: 200),
+    duration: Duration.zero,
   );
-  await tester.pumpAndSettle();
+  await tester.pump();
   await tester.tap(acknowledgment);
-  await tester.pumpAndSettle();
+  await tester.pump();
   expect(tester.widget<CheckboxListTile>(acknowledgment).value, isTrue);
   await tester.tap(confirm);
   await tester.pump();
