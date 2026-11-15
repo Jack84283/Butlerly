@@ -1,9 +1,8 @@
 BUTLERLY — LICENCIAS DE SOFTWARE Y AVISOS DE TERCEROS
-LEG-0003 | Edición de revisión Alpha v1.2 | Español | 15 de noviembre de 2026
-BORRADOR — INVENTARIO DE LICENCIAS PARA DISTRIBUCIÓN INCOMPLETO
+LEG-0003 | Español
 
 Butlerly contiene materiales originales y puede distribuir software y recursos de terceros, como paquetes Flutter/Dart, SQLite, componentes de plataforma, iconos y archivos multimedia. Cada componente se rige por su licencia real. Los Términos de Butlerly no anulan los derechos concedidos por licencias de código abierto u otras licencias de terceros.
 
-Este aviso breve no sustituye los textos originales de copyright, licencias, atribuciones, avisos de modificación u ofertas de código fuente que deban conservarse. Antes de distribuir externamente, debe revisarse el conjunto exacto de dependencias y recursos incluidos, y proporcionar los materiales en la forma y lugar exigidos por cada licencia. El inventario definitivo todavía no está certificado.
+Cada componente incluido conserva los derechos y obligaciones de su licencia. Cuando una licencia exija avisos de derechos de autor, textos de licencia, atribuciones, avisos de modificación u ofertas de código fuente, esos requisitos se aplican independientemente de este resumen.
 
-Los nombres y marcas citados solo para describir compatibilidad no implican respaldo comercial. Una versión aprobada deberá identificar al titular verificado de los derechos de Butlerly y cualquier contacto para cuestiones de licencias que resulte necesario.
+Los nombres de productos y marcas utilizados para describir compatibilidad no implican patrocinio ni respaldo. Los derechos sobre materiales y marcas de terceros permanecen con sus respectivos titulares.
