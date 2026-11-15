@@ -75,7 +75,7 @@ void main() {
   });
 
   test(
-    'all four legal review documents are present in three languages',
+    'all four clean legal documents are present in three languages',
     () async {
       const documents = [
         LegalDocument('termsOfUse', 'assets/legal/terms_of_use.txt'),
@@ -97,13 +97,18 @@ void main() {
           final path = documents[i].assetPathFor(locale);
           final text = await File(path).readAsString();
           expect(text, contains(ids[i]), reason: path);
-          expect(text, contains('v1.2'), reason: path);
+          // Review-stage metadata and release instructions belong in the
+          // internal checklist, not in the offline legal reader.
+          expect(text, isNot(contains('v1.2')), reason: path);
+          expect(text, isNot(contains('DRAFT')), reason: path);
+          expect(text, isNot(contains('BORRADOR')), reason: path);
+          expect(text, isNot(contains('审阅稿')), reason: path);
           if (locale.languageCode == 'zh') {
-            expect(text, contains('审阅稿'), reason: path);
+            expect(text, contains('简体中文'), reason: path);
           } else if (locale.languageCode == 'es') {
-            expect(text, contains('revisión Alpha'), reason: path);
+            expect(text, contains('Español'), reason: path);
           } else {
-            expect(text, contains('review edition v1.2'), reason: path);
+            expect(text, contains('English'), reason: path);
           }
         }
       }
@@ -130,7 +135,7 @@ void main() {
     );
     expect(chinese, findsOneWidget);
     expect(tester.widget<SelectableText>(chinese).data, contains('使用条款'));
-    expect(find.textContaining('尚未生效'), findsWidgets);
+    expect(find.textContaining('尚未生效'), findsNothing);
 
     await tester.pumpWidget(app(locale: const Locale('es')));
     await tester.pumpAndSettle();
@@ -143,7 +148,7 @@ void main() {
       tester.widget<SelectableText>(spanish).data,
       contains('TÉRMINOS DE USO'),
     );
-    expect(find.textContaining('No vigentes'), findsOneWidget);
+    expect(find.textContaining('No vigentes'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
