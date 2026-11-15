@@ -1,11 +1,10 @@
 BUTLERLY — TERMS OF USE
-LEG-0001 | Alpha review edition v1.2 | English | 15 November 2026
-DRAFT FOR PRIVATE ALPHA REVIEW — NOT EFFECTIVE FOR PUBLIC DISTRIBUTION
+LEG-0001 | English
 
-These brief Terms describe Butlerly as currently intended for private Alpha testing. They are not an approved end-user agreement. A released edition must identify the verified publisher, contact channel, effective date and applicable distribution terms.
+These Terms explain the use of Butlerly for organizing personal financial information. Available features may vary with your installed version and device.
 
 1. What Butlerly is
-Butlerly is a local-first personal-finance organizer for transactions, receipts, statements, payments, budgets and analysis. You may choose to import supported files that you first obtain outside the App. The approved Alpha scope has no Butlerly account, built-in cloud synchronization or automatic download from banks or storage providers. Available features depend on the installed build and device.
+Butlerly is a local-first personal-finance organizer for transactions, receipts, statements, payments, budgets and analysis. You may choose to import supported files that you first obtain outside the App. Butlerly does not require an account or provide built-in cloud synchronization or automatic downloads from banks or storage providers. Available features depend on the installed build and device.
 
 2. Your records and decisions
 You decide what to enter or import and must have permission to use the information. Check extracted text, amounts, dates, currencies, duplicate suggestions, settlement entries and reports before relying on them. Butlerly does not verify bank balances, source documents or survey answers independently. Automated results may be wrong.
@@ -14,10 +13,10 @@ You decide what to enter or import and must have permission to use the informati
 Core records are designed to remain on your device. If you choose to share or export a file, copies may exist outside Butlerly. Export to file produces readable, unencrypted information and is for review, not re-import into Butlerly. Portable backups use their own encrypted backup workflow. Keep passwords and exported files secure; deleting app data does not erase copies you have stored elsewhere. Backup and Restore (Merge or Replace) can affect records; review confirmations and check recovery.
 
 4. Use, third-party materials and limitations
-Use Butlerly lawfully and respect other people's information and rights. Original Butlerly materials and third-party components have separate ownership and license terms; the third-party licenses retain their own force. Alpha software may have bugs, change or become unavailable. To the extent allowed by law, no error-free operation or guaranteed recovery is promised. Mandatory consumer rights remain unaffected.
+Use Butlerly lawfully and respect other people's information and rights. Original Butlerly materials and third-party components have separate ownership and license terms; the third-party licenses retain their own force. Butlerly may have bugs, change or become unavailable. To the extent allowed by law, no error-free operation or guaranteed recovery is promised. Mandatory consumer rights remain unaffected.
 
 5. Informational use
 Butlerly helps organize personal records. Its calculations, summaries and suggestions are not personalized investment, tax, legal, credit or other professional advice. Consult a qualified professional before important decisions.
 
-6. Privacy and future publication
-The Privacy Policy explains local data handling, permissions, sharing and deletion. An externally distributed release will need approved publisher details, contact information, effective date and any applicable tester or distribution terms. This review text does not impose arbitration, a class-action waiver or a new monetary liability limit.
+6. Privacy and related notices
+The Privacy Policy explains local data handling, permissions, sharing and deletion. The Software License & Third-Party Notices and Automated Features & Professional-Advice Notice provide additional information about third-party materials and automated results.
