@@ -3064,9 +3064,6 @@ Future<void> _confirmProductionReplace(
   await tester.pump();
   await tester.tap(find.text('Unlock').last);
   await _waitForReplaceConfirmation(tester, null);
-  final acknowledgment = find.byKey(
-    const ValueKey('restore-replace-acknowledgement'),
-  );
   final confirm = find.byKey(const ValueKey('restore-replace-confirm'));
   await _tapReplaceAcknowledgement(tester);
   await tester.tap(confirm);
