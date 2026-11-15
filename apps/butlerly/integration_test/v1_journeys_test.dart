@@ -24,7 +24,7 @@ import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:file_selector_platform_interface/file_selector_platform_interface.dart';
 import 'package:flutter/foundation.dart'
-    show TargetPlatform, defaultTargetPlatform;
+    show TargetPlatform, debugPrint, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -2134,6 +2134,7 @@ void main() {
         ),
       );
       await workspace.createPortableBackup(backup.path, password: password);
+      debugPrint('[replace-journey] encrypted archive created');
       await harness.finance.createTransaction(
         manualCommand(
           id: 'ui-restore-obsolete-e2e',
@@ -2156,13 +2157,15 @@ void main() {
       await tester.tap(
         find.byKey(const ValueKey('mobile-privacy-restore-replace')),
       );
-      await tester.pumpAndSettle();
+      await _waitForRestorePassword(tester);
+      debugPrint('[replace-journey] password sheet opened');
       expect(find.byType(TextField), findsOneWidget);
       await tester.enterText(find.byType(TextField), password);
       FocusManager.instance.primaryFocus?.unfocus();
       await tester.pump();
       await tester.tap(find.text('Unlock').last);
-      await tester.pumpAndSettle();
+      await _waitForReplaceConfirmation(tester, harness);
+      debugPrint('[replace-journey] replace confirmation opened');
       final acknowledgment = find.byKey(
         const ValueKey('restore-replace-acknowledgement'),
       );
@@ -2170,22 +2173,16 @@ void main() {
       expect(acknowledgment, findsOneWidget);
       expect(confirm, findsOneWidget);
       expect(tester.widget<CheckboxListTile>(acknowledgment).value, isFalse);
-      // The confirmation sheet scrolls independently of its fixed actions.
-      // Center the acknowledgement inside its viewport before tapping it.
-      await Scrollable.ensureVisible(
-        tester.element(acknowledgment),
-        alignment: 0.5,
-        duration: const Duration(milliseconds: 200),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(acknowledgment);
-      await tester.pumpAndSettle();
-      expect(tester.widget<CheckboxListTile>(acknowledgment).value, isTrue);
+      // Use a real pointer tap only after the modal entrance and scroll
+      // position make the acknowledgment reachable on this device.
+      await _tapReplaceAcknowledgement(tester);
       await tester.tap(confirm);
       await tester.pump();
+      debugPrint('[replace-journey] replace action confirmed');
       // An indeterminate spinner cannot settle by definition. Observe the
       // production success/error toast with a real-time, bounded poll instead.
       await _awaitProductionRestoreOutcome(tester, harness, success: true);
+      debugPrint('[replace-journey] restore success toast observed');
       expect(find.byKey(const ValueKey('butlerly-error-toast')), findsNothing);
 
       expect(
@@ -2201,7 +2198,7 @@ void main() {
         isA<ApplicationFailure<TransactionDto>>(),
       );
       await tester.pumpWidget(const SizedBox.shrink());
-      await tester.pumpAndSettle();
+      await tester.pump();
       await tester.runAsync(
         () => Future<void>.delayed(const Duration(milliseconds: 250)),
       );
@@ -2918,7 +2915,10 @@ Future<void> _exerciseProductionReplaceBusyReader(
   });
   final archive = File(path.join(backupDirectory.path, 'restore.butlerly'));
   final workspace = _workspaceDataService(harness);
-  await harness.database.database.execute('PRAGMA journal_mode=WAL');
+  final journalMode = await harness.database.database.rawQuery(
+    'PRAGMA journal_mode=WAL',
+  );
+  expect(journalMode.single.values.single.toString().toLowerCase(), 'wal');
   await harness.finance.saveUserPreference(
     UserPreference(
       locale: 'en',
@@ -3023,8 +3023,13 @@ Future<void> _exerciseProductionReplaceBusyReader(
 
   // A refused restore is retryable after the external read transaction
   // releases its WAL snapshot. No app restart or data repair is required.
-  await tester.tap(find.byKey(const ValueKey('butlerly-toast-close')));
-  await tester.pump();
+  // The error toast was already verified above. Clear this notification via
+  // its owner rather than tapping a potentially exiting/occluded snackbar;
+  // this test exercises the native retry, not toast-close hit testing.
+  ScaffoldMessenger.of(
+    tester.element(find.byType(PrivacyDataPage)),
+  ).removeCurrentSnackBar();
+  await tester.pump(const Duration(milliseconds: 350));
   harness.restoreStages.clear();
   await _confirmProductionReplace(tester, password, desktop: desktop);
   await _awaitProductionRestoreOutcome(tester, harness, success: true);
@@ -3057,28 +3062,98 @@ Future<void> _confirmProductionReplace(
     ),
   );
   expect(action, findsOneWidget);
+  // The previous error snackbar can overlap the ListTile while dismissing.
+  // Require a reachable control so a missed tap cannot be misdiagnosed as
+  // archive inspection or a SQLite restore failure.
+  await tester.ensureVisible(action);
+  await tester.pump(const Duration(milliseconds: 100));
+  expect(action.hitTestable(), findsOneWidget);
   await tester.tap(action);
-  await tester.pumpAndSettle();
+  await _waitForRestorePassword(tester);
   await tester.enterText(find.byType(TextField), password);
   FocusManager.instance.primaryFocus?.unfocus();
   await tester.pump();
   await tester.tap(find.text('Unlock').last);
-  await tester.pumpAndSettle();
+  await _waitForReplaceConfirmation(tester, null);
+  final confirm = find.byKey(const ValueKey('restore-replace-confirm'));
+  await _tapReplaceAcknowledgement(tester);
+  await tester.tap(confirm);
+  await tester.pump();
+}
+
+/// A confirmation can exist in the widget tree while its modal entrance
+/// animation still places it below the screen. Wait for the transition, scroll
+/// the nested sheet content into view, and require a real hit-testable target.
+/// Do not bypass the actual pointer tap or turn off missed-tap warnings.
+Future<void> _tapReplaceAcknowledgement(WidgetTester tester) async {
   final acknowledgment = find.byKey(
     const ValueKey('restore-replace-acknowledgement'),
   );
   final confirm = find.byKey(const ValueKey('restore-replace-confirm'));
-  await Scrollable.ensureVisible(
-    tester.element(acknowledgment),
-    alignment: 0.5,
-    duration: const Duration(milliseconds: 200),
+  expect(acknowledgment, findsOneWidget);
+  expect(confirm, findsOneWidget);
+  expect(tester.widget<CheckboxListTile>(acknowledgment).value, isFalse);
+
+  // Only the confirmation sheet is animating here: restore has not started.
+  // Never use an unbounded pumpAndSettle near native file operations.
+  await tester.pump(const Duration(milliseconds: 500));
+  for (var attempt = 0; attempt < 30; attempt++) {
+    await Scrollable.ensureVisible(
+      tester.element(acknowledgment),
+      alignment: 0.5,
+      duration: Duration.zero,
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    if (acknowledgment.hitTestable().evaluate().isNotEmpty) {
+      await tester.tap(acknowledgment);
+      await tester.pump();
+      expect(tester.widget<CheckboxListTile>(acknowledgment).value, isTrue);
+      // The button stays in the sheet's fixed action area; callers verify
+      // it by tapping after the acknowledgment is committed.
+      return;
+    }
+  }
+  fail(
+    'Replace acknowledgment never became hittable after the modal '
+    'transition and scrolling; last bounds: '
+    '${tester.getRect(acknowledgment)}.',
   );
-  await tester.pumpAndSettle();
-  await tester.tap(acknowledgment);
-  await tester.pumpAndSettle();
-  expect(tester.widget<CheckboxListTile>(acknowledgment).value, isTrue);
-  await tester.tap(confirm);
-  await tester.pump();
+}
+
+/// The native file picker and backup-header inspection may run while a
+/// loading animation is active. Avoid pumpAndSettle until the sheet opens.
+Future<void> _waitForRestorePassword(WidgetTester tester) async {
+  for (var attempt = 0; attempt < 120; attempt++) {
+    await tester.pump(const Duration(milliseconds: 100));
+    if (find.byType(TextField).evaluate().length == 1 &&
+        find.text('Unlock').evaluate().isNotEmpty) {
+      return;
+    }
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 250)),
+    );
+  }
+  fail('Restore password sheet never appeared after file selection.');
+}
+
+/// Native archive inspection displays an indeterminate spinner. Waiting for
+/// animation settlement can block a real-device test until its timeout.
+Future<void> _waitForReplaceConfirmation(
+  WidgetTester tester,
+  V1IntegrationHarness? harness,
+) async {
+  const acknowledgment = ValueKey('restore-replace-acknowledgement');
+  for (var attempt = 0; attempt < 120; attempt++) {
+    await tester.pump(const Duration(milliseconds: 100));
+    if (find.byKey(acknowledgment).evaluate().isNotEmpty) return;
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 250)),
+    );
+  }
+  fail(
+    'Replace confirmation did not appear after password inspection. '
+    'Last restore stages: ${harness?.restoreStages.join(' > ') ?? 'not available'}',
+  );
 }
 
 Future<void> _awaitProductionRestoreOutcome(

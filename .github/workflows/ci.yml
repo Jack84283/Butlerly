@@ -58,7 +58,7 @@ jobs:
   # Alpha restore gate PR #405 additionally needs native iOS production journeys.
   ios_simulator:
     name: iOS Simulator
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && (github.event.pull_request.number == 396 || github.event.pull_request.number == 399 || github.event.pull_request.number == 405))
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && (github.event.pull_request.number == 396 || github.event.pull_request.number == 399 || github.event.pull_request.number == 405 || github.event.pull_request.number == 421))
     runs-on: macos-latest
     timeout-minutes: 35
     steps:
@@ -69,13 +69,18 @@ jobs:
 
   ios_integration:
     name: iOS Integration Journeys
-    if: github.event_name == 'push' || (github.event_name == 'pull_request' && (github.event.pull_request.number == 396 || github.event.pull_request.number == 399 || github.event.pull_request.number == 405))
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && (github.event.pull_request.number == 396 || github.event.pull_request.number == 399 || github.event.pull_request.number == 405 || github.event.pull_request.number == 421))
     runs-on: macos-latest
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-toolchain
       - run: ./tool/setup.sh
+      # The pinned Flutter SDK predates the official fix for the iOS simulator
+      # VM Service log-stream race. Patch only this disposable CI SDK, not the
+      # product toolchain pin or application sources.
+      - name: Backport Flutter iOS simulator log-readiness fix
+        run: python3 tool/patch_ios_simulator_log_reader.py
       - name: Boot iOS simulator
         timeout-minutes: 6
         id: simulator
@@ -85,17 +90,31 @@ jobs:
           xcrun simctl boot "$device_id" 2>/dev/null || true
           xcrun simctl bootstatus "$device_id" -b
           echo "device_id=$device_id" >> "$GITHUB_OUTPUT"
-      - name: Run targeted iOS production Replace journey
+      - name: Run targeted iOS production Replace journeys
         if: github.event_name == 'pull_request' && github.event.pull_request.number == 405
         timeout-minutes: 25
         env:
           BUTLERLY_IOS_DEVICE_ID: ${{ steps.simulator.outputs.device_id }}
         run: ./tool/validate.sh restore_journeys
-      # This full-suite run previously blocked Alpha verification after
-      # the targeted restore tests. Keep it for main and other eligible PRs,
-      # but run only focused Replace journeys for PR #405.
+      # PR #421 tests each native journey independently, with bounded launch
+      # time. The second test still runs when the first reports a failure.
+      - name: Run encrypted production Replace (iOS)
+        if: github.event_name == 'pull_request' && github.event.pull_request.number == 421
+        timeout-minutes: 12
+        env:
+          BUTLERLY_IOS_DEVICE_ID: ${{ steps.simulator.outputs.device_id }}
+        run: ./tool/validate.sh restore_ui_replace
+      - name: Run blocked WAL reader refusal and retry (iOS)
+        if: ${{ always() && github.event_name == 'pull_request' && github.event.pull_request.number == 421 && steps.simulator.outcome == 'success' }}
+        timeout-minutes: 12
+        env:
+          BUTLERLY_IOS_DEVICE_ID: ${{ steps.simulator.outputs.device_id }}
+        run: ./tool/validate.sh restore_busy_reader
+      # Keep the full iOS journey suite on main and other eligible PRs.
+      # The restore-focused PRs run the two production Replace regressions
+      # independently, so one hung journey does not contaminate later tests.
       - name: Run iOS integration journeys
-        if: github.event_name == 'push' || github.event.pull_request.number != 405
+        if: github.event_name == 'push' || (github.event.pull_request.number != 405 && github.event.pull_request.number != 421)
         timeout-minutes: 25
         env:
           BUTLERLY_IOS_DEVICE_ID: ${{ steps.simulator.outputs.device_id }}
@@ -107,7 +126,7 @@ jobs:
 
   macos_backup_smoke:
     name: macOS Backup & Restore Smoke Build
-    if: github.event_name == 'pull_request' && (github.event.pull_request.number == 396 || github.event.pull_request.number == 399 || github.event.pull_request.number == 405)
+    if: github.event_name == 'pull_request' && (github.event.pull_request.number == 396 || github.event.pull_request.number == 399 || github.event.pull_request.number == 405 || github.event.pull_request.number == 421)
     runs-on: macos-latest
     timeout-minutes: 40
     steps:

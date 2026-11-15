@@ -46,14 +46,53 @@ validate_integration_test() (
   flutter test -d "${BUTLERLY_IOS_DEVICE_ID:-macos}" integration_test/v1_journeys_test.dart
 )
 
+# Individually callable cases let CI place a separate native launch deadline
+# on each journey and run the WAL retry even if the first launch hangs.
+validate_restore_ui_replace() (
+  cd apps/butlerly
+  flutter test -d "${BUTLERLY_IOS_DEVICE_ID:-macos}" integration_test/v1_journeys_test.dart --plain-name "production backup restore page completes an encrypted replacement"
+)
+
+validate_restore_busy_reader() (
+  cd apps/butlerly
+  flutter test -d "${BUTLERLY_IOS_DEVICE_ID:-macos}" integration_test/v1_journeys_test.dart --plain-name "production Replace refuses a blocked WAL reader and safely retries"
+)
+
 validate_restore_journeys() (
   cd apps/butlerly
   local device="${BUTLERLY_IOS_DEVICE_ID:-macos}"
-  flutter test -d "$device" integration_test/v1_journeys_test.dart --plain-name "production backup restore page completes an encrypted replacement"
-  flutter test -d "$device" integration_test/v1_journeys_test.dart --plain-name "production Replace refuses a blocked WAL reader and safely retries"
-  if [[ "$device" == macos ]]; then
-    flutter test -d "$device" integration_test/v1_journeys_test.dart --plain-name "macOS wide desktop Replace refuses a WAL reader and retries"
+  local failures=0
+
+  # Run each case in its own Flutter process. Even when one fails, execute
+  # the remaining restore journeys so native CI exposes every failure.
+  if flutter test -d "$device" integration_test/v1_journeys_test.dart --plain-name "production backup restore page completes an encrypted replacement"; then
+    echo "PASS: encrypted production Replace journey"
+  else
+    echo "FAIL: encrypted production Replace journey" >&2
+    failures=$((failures + 1))
   fi
+
+  if flutter test -d "$device" integration_test/v1_journeys_test.dart --plain-name "production Replace refuses a blocked WAL reader and safely retries"; then
+    echo "PASS: blocked WAL reader refusal and retry"
+  else
+    echo "FAIL: blocked WAL reader refusal and retry" >&2
+    failures=$((failures + 1))
+  fi
+
+  if [[ "$device" == macos ]]; then
+    if flutter test -d "$device" integration_test/v1_journeys_test.dart --plain-name "macOS wide desktop Replace refuses a WAL reader and retries"; then
+      echo "PASS: macOS wide desktop Replace refusal and retry"
+    else
+      echo "FAIL: macOS wide desktop Replace refusal and retry" >&2
+      failures=$((failures + 1))
+    fi
+  fi
+
+  if ((failures > 0)); then
+    echo "Restore journeys: $failures failed." >&2
+    return 1
+  fi
+  echo "All targeted restore journeys passed."
 )
 
 validate_ios_simulator() (
@@ -100,6 +139,12 @@ case "${1:-all}" in
   restore_journeys)
     validate_restore_journeys
     ;;
+  restore_ui_replace)
+    validate_restore_ui_replace
+    ;;
+  restore_busy_reader)
+    validate_restore_busy_reader
+    ;;
   android_smoke)
     validate_android_smoke
     ;;
@@ -110,7 +155,7 @@ case "${1:-all}" in
     validate_macos_backup
     ;;
   *)
-    echo "Usage: $0 [all|finance_domain|database|finance_application|flutter_application|integration_test|restore_journeys|android_smoke|ios_simulator|macos_backup]" >&2
+    echo "Usage: $0 [all|finance_domain|database|finance_application|flutter_application|integration_test|restore_journeys|restore_ui_replace|restore_busy_reader|android_smoke|ios_simulator|macos_backup]" >&2
     exit 2
     ;;
 esac

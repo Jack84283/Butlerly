@@ -227,7 +227,11 @@ final class RawRestoreService {
           ? timeoutRows.first.values.first as int
           : 5000;
       try {
-        await liveConnection.execute('PRAGMA busy_timeout = 3000');
+        // This PRAGMA returns the configured timeout. On sqflite_darwin,
+        // execute() can reject result-producing PRAGMAs with SQLITE_OK
+        // ("not an error"). Use the query API for both changes, including
+        // restoring a native default of zero milliseconds.
+        await liveConnection.rawQuery('PRAGMA busy_timeout = 3000');
         final checkpoint = await liveConnection.rawQuery(
           'PRAGMA wal_checkpoint(TRUNCATE)',
         );
@@ -237,7 +241,7 @@ final class RawRestoreService {
           );
         }
       } finally {
-        await liveConnection.execute(
+        await liveConnection.rawQuery(
           'PRAGMA busy_timeout = $previousBusyTimeout',
         );
       }
