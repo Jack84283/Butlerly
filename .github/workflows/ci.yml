@@ -91,11 +91,25 @@ jobs:
           xcrun simctl bootstatus "$device_id" -b
           echo "device_id=$device_id" >> "$GITHUB_OUTPUT"
       - name: Run targeted iOS production Replace journeys
-        if: github.event_name == 'pull_request' && (github.event.pull_request.number == 405 || github.event.pull_request.number == 421)
+        if: github.event_name == 'pull_request' && github.event.pull_request.number == 405
         timeout-minutes: 25
         env:
           BUTLERLY_IOS_DEVICE_ID: ${{ steps.simulator.outputs.device_id }}
         run: ./tool/validate.sh restore_journeys
+      # PR #421 tests each native journey independently, with bounded launch
+      # time. The second test still runs when the first reports a failure.
+      - name: Run encrypted production Replace (iOS)
+        if: github.event_name == 'pull_request' && github.event.pull_request.number == 421
+        timeout-minutes: 12
+        env:
+          BUTLERLY_IOS_DEVICE_ID: ${{ steps.simulator.outputs.device_id }}
+        run: ./tool/validate.sh restore_ui_replace
+      - name: Run blocked WAL reader refusal and retry (iOS)
+        if: ${{ always() && github.event_name == 'pull_request' && github.event.pull_request.number == 421 && steps.simulator.outcome == 'success' }}
+        timeout-minutes: 12
+        env:
+          BUTLERLY_IOS_DEVICE_ID: ${{ steps.simulator.outputs.device_id }}
+        run: ./tool/validate.sh restore_busy_reader
       # Keep the full iOS journey suite on main and other eligible PRs.
       # The restore-focused PRs run the two production Replace regressions
       # independently, so one hung journey does not contaminate later tests.
