@@ -31,6 +31,19 @@ commit, push, or upload the replacements into the public Git repository**.
 A clean checkout will continue to use the original Butlerly-generated tones.
 The same source paths and playback behavior work for both sound choices.
 
+For the previously selected local integration kit, run this **only in your
+private checkout**, from the Butlerly repository root:
+
+```sh
+unzip -jo /path/to/butlerly_quietcog_sound_integration_v4.zip \
+  'butlerly_sound_patch_v4/apps/butlerly/assets/audio/item_created.wav' \
+  'butlerly_sound_patch_v4/apps/butlerly/assets/audio/item_updated.wav' \
+  -d apps/butlerly/assets/audio/
+```
+
+Do not commit the changed WAVs. Before committing other work or publishing a
+branch, restore the public originals using the generator.
+
 Do not overwrite the publicly tracked WAV files in a branch you intend to
 publish without restoring the original generated assets first:
 
