@@ -2173,17 +2173,9 @@ void main() {
       expect(acknowledgment, findsOneWidget);
       expect(confirm, findsOneWidget);
       expect(tester.widget<CheckboxListTile>(acknowledgment).value, isFalse);
-      // The confirmation sheet scrolls independently of its fixed actions.
-      // Center the acknowledgement inside its viewport before tapping it.
-      await Scrollable.ensureVisible(
-        tester.element(acknowledgment),
-        alignment: 0.5,
-        duration: Duration.zero,
-      );
-      await tester.pump();
-      await tester.tap(acknowledgment);
-      await tester.pump();
-      expect(tester.widget<CheckboxListTile>(acknowledgment).value, isTrue);
+      // Use a real pointer tap only after the modal entrance and scroll
+      // position make the acknowledgment reachable on this device.
+      await _tapReplaceAcknowledgement(tester);
       await tester.tap(confirm);
       await tester.pump();
       debugPrint('[replace-journey] replace action confirmed');
@@ -3076,17 +3068,50 @@ Future<void> _confirmProductionReplace(
     const ValueKey('restore-replace-acknowledgement'),
   );
   final confirm = find.byKey(const ValueKey('restore-replace-confirm'));
-  await Scrollable.ensureVisible(
-    tester.element(acknowledgment),
-    alignment: 0.5,
-    duration: Duration.zero,
-  );
-  await tester.pump();
-  await tester.tap(acknowledgment);
-  await tester.pump();
-  expect(tester.widget<CheckboxListTile>(acknowledgment).value, isTrue);
+  await _tapReplaceAcknowledgement(tester);
   await tester.tap(confirm);
   await tester.pump();
+}
+
+/// A confirmation can exist in the widget tree while its modal entrance
+/// animation still places it below the screen. Wait for the transition, scroll
+/// the nested sheet content into view, and require a real hit-testable target.
+/// Do not bypass the actual pointer tap or turn off missed-tap warnings.
+Future<void> _tapReplaceAcknowledgement(WidgetTester tester) async {
+  final acknowledgment = find.byKey(
+    const ValueKey('restore-replace-acknowledgement'),
+  );
+  final confirm = find.byKey(const ValueKey('restore-replace-confirm'));
+  expect(acknowledgment, findsOneWidget);
+  expect(confirm, findsOneWidget);
+  expect(tester.widget<CheckboxListTile>(acknowledgment).value, isFalse);
+
+  // Only the confirmation sheet is animating here: restore has not started.
+  // Never use an unbounded pumpAndSettle near native file operations.
+  await tester.pump(const Duration(milliseconds: 500));
+  for (var attempt = 0; attempt < 30; attempt++) {
+    await Scrollable.ensureVisible(
+      tester.element(acknowledgment),
+      alignment: 0.5,
+      duration: Duration.zero,
+    );
+    await tester.pump(const Duration(milliseconds: 100));
+    if (acknowledgment.hitTestable().evaluate().isNotEmpty) {
+      await tester.tap(acknowledgment);
+      await tester.pump();
+      expect(tester.widget<CheckboxListTile>(acknowledgment).value, isTrue);
+      expect(
+        tester.widget<ButlerlyDestructiveButton>(confirm).onPressed,
+        isNotNull,
+      );
+      return;
+    }
+  }
+  fail(
+    'Replace acknowledgment never became hittable after the modal '
+    'transition and scrolling; last bounds: '
+    '${tester.getRect(acknowledgment)}.',
+  );
 }
 
 /// The native file picker and backup-header inspection may run while a
