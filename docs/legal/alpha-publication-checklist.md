@@ -1,6 +1,6 @@
 # Butlerly Alpha — legal publication checklist (internal)
 
-Status: **NOT APPROVED FOR EXTERNAL DISTRIBUTION**. The in-app LEG-0001–0004 texts are concise v1.2 review previews, not effective legal agreements. This checklist is for the repository/release team and must not be bundled in the in-app Legal & Licenses reader.
+Status: **USER-FACING COPY EDITORIALLY FINALIZED; EXTERNAL RELEASE NOT APPROVED**. The in-app LEG-0001–0004 documents now have clean localized headings and no Alpha review banners. The removal of draft labels is not legal sign-off or authorization for public distribution. This checklist belongs to the repository/release team and is not bundled in the in-app Legal & Licenses reader.
 
 ## Decision: private testing versus release
 
@@ -20,18 +20,18 @@ Status: **NOT APPROVED FOR EXTERNAL DISTRIBUTION**. The in-app LEG-0001–0004 t
 - [ ] Preserve all required original third-party copyright texts, licenses, attribution, source offers and modification notices; summaries or translations are not substitutes for those obligations. Resolve any restricted licenses before distribution.
 - [ ] Review all four documents for factual and legal accuracy in English, Simplified Chinese and Spanish, including native-language proofreading.
 - [ ] Confirm the final version/build SHA, in-app offline accessibility, copy/layout, device readers, privacy screens, local backup/export warnings and any required release consent.
-- [ ] Approve final published text, remove review banners, insert verified publication details, document sign-off and release version; do not treat a merged documentation PR as publication authorization.
+- [ ] Approve legally complete published text, verify publisher/contact/effective-date requirements, record human sign-off and a frozen release version. Review banners have been removed editorially; neither that change nor a merged documentation PR authorizes publication.
 
-## Editorial decisions for v1.2
+## Editorial decisions for user-facing copy
 
-Keep in the user-facing drafts:
+Retain in the user-facing documents:
 - What Butlerly currently does; offline-first/local import limits
 - Accurate categories of data and purposes
 - User-controlled export, plain-text exposure, backup/restore and deletion limits
 - Potential extraction/analysis errors and informational nature of insights
 - Third-party license rights and status of incomplete inventory
 
-Remove from the user-facing drafts (track here instead):
+Keep out of the user-facing documents (track here instead):
 - Repeated internal instructions to engineers and legal counsel
 - Unapproved future monetization, online sync, external AI services and unrelated hypothetical features
 - Placeholder governing-law, arbitration, liability-cap, indemnity and eligibility clauses
@@ -44,4 +44,4 @@ References:
 - https://developer.apple.com/help/app-store-connect/manage-app-information/manage-app-privacy
 - https://support.google.com/googleplay/android-developer/answer/10144311
 
-The v1.1 Git history preserves the earlier editorial review drafts. No legal sign-off is implied by simplification.
+The earlier review editions remain accessible in Git history. Owner acceptance of the document wording is editorial approval only; Issue #380 remains open until verified publisher and privacy contacts, region-specific requirements, license attribution inventory, release-binary review and any required human/legal approvals are documented.
