@@ -76,6 +76,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-toolchain
       - run: ./tool/setup.sh
+      # The pinned Flutter SDK predates the official fix for the iOS simulator
+      # VM Service log-stream race. Patch only this disposable CI SDK, not the
+      # product toolchain pin or application sources.
+      - name: Backport Flutter iOS simulator log-readiness fix
+        run: python3 tool/patch_ios_simulator_log_reader.py
       - name: Boot iOS simulator
         timeout-minutes: 6
         id: simulator
