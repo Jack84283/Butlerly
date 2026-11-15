@@ -3103,6 +3103,7 @@ Future<void> _waitForReplaceConfirmation(
     'Last restore stages: ${harness?.restoreStages.join(' > ') ?? 'not available'}',
   );
 }
+
 Future<void> _awaitProductionRestoreOutcome(
   WidgetTester tester,
   V1IntegrationHarness harness, {
