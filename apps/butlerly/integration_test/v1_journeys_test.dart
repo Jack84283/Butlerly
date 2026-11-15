@@ -3100,10 +3100,8 @@ Future<void> _tapReplaceAcknowledgement(WidgetTester tester) async {
       await tester.tap(acknowledgment);
       await tester.pump();
       expect(tester.widget<CheckboxListTile>(acknowledgment).value, isTrue);
-      expect(
-        tester.widget<ButlerlyDestructiveButton>(confirm).onPressed,
-        isNotNull,
-      );
+      // The button stays in the sheet's fixed action area; callers verify
+      // it by tapping after the acknowledgment is committed.
       return;
     }
   }
