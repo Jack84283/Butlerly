@@ -2162,7 +2162,7 @@ void main() {
       FocusManager.instance.primaryFocus?.unfocus();
       await tester.pump();
       await tester.tap(find.text('Unlock').last);
-      await tester.pumpAndSettle();
+      await _waitForReplaceConfirmation(tester, harness);
       final acknowledgment = find.byKey(
         const ValueKey('restore-replace-acknowledgement'),
       );
@@ -2918,7 +2918,10 @@ Future<void> _exerciseProductionReplaceBusyReader(
   });
   final archive = File(path.join(backupDirectory.path, 'restore.butlerly'));
   final workspace = _workspaceDataService(harness);
-  await harness.database.database.execute('PRAGMA journal_mode=WAL');
+  final journalMode = await harness.database.database.rawQuery(
+    'PRAGMA journal_mode=WAL',
+  );
+  expect(journalMode.single.values.single.toString().toLowerCase(), 'wal');
   await harness.finance.saveUserPreference(
     UserPreference(
       locale: 'en',
@@ -3063,7 +3066,7 @@ Future<void> _confirmProductionReplace(
   FocusManager.instance.primaryFocus?.unfocus();
   await tester.pump();
   await tester.tap(find.text('Unlock').last);
-  await tester.pumpAndSettle();
+  await _waitForReplaceConfirmation(tester, null);
   final acknowledgment = find.byKey(
     const ValueKey('restore-replace-acknowledgement'),
   );
@@ -3081,6 +3084,25 @@ Future<void> _confirmProductionReplace(
   await tester.pump();
 }
 
+/// Native archive inspection displays an indeterminate spinner. Waiting for
+/// animation settlement can block a real-device test until its timeout.
+Future<void> _waitForReplaceConfirmation(
+  WidgetTester tester,
+  V1IntegrationHarness? harness,
+) async {
+  const acknowledgment = ValueKey('restore-replace-acknowledgement');
+  for (var attempt = 0; attempt < 120; attempt++) {
+    await tester.pump(const Duration(milliseconds: 100));
+    if (find.byKey(acknowledgment).evaluate().isNotEmpty) return;
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 250)),
+    );
+  }
+  fail(
+    'Replace confirmation did not appear after password inspection. '
+    'Last restore stages: ${harness?.restoreStages.join(' > ') ?? 'not available'}',
+  );
+}
 Future<void> _awaitProductionRestoreOutcome(
   WidgetTester tester,
   V1IntegrationHarness harness, {
