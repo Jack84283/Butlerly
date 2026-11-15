@@ -1,11 +1,10 @@
 BUTLERLY — TÉRMINOS DE USO
-LEG-0001 | Edición de revisión Alpha v1.2 | Español | 15 de noviembre de 2026
-BORRADOR PARA REVISIÓN ALPHA PRIVADA — NO VIGENTE PARA DISTRIBUCIÓN PÚBLICA
+LEG-0001 | Español
 
-Estos términos breves describen el uso previsto de Butlerly durante las pruebas Alpha privadas. No son un acuerdo definitivo aprobado. Una edición publicada debe identificar al editor verificado, un medio de contacto, la fecha de entrada en vigor y las condiciones de distribución aplicables.
+Estos Términos explican el uso de Butlerly para organizar información financiera personal. Las funciones pueden variar según la versión instalada y el dispositivo.
 
 1. Qué es Butlerly
-Butlerly es una aplicación de organización financiera centrada en el dispositivo para transacciones, recibos, extractos, pagos, presupuestos y análisis. Puede importar archivos compatibles que haya obtenido previamente fuera de la Aplicación. El alcance aprobado de Alpha no incluye una cuenta Butlerly, sincronización integrada en la nube ni descargas automáticas desde bancos o proveedores de almacenamiento. Las funciones disponibles dependen de la versión instalada y del dispositivo.
+Butlerly es una aplicación de organización financiera centrada en el dispositivo para transacciones, recibos, extractos, pagos, presupuestos y análisis. Puede importar archivos compatibles que haya obtenido previamente fuera de la Aplicación. Butlerly no requiere una cuenta propia ni ofrece sincronización integrada en la nube o descargas automáticas desde bancos o servicios de almacenamiento. Las funciones disponibles dependen de la versión instalada y del dispositivo.
 
 2. Sus datos y decisiones
 Usted decide qué introducir o importar y debe tener permiso para utilizar esa información. Compruebe el texto reconocido, importes, fechas, divisas, posibles duplicados, pagos y resultados antes de confiar en ellos. Butlerly no verifica de forma independiente saldos bancarios, documentos originales ni respuestas a encuestas. Los resultados automatizados pueden ser incorrectos.
@@ -14,10 +13,10 @@ Usted decide qué introducir o importar y debe tener permiso para utilizar esa i
 Los registros principales están diseñados para permanecer en su dispositivo. Al compartir o exportar, pueden existir copias fuera de Butlerly. «Exportar a archivo» crea información legible, sin cifrado, para revisión; no permite volver a importarla en Butlerly. Las copias portátiles utilizan un procedimiento de respaldo cifrado independiente. Proteja las contraseñas y los archivos exportados; eliminar datos de la Aplicación no elimina copias guardadas en otros lugares. La restauración por Fusión o Sustitución puede modificar los registros: revise las advertencias y compruebe el resultado.
 
 4. Uso, materiales de terceros y limitaciones
-Use Butlerly de forma lícita y respete los datos y derechos de otras personas. Los materiales originales y los componentes de terceros tienen propietarios y licencias distintos; estos Términos no sustituyen las licencias de terceros. El software Alpha puede contener defectos, cambiar o dejar de estar disponible. En la medida permitida por la ley, no se garantiza un funcionamiento sin errores ni la recuperación de datos. Se mantienen los derechos obligatorios de los consumidores.
+Use Butlerly de forma lícita y respete los datos y derechos de otras personas. Los materiales originales y los componentes de terceros tienen propietarios y licencias distintos; estos Términos no sustituyen las licencias de terceros. Butlerly puede contener errores, cambiar o dejar de estar disponible. En la medida permitida por la ley, no se garantiza un funcionamiento sin errores ni la recuperación de datos. Se mantienen los derechos obligatorios de los consumidores.
 
 5. Uso informativo
 Butlerly ayuda a organizar registros personales. Sus cálculos, resúmenes y sugerencias no constituyen asesoramiento individualizado sobre inversiones, impuestos, derecho, crédito u otras materias profesionales. Consulte con profesionales cualificados antes de tomar decisiones importantes.
 
-6. Privacidad y publicación futura
-La Política de privacidad explica el tratamiento local, permisos, uso compartido y eliminación. Una publicación externa necesitará datos aprobados del editor, contacto, fecha efectiva y condiciones de prueba o distribución correspondientes. Este borrador no impone arbitraje, renuncia a acciones colectivas ni un nuevo límite monetario de responsabilidad.
+6. Privacidad y avisos relacionados
+La Política de privacidad explica el tratamiento local, los permisos, el uso compartido y la eliminación. Los avisos sobre licencias y terceros y sobre funciones automatizadas y asesoramiento profesional ofrecen información adicional.
