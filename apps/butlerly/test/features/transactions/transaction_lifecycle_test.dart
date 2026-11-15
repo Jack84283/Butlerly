@@ -123,9 +123,9 @@ void main() {
             expect(created, isA<ApplicationSuccess<TransactionDto>>());
             existing = (created as ApplicationSuccess<TransactionDto>).value;
           }
-          var playCount = 0;
-          ButlerlySoundFeedback.playbackForTesting = () async {
-            playCount += 1;
+          final playedAssets = <String>[];
+          ButlerlySoundFeedback.playbackForTesting = (assetPath) async {
+            playedAssets.add(assetPath);
           };
           addTearDown(() => ButlerlySoundFeedback.playbackForTesting = null);
           // Ensure the preference is loaded before the editor reads it.
@@ -161,7 +161,16 @@ void main() {
           );
           await tester.pumpAndSettle();
           expect(completed, isTrue);
-          expect(playCount, enabled ? 1 : 0);
+          expect(
+            playedAssets,
+            enabled
+                ? <String>[
+                    updating
+                        ? ButlerlySoundFeedback.updatedSoundAssetPath
+                        : ButlerlySoundFeedback.createdSoundAssetPath,
+                  ]
+                : <String>[],
+          );
           expect(tester.takeException(), isNull);
         },
       );
