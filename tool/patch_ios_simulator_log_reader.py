@@ -70,4 +70,9 @@ try:
     temporary.replace(source)
 finally:
     temporary.unlink(missing_ok=True)
+# Flutter caches a precompiled flutter_tools.snapshot keyed to the SDK revision,
+# not individual source mtimes. Expire its stamp so flutter rebuilds from
+# the modified Dart source instead of silently executing the old tool code.
+(Path(root) / "bin/cache/flutter_tools.stamp").unlink(missing_ok=True)
 print("Applied Flutter upstream iOS simulator log-readiness fix to CI SDK.")
+print("Invalidated flutter_tools stamp so the patched tool is recompiled.")
