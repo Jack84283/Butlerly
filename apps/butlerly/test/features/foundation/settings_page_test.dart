@@ -399,10 +399,7 @@ void main() {
     expect(tile.value, isFalse);
     tile.onChanged!(true);
     await tester.pumpAndSettle();
-    expect(
-      playedAssets,
-      <String>[ButlerlySoundFeedback.createdSoundAssetPath],
-    );
+    expect(playedAssets, <String>[ButlerlySoundFeedback.createdSoundAssetPath]);
     expect(tester.widget<SwitchListTile>(setting).value, isTrue);
   });
 
