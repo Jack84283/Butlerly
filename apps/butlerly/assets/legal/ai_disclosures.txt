@@ -1,47 +1,15 @@
-BUTLERLY — AI & PROFESSIONAL-ADVICE DISCLOSURES
-LEG-0004 | Alpha review edition v1.1 | English | 9 November 2026
-NOT EFFECTIVE — OWNER, TECHNICAL AND COUNSEL APPROVAL REQUIRED
+BUTLERLY — AUTOMATED FEATURES & PROFESSIONAL-ADVICE NOTICE
+LEG-0004 | Alpha review edition v1.2 | English | 15 November 2026
+DRAFT FOR PRIVATE ALPHA REVIEW — NOT EFFECTIVE FOR PUBLIC DISTRIBUTION
 
-This notice explains automated functions and professional-advice limits in the intended Butlerly Alpha. It is not evidence that a particular AI provider, model or remote feature is actually shipped. Verify the frozen release binary before publishing factual claims. Remote AI/OCR and remotely processed finance data are not authorized within the approved Alpha scope.
+1. Automated features
+Butlerly may use on-device text recognition, rules and calculations to extract information, suggest categories or duplicates, and display totals or insights. Not every automated function is generative AI. The approved Alpha scope does not include sending personal financial records to external AI/OCR services; actual shipped components must be verified before public release.
 
-1. What automated processing means
-Butlerly can help users record, organize, review and interpret their own financial information. Functions may include local text recognition from a receipt or statement; deterministic rules; suggested categories; potential duplicate or matching transaction detection; recurring-pattern recognition; and reports or insights calculated from stored records. Automated computation or OCR does not necessarily involve generative AI.
+2. Review results
+Extraction, classifications, matches and analysis can be wrong or incomplete, including where source data or currency conversion is missing. Check original receipts, statements, amounts, dates, currencies and review decisions. A suggested match or fluent summary is not proof of a correct result. User-confirmed records and original evidence should not be silently overwritten.
 
-The Alpha's intended core operation is local-first and account-free. If a device or supported platform cannot perform a particular recognition or automated operation, that operation may be unavailable; the rest of the core finance workflow should remain accessible where supported.
+3. No professional advice
+Butlerly is an information-organization tool, not a bank or professional adviser. Its summaries and suggestions do not constitute investment, tax, accounting, legal, credit, insurance or medical advice and do not guarantee outcomes. Seek qualified advice before consequential decisions.
 
-2. Accuracy and uncertainty
-Text recognition, file parsing, categorization, merchant matching, reconciliation proposals, repeated-payment detection, calculations, forecasts and explanations can be wrong, incomplete or outdated. Low-quality scans, unclear descriptions, missing records, time-zone differences or foreign currencies can change a result. A high confidence score, polished wording or plausible chart is not proof of accuracy.
-
-Check source documents, amounts, dates, currencies, payment sources, categories and any other important facts. Where the App identifies uncertainty, missing conversion information or a “Needs Review” condition, do not treat it as an approved or verified result.
-
-3. Source records and user control
-Original evidence and user-accepted records are the primary source of financial information. Proposed matches, classifications and AI-like summaries should be reviewable and should not silently override source observations or user corrections. Use the review and correction functions offered by the released product. A suggestion to merge, consolidate or exclude records can affect apparent totals and must be understood before confirmation.
-
-The Financial Profile Survey collects self-reported goals, household context and preferences. These answers are not independently verified financial transactions and must not be represented as an assessment of creditworthiness, insurance eligibility, investment suitability or legal status.
-
-4. Processing location and privacy
-Device-based recognition and external AI processing are different data flows. Approved Alpha scope excludes remote AI/OCR services, prompt uploads, online assistant queries and remote processing of personal financial files. This is a product restriction, not a claim that the current compiled binary has already been audited. Before publication, inspect the actual OCR engine, any fallback paths, SDK network access, diagnostic features, external rate sources and other provider calls. If a remote flow exists, document the recipient, data transmitted, purpose, retention, legal basis and user choice or consent before enabling or describing it.
-
-No draft disclosure authorizes launching an external AI provider. Any future connected feature requires a separate owner decision, privacy/security review, meaningful explanation and consent where legally required, as well as revised policies and terms.
-
-5. Not professional or regulated advice
-Butlerly is a personal information-management tool. It is not a bank, loan provider, broker, investment adviser, financial planner, accountant, tax preparer, lawyer, insurer, physician or fiduciary. Content presented as totals, trends, budgeting suggestions, forecasts, financial explanations or automated text is for information and organization, not professional investment, tax, accounting, legal, medical, credit or insurance advice.
-
-No financial insight or estimate guarantees returns, accurate tax treatment, regulatory eligibility, safety, account reconciliation, successful payment, or the absence of loss. Obtain advice from a qualified professional before making decisions with significant financial, legal or health implications.
-
-6. Sensitive content and security
-Do not submit bank passwords, login credentials, encryption keys, backup secrets or unnecessary identity numbers as feedback, to support, or to any future AI prompt. Review a file before importing or sharing it. A future online AI workflow, if separately approved, must minimize transmitted information and must not silently upload a full transaction history, statement archive or receipt collection.
-
-7. Updates and availability
-Automatic functions can change as rules, platforms, formats or product versions evolve. If a feature becomes unavailable, its absence does not certify that underlying information is complete or accurate. New AI providers, model integrations, remotely generated advice or regulated-decision functionality require additional approval and disclosures; none is implicitly authorized by this document.
-
-8. Short contextual notice for approved in-app use
-“Butlerly helps you organize and understand financial records. Automated extraction, classifications, matches and insights may contain errors. Review source documents and consequential decisions. Butlerly does not provide professional financial, investment, tax, legal or medical advice.”
-
-This short notice is proposed copy, not proof that it has been displayed or consented to. Product/legal review must determine its placement and whether a specific workflow requires an additional explanation or opt-in. Consult the Terms of Use (LEG-0001) and Privacy Policy (LEG-0002).
-
-9. Publisher and contact
-Publisher: [VERIFIED LEGAL ENTITY]; support/legal contact: [VERIFIED CONTACT]; privacy contact: [VERIFIED PRIVACY CONTACT]; effective date: [AFTER APPROVAL]. Draft version: 1.1. This review text should not be bundled as final legal content before authorization.
-
-PRE-PUBLICATION APPROVAL RECORD — NOT PART OF PUBLIC DISCLOSURE
-Verify exact shipped AI/OCR/extraction engines, providers, network and fallback behavior; compare every data flow with the Privacy Policy; test local-only/offline behavior; confirm disclosure/consent points; review age/territory and professional-advice claims; obtain legal/publisher approval and EN/zh-Hans/es linguistic review; freeze app version and verify offline Legal & Licenses access. No remote AI has been authorized by this revision. Issue: https://github.com/Jack84283/Butlerly/issues/380.
+4. Sensitive information
+Do not share passwords, bank login credentials, backup secrets or unnecessary identifying information in feedback. Exported and shared copies may be readable outside Butlerly; see the Privacy Policy. Remote AI or other connected processing would require separate approval and updated disclosures before introduction.
