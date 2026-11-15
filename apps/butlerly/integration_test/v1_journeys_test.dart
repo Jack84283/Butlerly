@@ -3023,8 +3023,13 @@ Future<void> _exerciseProductionReplaceBusyReader(
 
   // A refused restore is retryable after the external read transaction
   // releases its WAL snapshot. No app restart or data repair is required.
-  await tester.tap(find.byKey(const ValueKey('butlerly-toast-close')));
-  await tester.pump();
+  // The error toast was already verified above. Clear this notification via
+  // its owner rather than tapping a potentially exiting/occluded snackbar;
+  // this test exercises the native retry, not toast-close hit testing.
+  ScaffoldMessenger.of(
+    tester.element(find.byType(PrivacyDataPage)),
+  ).removeCurrentSnackBar();
+  await tester.pump(const Duration(milliseconds: 350));
   harness.restoreStages.clear();
   await _confirmProductionReplace(tester, password, desktop: desktop);
   await _awaitProductionRestoreOutcome(tester, harness, success: true);
@@ -3057,6 +3062,12 @@ Future<void> _confirmProductionReplace(
     ),
   );
   expect(action, findsOneWidget);
+  // The previous error snackbar can overlap the ListTile while dismissing.
+  // Require a reachable control so a missed tap cannot be misdiagnosed as
+  // archive inspection or a SQLite restore failure.
+  await tester.ensureVisible(action);
+  await tester.pump(const Duration(milliseconds: 100));
+  expect(action.hitTestable(), findsOneWidget);
   await tester.tap(action);
   await _waitForRestorePassword(tester);
   await tester.enterText(find.byType(TextField), password);
