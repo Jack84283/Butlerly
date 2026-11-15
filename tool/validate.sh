@@ -46,6 +46,18 @@ validate_integration_test() (
   flutter test -d "${BUTLERLY_IOS_DEVICE_ID:-macos}" integration_test/v1_journeys_test.dart
 )
 
+# Individually callable cases let CI place a separate native launch deadline
+# on each journey and run the WAL retry even if the first launch hangs.
+validate_restore_ui_replace() (
+  cd apps/butlerly
+  flutter test -d "${BUTLERLY_IOS_DEVICE_ID:-macos}" integration_test/v1_journeys_test.dart --plain-name "production backup restore page completes an encrypted replacement"
+)
+
+validate_restore_busy_reader() (
+  cd apps/butlerly
+  flutter test -d "${BUTLERLY_IOS_DEVICE_ID:-macos}" integration_test/v1_journeys_test.dart --plain-name "production Replace refuses a blocked WAL reader and safely retries"
+)
+
 validate_restore_journeys() (
   cd apps/butlerly
   local device="${BUTLERLY_IOS_DEVICE_ID:-macos}"
@@ -127,6 +139,12 @@ case "${1:-all}" in
   restore_journeys)
     validate_restore_journeys
     ;;
+  restore_ui_replace)
+    validate_restore_ui_replace
+    ;;
+  restore_busy_reader)
+    validate_restore_busy_reader
+    ;;
   android_smoke)
     validate_android_smoke
     ;;
@@ -137,7 +155,7 @@ case "${1:-all}" in
     validate_macos_backup
     ;;
   *)
-    echo "Usage: $0 [all|finance_domain|database|finance_application|flutter_application|integration_test|restore_journeys|android_smoke|ios_simulator|macos_backup]" >&2
+    echo "Usage: $0 [all|finance_domain|database|finance_application|flutter_application|integration_test|restore_journeys|restore_ui_replace|restore_busy_reader|android_smoke|ios_simulator|macos_backup]" >&2
     exit 2
     ;;
 esac
