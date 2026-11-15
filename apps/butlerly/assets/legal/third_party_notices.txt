@@ -1,9 +1,8 @@
 BUTLERLY — SOFTWARE LICENSE & THIRD-PARTY NOTICES
-LEG-0003 | Alpha review edition v1.2 | English | 15 November 2026
-DRAFT — THIRD-PARTY RELEASE LICENSE INVENTORY INCOMPLETE
+LEG-0003 | English
 
 Butlerly includes its own materials and may distribute third-party software and assets, such as Flutter/Dart packages, SQLite, platform plugins, icons and media. Each third-party component is governed by its actual license. Butlerly's Terms do not override rights granted by open-source or other third-party licenses.
 
-This short notice is not a replacement for required original copyright statements, license texts, attribution, modification notices or source-code offers. Before external release, those materials must be checked against the exact shipped dependencies and assets, and provided in the form and location required by each license. The final license inventory has not yet been certified.
+Each included component retains the rights and obligations of its applicable license. When a license requires copyright statements, license texts, attribution, modification notices or source-code offers, those obligations apply independently of this summary.
 
-Product names and trademarks mentioned only to describe compatibility do not imply endorsement. A future approved edition must identify the verified Butlerly rights holder and any required license contact.
+Product and trademark names used only to describe compatibility do not imply sponsorship or endorsement. Rights in third-party names and materials remain with their respective owners.
