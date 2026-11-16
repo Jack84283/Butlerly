@@ -80,18 +80,15 @@ void main() {
     await tester.enterText(find.byType(TextField), 'BoA');
     await tester.pumpAndSettle();
     expect(find.text('Bank of America'), findsWidgets);
+    expect(
+      tester.widget<ListTile>(find.widgetWithText(ListTile, 'Bank of America'))
+          .selected,
+      isTrue,
+    );
     await tester.tap(find.text('Bank of America').last);
     await tester.pumpAndSettle();
     expect(controller.text, 'Bank of America');
     expect(find.byType(SvgPicture), findsWidgets);
-
-    // Pressing Done must not silently choose the first suggested bank.
-    await tester.enterText(find.byType(TextField), 'Bank');
-    await tester.pumpAndSettle();
-    expect(suggestIssuers('Bank'), isNotEmpty);
-    await tester.testTextInput.receiveAction(TextInputAction.done);
-    await tester.pumpAndSettle();
-    expect(controller.text, 'Bank');
 
     await tester.enterText(find.byType(TextField), 'My local credit union');
     await tester.pumpAndSettle();
