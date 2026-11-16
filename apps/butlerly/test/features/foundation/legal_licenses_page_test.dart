@@ -71,6 +71,198 @@ void main() {
     expect(find.text('Privacy Policy'), findsOneWidget);
     expect(find.byType(ButlerlyBrandVersionTile), findsOneWidget);
     expect(find.byType(ButlerlyBrandIcon), findsOneWidget);
+    final pubspec = await File('pubspec.yaml').readAsString();
+    final version = RegExp(
+      r'^version: (1\.0\.(\d+))\+(\d+)
+  });
+
+  test(
+    'all four clean legal documents are present in three languages',
+    () async {
+      const documents = [
+        LegalDocument('termsOfUse', 'assets/legal/terms_of_use.txt'),
+        LegalDocument('privacyPolicy', 'assets/legal/privacy_policy.txt'),
+        LegalDocument(
+          'softwareLicenseThirdPartyNotices',
+          'assets/legal/third_party_notices.txt',
+        ),
+        LegalDocument(
+          'aiProfessionalAdviceDisclosures',
+          'assets/legal/ai_disclosures.txt',
+        ),
+      ];
+      const ids = ['LEG-0001', 'LEG-0002', 'LEG-0003', 'LEG-0004'];
+      // Inspect checked-in assets directly rather than awaiting rootBundle
+      // platform messages outside the widget tree (which can deadlock).
+      for (var i = 0; i < documents.length; i++) {
+        for (final locale in AppLocalizations.supportedLocales) {
+          final path = documents[i].assetPathFor(locale);
+          final text = await File(path).readAsString();
+          expect(text, contains(ids[i]), reason: path);
+          // Review-stage metadata and release instructions belong in the
+          // internal checklist, not in the offline legal reader.
+          expect(text, isNot(contains('v1.2')), reason: path);
+          expect(text, isNot(contains('DRAFT')), reason: path);
+          expect(text, isNot(contains('BORRADOR')), reason: path);
+          expect(text, isNot(contains('审阅稿')), reason: path);
+          if (locale.languageCode == 'zh') {
+            expect(text, contains('简体中文'), reason: path);
+            expect(text, startsWith('账房先生 — '), reason: path);
+            expect(
+              text.toLowerCase(),
+              isNot(contains('butlerly')),
+              reason: path,
+            );
+          } else if (locale.languageCode == 'es') {
+            expect(text, contains('Español'), reason: path);
+          } else {
+            expect(text, contains('English'), reason: path);
+          }
+        }
+      }
+      expect(
+        documents.first.assetPathFor(const Locale('fr')),
+        'assets/legal/terms_of_use.txt',
+      );
+    },
+  );
+
+  testWidgets('desktop reader displays the Chinese and Spanish legal text', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(app(locale: const Locale('zh', 'CN')));
+    await tester.pumpAndSettle();
+    final chinese = find.descendant(
+      of: find.byKey(const ValueKey('desktop-legal-reader-0-zh')),
+      matching: find.byType(SelectableText),
+    );
+    expect(chinese, findsOneWidget);
+    expect(tester.widget<SelectableText>(chinese).data, contains('使用条款'));
+    expect(find.textContaining('尚未生效'), findsNothing);
+
+    await tester.pumpWidget(app(locale: const Locale('es')));
+    await tester.pumpAndSettle();
+    final spanish = find.descendant(
+      of: find.byKey(const ValueKey('desktop-legal-reader-0-es')),
+      matching: find.byType(SelectableText),
+    );
+    expect(spanish, findsOneWidget);
+    expect(
+      tester.widget<SelectableText>(spanish).data,
+      contains('TÉRMINOS DE USO'),
+    );
+    expect(find.textContaining('No vigentes'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('desktop locale switch retains the selected privacy document', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(app(locale: const Locale('en')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('desktop-legal-document-1')));
+    await tester.pump();
+    expect(
+      find.byKey(const ValueKey('desktop-legal-reader-1-en')),
+      findsOneWidget,
+    );
+
+    // Loading the new language may animate until the asset future completes.
+    // Verify the selected document and locale resolution without settling
+    // an indeterminate CircularProgressIndicator.
+    await tester.pumpWidget(app(locale: const Locale('es')));
+    await tester.pump();
+    expect(
+      find.byKey(const ValueKey('desktop-legal-reader-1-es')),
+      findsOneWidget,
+    );
+    expect(find.text('Política de privacidad'), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('compact reader opens an offline Chinese legal document', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(app(locale: const Locale('zh', 'CN')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('隐私政策'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LegalDocumentPage), findsOneWidget);
+    final reader = find.byType(SelectableText);
+    expect(reader, findsOneWidget);
+    expect(tester.widget<SelectableText>(reader).data, contains('账房先生 — 隐私政策'));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('compact open document follows runtime language selection', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    Widget documentApp(Locale locale) => MaterialApp(
+      locale: locale,
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      home: const LegalDocumentPage(
+        document: LegalDocument('termsOfUse', 'assets/legal/terms_of_use.txt'),
+      ),
+    );
+
+    await tester.pumpWidget(documentApp(const Locale('en')));
+    await tester.pump();
+    expect(find.byType(LegalDocumentPage), findsOneWidget);
+    expect(find.text('Terms of Use'), findsWidgets);
+    expect(
+      find.byKey(
+        const ValueKey('legal-document-body-assets/legal/terms_of_use.txt'),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.pumpWidget(documentApp(const Locale('zh', 'CN')));
+    await tester.pump();
+    expect(find.byType(LegalDocumentPage), findsOneWidget);
+    expect(find.text('使用条款'), findsWidgets);
+    expect(
+      find.byKey(
+        const ValueKey('legal-document-body-assets/legal/terms_of_use_zh.txt'),
+      ),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
+}
+,
+      multiLine: true,
+    ).firstMatch(pubspec);
+    expect(version, isNotNull);
+    expect(version!.group(2), version.group(3));
+    expect(find.textContaining(version.group(1)!), findsOneWidget);
+    expect(find.textContaining('+' + version.group(3)!), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
