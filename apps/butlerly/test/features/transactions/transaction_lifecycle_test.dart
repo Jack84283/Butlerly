@@ -7,6 +7,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_compact_section_selector.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_desktop_panel_footer.dart';
+import 'package:butlerly/design_system/components/butlerly_payment_source_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_desktop_transaction_table.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
@@ -2907,6 +2908,60 @@ void main() {
     expect(duplicateGroups.fullScanCalls, 1);
     expect(transactionChanges.value, notificationBeforeRescan);
   });
+
+  for (final desktop in [false, true]) {
+    testWidgets(
+      '${desktop ? 'desktop' : 'compact'} wallet editor retains branded provider icons',
+      (tester) async {
+        tester.view.physicalSize = desktop
+            ? const Size(1440, 900)
+            : const Size(390, 844);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final finance = services<FinanceServices>();
+        await finance.savePaymentSource(
+          PaymentSource(
+            id: PaymentSourceId('paypal-source'),
+            name: 'PayPal',
+            type: PaymentSourceType.wallet,
+            network: 'paypal',
+          ),
+        );
+
+        await tester.pumpWidget(
+          const MaterialApp(home: PaymentSourcesPage()),
+        );
+        await tester.pumpAndSettle();
+
+        // The saved payment source uses its branded mark in the list.
+        expect(
+          find.byType(ButlerlyPaymentSourceIcon),
+          findsOneWidget,
+        );
+        await tester.tap(find.text('PayPal').first);
+        await tester.pumpAndSettle();
+
+        final picker = tester.widget<ButlerlySelectField<String>>(
+          find.byType(ButlerlySelectField<String>),
+        );
+        expect(picker.value, 'paypal');
+        expect(picker.leadingIcon, isA<ButlerlyPaymentMarkIcon>());
+        for (final provider in ['alipay', 'paypal', 'venmo', 'wechatPay']) {
+          final entry = picker.entries.singleWhere(
+            (entry) => entry.value == provider,
+          );
+          expect(
+            entry.leadingIcon,
+            isA<ButlerlyPaymentMarkIcon>(),
+            reason: 'Missing $provider brand mark in provider menu',
+          );
+        }
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
 
   testWidgets('creates and archives a local payment source', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: PaymentSourcesPage()));
