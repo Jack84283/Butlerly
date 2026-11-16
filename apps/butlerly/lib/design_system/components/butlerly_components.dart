@@ -1807,6 +1807,7 @@ class ButlerlySelectField<T> extends StatefulWidget {
   final T? value;
   final List<DropdownMenuEntry<T>> entries;
   final ValueChanged<T?> onChanged;
+
   /// Optional icon for the current value; option icons live on each entry.
   final Widget? leadingIcon;
   final VoidCallback? onCreate;
