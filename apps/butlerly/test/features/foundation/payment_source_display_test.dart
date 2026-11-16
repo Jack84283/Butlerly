@@ -42,9 +42,7 @@ void main() {
     expect(paymentSourceDisplayLabel(source), 'Debit •••• 1234');
   });
 
-  test(
-    'account-typed wallet records retain their brand without data changes',
-    () {
+  test('account-typed sources retain branded wallet icons', () {
     const providers = <String, String>{
       'Alipay': 'alipay',
       'PayPal': 'paypal',
@@ -85,8 +83,7 @@ void main() {
     );
     expect(paymentMarkFor(ordinaryAccount), 'account');
     expect(paymentNetworkFromText('WeChat messages'), isNull);
-    },
-  );
+  });
 
   testWidgets('account-typed wallet records display branded SVGs', (
     tester,
