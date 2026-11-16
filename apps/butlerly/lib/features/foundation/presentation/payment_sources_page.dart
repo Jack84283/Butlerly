@@ -3,6 +3,7 @@ import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_ocr_service.dart';
 import 'package:butlerly/core/evidence/platform_ocr_recognizer.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_issuer_autocomplete.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_payment_source_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
@@ -212,11 +213,9 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                   ),
                 ),
                 const SizedBox(height: ButlerlySpacing.small),
-                TextField(
+                ButlerlyIssuerAutocomplete(
                   controller: issuer,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.text('issuer'),
-                  ),
+                  label: context.l10n.text('issuer'),
                 ),
                 const SizedBox(height: ButlerlySpacing.small),
                 TextField(
@@ -881,9 +880,9 @@ class _DesktopPaymentSourceEditorState
             decoration: InputDecoration(labelText: context.l10n.text('name')),
           ),
           gap,
-          TextField(
+          ButlerlyIssuerAutocomplete(
             controller: _issuer,
-            decoration: InputDecoration(labelText: context.l10n.text('issuer')),
+            label: context.l10n.text('issuer'),
           ),
           gap,
           TextField(

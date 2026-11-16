@@ -1,3 +1,4 @@
+import 'package:butlerly/design_system/components/butlerly_issuer_catalog.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -130,8 +131,52 @@ class ButlerlyPaymentSourceIcon extends StatelessWidget {
   final double size;
 
   @override
-  Widget build(BuildContext context) =>
-      ButlerlyPaymentMarkIcon(mark: paymentMarkFor(source), size: size);
+  Widget build(BuildContext context) {
+    // Wallet provider marks take precedence over banks. Card/account sources
+    // show an issuer logo only for an exact, locally verified institution.
+    if (source.type != PaymentSourceType.wallet &&
+        source.type != PaymentSourceType.cash) {
+      final issuer =
+          issuerForName(source.issuer) ??
+          (source.type == PaymentSourceType.account
+              ? issuerForName(source.name)
+              : null);
+      if (issuer?.assetPath != null) {
+        return ButlerlyIssuerIcon(issuer: issuer!, size: size);
+      }
+    }
+    return ButlerlyPaymentMarkIcon(mark: paymentMarkFor(source), size: size);
+  }
+}
+
+/// Displays bundled institution artwork, with a neutral fallback for any
+/// institution whose correct logo has not yet been verified.
+class ButlerlyIssuerIcon extends StatelessWidget {
+  const ButlerlyIssuerIcon({required this.issuer, this.size = 24, super.key});
+
+  final IssuerInstitution issuer;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final path = issuer.assetPath;
+    if (path == null) {
+      return Icon(
+        Icons.account_balance_outlined,
+        size: size,
+        color: Theme.of(context).colorScheme.onSurface,
+        semanticLabel: issuer.name,
+      );
+    }
+    return Semantics(
+      label: issuer.name,
+      image: true,
+      child: SizedBox.square(
+        dimension: size,
+        child: SvgPicture.asset(path, fit: BoxFit.contain),
+      ),
+    );
+  }
 }
 
 class ButlerlyPaymentMarkIcon extends StatelessWidget {

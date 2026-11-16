@@ -8,6 +8,7 @@ import 'package:butlerly/design_system/components/butlerly_compact_section_selec
 import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_desktop_panel_footer.dart';
 import 'package:butlerly/design_system/components/butlerly_desktop_transaction_table.dart';
+import 'package:butlerly/design_system/components/butlerly_issuer_autocomplete.dart';
 import 'package:butlerly/design_system/components/butlerly_payment_source_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
@@ -2954,6 +2955,47 @@ void main() {
           );
         }
         expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
+  for (final desktop in [false, true]) {
+    testWidgets(
+      '${desktop ? 'desktop' : 'compact'} issuer autocomplete saves canonical name',
+      (tester) async {
+        tester.view.physicalSize = desktop
+            ? const Size(1440, 900)
+            : const Size(390, 844);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final finance = services<FinanceServices>();
+        await tester.pumpWidget(const MaterialApp(home: PaymentSourcesPage()));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip('Add payment source'));
+        await tester.pumpAndSettle();
+
+        final issuerField = find.descendant(
+          of: find.byType(ButlerlyIssuerAutocomplete),
+          matching: find.byType(TextField),
+        );
+        expect(issuerField, findsOneWidget);
+        await tester.enterText(find.byType(TextField).first, 'My account');
+        await tester.enterText(issuerField, 'BoA');
+        await tester.pumpAndSettle();
+        expect(find.text('Bank of America'), findsWidgets);
+        await tester.tap(find.text('Bank of America').last);
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('Save'));
+        await tester.pumpAndSettle();
+        final result = await finance.listPaymentSources();
+        expect(result, isA<ApplicationSuccess<List<PaymentSource>>>());
+        final records =
+            (result as ApplicationSuccess<List<PaymentSource>>).value;
+        expect(records.single.issuer, 'Bank of America');
+        expect(records.single.type, PaymentSourceType.account);
       },
     );
   }
