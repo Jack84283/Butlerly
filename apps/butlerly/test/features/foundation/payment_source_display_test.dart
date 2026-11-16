@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_payment_source_icon.dart';
 import 'package:butlerly/features/foundation/presentation/payment_source_display.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -114,6 +117,105 @@ void main() {
     );
     expect(find.byType(SvgPicture), findsNWidgets(3));
     expect(tester.takeException(), isNull);
+  });
+
+
+  test('all four wallet brands ship offline SVG assets', () {
+    for (final filename in [
+      'alipay',
+      'paypal',
+      'venmo',
+      'wechatpay',
+    ]) {
+      final path = 'assets/icons/payment_sources/$filename.svg';
+      final asset = File(path);
+      expect(asset.existsSync(), isTrue, reason: path);
+      final svg = asset.readAsStringSync();
+      expect(svg, contains('<svg'), reason: path);
+      expect(svg, contains('</svg>'), reason: path);
+    }
+  });
+
+  testWidgets('all four wallet providers resolve to bundled SVG marks', (
+    tester,
+  ) async {
+    final sources = [
+      PaymentSource(
+        id: PaymentSourceId('paypal-wallet'),
+        name: 'PayPal',
+        type: PaymentSourceType.wallet,
+      ),
+      PaymentSource(
+        id: PaymentSourceId('venmo-wallet'),
+        name: 'Venmo',
+        type: PaymentSourceType.wallet,
+      ),
+      PaymentSource(
+        id: PaymentSourceId('alipay-wallet'),
+        name: '支付宝',
+        type: PaymentSourceType.wallet,
+      ),
+      PaymentSource(
+        id: PaymentSourceId('wechat-wallet'),
+        name: '微信支付',
+        type: PaymentSourceType.wallet,
+      ),
+    ];
+    expect(sources.map(paymentMarkFor), [
+      'paypal',
+      'venmo',
+      'alipay',
+      'wechatPay',
+    ]);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Column(
+            children: [
+              for (final source in sources)
+                ButlerlyPaymentSourceIcon(source: source),
+            ],
+          ),
+        ),
+      ),
+    );
+    expect(find.byType(SvgPicture), findsNWidgets(4));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('selected wallet provider keeps its brand icon in the field', (
+    tester,
+  ) async {
+    for (final provider in ['alipay', 'paypal', 'venmo', 'wechatPay']) {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SizedBox(
+              width: 300,
+              child: ButlerlySelectField<String>(
+                label: 'Wallet provider',
+                value: provider,
+                leadingIcon: ButlerlyPaymentMarkIcon(
+                  mark: provider,
+                  size: 24,
+                ),
+                entries: [
+                  DropdownMenuEntry(value: provider, label: provider),
+                ],
+                onChanged: (_) {},
+              ),
+            ),
+          ),
+        ),
+      );
+      final menu = tester.widget<DropdownMenu<String>>(
+        find.byType(DropdownMenu<String>),
+      );
+      expect(menu.leadingIcon, isA<ButlerlyPaymentMarkIcon>());
+      expect(find.byType(SvgPicture), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    }
   });
 
   testWidgets('renders transparent marks, cash and unknown fallback', (
