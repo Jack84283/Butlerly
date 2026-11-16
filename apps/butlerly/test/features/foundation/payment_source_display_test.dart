@@ -51,7 +51,7 @@ void main() {
     };
     for (final entry in providers.entries) {
       final source = PaymentSource(
-        id: PaymentSourceId(entry.key),
+        id: PaymentSourceId(entry.value),
         name: 'My wallet',
         type: PaymentSourceType.wallet,
         network: entry.key,
