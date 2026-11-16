@@ -2930,16 +2930,11 @@ void main() {
           ),
         );
 
-        await tester.pumpWidget(
-          const MaterialApp(home: PaymentSourcesPage()),
-        );
+        await tester.pumpWidget(const MaterialApp(home: PaymentSourcesPage()));
         await tester.pumpAndSettle();
 
         // The saved payment source uses its branded mark in the list.
-        expect(
-          find.byType(ButlerlyPaymentSourceIcon),
-          findsOneWidget,
-        );
+        expect(find.byType(ButlerlyPaymentSourceIcon), findsOneWidget);
         await tester.tap(find.text('PayPal').first);
         await tester.pumpAndSettle();
 
