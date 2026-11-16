@@ -74,6 +74,14 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  test('app manifest version is 1.0.PR without a duplicated build suffix', () {
+    final pubspec = File('pubspec.yaml').readAsStringSync();
+    expect(
+      RegExp(r'^version: 1\.0\.\d+$', multiLine: true).hasMatch(pubspec),
+      isTrue,
+    );
+  });
+
   test(
     'all four clean legal documents are present in three languages',
     () async {
@@ -105,6 +113,12 @@ void main() {
           expect(text, isNot(contains('审阅稿')), reason: path);
           if (locale.languageCode == 'zh') {
             expect(text, contains('简体中文'), reason: path);
+            expect(text, startsWith('账房先生 — '), reason: path);
+            expect(
+              text.toLowerCase(),
+              isNot(contains('butlerly')),
+              reason: path,
+            );
           } else if (locale.languageCode == 'es') {
             expect(text, contains('Español'), reason: path);
           } else {
@@ -198,10 +212,7 @@ void main() {
     expect(find.byType(LegalDocumentPage), findsOneWidget);
     final reader = find.byType(SelectableText);
     expect(reader, findsOneWidget);
-    expect(
-      tester.widget<SelectableText>(reader).data,
-      contains('BUTLERLY — 隐私政策'),
-    );
+    expect(tester.widget<SelectableText>(reader).data, contains('账房先生 — 隐私政策'));
     expect(tester.takeException(), isNull);
   });
 
