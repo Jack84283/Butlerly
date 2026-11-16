@@ -40,10 +40,7 @@ class _ButlerlyIssuerAutocompleteState
             controller: controller,
             focusNode: focusNode,
             textInputAction: TextInputAction.done,
-            // Keyboard Done only ends editing. An issuer is selected only
-            // when the user taps a suggestion or uses its explicit
-            // autocomplete selection action; preserve custom free text.
-            onSubmitted: (_) => focusNode.unfocus(),
+            onSubmitted: (_) => onSubmitted(),
             decoration: InputDecoration(
               labelText: widget.label,
               prefixIcon: ValueListenableBuilder<TextEditingValue>(
@@ -63,7 +60,9 @@ class _ButlerlyIssuerAutocompleteState
               ),
             ),
           ),
-      optionsViewBuilder: (context, onSelected, options) => Align(
+      optionsViewBuilder: (context, onSelected, options) {
+        final highlightedIndex = AutocompleteHighlightedOption.of(context);
+        return Align(
         alignment: Alignment.topLeft,
         child: Material(
           elevation: 6,
@@ -82,6 +81,9 @@ class _ButlerlyIssuerAutocompleteState
                   final issuer = options.elementAt(index);
                   return ListTile(
                     dense: true,
+                    selected: index == highlightedIndex,
+                    selectedTileColor:
+                        Theme.of(context).colorScheme.surfaceContainerHighest,
                     leading: ButlerlyIssuerIcon(issuer: issuer, size: 26),
                     title: Text(issuer.name),
                     subtitle: Text(
@@ -96,7 +98,8 @@ class _ButlerlyIssuerAutocompleteState
             ),
           ),
         ),
-      ),
+      );
+      },
     ),
   );
 }
