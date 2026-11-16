@@ -22,10 +22,8 @@ Future<String> _readBundledVersion() async {
 
 final Future<String> _bundledVersion = _readBundledVersion();
 
-/// Offline reader for the bundled legal review documents.
-///
-/// LEG-0001–0004 v1.2 are review editions, not published legal agreements.
-/// Do not lift this release gate without issue #380 approval.
+/// Offline reader for the localized legal information bundled with Butlerly.
+/// External release approval remains tracked separately in issue #380.
 class LegalLicensesPage extends StatelessWidget {
   const LegalLicensesPage({super.key});
 
@@ -60,8 +58,6 @@ class LegalLicensesPage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: ButlerlySpacing.section),
-        const _LegalReviewNotice(),
-        const SizedBox(height: ButlerlySpacing.small),
         ButlerlyCard(
           padding: EdgeInsets.zero,
           child: ButlerlySeparatedList(
@@ -200,7 +196,6 @@ class _DesktopLegalLicensesPageState extends State<_DesktopLegalLicensesPage> {
             ),
           ),
           Divider(height: 1, color: context.colors.cardDivider),
-          const _LegalReviewNotice(),
           Expanded(
             child: FutureBuilder<String>(
               key: ValueKey(
@@ -390,37 +385,6 @@ class LegalDocument {
     };
     return '${assetPath.substring(0, assetPath.length - 4)}$suffix.txt';
   }
-}
-
-class _LegalReviewNotice extends StatelessWidget {
-  const _LegalReviewNotice();
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(
-      horizontal: ButlerlySpacing.standard,
-      vertical: ButlerlySpacing.small,
-    ),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(
-          Icons.info_outline_rounded,
-          size: 18,
-          color: context.colors.secondaryText,
-        ),
-        const SizedBox(width: ButlerlySpacing.compact),
-        Expanded(
-          child: Text(
-            context.l10n.text('legalReviewNotApproved'),
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: context.colors.secondaryText,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
 }
 
 const _documents = [

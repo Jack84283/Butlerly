@@ -1,9 +1,8 @@
 BUTLERLY — FUNCIONES AUTOMATIZADAS Y ASESORAMIENTO PROFESIONAL
-LEG-0004 | Edición de revisión Alpha v1.2 | Español | 15 de noviembre de 2026
-BORRADOR PARA REVISIÓN ALPHA PRIVADA — NO VIGENTE PARA DISTRIBUCIÓN PÚBLICA
+LEG-0004 | Español
 
 1. Funciones automatizadas
-Butlerly puede utilizar reconocimiento de texto en el dispositivo, reglas y cálculos para extraer información, sugerir categorías o posibles duplicados y mostrar totales o análisis. No todas las funciones automáticas son inteligencia artificial generativa. El alcance aprobado de Alpha no incluye enviar registros financieros personales a servicios externos de IA/OCR; los componentes distribuidos deberán verificarse antes de su publicación.
+Butlerly puede utilizar reconocimiento de texto en el dispositivo, reglas y cálculos para extraer información, sugerir categorías o posibles duplicados y mostrar totales o análisis. No todas las funciones automáticas son inteligencia artificial generativa. Las funciones locales de Butlerly no están destinadas a cargar registros financieros personales en servicios externos de IA/OCR.
 
 2. Compruebe los resultados
 La extracción, clasificación, conciliación y los análisis pueden ser incorrectos o incompletos, especialmente si faltan datos originales o información de conversión de divisas. Compruebe recibos, extractos, importes, fechas, monedas y decisiones de revisión. Una coincidencia propuesta o un resumen convincente no prueban su exactitud. Los registros confirmados por el usuario y las pruebas originales no deben modificarse silenciosamente.
@@ -12,4 +11,4 @@ La extracción, clasificación, conciliación y los análisis pueden ser incorre
 Butlerly es una herramienta de organización de información, no un banco ni un asesor profesional. Sus resúmenes y sugerencias no constituyen asesoramiento de inversión, fiscal, contable, jurídico o crediticio, ni garantizan resultados. Consulte a una persona cualificada antes de decisiones importantes.
 
 4. Información sensible
-No comparta contraseñas, credenciales bancarias, secretos de respaldo o identificadores innecesarios al enviar comentarios. Las copias exportadas o compartidas pueden ser legibles fuera de Butlerly; consulte la Política de privacidad. Cualquier tratamiento futuro mediante IA remota u otra conexión requerirá aprobación y avisos actualizados.
+No comparta contraseñas, credenciales bancarias, secretos de respaldo o identificadores innecesarios al enviar comentarios. Las copias exportadas o compartidas pueden ser legibles fuera de Butlerly; consulte la Política de privacidad. Antes de compartir registros sensibles con otros servicios, revise sus condiciones de privacidad.

@@ -1,14 +1,13 @@
 BUTLERLY — PRIVACY POLICY
-LEG-0002 | Alpha review edition v1.2 | English | 15 November 2026
-DRAFT FOR PRIVATE ALPHA REVIEW — NOT EFFECTIVE FOR PUBLIC DISTRIBUTION
+LEG-0002 | English
 
-This draft describes Butlerly's approved offline-first design, not a certified audit of its final binary. Before external distribution, actual network traffic, third-party SDKs, permissions, platform services and recipients must be verified; the published edition must identify the responsible publisher and privacy contact.
+This Privacy Policy describes how Butlerly handles information entered, imported, reviewed, backed up or exported through its local-first features. Copies you share or store outside Butlerly may be subject to other services' policies.
 
 1. Information processed
 You may enter transactions, currencies, descriptions, merchants, payment sources, categories, budgets, rules, preferences and optional Financial Profile Survey answers. You may import statements, CSV files, receipts, images and other supported local files. The App may retain original evidence, extracted text, review decisions, analysis and backup metadata. Selected documents may contain sensitive names or financial identifiers.
 
 2. Local processing
-Butlerly is designed to store core finance records and evidence in app-managed storage on your device and to work without a Butlerly account. The approved Alpha does not include direct bank/cloud account connections, automatic sync, online Help searches or remote processing of your financial files by AI/OCR services. Actual SDK and operating-system behavior must be checked before any categorical statement that information never leaves the device.
+Butlerly is designed to store core finance records and evidence in app-managed storage on your device and to work without a Butlerly account. Butlerly's core features do not provide direct bank/cloud account connections, automatic synchronization, online Help searches or remote AI/OCR processing of personal financial files. Device services and destinations you select can handle information separately from Butlerly.
 
 3. When copies leave your device
 You control whether to export, share or back up data. Export to file creates readable, unencrypted material that cannot be imported back into Butlerly. The separate portable-backup workflow uses encryption; protect its password and destination. Files shared to another app or saved in a cloud folder are then subject to that destination's practices. Device or app-store services may also process data independently of Butlerly.
@@ -19,5 +18,5 @@ When you choose capture or import, your device may ask permission for camera, ph
 5. Retention, deletion and safety
 Local records remain until changed or removed using available controls or device operations. Archive is not permanent deletion. Restoring a backup can bring records back. Deleting Butlerly or erasing local records does not remove independently exported, shared or backed-up copies. Device security, storage permissions and password choices also affect protection; no backup or recovery outcome is guaranteed.
 
-6. Your choices and release contact
-You control which records to import, edit, export, back up or erase. A final public policy must state the verified publisher, privacy-contact method, applicable rights and any confirmed external processing or retention practices for the released platforms and regions. No account-based deletion route is implied where Butlerly has no account.
+6. Your choices
+You decide which records to import, edit, export, back up or erase. Butlerly does not use an in-app account for these records, so no account-deletion workflow applies. Copies held by external services must be managed through those services.

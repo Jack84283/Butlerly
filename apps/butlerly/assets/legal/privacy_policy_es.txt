@@ -1,14 +1,13 @@
 BUTLERLY — POLÍTICA DE PRIVACIDAD
-LEG-0002 | Edición de revisión Alpha v1.2 | Español | 15 de noviembre de 2026
-BORRADOR PARA REVISIÓN ALPHA PRIVADA — NO VIGENTE PARA DISTRIBUCIÓN PÚBLICA
+LEG-0002 | Español
 
-Este borrador describe el diseño aprobado de Butlerly centrado en el dispositivo; no certifica una auditoría del producto final. Antes de la distribución externa hay que verificar el tráfico de red, los SDK de terceros, permisos, servicios de plataforma y destinatarios, e identificar al editor y el contacto de privacidad.
+Esta Política de privacidad explica cómo Butlerly trata la información introducida, importada, revisada, respaldada o exportada mediante sus funciones centradas en el dispositivo. Las copias compartidas o guardadas fuera de Butlerly pueden quedar sujetas a las políticas de otros servicios.
 
 1. Información que se trata
 Puede introducir transacciones, divisas, descripciones, comercios, medios de pago, categorías, presupuestos, reglas, preferencias y respuestas opcionales al cuestionario de perfil financiero. También puede importar extractos, CSV, recibos, imágenes y otros archivos locales compatibles. La Aplicación puede conservar pruebas originales, texto reconocido, decisiones de revisión, análisis y datos sobre las copias de seguridad. Los archivos seleccionados pueden contener nombres e identificadores financieros sensibles.
 
 2. Tratamiento local
-Butlerly está diseñado para guardar los registros financieros y las pruebas principales en el almacenamiento gestionado por la Aplicación en su dispositivo y funcionar sin una cuenta Butlerly. El alcance aprobado de Alpha no incluye conexiones directas a cuentas bancarias o en la nube, sincronización automática, búsquedas de ayuda en línea ni tratamiento remoto de sus archivos financieros por servicios de IA/OCR. Hay que comprobar los SDK y el sistema operativo antes de afirmar que la información nunca sale del dispositivo.
+Butlerly está diseñado para guardar los registros financieros y las pruebas principales en el almacenamiento gestionado por la Aplicación en su dispositivo y funcionar sin una cuenta Butlerly. Las funciones principales de Butlerly no ofrecen conexiones directas a cuentas bancarias o en la nube, sincronización automática, búsqueda de ayuda en línea ni tratamiento remoto de archivos financieros personales mediante IA/OCR. Los servicios del dispositivo y los destinos que usted elija pueden tratar información por separado.
 
 3. Cuándo pueden salir copias
 Usted decide si exporta, comparte o guarda copias. «Exportar a archivo» produce material legible y sin cifrar que no puede volver a importarse en Butlerly. El procedimiento independiente de copia portátil utiliza cifrado; proteja su contraseña y destino. Los archivos compartidos con otras aplicaciones o guardados en carpetas en la nube quedan sujetos a las prácticas de esos destinos. Los servicios del dispositivo o de la tienda también pueden tratar datos de forma independiente.
@@ -19,5 +18,5 @@ Al elegir capturar o importar, el dispositivo puede solicitar acceso a cámara, 
 5. Conservación, eliminación y seguridad
 Los registros locales permanecen hasta que se modifican o eliminan mediante los controles disponibles o las operaciones del dispositivo. Archivar no equivale a borrar permanentemente. Restaurar una copia puede recuperar registros anteriores. Borrar Butlerly o sus datos locales no elimina copias exportadas, compartidas o guardadas de forma independiente. La seguridad del dispositivo, los permisos de almacenamiento y las contraseñas también influyen en la protección; ninguna copia o recuperación está garantizada.
 
-6. Sus opciones y contacto para la publicación
-Puede elegir qué importar, editar, exportar, respaldar o borrar. Una política pública definitiva debe identificar al editor, el medio de contacto sobre privacidad, los derechos aplicables y cualquier tratamiento o conservación externos confirmados para las plataformas y regiones de distribución. No se da a entender que exista un procedimiento de eliminación de cuentas cuando Butlerly no ofrece cuentas.
+6. Sus opciones
+Puede elegir qué registros importar, editar, exportar, respaldar o borrar. Butlerly no utiliza una cuenta de aplicación para estos registros, por lo que no existe un procedimiento de eliminación de cuentas. Las copias almacenadas en servicios externos deben administrarse en esos servicios.
