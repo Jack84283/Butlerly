@@ -103,6 +103,21 @@ String paymentMarkFor(PaymentSource source) {
   return named ?? 'other';
 }
 
+/// Presents the mark of a selected payment source without changing its data.
+Widget? paymentSourceIconForId(
+  Iterable<PaymentSource> sources,
+  String? selectedId, {
+  double size = 24,
+}) {
+  if (selectedId == null) return null;
+  for (final source in sources) {
+    if (source.id.value == selectedId) {
+      return ButlerlyPaymentSourceIcon(source: source, size: size);
+    }
+  }
+  return null;
+}
+
 /// No icon background, shape, outline or shadow: brand artwork only.
 class ButlerlyPaymentSourceIcon extends StatelessWidget {
   const ButlerlyPaymentSourceIcon({
