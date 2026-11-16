@@ -81,7 +81,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Bank of America'), findsWidgets);
     expect(
-      tester.widget<ListTile>(find.widgetWithText(ListTile, 'Bank of America'))
+      tester
+          .widget<ListTile>(find.widgetWithText(ListTile, 'Bank of America'))
           .selected,
       isTrue,
     );
