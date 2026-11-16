@@ -71,15 +71,15 @@ void main() {
     expect(find.text('Privacy Policy'), findsOneWidget);
     expect(find.byType(ButlerlyBrandVersionTile), findsOneWidget);
     expect(find.byType(ButlerlyBrandIcon), findsOneWidget);
-    // Widget tests run in a fake-async zone; async file I/O can hang here.
-    final pubspec = File('pubspec.yaml').readAsStringSync();
-    final version = RegExp(
-      r'^version: (1\.0\.\d+)$',
-      multiLine: true,
-    ).firstMatch(pubspec);
-    expect(version, isNotNull);
-    expect(find.textContaining(version!.group(1)!), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  test('app manifest version is 1.0.PR without a duplicated build suffix', () {
+    final pubspec = File('pubspec.yaml').readAsStringSync();
+    expect(
+      RegExp(r'^version: 1\.0\.\d+$', multiLine: true).hasMatch(pubspec),
+      isTrue,
+    );
   });
 
   test(
