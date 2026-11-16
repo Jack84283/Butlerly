@@ -63,42 +63,42 @@ class _ButlerlyIssuerAutocompleteState
       optionsViewBuilder: (context, onSelected, options) {
         final highlightedIndex = AutocompleteHighlightedOption.of(context);
         return Align(
-        alignment: Alignment.topLeft,
-        child: Material(
-          elevation: 6,
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          clipBehavior: Clip.antiAlias,
-          child: SizedBox(
-            width: constraints.maxWidth,
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 264),
-              child: ListView.builder(
-                padding: EdgeInsets.zero,
-                shrinkWrap: true,
-                itemCount: options.length,
-                itemBuilder: (context, index) {
-                  final issuer = options.elementAt(index);
-                  return ListTile(
-                    dense: true,
-                    selected: index == highlightedIndex,
-                    selectedTileColor:
-                        Theme.of(context).colorScheme.surfaceContainerHighest,
-                    leading: ButlerlyIssuerIcon(issuer: issuer, size: 26),
-                    title: Text(issuer.name),
-                    subtitle: Text(
-                      issuer.aliases.take(3).join(' · '),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    onTap: () => onSelected(issuer),
-                  );
-                },
+          alignment: Alignment.topLeft,
+          child: Material(
+            elevation: 6,
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: BorderRadius.circular(12),
+            clipBehavior: Clip.antiAlias,
+            child: SizedBox(
+              width: constraints.maxWidth,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 264),
+                child: ListView.builder(
+                  padding: EdgeInsets.zero,
+                  shrinkWrap: true,
+                  itemCount: options.length,
+                  itemBuilder: (context, index) {
+                    final issuer = options.elementAt(index);
+                    return ListTile(
+                      dense: true,
+                      selected: index == highlightedIndex,
+                      selectedTileColor:
+                          Theme.of(context).colorScheme.surfaceContainerHighest,
+                      leading: ButlerlyIssuerIcon(issuer: issuer, size: 26),
+                      title: Text(issuer.name),
+                      subtitle: Text(
+                        issuer.aliases.take(3).join(' · '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      onTap: () => onSelected(issuer),
+                    );
+                  },
+                ),
               ),
             ),
           ),
-        ),
-      );
+        );
       },
     ),
   );
