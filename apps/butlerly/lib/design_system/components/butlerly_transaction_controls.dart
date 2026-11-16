@@ -668,6 +668,7 @@ class ButlerlyPaymentSourceSelector extends StatelessWidget {
   Widget build(BuildContext context) => ButlerlySelectField<String>(
     label: label,
     value: value,
+    leadingIcon: paymentSourceIconForId(sources, value),
     entries: [
       for (final source in sources.where(
         (source) =>
@@ -745,6 +746,7 @@ class ButlerlyPaymentSourceFilter extends StatelessWidget {
   Widget build(BuildContext context) => ButlerlySelectField<String>(
     label: label,
     value: value,
+    leadingIcon: paymentSourceIconForId(sources, value),
     entries: [
       DropdownMenuEntry(value: '', label: anyLabel),
       for (final source in sources.where(
