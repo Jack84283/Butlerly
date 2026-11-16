@@ -71,7 +71,8 @@ void main() {
     expect(find.text('Privacy Policy'), findsOneWidget);
     expect(find.byType(ButlerlyBrandVersionTile), findsOneWidget);
     expect(find.byType(ButlerlyBrandIcon), findsOneWidget);
-    final pubspec = await File('pubspec.yaml').readAsString();
+    // Widget tests run in a fake-async zone; async file I/O can hang here.
+    final pubspec = File('pubspec.yaml').readAsStringSync();
     final version = RegExp(
       r'^version: (1\.0\.\d+)$',
       multiLine: true,
