@@ -40,7 +40,10 @@ class _ButlerlyIssuerAutocompleteState
             controller: controller,
             focusNode: focusNode,
             textInputAction: TextInputAction.done,
-            onSubmitted: (_) => onSubmitted(),
+            // Keyboard Done only ends editing. An issuer is selected only
+            // when the user taps a suggestion or uses its explicit
+            // autocomplete selection action; preserve custom free text.
+            onSubmitted: (_) => focusNode.unfocus(),
             decoration: InputDecoration(
               labelText: widget.label,
               prefixIcon: ValueListenableBuilder<TextEditingValue>(
