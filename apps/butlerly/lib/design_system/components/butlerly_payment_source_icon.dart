@@ -136,7 +136,8 @@ class ButlerlyPaymentSourceIcon extends StatelessWidget {
     // show an issuer logo only for an exact, locally verified institution.
     if (source.type != PaymentSourceType.wallet &&
         source.type != PaymentSourceType.cash) {
-      final issuer = issuerForName(source.issuer) ??
+      final issuer =
+          issuerForName(source.issuer) ??
           (source.type == PaymentSourceType.account
               ? issuerForName(source.name)
               : null);
@@ -151,11 +152,7 @@ class ButlerlyPaymentSourceIcon extends StatelessWidget {
 /// Displays bundled institution artwork, with a neutral fallback for any
 /// institution whose correct logo has not yet been verified.
 class ButlerlyIssuerIcon extends StatelessWidget {
-  const ButlerlyIssuerIcon({
-    required this.issuer,
-    this.size = 24,
-    super.key,
-  });
+  const ButlerlyIssuerIcon({required this.issuer, this.size = 24, super.key});
 
   final IssuerInstitution issuer;
   final double size;

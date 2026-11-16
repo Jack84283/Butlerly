@@ -53,21 +53,9 @@ const issuerInstitutions = <IssuerInstitution>[
     name: 'U.S. Bank',
     aliases: ['US Bank', 'USBank', 'U S Bank'],
   ),
-  IssuerInstitution(
-    id: 'pnc',
-    name: 'PNC Bank',
-    aliases: ['PNC'],
-  ),
-  IssuerInstitution(
-    id: 'truist',
-    name: 'Truist Bank',
-    aliases: ['Truist'],
-  ),
-  IssuerInstitution(
-    id: 'tdbank',
-    name: 'TD Bank',
-    aliases: ['TD'],
-  ),
+  IssuerInstitution(id: 'pnc', name: 'PNC Bank', aliases: ['PNC']),
+  IssuerInstitution(id: 'truist', name: 'Truist Bank', aliases: ['Truist']),
+  IssuerInstitution(id: 'tdbank', name: 'TD Bank', aliases: ['TD']),
   IssuerInstitution(
     id: 'bmo',
     name: 'BMO Bank',
@@ -89,21 +77,9 @@ const issuerInstitutions = <IssuerInstitution>[
     name: 'Huntington Bank',
     aliases: ['Huntington', 'Huntington National Bank'],
   ),
-  IssuerInstitution(
-    id: 'keybank',
-    name: 'KeyBank',
-    aliases: ['Key Bank'],
-  ),
-  IssuerInstitution(
-    id: 'regions',
-    name: 'Regions Bank',
-    aliases: ['Regions'],
-  ),
-  IssuerInstitution(
-    id: 'mtbank',
-    name: 'M&T Bank',
-    aliases: ['M&T'],
-  ),
+  IssuerInstitution(id: 'keybank', name: 'KeyBank', aliases: ['Key Bank']),
+  IssuerInstitution(id: 'regions', name: 'Regions Bank', aliases: ['Regions']),
+  IssuerInstitution(id: 'mtbank', name: 'M&T Bank', aliases: ['M&T']),
   IssuerInstitution(
     id: 'santander',
     name: 'Santander Bank',
@@ -119,16 +95,8 @@ const issuerInstitutions = <IssuerInstitution>[
     name: 'First Horizon Bank',
     aliases: ['First Horizon'],
   ),
-  IssuerInstitution(
-    id: 'ally',
-    name: 'Ally Bank',
-    aliases: ['Ally'],
-  ),
-  IssuerInstitution(
-    id: 'sofi',
-    name: 'SoFi Bank',
-    aliases: ['SoFi'],
-  ),
+  IssuerInstitution(id: 'ally', name: 'Ally Bank', aliases: ['Ally']),
+  IssuerInstitution(id: 'sofi', name: 'SoFi Bank', aliases: ['SoFi']),
   IssuerInstitution(
     id: 'americanexpress',
     name: 'American Express',
@@ -347,22 +315,12 @@ const issuerInstitutions = <IssuerInstitution>[
     aliases: ['Bank of Guangzhou'],
     asset: 'gzcb',
   ),
-  IssuerInstitution(
-    id: 'webank',
-    name: '微众银行',
-    aliases: ['WeBank', '微众'],
-  ),
-  IssuerInstitution(
-    id: 'mybank',
-    name: '网商银行',
-    aliases: ['MYbank', '浙江网商银行'],
-  ),
+  IssuerInstitution(id: 'webank', name: '微众银行', aliases: ['WeBank', '微众']),
+  IssuerInstitution(id: 'mybank', name: '网商银行', aliases: ['MYbank', '浙江网商银行']),
 ];
 
-String _issuerSearchKey(String text) => text
-    .toLowerCase()
-    .replaceAll(RegExp(r'[\s._,&/-]+'), '')
-    .trim();
+String _issuerSearchKey(String text) =>
+    text.toLowerCase().replaceAll(RegExp(r'[\s._,&/-]+'), '').trim();
 
 /// Exact issuer/alias match, for display only; never rewrites stored values.
 IssuerInstitution? issuerForName(String? text) {
@@ -388,7 +346,14 @@ List<IssuerInstitution> suggestIssuers(String query, {int maxResults = 8}) {
     if (!terms.any((term) => term.contains(key))) continue;
     final exact = terms.any((term) => term == key);
     final prefix = terms.any((term) => term.startsWith(key));
-    matches.add((exact ? 0 : prefix ? 1 : 2, issuer));
+    matches.add((
+      exact
+          ? 0
+          : prefix
+          ? 1
+          : 2,
+      issuer,
+    ));
   }
   matches.sort((a, b) => a.$1.compareTo(b.$1));
   return matches.take(maxResults).map((match) => match.$2).toList();

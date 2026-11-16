@@ -11,10 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   test('issuer catalog contains 29 US and 30 Chinese institutions', () {
     expect(issuerInstitutions.length, 59);
-    expect(
-      issuerInstitutions.map((issuer) => issuer.id).toSet().length,
-      59,
-    );
+    expect(issuerInstitutions.map((issuer) => issuer.id).toSet().length, 59);
     expect(issuerForName('BoA')?.name, 'Bank of America');
     expect(issuerForName('B of A')?.name, 'Bank of America');
     expect(issuerForName('Citi Bank')?.name, 'Citibank');
