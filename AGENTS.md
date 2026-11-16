@@ -16,6 +16,12 @@ When requirements conflict, use this precedence:
 
 Stop and request human review for a material conflict; do not silently choose a lower-level instruction.
 
+## App versioning
+
+- For each merged pull request that changes the app version, use `1.0.<PR number>`. After the PR number is assigned, update `apps/butlerly/pubspec.yaml` to `version: 1.0.<PR number>` on that PR branch before requesting merge. Do not duplicate the PR number in a `+build` suffix.
+- Legal & Licenses displays the version from `pubspec.yaml`, e.g. `1.0.425`.
+- iOS and Android native build identifiers are separate from the displayed app version. For distributed builds, assign an increasing numeric build identifier using the appropriate release-build argument (for Flutter, `--build-number`) or release pipeline configuration. Do not rely on the pubspec default for consecutive store submissions, and resolve out-of-order releases before publishing.
+
 ## Core constraints
 
 - Keep core operation local-first, offline-capable, and account-free.
