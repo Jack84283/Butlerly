@@ -276,29 +276,8 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                           : 'cardNetwork',
                     ),
                     value: network ?? '',
-                    entries: [
-                      DropdownMenuEntry(
-                        value: '',
-                        label: context.l10n.text('notSet'),
-                      ),
-                      for (final entry
-                          in (type == PaymentSourceType.wallet
-                                  ? walletPaymentProviderLabels
-                                  : cardPaymentNetworkLabels)
-                              .entries)
-                        DropdownMenuEntry(
-                          value: entry.key,
-                          label: switch (entry.key) {
-                            'alipay' => context.l10n.text('alipayBrand'),
-                            'wechatPay' => context.l10n.text('wechatPayBrand'),
-                            _ => entry.value,
-                          },
-                          leadingIcon: ButlerlyPaymentMarkIcon(
-                            mark: entry.key,
-                            size: 24,
-                          ),
-                        ),
-                    ],
+                    leadingIcon: _selectedPaymentProviderIcon(type, network),
+                    entries: _paymentProviderEntries(context, type),
                     onChanged: (value) => setDialogState(
                       () => network = value == '' ? null : value,
                     ),
@@ -962,18 +941,8 @@ class _DesktopPaymentSourceEditorState
                     : 'cardNetwork',
               ),
               value: _network ?? '',
-              entries: [
-                DropdownMenuEntry(
-                  value: '',
-                  label: context.l10n.text('notSet'),
-                ),
-                for (final entry
-                    in (_type == PaymentSourceType.wallet
-                            ? walletPaymentProviderLabels
-                            : cardPaymentNetworkLabels)
-                        .entries)
-                  DropdownMenuEntry(value: entry.key, label: entry.value),
-              ],
+              leadingIcon: _selectedPaymentProviderIcon(_type, _network),
+              entries: _paymentProviderEntries(context, _type),
               onChanged: (value) =>
                   setState(() => _network = value == '' ? null : value),
             ),
@@ -1004,6 +973,44 @@ class _DesktopPaymentSourceEditorState
       ),
     );
   }
+}
+
+/// Use the same branded options on compact and desktop payment-source forms.
+List<DropdownMenuEntry<String>> _paymentProviderEntries(
+  BuildContext context,
+  PaymentSourceType type,
+) => [
+  DropdownMenuEntry(
+    value: '',
+    label: context.l10n.text('notSet'),
+  ),
+  for (final entry
+      in (type == PaymentSourceType.wallet
+              ? walletPaymentProviderLabels
+              : cardPaymentNetworkLabels)
+          .entries)
+    DropdownMenuEntry(
+      value: entry.key,
+      label: switch (entry.key) {
+        'alipay' => context.l10n.text('alipayBrand'),
+        'wechatPay' => context.l10n.text('wechatPayBrand'),
+        _ => entry.value,
+      },
+      leadingIcon: ButlerlyPaymentMarkIcon(mark: entry.key, size: 24),
+    ),
+];
+
+Widget? _selectedPaymentProviderIcon(
+  PaymentSourceType type,
+  String? network,
+) {
+  if (network == null) return null;
+  final supported = type == PaymentSourceType.wallet
+      ? walletPaymentProviderLabels.containsKey(network)
+      : cardPaymentNetworkLabels.containsKey(network);
+  return supported
+      ? ButlerlyPaymentMarkIcon(mark: network, size: 24)
+      : null;
 }
 
 String _typeLabel(BuildContext context, PaymentSourceType value) =>
