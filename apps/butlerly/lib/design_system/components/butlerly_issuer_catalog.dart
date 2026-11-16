@@ -361,7 +361,7 @@ const issuerInstitutions = <IssuerInstitution>[
 
 String _issuerSearchKey(String text) => text
     .toLowerCase()
-    .replaceAll(RegExp(r'[\\s._,&/\\-]+'), '')
+    .replaceAll(RegExp(r'[\s._,&/-]+'), '')
     .trim();
 
 /// Exact issuer/alias match, for display only; never rewrites stored values.
