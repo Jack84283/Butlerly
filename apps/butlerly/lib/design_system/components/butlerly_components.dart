@@ -1795,6 +1795,7 @@ class ButlerlySelectField<T> extends StatefulWidget {
     required this.value,
     required this.entries,
     required this.onChanged,
+    this.leadingIcon,
     this.onCreate,
     this.createTooltip,
     this.onClear,
@@ -1806,6 +1807,8 @@ class ButlerlySelectField<T> extends StatefulWidget {
   final T? value;
   final List<DropdownMenuEntry<T>> entries;
   final ValueChanged<T?> onChanged;
+  /// Optional icon for the current value; option icons live on each entry.
+  final Widget? leadingIcon;
   final VoidCallback? onCreate;
   final String? createTooltip;
   final VoidCallback? onClear;
@@ -1858,6 +1861,7 @@ class _ButlerlySelectFieldState<T> extends State<ButlerlySelectField<T>> {
     builder: (context, constraints) => DropdownMenu<T>(
       controller: _controller,
       initialSelection: widget.value,
+      leadingIcon: widget.leadingIcon,
       width: constraints.maxWidth,
       menuHeight: 192,
       label: Text(widget.label),
