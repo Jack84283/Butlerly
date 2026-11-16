@@ -42,6 +42,76 @@ void main() {
     expect(paymentSourceDisplayLabel(source), 'Debit •••• 1234');
   });
 
+  test('account-typed wallet records retain their brand without data changes', () {
+    const providers = <String, String>{
+      'Alipay': 'alipay',
+      'PayPal': 'paypal',
+      'Venmo': 'venmo',
+      '微信支付': 'wechatPay',
+    };
+    for (final entry in providers.entries) {
+      final source = PaymentSource(
+        id: PaymentSourceId(entry.value),
+        name: entry.key,
+        type: PaymentSourceType.account,
+      );
+      expect(paymentMarkFor(source), entry.value, reason: entry.key);
+      expect(source.type, PaymentSourceType.account);
+    }
+
+    final alias = PaymentSource(
+      id: PaymentSourceId('alias'),
+      name: 'Everyday wallet',
+      displayIdentity: '支付宝',
+      type: PaymentSourceType.account,
+    );
+    expect(paymentMarkFor(alias), 'alipay');
+
+    final oldNetwork = PaymentSource(
+      id: PaymentSourceId('old-network'),
+      name: 'My money',
+      type: PaymentSourceType.account,
+      network: 'WeChat Pay',
+    );
+    expect(paymentMarkFor(oldNetwork), 'wechatPay');
+
+    final ordinaryAccount = PaymentSource(
+      id: PaymentSourceId('checking'),
+      name: 'Checking',
+      issuer: 'PayPal',
+      type: PaymentSourceType.account,
+    );
+    expect(paymentMarkFor(ordinaryAccount), 'account');
+    expect(paymentNetworkFromText('WeChat messages'), isNull);
+  });
+
+  testWidgets('account-typed wallet records display branded SVGs', (
+    tester,
+  ) async {
+    final sources = [
+      for (final provider in ['Alipay', 'PayPal', 'Venmo', '微信支付'])
+        PaymentSource(
+          id: PaymentSourceId(provider),
+          name: provider,
+          type: PaymentSourceType.account,
+        ),
+    ];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Column(
+            children: [
+              for (final source in sources)
+                ButlerlyPaymentSourceIcon(source: source),
+            ],
+          ),
+        ),
+      ),
+    );
+    expect(find.byType(SvgPicture), findsNWidgets(4));
+    expect(tester.takeException(), isNull);
+  });
+
   test('legacy wallet provider labels still show their branded icons', () {
     const providers = <String, String>{
       'Alipay': 'alipay',
