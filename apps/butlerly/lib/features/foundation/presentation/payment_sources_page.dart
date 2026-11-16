@@ -980,10 +980,7 @@ List<DropdownMenuEntry<String>> _paymentProviderEntries(
   BuildContext context,
   PaymentSourceType type,
 ) => [
-  DropdownMenuEntry(
-    value: '',
-    label: context.l10n.text('notSet'),
-  ),
+  DropdownMenuEntry(value: '', label: context.l10n.text('notSet')),
   for (final entry
       in (type == PaymentSourceType.wallet
               ? walletPaymentProviderLabels
@@ -1000,17 +997,12 @@ List<DropdownMenuEntry<String>> _paymentProviderEntries(
     ),
 ];
 
-Widget? _selectedPaymentProviderIcon(
-  PaymentSourceType type,
-  String? network,
-) {
+Widget? _selectedPaymentProviderIcon(PaymentSourceType type, String? network) {
   if (network == null) return null;
   final supported = type == PaymentSourceType.wallet
       ? walletPaymentProviderLabels.containsKey(network)
       : cardPaymentNetworkLabels.containsKey(network);
-  return supported
-      ? ButlerlyPaymentMarkIcon(mark: network, size: 24)
-      : null;
+  return supported ? ButlerlyPaymentMarkIcon(mark: network, size: 24) : null;
 }
 
 String _typeLabel(BuildContext context, PaymentSourceType value) =>
