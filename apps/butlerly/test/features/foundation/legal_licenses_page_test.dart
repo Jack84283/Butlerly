@@ -105,6 +105,12 @@ void main() {
           expect(text, isNot(contains('审阅稿')), reason: path);
           if (locale.languageCode == 'zh') {
             expect(text, contains('简体中文'), reason: path);
+            expect(text, startsWith('账房先生 — '), reason: path);
+            expect(
+              text.toLowerCase(),
+              isNot(contains('butlerly')),
+              reason: path,
+            );
           } else if (locale.languageCode == 'es') {
             expect(text, contains('Español'), reason: path);
           } else {
@@ -200,7 +206,7 @@ void main() {
     expect(reader, findsOneWidget);
     expect(
       tester.widget<SelectableText>(reader).data,
-      contains('BUTLERLY — 隐私政策'),
+      contains('账房先生 — 隐私政策'),
     );
     expect(tester.takeException(), isNull);
   });
