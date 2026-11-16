@@ -137,14 +137,8 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-
   test('all four wallet brands ship offline SVG assets', () {
-    for (final filename in [
-      'alipay',
-      'paypal',
-      'venmo',
-      'wechatpay',
-    ]) {
+    for (final filename in ['alipay', 'paypal', 'venmo', 'wechatpay']) {
       final path = 'assets/icons/payment_sources/$filename.svg';
       final asset = File(path);
       expect(asset.existsSync(), isTrue, reason: path);
@@ -214,13 +208,8 @@ void main() {
               child: ButlerlySelectField<String>(
                 label: 'Wallet provider',
                 value: provider,
-                leadingIcon: ButlerlyPaymentMarkIcon(
-                  mark: provider,
-                  size: 24,
-                ),
-                entries: [
-                  DropdownMenuEntry(value: provider, label: provider),
-                ],
+                leadingIcon: ButlerlyPaymentMarkIcon(mark: provider, size: 24),
+                entries: [DropdownMenuEntry(value: provider, label: provider)],
                 onChanged: (_) {},
               ),
             ),
