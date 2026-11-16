@@ -16,6 +16,12 @@ When requirements conflict, use this precedence:
 
 Stop and request human review for a material conflict; do not silently choose a lower-level instruction.
 
+## App versioning
+
+- For each merged pull request that produces an app build, the app's visible version is `1.0.<PR number>`. After its PR number is assigned, update `apps/butlerly/pubspec.yaml` to `version: 1.0.<PR number>+<PR number>` on that PR branch before requesting merge.
+- Flutter uses the version before `+` for the app version and the numeric suffix for native iOS/Android build identifiers. Legal & Licenses shows only the user-facing `1.0.<PR number>`, not `+<PR number>`.
+- Keep native build numbers increasing across distributed builds. Resolve any out-of-order merges that would cause a build-number regression before release.
+
 ## Core constraints
 
 - Keep core operation local-first, offline-capable, and account-free.
