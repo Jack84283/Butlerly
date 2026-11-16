@@ -82,8 +82,9 @@ class _ButlerlyIssuerAutocompleteState
                     return ListTile(
                       dense: true,
                       selected: index == highlightedIndex,
-                      selectedTileColor:
-                          Theme.of(context).colorScheme.surfaceContainerHighest,
+                      selectedTileColor: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
                       leading: ButlerlyIssuerIcon(issuer: issuer, size: 26),
                       title: Text(issuer.name),
                       subtitle: Text(
