@@ -220,7 +220,10 @@ void main() {
         find.byType(DropdownMenu<String>),
       );
       expect(menu.leadingIcon, isA<ButlerlyPaymentMarkIcon>());
-      expect(find.byType(SvgPicture), findsOneWidget);
+      expect((menu.leadingIcon! as ButlerlyPaymentMarkIcon).mark, provider);
+      // Flutter also builds the dropdown's option artwork, so more than one
+      // SVG may be present even when the selected field has only one mark.
+      expect(find.byType(SvgPicture), findsWidgets);
       expect(tester.takeException(), isNull);
     }
   });
