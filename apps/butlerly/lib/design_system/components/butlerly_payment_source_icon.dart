@@ -67,17 +67,22 @@ String paymentMarkFor(PaymentSource source) {
   if (source.type == PaymentSourceType.cash) return 'cash';
   if (source.type == PaymentSourceType.account) return 'account';
   final named = paymentNetworkFromText('${source.name} ${source.issuer ?? ''}');
+  // Older local records may retain a provider's display name instead of its
+  // canonical key. Resolve it for presentation without changing stored data.
+  final stored = paymentNetworkFromText(source.network);
   if (source.type == PaymentSourceType.card ||
       source.type == PaymentSourceType.debitCard) {
     if (cardPaymentNetworkLabels.containsKey(source.network)) {
       return source.network!;
     }
+    if (cardPaymentNetworkLabels.containsKey(stored)) return stored!;
     return cardPaymentNetworkLabels.containsKey(named) ? named! : 'card';
   }
   if (source.type == PaymentSourceType.wallet) {
     if (walletPaymentProviderLabels.containsKey(source.network)) {
       return source.network!;
     }
+    if (walletPaymentProviderLabels.containsKey(stored)) return stored!;
     return walletPaymentProviderLabels.containsKey(named) ? named! : 'wallet';
   }
   return named ?? 'other';
