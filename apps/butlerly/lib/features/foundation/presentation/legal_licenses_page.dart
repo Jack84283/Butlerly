@@ -17,7 +17,9 @@ Future<String> _readBundledVersion() async {
     r'^version:\s*([^\s#]+)',
     multiLine: true,
   ).firstMatch(manifest);
-  return match?.group(1) ?? '—';
+  // Flutter's +build suffix is internal platform metadata, not part of
+  // the user-facing 1.0.<PR number> app version.
+  return match?.group(1)?.split('+').first ?? '—';
 }
 
 final Future<String> _bundledVersion = _readBundledVersion();
