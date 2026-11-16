@@ -1,5 +1,6 @@
 import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_payment_source_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/theme/butlerly_button_palette.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
@@ -347,6 +348,58 @@ void main() {
 
     await tester.tap(find.byTooltip('Clear subcategory').first);
     expect(clearedValue, isNull);
+  });
+
+  testWidgets('selected wallet logos remain visible in source controls', (
+    tester,
+  ) async {
+    final source = PaymentSource(
+      id: PaymentSourceId('paypal'),
+      name: 'PayPal',
+      type: PaymentSourceType.account,
+    );
+    await pump(
+      tester,
+      ButlerlyPaymentSourceSelector(
+        sources: [source],
+        value: 'paypal',
+        label: 'Payment source',
+        clearLabel: 'Clear',
+        onChanged: (_) {},
+      ),
+    );
+    final selector = tester.widget<DropdownMenu<String>>(
+      find.byType(DropdownMenu<String>),
+    );
+    expect(selector.leadingIcon, isA<ButlerlyPaymentSourceIcon>());
+    expect(
+      (selector.leadingIcon! as ButlerlyPaymentSourceIcon).source.id.value,
+      'paypal',
+    );
+    expect(
+      selector.dropdownMenuEntries.single.leadingIcon,
+      isA<ButlerlyPaymentSourceIcon>(),
+    );
+
+    await pump(
+      tester,
+      ButlerlyPaymentSourceFilter(
+        sources: [source],
+        value: 'paypal',
+        label: 'Payment source',
+        anyLabel: 'Any source',
+        onChanged: (_) {},
+      ),
+    );
+    final filter = tester.widget<DropdownMenu<String>>(
+      find.byType(DropdownMenu<String>),
+    );
+    expect(filter.leadingIcon, isA<ButlerlyPaymentSourceIcon>());
+    expect(
+      filter.dropdownMenuEntries.last.leadingIcon,
+      isA<ButlerlyPaymentSourceIcon>(),
+    );
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('shared selectors expose localized clear labels', (tester) async {
