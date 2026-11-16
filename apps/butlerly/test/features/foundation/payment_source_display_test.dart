@@ -42,6 +42,24 @@ void main() {
     expect(paymentSourceDisplayLabel(source), 'Debit •••• 1234');
   });
 
+  test('legacy wallet provider labels still show their branded icons', () {
+    const providers = <String, String>{
+      'Alipay': 'alipay',
+      'PayPal': 'paypal',
+      'Venmo': 'venmo',
+      'WeChat Pay': 'wechatPay',
+    };
+    for (final entry in providers.entries) {
+      final source = PaymentSource(
+        id: PaymentSourceId(entry.key),
+        name: 'My wallet',
+        type: PaymentSourceType.wallet,
+        network: entry.key,
+      );
+      expect(paymentMarkFor(source), entry.value, reason: entry.key);
+    }
+  });
+
   test('explicit network and wallet/cash fallback resolve correctly', () {
     final visa = PaymentSource(
       id: PaymentSourceId('chase'),
