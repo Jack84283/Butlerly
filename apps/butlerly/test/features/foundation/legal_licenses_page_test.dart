@@ -79,7 +79,7 @@ void main() {
     expect(version, isNotNull);
     expect(version!.group(2), version.group(3));
     expect(find.textContaining(version.group(1)!), findsOneWidget);
-    expect(find.textContaining('+' + version.group(3)!), findsNothing);
+    expect(find.textContaining('+${version.group(3)!}'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
