@@ -65,8 +65,23 @@ String? paymentNetworkFromText(String? input) {
 
 String paymentMarkFor(PaymentSource source) {
   if (source.type == PaymentSourceType.cash) return 'cash';
-  if (source.type == PaymentSourceType.account) return 'account';
-  final named = paymentNetworkFromText('${source.name} ${source.issuer ?? ''}');
+  // Older payment sources often used the default Account type for wallets.
+  // Resolve an explicitly named wallet for its icon only, without changing
+  // the source's saved type or treating its bank issuer as a wallet provider.
+  if (source.type == PaymentSourceType.account) {
+    final stored = paymentNetworkFromText(source.network);
+    final named = paymentNetworkFromText(
+      '${source.displayIdentity ?? ''} ${source.name}',
+    );
+    if (walletPaymentProviderLabels.containsKey(source.network)) {
+      return source.network!;
+    }
+    if (walletPaymentProviderLabels.containsKey(stored)) return stored!;
+    return walletPaymentProviderLabels.containsKey(named) ? named! : 'account';
+  }
+  final named = paymentNetworkFromText(
+    '${source.displayIdentity ?? ''} ${source.name} ${source.issuer ?? ''}',
+  );
   // Older local records may retain a provider's display name instead of its
   // canonical key. Resolve it for presentation without changing stored data.
   final stored = paymentNetworkFromText(source.network);
