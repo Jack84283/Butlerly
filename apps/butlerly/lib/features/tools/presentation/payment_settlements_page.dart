@@ -6,6 +6,7 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_desktop_panel_footer.dart';
 import 'package:butlerly/design_system/components/butlerly_desktop_transaction_table.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
+import 'package:butlerly/design_system/components/butlerly_payment_source_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -1329,10 +1330,20 @@ class _SettlementEditorSheetState extends State<_SettlementEditorSheet> {
                 decoration: InputDecoration(
                   labelText: context.l10n.text('paymentSource'),
                 ),
-                child: Text(
-                  source == null
-                      ? widget.existing!.settlement.paymentSourceId
-                      : paymentSourceDisplayLabel(source),
+                child: Row(
+                  children: [
+                    if (source != null) ...[
+                      ButlerlyPaymentSourceIcon(source: source, size: 24),
+                      const SizedBox(width: ButlerlySpacing.micro),
+                    ],
+                    Expanded(
+                      child: Text(
+                        source == null
+                            ? widget.existing!.settlement.paymentSourceId
+                            : paymentSourceDisplayLabel(source),
+                      ),
+                    ),
+                  ],
                 ),
               )
             else
@@ -1347,11 +1358,19 @@ class _SettlementEditorSheetState extends State<_SettlementEditorSheet> {
                     ButlerlySelectField<String>(
                       label: context.l10n.text('paymentSource'),
                       value: field.value,
+                      leadingIcon: paymentSourceIconForId(
+                        widget.sources,
+                        field.value,
+                      ),
                       entries: [
                         for (final item in widget.sources)
                           DropdownMenuEntry(
                             value: item.id.value,
                             label: paymentSourceDisplayLabel(item),
+                            leadingIcon: ButlerlyPaymentSourceIcon(
+                              source: item,
+                              size: 24,
+                            ),
                           ),
                       ],
                       onChanged: (value) {
