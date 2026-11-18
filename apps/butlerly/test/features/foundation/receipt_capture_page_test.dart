@@ -444,7 +444,9 @@ void main() {
         () => Future<void>.delayed(const Duration(milliseconds: 100)),
       );
       // Avoid pumpAndSettle: it advances through the five-second toast.
+      // Give the outgoing route an additional frame to finish its transition.
       await tester.pump(const Duration(milliseconds: 600));
+      await tester.pump(const Duration(milliseconds: 350));
 
       expect(routeResult, isTrue);
       expect(transactions.values, hasLength(1));
@@ -801,6 +803,10 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Receipt operation needs attention'), findsOneWidget);
       await tester.tap(find.widgetWithText(TextButton, 'Close'));
+      await tester.pumpAndSettle();
+      // The persistent error toast can cover the bottom Save button until
+      // dismissed, so close it before requesting another attachment attempt.
+      await tester.tap(find.byKey(const ValueKey('butlerly-toast-close')));
       await tester.pumpAndSettle();
 
       await _scrollToAndTap(tester, saveReceipt);
