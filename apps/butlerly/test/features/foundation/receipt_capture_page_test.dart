@@ -604,6 +604,77 @@ void main() {
   }
 
   testWidgets(
+    'missing receipt journal is prepared again for same-ID attachment retry',
+    (tester) async {
+      final transactions = _ReceiptTransactionRepository();
+      final finance = _finance(transactions);
+      final fixturePath = _fixturePath();
+      final source = XFile(fixturePath, name: 'receipt.png');
+      var prepareAttempts = 0;
+      var markerAttempts = 0;
+      String? attachedId;
+      bool? routeResult;
+
+      _resetView(tester);
+      await _openReceiptRoute(
+        tester,
+        ReceiptCapturePage(
+          finance: finance,
+          evidenceStore: _evidenceStore(finance),
+          pickImage: (_) async => source,
+          preserveEvidence: (_) async => _preservedReceipt,
+          fileForPreserved: (_) async => File(fixturePath),
+          discardPreserved: (_) async {},
+          preparePendingReceipt: (_, _) async {
+            prepareAttempts++;
+          },
+          rebindPendingReceipt: (_, _) async {},
+          markPendingReceiptCommitted: (_, _) async {
+            markerAttempts++;
+            // The first save and initial retry cannot mark a missing
+            // journal. The second retry repairs it before proceeding.
+            return markerAttempts >= 3;
+          },
+          attachPreserved: (transactionId, _) async {
+            attachedId = transactionId;
+            return _receiptEvidence('repaired-journal-attachment');
+          },
+          completePendingReceipt: (_) async => true,
+          ocr: (_) async => _recognizedReceipt(),
+          loadInitialData: _emptyInitialData,
+        ),
+        onResult: (value) => routeResult = value,
+      );
+      await _captureAndAcceptReceipt(tester);
+      final save = find.widgetWithText(
+        FilledButton,
+        'Save receipt transaction',
+      );
+      await _scrollToAndTap(tester, save);
+      await tester.pumpAndSettle();
+
+      expect(routeResult, isNull);
+      expect(transactions.values, hasLength(1));
+      final savedId = transactions.values.keys.single;
+      expect(prepareAttempts, 1);
+      expect(markerAttempts, 1);
+
+      await tester.tap(find.byKey(const ValueKey('butlerly-toast-close')));
+      await tester.pumpAndSettle();
+      await _scrollToAndTap(tester, save);
+      await tester.pumpAndSettle();
+
+      expect(routeResult, isTrue);
+      expect(transactions.values, hasLength(1));
+      expect(transactions.values.keys.single, savedId);
+      expect(attachedId, savedId);
+      expect(markerAttempts, 3);
+      expect(prepareAttempts, 2);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'receipt error toast is cleared when its owner route is disposed',
     (tester) async {
       final transactions = _ReceiptTransactionRepository();
