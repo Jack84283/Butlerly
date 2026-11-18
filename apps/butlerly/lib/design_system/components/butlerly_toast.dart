@@ -155,11 +155,13 @@ abstract final class ButlerlyToast {
         ),
       ),
     );
-    unawaited(controller.closed.then((_) {
-      if (identical(_activeToast[messenger], token)) {
-        _activeToast[messenger] = null;
-      }
-    }));
+    unawaited(
+      controller.closed.then((_) {
+        if (identical(_activeToast[messenger], token)) {
+          _activeToast[messenger] = null;
+        }
+      }),
+    );
     return ButlerlyToastHandle._(messenger, token);
   }
 }
