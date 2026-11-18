@@ -138,7 +138,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   bool _captureInFlight = false;
   bool _saving = false;
   bool _soundEnabled = false;
-  ScaffoldMessengerState? _errorToastMessenger;
+  ButlerlyToastHandle? _ownedErrorToast;
   String? _pendingReceiptCaptureId;
   String? _pendingReceiptTargetTransactionId;
   EvidenceItem? _plannedPendingEvidence;
@@ -176,15 +176,8 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     // A receipt error belongs to this route. Do not leave behind a red toast
     // whose Details callback refers to a disposed capture screen. A success
     // toast clears this reference before popping and remains visible.
-    final messenger = _errorToastMessenger;
-    _errorToastMessenger = null;
-    if (messenger != null) {
-      // Removing a SnackBar animates the ScaffoldMessenger. During unmount
-      // the widget tree is locked, so defer that animation to the next frame.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (messenger.mounted) messenger.removeCurrentSnackBar();
-      });
-    }
+    _ownedErrorToast?.dismissAfterFrame();
+    _ownedErrorToast = null;
     // A source with no committed transaction remains recoverable after route
     // disposal. Only the explicit recovery discard or a completed save may
     // retire its journal and pending binary.
@@ -763,17 +756,34 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         );
   }
 
-  Future<void> _rebindPendingReceipt(
+  Future<bool> _rebindPendingReceipt(
     String captureId,
     String transactionId,
   ) async {
     if (widget.rebindPendingReceipt != null) {
       await widget.rebindPendingReceipt!(captureId, transactionId);
-      return;
+      return true;
     }
-    await evidenceStore.rebindPendingReceiptCaptureWithinMutation(
+    return evidenceStore.rebindPendingReceiptCaptureWithinMutation(
       captureId: captureId,
       transactionId: transactionId,
+    );
+  }
+
+  /// Recreate only a missing journal, never an invalid one, while retaining
+  /// the original receipt evidence identity and existing transaction.
+  Future<bool> _restoreMissingReceiptJournal(
+    String captureId,
+    PreservedEvidenceSource source,
+  ) async {
+    if (widget.preparePendingReceipt != null) {
+      await widget.preparePendingReceipt!(captureId, source);
+      return true;
+    }
+    return evidenceStore.restoreMissingPendingReceiptCaptureWithinMutation(
+      captureId: captureId,
+      source: source,
+      planned: _plannedPendingEvidence,
     );
   }
 
@@ -868,18 +878,18 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     if (!mounted) return;
     final message = context.l10n.text(key);
     if (key == 'dateNeedsReview' || key == 'receiptRecoveryWarning') {
-      _errorToastMessenger = null;
+      _ownedErrorToast = null;
       ButlerlyToast.info(context, message);
       return;
     }
     if (key == 'receiptRecoveryDiscarded') {
-      _errorToastMessenger = null;
+      _ownedErrorToast = null;
       ButlerlyToast.success(context, message);
       return;
     }
-    _errorToastMessenger = ScaffoldMessenger.of(context);
+    // Keep an ownership token so disposal never removes another page's toast.
     final detailKey = _errorDetailsKey(key);
-    ButlerlyToast.error(
+    _ownedErrorToast = ButlerlyToast.ownedError(
       context,
       message,
       closeLabel: context.l10n.text('close'),
@@ -1006,7 +1016,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     }
     if (!mounted) return;
     setState(() => _saving = false);
-    _errorToastMessenger = null;
+    _ownedErrorToast = null;
     // The root ScaffoldMessenger keeps this toast visible across route pop.
     ButlerlyToast.success(
       context,
@@ -1060,9 +1070,18 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     EvidenceItem? evidence;
     try {
       await evidenceStore.runFinancialEvidenceMutation(() async {
-        await _rebindPendingReceipt(captureId, transaction.id);
+        if (!await _rebindPendingReceipt(captureId, transaction.id)) {
+          if (!await _restoreMissingReceiptJournal(captureId, preserved) ||
+              !await _rebindPendingReceipt(captureId, transaction.id)) {
+            throw StateError('Receipt capture journal is unavailable.');
+          }
+        }
         if (!await _markPendingReceiptCommitted(captureId, transaction.id)) {
-          throw StateError('Receipt capture journal is unavailable.');
+          if (!await _restoreMissingReceiptJournal(captureId, preserved) ||
+              !await _rebindPendingReceipt(captureId, transaction.id) ||
+              !await _markPendingReceiptCommitted(captureId, transaction.id)) {
+            throw StateError('Receipt capture journal is unavailable.');
+          }
         }
         evidence = await _attachWithinMutation(
           transaction.id,
