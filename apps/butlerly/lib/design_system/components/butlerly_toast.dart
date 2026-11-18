@@ -21,6 +21,9 @@ final class ButlerlyToastHandle {
       ButlerlyToast._activeToast[_messenger] = null;
       _messenger.removeCurrentSnackBar();
     });
+    // Registering a post-frame callback alone does not schedule a frame.
+    // Ensure cleanup also completes when navigation leaves the app idle.
+    WidgetsBinding.instance.scheduleFrame();
   }
 }
 
