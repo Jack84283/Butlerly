@@ -515,10 +515,7 @@ void main() {
     expect(find.byKey(const ValueKey('butlerly-error-toast')), findsOneWidget);
     await tester.tap(find.byKey(const ValueKey('butlerly-toast-details')));
     await tester.pumpAndSettle();
-    expect(
-      find.textContaining('Step: receipt attachment.'),
-      findsOneWidget,
-    );
+    expect(find.textContaining('Step: receipt attachment.'), findsOneWidget);
     expect(find.text('Save receipt transaction'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -649,10 +646,7 @@ void main() {
 
       expect(routeResult, isNull);
       expect(find.byType(ReceiptCapturePage), findsNothing);
-      expect(
-        find.byKey(const ValueKey('butlerly-error-toast')),
-        findsNothing,
-      );
+      expect(find.byKey(const ValueKey('butlerly-error-toast')), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );
