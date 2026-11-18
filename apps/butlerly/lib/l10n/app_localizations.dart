@@ -1138,6 +1138,24 @@ class AppLocalizations {
       'receiptSavedEvidencePending':
           'The transaction was saved, but its receipt could not be attached. The receipt was kept for recovery. Retry to attach it; no second transaction will be created.',
       'receiptErrorDetailsTitle': 'Receipt operation needs attention',
+      'receiptSaveStatusUnverified':
+          'The receipt save status could not be verified. Do not scan or create this transaction again yet.',
+      'receiptSavedEvidencePendingDetails':
+          'Step: receipt attachment. The transaction exists locally, but the receipt attachment is incomplete. Choose Save again to retry against the same transaction. Do not scan the receipt again.',
+      'receiptSaveStatusUnverifiedDetails':
+          'Step: local save verification. Butlerly could not determine whether the transaction was written. Keep the receipt and check pending captures before retrying; creating another payment could duplicate it.',
+      'receiptExistingUnavailableDetails':
+          'Step: reopen saved transaction. The original transaction cannot currently be read. Keep the preserved receipt and retry recovery when local storage is available.',
+      'receiptEvidenceAttachFailedDetails':
+          'Step: receipt attachment. The attachment did not complete. The preserved receipt is still available; retry attachment rather than scanning another copy.',
+      'receiptSaveFailedDetails':
+          'Step: local transaction save. No completed save was confirmed. Keep the receipt and review Transactions and receipt recovery before retrying.',
+      'receiptTextReadFailedDetails':
+          'Step: on-device text recognition. The saved image could not be read. Check the receipt and enter the missing fields manually.',
+      'receiptCaptureFailedDetails':
+          'Step: local receipt capture or storage. Try opening the receipt source again. No transaction was saved by this capture step.',
+      'receiptErrorDetailsGeneric':
+          'Review the receipt and any pending capture before trying again. This warning does not confirm that a new transaction was saved.',
       'receiptStoreFailed':
           'Receipt could not be stored locally. Please retry.',
       'receiptCaptureFailed':
@@ -2196,6 +2214,23 @@ class AppLocalizations {
       'receiptSaveFailed': '收据保存未能完成。请先检查已保存的交易和待恢复的收据，再重试。',
       'receiptSavedEvidencePending': '交易已保存，但无法关联收据。收据已保留以供恢复。请重试关联，不会创建第二笔交易。',
       'receiptErrorDetailsTitle': '收据操作需要处理',
+      'receiptSaveStatusUnverified': '无法确认收据交易是否已保存。请暂时不要再次扫描或创建同一笔交易。',
+      'receiptSavedEvidencePendingDetails':
+          '阶段：关联收据。交易已保存在本地，但收据尚未成功关联。请再次点击“保存”以关联到原交易，不要重新扫描。',
+      'receiptSaveStatusUnverifiedDetails':
+          '阶段：确认本地保存结果。无法判断交易是否已写入。请保留收据并检查待恢复的记录，避免再次创建导致重复。',
+      'receiptExistingUnavailableDetails':
+          '阶段：读取原交易。当前无法读取原交易，请保留收据，待本地存储恢复后从恢复记录中重试。',
+      'receiptEvidenceAttachFailedDetails':
+          '阶段：关联收据。关联尚未完成，原收据仍已保留。请重试关联，不要再次扫描。',
+      'receiptSaveFailedDetails':
+          '阶段：本地保存交易。尚未确认成功保存。请保留收据，检查交易和收据恢复记录后再重试。',
+      'receiptTextReadFailedDetails':
+          '阶段：设备端文字识别。无法读取已保存的图片，请检查收据并手动补充缺失字段。',
+      'receiptCaptureFailedDetails':
+          '阶段：本地收据捕获或存储。请重新打开收据来源。此捕获步骤未保存交易。',
+      'receiptErrorDetailsGeneric':
+          '再次尝试前，请检查收据和待恢复记录。此提示并不代表新交易已成功保存。',
       'receiptStoreFailed': '无法在本地保存收据，请重试。',
       'receiptCaptureFailed': '无法打开收据捕获，请重试。',
       'receiptRecoveryTitle': '收据捕获需要处理',
@@ -3412,6 +3447,24 @@ class AppLocalizations {
       'receiptSavedEvidencePending':
           'La transacción se guardó, pero no se pudo adjuntar el recibo. Se conservó para recuperarlo. Reintenta adjuntarlo sin crear otra transacción.',
       'receiptErrorDetailsTitle': 'La operación del recibo necesita atención',
+      'receiptSaveStatusUnverified':
+          'No se pudo comprobar si la transacción se guardó. No la vuelvas a escanear ni crear todavía.',
+      'receiptSavedEvidencePendingDetails':
+          'Etapa: adjuntar el recibo. La transacción existe localmente, pero falta adjuntar el recibo. Pulsa Guardar para reintentar con la misma transacción. No vuelvas a escanear.',
+      'receiptSaveStatusUnverifiedDetails':
+          'Etapa: verificar el guardado local. No se sabe si se escribió la transacción. Conserva el recibo y comprueba las capturas pendientes antes de repetirla.',
+      'receiptExistingUnavailableDetails':
+          'Etapa: abrir la transacción original. No se puede leer ahora. Conserva el recibo y reanuda la recuperación cuando el almacenamiento local esté disponible.',
+      'receiptEvidenceAttachFailedDetails':
+          'Etapa: adjuntar el recibo. No se completó el adjunto. El recibo sigue conservado; vuelve a adjuntarlo sin escanear otra copia.',
+      'receiptSaveFailedDetails':
+          'Etapa: guardar la transacción. No se confirmó el guardado. Conserva el recibo y revisa Transacciones y Recuperación antes de reintentar.',
+      'receiptTextReadFailedDetails':
+          'Etapa: reconocimiento de texto local. No se pudo leer la imagen guardada. Revisa el recibo e introduce manualmente los campos que falten.',
+      'receiptCaptureFailedDetails':
+          'Etapa: captura o almacenamiento local. Intenta abrir de nuevo el recibo. Esta etapa no guardó ninguna transacción.',
+      'receiptErrorDetailsGeneric':
+          'Antes de reintentar, revisa el recibo y las capturas pendientes. Este aviso no confirma que se haya guardado otra transacción.',
       'receiptStoreFailed':
           'No se pudo guardar el recibo localmente. Inténtalo de nuevo.',
       'receiptCaptureFailed':
