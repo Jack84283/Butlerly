@@ -371,9 +371,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     } catch (_) {
       if (!mounted) return;
       setState(() => _processing = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(l10n.text('receiptStoreFailed'))));
+      _showSaveMessage('receiptStoreFailed');
       await _loadPendingReceiptRecovery();
       return;
     }
@@ -464,9 +462,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       // preparation or source lookup step fails; navigation is not explicit
       // cancellation.
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.text('receiptStoreFailed'))),
-      );
+      _showSaveMessage('receiptStoreFailed');
       if (mounted) setState(() => _processing = false);
       await _loadPendingReceiptRecovery();
       return;
@@ -518,9 +514,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     } catch (_) {
       if (!mounted) return;
       setState(() => _processing = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.text('receiptTextReadFailed'))),
-      );
+      _showSaveMessage('receiptTextReadFailed');
     }
   }
 
