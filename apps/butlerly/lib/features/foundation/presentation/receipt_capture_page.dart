@@ -855,8 +855,8 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     'evidenceAttachFailed' => 'receiptEvidenceAttachFailedDetails',
     'receiptSaveFailed' => 'receiptSaveFailedDetails',
     'receiptTextReadFailed' => 'receiptTextReadFailedDetails',
-    'receiptStoreFailed' || 'receiptCaptureFailed' =>
-      'receiptCaptureFailedDetails',
+    'receiptStoreFailed' ||
+    'receiptCaptureFailed' => 'receiptCaptureFailedDetails',
     _ => 'receiptErrorDetailsGeneric',
   };
 
