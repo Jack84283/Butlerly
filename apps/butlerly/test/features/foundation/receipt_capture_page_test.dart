@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:butlerly/core/audio/butlerly_sound_feedback.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/di/finance_services.dart';
@@ -385,6 +386,73 @@ void main() {
     },
   );
 
+  testWidgets(
+    'successful scan shows a toast after navigation and honors enabled sound',
+    (tester) async {
+      final playedAssets = <String>[];
+      ButlerlySoundFeedback.playbackForTesting = (asset) async {
+        playedAssets.add(asset);
+      };
+      addTearDown(() => ButlerlySoundFeedback.playbackForTesting = null);
+      final transactions = _ReceiptTransactionRepository();
+      final finance = _finance(transactions);
+      final fixturePath = _fixturePath();
+      final source = XFile(fixturePath, name: 'receipt.png');
+      bool? routeResult;
+
+      _resetView(tester);
+      await _openReceiptRoute(
+        tester,
+        ReceiptCapturePage(
+          finance: finance,
+          evidenceStore: _evidenceStore(finance),
+          pickImage: (_) async => source,
+          preserveEvidence: (_) async => _preservedReceipt,
+          fileForPreserved: (_) async => File(fixturePath),
+          discardPreserved: (_) async {},
+          attachPreserved: (_, _) async => _receiptEvidence('evidence-toast'),
+          ocr: (_) async => _recognizedReceipt(),
+          preparePendingReceipt: (_, _) async {},
+          completePendingReceipt: (_) async => true,
+          loadInitialData: _soundEnabledInitialData,
+        ),
+        onResult: (value) => routeResult = value,
+      );
+      await _captureAndAcceptReceipt(tester);
+      final saveReceipt = find.widgetWithText(
+        FilledButton,
+        'Save receipt transaction',
+      );
+      final scrollable = find.ancestor(
+        of: saveReceipt,
+        matching: find.byType(Scrollable),
+      );
+      await tester.scrollUntilVisible(
+        saveReceipt,
+        400,
+        scrollable: scrollable.first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(saveReceipt);
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
+      // Avoid pumpAndSettle: it advances through the five-second toast.
+      await tester.pump(const Duration(milliseconds: 600));
+
+      expect(routeResult, isTrue);
+      expect(transactions.values, hasLength(1));
+      expect(find.byType(ReceiptCapturePage), findsNothing);
+      expect(
+        find.byKey(const ValueKey('butlerly-success-toast')),
+        findsOneWidget,
+      );
+      expect(find.text('Receipt transaction saved locally.'), findsOneWidget);
+      expect(playedAssets, [ButlerlySoundFeedback.createdSoundAssetPath]);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets('failed evidence attach rolls new transaction back for retry', (
     tester,
   ) async {
@@ -431,6 +499,10 @@ void main() {
     expect(cancelled, isFalse);
     expect(find.byType(ReceiptCapturePage), findsOneWidget);
     expect(find.text('Evidence could not be stored.'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('butlerly-error-toast')),
+      findsOneWidget,
+    );
     expect(find.text('Save receipt transaction'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -657,13 +729,14 @@ void main() {
   );
 
   testWidgets(
-    'rollback failure exits saved transaction instead of allowing duplicate retry',
+    'rollback failure stays on receipt and retries the saved ID without creating a duplicate',
     (tester) async {
       final transactions = _ReceiptTransactionRepository(failDelete: true);
       final finance = _finance(transactions);
       final fixturePath = _fixturePath();
       final source = XFile(fixturePath, name: 'receipt.png');
       var discarded = false;
+      var attachAttempts = 0;
       bool? routeResult;
 
       _resetView(tester);
@@ -679,9 +752,15 @@ void main() {
           discardPreserved: (_) async {
             discarded = true;
           },
-          attachPreserved: (_, _) async => null,
+          attachPreserved: (_, _) async {
+            attachAttempts++;
+            return attachAttempts == 1
+                ? null
+                : _receiptEvidence('evidence-after-retry');
+          },
           ocr: (_) async => _recognizedReceipt(),
           preparePendingReceipt: (_, _) async {},
+          rebindPendingReceipt: (_, _) async {},
           completePendingReceipt: (_) async => true,
           loadInitialData: _emptyInitialData,
         ),
@@ -696,11 +775,26 @@ void main() {
       await _scrollToAndTap(tester, saveReceipt);
       await tester.pumpAndSettle();
 
-      expect(routeResult, isTrue);
+      expect(routeResult, isNull);
       expect(transactions.values, hasLength(1));
+      final savedId = transactions.values.keys.single;
+      expect(discarded, isFalse);
+      expect(find.byType(ReceiptCapturePage), findsOneWidget);
+      expect(find.byKey(const ValueKey('butlerly-error-toast')), findsOneWidget);
+      expect(
+        find.textContaining('transaction was saved, but its receipt'),
+        findsOneWidget,
+      );
+
+      await _scrollToAndTap(tester, saveReceipt);
+      await tester.pumpAndSettle();
+
+      expect(routeResult, isTrue);
+      expect(transactions.values.keys.single, savedId);
+      expect(transactions.values, hasLength(1));
+      expect(attachAttempts, 2);
       expect(discarded, isFalse);
       expect(find.byType(ReceiptCapturePage), findsNothing);
-      expect(find.text('Evidence could not be stored.'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
   );
@@ -861,6 +955,19 @@ Future<ReceiptCaptureInitialData> _emptyInitialData() async =>
         paymentSources: [],
       ),
     );
+
+Future<ReceiptCaptureInitialData> _soundEnabledInitialData() async {
+  final initial = await _emptyInitialData();
+  return ReceiptCaptureInitialData(
+    preference: UserPreference(
+      locale: 'en',
+      baseCurrency: CurrencyCode('USD'),
+      timeZoneId: 'UTC',
+      transactionSaveSoundEnabled: true,
+    ),
+    snapshot: initial.snapshot,
+  );
+}
 
 Widget _localizedApp(Widget home) => MaterialApp(
   localizationsDelegates: const [AppLocalizations.delegate],
