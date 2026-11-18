@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:butlerly/core/audio/butlerly_sound_feedback.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/core/evidence/local_evidence_store.dart';
@@ -8,6 +9,7 @@ import 'package:butlerly/core/evidence/local_ocr_service.dart';
 import 'package:butlerly/core/evidence/ocr_spatial_text.dart';
 import 'package:butlerly/core/evidence/platform_ocr_recognizer.dart';
 import 'package:butlerly/design_system/components/butlerly_context_help.dart';
+import 'package:butlerly/design_system/components/butlerly_toast.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
@@ -135,6 +137,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   bool _processing = false;
   bool _captureInFlight = false;
   bool _saving = false;
+  bool _soundEnabled = false;
   String? _pendingReceiptCaptureId;
   String? _pendingReceiptTargetTransactionId;
   EvidenceItem? _plannedPendingEvidence;
@@ -280,6 +283,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   void _applyInitialData(ReceiptCaptureInitialData initial) {
     setState(() {
       _masterDataSnapshot = initial.snapshot;
+      _soundEnabled = initial.preference?.transactionSaveSoundEnabled ?? false;
       _merchants = initial.snapshot.merchants;
       _categories = initial.snapshot.categories;
       _tags = initial.snapshot.tags;
@@ -835,9 +839,37 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
 
   void _showSaveMessage(String key) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(context.l10n.text(key))));
+    final message = context.l10n.text(key);
+    if (key == 'dateNeedsReview' || key == 'receiptRecoveryWarning') {
+      ButlerlyToast.info(context, message);
+      return;
+    }
+    if (key == 'receiptRecoveryDiscarded') {
+      ButlerlyToast.success(context, message);
+      return;
+    }
+    ButlerlyToast.error(
+      context,
+      message,
+      closeLabel: context.l10n.text('close'),
+      detailsLabel: context.l10n.text('masterDataTableDetails'),
+      onDetails: () async {
+        if (!mounted) return;
+        await showButlerlyBottomSheet<void>(
+          context: context,
+          builder: (dialogContext) => ButlerlySheet(
+            title: Text(dialogContext.l10n.text('receiptErrorDetailsTitle')),
+            content: Text(dialogContext.l10n.text(key)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: Text(dialogContext.l10n.text('close')),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Extraction? _buildExtraction(
@@ -883,6 +915,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     required ReceiptOcrResult? ocr,
     required String extractionToken,
     required _ReceiptSaveSnapshot snapshot,
+    bool attachedToExisting = false,
   }) {
     notifyTransactionChanged();
     try {
@@ -901,6 +934,22 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     }
     if (!mounted) return;
     setState(() => _saving = false);
+    // The root ScaffoldMessenger keeps this toast visible across route pop.
+    ButlerlyToast.success(
+      context,
+      context.l10n.text(
+        attachedToExisting
+            ? 'receiptAttachedSuccess'
+            : 'receiptTransactionSavedSuccess',
+      ),
+    );
+    if (_soundEnabled) {
+      unawaited(
+        attachedToExisting
+            ? ButlerlySoundFeedback.playUpdated()
+            : ButlerlySoundFeedback.playCreated(),
+      );
+    }
     Navigator.pop(context, true);
   }
 
@@ -969,6 +1018,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       ocr: ocr,
       extractionToken: committedEvidence.id.value,
       snapshot: snapshot,
+      attachedToExisting: true,
     );
   }
 
@@ -1050,7 +1100,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
           await _attachReceiptToExisting(target.value, snapshot: snapshot);
         } else if (mounted) {
           setState(() => _saving = false);
-          _showSaveMessage('dataPreserved');
+          _showSaveMessage('receiptExistingUnavailable');
         }
         return;
       }
@@ -1129,7 +1179,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
             );
           } else if (mounted) {
             setState(() => _saving = false);
-            _showSaveMessage('dataPreserved');
+            _showSaveMessage('receiptExistingUnavailable');
           }
           return;
         }
@@ -1282,21 +1332,24 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       if (result is! ApplicationSuccess<TransactionDto>) {
         if (mounted) {
           setState(() => _saving = false);
-          _showSaveMessage('dataPreserved');
+          _showSaveMessage('receiptSaveFailed');
         }
         return;
       }
       if (outcome.evidence == null) {
         if (!outcome.rolledBack) {
-          // The durable receipt intent remains in the pending area. Keep its
-          // source binary when rollback cannot complete so startup recovery
-          // can attach it to the already-created transaction.
+          // The transaction already exists; retain the pending receipt and
+          // retry attachment against that ID, never create a second payment.
+          _pendingReceiptTargetTransactionId = result.value.id;
           notifyTransactionChanged();
-          if (mounted) Navigator.pop(context, true);
         }
         if (mounted) {
           setState(() => _saving = false);
-          _showSaveMessage('evidenceAttachFailed');
+          _showSaveMessage(
+            outcome.rolledBack
+                ? 'evidenceAttachFailed'
+                : 'receiptSavedEvidencePending',
+          );
         }
         return;
       }
@@ -1310,7 +1363,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     } catch (_) {
       if (!mounted) return;
       setState(() => _saving = false);
-      _showSaveMessage('dataPreserved');
+      _showSaveMessage('receiptSaveFailed');
       return;
     }
 
