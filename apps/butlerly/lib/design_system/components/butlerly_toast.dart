@@ -1,5 +1,28 @@
+import 'dart:async';
+
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:flutter/material.dart';
+
+/// An owned toast can only dismiss the same notification it created.
+///
+/// Disposing a route must never dismiss a newer toast posted by another route.
+final class ButlerlyToastHandle {
+  ButlerlyToastHandle._(this._messenger, this._token);
+
+  final ScaffoldMessengerState _messenger;
+  final Object _token;
+
+  void dismissAfterFrame() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_messenger.mounted ||
+          !identical(ButlerlyToast._activeToast[_messenger], _token)) {
+        return;
+      }
+      ButlerlyToast._activeToast[_messenger] = null;
+      _messenger.removeCurrentSnackBar();
+    });
+  }
+}
 
 /// Shared visual and dismissal rules for status notifications.
 ///
@@ -13,6 +36,7 @@ import 'package:flutter/material.dart';
 abstract final class ButlerlyToast {
   static const successDuration = Duration(seconds: 5);
   static const _manualDismissDuration = Duration(days: 36500);
+  static final Expando<Object> _activeToast = Expando<Object>('active-toast');
 
   static void success(BuildContext context, String message) =>
       _show(context, message: message, status: _ToastStatus.success);
@@ -21,6 +45,24 @@ abstract final class ButlerlyToast {
       _show(context, message: message, status: _ToastStatus.info);
 
   static void error(
+    BuildContext context,
+    String message, {
+    required String closeLabel,
+    required String detailsLabel,
+    required VoidCallback onDetails,
+  }) {
+    _show(
+      context,
+      message: message,
+      status: _ToastStatus.error,
+      closeLabel: closeLabel,
+      detailsLabel: detailsLabel,
+      onDetails: onDetails,
+    );
+  }
+
+  /// Returns an ownership handle for errors tied to a particular route.
+  static ButlerlyToastHandle ownedError(
     BuildContext context,
     String message, {
     required String closeLabel,
@@ -35,7 +77,7 @@ abstract final class ButlerlyToast {
     onDetails: onDetails,
   );
 
-  static void _show(
+  static ButlerlyToastHandle _show(
     BuildContext context, {
     required String message,
     required _ToastStatus status,
@@ -54,9 +96,12 @@ abstract final class ButlerlyToast {
         ? Colors.white
         : Colors.black;
     final messenger = ScaffoldMessenger.of(context);
+    // Every Butlerly toast invalidates earlier route-owned dismissals.
+    final token = Object();
+    _activeToast[messenger] = token;
     // Display the most recent operation status, not a queue of stale toasts.
     messenger.removeCurrentSnackBar();
-    messenger.showSnackBar(
+    final controller = messenger.showSnackBar(
       SnackBar(
         key: ValueKey('butlerly-${status.name}-toast'),
         backgroundColor: background,
@@ -110,6 +155,12 @@ abstract final class ButlerlyToast {
         ),
       ),
     );
+    unawaited(controller.closed.then((_) {
+      if (identical(_activeToast[messenger], token)) {
+        _activeToast[messenger] = null;
+      }
+    }));
+    return ButlerlyToastHandle._(messenger, token);
   }
 }
 
