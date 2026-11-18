@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:butlerly/core/audio/butlerly_sound_feedback.dart';
 import 'package:butlerly/core/data/local_data_manager.dart';
 import 'package:butlerly/core/database/local_database.dart';
 import 'package:butlerly/core/di/finance_services.dart';
@@ -338,6 +339,11 @@ void main() {
   testWidgets(
     'saves recognized receipt after transaction and evidence commit',
     (tester) async {
+      final playedAssets = <String>[];
+      ButlerlySoundFeedback.playbackForTesting = (asset) async {
+        playedAssets.add(asset);
+      };
+      addTearDown(() => ButlerlySoundFeedback.playbackForTesting = null);
       final transactions = _ReceiptTransactionRepository();
       final finance = _finance(transactions);
       final fixturePath = _fixturePath();
@@ -381,6 +387,81 @@ void main() {
       expect(attachedTransactionId, transactions.values.keys.single);
       expect(transactions.values.values.single.transactionDate, '2026-09-15');
       expect(find.byType(ReceiptCapturePage), findsNothing);
+      expect(playedAssets, isEmpty);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'successful scan shows a toast after navigation and honors enabled sound',
+    (tester) async {
+      final playedAssets = <String>[];
+      ButlerlySoundFeedback.playbackForTesting = (asset) async {
+        playedAssets.add(asset);
+      };
+      addTearDown(() => ButlerlySoundFeedback.playbackForTesting = null);
+      final transactions = _ReceiptTransactionRepository();
+      final finance = _finance(transactions);
+      final fixturePath = _fixturePath();
+      final source = XFile(fixturePath, name: 'receipt.png');
+      bool? routeResult;
+
+      _resetView(tester);
+      await _openReceiptRoute(
+        tester,
+        ReceiptCapturePage(
+          finance: finance,
+          evidenceStore: _evidenceStore(finance),
+          pickImage: (_) async => source,
+          preserveEvidence: (_) async => _preservedReceipt,
+          fileForPreserved: (_) async => File(fixturePath),
+          discardPreserved: (_) async {},
+          attachPreserved: (_, _) async => _receiptEvidence('evidence-toast'),
+          ocr: (_) async => _recognizedReceipt(),
+          preparePendingReceipt: (_, _) async {},
+          completePendingReceipt: (_) async => true,
+          loadInitialData: _soundEnabledInitialData,
+        ),
+        onResult: (value) => routeResult = value,
+      );
+      await _captureAndAcceptReceipt(tester);
+      final saveReceipt = find.widgetWithText(
+        FilledButton,
+        'Save receipt transaction',
+      );
+      final scrollable = find.ancestor(
+        of: saveReceipt,
+        matching: find.byType(Scrollable),
+      );
+      await tester.scrollUntilVisible(
+        saveReceipt,
+        400,
+        scrollable: scrollable.first,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(saveReceipt);
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
+      // Advance just the outgoing route transition, not the five-second
+      // success-toast timer. Assert the destination still displays the toast.
+      for (
+        var frame = 0;
+        frame < 35 && find.byType(ReceiptCapturePage).evaluate().isNotEmpty;
+        frame++
+      ) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+
+      expect(routeResult, isTrue);
+      expect(transactions.values, hasLength(1));
+      expect(find.byType(ReceiptCapturePage), findsNothing);
+      expect(
+        find.byKey(const ValueKey('butlerly-success-toast')),
+        findsOneWidget,
+      );
+      expect(find.text('Receipt transaction saved locally.'), findsOneWidget);
+      expect(playedAssets, [ButlerlySoundFeedback.createdSoundAssetPath]);
       expect(tester.takeException(), isNull);
     },
   );
@@ -431,9 +512,351 @@ void main() {
     expect(cancelled, isFalse);
     expect(find.byType(ReceiptCapturePage), findsOneWidget);
     expect(find.text('Evidence could not be stored.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('butlerly-error-toast')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('butlerly-toast-details')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Step: receipt attachment.'), findsOneWidget);
     expect(find.text('Save receipt transaction'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  for (final stage in ['journal', 'attachment']) {
+    testWidgets(
+      'post-commit $stage failure retries the original transaction ID',
+      (tester) async {
+        final transactions = _ReceiptTransactionRepository();
+        final finance = _finance(transactions);
+        final fixturePath = _fixturePath();
+        final source = XFile(fixturePath, name: 'receipt.png');
+        var journalAttempts = 0;
+        var attachAttempts = 0;
+        var attachedId = '';
+        bool? routeResult;
+
+        _resetView(tester);
+        await _openReceiptRoute(
+          tester,
+          ReceiptCapturePage(
+            finance: finance,
+            evidenceStore: _evidenceStore(finance),
+            pickImage: (_) async => source,
+            preserveEvidence: (_) async => _preservedReceipt,
+            fileForPreserved: (_) async => File(fixturePath),
+            discardPreserved: (_) async {},
+            preparePendingReceipt: (_, _) async {},
+            rebindPendingReceipt: (_, _) async {},
+            markPendingReceiptCommitted: (_, _) async {
+              journalAttempts++;
+              if (stage == 'journal' && journalAttempts == 1) {
+                throw StateError('injected post-commit journal failure');
+              }
+              return true;
+            },
+            attachPreserved: (id, _) async {
+              attachAttempts++;
+              attachedId = id;
+              if (stage == 'attachment' && attachAttempts == 1) {
+                throw StateError('injected post-commit attachment failure');
+              }
+              return _receiptEvidence('receipt-post-commit-$stage');
+            },
+            completePendingReceipt: (_) async => true,
+            ocr: (_) async => _recognizedReceipt(),
+            loadInitialData: _emptyInitialData,
+          ),
+          onResult: (value) => routeResult = value,
+        );
+        await _captureAndAcceptReceipt(tester);
+        final save = find.widgetWithText(
+          FilledButton,
+          'Save receipt transaction',
+        );
+        await _scrollToAndTap(tester, save);
+        await tester.pumpAndSettle();
+
+        expect(routeResult, isNull);
+        expect(transactions.values, hasLength(1));
+        final savedId = transactions.values.keys.single;
+        expect(find.byType(ReceiptCapturePage), findsOneWidget);
+        expect(
+          find.textContaining('The transaction was saved, but its receipt'),
+          findsOneWidget,
+        );
+        expect(
+          find.byKey(const ValueKey('butlerly-error-toast')),
+          findsOneWidget,
+        );
+
+        await tester.tap(find.byKey(const ValueKey('butlerly-toast-close')));
+        await tester.pumpAndSettle();
+        await _scrollToAndTap(tester, save);
+        await tester.pumpAndSettle();
+
+        expect(routeResult, isTrue);
+        expect(transactions.values.keys, contains(savedId));
+        expect(transactions.values, hasLength(1));
+        expect(attachedId, savedId);
+        expect(journalAttempts, 2);
+        expect(attachAttempts, stage == 'journal' ? 1 : 2);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
+  testWidgets(
+    'missing receipt journal is prepared again for same-ID attachment retry',
+    (tester) async {
+      final transactions = _ReceiptTransactionRepository();
+      final finance = _finance(transactions);
+      final fixturePath = _fixturePath();
+      final source = XFile(fixturePath, name: 'receipt.png');
+      var prepareAttempts = 0;
+      var markerAttempts = 0;
+      String? attachedId;
+      bool? routeResult;
+
+      _resetView(tester);
+      await _openReceiptRoute(
+        tester,
+        ReceiptCapturePage(
+          finance: finance,
+          evidenceStore: _evidenceStore(finance),
+          pickImage: (_) async => source,
+          preserveEvidence: (_) async => _preservedReceipt,
+          fileForPreserved: (_) async => File(fixturePath),
+          discardPreserved: (_) async {},
+          preparePendingReceipt: (_, _) async {
+            prepareAttempts++;
+          },
+          rebindPendingReceipt: (_, _) async {},
+          markPendingReceiptCommitted: (_, _) async {
+            markerAttempts++;
+            // The first save and initial retry cannot mark a missing
+            // journal. The second retry repairs it before proceeding.
+            return markerAttempts >= 3;
+          },
+          attachPreserved: (transactionId, _) async {
+            attachedId = transactionId;
+            return _receiptEvidence('repaired-journal-attachment');
+          },
+          completePendingReceipt: (_) async => true,
+          ocr: (_) async => _recognizedReceipt(),
+          loadInitialData: _emptyInitialData,
+        ),
+        onResult: (value) => routeResult = value,
+      );
+      await _captureAndAcceptReceipt(tester);
+      final save = find.widgetWithText(
+        FilledButton,
+        'Save receipt transaction',
+      );
+      await _scrollToAndTap(tester, save);
+      await tester.pumpAndSettle();
+
+      expect(routeResult, isNull);
+      expect(transactions.values, hasLength(1));
+      final savedId = transactions.values.keys.single;
+      expect(prepareAttempts, 1);
+      expect(markerAttempts, 1);
+
+      await tester.tap(find.byKey(const ValueKey('butlerly-toast-close')));
+      await tester.pumpAndSettle();
+      await _scrollToAndTap(tester, save);
+      await tester.pumpAndSettle();
+
+      expect(routeResult, isTrue);
+      expect(transactions.values, hasLength(1));
+      expect(transactions.values.keys.single, savedId);
+      expect(attachedId, savedId);
+      expect(markerAttempts, 3);
+      expect(prepareAttempts, 2);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  test(
+    'missing journal is restored from verified receipt bytes without overwriting an existing journal',
+    () async {
+      final temp = await Directory.systemTemp.createTemp(
+        'butlerly-receipt-repair-',
+      );
+      addTearDown(() async {
+        if (await temp.exists()) await temp.delete(recursive: true);
+      });
+      final finance = _finance(_ReceiptTransactionRepository());
+      final manager = LocalDataManager(
+        LocalDatabase(logger: AppLogger()),
+        localEvidenceDirectory: Directory('${temp.path}/evidence'),
+      );
+      final store = LocalEvidenceStore(manager, finance);
+      const captureId = 'receipt-repair-capture';
+      const transactionId = 'existing-payment';
+      final source = await store.preserve(
+        XFile(_fixturePath(), name: 'receipt.png'),
+        captureKind: 'receipt',
+      );
+      final planned = await store.preparePendingReceiptCapture(
+        transactionId: captureId,
+        source: source,
+      );
+      final root = await manager.evidenceDirectory();
+      final journal = File('${root.path}.pending/receipt-$captureId.json');
+      expect(await journal.exists(), isTrue);
+      await journal.delete();
+
+      final repaired = await store.runFinancialEvidenceMutation(
+        () => store.restoreMissingPendingReceiptCaptureWithinMutation(
+          captureId: captureId,
+          source: source,
+          planned: planned,
+        ),
+      );
+      expect(repaired, isTrue);
+      expect(
+        await store.rebindPendingReceiptCapture(
+          captureId: captureId,
+          transactionId: transactionId,
+        ),
+        isTrue,
+      );
+      expect(
+        await store.markPendingReceiptCaptureTransactionCommitted(
+          captureId: captureId,
+          transactionId: transactionId,
+        ),
+        isTrue,
+      );
+      final recoveries = await store.listPendingReceiptCaptures();
+      expect(recoveries, hasLength(1));
+      expect(recoveries.single.transactionId, transactionId);
+      expect(recoveries.single.plannedEvidence.id, planned.id);
+
+      // An invalid existing journal is not recreated or overwritten.
+      await journal.writeAsString('invalid journal', flush: true);
+      expect(
+        await store.runFinancialEvidenceMutation(
+          () => store.restoreMissingPendingReceiptCaptureWithinMutation(
+            captureId: captureId,
+            source: source,
+            planned: planned,
+          ),
+        ),
+        isFalse,
+      );
+      expect(await journal.readAsString(), 'invalid journal');
+      expect(await store.fileForPreserved(source), isNotNull);
+    },
+  );
+
+  testWidgets(
+    'receipt error toast is cleared when its owner route is disposed',
+    (tester) async {
+      final transactions = _ReceiptTransactionRepository();
+      final finance = _finance(transactions);
+      final fixturePath = _fixturePath();
+      bool? routeResult;
+
+      _resetView(tester);
+      await _openReceiptRoute(
+        tester,
+        ReceiptCapturePage(
+          finance: finance,
+          evidenceStore: _evidenceStore(finance),
+          pickImage: (_) async => XFile(fixturePath, name: 'receipt.png'),
+          preserveEvidence: (_) async => _preservedReceipt,
+          fileForPreserved: (_) async => File(fixturePath),
+          discardPreserved: (_) async {},
+          attachPreserved: (_, _) async => null,
+          preparePendingReceipt: (_, _) async {},
+          completePendingReceipt: (_) async => true,
+          ocr: (_) async => _recognizedReceipt(),
+          loadInitialData: _emptyInitialData,
+        ),
+        onResult: (value) => routeResult = value,
+      );
+      await _captureAndAcceptReceipt(tester);
+      await _scrollToAndTap(
+        tester,
+        find.widgetWithText(FilledButton, 'Save receipt transaction'),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('butlerly-error-toast')),
+        findsOneWidget,
+      );
+      expect(transactions.values, isEmpty);
+
+      Navigator.of(tester.element(find.byType(ReceiptCapturePage))).pop();
+      await tester.pumpAndSettle();
+
+      expect(routeResult, isNull);
+      expect(find.byType(ReceiptCapturePage), findsNothing);
+      expect(find.byKey(const ValueKey('butlerly-error-toast')), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'restart recovery recognizes a saved transaction with its original capture ID',
+    (tester) async {
+      final transactions = _ReceiptTransactionRepository();
+      const captureId = 'receipt-restart-committed';
+      await transactions.save(_receiptTransaction(captureId));
+      final finance = _finance(transactions);
+      final fixturePath = _fixturePath();
+      String? attachedId;
+      bool? routeResult;
+
+      _resetView(tester);
+      await _openReceiptRoute(
+        tester,
+        ReceiptCapturePage(
+          finance: finance,
+          evidenceStore: _evidenceStore(finance),
+          fileForPreserved: (_) async => File(fixturePath),
+          preserveEvidence: (_) async => _preservedReceipt,
+          discardPreserved: (_) async {},
+          preparePendingReceipt: (_, _) async {},
+          rebindPendingReceipt: (_, _) async {},
+          markPendingReceiptCommitted: (_, _) async => true,
+          attachPreserved: (id, _) async {
+            attachedId = id;
+            return _receiptEvidence('receipt-restart-attachment');
+          },
+          completePendingReceipt: (_) async => true,
+          listPendingReceiptCaptures: () async => [
+            PendingReceiptCapture(
+              captureId: captureId,
+              transactionId: captureId,
+              source: _preservedReceipt,
+              plannedEvidence: _receiptEvidence('receipt-restart-planned'),
+            ),
+          ],
+          ocr: (_) async => _recognizedReceipt(),
+          loadInitialData: _emptyInitialData,
+        ),
+        onResult: (value) => routeResult = value,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Resume receipt'));
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
+      for (var index = 0; index < 10; index++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      await _scrollToAndTap(
+        tester,
+        find.widgetWithText(FilledButton, 'Save receipt transaction'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(routeResult, isTrue);
+      expect(transactions.values, hasLength(1));
+      expect(attachedId, captureId);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets(
     'failed replacement keeps the existing review values when cancellation fails',
@@ -657,13 +1080,19 @@ void main() {
   );
 
   testWidgets(
-    'rollback failure exits saved transaction instead of allowing duplicate retry',
+    'rollback failure stays on receipt and retries the saved ID without creating a duplicate',
     (tester) async {
+      final playedAssets = <String>[];
+      ButlerlySoundFeedback.playbackForTesting = (asset) async {
+        playedAssets.add(asset);
+      };
+      addTearDown(() => ButlerlySoundFeedback.playbackForTesting = null);
       final transactions = _ReceiptTransactionRepository(failDelete: true);
       final finance = _finance(transactions);
       final fixturePath = _fixturePath();
       final source = XFile(fixturePath, name: 'receipt.png');
       var discarded = false;
+      var attachAttempts = 0;
       bool? routeResult;
 
       _resetView(tester);
@@ -679,11 +1108,17 @@ void main() {
           discardPreserved: (_) async {
             discarded = true;
           },
-          attachPreserved: (_, _) async => null,
+          attachPreserved: (_, _) async {
+            attachAttempts++;
+            return attachAttempts == 1
+                ? null
+                : _receiptEvidence('evidence-after-retry');
+          },
           ocr: (_) async => _recognizedReceipt(),
           preparePendingReceipt: (_, _) async {},
+          rebindPendingReceipt: (_, _) async {},
           completePendingReceipt: (_) async => true,
-          loadInitialData: _emptyInitialData,
+          loadInitialData: _soundEnabledInitialData,
         ),
         onResult: (value) => routeResult = value,
       );
@@ -696,11 +1131,40 @@ void main() {
       await _scrollToAndTap(tester, saveReceipt);
       await tester.pumpAndSettle();
 
-      expect(routeResult, isTrue);
+      expect(routeResult, isNull);
       expect(transactions.values, hasLength(1));
+      final savedId = transactions.values.keys.single;
+      expect(discarded, isFalse);
+      expect(find.byType(ReceiptCapturePage), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('butlerly-error-toast')),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('transaction was saved, but its receipt'),
+        findsOneWidget,
+      );
+      expect(playedAssets, isEmpty);
+      await tester.tap(find.byKey(const ValueKey('butlerly-toast-details')));
+      await tester.pumpAndSettle();
+      expect(find.text('Receipt operation needs attention'), findsOneWidget);
+      await tester.tap(find.widgetWithText(TextButton, 'Close'));
+      await tester.pumpAndSettle();
+      // The persistent error toast can cover the bottom Save button until
+      // dismissed, so close it before requesting another attachment attempt.
+      await tester.tap(find.byKey(const ValueKey('butlerly-toast-close')));
+      await tester.pumpAndSettle();
+
+      await _scrollToAndTap(tester, saveReceipt);
+      await tester.pumpAndSettle();
+
+      expect(routeResult, isTrue);
+      expect(transactions.values.keys.single, savedId);
+      expect(transactions.values, hasLength(1));
+      expect(attachAttempts, 2);
       expect(discarded, isFalse);
       expect(find.byType(ReceiptCapturePage), findsNothing);
-      expect(find.text('Evidence could not be stored.'), findsOneWidget);
+      expect(playedAssets, [ButlerlySoundFeedback.updatedSoundAssetPath]);
       expect(tester.takeException(), isNull);
     },
   );
@@ -861,6 +1325,19 @@ Future<ReceiptCaptureInitialData> _emptyInitialData() async =>
         paymentSources: [],
       ),
     );
+
+Future<ReceiptCaptureInitialData> _soundEnabledInitialData() async {
+  final initial = await _emptyInitialData();
+  return ReceiptCaptureInitialData(
+    preference: UserPreference(
+      locale: 'en',
+      baseCurrency: CurrencyCode('USD'),
+      timeZoneId: 'UTC',
+      transactionSaveSoundEnabled: true,
+    ),
+    snapshot: initial.snapshot,
+  );
+}
 
 Widget _localizedApp(Widget home) => MaterialApp(
   localizationsDelegates: const [AppLocalizations.delegate],

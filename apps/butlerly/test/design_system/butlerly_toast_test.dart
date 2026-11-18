@@ -86,6 +86,74 @@ void main() {
     expect(find.text('Backup could not be verified'), findsNothing);
   });
 
+  testWidgets('owned receipt toast cannot dismiss a newer screen toast', (
+    tester,
+  ) async {
+    late BuildContext toastContext;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) {
+              toastContext = context;
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      ),
+    );
+
+    final receiptError = ButlerlyToast.ownedError(
+      toastContext,
+      'Receipt attachment incomplete',
+      closeLabel: 'Close',
+      detailsLabel: 'Details',
+      onDetails: () {},
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Receipt attachment incomplete'), findsOneWidget);
+
+    // Route disposal defers cleanup. Another route can publish a newer
+    // notification before that callback runs; the old owner cannot clear it.
+    receiptError.dismissAfterFrame();
+    ButlerlyToast.success(toastContext, 'Newer transaction saved');
+    await tester.pump();
+    expect(find.text('Newer transaction saved'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('Newer transaction saved'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('owned error cleanup removes its own notification', (
+    tester,
+  ) async {
+    late BuildContext toastContext;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) {
+              toastContext = context;
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      ),
+    );
+    final receiptError = ButlerlyToast.ownedError(
+      toastContext,
+      'Receipt needs recovery',
+      closeLabel: 'Close',
+      detailsLabel: 'Details',
+      onDetails: () {},
+    );
+    await tester.pumpAndSettle();
+    receiptError.dismissAfterFrame();
+    await tester.pumpAndSettle();
+    expect(find.text('Receipt needs recovery'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('error action labels and close icons contrast with white buttons '
       'in both app themes', (tester) async {
     for (final theme in [AppTheme.light, AppTheme.dark]) {
