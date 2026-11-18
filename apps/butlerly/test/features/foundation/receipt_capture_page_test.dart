@@ -452,11 +452,13 @@ void main() {
       // animation; the returned result is the authoritative navigation check.
       expect(routeResult, isTrue);
       expect(transactions.values, hasLength(1));
+      // The shared ScaffoldMessenger can briefly render the same toast in
+      // outgoing and incoming Scaffolds during the route transition.
       expect(
         find.byKey(const ValueKey('butlerly-success-toast')),
-        findsOneWidget,
+        findsWidgets,
       );
-      expect(find.text('Receipt transaction saved locally.'), findsOneWidget);
+      expect(find.text('Receipt transaction saved locally.'), findsWidgets);
       expect(playedAssets, [ButlerlySoundFeedback.createdSoundAssetPath]);
       expect(tester.takeException(), isNull);
     },
