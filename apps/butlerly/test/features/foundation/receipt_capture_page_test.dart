@@ -505,10 +505,7 @@ void main() {
     expect(cancelled, isFalse);
     expect(find.byType(ReceiptCapturePage), findsOneWidget);
     expect(find.text('Evidence could not be stored.'), findsOneWidget);
-    expect(
-      find.byKey(const ValueKey('butlerly-error-toast')),
-      findsOneWidget,
-    );
+    expect(find.byKey(const ValueKey('butlerly-error-toast')), findsOneWidget);
     expect(find.text('Save receipt transaction'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
