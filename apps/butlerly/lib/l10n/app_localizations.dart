@@ -2223,14 +2223,10 @@ class AppLocalizations {
           '阶段：读取原交易。当前无法读取原交易，请保留收据，待本地存储恢复后从恢复记录中重试。',
       'receiptEvidenceAttachFailedDetails':
           '阶段：关联收据。关联尚未完成，原收据仍已保留。请重试关联，不要再次扫描。',
-      'receiptSaveFailedDetails':
-          '阶段：本地保存交易。尚未确认成功保存。请保留收据，检查交易和收据恢复记录后再重试。',
-      'receiptTextReadFailedDetails':
-          '阶段：设备端文字识别。无法读取已保存的图片，请检查收据并手动补充缺失字段。',
-      'receiptCaptureFailedDetails':
-          '阶段：本地收据捕获或存储。请重新打开收据来源。此捕获步骤未保存交易。',
-      'receiptErrorDetailsGeneric':
-          '再次尝试前，请检查收据和待恢复记录。此提示并不代表新交易已成功保存。',
+      'receiptSaveFailedDetails': '阶段：本地保存交易。尚未确认成功保存。请保留收据，检查交易和收据恢复记录后再重试。',
+      'receiptTextReadFailedDetails': '阶段：设备端文字识别。无法读取已保存的图片，请检查收据并手动补充缺失字段。',
+      'receiptCaptureFailedDetails': '阶段：本地收据捕获或存储。请重新打开收据来源。此捕获步骤未保存交易。',
+      'receiptErrorDetailsGeneric': '再次尝试前，请检查收据和待恢复记录。此提示并不代表新交易已成功保存。',
       'receiptStoreFailed': '无法在本地保存收据，请重试。',
       'receiptCaptureFailed': '无法打开收据捕获，请重试。',
       'receiptRecoveryTitle': '收据捕获需要处理',
