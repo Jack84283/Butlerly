@@ -1671,8 +1671,9 @@ final class LocalEvidenceStore {
   Future<EvidenceItem> preparePendingReceiptCaptureWithinMutation({
     required String transactionId,
     required PreservedEvidenceSource source,
+    EvidenceItem? planned,
   }) async {
-    final evidence = _newReceiptEvidence(source);
+    final evidence = planned ?? _newReceiptEvidence(source);
     final integrity = await _captureIntegrity(source);
     final directory = await _pendingEvidenceDirectory();
     await rejectEvidenceRoot(
@@ -1707,6 +1708,34 @@ final class LocalEvidenceStore {
       flush: true,
     );
     return evidence;
+  }
+
+  /// Restore a typed receipt journal only when it is completely missing.
+  ///
+  /// A malformed journal is deliberately left untouched for explicit
+  /// recovery. Verify the preserved binary and reuse the planned evidence ID
+  /// so restart recovery cannot attach a different receipt under this capture.
+  /// Caller must hold the financial-evidence mutation boundary.
+  Future<bool> restoreMissingPendingReceiptCaptureWithinMutation({
+    required String captureId,
+    required PreservedEvidenceSource source,
+    EvidenceItem? planned,
+  }) async {
+    final manifest = await _pendingReceiptManifestFor(captureId);
+    if (await manifest.exists()) return false;
+    if (await fileForPreserved(source) == null) return false;
+    if (planned != null &&
+        (planned.localFileName != source.localFileName ||
+            planned.originalName != source.originalName ||
+            planned.mediaType != source.mediaType)) {
+      return false;
+    }
+    await preparePendingReceiptCaptureWithinMutation(
+      transactionId: captureId,
+      source: source,
+      planned: planned,
+    );
+    return true;
   }
 
   Future<bool> markPendingReceiptCaptureTransactionCommitted({
