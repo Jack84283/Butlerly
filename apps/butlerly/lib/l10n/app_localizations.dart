@@ -1129,6 +1129,15 @@ class AppLocalizations {
       'receiptUseTitle': 'Use this receipt?',
       'receiptRetakeReplace': 'Retake / replace',
       'receiptUse': 'Use receipt',
+      'receiptTransactionSavedSuccess': 'Receipt transaction saved locally.',
+      'receiptAttachedSuccess': 'Receipt attached to the existing transaction.',
+      'receiptExistingUnavailable':
+          'The existing transaction could not be opened. Your receipt is still available for recovery.',
+      'receiptSaveFailed':
+          'Receipt save could not be completed. Check saved transactions and pending captures before retrying.',
+      'receiptSavedEvidencePending':
+          'The transaction was saved, but its receipt could not be attached. The receipt was kept for recovery. Retry to attach it; no second transaction will be created.',
+      'receiptErrorDetailsTitle': 'Receipt operation needs attention',
       'receiptStoreFailed':
           'Receipt could not be stored locally. Please retry.',
       'receiptCaptureFailed':
@@ -2181,6 +2190,15 @@ class AppLocalizations {
       'receiptUseTitle': '使用这张收据？',
       'receiptRetakeReplace': '重新拍摄 / 替换',
       'receiptUse': '使用收据',
+      'receiptTransactionSavedSuccess': '收据交易已保存在本地。',
+      'receiptAttachedSuccess': '收据已关联到现有交易。',
+      'receiptExistingUnavailable':
+          '无法打开现有交易。收据仍可用于恢复。',
+      'receiptSaveFailed':
+          '收据保存未能完成。请先检查已保存的交易和待恢复的收据，再重试。',
+      'receiptSavedEvidencePending':
+          '交易已保存，但无法关联收据。收据已保留以供恢复。请重试关联，不会创建第二笔交易。',
+      'receiptErrorDetailsTitle': '收据操作需要处理',
       'receiptStoreFailed': '无法在本地保存收据，请重试。',
       'receiptCaptureFailed': '无法打开收据捕获，请重试。',
       'receiptRecoveryTitle': '收据捕获需要处理',
@@ -3386,6 +3404,16 @@ class AppLocalizations {
       'receiptUseTitle': '¿Usar este recibo?',
       'receiptRetakeReplace': 'Repetir / Reemplazar',
       'receiptUse': 'Usar recibo',
+      'receiptTransactionSavedSuccess':
+          'La transacción del recibo se guardó localmente.',
+      'receiptAttachedSuccess': 'El recibo se adjuntó a la transacción existente.',
+      'receiptExistingUnavailable':
+          'No se pudo abrir la transacción existente. El recibo sigue disponible para recuperarlo.',
+      'receiptSaveFailed':
+          'No se pudo completar el guardado. Comprueba las transacciones y las capturas pendientes antes de reintentarlo.',
+      'receiptSavedEvidencePending':
+          'La transacción se guardó, pero no se pudo adjuntar el recibo. Se conservó para recuperarlo. Reintenta adjuntarlo sin crear otra transacción.',
+      'receiptErrorDetailsTitle': 'La operación del recibo necesita atención',
       'receiptStoreFailed':
           'No se pudo guardar el recibo localmente. Inténtalo de nuevo.',
       'receiptCaptureFailed':
