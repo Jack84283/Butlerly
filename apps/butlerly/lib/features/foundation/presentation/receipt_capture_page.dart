@@ -138,6 +138,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   bool _captureInFlight = false;
   bool _saving = false;
   bool _soundEnabled = false;
+  ScaffoldMessengerState? _errorToastMessenger;
   String? _pendingReceiptCaptureId;
   String? _pendingReceiptTargetTransactionId;
   EvidenceItem? _plannedPendingEvidence;
@@ -172,6 +173,14 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
 
   @override
   void dispose() {
+    // A receipt error belongs to this route. Do not leave behind a red toast
+    // whose Details callback refers to a disposed capture screen. A success
+    // toast clears this reference before popping and remains visible.
+    final messenger = _errorToastMessenger;
+    _errorToastMessenger = null;
+    if (messenger != null && messenger.mounted) {
+      messenger.removeCurrentSnackBar();
+    }
     // A source with no committed transaction remains recoverable after route
     // disposal. Only the explicit recovery discard or a completed save may
     // retire its journal and pending binary.
@@ -527,15 +536,23 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       _showSaveMessage('receiptRecoverySourceUnavailable');
       return;
     }
+    // A receipt capture can already have created its transaction before a
+    // journal marker or evidence attachment failed. On restart the capture ID
+    // and transaction ID may still be identical; do not treat that equality
+    // as proof that no transaction was saved.
+    final existing = await _savedReceiptPresence(pending.transactionId);
+    if (!mounted) return;
     setState(() {
       _pendingReceiptRecoveries = _pendingReceiptRecoveries
           .where((value) => value.captureId != pending.captureId)
           .toList(growable: false);
       _pendingReceiptCaptureId = pending.captureId;
       _pendingReceiptTargetTransactionId =
-          pending.transactionId == pending.captureId
-          ? null
-          : pending.transactionId;
+          existing == true ||
+              existing == null ||
+              pending.transactionId != pending.captureId
+          ? pending.transactionId
+          : null;
       _plannedPendingEvidence = pending.plannedEvidence;
       _preserved = pending.source;
       _processing = true;
@@ -831,17 +848,33 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     );
   }
 
+  String _errorDetailsKey(String key) => switch (key) {
+    'receiptSavedEvidencePending' => 'receiptSavedEvidencePendingDetails',
+    'receiptSaveStatusUnverified' => 'receiptSaveStatusUnverifiedDetails',
+    'receiptExistingUnavailable' => 'receiptExistingUnavailableDetails',
+    'evidenceAttachFailed' => 'receiptEvidenceAttachFailedDetails',
+    'receiptSaveFailed' => 'receiptSaveFailedDetails',
+    'receiptTextReadFailed' => 'receiptTextReadFailedDetails',
+    'receiptStoreFailed' || 'receiptCaptureFailed' =>
+      'receiptCaptureFailedDetails',
+    _ => 'receiptErrorDetailsGeneric',
+  };
+
   void _showSaveMessage(String key) {
     if (!mounted) return;
     final message = context.l10n.text(key);
     if (key == 'dateNeedsReview' || key == 'receiptRecoveryWarning') {
+      _errorToastMessenger = null;
       ButlerlyToast.info(context, message);
       return;
     }
     if (key == 'receiptRecoveryDiscarded') {
+      _errorToastMessenger = null;
       ButlerlyToast.success(context, message);
       return;
     }
+    _errorToastMessenger = ScaffoldMessenger.of(context);
+    final detailKey = _errorDetailsKey(key);
     ButlerlyToast.error(
       context,
       message,
@@ -853,7 +886,15 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
           context: context,
           builder: (dialogContext) => ButlerlySheet(
             title: Text(dialogContext.l10n.text('receiptErrorDetailsTitle')),
-            content: Text(dialogContext.l10n.text(key)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(dialogContext.l10n.text(key)),
+                const SizedBox(height: ButlerlySpacing.compact),
+                Text(dialogContext.l10n.text(detailKey)),
+              ],
+            ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext),
@@ -863,6 +904,39 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
           ),
         );
       },
+    );
+  }
+
+  /// `null` means the database could not confirm whether the row exists.
+  /// Retain the original ID in that case, never silently create another row.
+  Future<bool?> _savedReceiptPresence(String transactionId) async {
+    try {
+      final result = await finance.getTransaction.call(transactionId);
+      if (result is ApplicationSuccess<TransactionDto>) return true;
+      if (result is ApplicationFailure<TransactionDto> &&
+          result.failure.code == ApplicationFailureCode.notFound) {
+        return false;
+      }
+    } catch (_) {
+      // Read failures are ambiguous and must not authorize another create.
+    }
+    return null;
+  }
+
+  Future<void> _reportSaveFailureAfterWrite(String transactionId) async {
+    final saved = await _savedReceiptPresence(transactionId);
+    if (saved != false) {
+      _pendingReceiptTargetTransactionId = transactionId;
+      if (saved == true) notifyTransactionChanged();
+    }
+    if (!mounted) return;
+    setState(() => _saving = false);
+    _showSaveMessage(
+      saved == true
+          ? 'receiptSavedEvidencePending'
+          : saved == null
+          ? 'receiptSaveStatusUnverified'
+          : 'receiptSaveFailed',
     );
   }
 
@@ -928,6 +1002,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     }
     if (!mounted) return;
     setState(() => _saving = false);
+    _errorToastMessenger = null;
     // The root ScaffoldMessenger keeps this toast visible across route pop.
     ButlerlyToast.success(
       context,
@@ -1085,6 +1160,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     );
 
     setState(() => _saving = true);
+    String? attemptedTransactionId;
 
     try {
       final pendingTargetId = _pendingReceiptTargetTransactionId;
@@ -1238,6 +1314,9 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
               duplicateUnavailable: false,
             );
           }
+          // Remember the immutable capture ID before the write. The
+          // transaction may already be committed when any later step throws.
+          attemptedTransactionId = transactionId;
           final result = await finance.createReceiptTransaction(
             ReceiptTransactionCommand(
               id: transactionId,
@@ -1324,10 +1403,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         return;
       }
       if (result is! ApplicationSuccess<TransactionDto>) {
-        if (mounted) {
-          setState(() => _saving = false);
-          _showSaveMessage('receiptSaveFailed');
-        }
+        await _reportSaveFailureAfterWrite(transactionId);
         return;
       }
       if (outcome.evidence == null) {
@@ -1355,9 +1431,13 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       );
       return;
     } catch (_) {
-      if (!mounted) return;
-      setState(() => _saving = false);
-      _showSaveMessage('receiptSaveFailed');
+      final attempted = attemptedTransactionId;
+      if (attempted != null) {
+        await _reportSaveFailureAfterWrite(attempted);
+      } else if (mounted) {
+        setState(() => _saving = false);
+        _showSaveMessage('receiptSaveFailed');
+      }
       return;
     }
 
