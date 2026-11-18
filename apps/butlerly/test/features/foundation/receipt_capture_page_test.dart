@@ -339,6 +339,11 @@ void main() {
   testWidgets(
     'saves recognized receipt after transaction and evidence commit',
     (tester) async {
+      final playedAssets = <String>[];
+      ButlerlySoundFeedback.playbackForTesting = (asset) async {
+        playedAssets.add(asset);
+      };
+      addTearDown(() => ButlerlySoundFeedback.playbackForTesting = null);
       final transactions = _ReceiptTransactionRepository();
       final finance = _finance(transactions);
       final fixturePath = _fixturePath();
@@ -382,6 +387,7 @@ void main() {
       expect(attachedTransactionId, transactions.values.keys.single);
       expect(transactions.values.values.single.transactionDate, '2026-09-15');
       expect(find.byType(ReceiptCapturePage), findsNothing);
+      expect(playedAssets, isEmpty);
       expect(tester.takeException(), isNull);
     },
   );
@@ -731,6 +737,11 @@ void main() {
   testWidgets(
     'rollback failure stays on receipt and retries the saved ID without creating a duplicate',
     (tester) async {
+      final playedAssets = <String>[];
+      ButlerlySoundFeedback.playbackForTesting = (asset) async {
+        playedAssets.add(asset);
+      };
+      addTearDown(() => ButlerlySoundFeedback.playbackForTesting = null);
       final transactions = _ReceiptTransactionRepository(failDelete: true);
       final finance = _finance(transactions);
       final fixturePath = _fixturePath();
@@ -762,7 +773,7 @@ void main() {
           preparePendingReceipt: (_, _) async {},
           rebindPendingReceipt: (_, _) async {},
           completePendingReceipt: (_) async => true,
-          loadInitialData: _emptyInitialData,
+          loadInitialData: _soundEnabledInitialData,
         ),
         onResult: (value) => routeResult = value,
       );
@@ -780,11 +791,15 @@ void main() {
       final savedId = transactions.values.keys.single;
       expect(discarded, isFalse);
       expect(find.byType(ReceiptCapturePage), findsOneWidget);
-      expect(find.byKey(const ValueKey('butlerly-error-toast')), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey('butlerly-error-toast')),
+        findsOneWidget,
+      );
       expect(
         find.textContaining('transaction was saved, but its receipt'),
         findsOneWidget,
       );
+      expect(playedAssets, isEmpty);
 
       await _scrollToAndTap(tester, saveReceipt);
       await tester.pumpAndSettle();
@@ -795,6 +810,7 @@ void main() {
       expect(attachAttempts, 2);
       expect(discarded, isFalse);
       expect(find.byType(ReceiptCapturePage), findsNothing);
+      expect(playedAssets, [ButlerlySoundFeedback.updatedSoundAssetPath]);
       expect(tester.takeException(), isNull);
     },
   );
