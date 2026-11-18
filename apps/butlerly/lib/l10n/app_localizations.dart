@@ -2192,12 +2192,9 @@ class AppLocalizations {
       'receiptUse': '使用收据',
       'receiptTransactionSavedSuccess': '收据交易已保存在本地。',
       'receiptAttachedSuccess': '收据已关联到现有交易。',
-      'receiptExistingUnavailable':
-          '无法打开现有交易。收据仍可用于恢复。',
-      'receiptSaveFailed':
-          '收据保存未能完成。请先检查已保存的交易和待恢复的收据，再重试。',
-      'receiptSavedEvidencePending':
-          '交易已保存，但无法关联收据。收据已保留以供恢复。请重试关联，不会创建第二笔交易。',
+      'receiptExistingUnavailable': '无法打开现有交易。收据仍可用于恢复。',
+      'receiptSaveFailed': '收据保存未能完成。请先检查已保存的交易和待恢复的收据，再重试。',
+      'receiptSavedEvidencePending': '交易已保存，但无法关联收据。收据已保留以供恢复。请重试关联，不会创建第二笔交易。',
       'receiptErrorDetailsTitle': '收据操作需要处理',
       'receiptStoreFailed': '无法在本地保存收据，请重试。',
       'receiptCaptureFailed': '无法打开收据捕获，请重试。',
@@ -3406,7 +3403,8 @@ class AppLocalizations {
       'receiptUse': 'Usar recibo',
       'receiptTransactionSavedSuccess':
           'La transacción del recibo se guardó localmente.',
-      'receiptAttachedSuccess': 'El recibo se adjuntó a la transacción existente.',
+      'receiptAttachedSuccess':
+          'El recibo se adjuntó a la transacción existente.',
       'receiptExistingUnavailable':
           'No se pudo abrir la transacción existente. El recibo sigue disponible para recuperarlo.',
       'receiptSaveFailed':
