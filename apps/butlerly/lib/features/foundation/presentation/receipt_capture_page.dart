@@ -178,8 +178,12 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
     // toast clears this reference before popping and remains visible.
     final messenger = _errorToastMessenger;
     _errorToastMessenger = null;
-    if (messenger != null && messenger.mounted) {
-      messenger.removeCurrentSnackBar();
+    if (messenger != null) {
+      // Removing a SnackBar animates the ScaffoldMessenger. During unmount
+      // the widget tree is locked, so defer that animation to the next frame.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (messenger.mounted) messenger.removeCurrentSnackBar();
+      });
     }
     // A source with no committed transaction remains recoverable after route
     // disposal. Only the explicit recovery discard or a completed save may
