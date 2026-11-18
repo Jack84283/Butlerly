@@ -674,74 +674,79 @@ void main() {
     },
   );
 
-  test('missing journal is restored from verified receipt bytes without overwriting an existing journal', () async {
-    final temp = await Directory.systemTemp.createTemp('butlerly-receipt-repair-');
-    addTearDown(() async {
-      if (await temp.exists()) await temp.delete(recursive: true);
-    });
-    final finance = _finance(_ReceiptTransactionRepository());
-    final manager = LocalDataManager(
-      LocalDatabase(logger: AppLogger()),
-      localEvidenceDirectory: Directory('${temp.path}/evidence'),
-    );
-    final store = LocalEvidenceStore(manager, finance);
-    const captureId = 'receipt-repair-capture';
-    const transactionId = 'existing-payment';
-    final source = await store.preserve(
-      XFile(_fixturePath(), name: 'receipt.png'),
-      captureKind: 'receipt',
-    );
-    final planned = await store.preparePendingReceiptCapture(
-      transactionId: captureId,
-      source: source,
-    );
-    final root = await manager.evidenceDirectory();
-    final journal = File('${root.path}.pending/receipt-$captureId.json');
-    expect(await journal.exists(), isTrue);
-    await journal.delete();
-
-    final repaired = await store.runFinancialEvidenceMutation(
-      () => store.restoreMissingPendingReceiptCaptureWithinMutation(
-        captureId: captureId,
+  test(
+    'missing journal is restored from verified receipt bytes without overwriting an existing journal',
+    () async {
+      final temp = await Directory.systemTemp.createTemp(
+        'butlerly-receipt-repair-',
+      );
+      addTearDown(() async {
+        if (await temp.exists()) await temp.delete(recursive: true);
+      });
+      final finance = _finance(_ReceiptTransactionRepository());
+      final manager = LocalDataManager(
+        LocalDatabase(logger: AppLogger()),
+        localEvidenceDirectory: Directory('${temp.path}/evidence'),
+      );
+      final store = LocalEvidenceStore(manager, finance);
+      const captureId = 'receipt-repair-capture';
+      const transactionId = 'existing-payment';
+      final source = await store.preserve(
+        XFile(_fixturePath(), name: 'receipt.png'),
+        captureKind: 'receipt',
+      );
+      final planned = await store.preparePendingReceiptCapture(
+        transactionId: captureId,
         source: source,
-        planned: planned,
-      ),
-    );
-    expect(repaired, isTrue);
-    expect(
-      await store.rebindPendingReceiptCapture(
-        captureId: captureId,
-        transactionId: transactionId,
-      ),
-      isTrue,
-    );
-    expect(
-      await store.markPendingReceiptCaptureTransactionCommitted(
-        captureId: captureId,
-        transactionId: transactionId,
-      ),
-      isTrue,
-    );
-    final recoveries = await store.listPendingReceiptCaptures();
-    expect(recoveries, hasLength(1));
-    expect(recoveries.single.transactionId, transactionId);
-    expect(recoveries.single.plannedEvidence.id, planned.id);
+      );
+      final root = await manager.evidenceDirectory();
+      final journal = File('${root.path}.pending/receipt-$captureId.json');
+      expect(await journal.exists(), isTrue);
+      await journal.delete();
 
-    // An invalid existing journal is not recreated or overwritten.
-    await journal.writeAsString('invalid journal', flush: true);
-    expect(
-      await store.runFinancialEvidenceMutation(
+      final repaired = await store.runFinancialEvidenceMutation(
         () => store.restoreMissingPendingReceiptCaptureWithinMutation(
           captureId: captureId,
           source: source,
           planned: planned,
         ),
-      ),
-      isFalse,
-    );
-    expect(await journal.readAsString(), 'invalid journal');
-    expect(await store.fileForPreserved(source), isNotNull);
-  });
+      );
+      expect(repaired, isTrue);
+      expect(
+        await store.rebindPendingReceiptCapture(
+          captureId: captureId,
+          transactionId: transactionId,
+        ),
+        isTrue,
+      );
+      expect(
+        await store.markPendingReceiptCaptureTransactionCommitted(
+          captureId: captureId,
+          transactionId: transactionId,
+        ),
+        isTrue,
+      );
+      final recoveries = await store.listPendingReceiptCaptures();
+      expect(recoveries, hasLength(1));
+      expect(recoveries.single.transactionId, transactionId);
+      expect(recoveries.single.plannedEvidence.id, planned.id);
+
+      // An invalid existing journal is not recreated or overwritten.
+      await journal.writeAsString('invalid journal', flush: true);
+      expect(
+        await store.runFinancialEvidenceMutation(
+          () => store.restoreMissingPendingReceiptCaptureWithinMutation(
+            captureId: captureId,
+            source: source,
+            planned: planned,
+          ),
+        ),
+        isFalse,
+      );
+      expect(await journal.readAsString(), 'invalid journal');
+      expect(await store.fileForPreserved(source), isNotNull);
+    },
+  );
 
   testWidgets(
     'receipt error toast is cleared when its owner route is disposed',
