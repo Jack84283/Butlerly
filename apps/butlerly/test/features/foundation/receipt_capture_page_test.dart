@@ -800,6 +800,11 @@ void main() {
         findsOneWidget,
       );
       expect(playedAssets, isEmpty);
+      await tester.tap(find.byKey(const ValueKey('butlerly-toast-details')));
+      await tester.pumpAndSettle();
+      expect(find.text('Receipt operation needs attention'), findsOneWidget);
+      await tester.tap(find.widgetWithText(TextButton, 'Close'));
+      await tester.pumpAndSettle();
 
       await _scrollToAndTap(tester, saveReceipt);
       await tester.pumpAndSettle();
