@@ -16,54 +16,64 @@ void main() {
       expect(labels.every((label) => label.trim().isNotEmpty), isTrue);
       expect(labels.toSet().length, labels.length);
     }
-    expect(timeZoneLabelFor('America/Los_Angeles', const Locale('en')),
-        'Pacific Time (Los Angeles)');
-  });
-
-  test('previously selected IANA zone remains available without rewriting it', () {
-    final choices = timeZoneChoicesFor('Asia/Kolkata');
-    expect(choices.where((entry) => entry.id == 'Asia/Kolkata'), hasLength(1));
-    expect(choices.where((entry) => entry.id == 'UTC'), hasLength(1));
     expect(
-      timeZoneLabelFor('Asia/Kolkata', const Locale('en')),
-      'Kolkata (Asia/Kolkata)',
-    );
-    expect(
-      timeZoneChoicesFor('America/Los_Angeles').length,
-      timeZoneCatalog.length,
+      timeZoneLabelFor('America/Los_Angeles', const Locale('en')),
+      'Pacific Time (Los Angeles)',
     );
   });
 
-  test('search deduplicates IDs, not distinct cities or daylight-saving rules',
-      () {
-    final available = [
-      TimezoneInfo(identifier: 'America/Los_Angeles'),
-      TimezoneInfo(identifier: 'America/Vancouver'),
-      TimezoneInfo(identifier: 'America/Vancouver'),
-      TimezoneInfo(identifier: 'US/Pacific'),
-    ];
-    final results = searchButlerlyTimeZones(
-      available,
-      'America',
-      locale: const Locale('en'),
-    );
-    expect(
-      results.where((entry) => entry.id == 'America/Vancouver'),
-      hasLength(1),
-    );
-    expect(
-      results.map((entry) => entry.id),
-      containsAll(['America/Vancouver', 'America/Los_Angeles']),
-    );
-    expect(
-      searchButlerlyTimeZones(
+  test(
+    'previously selected IANA zone remains available without rewriting it',
+    () {
+      final choices = timeZoneChoicesFor('Asia/Kolkata');
+      expect(
+        choices.where((entry) => entry.id == 'Asia/Kolkata'),
+        hasLength(1),
+      );
+      expect(choices.where((entry) => entry.id == 'UTC'), hasLength(1));
+      expect(
+        timeZoneLabelFor('Asia/Kolkata', const Locale('en')),
+        'Kolkata (Asia/Kolkata)',
+      );
+      expect(
+        timeZoneChoicesFor('America/Los_Angeles').length,
+        timeZoneCatalog.length,
+      );
+    },
+  );
+
+  test(
+    'search deduplicates IDs, not distinct cities or daylight-saving rules',
+    () {
+      final available = [
+        TimezoneInfo(identifier: 'America/Los_Angeles'),
+        TimezoneInfo(identifier: 'America/Vancouver'),
+        TimezoneInfo(identifier: 'America/Vancouver'),
+        TimezoneInfo(identifier: 'US/Pacific'),
+      ];
+      final results = searchButlerlyTimeZones(
         available,
-        'Los Angeles',
+        'America',
         locale: const Locale('en'),
-      ).map((entry) => entry.id),
-      contains('America/Los_Angeles'),
-    );
-  });
+      );
+      expect(
+        results.where((entry) => entry.id == 'America/Vancouver'),
+        hasLength(1),
+      );
+      expect(
+        results.map((entry) => entry.id),
+        containsAll(['America/Vancouver', 'America/Los_Angeles']),
+      );
+      expect(
+        searchButlerlyTimeZones(
+          available,
+          'Los Angeles',
+          locale: const Locale('en'),
+        ).map((entry) => entry.id),
+        contains('America/Los_Angeles'),
+      );
+    },
+  );
 
   testWidgets('common picker offers Other and searches distinct IANA cities', (
     tester,
