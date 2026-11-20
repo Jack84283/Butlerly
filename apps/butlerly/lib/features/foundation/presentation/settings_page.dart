@@ -326,10 +326,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       tile(
         Icons.schedule_rounded,
         l10n.text('timeZone'),
-        timeZoneLabelFor(
-          preference?.timeZoneId ?? 'UTC',
-          locale,
-        ),
+        timeZoneLabelFor(preference?.timeZoneId ?? 'UTC', locale),
         preference == null
             ? null
             : () => unawaited(_changeTimeZone(preference.timeZoneId)),
