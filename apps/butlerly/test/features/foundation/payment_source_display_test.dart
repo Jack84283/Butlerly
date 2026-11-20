@@ -112,6 +112,121 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets(
+    'legacy account wallets keep provider marks even with bank issuers',
+    (tester) async {
+      final sources = <String, PaymentSource>{
+        'no-artwork': PaymentSource(
+          id: PaymentSourceId('legacy-paypal-capital-one'),
+          name: 'PayPal',
+          issuer: 'Capital One',
+          network: 'paypal',
+          type: PaymentSourceType.account,
+        ),
+        'verified-artwork': PaymentSource(
+          id: PaymentSourceId('legacy-paypal-chase'),
+          name: 'PayPal',
+          issuer: 'Chase',
+          network: 'PayPal',
+          type: PaymentSourceType.account,
+        ),
+        'name-alias': PaymentSource(
+          id: PaymentSourceId('legacy-venmo'),
+          name: 'Venmo wallet',
+          issuer: 'Chase',
+          type: PaymentSourceType.account,
+        ),
+        'identity-alias': PaymentSource(
+          id: PaymentSourceId('legacy-alipay'),
+          name: 'My wallet',
+          displayIdentity: '支付宝',
+          issuer: 'Capital One',
+          type: PaymentSourceType.account,
+        ),
+        'ordinary-bank': PaymentSource(
+          id: PaymentSourceId('ordinary-bank'),
+          name: 'Checking',
+          issuer: 'Chase',
+          network: 'paypal-savings',
+          type: PaymentSourceType.account,
+        ),
+        'ordinary-no-logo': PaymentSource(
+          id: PaymentSourceId('ordinary-custom'),
+          name: 'Checking',
+          issuer: 'My local credit union',
+          network: 'visa',
+          type: PaymentSourceType.account,
+        ),
+        'issuer-only-wallet-name': PaymentSource(
+          id: PaymentSourceId('issuer-only-wallet-name'),
+          name: 'Checking',
+          issuer: 'PayPal',
+          type: PaymentSourceType.account,
+        ),
+      };
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                for (final entry in sources.entries)
+                  KeyedSubtree(
+                    key: ValueKey(entry.key),
+                    child: ButlerlyPaymentSourceIcon(source: entry.value),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+      for (final (id, mark) in const [
+        ('no-artwork', 'paypal'),
+        ('verified-artwork', 'paypal'),
+        ('name-alias', 'venmo'),
+        ('identity-alias', 'alipay'),
+      ]) {
+        final icon = find.descendant(
+          of: find.byKey(ValueKey(id)),
+          matching: find.byType(ButlerlyPaymentMarkIcon),
+        );
+        expect(icon, findsOneWidget, reason: id);
+        expect(tester.widget<ButlerlyPaymentMarkIcon>(icon).mark, mark);
+      }
+      expect(
+        find.descendant(
+          of: find.byKey(const ValueKey('ordinary-bank')),
+          matching: find.byType(ButlerlyIssuerIcon),
+        ),
+        findsOneWidget,
+      );
+      for (final id in ['ordinary-no-logo', 'issuer-only-wallet-name']) {
+        expect(
+          find.descendant(
+            of: find.byKey(ValueKey(id)),
+            matching: find.byIcon(Icons.account_balance_outlined),
+          ),
+          findsOneWidget,
+          reason: id,
+        );
+        expect(
+          find.descendant(
+            of: find.byKey(ValueKey(id)),
+            matching: find.byType(ButlerlyPaymentMarkIcon),
+          ),
+          findsNothing,
+          reason: id,
+        );
+      }
+      expect(
+        sources.values.every(
+          (source) => source.type == PaymentSourceType.account,
+        ),
+        isTrue,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   test('legacy wallet provider labels still show their branded icons', () {
     const providers = <String, String>{
       'Alipay': 'alipay',
