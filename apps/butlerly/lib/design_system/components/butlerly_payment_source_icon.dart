@@ -132,11 +132,22 @@ class ButlerlyPaymentSourceIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Legacy wallets were sometimes stored as account-typed sources with an
+    // issuer. Resolve a wallet provider from the saved network, display identity
+    // or source name *before* looking up the bank. Do not infer a wallet from
+    // the issuer field or change the stored account type.
+    if (source.type == PaymentSourceType.account) {
+      final mark = paymentMarkFor(source);
+      if (walletPaymentProviderLabels.containsKey(mark)) {
+        return ButlerlyPaymentMarkIcon(mark: mark, size: size);
+      }
+    }
+
     // This icon represents the payment *source*, not its card network.
     // For a named institution, prefer its verified mark or an honest bank
     // placeholder; showing Visa/Mastercard here would misidentify the issuer.
     // Card networks remain visible in their own network-specific controls.
-    // Wallet and cash sources continue to use their distinct provider marks.
+    // Explicit wallet and cash sources use their distinct provider marks.
     if (source.type != PaymentSourceType.wallet &&
         source.type != PaymentSourceType.cash) {
       final issuer =
