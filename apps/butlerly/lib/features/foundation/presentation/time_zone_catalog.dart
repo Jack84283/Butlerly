@@ -68,16 +68,41 @@ const timeZoneCatalog = <ButlerlyTimeZone>[
   ),
 ];
 
-/// Existing IANA selections outside the shortlist remain visible and intact.
-List<ButlerlyTimeZone> timeZoneChoicesFor(String selectedId) => [
-  ...timeZoneCatalog,
-  if (!timeZoneCatalog.any((zone) => zone.id == selectedId))
-    ButlerlyTimeZone(selectedId, selectedId, selectedId, selectedId),
-];
+/// Only use well-known IANA aliases that share the same zone rules.
+/// Do not collapse zones merely because their current UTC offsets match.
+const _commonTimeZoneAliases = <String, String>{
+  'Etc/UTC': 'UTC',
+  'Etc/GMT': 'UTC',
+  'US/Pacific': 'America/Los_Angeles',
+  'US/Mountain': 'America/Denver',
+  'US/Central': 'America/Chicago',
+  'US/Eastern': 'America/New_York',
+};
+
+bool _isCommonTimeZone(String id) =>
+    timeZoneCatalog.any((zone) => zone.id == id);
+
+/// Keep a previously saved, non-shortlist identifier at the top. Hide only
+/// its *known equivalent* common-zone choice, not unrelated zones with the
+/// same offset. Never rewrite the persisted identifier.
+List<ButlerlyTimeZone> timeZoneChoicesFor(String selectedId) {
+  final isCommon = _isCommonTimeZone(selectedId);
+  final equivalent = _commonTimeZoneAliases[selectedId];
+  return [
+    if (!isCommon)
+      ButlerlyTimeZone(selectedId, selectedId, selectedId, selectedId),
+    for (final zone in timeZoneCatalog)
+      if (isCommon || zone.id != equivalent) zone,
+  ];
+}
 
 String timeZoneLabelFor(String id, Locale locale) {
   for (final zone in timeZoneCatalog) {
     if (zone.id == id) return zone.label(locale);
+  }
+  final equivalent = _commonTimeZoneAliases[id];
+  if (equivalent != null) {
+    return '${timeZoneLabelFor(equivalent, locale)} ($id)';
   }
   final city = id.split('/').last.replaceAll('_', ' ');
   return city == id ? id : '$city ($id)';
@@ -152,7 +177,11 @@ Future<String?> showButlerlyTimeZonePicker(
       for (final zone in timeZoneChoicesFor(selectedId))
         ButlerlySelectionOption(
           value: zone.id,
-          child: Text(timeZoneLabelFor(zone.id, locale)),
+          child: Text(
+            !_isCommonTimeZone(selectedId) && zone.id == selectedId
+                ? '${context.l10n.text('timeZoneCurrent')}: ${timeZoneLabelFor(zone.id, locale)}'
+                : timeZoneLabelFor(zone.id, locale),
+          ),
         ),
       ButlerlySelectionOption(
         value: _moreTimeZonesValue,
