@@ -35,12 +35,74 @@ void main() {
         timeZoneLabelFor('Asia/Kolkata', const Locale('en')),
         'Kolkata (Asia/Kolkata)',
       );
+      expect(choices.first.id, 'Asia/Kolkata');
       expect(
         timeZoneChoicesFor('America/Los_Angeles').length,
         timeZoneCatalog.length,
       );
     },
   );
+
+  test('saved IANA aliases keep their identity without duplicate shortcuts', () {
+    for (final (saved, common) in const [
+      ('Etc/UTC', 'UTC'),
+      ('Etc/GMT', 'UTC'),
+      ('US/Pacific', 'America/Los_Angeles'),
+      ('US/Mountain', 'America/Denver'),
+      ('US/Central', 'America/Chicago'),
+      ('US/Eastern', 'America/New_York'),
+    ]) {
+      final choices = timeZoneChoicesFor(saved);
+      expect(choices.first.id, saved);
+      expect(choices.map((zone) => zone.id), isNot(contains(common)));
+      expect(choices.length, timeZoneCatalog.length);
+      expect(
+        timeZoneLabelFor(saved, const Locale('en')),
+        contains(saved),
+      );
+    }
+    expect(
+      timeZoneLabelFor('Etc/UTC', const Locale('zh')),
+      '协调世界时 (Etc/UTC)',
+    );
+    // Same present-day offset does not prove identical history or DST rules.
+    final phoenix = timeZoneChoicesFor('America/Phoenix');
+    expect(phoenix.first.id, 'America/Phoenix');
+    expect(
+      phoenix.map((zone) => zone.id),
+      contains('America/Denver'),
+    );
+  });
+
+  testWidgets('saved alias appears first with current-selection label', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: const [AppLocalizations.delegate],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => FilledButton(
+              onPressed: () => showButlerlyTimeZonePicker(
+                context,
+                selectedId: 'Etc/UTC',
+              ),
+              child: const Text('Open time zones'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Open time zones'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Current selection: UTC (Etc/UTC)'),
+      findsOneWidget,
+    );
+    // The current value is preserved, not replaced by its UTC alias.
+    expect(find.text('UTC'), findsNothing);
+  });
 
   test(
     'search deduplicates IDs, not distinct cities or daylight-saving rules',
