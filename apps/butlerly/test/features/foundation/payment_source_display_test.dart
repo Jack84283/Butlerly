@@ -147,7 +147,7 @@ void main() {
           id: PaymentSourceId('ordinary-bank'),
           name: 'Checking',
           issuer: 'Chase',
-          network: 'paypal-savings',
+          network: 'ach',
           type: PaymentSourceType.account,
         ),
         'ordinary-no-logo': PaymentSource(
