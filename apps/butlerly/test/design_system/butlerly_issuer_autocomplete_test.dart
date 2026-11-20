@@ -87,7 +87,7 @@ void main() {
         isNot(
           matches(
             RegExp(
-              r'<script\\b|<foreignObject\\b|<image\\b|javascript:',
+              r'<script\b|<foreignObject\b|<image\b|javascript:',
               caseSensitive: false,
             ),
           ),
