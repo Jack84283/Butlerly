@@ -58,6 +58,45 @@ void main() {
     expect(issuerForName('微众银行')?.assetPath, isNull);
   });
 
+  test('issuer catalog and bundled offline SVGs agree exactly', () {
+    final referenced = issuerInstitutions
+        .where((issuer) => issuer.asset != null)
+        .map((issuer) => '${issuer.asset}.svg')
+        .toSet();
+    final packaged = Directory('assets/icons/issuers')
+        .listSync()
+        .whereType<File>()
+        .map((file) => file.uri.pathSegments.last)
+        .where((name) => name.endsWith('.svg'))
+        .toSet();
+
+    expect(referenced, packaged);
+    expect(referenced.length, 37);
+    expect(
+      issuerInstitutions.where((issuer) => issuer.asset == null).length,
+      22,
+    );
+    expect(
+      File('pubspec.yaml').readAsStringSync(),
+      contains('assets/icons/issuers/'),
+    );
+    for (final asset in referenced) {
+      final source = File('assets/icons/issuers/$asset').readAsStringSync();
+      expect(
+        source,
+        isNot(
+          matches(
+            RegExp(
+              r'<script\\b|<foreignObject\\b|<image\\b|javascript:',
+              caseSensitive: false,
+            ),
+          ),
+        ),
+        reason: asset,
+      );
+    }
+  });
+
   testWidgets('autocomplete canonicalizes aliases but keeps custom entries', (
     tester,
   ) async {
