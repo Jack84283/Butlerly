@@ -100,39 +100,48 @@ class AddPage extends StatelessWidget {
       ),
       children: [
         if (desktop)
-          Row(
-            key: const ValueKey('desktop-add-three-columns'),
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (final (index, section) in sections.indexed) ...[
-                if (index > 0) const SizedBox(width: ButlerlySpacing.cardGap),
-                Expanded(
-                  child: Column(
-                    key: ValueKey(
-                      index == 0
-                          ? 'desktop-add-actions'
-                          : 'desktop-add-actions-$index',
-                    ),
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(
-                          bottom: ButlerlySpacing.small,
+          Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: ButlerlySize.wideTaskGridMaxWidth,
+              ),
+              child: Row(
+                key: const ValueKey('desktop-add-three-columns'),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final (index, section) in sections.indexed) ...[
+                    if (index > 0)
+                      const SizedBox(width: ButlerlySpacing.cardGap),
+                    Expanded(
+                      child: Column(
+                        key: ValueKey(
+                          index == 0
+                              ? 'desktop-add-actions'
+                              : 'desktop-add-actions-$index',
                         ),
-                        child: Text(
-                          section.title,
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              bottom: ButlerlySpacing.small,
+                            ),
+                            child: Text(
+                              section.title,
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                          ),
+                          for (final action in section.actions) ...[
+                            _DesktopAddActionCard(action: action),
+                            const SizedBox(height: ButlerlySpacing.cardGap),
+                          ],
+                        ],
                       ),
-                      for (final action in section.actions) ...[
-                        _DesktopAddActionCard(action: action),
-                        const SizedBox(height: ButlerlySpacing.cardGap),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
           )
         else
           for (final (index, section) in sections.indexed) ...[

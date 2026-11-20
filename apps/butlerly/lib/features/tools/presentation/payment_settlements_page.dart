@@ -143,6 +143,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
     }
 
     _showMessage(context.l10n.text('paymentSettlementSaved'));
+    notifyPaymentSettlementChanged();
     await _refresh();
   }
 
@@ -517,6 +518,7 @@ class _PaymentSettlementDetailPageState
       return;
     }
     _showMessage(context.l10n.text('paymentSettlementSaved'));
+    notifyPaymentSettlementChanged();
     await _refresh();
     widget.onChanged?.call();
   }
@@ -530,6 +532,7 @@ class _PaymentSettlementDetailPageState
       _showMessage(context.l10n.text('paymentSettlementSaveFailed'));
       return;
     }
+    notifyPaymentSettlementChanged();
     await _refresh();
     widget.onChanged?.call();
   }
@@ -590,6 +593,7 @@ class _PaymentSettlementDetailPageState
       return;
     }
     _showMessage(context.l10n.text('paymentSettlementRemoved'));
+    notifyPaymentSettlementChanged();
     if (widget.onClose case final close?) {
       close();
       widget.onChanged?.call();

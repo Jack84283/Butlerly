@@ -837,25 +837,25 @@ void main() {
       (
         'home-summary-inner-spending',
         'Expenses',
-        const Color(0xFFE24247),
+        const Color(0xFFB5444C),
         Icons.arrow_downward,
       ),
       (
         'home-summary-inner-transactions',
         'Transactions',
-        const Color(0xFF8051CF),
+        const Color(0xFF4B5563),
         Icons.receipt_long_outlined,
       ),
       (
         'home-summary-inner-income',
         'Income',
-        const Color(0xFF009B61),
+        const Color(0xFF287A52),
         Icons.arrow_upward,
       ),
       (
         'home-summary-inner-net-position',
         'Net cash flow',
-        const Color(0xFF1769E8),
+        const Color(0xFF356F9F),
         Icons.show_chart,
       ),
     ]) {
@@ -879,6 +879,15 @@ void main() {
       expect(
         tester.widget<Icon>(icon).color,
         AppTheme.light.extension<ButlerlySemanticColors>()!.primaryText,
+      );
+      final avatar = find.descendant(
+        of: card,
+        matching: find.byType(CircleAvatar),
+      );
+      expect(avatar, findsOneWidget);
+      expect(
+        tester.widget<CircleAvatar>(avatar).backgroundColor,
+        entry.$3.withValues(alpha: .18),
       );
       expect(
         find.descendant(of: card, matching: find.text('N/A')),

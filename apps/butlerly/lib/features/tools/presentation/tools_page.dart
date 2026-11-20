@@ -20,10 +20,15 @@ class ToolsPage extends StatefulWidget {
 }
 
 class _ToolsActionCounts {
-  const _ToolsActionCounts(this.reviewTransactions, this.duplicateGroups);
+  const _ToolsActionCounts(
+    this.reviewTransactions,
+    this.duplicateGroups,
+    this.settlementAttention,
+  );
 
   final int? reviewTransactions;
   final int? duplicateGroups;
+  final int? settlementAttention;
 }
 
 class _ToolsPageState extends State<ToolsPage> {
@@ -34,6 +39,8 @@ class _ToolsPageState extends State<ToolsPage> {
   void initState() {
     super.initState();
     transactionChanges.addListener(_refreshCounts);
+    paymentSettlementChanges.addListener(_refreshCounts);
+    workspaceRestoreChanges.addListener(_refreshCounts);
     _refreshCounts();
   }
 
@@ -41,6 +48,8 @@ class _ToolsPageState extends State<ToolsPage> {
   void dispose() {
     ++_countRequestGeneration;
     transactionChanges.removeListener(_refreshCounts);
+    paymentSettlementChanges.removeListener(_refreshCounts);
+    workspaceRestoreChanges.removeListener(_refreshCounts);
     super.dispose();
   }
 
@@ -55,6 +64,7 @@ class _ToolsPageState extends State<ToolsPage> {
     final finance = services<FinanceServices>();
     int? reviews;
     int? duplicates;
+    int? settlementAttention;
     try {
       final result = await finance.listReviewItems(
         ListReviewItemsQuery(scope: const ReviewPeriodScope.unscoped()),
@@ -76,15 +86,37 @@ class _ToolsPageState extends State<ToolsPage> {
     } catch (_) {
       // A failed read never becomes a confirmed zero.
     }
+    try {
+      final list = finance.listPaymentSettlements;
+      if (list != null) {
+        final result = await list();
+        if (result is ApplicationSuccess<List<PaymentSettlementDto>>) {
+          settlementAttention = result.value
+              .where(
+                (settlement) =>
+                    settlement.status != PaymentSettlementStatus.reconciled,
+              )
+              .length;
+        }
+      }
+    } catch (_) {
+      // A failed read never becomes a confirmed zero.
+    }
     if (mounted && generation == _countRequestGeneration) {
-      setState(() => _counts = _ToolsActionCounts(reviews, duplicates));
+      setState(
+        () => _counts = _ToolsActionCounts(
+          reviews,
+          duplicates,
+          settlementAttention,
+        ),
+      );
     }
   }
 
   List<ToolNavigationItem> _tools(BuildContext context) =>
       toolNavigationItems(context);
 
-  String? _reviewCountsLabel(BuildContext context) {
+  String? _reviewStatusLabel(BuildContext context) {
     final counts = _counts;
     if (counts == null ||
         (counts.reviewTransactions == null && counts.duplicateGroups == null)) {
@@ -103,6 +135,28 @@ class _ToolsPageState extends State<ToolsPage> {
     return parts.join(' · ');
   }
 
+  String? _settlementStatusLabel(BuildContext context) {
+    final count = _counts?.settlementAttention;
+    if (count == null || count == 0) return null;
+    return context.l10n
+        .text(
+          count == 1
+              ? 'toolsSettlementPendingOne'
+              : 'toolsSettlementPendingCount',
+        )
+        .replaceAll('{count}', '$count');
+  }
+
+  String? _statusForTool(
+    ToolNavigationItem tool,
+    String? reviewStatus,
+    String? settlementStatus,
+  ) => switch (tool.route) {
+    '/review' => reviewStatus,
+    '/payment-settlements' => settlementStatus,
+    _ => null,
+  };
+
   @override
   Widget build(BuildContext context) {
     final desktop =
@@ -112,7 +166,8 @@ class _ToolsPageState extends State<ToolsPage> {
         ) ==
         ButlerlyLayoutMode.wide;
     final tools = _tools(context);
-    final reviewStatus = _reviewCountsLabel(context);
+    final reviewStatus = _reviewStatusLabel(context);
+    final settlementStatus = _settlementStatusLabel(context);
 
     final sections = [
       (
@@ -141,46 +196,57 @@ class _ToolsPageState extends State<ToolsPage> {
       ),
       children: [
         if (desktop)
-          Row(
-            key: const ValueKey('desktop-tools-three-columns'),
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (final (index, section) in sections.indexed) ...[
-                if (index > 0) const SizedBox(width: ButlerlySpacing.cardGap),
-                Expanded(
-                  child: Column(
-                    key: ValueKey(
-                      index == 0
-                          ? 'desktop-tools-actions'
-                          : 'desktop-tools-actions-$index',
-                    ),
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(
-                          bottom: ButlerlySpacing.small,
+          Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(
+                maxWidth: ButlerlySize.wideTaskGridMaxWidth,
+              ),
+              child: Row(
+                key: const ValueKey('desktop-tools-three-columns'),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  for (final (index, section) in sections.indexed) ...[
+                    if (index > 0)
+                      const SizedBox(width: ButlerlySpacing.cardGap),
+                    Expanded(
+                      child: Column(
+                        key: ValueKey(
+                          index == 0
+                              ? 'desktop-tools-actions'
+                              : 'desktop-tools-actions-$index',
                         ),
-                        child: Text(
-                          section.title,
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              bottom: ButlerlySpacing.small,
+                            ),
+                            child: Text(
+                              section.title,
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                          ),
+                          for (final tool in tools.where(
+                            (item) => section.routes.contains(item.route),
+                          )) ...[
+                            _ToolPanel(
+                              tool: tool,
+                              status: _statusForTool(
+                                tool,
+                                reviewStatus,
+                                settlementStatus,
+                              ),
+                            ),
+                            const SizedBox(height: ButlerlySpacing.cardGap),
+                          ],
+                        ],
                       ),
-                      for (final tool in tools.where(
-                        (item) => section.routes.contains(item.route),
-                      )) ...[
-                        _ToolPanel(
-                          tool: tool,
-                          reviewStatus: tool.route == '/review'
-                              ? reviewStatus
-                              : null,
-                        ),
-                        const SizedBox(height: ButlerlySpacing.cardGap),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
           )
         else
           for (final (index, section) in sections.indexed) ...[
@@ -204,9 +270,9 @@ class _ToolsPageState extends State<ToolsPage> {
                   ButlerlyActionItem(
                     icon: tool.icon,
                     title: tool.title,
-                    subtitle: tool.route == '/review' && reviewStatus != null
-                        ? reviewStatus
-                        : tool.description,
+                    subtitle:
+                        _statusForTool(tool, reviewStatus, settlementStatus) ??
+                        tool.description,
                     onTap: () => context.push(tool.route),
                   ),
               ],
@@ -219,14 +285,14 @@ class _ToolsPageState extends State<ToolsPage> {
 }
 
 class _ToolPanel extends StatelessWidget {
-  const _ToolPanel({required this.tool, this.reviewStatus});
+  const _ToolPanel({required this.tool, this.status});
   final ToolNavigationItem tool;
-  final String? reviewStatus;
+  final String? status;
 
   @override
   Widget build(BuildContext context) => ButlerlyCard(
     onTap: () => context.push(tool.route),
-    semanticLabel: '${tool.title}, ${tool.description}',
+    semanticLabel: '${tool.title}, ${status ?? tool.description}',
     child: SizedBox(
       height: 148,
       child: Column(
@@ -248,7 +314,7 @@ class _ToolPanel extends StatelessWidget {
           ),
           const SizedBox(height: ButlerlySpacing.micro),
           Text(
-            reviewStatus ?? tool.description,
+            status ?? tool.description,
             style: Theme.of(context).textTheme.bodySmall,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,

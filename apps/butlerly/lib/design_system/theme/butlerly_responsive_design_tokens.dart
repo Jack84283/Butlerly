@@ -216,10 +216,13 @@ class ButlerlyHomeColorTokens {
   final Color onMetricMuted;
 
   static const standard = ButlerlyHomeColorTokens(
-    income: Color(0xFF009B61),
-    spending: Color(0xFFE24247),
-    transactions: Color(0xFF8051CF),
-    net: Color(0xFF1769E8),
+    // Home uses these only as restrained icon/status accents. The metric
+    // surfaces stay neutral so the summary reads as a ledger, not an alert
+    // board. These values align with the stable semantic palette.
+    income: Color(0xFF287A52),
+    spending: Color(0xFFB5444C),
+    transactions: Color(0xFF4B5563),
+    net: Color(0xFF356F9F),
     onMetric: Colors.white,
     onMetricMuted: Colors.white70,
   );
