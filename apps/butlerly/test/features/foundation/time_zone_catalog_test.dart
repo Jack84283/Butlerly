@@ -81,10 +81,8 @@ void main() {
         home: Scaffold(
           body: Builder(
             builder: (context) => FilledButton(
-              onPressed: () => showButlerlyTimeZonePicker(
-                context,
-                selectedId: 'Etc/UTC',
-              ),
+              onPressed: () =>
+                  showButlerlyTimeZonePicker(context, selectedId: 'Etc/UTC'),
               child: const Text('Open time zones'),
             ),
           ),
@@ -93,10 +91,7 @@ void main() {
     );
     await tester.tap(find.text('Open time zones'));
     await tester.pumpAndSettle();
-    expect(
-      find.text('Current selection: UTC (Etc/UTC)'),
-      findsOneWidget,
-    );
+    expect(find.text('Current selection: UTC (Etc/UTC)'), findsOneWidget);
     // The current value is preserved, not replaced by its UTC alias.
     expect(find.text('UTC'), findsNothing);
   });
