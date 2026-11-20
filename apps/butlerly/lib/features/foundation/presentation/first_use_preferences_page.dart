@@ -8,7 +8,6 @@ import 'package:butlerly/features/foundation/presentation/time_zone_catalog.dart
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_timezone/flutter_timezone.dart';
 
 class FirstUsePreferencesPage extends ConsumerStatefulWidget {
   const FirstUsePreferencesPage({super.key});
@@ -135,54 +134,40 @@ class _FirstUsePreferencesPageState
                         },
                       ),
                       const SizedBox(height: ButlerlySpacing.standard),
-                      FutureBuilder<List<TimezoneInfo>>(
-                        future: FlutterTimezone.getAvailableTimezones(
-                          Localizations.localeOf(context).toLanguageTag(),
+                      Semantics(
+                        button: true,
+                        label: context.l10n.text('timeZone'),
+                        child: InkWell(
+                          key: const ValueKey('first-use-time-zone-picker'),
+                          onTap: () async {
+                            final chosen = await showButlerlyTimeZonePicker(
+                              context,
+                              selectedId: preference.timeZoneId,
+                            );
+                            if (chosen != null && mounted) {
+                              await ref
+                                  .read(userPreferenceProvider.notifier)
+                                  .saveChanges(timeZoneId: chosen);
+                            }
+                          },
+                          child: InputDecorator(
+                            isEmpty: false,
+                            decoration: InputDecoration(
+                              labelText: context.l10n.text('timeZone'),
+                              prefixIcon: const Icon(Icons.schedule_rounded),
+                              suffixIcon: const Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                              ),
+                            ),
+                            child: Text(
+                              timeZoneLabelFor(
+                                preference.timeZoneId,
+                                Localizations.localeOf(context),
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                         ),
-                        builder: (context, snapshot) {
-                          final available =
-                              snapshot.data ??
-                              timeZoneCatalog
-                                  .map(
-                                    (zone) => TimezoneInfo(identifier: zone.id),
-                                  )
-                                  .toList(growable: false);
-                          final zones =
-                              {
-                                for (final zone in available)
-                                  zone.identifier: zone,
-                              }.values.toList(growable: false)..sort(
-                                (left, right) =>
-                                    left.identifier.compareTo(right.identifier),
-                              );
-                          return _SetupDropdown<String>(
-                            label: context.l10n.text('timeZone'),
-                            value:
-                                zones.any(
-                                  (zone) =>
-                                      zone.identifier == preference.timeZoneId,
-                                )
-                                ? preference.timeZoneId
-                                : 'UTC',
-                            leadingIcon: Icons.schedule_rounded,
-                            entries: [
-                              for (final zone in zones)
-                                DropdownMenuEntry(
-                                  value: zone.identifier,
-                                  label:
-                                      zone.localizedName?.name ??
-                                      zone.identifier,
-                                ),
-                            ],
-                            onChanged: (value) {
-                              if (value != null) {
-                                ref
-                                    .read(userPreferenceProvider.notifier)
-                                    .saveChanges(timeZoneId: value);
-                              }
-                            },
-                          );
-                        },
                       ),
                     ],
                   ),
