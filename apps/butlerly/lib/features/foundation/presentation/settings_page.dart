@@ -18,7 +18,6 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:go_router/go_router.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
@@ -168,6 +167,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     if (selected != null && mounted) onChanged(selected);
   }
 
+  Future<void> _changeTimeZone(String selectedId) async {
+    final chosen = await showButlerlyTimeZonePicker(
+      context,
+      selectedId: selectedId,
+    );
+    if (chosen != null && mounted && chosen != selectedId) {
+      await ref
+          .read(userPreferenceProvider.notifier)
+          .saveChanges(timeZoneId: chosen);
+    }
+  }
+
   Widget _buildDesktopMore(BuildContext context) {
     final appearance = ref.watch(appearanceProvider);
     final preference = ref.watch(userPreferenceProvider).value;
@@ -312,48 +323,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               .saveChanges(baseCurrency: value),
         ),
       ),
-      FutureBuilder<List<TimezoneInfo>>(
-        future: FlutterTimezone.getAvailableTimezones(
-          Localizations.localeOf(context).toLanguageTag(),
-        ),
-        builder: (context, snapshot) {
-          final zones =
-              {
-                  for (final zone
-                      in snapshot.data ??
-                          timeZoneCatalog.map(
-                            (entry) => TimezoneInfo(identifier: entry.id),
-                          ))
-                    zone.identifier: zone,
-                }.values.toList(growable: false)
-                ..sort((a, b) => a.identifier.compareTo(b.identifier));
-          final requestedZone = preference?.timeZoneId ?? 'UTC';
-          final zone = zones.any((entry) => entry.identifier == requestedZone)
-              ? requestedZone
-              : 'UTC';
-          final zoneLabel = zones
-              .where((entry) => entry.identifier == zone)
-              .firstOrNull;
-          return tile(
-            Icons.schedule_rounded,
-            l10n.text('timeZone'),
-            zoneLabel?.localizedName?.name ?? zone,
-            () => _chooseDesktopValue<String>(
-              label: l10n.text('timeZone'),
-              value: zone,
-              options: [
-                for (final item in zones)
-                  DropdownMenuItem(
-                    value: item.identifier,
-                    child: Text(item.localizedName?.name ?? item.identifier),
-                  ),
-              ],
-              onChanged: (value) => ref
-                  .read(userPreferenceProvider.notifier)
-                  .saveChanges(timeZoneId: value),
-            ),
-          );
-        },
+      tile(
+        Icons.schedule_rounded,
+        l10n.text('timeZone'),
+        timeZoneLabelFor(preference?.timeZoneId ?? 'UTC', locale),
+        preference == null
+            ? null
+            : () => unawaited(_changeTimeZone(preference.timeZoneId)),
       ),
     ];
 
@@ -657,51 +633,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 }
               },
             ),
-            FutureBuilder<List<TimezoneInfo>>(
-              future: FlutterTimezone.getAvailableTimezones(
-                Localizations.localeOf(context).toLanguageTag(),
+            _SettingsRow(
+              icon: Icons.schedule_rounded,
+              title: context.l10n.text('timeZone'),
+              subtitle: timeZoneLabelFor(
+                preference?.timeZoneId ?? 'UTC',
+                locale,
               ),
-              builder: (context, snapshot) {
-                final availableZones =
-                    snapshot.data ??
-                    timeZoneCatalog
-                        .map((zone) => TimezoneInfo(identifier: zone.id))
-                        .toList(growable: false);
-                final zones =
-                    {
-                      for (final zone in availableZones) zone.identifier: zone,
-                    }.values.toList(growable: false)..sort(
-                      (left, right) =>
-                          left.identifier.compareTo(right.identifier),
-                    );
-                final selected = preference?.timeZoneId ?? 'UTC';
-                return _SettingsDropdownRow<String>(
-                  value: zones.any((zone) => zone.identifier == selected)
-                      ? selected
-                      : zones.isEmpty
-                      ? selected
-                      : zones.first.identifier,
-                  label: context.l10n.text('timeZone'),
-                  icon: Icons.schedule_rounded,
-                  items: [
-                    for (final zone in zones)
-                      DropdownMenuItem(
-                        value: zone.identifier,
-                        child: Text(
-                          zone.localizedName?.name ?? zone.identifier,
-                        ),
-                      ),
-                  ],
-                  onChanged: preference == null
-                      ? (_) {}
-                      : (value) {
-                          if (value != null) {
-                            ref
-                                .read(userPreferenceProvider.notifier)
-                                .saveChanges(timeZoneId: value);
-                          }
-                        },
-                );
+              onTap: () {
+                if (preference != null) {
+                  unawaited(_changeTimeZone(preference.timeZoneId));
+                }
               },
             ),
           ],

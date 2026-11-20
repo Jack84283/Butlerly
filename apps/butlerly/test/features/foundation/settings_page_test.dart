@@ -369,7 +369,20 @@ void main() {
 
     expect(find.byIcon(CupertinoIcons.paintbrush), findsOneWidget);
     expect(find.byIcon(Icons.palette_outlined), findsNothing);
-    expect(find.byIcon(CupertinoIcons.chevron_down), findsNWidgets(5));
+    // Time zone now navigates to the compact/common-zone sheet and optional
+    // full search, while the other four settings retain dropdown indicators.
+    expect(find.byIcon(CupertinoIcons.chevron_down), findsNWidgets(4));
+    final timeZoneRow = find.ancestor(
+      of: find.text('Time zone'),
+      matching: find.byType(ListTile),
+    );
+    expect(
+      find.descendant(
+        of: timeZoneRow,
+        matching: find.byIcon(CupertinoIcons.chevron_right),
+      ),
+      findsOneWidget,
+    );
   }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
   testWidgets('More sound preview plays only on an enabled transition', (

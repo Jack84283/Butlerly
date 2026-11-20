@@ -132,8 +132,22 @@ class ButlerlyPaymentSourceIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Wallet provider marks take precedence over banks. Card/account sources
-    // show an issuer logo only for an exact, locally verified institution.
+    // Legacy wallets were sometimes stored as account-typed sources with an
+    // issuer. Resolve a wallet provider from the saved network, display identity
+    // or source name *before* looking up the bank. Do not infer a wallet from
+    // the issuer field or change the stored account type.
+    if (source.type == PaymentSourceType.account) {
+      final mark = paymentMarkFor(source);
+      if (walletPaymentProviderLabels.containsKey(mark)) {
+        return ButlerlyPaymentMarkIcon(mark: mark, size: size);
+      }
+    }
+
+    // This icon represents the payment *source*, not its card network.
+    // For a named institution, prefer its verified mark or an honest bank
+    // placeholder; showing Visa/Mastercard here would misidentify the issuer.
+    // Card networks remain visible in their own network-specific controls.
+    // Explicit wallet and cash sources use their distinct provider marks.
     if (source.type != PaymentSourceType.wallet &&
         source.type != PaymentSourceType.cash) {
       final issuer =
@@ -141,8 +155,17 @@ class ButlerlyPaymentSourceIcon extends StatelessWidget {
           (source.type == PaymentSourceType.account
               ? issuerForName(source.name)
               : null);
-      if (issuer?.assetPath != null) {
-        return ButlerlyIssuerIcon(issuer: issuer!, size: size);
+      if (issuer != null) {
+        return ButlerlyIssuerIcon(issuer: issuer, size: size);
+      }
+      final customIssuer = source.issuer?.trim();
+      if (customIssuer != null && customIssuer.isNotEmpty) {
+        return Icon(
+          Icons.account_balance_outlined,
+          size: size,
+          color: Theme.of(context).colorScheme.onSurface,
+          semanticLabel: customIssuer,
+        );
       }
     }
     return ButlerlyPaymentMarkIcon(mark: paymentMarkFor(source), size: size);
