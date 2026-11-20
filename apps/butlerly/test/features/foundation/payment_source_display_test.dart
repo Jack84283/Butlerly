@@ -118,14 +118,14 @@ void main() {
       final sources = <String, PaymentSource>{
         'no-artwork': PaymentSource(
           id: PaymentSourceId('legacy-paypal-capital-one'),
-          name: 'PayPal',
+          name: 'Everyday wallet',
           issuer: 'Capital One',
           network: 'paypal',
           type: PaymentSourceType.account,
         ),
         'verified-artwork': PaymentSource(
           id: PaymentSourceId('legacy-paypal-chase'),
-          name: 'PayPal',
+          name: 'My funds',
           issuer: 'Chase',
           network: 'PayPal',
           type: PaymentSourceType.account,
