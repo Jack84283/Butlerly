@@ -6,12 +6,7 @@ import 'package:flutter_timezone/flutter_timezone.dart';
 /// A short, geographically distinct list for the normal preference picker.
 /// Values are IANA identifiers, never UTC offsets or translated display names.
 final class ButlerlyTimeZone {
-  const ButlerlyTimeZone(
-    this.id,
-    this.english,
-    this.chinese, [
-    this.spanish,
-  ]);
+  const ButlerlyTimeZone(this.id, this.english, this.chinese, [this.spanish]);
 
   final String id;
   final String english;
@@ -125,11 +120,13 @@ List<ButlerlyTimeZoneSearchEntry> searchButlerlyTimeZones(
       () => ButlerlyTimeZoneSearchEntry(entry.id, entry.label(locale)),
     );
   }
-  final results = candidates.values.where((entry) {
-    final city = entry.id.replaceAll('_', ' ');
-    return entry.name.toLowerCase().contains(normalized) ||
-        city.toLowerCase().contains(normalized);
-  }).toList(growable: false);
+  final results = candidates.values
+      .where((entry) {
+        final city = entry.id.replaceAll('_', ' ');
+        return entry.name.toLowerCase().contains(normalized) ||
+            city.toLowerCase().contains(normalized);
+      })
+      .toList(growable: false);
   results.sort((a, b) {
     final nameOrder = a.name.compareTo(b.name);
     return nameOrder == 0 ? a.id.compareTo(b.id) : nameOrder;
