@@ -43,36 +43,33 @@ void main() {
     },
   );
 
-  test('saved IANA aliases keep their identity without duplicate shortcuts', () {
-    for (final (saved, common) in const [
-      ('Etc/UTC', 'UTC'),
-      ('Etc/GMT', 'UTC'),
-      ('US/Pacific', 'America/Los_Angeles'),
-      ('US/Mountain', 'America/Denver'),
-      ('US/Central', 'America/Chicago'),
-      ('US/Eastern', 'America/New_York'),
-    ]) {
-      final choices = timeZoneChoicesFor(saved);
-      expect(choices.first.id, saved);
-      expect(choices.map((zone) => zone.id), isNot(contains(common)));
-      expect(choices.length, timeZoneCatalog.length);
+  test(
+    'saved IANA aliases keep their identity without duplicate shortcuts',
+    () {
+      for (final (saved, common) in const [
+        ('Etc/UTC', 'UTC'),
+        ('Etc/GMT', 'UTC'),
+        ('US/Pacific', 'America/Los_Angeles'),
+        ('US/Mountain', 'America/Denver'),
+        ('US/Central', 'America/Chicago'),
+        ('US/Eastern', 'America/New_York'),
+      ]) {
+        final choices = timeZoneChoicesFor(saved);
+        expect(choices.first.id, saved);
+        expect(choices.map((zone) => zone.id), isNot(contains(common)));
+        expect(choices.length, timeZoneCatalog.length);
+        expect(timeZoneLabelFor(saved, const Locale('en')), contains(saved));
+      }
       expect(
-        timeZoneLabelFor(saved, const Locale('en')),
-        contains(saved),
+        timeZoneLabelFor('Etc/UTC', const Locale('zh')),
+        '协调世界时 (Etc/UTC)',
       );
-    }
-    expect(
-      timeZoneLabelFor('Etc/UTC', const Locale('zh')),
-      '协调世界时 (Etc/UTC)',
-    );
-    // Same present-day offset does not prove identical history or DST rules.
-    final phoenix = timeZoneChoicesFor('America/Phoenix');
-    expect(phoenix.first.id, 'America/Phoenix');
-    expect(
-      phoenix.map((zone) => zone.id),
-      contains('America/Denver'),
-    );
-  });
+      // Same present-day offset does not prove identical history or DST rules.
+      final phoenix = timeZoneChoicesFor('America/Phoenix');
+      expect(phoenix.first.id, 'America/Phoenix');
+      expect(phoenix.map((zone) => zone.id), contains('America/Denver'));
+    },
+  );
 
   testWidgets('saved alias appears first with current-selection label', (
     tester,
