@@ -113,7 +113,7 @@ List<ButlerlyTimeZoneSearchEntry> searchButlerlyTimeZones(
       id,
       () => ButlerlyTimeZoneSearchEntry(
         id,
-        name == null || name.isEmpty ? timeZoneLabelFor(id, locale) : name,
+        name.isEmpty ? timeZoneLabelFor(id, locale) : name,
       ),
     );
   }
