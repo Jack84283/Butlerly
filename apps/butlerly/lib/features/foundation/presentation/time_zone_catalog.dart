@@ -108,7 +108,7 @@ List<ButlerlyTimeZoneSearchEntry> searchButlerlyTimeZones(
   for (final entry in available) {
     final id = entry.identifier.trim();
     if (id.isEmpty) continue;
-    final name = entry.localizedName?.name.trim();
+    final name = (entry.localizedName?.name ?? '').trim();
     candidates.putIfAbsent(
       id,
       () => ButlerlyTimeZoneSearchEntry(
