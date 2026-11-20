@@ -177,6 +177,24 @@ void main() {
         type: PaymentSourceType.card,
         lastFour: '5678',
       ),
+      PaymentSource(
+        id: PaymentSourceId('custom-issuer'),
+        name: 'Credit union debit card',
+        issuer: 'My local credit union',
+        network: 'mastercard',
+        type: PaymentSourceType.debitCard,
+      ),
+      PaymentSource(
+        id: PaymentSourceId('network-only'),
+        name: 'Visa card',
+        network: 'visa',
+        type: PaymentSourceType.card,
+      ),
+      PaymentSource(
+        id: PaymentSourceId('legacy-wallet'),
+        name: 'PayPal',
+        type: PaymentSourceType.account,
+      ),
     ];
     await tester.pumpWidget(
       MaterialApp(
@@ -190,8 +208,14 @@ void main() {
         ),
       ),
     );
-    expect(find.byType(ButlerlyIssuerIcon), findsNWidgets(2));
-    expect(find.byType(ButlerlyPaymentMarkIcon), findsNWidgets(2));
+    // Three recognized issuers, including Capital One with no official logo.
+    expect(find.byType(ButlerlyIssuerIcon), findsNWidgets(3));
+    // Capital One and an unrecognized credit union use neutral bank imagery,
+    // not the separately selected Visa/Mastercard network marks.
+    expect(find.byIcon(Icons.account_balance_outlined), findsNWidgets(2));
+    // Wallets and card sources with no specified issuer retain provider/
+    // network artwork, including old account-typed wallet records.
+    expect(find.byType(ButlerlyPaymentMarkIcon), findsNWidgets(3));
     expect(tester.takeException(), isNull);
   });
 }
