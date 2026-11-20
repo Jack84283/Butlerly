@@ -25,6 +25,7 @@ import 'package:butlerly/features/foundation/presentation/transaction_master_dat
 import 'package:butlerly/features/foundation/presentation/transaction_row.dart';
 import 'package:butlerly/features/foundation/presentation/transactions_page.dart';
 import 'package:butlerly/features/tools/presentation/payment_settlements_page.dart';
+import 'package:butlerly/features/tools/presentation/tools_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
@@ -3557,6 +3558,106 @@ void main() {
     },
   );
 
+  for (final succeeds in [true, false]) {
+    testWidgets(
+      'delayed settlement mutation after route disposal refreshes retained Tools only on success=$succeeds',
+      (tester) async {
+        final finance = services<FinanceServices>();
+        final source = PaymentSource(
+          id: PaymentSourceId('delayed-card'),
+          name: 'Delayed card',
+          type: PaymentSourceType.card,
+        );
+        await finance.savePaymentSource(source);
+        final settlement = PaymentSettlement(
+          id: PaymentSettlementId('delayed-settlement'),
+          paymentSourceId: source.id,
+          payment: Money(
+            amount: DecimalValue.parse('75.25'),
+            currency: CurrencyCode('USD'),
+          ),
+          paymentDate: '2026-09-15',
+          periodStart: '2026-08-16',
+          periodEnd: '2026-09-15',
+          status: PaymentSettlementStatus.open,
+          createdAt: DateTime.utc(2026, 9, 15),
+          updatedAt: DateTime.utc(2026, 9, 15),
+        );
+        await paymentSettlements.save(settlement);
+        final navigator = GlobalKey<NavigatorState>();
+        await tester.pumpWidget(
+          MaterialApp(
+            navigatorKey: navigator,
+            home: const Scaffold(body: ToolsPage()),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final retainedTools = tester.state(find.byType(ToolsPage));
+        expect(find.text('1 settlement needs attention'), findsOneWidget);
+        unawaited(
+          navigator.currentState!.push<void>(
+            MaterialPageRoute(
+              builder: (_) => PaymentSettlementDetailPage(
+                finance: finance,
+                settlementId: settlement.id.value,
+                sourceNames: {source.id.value: source.name},
+                sources: [source],
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final detailState = tester.state(
+          find.byType(PaymentSettlementDetailPage),
+        );
+        final completion = Completer<void>();
+        paymentSettlements.saveCompletion = completion.future;
+        final revision = paymentSettlementChanges.value;
+        await tester.tap(find.byIcon(Icons.more_vert));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Mark as reconciled'));
+        await tester.pumpAndSettle();
+        expect(paymentSettlements.savePending, isTrue);
+        expect(
+          paymentSettlements.values[settlement.id.value]!.status,
+          PaymentSettlementStatus.open,
+        );
+        expect(paymentSettlementChanges.value, revision);
+
+        navigator.currentState!.pop();
+        await tester.pumpAndSettle();
+        expect(detailState.mounted, isFalse);
+        expect(tester.state(find.byType(ToolsPage)), same(retainedTools));
+        expect(find.text('1 settlement needs attention'), findsOneWidget);
+
+        if (succeeds) {
+          completion.complete();
+        } else {
+          completion.completeError(
+            const RepositoryException(
+              RepositoryFailureCode.unavailable,
+              'save payment settlement',
+            ),
+          );
+        }
+        await tester.pumpAndSettle();
+        expect(
+          paymentSettlements.values[settlement.id.value]!.status,
+          succeeds
+              ? PaymentSettlementStatus.reconciled
+              : PaymentSettlementStatus.open,
+        );
+        expect(paymentSettlementChanges.value, revision + (succeeds ? 1 : 0));
+        expect(tester.state(find.byType(ToolsPage)), same(retainedTools));
+        expect(
+          find.text('1 settlement needs attention'),
+          succeeds ? findsNothing : findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
   testWidgets('payment settlement rows show source, amount, and payment date', (
     tester,
   ) async {
@@ -5037,6 +5138,8 @@ final class MemoryPaymentSettlements implements PaymentSettlementRepository {
   final values = <String, PaymentSettlement>{};
   final periodTransactions = <Transaction>[];
   MemoryTransactionRepository? transactionRepository;
+  Future<void>? saveCompletion;
+  bool savePending = false;
 
   @override
   Future<PaymentSettlement?> findById(PaymentSettlementId id) async =>
@@ -5064,6 +5167,11 @@ final class MemoryPaymentSettlements implements PaymentSettlementRepository {
 
   @override
   Future<void> save(PaymentSettlement settlement) async {
+    final completion = saveCompletion;
+    if (completion != null) {
+      savePending = true;
+      await completion;
+    }
     values[settlement.id.value] = settlement;
   }
 }

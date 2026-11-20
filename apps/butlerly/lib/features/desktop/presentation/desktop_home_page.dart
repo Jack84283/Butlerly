@@ -257,6 +257,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
         );
         final currency = data?.context?.baseCurrency?.value ?? 'USD';
         final analysis = displayData.analysis;
+        final homeColors = context.designTokens.homeColors;
         final overviewUnavailable =
             !loading &&
             (data == null || data.status != HomeOverviewStatus.available);
@@ -572,6 +573,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                         comparison:
                                             analysis?.spendingComparison,
                                         currency: currency,
+                                        accentColor: homeColors.spending,
                                       ),
                                     ),
                                     const SizedBox(width: 8),
@@ -590,9 +592,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                         comparison: analysis
                                             ?.transactionCountComparison,
                                         isCount: true,
-                                        accentColor: ButlerlyHomeColorTokens
-                                            .standard
-                                            .transactions,
+                                        accentColor: homeColors.transactions,
                                       ),
                                     ),
                                     const SizedBox(width: 8),
@@ -609,6 +609,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                         icon: Icons.arrow_upward,
                                         comparison: analysis?.incomeComparison,
                                         currency: currency,
+                                        accentColor: homeColors.income,
                                       ),
                                     ),
                                     const SizedBox(width: 8),
@@ -622,6 +623,7 @@ class _DesktopHomePageState extends State<DesktopHomePage> {
                                         icon: Icons.show_chart,
                                         comparison: analysis?.netComparison,
                                         currency: currency,
+                                        accentColor: homeColors.net,
                                       ),
                                     ),
                                   ],
@@ -1610,13 +1612,7 @@ class _DesktopMetric extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color =
-        accentColor ??
-        (icon == Icons.arrow_upward
-            ? const Color(0xFF009B61)
-            : icon == Icons.arrow_downward
-            ? const Color(0xFFE24247)
-            : const Color(0xFF1769E8));
+    final color = accentColor ?? context.designTokens.homeColors.net;
     final fill = context.colors.subtleSurface;
     final foreground = context.colors.primaryText;
     final mutedForeground = context.colors.secondaryText;

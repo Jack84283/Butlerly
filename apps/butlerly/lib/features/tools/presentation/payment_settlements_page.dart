@@ -136,6 +136,9 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
       description: draft.description,
       externalReference: draft.externalReference,
     );
+    if (result is ApplicationSuccess<PaymentSettlementDto>) {
+      notifyPaymentSettlementChanged();
+    }
     if (!mounted) return;
     if (result is ApplicationFailure<PaymentSettlementDto>) {
       _showMessage(context.l10n.text('paymentSettlementSaveFailed'));
@@ -511,6 +514,9 @@ class _PaymentSettlementDetailPageState
       description: draft.description,
       externalReference: draft.externalReference,
     );
+    if (result is ApplicationSuccess<PaymentSettlementDto>) {
+      notifyPaymentSettlementChanged();
+    }
     if (!mounted) return;
     if (result is ApplicationFailure<PaymentSettlementDto>) {
       _showMessage(context.l10n.text('paymentSettlementSaveFailed'));
@@ -525,6 +531,9 @@ class _PaymentSettlementDetailPageState
     final setStatus = widget.finance.setPaymentSettlementStatus;
     if (setStatus == null) return;
     final result = await setStatus(widget.settlementId, status);
+    if (result is ApplicationSuccess<PaymentSettlementDto>) {
+      notifyPaymentSettlementChanged();
+    }
     if (!mounted) return;
     if (result is ApplicationFailure<PaymentSettlementDto>) {
       _showMessage(context.l10n.text('paymentSettlementSaveFailed'));
@@ -584,6 +593,9 @@ class _PaymentSettlementDetailPageState
     );
     if (!mounted || confirmed != true) return;
     final result = await remove(widget.settlementId);
+    if (result is ApplicationSuccess<void>) {
+      notifyPaymentSettlementChanged();
+    }
     if (!mounted) return;
     if (result is ApplicationFailure<void>) {
       _showMessage(context.l10n.text('dataPreserved'));

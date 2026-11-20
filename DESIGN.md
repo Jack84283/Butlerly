@@ -177,6 +177,8 @@ The palette is neutral-first and semantic. Butler Red is the default brand theme
 
 Butlerly uses a width-driven responsive model: compact below 801 logical pixels, medium from 801 to 1023 logical pixels, and wide at 1024 logical pixels and above. Qualifying tablet landscape viewports are promoted to wide even below 1024 logical pixels. Compact screens use the bottom navigation shell; wide layouts can use an expanded or collapsed navigation rail. Content is centered inside a readable surface capped at 760px, with 12px content gutters and a spacing rhythm built from 4, 8, 12, 16, 24, 32, 48, and 64px steps. Page chrome may span the viewport. At medium/wide widths, the readable content surface and surrounding page canvas use the same semantic background to avoid mismatched bands; content remains centered and width-capped, while cards and controls use distinct semantic surfaces. Compact viewports retain their existing subtle outside-canvas treatment. Desktop More uses independent two-column card stacks that collapse to one column when narrow.
 
+Wide task destinations such as Add and Tools may use the full desktop canvas, but their grouped action columns are centered inside a 1280px maximum task-grid width so individual cards do not become visually oversized on large monitors.
+
 ## Elevation & Depth
 
 The system is tonal by default. Cards use a low, consistent 2px elevation with neutral surface separation; overlays use restrained elevation only when a dialog, bottom sheet, or floating element needs to sit above the working surface. Dark appearance uses near-black and charcoal tonal layering instead of glow or heavy contrast effects.

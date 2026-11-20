@@ -1,4 +1,5 @@
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/tools/presentation/tools_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -34,6 +35,26 @@ void main() {
     expect(third.left, greaterThan(first.right));
     expect(third.top, closeTo(first.top, 1));
     expect(fifth.left, greaterThan(third.right));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('wide Tools keeps the task grid readable on large monitors', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1920, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: ToolsPage())),
+    );
+    await tester.pumpAndSettle();
+
+    final grid = tester.getRect(
+      find.byKey(const ValueKey('desktop-tools-three-columns')),
+    );
+    expect(grid.width, lessThanOrEqualTo(ButlerlySize.wideTaskGridMaxWidth));
     expect(tester.takeException(), isNull);
   });
 
