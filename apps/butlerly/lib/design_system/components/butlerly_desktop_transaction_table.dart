@@ -274,18 +274,40 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
         children: [
           if (onSelectionChanged != null)
             const SizedBox(width: selectionColumnWidth),
-          SizedBox(width: 100, child: _header(context, 'date')),
-          Expanded(flex: 3, child: _header(context, 'merchant')),
-          Expanded(flex: 2, child: _header(context, 'category')),
+          SizedBox(
+            key: const ValueKey('desktop-transaction-header-date'),
+            width: 100,
+            child: _header(context, 'date'),
+          ),
+          Expanded(
+            key: const ValueKey('desktop-transaction-header-merchant'),
+            flex: 3,
+            child: _header(context, 'merchant'),
+          ),
           if (prioritizeAmount)
             SizedBox(
+              key: const ValueKey('desktop-transaction-header-amount'),
               width: 112,
               child: _header(context, 'amount', align: TextAlign.end),
             ),
-          Expanded(flex: 2, child: _header(context, 'subcategory')),
-          Expanded(flex: 2, child: _header(context, 'paymentSource')),
+          Expanded(
+            key: const ValueKey('desktop-transaction-header-category'),
+            flex: 2,
+            child: _header(context, 'category'),
+          ),
+          Expanded(
+            key: const ValueKey('desktop-transaction-header-subcategory'),
+            flex: 2,
+            child: _header(context, 'subcategory'),
+          ),
+          Expanded(
+            key: const ValueKey('desktop-transaction-header-paymentSource'),
+            flex: 2,
+            child: _header(context, 'paymentSource'),
+          ),
           if (!prioritizeAmount)
             SizedBox(
+              key: const ValueKey('desktop-transaction-header-amount'),
               width: 112,
               child: _header(context, 'amount', align: TextAlign.end),
             ),
@@ -350,10 +372,12 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
         : '${transaction.direction == 'income' ? '+' : '−'}${NumberFormat.simpleCurrency(name: transaction.currency, locale: Localizations.localeOf(context).toString()).format(numericAmount.abs())}';
 
     final dateCell = SizedBox(
+      key: ValueKey('desktop-transaction-cell-date-${transaction.id}'),
       width: 100,
       child: _rowText(context, _date(context, transaction)),
     );
     final merchantCell = Expanded(
+      key: ValueKey('desktop-transaction-cell-merchant-${transaction.id}'),
       flex: 3,
       child: _rowText(
         context,
@@ -365,6 +389,7 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
       ),
     );
     final categoryCell = Expanded(
+      key: ValueKey('desktop-transaction-cell-category-${transaction.id}'),
       flex: 2,
       child: Align(
         alignment: AlignmentDirectional.centerStart,
@@ -372,10 +397,12 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
       ),
     );
     final subcategoryCell = Expanded(
+      key: ValueKey('desktop-transaction-cell-subcategory-${transaction.id}'),
       flex: 2,
       child: _rowText(context, subcategoryLabel ?? '—'),
     );
     final paymentSourceCell = Expanded(
+      key: ValueKey('desktop-transaction-cell-paymentSource-${transaction.id}'),
       flex: 2,
       child: Row(
         children: [
@@ -393,6 +420,7 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
       ),
     );
     final amountCell = SizedBox(
+      key: ValueKey('desktop-transaction-cell-amount-${transaction.id}'),
       width: 112,
       child: _rowText(
         context,
@@ -424,8 +452,8 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
                 ),
               dateCell,
               merchantCell,
-              categoryCell,
               if (prioritizeAmount) amountCell,
+              categoryCell,
               subcategoryCell,
               paymentSourceCell,
               if (!prioritizeAmount) amountCell,
