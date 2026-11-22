@@ -208,6 +208,41 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('Review tables prioritize amount before secondary columns', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        localizationsDelegates: const [AppLocalizations.delegate],
+        supportedLocales: const [Locale('en')],
+        home: Scaffold(
+          body: SizedBox(
+            width: 1000,
+            child: ButlerlyDesktopTransactionTable(
+              transactions: [data.first],
+              masterData: masterData,
+              prioritizeAmount: true,
+              onTap: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getRect(find.text('Amount')).left,
+      lessThan(tester.getRect(find.text('Subcategory')).left),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('Income amounts use the same red in the desktop table', (
     tester,
   ) async {

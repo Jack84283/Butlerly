@@ -379,6 +379,8 @@ class _TransactionsPageState extends State<TransactionsPage> {
           Navigator.pop(sheetContext);
           _clearFilters();
         },
+        cancelLabel: context.l10n.text('cancel'),
+        onCancel: () => Navigator.pop(sheetContext),
       ),
     );
   }
@@ -1390,7 +1392,7 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   ButlerlyTagPicker(
-                    searchLabel: context.l10n.text('search'),
+                    searchLabel: context.l10n.text('searchTags'),
                     createLabel: context.l10n.text('addTag'),
                     tags: data.tags,
                     masterData: TransactionMasterData(

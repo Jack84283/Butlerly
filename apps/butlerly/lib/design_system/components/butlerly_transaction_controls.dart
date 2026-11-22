@@ -251,6 +251,8 @@ class ButlerlyTransactionFilterSheet extends StatefulWidget {
     required this.formatDate,
     required this.onApply,
     required this.onClear,
+    required this.cancelLabel,
+    required this.onCancel,
     super.key,
   });
 
@@ -260,6 +262,8 @@ class ButlerlyTransactionFilterSheet extends StatefulWidget {
   final String Function(DateTime) formatDate;
   final ValueChanged<ButlerlyTransactionFilterValue> onApply;
   final VoidCallback onClear;
+  final String cancelLabel;
+  final VoidCallback onCancel;
 
   @override
   State<ButlerlyTransactionFilterSheet> createState() =>
@@ -409,6 +413,15 @@ class _ButlerlyTransactionFilterSheetState
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: ButlerlySpacing.compact),
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: TextButton(
+              key: const ValueKey('cancel-search-filters'),
+              onPressed: widget.onCancel,
+              child: Text(widget.cancelLabel),
+            ),
           ),
         ],
       ),

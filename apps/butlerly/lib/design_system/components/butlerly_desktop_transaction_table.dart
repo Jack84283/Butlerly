@@ -27,6 +27,7 @@ class ButlerlyDesktopTransactionSection extends StatefulWidget {
     this.emptyMessage,
     this.collapsible = false,
     this.initiallyExpanded = true,
+    this.prioritizeAmount = false,
     this.headerKey,
     this.innerCardKey,
     super.key,
@@ -46,6 +47,7 @@ class ButlerlyDesktopTransactionSection extends StatefulWidget {
   final String? emptyMessage;
   final bool collapsible;
   final bool initiallyExpanded;
+  final bool prioritizeAmount;
   final Key? headerKey;
   final Key? innerCardKey;
 
@@ -141,6 +143,7 @@ class _ButlerlyDesktopTransactionSectionState
               paymentSourceNames: widget.paymentSourceNames,
               missingCategoryLabel: widget.missingCategoryLabel,
               emptyMessage: widget.emptyMessage,
+              prioritizeAmount: widget.prioritizeAmount,
             ),
           ],
         ],
@@ -163,6 +166,7 @@ class ButlerlyDesktopTransactionTableCard extends StatelessWidget {
     this.emptyMessage,
     this.selectedTransactionId,
     this.onSelectionChanged,
+    this.prioritizeAmount = false,
     super.key,
   });
 
@@ -174,6 +178,7 @@ class ButlerlyDesktopTransactionTableCard extends StatelessWidget {
   final ValueChanged<TransactionDto> onTap;
   final String? selectedTransactionId;
   final ValueChanged<String>? onSelectionChanged;
+  final bool prioritizeAmount;
 
   @override
   Widget build(BuildContext context) => SizedBox(
@@ -188,6 +193,7 @@ class ButlerlyDesktopTransactionTableCard extends StatelessWidget {
         onTap: onTap,
         selectedTransactionId: selectedTransactionId,
         onSelectionChanged: onSelectionChanged,
+        prioritizeAmount: prioritizeAmount,
       ),
     ),
   );
@@ -211,6 +217,7 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
     this.emptyMessage,
     this.selectedTransactionId,
     this.onSelectionChanged,
+    this.prioritizeAmount = false,
     super.key,
   });
 
@@ -222,6 +229,7 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
   final ValueChanged<TransactionDto> onTap;
   final String? selectedTransactionId;
   final ValueChanged<String>? onSelectionChanged;
+  final bool prioritizeAmount;
 
   /// Minimum width needed to keep all six desktop columns readable.
   static const double minimumTableWidth = 760;
@@ -269,12 +277,18 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
           SizedBox(width: 100, child: _header(context, 'date')),
           Expanded(flex: 3, child: _header(context, 'merchant')),
           Expanded(flex: 2, child: _header(context, 'category')),
+          if (prioritizeAmount)
+            SizedBox(
+              width: 112,
+              child: _header(context, 'amount', align: TextAlign.end),
+            ),
           Expanded(flex: 2, child: _header(context, 'subcategory')),
           Expanded(flex: 2, child: _header(context, 'paymentSource')),
-          SizedBox(
-            width: 112,
-            child: _header(context, 'amount', align: TextAlign.end),
-          ),
+          if (!prioritizeAmount)
+            SizedBox(
+              width: 112,
+              child: _header(context, 'amount', align: TextAlign.end),
+            ),
         ],
       ),
       const SizedBox(height: ButlerlyTableTokens.headerToRowsGap),
@@ -335,6 +349,60 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
         ? '—'
         : '${transaction.direction == 'income' ? '+' : '−'}${NumberFormat.simpleCurrency(name: transaction.currency, locale: Localizations.localeOf(context).toString()).format(numericAmount.abs())}';
 
+    final dateCell = SizedBox(
+      width: 100,
+      child: _rowText(context, _date(context, transaction)),
+    );
+    final merchantCell = Expanded(
+      flex: 3,
+      child: _rowText(
+        context,
+        masterData.merchantName(transaction.merchantId) ??
+            transaction.rawCounterparty ??
+            transaction.description ??
+            context.l10n.text('untitledTransaction'),
+        fontWeight: FontWeight.bold,
+      ),
+    );
+    final categoryCell = Expanded(
+      flex: 2,
+      child: Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: _categoryBadge(context, categoryId, categoryLabel),
+      ),
+    );
+    final subcategoryCell = Expanded(
+      flex: 2,
+      child: _rowText(context, subcategoryLabel ?? '—'),
+    );
+    final paymentSourceCell = Expanded(
+      flex: 2,
+      child: Row(
+        children: [
+          if (showSource) ...[
+            ButlerlyPaymentMarkIcon(
+              mark:
+                  masterData.paymentSourceMark(transaction.paymentSourceId) ??
+                  'other',
+              size: 20,
+            ),
+            const SizedBox(width: ButlerlySpacing.micro),
+          ],
+          Expanded(child: _rowText(context, sourceLabel ?? '—')),
+        ],
+      ),
+    );
+    final amountCell = SizedBox(
+      width: 112,
+      child: _rowText(
+        context,
+        amount,
+        align: TextAlign.end,
+        color: context.colors.error,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+
     return Material(
       type: MaterialType.transparency,
       child: InkWell(
@@ -354,61 +422,13 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
                     value: transaction.id,
                   ),
                 ),
-              SizedBox(
-                width: 100,
-                child: _rowText(context, _date(context, transaction)),
-              ),
-              Expanded(
-                flex: 3,
-                child: _rowText(
-                  context,
-                  masterData.merchantName(transaction.merchantId) ??
-                      transaction.rawCounterparty ??
-                      transaction.description ??
-                      context.l10n.text('untitledTransaction'),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Expanded(
-                flex: 2,
-                child: Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: _categoryBadge(context, categoryId, categoryLabel),
-                ),
-              ),
-              Expanded(
-                flex: 2,
-                child: _rowText(context, subcategoryLabel ?? '—'),
-              ),
-              Expanded(
-                flex: 2,
-                child: Row(
-                  children: [
-                    if (showSource) ...[
-                      ButlerlyPaymentMarkIcon(
-                        mark:
-                            masterData.paymentSourceMark(
-                              transaction.paymentSourceId,
-                            ) ??
-                            'other',
-                        size: 20,
-                      ),
-                      const SizedBox(width: ButlerlySpacing.micro),
-                    ],
-                    Expanded(child: _rowText(context, sourceLabel ?? '—')),
-                  ],
-                ),
-              ),
-              SizedBox(
-                width: 112,
-                child: _rowText(
-                  context,
-                  amount,
-                  align: TextAlign.end,
-                  color: context.colors.error,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              dateCell,
+              merchantCell,
+              categoryCell,
+              if (prioritizeAmount) amountCell,
+              subcategoryCell,
+              paymentSourceCell,
+              if (!prioritizeAmount) amountCell,
             ],
           ),
         ),

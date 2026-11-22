@@ -922,6 +922,7 @@ class _ReviewPageState extends State<ReviewPage> {
                                   missingCategoryLabel: context.l10n.text(
                                     'uncategorized',
                                   ),
+                                  prioritizeAmount: true,
                                   onTap: (transaction) =>
                                       _selectReview(byId[transaction.id]!),
                                 )

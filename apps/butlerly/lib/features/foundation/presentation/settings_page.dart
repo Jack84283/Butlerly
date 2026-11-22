@@ -882,56 +882,65 @@ class _DesktopMoreRow extends StatelessWidget {
   final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) => Material(
-    type: MaterialType.transparency,
-    child: InkWell(
-      onTap: onTap,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(
-          minHeight: ButlerlySize.minimumTarget,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            vertical: ButlerlySpacing.compact,
+  Widget build(BuildContext context) => Semantics(
+    container: true,
+    excludeSemantics: true,
+    button: true,
+    enabled: onTap != null,
+    label: title,
+    value: value,
+    onTap: onTap,
+    child: Material(
+      type: MaterialType.transparency,
+      child: InkWell(
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            minHeight: ButlerlySize.minimumTarget,
           ),
-          child: Row(
-            children: [
-              if (icon != null) ...[
-                Icon(icon, size: 19, color: context.colors.secondaryText),
-                const SizedBox(width: ButlerlySpacing.standard),
-              ] else
-                const SizedBox(width: 38),
-              Expanded(
-                child: Text(
-                  title,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ),
-              if (value != null) ...[
-                const SizedBox(width: ButlerlySpacing.compact),
-                SizedBox(
-                  key: const ValueKey('desktop-more-value-column'),
-                  width: 140,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              vertical: ButlerlySpacing.compact,
+            ),
+            child: Row(
+              children: [
+                if (icon != null) ...[
+                  Icon(icon, size: 19, color: context.colors.secondaryText),
+                  const SizedBox(width: ButlerlySpacing.standard),
+                ] else
+                  const SizedBox(width: 38),
+                Expanded(
                   child: Text(
-                    value!,
-                    textAlign: TextAlign.end,
-                    maxLines: 1,
+                    title,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: context.colors.secondaryText,
-                    ),
+                    style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ),
+                if (value != null) ...[
+                  const SizedBox(width: ButlerlySpacing.compact),
+                  SizedBox(
+                    key: const ValueKey('desktop-more-value-column'),
+                    width: 140,
+                    child: Text(
+                      value!,
+                      textAlign: TextAlign.end,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: context.colors.secondaryText,
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(width: ButlerlySpacing.compact),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: context.colors.tertiaryText,
+                  size: 18,
+                ),
               ],
-              const SizedBox(width: ButlerlySpacing.compact),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: context.colors.tertiaryText,
-                size: 18,
-              ),
-            ],
+            ),
           ),
         ),
       ),

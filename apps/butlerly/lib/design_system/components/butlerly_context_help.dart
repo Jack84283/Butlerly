@@ -69,33 +69,41 @@ class ButlerlyPanelCloseButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-    child: IconButton(
-      key: buttonKey,
-      tooltip: context.l10n.text('close'),
-      onPressed: onPressed,
-      // AppBar.leading can allocate a wider slot than the Back button's
-      // actual visual circle. Keep hit size and painted circle independent.
-      style: IconButton.styleFrom(
-        fixedSize: const Size.square(ButlerlySize.minimumTarget),
-        minimumSize: const Size.square(ButlerlySize.minimumTarget),
-        padding: EdgeInsets.zero,
-        backgroundColor: Colors.transparent,
-        disabledBackgroundColor: Colors.transparent,
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      ),
-      iconSize: ButlerlyButtonTokens.iconSize,
-      icon: SizedBox.square(
-        key: const ValueKey('desktop-panel-close-circle'),
-        dimension: ButlerlyButtonTokens.iconVisualSize,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: context.colors.subtleSurface,
-            shape: BoxShape.circle,
-          ),
-          child: const Center(
-            child: Icon(
-              Icons.close_rounded,
-              size: ButlerlyButtonTokens.iconSize,
+    child: Semantics(
+      container: true,
+      excludeSemantics: true,
+      button: true,
+      enabled: onPressed != null,
+      label: context.l10n.text('close'),
+      onTap: onPressed,
+      child: IconButton(
+        key: buttonKey,
+        tooltip: context.l10n.text('close'),
+        onPressed: onPressed,
+        // AppBar.leading can allocate a wider slot than the Back button's
+        // actual visual circle. Keep hit size and painted circle independent.
+        style: IconButton.styleFrom(
+          fixedSize: const Size.square(ButlerlySize.minimumTarget),
+          minimumSize: const Size.square(ButlerlySize.minimumTarget),
+          padding: EdgeInsets.zero,
+          backgroundColor: Colors.transparent,
+          disabledBackgroundColor: Colors.transparent,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        iconSize: ButlerlyButtonTokens.iconSize,
+        icon: SizedBox.square(
+          key: const ValueKey('desktop-panel-close-circle'),
+          dimension: ButlerlyButtonTokens.iconVisualSize,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: context.colors.subtleSurface,
+              shape: BoxShape.circle,
+            ),
+            child: const Center(
+              child: Icon(
+                Icons.close_rounded,
+                size: ButlerlyButtonTokens.iconSize,
+              ),
             ),
           ),
         ),
@@ -141,6 +149,15 @@ class ButlerlyContextHelpButton extends StatelessWidget {
     final target = articleId ?? articleForContext(context);
     if (target == null) return const SizedBox.shrink();
     final scheme = Theme.of(context).colorScheme;
+    final action =
+        onPressed ??
+        () {
+          if (router == null) {
+            _openStandaloneHelp(context, target);
+          } else {
+            context.push('/help?article=${Uri.encodeComponent(target)}');
+          }
+        };
     // Keep the painted Help control compact while retaining a 44px hit
     // target for touch and keyboard accessibility. Its left spacing is
     // independent of the visual circle diameter.
@@ -154,43 +171,42 @@ class ButlerlyContextHelpButton extends StatelessWidget {
             ? ButlerlySpacing.small
             : ButlerlySpacing.none,
       ),
-      child: IconButton(
-        key: const ValueKey('page-context-help'),
-        tooltip: context.l10n.text('contextHelp'),
-        icon: SizedBox.square(
-          key: const ValueKey('page-context-help-visual'),
-          dimension: 32,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: scheme.primary,
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Icon(
-                Icons.question_mark_rounded,
-                size: 16,
-                color: scheme.onPrimary,
+      child: Semantics(
+        container: true,
+        excludeSemantics: true,
+        button: true,
+        label: context.l10n.text('contextHelp'),
+        onTap: action,
+        child: IconButton(
+          key: const ValueKey('page-context-help'),
+          tooltip: context.l10n.text('contextHelp'),
+          icon: SizedBox.square(
+            key: const ValueKey('page-context-help-visual'),
+            dimension: 32,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: scheme.primary,
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Icon(
+                  Icons.question_mark_rounded,
+                  size: 16,
+                  color: scheme.onPrimary,
+                ),
               ),
             ),
           ),
+          style: IconButton.styleFrom(
+            backgroundColor: Colors.transparent,
+            minimumSize: const Size.square(44),
+            maximumSize: const Size.square(44),
+            padding: EdgeInsets.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            shape: const CircleBorder(),
+          ),
+          onPressed: action,
         ),
-        style: IconButton.styleFrom(
-          backgroundColor: Colors.transparent,
-          minimumSize: const Size.square(44),
-          maximumSize: const Size.square(44),
-          padding: EdgeInsets.zero,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          shape: const CircleBorder(),
-        ),
-        onPressed:
-            onPressed ??
-            () {
-              if (router == null) {
-                _openStandaloneHelp(context, target);
-              } else {
-                context.push('/help?article=${Uri.encodeComponent(target)}');
-              }
-            },
       ),
     );
   }

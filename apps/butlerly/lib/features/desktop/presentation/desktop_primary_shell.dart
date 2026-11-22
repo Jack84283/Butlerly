@@ -1,5 +1,5 @@
 import 'package:butlerly/design_system/components/butlerly_brand_icon.dart';
-import 'package:butlerly/design_system/components/butlerly_context_help.dart';
+import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/design_system/tokens/butlerly_typography.dart';
@@ -322,17 +322,13 @@ class _WideCollapsedItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Builder(
-    builder: (itemContext) => Semantics(
-      button: true,
+    builder: (itemContext) => _WideNavigationSurface(
       selected: selected,
-      label: label,
-      child: _WideNavigationSurface(
+      child: ButlerlyTransparentIconButton(
+        icon: icon,
+        semanticLabel: label,
         selected: selected,
-        child: IconButton(
-          tooltip: label,
-          onPressed: () => onTap(itemContext),
-          icon: Icon(icon),
-        ),
+        onPressed: () => onTap(itemContext),
       ),
     ),
   );
@@ -370,10 +366,12 @@ class _WideCollapseButton extends StatelessWidget {
                 ),
               ),
             )
-          : IconButton(
-              tooltip: context.l10n.text('expand'),
+          : ButlerlyTransparentIconButton(
+              icon: expanded
+                  ? Icons.keyboard_double_arrow_left_rounded
+                  : Icons.keyboard_double_arrow_right_rounded,
+              semanticLabel: context.l10n.text('expand'),
               onPressed: onPressed,
-              icon: icon,
             ),
     );
   }
