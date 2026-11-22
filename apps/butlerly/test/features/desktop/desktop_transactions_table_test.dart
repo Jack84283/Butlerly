@@ -1,19 +1,40 @@
+import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/app/theme/app_theme.dart';
+import 'package:butlerly/core/di/finance_services.dart';
+import 'package:butlerly/core/di/service_locator.dart';
+import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_desktop_transaction_table.dart';
 import 'package:butlerly/design_system/components/butlerly_payment_source_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
-import 'package:butlerly/features/desktop/presentation/desktop_primary_shell.dart';
-import 'package:butlerly/features/desktop/presentation/desktop_transaction_detail_split_view.dart';
+import 'package:butlerly/features/foundation/presentation/review_page.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_master_data.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_record_list.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_row.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
+import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:intl/intl.dart';
+
+import '../transactions/transaction_lifecycle_test.dart'
+    show
+        MemoryCategories,
+        MemoryDuplicateGroups,
+        MemoryEvidence,
+        MemoryMerchantAliases,
+        MemoryMerchantMatchingConfiguration,
+        MemoryMerchantPatterns,
+        MemoryMerchants,
+        MemoryPaymentSettlements,
+        MemoryPaymentSources,
+        MemoryStatements,
+        MemoryTags,
+        MemoryTransactionRepository,
+        MemoryUserPreferences;
 
 void main() {
   setUpAll(() async {
@@ -272,95 +293,133 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets(
-    'Review split view keeps Amount visible at 1024px with expanded navigation',
-    (tester) async {
-      tester.view.physicalSize = const Size(1024, 900);
-      tester.view.devicePixelRatio = 1;
-      tester.view.platformDispatcher.textScaleFactorTestValue = 1.3;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      addTearDown(tester.view.platformDispatcher.clearTextScaleFactorTestValue);
+  testWidgets('Review production path keeps long Amount visible at 1024px', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1024, 900);
+    tester.view.devicePixelRatio = 1;
+    tester.view.platformDispatcher.textScaleFactorTestValue = 1.5;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.platformDispatcher.clearTextScaleFactorTestValue);
 
-      for (final locale in const [
-        Locale('en'),
-        Locale('zh', 'CN'),
-        Locale('es'),
-      ]) {
-        await tester.pumpWidget(
-          MaterialApp(
-            locale: locale,
-            theme: AppTheme.light,
-            localizationsDelegates: [
-              AppLocalizations.delegate,
-              ...GlobalMaterialLocalizations.delegates,
-            ],
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: DesktopPrimaryShell(
-              currentIndex: 3,
-              onSelected: (_) {},
-              onMoreSectionSelected: (_) {},
-              body: DesktopTransactionDetailSplitView(
-                results: ButlerlyDesktopTransactionTable(
-                  transactions: [data.first],
-                  masterData: masterData,
-                  prioritizeAmount: true,
-                  onTap: (_) {},
-                ),
-                detail: const Scaffold(
-                  key: ValueKey('review-detail-panel-content'),
-                  body: Text('Review detail'),
-                ),
-              ),
-            ),
-          ),
-        );
-        await tester.pumpAndSettle();
+    final repository = await _registerReviewServices();
+    addTearDown(() => services.reset());
+    final finance = services<FinanceServices>();
+    final created = await finance.createTransaction(
+      CreateTransactionCommand(
+        id: 'review-layout-long-amount',
+        provenanceId: 'review-layout-long-amount-provenance',
+        timing: KnownTransactionTime(DateTime.utc(2026, 10, 15)),
+        money: Money(
+          amount: DecimalValue.parse('123456789.67'),
+          currency: CurrencyCode('EUR'),
+        ),
+        direction: TransactionDirection.expense,
+        transactionDate: '2026-10-15',
+        description: 'Production review amount',
+      ),
+    );
+    expect(created, isA<ApplicationSuccess<TransactionDto>>());
+    final stored = repository.values['review-layout-long-amount']!;
+    final issueTime = stored.updatedAt.add(const Duration(seconds: 1));
+    repository.values['review-layout-long-amount'] = stored.addReviewIssue(
+      ReviewIssue(
+        id: ReviewIssueId('review-layout-long-amount-issue'),
+        transactionId: stored.id,
+        reason: ReviewIssueReason.uncertain,
+        createdAt: issueTime,
+        detail: 'Needs review',
+      ),
+      issueTime,
+    );
 
-        final rail = find.byKey(const ValueKey('primary-wide-navigation'));
-        if (tester.getSize(rail).width ==
-            ButlerlySize.wideNavigationCollapsedWidth) {
-          await tester.tap(
-            find.byIcon(Icons.keyboard_double_arrow_right_rounded),
-          );
-          await tester.pumpAndSettle();
-        }
-        expect(
-          tester.getSize(rail).width,
-          ButlerlySize.wideNavigationExpandedWidth,
-        );
-        expect(
-          find.byKey(const ValueKey('desktop-transaction-detail-panel')),
-          findsOneWidget,
-        );
+    await tester.pumpWidget(
+      MaterialApp(
+        locale: const Locale('es'),
+        theme: AppTheme.light,
+        localizationsDelegates: [
+          AppLocalizations.delegate,
+          ...GlobalMaterialLocalizations.delegates,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const AdaptiveShell(
+          location: '/review',
+          child: ReviewPage(showNeedsReview: true),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
 
-        final horizontalScroll = find.byKey(
-          const ValueKey('desktop-transaction-table-horizontal-scroll'),
-        );
-        expect(horizontalScroll, findsOneWidget);
-        final viewport = tester.getRect(horizontalScroll);
-        final amountHeader = tester.getRect(
-          find.byKey(const ValueKey('desktop-transaction-header-amount')),
-        );
-        final amountCell = tester.getRect(
-          find.byKey(const ValueKey('desktop-transaction-cell-amount-oct-1')),
-        );
-        expect(amountHeader.right, lessThanOrEqualTo(viewport.right));
-        expect(amountCell.right, lessThanOrEqualTo(viewport.right));
-        expect(
-          amountHeader.left,
-          closeTo(amountCell.left, 0.1),
-          reason: 'Amount header and row columns must align.',
-        );
-        expect(
-          amountHeader.right,
-          closeTo(amountCell.right, 0.1),
-          reason: 'Amount header and row columns must align.',
-        );
-        expect(tester.takeException(), isNull);
-      }
-    },
-  );
+    final rail = find.byKey(const ValueKey('primary-wide-navigation'));
+    if (tester.getSize(rail).width ==
+        ButlerlySize.wideNavigationCollapsedWidth) {
+      await tester.tap(find.byIcon(Icons.keyboard_double_arrow_right_rounded));
+      await tester.pumpAndSettle();
+    }
+    expect(
+      tester.getSize(rail).width,
+      ButlerlySize.wideNavigationExpandedWidth,
+    );
+    expect(find.byType(ReviewPage), findsOneWidget);
+    expect(find.byType(ButlerlyPage), findsOneWidget);
+    final section = tester.widget<ButlerlyDesktopTransactionSection>(
+      find.byType(ButlerlyDesktopTransactionSection),
+    );
+    expect(section.prioritizeAmount, isTrue);
+
+    final row = find.byKey(
+      const ValueKey('desktop-transaction-row-review-layout-long-amount'),
+    );
+    expect(row, findsOneWidget);
+    await tester.tap(row);
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('desktop-transaction-detail-panel')),
+      findsOneWidget,
+    );
+
+    final horizontalScroll = find.byKey(
+      const ValueKey('desktop-transaction-table-horizontal-scroll'),
+    );
+    expect(horizontalScroll, findsOneWidget);
+    final viewport = tester.getRect(horizontalScroll);
+    final amountHeader = tester.getRect(
+      find.byKey(const ValueKey('desktop-transaction-header-amount')),
+    );
+    final amountCell = find.byKey(
+      const ValueKey(
+        'desktop-transaction-cell-amount-review-layout-long-amount',
+      ),
+    );
+    final amountText = find.descendant(
+      of: amountCell,
+      matching: find.byType(Text),
+    );
+    final expectedAmount =
+        '−${NumberFormat.simpleCurrency(name: 'EUR', locale: 'es').format(123456789.67)}';
+    expect(amountText, findsOneWidget);
+    expect(tester.widget<Text>(amountText).data, expectedAmount);
+    expect(tester.widget<Text>(amountText).maxLines, isNull);
+    expect(tester.widget<Text>(amountText).overflow, isNull);
+    expect(
+      tester.getSize(amountCell).width,
+      greaterThan(ButlerlyDesktopTransactionTable.minimumAmountColumnWidth),
+    );
+    expect(amountHeader.right, lessThanOrEqualTo(viewport.right));
+    expect(tester.getRect(amountCell).right, lessThanOrEqualTo(viewport.right));
+    expect(
+      amountHeader.left,
+      closeTo(tester.getRect(amountCell).left, 0.1),
+      reason: 'Amount header and row columns must align.',
+    );
+    expect(
+      amountHeader.right,
+      closeTo(tester.getRect(amountCell).right, 0.1),
+      reason: 'Amount header and row columns must align.',
+    );
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('Default desktop tables keep Amount as the last column', (
     tester,
@@ -376,28 +435,56 @@ void main() {
         localizationsDelegates: const [AppLocalizations.delegate],
         supportedLocales: const [Locale('en')],
         home: Scaffold(
-          body: SizedBox(
-            width: 1000,
-            child: ButlerlyDesktopTransactionTable(
-              transactions: [data.first],
-              masterData: masterData,
-              onTap: (_) {},
-            ),
+          body: TransactionRecordList(
+            transactions: [data.first],
+            masterData: masterData,
+            groupByFinancialDate: true,
+            collapsibleMonthSections: true,
+            monthSectionsAsCards: true,
+            dashboardRowStyle: true,
+            desktopTableMode: true,
+            onTap: (_) {},
           ),
         ),
       ),
     );
     await tester.pumpAndSettle();
 
-    final headers = [
-      'Date',
-      'Merchant',
-      'Category',
-      'Subcategory',
-      'Payment source',
-      'Amount',
-    ].map((label) => tester.getRect(find.text(label)).left).toList();
-    expect(headers, orderedEquals(headers.toList()..sort()));
+    final date = tester
+        .getRect(find.byKey(const ValueKey('desktop-transaction-header-date')))
+        .left;
+    final merchant = tester
+        .getRect(
+          find.byKey(const ValueKey('desktop-transaction-header-merchant')),
+        )
+        .left;
+    final category = tester
+        .getRect(
+          find.byKey(const ValueKey('desktop-transaction-header-category')),
+        )
+        .left;
+    final subcategory = tester
+        .getRect(
+          find.byKey(const ValueKey('desktop-transaction-header-subcategory')),
+        )
+        .left;
+    final paymentSource = tester
+        .getRect(
+          find.byKey(
+            const ValueKey('desktop-transaction-header-paymentSource'),
+          ),
+        )
+        .left;
+    final amount = tester
+        .getRect(
+          find.byKey(const ValueKey('desktop-transaction-header-amount')),
+        )
+        .left;
+    expect(date, lessThan(merchant));
+    expect(merchant, lessThan(category));
+    expect(category, lessThan(subcategory));
+    expect(subcategory, lessThan(paymentSource));
+    expect(paymentSource, lessThan(amount));
     expect(tester.takeException(), isNull);
   });
 
@@ -885,4 +972,44 @@ void main() {
     expect(find.text('Corner Store'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+}
+
+Future<MemoryTransactionRepository> _registerReviewServices() async {
+  await services.reset();
+  final transactions = MemoryTransactionRepository();
+  final evidence = MemoryEvidence();
+  final duplicateGroups = MemoryDuplicateGroups(transactions);
+  final statements = MemoryStatements(transactions);
+  final paymentSources = MemoryPaymentSources();
+  final merchants = MemoryMerchants();
+  final categories = MemoryCategories();
+  final tags = MemoryTags();
+  final userPreferences = MemoryUserPreferences();
+  final merchantAliases = MemoryMerchantAliases();
+  final merchantPatterns = MemoryMerchantPatterns();
+  final merchantMatchingConfiguration = MemoryMerchantMatchingConfiguration(
+    merchants,
+    merchantAliases,
+    merchantPatterns,
+  );
+  final paymentSettlements = MemoryPaymentSettlements()
+    ..transactionRepository = transactions;
+  services.registerSingleton<FinanceServices>(
+    FinanceServices(
+      transactions,
+      paymentSources,
+      merchants,
+      categories,
+      tags,
+      evidence,
+      userPreferences,
+      duplicateGroups: duplicateGroups,
+      statements: statements,
+      merchantAliases: merchantAliases,
+      merchantNormalizationPatterns: merchantPatterns,
+      merchantMatchingConfiguration: merchantMatchingConfiguration,
+      paymentSettlements: paymentSettlements,
+    ),
+  );
+  return transactions;
 }

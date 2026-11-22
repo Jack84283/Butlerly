@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:butlerly/design_system/category/butlerly_category_identity.dart';
 import 'package:butlerly/design_system/components/butlerly_payment_source_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
@@ -234,10 +236,15 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
   /// Minimum width needed to keep all six desktop columns readable.
   static const double minimumTableWidth = 760;
   static const double selectionColumnWidth = 52;
+  static const double minimumAmountColumnWidth = 112;
+  static const double _amountColumnSafetyInset = 8;
+  static const int _flexColumnTotal = 9;
+  static const int _merchantFlex = 3;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
+      final amountColumnWidth = _amountColumnWidth(context, constraints);
       // The owning inner card provides the complete content inset.
       // Keep the table itself edge-to-edge within that padded space.
       final table = DefaultTextStyle(
@@ -245,17 +252,20 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
         style: (Theme.of(context).textTheme.bodyMedium ?? const TextStyle())
             .copyWith(color: context.colors.primaryText),
         child: onSelectionChanged == null
-            ? _buildTable(context)
+            ? _buildTable(context, amountColumnWidth)
             : RadioGroup<String>(
                 groupValue: selectedTransactionId,
                 onChanged: (value) {
                   if (value != null) onSelectionChanged!(value);
                 },
-                child: _buildTable(context),
+                child: _buildTable(context, amountColumnWidth),
               ),
       );
       final minimumWidth =
           minimumTableWidth +
+          (prioritizeAmount
+              ? 0
+              : math.max(0, amountColumnWidth - minimumAmountColumnWidth)) +
           (onSelectionChanged == null ? 0 : selectionColumnWidth);
       if (constraints.maxWidth >= minimumWidth) return table;
       return SingleChildScrollView(
@@ -266,7 +276,53 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
     },
   );
 
-  Widget _buildTable(BuildContext context) => Column(
+  double _amountColumnWidth(BuildContext context, BoxConstraints constraints) {
+    final amountStyle =
+        (Theme.of(context).textTheme.bodyMedium ?? const TextStyle()).copyWith(
+          color: context.colors.error,
+          fontWeight: FontWeight.bold,
+        );
+    final values = <String>[
+      context.l10n.text('amount'),
+      for (final transaction in transactions)
+        _formatAmount(context, transaction),
+    ];
+    var measuredWidth = 0.0;
+    for (final value in values) {
+      final painter = TextPainter(
+        text: TextSpan(text: value, style: amountStyle),
+        textDirection: Directionality.of(context),
+        textScaler: MediaQuery.textScalerOf(context),
+        maxLines: 1,
+      )..layout();
+      measuredWidth = math.max(measuredWidth, painter.width);
+    }
+    measuredWidth += _amountColumnSafetyInset;
+    final width = math.max(minimumAmountColumnWidth, measuredWidth);
+    if (!prioritizeAmount || !constraints.maxWidth.isFinite) return width;
+
+    // Keep the prioritized Amount column in the visible portion of a narrow
+    // split view. If a localized value is wider than this allowance, its text
+    // wraps inside the same header/row column instead of being ellipsized.
+    final leadingWidth =
+        (onSelectionChanged == null ? 0 : selectionColumnWidth) + 100;
+    final tableWidth =
+        minimumTableWidth +
+        (onSelectionChanged == null ? 0 : selectionColumnWidth);
+    final merchantShare =
+        (tableWidth - leadingWidth - minimumAmountColumnWidth) *
+        _merchantFlex /
+        _flexColumnTotal;
+    final maximumVisibleWidth =
+        constraints.maxWidth - leadingWidth - merchantShare;
+    final availableWidth = math.max(
+      minimumAmountColumnWidth,
+      maximumVisibleWidth - _amountColumnSafetyInset,
+    );
+    return math.min(width, availableWidth);
+  }
+
+  Widget _buildTable(BuildContext context, double amountColumnWidth) => Column(
     key: const ValueKey('desktop-transactions-table'),
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
@@ -287,7 +343,7 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
           if (prioritizeAmount)
             SizedBox(
               key: const ValueKey('desktop-transaction-header-amount'),
-              width: 112,
+              width: amountColumnWidth,
               child: _header(context, 'amount', align: TextAlign.end),
             ),
           Expanded(
@@ -308,7 +364,7 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
           if (!prioritizeAmount)
             SizedBox(
               key: const ValueKey('desktop-transaction-header-amount'),
-              width: 112,
+              width: amountColumnWidth,
               child: _header(context, 'amount', align: TextAlign.end),
             ),
         ],
@@ -320,7 +376,7 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
         color: ButlerlyTableTokens.dividerColor(context),
       ),
       for (final transaction in transactions) ...[
-        _transactionRow(context, transaction),
+        _transactionRow(context, transaction, amountColumnWidth),
         Divider(
           height: ButlerlyTableTokens.dividerThickness,
           thickness: ButlerlyTableTokens.dividerThickness,
@@ -347,7 +403,11 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
     overflow: TextOverflow.ellipsis,
   );
 
-  Widget _transactionRow(BuildContext context, TransactionDto transaction) {
+  Widget _transactionRow(
+    BuildContext context,
+    TransactionDto transaction,
+    double amountColumnWidth,
+  ) {
     final legacyParentId = transaction.subcategoryId == null
         ? masterData.categoryParentId(transaction.categoryId)
         : null;
@@ -366,10 +426,7 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
             ? context.l10n.text('uncategorized')
             : missingCategoryLabel ?? context.l10n.text('unavailableCategory'));
     final subcategoryLabel = masterData.categoryName(subcategoryId);
-    final numericAmount = double.tryParse(transaction.amount);
-    final amount = numericAmount == null
-        ? '—'
-        : '${transaction.direction == 'income' ? '+' : '−'}${NumberFormat.simpleCurrency(name: transaction.currency, locale: Localizations.localeOf(context).toString()).format(numericAmount.abs())}';
+    final amount = _formatAmount(context, transaction);
 
     final dateCell = SizedBox(
       key: ValueKey('desktop-transaction-cell-date-${transaction.id}'),
@@ -421,13 +478,15 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
     );
     final amountCell = SizedBox(
       key: ValueKey('desktop-transaction-cell-amount-${transaction.id}'),
-      width: 112,
+      width: amountColumnWidth,
       child: _rowText(
         context,
         amount,
         align: TextAlign.end,
         color: context.colors.error,
         fontWeight: FontWeight.bold,
+        maxLines: null,
+        overflow: null,
       ),
     );
 
@@ -464,12 +523,21 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
     );
   }
 
+  String _formatAmount(BuildContext context, TransactionDto transaction) {
+    final numericAmount = double.tryParse(transaction.amount);
+    return numericAmount == null
+        ? '—'
+        : '${transaction.direction == 'income' ? '+' : '−'}${NumberFormat.simpleCurrency(name: transaction.currency, locale: Localizations.localeOf(context).toString()).format(numericAmount.abs())}';
+  }
+
   Widget _rowText(
     BuildContext context,
     String value, {
     TextAlign align = TextAlign.start,
     FontWeight? fontWeight,
     Color? color,
+    int? maxLines = 1,
+    TextOverflow? overflow = TextOverflow.ellipsis,
   }) => Text(
     value,
     style: (Theme.of(context).textTheme.bodyMedium ?? const TextStyle())
@@ -477,8 +545,8 @@ class ButlerlyDesktopTransactionTable extends StatelessWidget {
           color: color ?? context.colors.primaryText,
           fontWeight: fontWeight,
         ),
-    maxLines: 1,
-    overflow: TextOverflow.ellipsis,
+    maxLines: maxLines,
+    overflow: overflow,
     textAlign: align,
   );
 
