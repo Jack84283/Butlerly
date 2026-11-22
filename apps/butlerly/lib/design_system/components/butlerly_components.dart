@@ -502,6 +502,7 @@ class ButlerlyTransparentIconButton extends StatelessWidget {
     required this.icon,
     required this.semanticLabel,
     this.onPressed,
+    this.selected = false,
     this.buttonKey,
     this.iconSize = ButlerlyButtonTokens.iconSize,
     this.alignment = Alignment.center,
@@ -511,6 +512,7 @@ class ButlerlyTransparentIconButton extends StatelessWidget {
   final IconData icon;
   final String semanticLabel;
   final VoidCallback? onPressed;
+  final bool selected;
   final Key? buttonKey;
   final double iconSize;
   final AlignmentGeometry alignment;
@@ -521,12 +523,15 @@ class ButlerlyTransparentIconButton extends StatelessWidget {
     child: Semantics(
       button: true,
       enabled: onPressed != null,
+      selected: selected,
       label: semanticLabel,
       child: TextButton(
         key: buttonKey,
         onPressed: onPressed,
         style: TextButton.styleFrom(
-          foregroundColor: context.colors.secondaryText,
+          foregroundColor: selected
+              ? context.colors.interactive
+              : context.colors.secondaryText,
           disabledForegroundColor: context.colors.tertiaryText,
           backgroundColor: Colors.transparent,
           disabledBackgroundColor: Colors.transparent,
@@ -1859,76 +1864,84 @@ class _ButlerlySelectFieldState<T> extends State<ButlerlySelectField<T>> {
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) => DropdownMenu<T>(
-      controller: _controller,
-      initialSelection: widget.value,
-      leadingIcon: widget.leadingIcon,
-      width: constraints.maxWidth,
-      menuHeight: 192,
-      label: Text(widget.label),
-      trailingIcon: widget.onCreate == null && widget.onClear == null
-          ? null
-          : Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (widget.onCreate != null)
-                  IconButton(
-                    onPressed: widget.onCreate,
-                    icon: const Icon(Icons.add_circle_outline),
-                    tooltip: widget.createTooltip,
-                  ),
-                if (widget.onClear != null)
-                  IconButton(
-                    onPressed: widget.onClear,
-                    icon: const Icon(Icons.clear),
-                    tooltip: widget.clearTooltip,
-                  ),
-                const Icon(Icons.arrow_drop_down),
-              ],
+    builder: (context, constraints) {
+      final selectedLabel = _labelFor(widget.value, widget.entries);
+      return Semantics(
+        container: true,
+        label: widget.label,
+        value: selectedLabel.isEmpty ? null : selectedLabel,
+        child: DropdownMenu<T>(
+          controller: _controller,
+          initialSelection: widget.value,
+          leadingIcon: widget.leadingIcon,
+          width: constraints.maxWidth,
+          menuHeight: 192,
+          label: Text(widget.label),
+          trailingIcon: widget.onCreate == null && widget.onClear == null
+              ? null
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (widget.onCreate != null)
+                      IconButton(
+                        onPressed: widget.onCreate,
+                        icon: const Icon(Icons.add_circle_outline),
+                        tooltip: widget.createTooltip,
+                      ),
+                    if (widget.onClear != null)
+                      IconButton(
+                        onPressed: widget.onClear,
+                        icon: const Icon(Icons.clear),
+                        tooltip: widget.clearTooltip,
+                      ),
+                    const Icon(Icons.arrow_drop_down),
+                  ],
+                ),
+          inputDecorationTheme: Theme.of(context).inputDecorationTheme,
+          menuStyle: MenuStyle(
+            minimumSize: WidgetStatePropertyAll(Size(constraints.maxWidth, 0)),
+            maximumSize: WidgetStatePropertyAll(
+              Size(constraints.maxWidth, double.infinity),
             ),
-      inputDecorationTheme: Theme.of(context).inputDecorationTheme,
-      menuStyle: MenuStyle(
-        minimumSize: WidgetStatePropertyAll(Size(constraints.maxWidth, 0)),
-        maximumSize: WidgetStatePropertyAll(
-          Size(constraints.maxWidth, double.infinity),
-        ),
-        backgroundColor: WidgetStatePropertyAll(context.colors.cardSurface),
-        surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
-        side: const WidgetStatePropertyAll(BorderSide.none),
-        shape: const WidgetStatePropertyAll(
-          RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(
-              Radius.circular(ButlerlyRadius.card),
-            ),
-          ),
-        ),
-        padding: const WidgetStatePropertyAll(
-          EdgeInsets.symmetric(vertical: ButlerlySpacing.micro),
-        ),
-      ),
-      dropdownMenuEntries: [
-        for (final entry in widget.entries)
-          DropdownMenuEntry<T>(
-            value: entry.value,
-            label: entry.label,
-            labelWidget: entry.labelWidget,
-            leadingIcon: entry.leadingIcon,
-            trailingIcon: entry.trailingIcon,
-            enabled: entry.enabled,
-            style: (entry.style ?? const ButtonStyle()).copyWith(
-              side: const WidgetStatePropertyAll(BorderSide.none),
-              shape: const WidgetStatePropertyAll(
-                RoundedRectangleBorder(
-                  borderRadius: BorderRadius.all(
-                    Radius.circular(ButlerlyRadius.standard),
-                  ),
+            backgroundColor: WidgetStatePropertyAll(context.colors.cardSurface),
+            surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+            side: const WidgetStatePropertyAll(BorderSide.none),
+            shape: const WidgetStatePropertyAll(
+              RoundedRectangleBorder(
+                borderRadius: BorderRadius.all(
+                  Radius.circular(ButlerlyRadius.card),
                 ),
               ),
             ),
+            padding: const WidgetStatePropertyAll(
+              EdgeInsets.symmetric(vertical: ButlerlySpacing.micro),
+            ),
           ),
-      ],
-      onSelected: widget.onChanged,
-    ),
+          dropdownMenuEntries: [
+            for (final entry in widget.entries)
+              DropdownMenuEntry<T>(
+                value: entry.value,
+                label: entry.label,
+                labelWidget: entry.labelWidget,
+                leadingIcon: entry.leadingIcon,
+                trailingIcon: entry.trailingIcon,
+                enabled: entry.enabled,
+                style: (entry.style ?? const ButtonStyle()).copyWith(
+                  side: const WidgetStatePropertyAll(BorderSide.none),
+                  shape: const WidgetStatePropertyAll(
+                    RoundedRectangleBorder(
+                      borderRadius: BorderRadius.all(
+                        Radius.circular(ButlerlyRadius.standard),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+          onSelected: widget.onChanged,
+        ),
+      );
+    },
   );
 }
 

@@ -548,6 +548,7 @@ void main() {
   testWidgets('filter sheet shows Apply and secondary Clear side by side', (
     tester,
   ) async {
+    var cancelled = false;
     await pump(
       tester,
       ButlerlyTransactionFilterSheet(
@@ -565,6 +566,8 @@ void main() {
         formatDate: (value) => value.toIso8601String(),
         onApply: (_) {},
         onClear: () {},
+        cancelLabel: 'Cancel',
+        onCancel: () => cancelled = true,
       ),
     );
     await tester.pumpAndSettle();
@@ -573,6 +576,11 @@ void main() {
     final clear = find.byKey(const ValueKey('clear-search-filters'));
     expect(clear, findsOneWidget);
     expect(tester.widget(clear), isA<OutlinedButton>());
+    final cancel = find.byKey(const ValueKey('cancel-search-filters'));
+    expect(cancel, findsOneWidget);
+    await tester.ensureVisible(cancel);
+    await tester.tap(cancel);
+    expect(cancelled, isTrue);
     expect(find.byType(ButlerlyCard), findsOneWidget);
 
     final applyRect = tester.getRect(apply);

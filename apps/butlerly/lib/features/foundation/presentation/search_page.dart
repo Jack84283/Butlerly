@@ -474,6 +474,8 @@ class _SearchPageState extends State<SearchPage>
           Navigator.pop(sheetContext);
           _clearFilters();
         },
+        cancelLabel: context.l10n.text('cancel'),
+        onCancel: () => Navigator.pop(sheetContext),
       ),
     );
   }

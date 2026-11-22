@@ -447,6 +447,8 @@ void main() {
     expect(find.text('Display name'), findsOneWidget);
     expect(find.text('Base currency'), findsOneWidget);
     expect(find.text('External AI consent'), findsOneWidget);
+    expect(find.bySemanticsLabel('Budget Settings'), findsOneWidget);
+    expect(find.bySemanticsLabel('Manage privacy & data'), findsOneWidget);
 
     final valueColumns = find.byKey(
       const ValueKey('desktop-more-value-column'),
