@@ -7,6 +7,7 @@ import 'package:butlerly/design_system/components/butlerly_transaction_inner_car
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_page.dart';
 import 'package:butlerly/features/analysis/presentation/analysis_search_selection.dart';
+import 'package:butlerly/features/analysis/presentation/widgets/analysis_activity.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_custom_period_sheet.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_period_selector.dart';
 import 'package:butlerly/features/analysis/presentation/widgets/analysis_skeleton.dart';
@@ -21,6 +22,7 @@ import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -1633,6 +1635,81 @@ void main() {
     expect(find.text('Not available'), findsOneWidget);
     expect(find.text('0 USD'), findsNothing);
     expect(requestedNavigation, isNull);
+  });
+
+  testWidgets('localized calendar arrows activate both month directions', (
+    tester,
+  ) async {
+    var month = DateTime(2026, 1);
+    final earlier = DateTime(2025, 12);
+    final later = DateTime(2026, 1);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.dark,
+        locale: const Locale('zh'),
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) => AnalysisActivity(
+              result: Future.value(
+                ApplicationSuccess(
+                  AnalysisCalendarResult(
+                    year: month.year,
+                    month: month.month,
+                    timeZoneId: 'UTC',
+                    days: const [],
+                  ),
+                ),
+              ),
+              selectedDate: null,
+              transactions: null,
+              onSelectDate: (_) {},
+              onTransactionTap: (_) {},
+              canPreviousMonth: month.isAfter(earlier),
+              canNextMonth: month.isBefore(later),
+              onMonthChanged: (year, targetMonth) =>
+                  setState(() => month = DateTime(year, targetMonth)),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    SemanticsNode arrow(String label) {
+      final finder = find.bySemanticsLabel(label);
+      expect(finder, findsOneWidget);
+      return tester.getSemantics(finder);
+    }
+
+    expect(find.text('2026年1月'), findsOneWidget);
+    expect(
+      arrow('下个月').getSemanticsData().hasAction(SemanticsAction.tap),
+      isFalse,
+    );
+    final previous = arrow('上个月');
+    expect(previous.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
+    previous.owner!.performAction(previous.id, SemanticsAction.tap);
+    await tester.pumpAndSettle();
+    expect(month, earlier);
+    expect(find.text('2025年12月'), findsOneWidget);
+    expect(
+      arrow('上个月').getSemanticsData().hasAction(SemanticsAction.tap),
+      isFalse,
+    );
+
+    final next = arrow('下个月');
+    expect(next.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
+    next.owner!.performAction(next.id, SemanticsAction.tap);
+    await tester.pumpAndSettle();
+    expect(month, later);
+    expect(find.text('2026年1月'), findsOneWidget);
   });
 
   testWidgets(

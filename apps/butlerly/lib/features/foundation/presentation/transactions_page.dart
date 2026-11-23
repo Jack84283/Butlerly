@@ -1100,7 +1100,15 @@ class _TransactionEditorPageState extends State<TransactionEditorPage> {
     return Scaffold(
       appBar: AppBar(
         leading: widget.onComplete == null
-            ? null
+            ? ModalRoute.of(context)?.impliesAppBarDismissal == true
+                  ? ButlerlySemanticButton(
+                      label: MaterialLocalizations.of(
+                        context,
+                      ).backButtonTooltip,
+                      onPressed: () => Navigator.maybePop(context),
+                      child: const BackButton(),
+                    )
+                  : null
             : ButlerlyPanelCloseButton(
                 buttonKey: const ValueKey('transaction-editor-cancel-panel'),
                 onPressed: _saving

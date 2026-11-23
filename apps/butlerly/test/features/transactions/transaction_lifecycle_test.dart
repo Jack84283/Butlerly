@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show Tristate;
 
 import 'package:butlerly/app/locale/locale_provider.dart';
 import 'package:butlerly/core/audio/butlerly_sound_feedback.dart';
@@ -30,6 +31,7 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -1256,6 +1258,135 @@ void main() {
     );
   });
 
+  testWidgets('Add editor back exposes a localized semantic action', (
+    tester,
+  ) async {
+    final router = GoRouter(
+      initialLocation: '/add',
+      routes: [
+        GoRoute(path: '/add', builder: (_, _) => const AddPage()),
+        GoRoute(
+          path: '/transactions/add',
+          builder: (_, _) =>
+              TransactionEditorPage(finance: services<FinanceServices>()),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      MaterialApp.router(
+        routerConfig: router,
+        theme: ThemeData.dark(),
+        locale: const Locale('zh'),
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
+    );
+    await tester.pumpAndSettle();
+    router.push<void>('/transactions/add');
+    await tester.pumpAndSettle();
+
+    final context = tester.element(find.byType(TransactionEditorPage));
+    final label = MaterialLocalizations.of(context).backButtonTooltip;
+    expect(label, isNot('Back'));
+    final back = find.bySemanticsLabel(label);
+    expect(back, findsOneWidget);
+    final node = tester.getSemantics(back);
+    expect(node.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
+    node.owner!.performAction(node.id, SemanticsAction.tap);
+    await tester.pumpAndSettle();
+    expect(find.byType(AddPage), findsOneWidget);
+  });
+
+  testWidgets('Add editor exposes localized editable fields', (tester) async {
+    for (var index = 0; index < 9; index++) {
+      await tags.save(Tag(id: TagId('entry-tag-$index'), name: 'Tag $index'));
+    }
+    final router = GoRouter(
+      initialLocation: '/add',
+      routes: [
+        GoRoute(path: '/add', builder: (_, _) => const AddPage()),
+        GoRoute(
+          path: '/transactions/add',
+          builder: (_, _) =>
+              TransactionEditorPage(finance: services<FinanceServices>()),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      MaterialApp.router(
+        routerConfig: router,
+        theme: ThemeData.dark(),
+        locale: const Locale('zh'),
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
+    );
+    await tester.pumpAndSettle();
+    router.push<void>('/transactions/add');
+    await tester.pumpAndSettle();
+
+    final context = tester.element(find.byType(TransactionEditorPage));
+    for (final field in const [
+      'amount',
+      'currency',
+      'descriptionOptional',
+      'notesOptional',
+      'searchTags',
+    ]) {
+      final label = context.l10n.text(field);
+      final input = find.byWidgetPredicate(
+        (widget) =>
+            widget is TextField && widget.decoration?.labelText == label,
+      );
+      final editable = find.descendant(
+        of: input,
+        matching: find.byType(EditableText),
+      );
+      await tester.scrollUntilVisible(
+        input,
+        160,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pumpAndSettle();
+      final node = tester.getSemantics(editable);
+      final data = node.getSemanticsData();
+      expect(data.flagsCollection.isTextField, isTrue, reason: field);
+      expect(data.label, label, reason: field);
+      expect(data.hasAction(SemanticsAction.focus), isTrue, reason: field);
+      node.owner!.performAction(node.id, SemanticsAction.focus);
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .getSemantics(editable)
+            .getSemanticsData()
+            .flagsCollection
+            .isFocused,
+        Tristate.isTrue,
+        reason: field,
+      );
+      expect(
+        tester
+            .getSemantics(editable)
+            .getSemanticsData()
+            .hasAction(SemanticsAction.setText),
+        isTrue,
+        reason: field,
+      );
+    }
+  });
+
   testWidgets('creates, edits, and permanently deletes locally', (
     tester,
   ) async {
@@ -1803,6 +1934,21 @@ void main() {
         closeTo(ButlerlySpacing.micro, 0.01),
         reason: 'Keep the compact recent-row gap below the 44 px action target',
       );
+      tester.view.physicalSize = const Size(1440, 1200);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Home Market'));
+      await tester.pumpAndSettle();
+
+      final row = find.bySemanticsLabel(RegExp(r'^Home Market, -'));
+      expect(row, findsOneWidget);
+      final node = tester.getSemantics(row);
+      expect(node.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
+      node.owner!.performAction(node.id, SemanticsAction.tap);
+      await tester.pumpAndSettle();
+      expect(find.byType(TransactionDetailPage), findsOneWidget);
     },
   );
 

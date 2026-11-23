@@ -493,6 +493,34 @@ class ButlerlyDesktopTableIconAction extends StatelessWidget {
   );
 }
 
+/// Gives an existing button one accessible label and activation action.
+class ButlerlySemanticButton extends StatelessWidget {
+  const ButlerlySemanticButton({
+    required this.label,
+    required this.onPressed,
+    required this.child,
+    this.selected,
+    super.key,
+  });
+
+  final String label;
+  final VoidCallback? onPressed;
+  final Widget child;
+  final bool? selected;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    container: true,
+    excludeSemantics: true,
+    button: true,
+    enabled: onPressed != null,
+    selected: selected,
+    label: label,
+    onTap: onPressed,
+    child: child,
+  );
+}
+
 /// Icon-only action without a filled surface or border in either theme.
 ///
 /// Explicitly overrides the app-wide bordered text button theme while
@@ -520,11 +548,11 @@ class ButlerlyTransparentIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Tooltip(
     message: semanticLabel,
-    child: Semantics(
-      button: true,
-      enabled: onPressed != null,
+    excludeFromSemantics: true,
+    child: ButlerlySemanticButton(
       selected: selected,
       label: semanticLabel,
+      onPressed: onPressed,
       child: TextButton(
         key: buttonKey,
         onPressed: onPressed,
@@ -2022,7 +2050,7 @@ class ButlerlyErrorState extends StatelessWidget {
   });
 
   final String title;
-  final String message;
+  final String? message;
   final String preserved;
   final String actionLabel;
   final VoidCallback onAction;
@@ -2031,7 +2059,7 @@ class ButlerlyErrorState extends StatelessWidget {
   Widget build(BuildContext context) => ButlerlyEmptyState(
     icon: Icons.error_outline_rounded,
     title: title,
-    message: '$message\n$preserved',
+    message: message == null ? preserved : '$message\n$preserved',
     actionLabel: actionLabel,
     onAction: onAction,
   );

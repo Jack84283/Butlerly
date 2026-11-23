@@ -703,7 +703,12 @@ void main() {
     final recentViewAll = find.byKey(const Key('home-recent-view-all'));
     await tester.drag(find.byType(CustomScrollView), const Offset(0, -1000));
     await tester.pumpAndSettle();
-    await tester.tap(recentViewAll);
+    final action = find.bySemanticsLabel('View all transactions');
+    expect(action, findsOneWidget);
+    final node = tester.getSemantics(action);
+    expect(node.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
+    expect(recentViewAll, findsOneWidget);
+    node.owner!.performAction(node.id, SemanticsAction.tap);
     await tester.pumpAndSettle();
 
     final uri = Uri.parse(

@@ -290,37 +290,43 @@ class _ToolPanel extends StatelessWidget {
   final String? status;
 
   @override
-  Widget build(BuildContext context) => ButlerlyCard(
-    onTap: () => context.push(tool.route),
-    semanticLabel: '${tool.title}, ${status ?? tool.description}',
-    child: SizedBox(
-      height: 148,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+  Widget build(BuildContext context) {
+    void openTool() => context.push(tool.route);
+    return ButlerlySemanticButton(
+      label: '${tool.title}, ${status ?? tool.description}',
+      onPressed: openTool,
+      child: ButlerlyCard(
+        onTap: openTool,
+        child: SizedBox(
+          height: 148,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ButlerlyActionIcon(icon: tool.icon),
+              Row(
+                children: [
+                  ButlerlyActionIcon(icon: tool.icon),
+                  const Spacer(),
+                  const Icon(Icons.arrow_forward_rounded),
+                ],
+              ),
               const Spacer(),
-              const Icon(Icons.arrow_forward_rounded),
+              Text(
+                tool.title,
+                style: Theme.of(context).textTheme.titleMedium,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: ButlerlySpacing.micro),
+              Text(
+                status ?? tool.description,
+                style: Theme.of(context).textTheme.bodySmall,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
             ],
           ),
-          const Spacer(),
-          Text(
-            tool.title,
-            style: Theme.of(context).textTheme.titleMedium,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: ButlerlySpacing.micro),
-          Text(
-            status ?? tool.description,
-            style: Theme.of(context).textTheme.bodySmall,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }

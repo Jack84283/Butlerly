@@ -72,6 +72,41 @@ void main() {
     ),
   );
 
+  testWidgets('profile read failure shows localized recovery and retries', (
+    tester,
+  ) async {
+    await tester.runAsync(
+      () => database.database.execute(
+        'ALTER TABLE financial_profiles RENAME TO hidden_financial_profiles',
+      ),
+    );
+    const locale = Locale('zh');
+    const l10n = AppLocalizations(locale);
+    await tester.pumpWidget(app(locale: locale));
+
+    await _pumpUntilVisible(
+      tester,
+      find.text(l10n.text('financialProfileStorageUnavailable')),
+    );
+    expect(find.textContaining(l10n.text('dataPreserved')), findsOneWidget);
+    expect(find.text(l10n.text('dataPreserved')), findsOneWidget);
+
+    await tester.runAsync(
+      () => database.database.execute(
+        'ALTER TABLE hidden_financial_profiles RENAME TO financial_profiles',
+      ),
+    );
+    await tester.tap(find.text(l10n.text('tryAgain')));
+    await _pumpUntilVisible(
+      tester,
+      find.byKey(const ValueKey('financial-profile-edit')),
+    );
+    expect(
+      find.text(l10n.text('financialProfileStorageUnavailable')),
+      findsNothing,
+    );
+  });
+
   testWidgets(
     'desktop Financial Profile uses twin internally scrolling cards',
     (tester) async {
