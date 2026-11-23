@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-10",
+  "generatedAt": "2026-11-23",
   "authority": "Generated tooling context only; DESIGN.md is authoritative and Flutter design tokens are implementation evidence.",
   "title": "Design System: Butlerly",
   "extensions": {
@@ -31,9 +31,9 @@
       },
       "canvas-dark": {
         "role": "neutral",
-        "displayName": "Navy Canvas",
-        "canonical": "#0B162A",
-        "tonalRamp": ["#0B162A", "#121A2B", "#1A2336", "#1F2534", "#2A2D40", "#383C44", "#8D939E", "#F6F7F8"]
+        "displayName": "Near-Black Canvas",
+        "canonical": "#030405",
+        "tonalRamp": ["#030405", "#141516", "#1B1D1F", "#1F2123", "#292B2D", "#4B5563", "#9A9A9A", "#F6F7F8"]
       },
       "surface-light": {
         "role": "neutral",
@@ -44,14 +44,14 @@
       "surface-dark": {
         "role": "neutral",
         "displayName": "Dark Surface",
-        "canonical": "#1F2534",
-        "tonalRamp": ["#121A2B", "#1A2336", "#1F2534", "#2A2D40", "#383C44", "#8D939E", "#B9BDC7", "#F6F7F8"]
+        "canonical": "#1F2123",
+        "tonalRamp": ["#030405", "#141516", "#1B1D1F", "#1F2123", "#292B2D", "#4B5563", "#B4B4B4", "#F6F7F8"]
       },
       "dashboard-dark": {
         "role": "neutral",
-        "displayName": "Dashboard Navy",
-        "canonical": "#1A2336",
-        "tonalRamp": ["#0B162A", "#121A2B", "#1A2336", "#1F2534", "#2A2D40", "#383C44", "#B9BDC7", "#F6F7F8"]
+        "displayName": "Dashboard Charcoal",
+        "canonical": "#141516",
+        "tonalRamp": ["#030405", "#141516", "#1B1D1F", "#1F2123", "#292B2D", "#4B5563", "#B4B4B4", "#F6F7F8"]
       },
       "subtle-light": {
         "role": "neutral",
@@ -75,8 +75,8 @@
       {"name": "deliberate", "value": "300ms easeInOut", "purpose": "Meaningful modal or layout transitions."}
     ],
     "breakpoints": [
-      {"name": "compact", "value": "<600px"},
-      {"name": "medium", "value": "600px-1023px"},
+      {"name": "compact", "value": "<801px"},
+      {"name": "medium", "value": "801px-1023px"},
       {"name": "wide", "value": ">=1024px"}
     ]
   },
@@ -125,7 +125,7 @@
   "narrative": {
     "northStar": "The Quiet Ledger",
     "overview": "Butlerly's visual language treats personal finance as a calm, consequential practice rather than a dashboard spectacle. A quiet-premium neutral foundation gives financial information room to breathe, while a restrained burgundy accent marks actions, review states, and brand presence. The system is deliberately editorial in moments that ask users to interpret money, and deliberately platform-native in functional controls.\n\nThe experience is smartphone-first but width-driven rather than device-branded. Content stays readable inside a centered surface, navigation adapts across compact, medium, and wide layouts, and the same semantic color roles work in light and dark appearance. Depth comes primarily from tonal surfaces and fine borders; low card lift and restrained overlay elevation clarify hierarchy without competing with financial content.",
-    "keyCharacteristics": ["Quiet-premium, editorial clarity for financial decisions.", "Serif hierarchy for editorial and financial emphasis; platform sans-serif for functional UI.", "Burgundy interaction language with stable semantic status colors.", "Cool navy-gray tonal surfaces with restrained borders and deliberate geometry.", "Width-driven responsive behavior with five labeled primary destinations and accessible touch targets."],
+    "keyCharacteristics": ["Quiet-premium, editorial clarity for financial decisions.", "Serif hierarchy for editorial and financial emphasis; platform sans-serif for functional UI.", "Burgundy interaction language with stable semantic success, warning, error, and information colors.", "Cool light neutrals and near-black dark surfaces with restrained borders and deliberate 6/12/16/18px geometry.", "Width-driven responsive behavior with 44px minimum touch targets and accessible text scaling."],
     "rules": [
       {"name": "The Rare Accent Rule", "body": "Burgundy is an intentional signal for action, selection, and brand—not a background texture applied to every surface.", "section": "colors"},
       {"name": "The Meaningful Color Rule", "body": "Financial status colors remain semantically stable across accent themes and are never the sole carrier of meaning.", "section": "colors"},
