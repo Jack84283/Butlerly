@@ -10,6 +10,7 @@ import 'package:butlerly/design_system/components/butlerly_components.dart';
 import 'package:butlerly/design_system/components/butlerly_desktop_panel_footer.dart';
 import 'package:butlerly/design_system/components/butlerly_desktop_transaction_table.dart';
 import 'package:butlerly/design_system/components/butlerly_issuer_autocomplete.dart';
+import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_payment_source_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_controls.dart';
 import 'package:butlerly/design_system/components/butlerly_transaction_inner_card.dart';
@@ -3689,7 +3690,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Archived credit card'), findsOneWidget);
+      expect(find.text('Archived credit card (Archived)'), findsOneWidget);
+      expect(
+        find.text(
+          'Add or reactivate a credit card in Payment Sources to create a settlement.',
+        ),
+        findsOneWidget,
+      );
       expect(find.text('USD 125.00'), findsOneWidget);
       expect(find.text('Apr 15, 2026'), findsOneWidget);
       expect(
@@ -3804,6 +3811,102 @@ void main() {
     );
   }
 
+  testWidgets(
+    'Compact settlement detail refreshes the list on Back after edit and status changes',
+    (tester) async {
+      tester.view.physicalSize = const Size(430, 932);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final source = PaymentSource(
+        id: PaymentSourceId('compact-card'),
+        name: 'Compact card',
+        type: PaymentSourceType.card,
+      );
+      await services<FinanceServices>().savePaymentSource(source);
+      await paymentSettlements.save(
+        PaymentSettlement(
+          id: PaymentSettlementId('compact-settlement'),
+          paymentSourceId: source.id,
+          payment: Money(
+            amount: DecimalValue.parse('75.25'),
+            currency: CurrencyCode('USD'),
+          ),
+          paymentDate: '2026-09-15',
+          periodStart: '2026-08-16',
+          periodEnd: '2026-09-15',
+          status: PaymentSettlementStatus.open,
+          createdAt: DateTime.utc(2026, 9, 15),
+          updatedAt: DateTime.utc(2026, 9, 15),
+        ),
+      );
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: PaymentSettlementsPage())),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Compact card'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Edit payment settlement'));
+      await tester.pumpAndSettle();
+      final sheet = find.byType(ButlerlySheet);
+      expect(sheet, findsOneWidget);
+      await tester.enterText(
+        find.descendant(of: sheet, matching: find.byType(TextFormField)).first,
+        '80.25',
+      );
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.text('USD 80.25'), findsOneWidget);
+      expect(find.text('USD 75.25'), findsNothing);
+      expect(
+        paymentSettlements.values['compact-settlement']!.paymentSourceId,
+        source.id,
+      );
+
+      await tester.tap(find.text('Compact card'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Mark as reconciled'));
+      await tester.pumpAndSettle();
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.text('Reconciled'), findsOneWidget);
+
+      await tester.tap(find.text('Compact card'));
+      await tester.pumpAndSettle();
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.text('Reconciled'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('Settlement list can retry a failed load more than once', (
+    tester,
+  ) async {
+    paymentSettlements.failList = true;
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: PaymentSettlementsPage())),
+    );
+    await tester.pumpAndSettle();
+    final retry = find.widgetWithText(FilledButton, 'Try again');
+    await tester.tap(retry);
+    await tester.pumpAndSettle();
+    expect(retry, findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    paymentSettlements.failList = false;
+    await tester.tap(retry);
+    await tester.pumpAndSettle();
+    expect(find.text('No active credit cards'), findsOneWidget);
+    expect(find.byType(PaymentSourcesPage), findsNothing);
+  });
+
   testWidgets('payment settlement rows show source, amount, and payment date', (
     tester,
   ) async {
@@ -3840,6 +3943,20 @@ void main() {
     expect(find.text('USD 75.25'), findsOneWidget);
     expect(find.text('Sep 15, 2026'), findsOneWidget);
     expect(find.text('2026-08-16 – 2026-09-15'), findsOneWidget);
+
+    paymentSources.values.remove(source.id.value);
+    notifyWorkspaceRestored();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Travel card'), findsNothing);
+    await tester.tap(find.text('Payment source unavailable'));
+    await tester.pumpAndSettle();
+    expect(find.byType(PaymentSettlementDetailPage), findsOneWidget);
+    expect(find.text('Payment source unavailable'), findsOneWidget);
+    expect(
+      paymentSettlements.values['settlement-card']!.paymentSourceId,
+      source.id,
+    );
   });
 
   testWidgets(
@@ -5286,13 +5403,22 @@ final class MemoryPaymentSettlements implements PaymentSettlementRepository {
   MemoryTransactionRepository? transactionRepository;
   Future<void>? saveCompletion;
   bool savePending = false;
+  bool failList = false;
 
   @override
   Future<PaymentSettlement?> findById(PaymentSettlementId id) async =>
       values[id.value];
 
   @override
-  Future<List<PaymentSettlement>> listAll() async => values.values.toList();
+  Future<List<PaymentSettlement>> listAll() async {
+    if (failList) {
+      throw const RepositoryException(
+        RepositoryFailureCode.unavailable,
+        'list payment settlements',
+      );
+    }
+    return values.values.toList();
+  }
 
   @override
   Future<List<Transaction>> listTransactions(

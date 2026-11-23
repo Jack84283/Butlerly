@@ -29,12 +29,28 @@ void main() {
   tearDown(() => database.close());
 
   test(
-    'persists settlement-owned payment facts without a transaction',
+    'retains settlement-owned payment facts across a SQLite restart',
     () async {
+      final directory = await Directory.systemTemp.createTemp('settlement-');
+      final persisted = ButlerlyDatabase(
+        factory: databaseFactoryFfi,
+        path: directory.uri.resolve('workspace.sqlite').toFilePath(),
+        schemaSql: await File('database/schema/v1.sql').readAsString(),
+      );
+      addTearDown(() async {
+        await persisted.close();
+        await directory.delete(recursive: true);
+      });
+      await persisted.open();
+      await _insertPaymentSource(persisted, 'visa', 'Visa');
       final settlement = _settlement();
+      await SqlitePaymentSettlementRepository(persisted).save(settlement);
+      await persisted.close();
 
-      await settlements.save(settlement);
-      final loaded = await settlements.findById(settlement.id);
+      await persisted.open();
+      final loaded = await SqlitePaymentSettlementRepository(
+        persisted,
+      ).findById(settlement.id);
 
       expect(loaded, isNotNull);
       expect(loaded!.paymentSourceId, PaymentSourceId('visa'));
@@ -45,7 +61,9 @@ void main() {
       expect(loaded.periodEnd, '2026-09-14');
       expect(loaded.statementBalance, settlement.statementBalance);
 
-      final transactionRows = await database.connection.query('transactions');
+      expect(loaded.status, settlement.status);
+
+      final transactionRows = await persisted.connection.query('transactions');
       expect(transactionRows, isEmpty);
     },
   );
