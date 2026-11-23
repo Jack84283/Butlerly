@@ -3,6 +3,7 @@ import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/tools/presentation/tools_page.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
@@ -36,6 +37,36 @@ void main() {
     expect(third.top, closeTo(first.top, 1));
     expect(fifth.left, greaterThan(third.right));
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('wide Tools tile activates its destination through semantics', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final router = GoRouter(
+      initialLocation: '/tools',
+      routes: [
+        GoRoute(path: '/tools', builder: (_, _) => const ToolsPage()),
+        GoRoute(
+          path: '/analysis',
+          builder: (_, _) => const Scaffold(body: Text('analysis-route')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pumpAndSettle();
+
+    final action = find.bySemanticsLabel(RegExp(r'^Analysis, '));
+    expect(action, findsOneWidget);
+    final node = tester.getSemantics(action);
+    expect(node.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
+    node.owner!.performAction(node.id, SemanticsAction.tap);
+    await tester.pumpAndSettle();
+    expect(find.text('analysis-route'), findsOneWidget);
   });
 
   testWidgets('wide Tools keeps the task grid readable on large monitors', (

@@ -364,11 +364,9 @@ final class _FinancialProfilePageState
                   ? 'financialProfileCategoriesUnavailable'
                   : 'financialProfileStorageUnavailable',
             ),
-            message: context.l10n.text(
-              _categoryLoadError
-                  ? 'financialProfileCategoriesUnavailableBody'
-                  : 'dataPreserved',
-            ),
+            message: _categoryLoadError
+                ? context.l10n.text('financialProfileCategoriesUnavailableBody')
+                : null,
             preserved: context.l10n.text('dataPreserved'),
             actionLabel: context.l10n.text('tryAgain'),
             onAction: _load,

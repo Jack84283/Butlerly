@@ -72,6 +72,27 @@ class AnalysisActivity extends StatelessWidget {
       final firstDayOfWeek = materialLocalizations.firstDayOfWeekIndex;
       final leading = (first.weekday % 7 - firstDayOfWeek + 7) % 7;
       final todayDate = _financialDate(DateTime.now(), calendar.timeZoneId);
+      Widget monthButton(
+        String labelKey,
+        IconData icon,
+        int offset,
+        bool enabled,
+      ) {
+        final label = context.l10n.text(labelKey);
+        final onPressed = enabled
+            ? () => onMonthChanged(calendar.year, calendar.month + offset)
+            : null;
+        return ButlerlySemanticButton(
+          label: label,
+          onPressed: onPressed,
+          child: IconButton(
+            tooltip: label,
+            onPressed: onPressed,
+            icon: Icon(icon),
+          ),
+        );
+      }
+
       return ButlerlyCard(
         key: const ValueKey('analysis-financial-calendar-card'),
         padding: EdgeInsets.zero,
@@ -97,29 +118,21 @@ class AnalysisActivity extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      IconButton(
-                        tooltip: context.l10n.text('previousMonth'),
-                        onPressed: canPreviousMonth
-                            ? () => onMonthChanged(
-                                calendar.year,
-                                calendar.month - 1,
-                              )
-                            : null,
-                        icon: const Icon(Icons.chevron_left),
+                      monthButton(
+                        'previousMonth',
+                        Icons.chevron_left,
+                        -1,
+                        canPreviousMonth,
                       ),
                       Text(
                         materialLocalizations.formatMonthYear(first),
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
-                      IconButton(
-                        tooltip: context.l10n.text('nextMonth'),
-                        onPressed: canNextMonth
-                            ? () => onMonthChanged(
-                                calendar.year,
-                                calendar.month + 1,
-                              )
-                            : null,
-                        icon: const Icon(Icons.chevron_right),
+                      monthButton(
+                        'nextMonth',
+                        Icons.chevron_right,
+                        1,
+                        canNextMonth,
                       ),
                     ],
                   ),
