@@ -287,7 +287,7 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
           ),
           actions: [
             ButlerlyCancelButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () => Navigator.pop(context),
               child: Text(context.l10n.text('cancel')),
             ),
             FilledButton(
@@ -368,6 +368,9 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                     status: existing?.status ?? PaymentSourceStatus.active,
                   ),
                 );
+                if (result is ApplicationSuccess<PaymentSource>) {
+                  notifyPaymentSourceChanged();
+                }
                 if (context.mounted) {
                   Navigator.pop(
                     context,
@@ -383,7 +386,7 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
     );
     if (saved == true) {
       _refresh();
-    } else if (mounted) {
+    } else if (saved == false && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(context.l10n.text('paymentSourceSaveFailed'))),
       );
@@ -665,6 +668,9 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                             if (value.status == PaymentSourceStatus.active) {
                               final result = await _finance!
                                   .archivePaymentSource(value.id.value);
+                              if (result is ApplicationSuccess<PaymentSource>) {
+                                notifyPaymentSourceChanged();
+                              }
                               if (!context.mounted) return;
                               if (result is ApplicationFailure<PaymentSource>) {
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -679,7 +685,7 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                                 return;
                               }
                             } else {
-                              await _finance!.savePaymentSource(
+                              final result = await _finance!.savePaymentSource(
                                 PaymentSource(
                                   id: value.id,
                                   name: value.name,
@@ -693,6 +699,18 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                                   note: value.note,
                                 ),
                               );
+                              if (result
+                                  is! ApplicationSuccess<PaymentSource>) {
+                                if (context.mounted) {
+                                  _showMessage(
+                                    context.l10n.text(
+                                      'paymentSourceSaveFailed',
+                                    ),
+                                  );
+                                }
+                                return;
+                              }
+                              notifyPaymentSourceChanged();
                             }
                             if (context.mounted) _refresh();
                           },
@@ -833,23 +851,13 @@ class _DesktopPaymentSourceEditorState
           note: _note.text.trim().isEmpty ? null : _note.text.trim(),
           status: _active
               ? PaymentSourceStatus.active
-              : (widget.existing?.status ?? PaymentSourceStatus.active),
+              : PaymentSourceStatus.archived,
         ),
       );
-      if (!mounted) return;
       if (result is ApplicationSuccess<PaymentSource>) {
-        if (!_active) {
-          final archived = await widget.finance.archivePaymentSource(
-            result.value.id.value,
-          );
-          if (!mounted) return;
-          if (archived is ApplicationFailure<PaymentSource>) {
-            widget.onError(context.l10n.text('paymentSourceArchiveFailed'));
-            return;
-          }
-        }
-        widget.onSaved();
-      } else {
+        notifyPaymentSourceChanged();
+        if (mounted) widget.onSaved();
+      } else if (mounted) {
         widget.onError(context.l10n.text('paymentSourceSaveFailed'));
       }
     } catch (_) {

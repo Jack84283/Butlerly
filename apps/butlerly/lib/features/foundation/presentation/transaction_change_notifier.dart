@@ -21,6 +21,13 @@ void notifyPaymentSettlementChanged() {
   paymentSettlementChanges.value++;
 }
 
+/// Invalidates settlement source labels and active-card eligibility.
+final paymentSourceChanges = ValueNotifier<int>(0);
+
+void notifyPaymentSourceChanged() {
+  paymentSourceChanges.value++;
+}
+
 /// Physical Restore changes more than transactions, including financial
 /// profiles and master-data catalogs that can remain mounted in a desktop
 /// shell. Consumers with independent screen caches listen to this signal.

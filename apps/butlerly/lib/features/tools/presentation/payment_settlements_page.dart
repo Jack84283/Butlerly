@@ -47,12 +47,14 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
   void initState() {
     super.initState();
     paymentSettlementChanges.addListener(_refresh);
+    paymentSourceChanges.addListener(_refresh);
     workspaceRestoreChanges.addListener(_onWorkspaceRestored);
   }
 
   @override
   void dispose() {
     paymentSettlementChanges.removeListener(_refresh);
+    paymentSourceChanges.removeListener(_refresh);
     workspaceRestoreChanges.removeListener(_onWorkspaceRestored);
     super.dispose();
   }
@@ -916,6 +918,9 @@ class _SettlementDesktopTable extends StatelessWidget {
   );
 
   Widget _row(BuildContext context, PaymentSettlementDto settlement) {
+    final sourceUnavailable = !data.sources.any(
+      (source) => source.id.value == settlement.paymentSourceId,
+    );
     final locale = Localizations.localeOf(context).toLanguageTag();
     final paymentDate = DateTime.tryParse(settlement.paymentDate);
     final date = paymentDate == null
@@ -943,8 +948,8 @@ class _SettlementDesktopTable extends StatelessWidget {
                     data.sources,
                     settlement.paymentSourceId,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  maxLines: sourceUnavailable ? null : 1,
+                  overflow: sourceUnavailable ? null : TextOverflow.ellipsis,
                 ),
               ),
               SizedBox(width: 110, child: Text(date)),
@@ -1583,7 +1588,9 @@ String _settlementSourceLabel(
   String id,
 ) {
   final source = sources.where((source) => source.id.value == id).firstOrNull;
-  if (source == null) return context.l10n.text('missingSettlementSource');
+  if (source == null) {
+    return context.l10n.text('missingSettlementSource', {'id': id});
+  }
   final label = paymentSourceDisplayLabel(source);
   return source.status == PaymentSourceStatus.archived
       ? '$label (${context.l10n.text('archivedSettlementSource')})'

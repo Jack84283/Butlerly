@@ -3152,6 +3152,13 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: PaymentSourcesPage()));
     await tester.pumpAndSettle();
 
+    final revision = paymentSourceChanges.value;
+    await tester.tap(find.byTooltip('Add payment source'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(paymentSourceChanges.value, revision);
+
     await tester.tap(find.byTooltip('Add payment source'));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField).first, 'Travel card');
@@ -3159,6 +3166,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Travel card'), findsOneWidget);
+    expect(paymentSourceChanges.value, revision + 1);
     await tester.tap(find.byTooltip('Archive payment source'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Archived'), findsOneWidget);
@@ -3949,14 +3957,65 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Travel card'), findsNothing);
-    await tester.tap(find.text('Payment source unavailable'));
+    const missingSource = 'Payment source unavailable (source-card)';
+    await tester.tap(find.text(missingSource));
     await tester.pumpAndSettle();
     expect(find.byType(PaymentSettlementDetailPage), findsOneWidget);
-    expect(find.text('Payment source unavailable'), findsOneWidget);
+    expect(find.text(missingSource), findsOneWidget);
+    await tester.tap(find.byTooltip('Edit payment settlement'));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(
+        of: find.byType(ButlerlySheet),
+        matching: find.text(missingSource),
+      ),
+      findsOneWidget,
+    );
     expect(
       paymentSettlements.values['settlement-card']!.paymentSourceId,
       source.id,
     );
+  });
+
+  testWidgets('Mounted settlements refresh after source status changes', (
+    tester,
+  ) async {
+    final finance = services<FinanceServices>();
+    await finance.savePaymentSource(
+      PaymentSource(
+        id: PaymentSourceId('source-card'),
+        name: 'Travel card',
+        type: PaymentSourceType.card,
+      ),
+    );
+    final navigator = GlobalKey<NavigatorState>();
+    await tester.pumpWidget(
+      MaterialApp(
+        navigatorKey: navigator,
+        home: const Scaffold(body: PaymentSettlementsPage()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final add = find.byKey(const ValueKey('payment-settlements-add'));
+    expect(tester.widget<IconButton>(add).onPressed, isNotNull);
+
+    Future<void> changeStatus(String tooltip) async {
+      final before = paymentSourceChanges.value;
+      navigator.currentState!.push<void>(
+        MaterialPageRoute(builder: (_) => const PaymentSourcesPage()),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip(tooltip));
+      await tester.pumpAndSettle();
+      expect(paymentSourceChanges.value, before + 1);
+      navigator.currentState!.pop();
+      await tester.pumpAndSettle();
+    }
+
+    await changeStatus('Archive payment source');
+    expect(tester.widget<IconButton>(add).onPressed, isNull);
+    await changeStatus('Reactivate payment source');
+    expect(tester.widget<IconButton>(add).onPressed, isNotNull);
   });
 
   testWidgets(

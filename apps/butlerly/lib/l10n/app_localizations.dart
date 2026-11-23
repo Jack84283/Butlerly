@@ -356,7 +356,7 @@ class AppLocalizations {
       'noActiveSettlementCards': 'No active credit cards',
       'noActiveSettlementCardsBody':
           'Add or reactivate a credit card in Payment Sources to create a settlement.',
-      'missingSettlementSource': 'Payment source unavailable',
+      'missingSettlementSource': 'Payment source unavailable ({id})',
       'archivedSettlementSource': 'Archived',
       'noPaymentSettlementsBody':
           'Add a card payment and its statement period to review the transactions it covers.',
@@ -1555,7 +1555,7 @@ class AppLocalizations {
       'noPaymentSettlements': '暂无付款结算',
       'noActiveSettlementCards': '没有启用的信用卡',
       'noActiveSettlementCardsBody': '要创建付款结算，请在付款来源中添加或重新启用信用卡。',
-      'missingSettlementSource': '付款来源不可用',
+      'missingSettlementSource': '付款来源不可用（{id}）',
       'archivedSettlementSource': '已归档',
       'noPaymentSettlementsBody': '添加信用卡付款及其账单周期，以审核该周期内的交易。',
       'paymentSettlementPeriod': '账单周期',
@@ -2659,7 +2659,7 @@ class AppLocalizations {
       'noActiveSettlementCards': 'No hay tarjetas de crédito activas',
       'noActiveSettlementCardsBody':
           'Agrega o reactiva una tarjeta de crédito en Fuentes de pago para crear una liquidación.',
-      'missingSettlementSource': 'Fuente de pago no disponible',
+      'missingSettlementSource': 'Fuente de pago no disponible ({id})',
       'archivedSettlementSource': 'Archivada',
       'noPaymentSettlementsBody':
           'Añade un pago de tarjeta y su período del extracto para revisar las transacciones que cubre.',
