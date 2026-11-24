@@ -763,6 +763,9 @@ class AppLocalizations {
       'paymentSourcesUnavailable':
           'Payment sources become available with local storage.',
       'noPaymentSourcesYet': 'No payment sources yet.',
+      'paymentSourceNameRequired': 'Enter a payment source name.',
+      'paymentSourceDuplicateCheckFailed':
+          'Could not check for duplicate payment sources. Try again.',
       'paymentSourceSaveFailed': 'Payment source could not be saved.',
       'archivePaymentSource': 'Archive payment source',
       'paymentSourceArchiveFailed': 'Payment source could not be archived.',
@@ -1913,6 +1916,8 @@ class AppLocalizations {
       'addPaymentSource': '添加付款来源',
       'paymentSourcesUnavailable': '付款来源需在本地存储可用后使用。',
       'noPaymentSourcesYet': '暂无付款来源。',
+      'paymentSourceNameRequired': '请输入付款来源名称。',
+      'paymentSourceDuplicateCheckFailed': '无法检查是否有重复的付款来源。请重试。',
       'paymentSourceSaveFailed': '无法保存付款来源。',
       'archivePaymentSource': '归档付款来源',
       'paymentSourceArchiveFailed': '无法归档付款来源。',
@@ -3081,6 +3086,10 @@ class AppLocalizations {
       'paymentSourcesUnavailable':
           'Las fuentes de pago estarán disponibles con el almacenamiento local.',
       'noPaymentSourcesYet': 'Aún no hay fuentes de pago.',
+      'paymentSourceNameRequired':
+          'Introduce un nombre para la fuente de pago.',
+      'paymentSourceDuplicateCheckFailed':
+          'No se pudo comprobar si hay fuentes de pago duplicadas. Inténtalo de nuevo.',
       'paymentSourceSaveFailed': 'No se pudo guardar la fuente de pago.',
       'archivePaymentSource': 'Archivar fuente de pago',
       'paymentSourceArchiveFailed': 'No se pudo archivar la fuente de pago.',

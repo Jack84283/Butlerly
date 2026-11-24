@@ -3172,6 +3172,192 @@ void main() {
     expect(find.textContaining('Archived'), findsOneWidget);
   });
 
+  for (final action in ['Use existing', 'Create anyway', 'dismiss']) {
+    testWidgets('compact duplicate payment source: $action', (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final existing = PaymentSource(
+        id: PaymentSourceId('existing-account'),
+        name: 'Existing account',
+        type: PaymentSourceType.account,
+        lastFour: '8421',
+      );
+      await paymentSources.save(existing);
+      final revision = paymentSourceChanges.value;
+
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: PaymentSourcesPage())),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Add payment source'));
+      await tester.pumpAndSettle();
+      final name = find.byType(TextField).first;
+      final lastFour = find.byType(TextField).at(2);
+      await tester.enterText(name, 'New account');
+      await tester.enterText(lastFour, '8421');
+      final save = find.widgetWithText(FilledButton, 'Save');
+      if (action == 'Create anyway') {
+        final lookup = Completer<void>();
+        paymentSources.listCompletion = lookup.future;
+        final listCalls = paymentSources.listCalls;
+        await tester.tap(save);
+        await tester.tap(save);
+        await tester.pump();
+
+        expect(paymentSources.listCalls, listCalls + 1);
+        expect(tester.widget<FilledButton>(save).onPressed, isNull);
+        expect(find.text('Payment source already exists'), findsNothing);
+        expect(paymentSources.saveCalls, 1);
+        lookup.complete();
+      } else {
+        await tester.tap(save);
+      }
+      await tester.pumpAndSettle();
+
+      expect(find.text('Payment source already exists'), findsOneWidget);
+      expect(paymentSources.values.values, [existing]);
+      expect(paymentSourceChanges.value, revision);
+
+      if (action == 'dismiss') {
+        await tester.binding.handlePopRoute();
+      } else if (action == 'Create anyway') {
+        final persistence = Completer<void>();
+        paymentSources.saveCompletion = persistence.future;
+        await tester.tap(find.text(action));
+        await tester.pumpAndSettle();
+        expect(tester.widget<FilledButton>(save).onPressed, isNull);
+        expect(paymentSources.saveCalls, 2);
+        expect(paymentSources.values.values, [existing]);
+        expect(paymentSourceChanges.value, revision);
+        persistence.complete();
+      } else {
+        await tester.tap(find.text(action));
+      }
+      await tester.pumpAndSettle();
+
+      expect(find.text('Payment source already exists'), findsNothing);
+      expect(find.byType(SnackBar), findsNothing);
+      if (action == 'dismiss') {
+        expect(tester.widget<FilledButton>(save).onPressed, isNotNull);
+        expect(tester.widget<TextField>(name).controller!.text, 'New account');
+        expect(tester.widget<TextField>(lastFour).controller!.text, '8421');
+      } else {
+        expect(find.text('Save'), findsNothing);
+      }
+      if (action == 'Create anyway') {
+        final created = paymentSources.values.values.singleWhere(
+          (source) => source.id != existing.id,
+        );
+        expect(created.name, 'New account');
+        expect(created.lastFour, '8421');
+        expect(paymentSources.values.values, [existing, created]);
+        expect(paymentSourceChanges.value, revision + 1);
+      } else {
+        expect(paymentSources.values.values, [existing]);
+        expect(paymentSourceChanges.value, revision);
+      }
+    });
+  }
+
+  for (final desktop in [false, true]) {
+    testWidgets(
+      '${desktop ? 'desktop' : 'compact'} payment source lookup failure blocks save',
+      (tester) async {
+        tester.view.physicalSize = desktop
+            ? const Size(1440, 900)
+            : const Size(390, 844);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        await tester.pumpWidget(
+          const MaterialApp(home: Scaffold(body: PaymentSourcesPage())),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip('Add payment source'));
+        await tester.pumpAndSettle();
+        final name = find.byType(TextField).first;
+        final lastFour = find.byType(TextField).at(2);
+        await tester.enterText(name, 'Draft account');
+        await tester.enterText(lastFour, '8421');
+        final save = find.widgetWithText(FilledButton, 'Save');
+        final revision = paymentSourceChanges.value;
+        paymentSources.failList = true;
+
+        await tester.tap(save);
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text(
+            'Could not check for duplicate payment sources. Try again.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('Payment source could not be saved.'), findsNothing);
+        expect(
+          tester.widget<TextField>(name).controller!.text,
+          'Draft account',
+        );
+        expect(tester.widget<TextField>(lastFour).controller!.text, '8421');
+        expect(tester.widget<FilledButton>(save).onPressed, isNotNull);
+        expect(paymentSources.saveCalls, 0);
+        expect(paymentSources.values, isEmpty);
+        expect(paymentSourceChanges.value, revision);
+
+        paymentSources.failList = false;
+        await tester.tap(save);
+        await tester.pumpAndSettle();
+        expect(paymentSources.saveCalls, 1);
+        expect(paymentSources.values.values.single.name, 'Draft account');
+        expect(paymentSources.values.values.single.lastFour, '8421');
+        expect(paymentSourceChanges.value, revision + 1);
+      },
+    );
+  }
+
+  testWidgets('compact payment source persistence failure allows retry', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: PaymentSourcesPage())),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Add payment source'));
+    await tester.pumpAndSettle();
+    final name = find.byType(TextField).first;
+    await tester.enterText(name, 'Draft account');
+    final save = find.widgetWithText(FilledButton, 'Save');
+    final revision = paymentSourceChanges.value;
+    paymentSources.failSave = true;
+
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Payment source could not be saved.'), findsOneWidget);
+    expect(tester.widget<TextField>(name).controller!.text, 'Draft account');
+    expect(tester.widget<FilledButton>(save).onPressed, isNotNull);
+    expect(paymentSources.saveCalls, 1);
+    expect(paymentSources.values, isEmpty);
+    expect(paymentSourceChanges.value, revision);
+
+    paymentSources.failSave = false;
+    await tester.tap(save);
+    await tester.pumpAndSettle();
+    expect(find.text('Payment source could not be saved.'), findsNothing);
+    expect(find.text('Save'), findsNothing);
+    expect(paymentSources.saveCalls, 2);
+    expect(paymentSources.values.values.single.name, 'Draft account');
+    expect(paymentSourceChanges.value, revision + 1);
+  });
+
   testWidgets('credit cards require and display exactly four digits', (
     tester,
   ) async {
@@ -5443,15 +5629,41 @@ final class MemoryMerchantMatchingConfiguration
 
 final class MemoryPaymentSources implements PaymentSourceRepository {
   final values = <String, PaymentSource>{};
+  int listCalls = 0;
+  int saveCalls = 0;
+  Future<void>? listCompletion;
+  Future<void>? saveCompletion;
+  bool failList = false;
+  bool failSave = false;
 
   @override
   Future<PaymentSource?> findById(PaymentSourceId id) async => values[id.value];
 
   @override
-  Future<List<PaymentSource>> listAll() async => values.values.toList();
+  Future<List<PaymentSource>> listAll() async {
+    listCalls++;
+    final completion = listCompletion;
+    if (completion != null) await completion;
+    if (failList) {
+      throw const RepositoryException(
+        RepositoryFailureCode.unavailable,
+        'list payment sources',
+      );
+    }
+    return values.values.toList();
+  }
 
   @override
   Future<void> save(PaymentSource paymentSource) async {
+    saveCalls++;
+    final completion = saveCompletion;
+    if (completion != null) await completion;
+    if (failSave) {
+      throw const RepositoryException(
+        RepositoryFailureCode.unavailable,
+        'save payment source',
+      );
+    }
     values[paymentSource.id.value] = paymentSource;
   }
 }
