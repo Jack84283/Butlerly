@@ -993,7 +993,14 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
     // including on desktops with touch input.
     final refreshable = RefreshIndicator.adaptive(
       onRefresh: widget.onRefresh,
-      child: list,
+      triggerMode: RefreshIndicatorTriggerMode.anywhere,
+      child: NotificationListener<ScrollNotification>(
+        onNotification: (notification) {
+          _handOffBottomDrag(context, notification);
+          return false;
+        },
+        child: list,
+      ),
     );
     final indexing = data != requestedData;
     return Stack(
@@ -1004,6 +1011,31 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
         if (indexing) const ButlerlyLoadingState(),
       ],
     );
+  }
+
+  void _handOffBottomDrag(
+    BuildContext context,
+    ScrollNotification notification,
+  ) {
+    if (notification.depth != 0 || notification.metrics.axis != Axis.vertical)
+      return;
+    final metrics = notification.metrics;
+    final delta = switch (notification) {
+      OverscrollNotification(dragDetails: Object(), :final overscroll) =>
+        overscroll,
+      ScrollUpdateNotification(dragDetails: Object(), :final scrollDelta?) =>
+        // Bouncing physics report motion past the limit as a scroll update.
+        math.max(0.0, metrics.pixels - metrics.maxScrollExtent) -
+            math.max(
+              0.0,
+              metrics.pixels - scrollDelta - metrics.maxScrollExtent,
+            ),
+      _ => 0.0,
+    };
+    if (delta <= 0) return;
+    final page = Scrollable.maybeOf(context, axis: Axis.vertical)?.position;
+    if (page == null || page.extentAfter == 0) return;
+    page.jumpTo(math.min(page.pixels + delta, page.maxScrollExtent));
   }
 
   Future<void> _indexRows(
@@ -1081,7 +1113,6 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
     final index = data.settlementIndexes[rowId];
     if (index == null) {
       _settlementToRefocus = null;
-      _refreshFocus.nextFocus();
       return;
     }
     if (!_verticalController.hasClients) {

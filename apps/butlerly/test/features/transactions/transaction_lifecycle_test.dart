@@ -4033,6 +4033,78 @@ void main() {
     }),
   );
 
+  testWidgets(
+    'Settlement touch scrolling reaches the final row with detail open',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(1300, 420);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+      await seedSettlementViewport(20);
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: PaymentSettlementsPage())),
+      );
+      await tester.pumpAndSettle();
+      Finder row(int index) =>
+          find.byKey(ValueKey('desktop-payment-settlement-viewport-$index'));
+      await tester.tap(row(0).hitTestable(at: Alignment.centerLeft));
+      await tester.pumpAndSettle();
+
+      final detail = find.byKey(
+        const ValueKey('desktop-settlement-detail-viewport-0'),
+      );
+      final detailScroll = tester
+          .state<ScrollableState>(
+            find.descendant(of: detail, matching: find.byType(Scrollable)),
+          )
+          .position;
+      expect(detailScroll.maxScrollExtent, greaterThan(0));
+      detailScroll.jumpTo(detailScroll.maxScrollExtent / 2);
+      final detailOffset = detailScroll.pixels;
+
+      final rows = find.byKey(
+        const ValueKey('desktop-payment-settlements-rows'),
+      );
+      final inner = tester.state<ScrollableState>(
+        find.descendant(of: rows, matching: find.byType(Scrollable)),
+      );
+      final page = Scrollable.of(inner.context, axis: Axis.vertical).position;
+      // Reveal the top of the table while leaving its lower portion clipped.
+      page.jumpTo(page.pixels + tester.getTopLeft(rows).dy - 290);
+      await tester.pumpAndSettle();
+      final pageOffset = page.pixels;
+      inner.position.jumpTo(inner.position.maxScrollExtent);
+      await tester.pumpAndSettle();
+      final finalRow = row(19).hitTestable(at: Alignment.centerLeft);
+      expect(finalRow, findsNothing);
+      for (
+        var attempt = 0;
+        attempt < 3 && finalRow.evaluate().isEmpty;
+        attempt++
+      ) {
+        final rowsBounds = tester.getRect(rows);
+        await tester.dragFrom(
+          rowsBounds.topLeft + const Offset(34, 30),
+          const Offset(0, -220),
+        );
+        await tester.pumpAndSettle();
+      }
+      expect(page.pixels, greaterThan(pageOffset));
+      expect(detailScroll.pixels, detailOffset);
+      expect(finalRow, findsOneWidget);
+      await tester.tap(finalRow);
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('desktop-settlement-detail-viewport-19')),
+        findsOneWidget,
+      );
+    },
+    variant: const TargetPlatformVariant({
+      TargetPlatform.iOS,
+      TargetPlatform.windows,
+    }),
+  );
+
   testWidgets('Settlement refresh reveals a reordered keyboard focus target', (
     tester,
   ) async {
