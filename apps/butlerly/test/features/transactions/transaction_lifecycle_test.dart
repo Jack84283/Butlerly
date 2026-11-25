@@ -4006,10 +4006,10 @@ void main() {
   });
 
   testWidgets(
-    'Pulling a wide settlement row reloads the history',
+    'Pulling a wide settlement row returns to the top before refreshing',
     (tester) async {
       tester.view.devicePixelRatio = 1;
-      tester.view.physicalSize = const Size(1200, 880);
+      tester.view.physicalSize = const Size(1300, 550);
       addTearDown(tester.view.resetDevicePixelRatio);
       addTearDown(tester.view.resetPhysicalSize);
       await seedSettlementViewport(100);
@@ -4022,6 +4022,23 @@ void main() {
       );
       expect(row, findsOneWidget);
       final listCalls = paymentSettlements.listCalls;
+      final label = find.descendant(
+        of: row,
+        matching: find.text('Viewport card'),
+      );
+      final inner = Scrollable.of(tester.element(label), axis: Axis.vertical);
+      final page = Scrollable.of(inner.context, axis: Axis.vertical).position;
+      final pageOffset = page.maxScrollExtent;
+      expect(pageOffset, greaterThan(0));
+      page.jumpTo(pageOffset);
+      await tester.pumpAndSettle();
+      await tester.drag(row, Offset(0, pageOffset / 2 + 20));
+      await tester.pumpAndSettle();
+      expect(page.pixels, inExclusiveRange(0, pageOffset));
+      expect(paymentSettlements.listCalls, listCalls);
+
+      page.jumpTo(0);
+      await tester.pumpAndSettle();
       await tester.drag(row, const Offset(0, 450));
       await tester.pumpAndSettle();
       expect(paymentSettlements.listCalls, listCalls + 1);

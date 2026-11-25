@@ -991,14 +991,16 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
     );
     // A touch drag starting over a long history belongs to the row viewport,
     // including on desktops with touch input.
+    final page = Scrollable.maybeOf(context, axis: Axis.vertical)?.position;
     final refreshable = RefreshIndicator.adaptive(
       onRefresh: widget.onRefresh,
       triggerMode: RefreshIndicatorTriggerMode.anywhere,
+      notificationPredicate: (notification) =>
+          notification.depth == 0 &&
+          (notification is ScrollEndNotification ||
+              (page?.extentBefore ?? 0) == 0),
       child: NotificationListener<ScrollNotification>(
-        onNotification: (notification) {
-          _handOffBottomDrag(context, notification);
-          return false;
-        },
+        onNotification: (notification) => _handOffRowDrag(page, notification),
         child: list,
       ),
     );
@@ -1013,30 +1015,33 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
     );
   }
 
-  void _handOffBottomDrag(
-    BuildContext context,
-    ScrollNotification notification,
-  ) {
-    if (notification.depth != 0 || notification.metrics.axis != Axis.vertical) {
-      return;
+  bool _handOffRowDrag(ScrollPosition? page, ScrollNotification notification) {
+    if (page == null ||
+        notification.depth != 0 ||
+        notification.metrics.axis != Axis.vertical) {
+      return false;
     }
     final metrics = notification.metrics;
+    double outside(double pixels) =>
+        math.min(0.0, pixels - metrics.minScrollExtent) +
+        math.max(0.0, pixels - metrics.maxScrollExtent);
     final delta = switch (notification) {
       OverscrollNotification(dragDetails: Object(), :final overscroll) =>
         overscroll,
       ScrollUpdateNotification(dragDetails: Object(), :final scrollDelta?) =>
         // Bouncing physics report motion past the limit as a scroll update.
-        math.max(0.0, metrics.pixels - metrics.maxScrollExtent) -
-            math.max(
-              0.0,
-              metrics.pixels - scrollDelta - metrics.maxScrollExtent,
-            ),
+        outside(metrics.pixels) - outside(metrics.pixels - scrollDelta),
       _ => 0.0,
     };
-    if (delta <= 0) return;
-    final page = Scrollable.maybeOf(context, axis: Axis.vertical)?.position;
-    if (page == null || page.extentAfter == 0) return;
-    page.jumpTo(math.min(page.pixels + delta, page.maxScrollExtent));
+    if (delta == 0) return false;
+    final offset = (page.pixels + delta).clamp(
+      page.minScrollExtent,
+      page.maxScrollExtent,
+    );
+    if ((offset - page.pixels).abs() <= precisionErrorTolerance) return false;
+    page.jumpTo(offset);
+    // A leading-edge drag spent moving the page must not also arm refresh.
+    return delta < 0;
   }
 
   Future<void> _indexRows(
