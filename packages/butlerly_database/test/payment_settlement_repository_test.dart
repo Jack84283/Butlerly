@@ -68,6 +68,44 @@ void main() {
     },
   );
 
+  test(
+    'updates a legacy orphan without rewriting the source reference',
+    () async {
+      final original = _settlement();
+      await settlements.save(original);
+      await database.connection.execute('PRAGMA foreign_keys = OFF');
+      await database.connection.delete(
+        'payment_sources',
+        where: 'id = ?',
+        whereArgs: ['visa'],
+      );
+      await database.connection.execute('PRAGMA foreign_keys = ON');
+
+      await settlements.save(
+        PaymentSettlement(
+          id: original.id,
+          paymentSourceId: original.paymentSourceId,
+          payment: Money(
+            amount: DecimalValue.parse('12.01234567890123456789'),
+            currency: original.payment.currency,
+          ),
+          paymentDate: original.paymentDate,
+          periodStart: original.periodStart,
+          periodEnd: original.periodEnd,
+          status: original.status,
+          createdAt: original.createdAt,
+          updatedAt: original.updatedAt,
+        ),
+      );
+      final loaded = (await settlements.findById(original.id))!;
+      expect(loaded.paymentSourceId.value, 'visa');
+      expect(
+        loaded.payment.amount,
+        DecimalValue.parse('12.01234567890123456789'),
+      );
+    },
+  );
+
   test('resolves activity dynamically and excludes transfers', () async {
     final settlement = _settlement();
     await settlements.save(settlement);

@@ -30,10 +30,27 @@ final class SavePaymentSettlement {
     String? externalReference,
   }) => runApplication('save payment settlement', () async {
     final source = PaymentSourceId(paymentSourceId);
-    if (await paymentSources.findById(source) == null) {
+    final settlementId = PaymentSettlementId(id);
+    final existing = await settlements.findById(settlementId);
+    if (existing == null) {
+      final paymentSource = await paymentSources.findById(source);
+      if (paymentSource == null) {
+        throw const RepositoryException(
+          RepositoryFailureCode.notFound,
+          'save payment settlement payment source',
+        );
+      }
+      if (paymentSource.type != PaymentSourceType.card ||
+          paymentSource.status != PaymentSourceStatus.active) {
+        throw const RepositoryException(
+          RepositoryFailureCode.constraint,
+          'new settlement requires an active credit card',
+        );
+      }
+    } else if (existing.paymentSourceId != source) {
       throw const RepositoryException(
-        RepositoryFailureCode.notFound,
-        'save payment settlement payment source',
+        RepositoryFailureCode.constraint,
+        'cannot change an existing settlement payment source',
       );
     }
     if (statementBalance != null &&
@@ -44,8 +61,6 @@ final class SavePaymentSettlement {
       );
     }
 
-    final settlementId = PaymentSettlementId(id);
-    final existing = await settlements.findById(settlementId);
     final paymentFactsChanged =
         existing != null &&
         (existing.payment.amount != payment.amount ||
