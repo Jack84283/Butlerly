@@ -803,13 +803,34 @@ class _SettlementCounterCard extends StatelessWidget {
   );
 }
 
-class _SettlementDesktopTable extends StatelessWidget {
+class _SettlementDesktopTable extends StatefulWidget {
   const _SettlementDesktopTable({required this.data, required this.onOpen});
 
   final _SettlementListData data;
   final ValueChanged<PaymentSettlementDto> onOpen;
 
+  @override
+  State<_SettlementDesktopTable> createState() =>
+      _SettlementDesktopTableState();
+}
+
+class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
   static const double minimumWidth = 920;
+  static const double viewportHeightFactor = .55;
+  static const double dateWidth = 110;
+  static const double amountWidth = 145;
+  static const double statusWidth = 135;
+  static const double arrowWidth = 24;
+  static const double wrappedColumnWidth =
+      (minimumWidth - dateWidth - amountWidth - statusWidth - arrowWidth) / 2;
+
+  final _verticalController = ScrollController();
+
+  @override
+  void dispose() {
+    _verticalController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => ButlerlyCard(
@@ -817,6 +838,7 @@ class _SettlementDesktopTable extends StatelessWidget {
     child: ButlerlyDesktopInnerCard(
       child: LayoutBuilder(
         builder: (context, constraints) {
+          final data = widget.data;
           final table = Column(
             key: const ValueKey('desktop-payment-settlements-table'),
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -824,34 +846,75 @@ class _SettlementDesktopTable extends StatelessWidget {
               Row(
                 children: [
                   Expanded(flex: 3, child: _heading(context, 'paymentSource')),
-                  SizedBox(width: 110, child: _heading(context, 'date')),
+                  SizedBox(width: dateWidth, child: _heading(context, 'date')),
                   Expanded(
                     flex: 3,
                     child: _heading(context, 'paymentSettlementPeriod'),
                   ),
                   SizedBox(
-                    width: 145,
+                    width: amountWidth,
                     child: _heading(context, 'paymentSettlementAmount'),
                   ),
-                  SizedBox(width: 135, child: _heading(context, 'status')),
-                  const SizedBox(width: 24),
+                  SizedBox(
+                    width: statusWidth,
+                    child: _heading(context, 'status'),
+                  ),
+                  const SizedBox(width: arrowWidth),
                 ],
               ),
               const SizedBox(height: ButlerlyTableTokens.headerToRowsGap),
               _divider(context),
-              for (final settlement in data.settlements) ...[
-                _row(context, settlement),
-                _divider(context),
-              ],
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight:
+                      MediaQuery.sizeOf(context).height * viewportHeightFactor,
+                ),
+                // Finite height keeps layout bounded. Shrink wrapping lets a
+                // short history use only the height its rows need.
+                child: ScrollConfiguration(
+                  behavior: ScrollConfiguration.of(
+                    context,
+                  ).copyWith(scrollbars: false),
+                  child: ListView.builder(
+                    key: const ValueKey('desktop-payment-settlements-rows'),
+                    controller: _verticalController,
+                    primary: false,
+                    shrinkWrap: true,
+                    padding: EdgeInsets.zero,
+                    itemCount: data.settlements.length,
+                    findChildIndexCallback: (key) =>
+                        data.settlementIndexes[(key as ValueKey<String>).value],
+                    itemBuilder: (context, index) {
+                      final settlement = data.settlements[index];
+                      return Column(
+                        key: ValueKey(settlement.id),
+                        children: [
+                          _row(context, settlement),
+                          _divider(context),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ),
             ],
           );
-          if (constraints.maxWidth >= minimumWidth) return table;
-          return SingleChildScrollView(
-            key: const ValueKey(
-              'desktop-payment-settlements-horizontal-scroll',
+          return Scrollbar(
+            controller: _verticalController,
+            notificationPredicate: (notification) =>
+                notification.metrics.axis == Axis.vertical,
+            child: SingleChildScrollView(
+              key: const ValueKey(
+                'desktop-payment-settlements-horizontal-scroll',
+              ),
+              scrollDirection: Axis.horizontal,
+              child: SizedBox(
+                width: constraints.maxWidth < minimumWidth
+                    ? minimumWidth
+                    : constraints.maxWidth,
+                child: table,
+              ),
             ),
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(width: minimumWidth, child: table),
           );
         },
       ),
@@ -861,8 +924,6 @@ class _SettlementDesktopTable extends StatelessWidget {
   Widget _heading(BuildContext context, String key) => Text(
     context.l10n.text(key),
     style: ButlerlyTableTokens.headerTextStyle(context),
-    maxLines: 1,
-    overflow: TextOverflow.ellipsis,
   );
 
   Widget _divider(BuildContext context) => Divider(
@@ -871,10 +932,18 @@ class _SettlementDesktopTable extends StatelessWidget {
     color: ButlerlyTableTokens.dividerColor(context),
   );
 
+  // Keep wrapped rows the same height when opening or closing the detail pane
+  // changes the table width. The vertical scroll position then stays anchored.
+  Widget _wrappedCell(Text text) => Align(
+    alignment: AlignmentDirectional.centerStart,
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: wrappedColumnWidth),
+      child: text,
+    ),
+  );
+
   Widget _row(BuildContext context, PaymentSettlementDto settlement) {
-    final sourceUnavailable = !data.sources.any(
-      (source) => source.id.value == settlement.paymentSourceId,
-    );
+    final source = widget.data.sourcesById[settlement.paymentSourceId];
     final locale = Localizations.localeOf(context).toLanguageTag();
     final paymentDate = DateTime.tryParse(settlement.paymentDate);
     final date = paymentDate == null
@@ -883,11 +952,20 @@ class _SettlementDesktopTable extends StatelessWidget {
     final amount =
         '${settlement.payment.currency.value} '
         '${localizedTransactionAmount(context, settlement.payment.amount.toString())}';
+    final sourceLabel = Text(
+      _settlementSourceDisplayLabel(
+        context,
+        source,
+        settlement.paymentSourceId,
+      ),
+      maxLines: source == null ? null : 1,
+      overflow: source == null ? null : TextOverflow.ellipsis,
+    );
     return Material(
       type: MaterialType.transparency,
       child: InkWell(
         key: ValueKey('desktop-payment-settlement-${settlement.id}'),
-        onTap: () => onOpen(settlement),
+        onTap: () => widget.onOpen(settlement),
         child: Padding(
           padding: const EdgeInsets.symmetric(
             vertical: ButlerlyTableTokens.rowVerticalPadding,
@@ -896,35 +974,18 @@ class _SettlementDesktopTable extends StatelessWidget {
             children: [
               Expanded(
                 flex: 3,
-                child: Text(
-                  _settlementSourceLabel(
-                    context,
-                    data.sources,
-                    settlement.paymentSourceId,
-                  ),
-                  maxLines: sourceUnavailable ? null : 1,
-                  overflow: sourceUnavailable ? null : TextOverflow.ellipsis,
-                ),
+                child: source == null ? _wrappedCell(sourceLabel) : sourceLabel,
               ),
-              SizedBox(width: 110, child: Text(date)),
+              SizedBox(width: dateWidth, child: Text(date)),
               Expanded(
                 flex: 3,
-                child: Text(
-                  '${settlement.periodStart} – ${settlement.periodEnd}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                child: _wrappedCell(
+                  Text('${settlement.periodStart} – ${settlement.periodEnd}'),
                 ),
               ),
+              SizedBox(width: amountWidth, child: Text(amount)),
               SizedBox(
-                width: 145,
-                child: Text(
-                  amount,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              SizedBox(
-                width: 135,
+                width: statusWidth,
                 child: Text(
                   context.l10n.text(switch (settlement.status) {
                     PaymentSettlementStatus.open => 'paymentSettlementOpen',
@@ -934,7 +995,7 @@ class _SettlementDesktopTable extends StatelessWidget {
                   }),
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded, size: 24),
+              const Icon(Icons.chevron_right_rounded, size: arrowWidth),
             ],
           ),
         ),
@@ -1571,10 +1632,17 @@ final class _SettlementSavePopEntry extends PopEntry<Object?> {
 }
 
 final class _SettlementListData {
-  const _SettlementListData({required this.settlements, required this.sources});
+  _SettlementListData({required this.settlements, required this.sources});
 
   final List<PaymentSettlementDto> settlements;
   final List<PaymentSource> sources;
+
+  late final sourcesById = {
+    for (final source in sources) source.id.value: source,
+  };
+  late final settlementIndexes = {
+    for (final (index, settlement) in settlements.indexed) settlement.id: index,
+  };
 
   List<PaymentSource> get activeCardSources => sources
       .where(
@@ -1596,6 +1664,14 @@ String _settlementSourceLabel(
   String id,
 ) {
   final source = sources.where((source) => source.id.value == id).firstOrNull;
+  return _settlementSourceDisplayLabel(context, source, id);
+}
+
+String _settlementSourceDisplayLabel(
+  BuildContext context,
+  PaymentSource? source,
+  String id,
+) {
   if (source == null) {
     return context.l10n.text('missingSettlementSource', {'id': id});
   }
