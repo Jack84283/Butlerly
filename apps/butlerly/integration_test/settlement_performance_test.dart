@@ -83,27 +83,37 @@ void main() {
           paymentSettlements: settlements,
         ),
       );
-      final now = DateTime.utc(2026, 1, 20);
-      final payment = Money(
-        amount: DecimalValue.parse('73.019'),
-        currency: CurrencyCode('USD'),
-      );
+      final now = DateTime.utc(2026, 11, 20);
+      final currencies = ['USD', 'CNY', 'EUR'].map(CurrencyCode.new).toList();
       for (var index = 0; index < count; index++) {
+        final date = now.subtract(Duration(days: index ~/ 2));
+        final periodEnd = date.subtract(Duration(days: index % 7));
+        final periodStart = periodEnd.subtract(Duration(days: 23 + index % 13));
+        final fraction = ((index * 19 + 41) % 1000).toString().padLeft(3, '0');
         await settlements.save(
           PaymentSettlement(
             id: PaymentSettlementId('benchmark-$index'),
-            paymentSourceId: index.isEven
-                ? card.id
-                : PaymentSourceId(
-                    'missing-historical-credit-card-source-$index',
-                  ),
-            payment: payment,
-            paymentDate: '2026-01-20',
-            periodStart: '2026-01-01',
-            periodEnd: '2026-01-20',
-            status: PaymentSettlementStatus.open,
-            createdAt: now,
-            updatedAt: now,
+            paymentSourceId: switch (index % 5) {
+              0 || 1 => card.id,
+              2 => PaymentSourceId('missing-$index'),
+              3 => PaymentSourceId('missing-historical-card-$index'),
+              _ => PaymentSourceId(
+                'missing-historical-credit-card-source-with-a-migrated-id-$index',
+              ),
+            },
+            payment: Money(
+              amount: DecimalValue.parse(
+                '${(index * 137 + 73) % 100000}.$fraction',
+              ),
+              currency: currencies[index % currencies.length],
+            ),
+            paymentDate: _isoDate(date),
+            periodStart: _isoDate(periodStart),
+            periodEnd: _isoDate(periodEnd),
+            status: PaymentSettlementStatus
+                .values[index % PaymentSettlementStatus.values.length],
+            createdAt: date,
+            updatedAt: date,
           ),
         );
       }
@@ -146,41 +156,16 @@ void main() {
         tester.element(row),
         axis: Axis.vertical,
       ).position;
-      const scrollStep = 30.0;
-      const scrollSteps = 48;
-      final scrollOrigin = position.pixels;
-      expect(
-        position.maxScrollExtent,
-        greaterThan(scrollOrigin + scrollStep * scrollSteps),
+      final firstScroll = await _profileScroll(
+        tester,
+        count,
+        position,
+        sample,
+        step: 30,
+        phase: 'scroll',
       );
-      // Let initial layout timings flush before collecting scroll frames.
-      await Future<void>.delayed(const Duration(seconds: 2));
-      await sample(count, 'before_scroll');
-      final timings = <FrameTiming>[];
-      final collectTimings = timings.addAll;
-      binding.addTimingsCallback(collectTimings);
-      final scrollStartMicros = developer.Timeline.now;
-      try {
-        for (var step = 1; step <= scrollSteps; step++) {
-          final target = scrollOrigin + step * scrollStep;
-          position.jumpTo(target);
-          await tester.pump(const Duration(milliseconds: 16));
-          expect(position.pixels, closeTo(target, 0.5));
-        }
-        await sample(
-          count,
-          'scroll',
-          startMicros: scrollStartMicros,
-          endMicros: developer.Timeline.now,
-        );
-        // Profile builds batch frame timings before delivering them.
-        await Future<void>.delayed(const Duration(seconds: 2));
-      } finally {
-        binding.removeTimingsCallback(collectTimings);
-      }
-      expect(timings, isNotEmpty);
       debugPrint(
-        'SETTLEMENT_BENCH ${jsonEncode({'count': count, 'viewport': '${viewport.width}x${viewport.height}', 'startup_ms': start.elapsedMilliseconds, 'mounted_rows': countRows, 'rss_delta_bytes': ProcessInfo.currentRss - beforeRss, 'scroll_distance_px': position.pixels - scrollOrigin, 'scrolling_frames': timings.length, 'build_p95_ms': _p95(timings.map((frame) => frame.buildDuration)), 'raster_p95_ms': _p95(timings.map((frame) => frame.rasterDuration))})}',
+        'SETTLEMENT_BENCH ${jsonEncode({'count': count, 'viewport': '${viewport.width}x${viewport.height}', 'startup_ms': start.elapsedMilliseconds, 'mounted_rows': countRows, 'rss_delta_bytes': ProcessInfo.currentRss - beforeRss, ...firstScroll})}',
       );
       if (count == 5000) {
         await sample(count, 'before_jump');
@@ -202,11 +187,73 @@ void main() {
         debugPrint(
           'SETTLEMENT_JUMP ${jsonEncode({'count': count, 'duration_ms': (jumpEnd - jumpStart) / 1000})}',
         );
+        final deepScroll = await _profileScroll(
+          tester,
+          count,
+          position,
+          sample,
+          step: -30,
+          phase: 'deep_scroll',
+        );
+        debugPrint(
+          'SETTLEMENT_DEEP_SCROLL ${jsonEncode({'count': count, ...deepScroll})}',
+        );
       }
       expect(tester.takeException(), isNull);
     }
     await services.reset();
   });
+}
+
+String _isoDate(DateTime date) => date.toIso8601String().substring(0, 10);
+
+Future<Map<String, Object>> _profileScroll(
+  WidgetTester tester,
+  int count,
+  ScrollPosition position,
+  Future<void> Function(int, String, {int? startMicros, int? endMicros})
+  sample, {
+  required double step,
+  required String phase,
+}) async {
+  const frames = 48;
+  final origin = position.pixels;
+  final end = origin + step * frames;
+  expect(
+    end,
+    inInclusiveRange(position.minScrollExtent, position.maxScrollExtent),
+  );
+  await Future<void>.delayed(const Duration(seconds: 2));
+  await sample(count, 'before_$phase');
+  final timings = <FrameTiming>[];
+  final collect = timings.addAll;
+  tester.binding.addTimingsCallback(collect);
+  final startMicros = developer.Timeline.now;
+  try {
+    for (var index = 1; index <= frames; index++) {
+      final target = origin + step * index;
+      position.jumpTo(target);
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(position.pixels, closeTo(target, 0.5));
+    }
+    await sample(
+      count,
+      phase,
+      startMicros: startMicros,
+      endMicros: developer.Timeline.now,
+    );
+    // Profile builds batch frame timings before delivering them.
+    await Future<void>.delayed(const Duration(seconds: 2));
+  } finally {
+    tester.binding.removeTimingsCallback(collect);
+  }
+  expect(timings, isNotEmpty);
+  return {
+    'scroll_distance_px': position.pixels - origin,
+    'scrolling_frames': timings.length,
+    'build_p95_ms': _p95(timings.map((frame) => frame.buildDuration)),
+    'raster_p95_ms': _p95(timings.map((frame) => frame.rasterDuration)),
+  };
 }
 
 double _p95(Iterable<Duration> durations) {

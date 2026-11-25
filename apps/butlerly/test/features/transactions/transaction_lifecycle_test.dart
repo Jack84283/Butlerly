@@ -3891,7 +3891,9 @@ void main() {
 
       final resultsScroll = find.descendant(
         of: find.byKey(const ValueKey('butlerly-page-canvas')),
-        matching: find.byType(CustomScrollView),
+        matching: find.byWidgetPredicate(
+          (widget) => widget is CustomScrollView && widget.key == null,
+        ),
       );
       expect(resultsScroll, findsOneWidget);
       final otherSettlement = find.byKey(

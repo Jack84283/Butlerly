@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:butlerly/app/shell/adaptive_shell.dart';
@@ -24,6 +25,7 @@ import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:intl/intl.dart' show DateFormat;
 
 class PaymentSettlementsPage extends StatefulWidget {
@@ -836,8 +838,8 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
   final _verticalController = ScrollController();
   _SettlementListData? _extentData;
   _SettlementRowTypography? _extentTypography;
-  List<double?> _rowExtents = [];
-  final _textHeights = <(String, double, int?), double>{};
+  int _extentGeneration = 0;
+  _IndexedSettlementRows? _indexedRows;
 
   @override
   void dispose() {
@@ -889,6 +891,7 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
           );
           return Scrollbar(
             controller: _verticalController,
+            interactive: _indexedRows != null,
             notificationPredicate: (notification) =>
                 notification.metrics.axis == Axis.vertical,
             child: SingleChildScrollView(
@@ -913,7 +916,7 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
   );
 
   Widget _rows(BuildContext context) {
-    final data = widget.data;
+    final requestedData = widget.data;
     final typography = (
       style: Theme.of(context).textTheme.bodyMedium!.copyWith(
         fontWeight: MediaQuery.boldTextOf(context) ? FontWeight.bold : null,
@@ -926,48 +929,51 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
       locale: Localizations.localeOf(context),
       heightBehavior: DefaultTextHeightBehavior.maybeOf(context),
     );
-    if (data != _extentData || typography != _extentTypography) {
-      _extentData = data;
+    if (requestedData != _extentData || typography != _extentTypography) {
+      _extentData = requestedData;
+      if (typography != _extentTypography) _indexedRows = null;
       _extentTypography = typography;
-      _rowExtents = List.filled(data.settlements.length, null);
-      _textHeights.clear();
+      unawaited(
+        _indexRows(context, requestedData, typography, ++_extentGeneration),
+      );
     }
-    final rowExtents = _rowExtents;
+    final indexed = _indexedRows;
+    if (indexed == null) return const ButlerlyLoadingState();
+    final data = indexed.data;
     final dateFormat = DateFormat.yMMMd(typography.locale.toLanguageTag());
     final list = ScrollConfiguration(
       behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
-      child: ListView.builder(
+      child: CustomScrollView(
         key: const ValueKey('desktop-payment-settlements-rows'),
         controller: _verticalController,
         primary: false,
         shrinkWrap: true,
-        padding: EdgeInsets.zero,
-        itemCount: data.settlements.length,
-        // Flutter can resolve a large offset with text metrics without
-        // creating and laying out the intervening row widgets.
-        itemExtentBuilder: (index, _) => index >= data.settlements.length
-            ? null
-            : rowExtents[index] ??= _rowExtent(
-                typography,
-                _cells(context, data.settlements[index], dateFormat),
-              ),
-        findChildIndexCallback: (key) =>
-            data.settlementIndexes[(key as ValueKey<String>).value],
-        itemBuilder: (context, index) {
-          final settlement = data.settlements[index];
-          return Column(
-            key: ValueKey(settlement.id),
-            children: [
-              Expanded(
-                child: _row(
-                  settlement,
-                  _cells(context, settlement, dateFormat),
-                ),
-              ),
-              _divider(context),
-            ],
-          );
-        },
+        semanticChildCount: data.settlements.length,
+        slivers: [
+          _IndexedSettlementSliver(
+            offsets: indexed.offsets,
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final settlement = data.settlements[index];
+                return Column(
+                  key: ValueKey(settlement.id),
+                  children: [
+                    Expanded(
+                      child: _row(
+                        settlement,
+                        _cells(context, data, settlement, dateFormat),
+                      ),
+                    ),
+                    _divider(context),
+                  ],
+                );
+              },
+              childCount: data.settlements.length,
+              findChildIndexCallback: (key) =>
+                  data.settlementIndexes[(key as ValueKey<String>).value],
+            ),
+          ),
+        ],
       ),
     );
     // A drag starting over a long history belongs to the row viewport.
@@ -979,6 +985,35 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
       ),
       _ => list,
     };
+  }
+
+  Future<void> _indexRows(
+    BuildContext context,
+    _SettlementListData data,
+    _SettlementRowTypography typography,
+    int generation,
+  ) async {
+    final dateFormat = DateFormat.yMMMd(typography.locale.toLanguageTag());
+    final offsets = <double>[0];
+    final heights = <(String, double, int?), double>{};
+    const batchSize = 64;
+    for (var start = 0; start < data.settlements.length; start += batchSize) {
+      // Yield between batches so text measurement cannot block a scroll frame.
+      await Future<void>.delayed(Duration.zero);
+      if (!mounted || !context.mounted || generation != _extentGeneration)
+        return;
+      final end = math.min(start + batchSize, data.settlements.length);
+      for (var index = start; index < end; index++) {
+        final cells = _cells(
+          context,
+          data,
+          data.settlements[index],
+          dateFormat,
+        );
+        offsets.add(offsets.last + _rowExtent(typography, heights, cells));
+      }
+    }
+    setState(() => _indexedRows = (data: data, offsets: offsets));
   }
 
   Widget _heading(BuildContext context, String key) => Text(
@@ -1004,10 +1039,11 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
 
   _SettlementRowCells _cells(
     BuildContext context,
+    _SettlementListData data,
     PaymentSettlementDto settlement,
     DateFormat dateFormat,
   ) {
-    final source = widget.data.sourcesById[settlement.paymentSourceId];
+    final source = data.sourcesById[settlement.paymentSourceId];
     final paymentDate = DateTime.tryParse(settlement.paymentDate);
     return (
       source: _settlementSourceDisplayLabel(
@@ -1033,10 +1069,11 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
 
   double _rowExtent(
     _SettlementRowTypography typography,
+    Map<(String, double, int?), double> heights,
     _SettlementRowCells cells,
   ) {
     double height(String text, double width, {int? maxLines}) =>
-        _textHeights.putIfAbsent((text, width, maxLines), () {
+        heights.putIfAbsent((text, width, maxLines), () {
           final painter = TextPainter(
             text: TextSpan(text: text, style: typography.style),
             textDirection: typography.direction,
@@ -1109,6 +1146,91 @@ typedef _SettlementRowTypography = ({
   Locale locale,
   TextHeightBehavior? heightBehavior,
 });
+
+typedef _IndexedSettlementRows = ({
+  _SettlementListData data,
+  List<double> offsets,
+});
+
+class _IndexedSettlementSliver extends SliverVariedExtentList {
+  _IndexedSettlementSliver({required this.offsets, required super.delegate})
+    : super(
+        itemExtentBuilder: (index, _) => index + 1 < offsets.length
+            ? offsets[index + 1] - offsets[index]
+            : null,
+      );
+
+  final List<double> offsets;
+
+  @override
+  _RenderIndexedSettlementSliver createRenderObject(BuildContext context) =>
+      _RenderIndexedSettlementSliver(
+        childManager: context as SliverMultiBoxAdaptorElement,
+        itemExtentBuilder: itemExtentBuilder,
+        offsets: offsets,
+      );
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    covariant _RenderIndexedSettlementSliver renderObject,
+  ) {
+    renderObject.offsets = offsets;
+    super.updateRenderObject(context, renderObject);
+  }
+}
+
+class _RenderIndexedSettlementSliver extends RenderSliverVariedExtentList {
+  _RenderIndexedSettlementSliver({
+    required super.childManager,
+    required super.itemExtentBuilder,
+    required this.offsets,
+  });
+
+  List<double> offsets;
+
+  // The final offset is the end of the table. Each preceding offset is the
+  // start of one row, so scrolling resolves indices without scanning rows.
+  int _indexForOffset(double offset) {
+    var first = 0;
+    var last = offsets.length - 1;
+    while (first < last) {
+      final middle = (first + last) ~/ 2;
+      if (offsets[middle] < offset) {
+        first = middle + 1;
+      } else {
+        last = middle;
+      }
+    }
+    return math.max(0, first - 1);
+  }
+
+  @override
+  int getMinChildIndexForScrollOffset(double offset, double itemExtent) =>
+      _indexForOffset(offset);
+
+  @override
+  int getMaxChildIndexForScrollOffset(double offset, double itemExtent) =>
+      _indexForOffset(offset);
+
+  @override
+  double indexToLayoutOffset(double itemExtent, int index) => offsets[index];
+
+  @override
+  double computeMaxScrollOffset(
+    SliverConstraints constraints,
+    double itemExtent,
+  ) => offsets.last;
+
+  @override
+  double estimateMaxScrollOffset(
+    SliverConstraints constraints, {
+    int? firstIndex,
+    int? lastIndex,
+    double? leadingScrollOffset,
+    double? trailingScrollOffset,
+  }) => offsets.last;
+}
 
 typedef _SettlementRowCells = ({
   String source,
