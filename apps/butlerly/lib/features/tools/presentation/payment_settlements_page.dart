@@ -1017,8 +1017,9 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
     BuildContext context,
     ScrollNotification notification,
   ) {
-    if (notification.depth != 0 || notification.metrics.axis != Axis.vertical)
+    if (notification.depth != 0 || notification.metrics.axis != Axis.vertical) {
       return;
+    }
     final metrics = notification.metrics;
     final delta = switch (notification) {
       OverscrollNotification(dragDetails: Object(), :final overscroll) =>
