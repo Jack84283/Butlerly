@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
@@ -22,7 +24,7 @@ import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' show DateFormat;
 
 class PaymentSettlementsPage extends StatefulWidget {
   const PaymentSettlementsPage({super.key});
@@ -832,6 +834,10 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
       (minimumWidth - dateWidth - amountWidth - statusWidth - arrowWidth) / 2;
 
   final _verticalController = ScrollController();
+  _SettlementListData? _extentData;
+  _SettlementRowTypography? _extentTypography;
+  List<double?> _rowExtents = [];
+  final _textHeights = <(String, double, int?), double>{};
 
   @override
   void dispose() {
@@ -908,6 +914,26 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
 
   Widget _rows(BuildContext context) {
     final data = widget.data;
+    final typography = (
+      style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+        fontWeight: MediaQuery.boldTextOf(context) ? FontWeight.bold : null,
+        height: MediaQuery.maybeLineHeightScaleFactorOverrideOf(context),
+        letterSpacing: MediaQuery.maybeLetterSpacingOverrideOf(context),
+        wordSpacing: MediaQuery.maybeWordSpacingOverrideOf(context),
+      ),
+      textScaler: MediaQuery.textScalerOf(context),
+      direction: Directionality.of(context),
+      locale: Localizations.localeOf(context),
+      heightBehavior: DefaultTextHeightBehavior.maybeOf(context),
+    );
+    if (data != _extentData || typography != _extentTypography) {
+      _extentData = data;
+      _extentTypography = typography;
+      _rowExtents = List.filled(data.settlements.length, null);
+      _textHeights.clear();
+    }
+    final rowExtents = _rowExtents;
+    final dateFormat = DateFormat.yMMMd(typography.locale.toLanguageTag());
     final list = ScrollConfiguration(
       behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
       child: ListView.builder(
@@ -917,13 +943,29 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
         shrinkWrap: true,
         padding: EdgeInsets.zero,
         itemCount: data.settlements.length,
+        // Flutter can resolve a large offset with text metrics without
+        // creating and laying out the intervening row widgets.
+        itemExtentBuilder: (index, _) => index >= data.settlements.length
+            ? null
+            : rowExtents[index] ??= _rowExtent(
+                typography,
+                _cells(context, data.settlements[index], dateFormat),
+              ),
         findChildIndexCallback: (key) =>
             data.settlementIndexes[(key as ValueKey<String>).value],
         itemBuilder: (context, index) {
           final settlement = data.settlements[index];
           return Column(
             key: ValueKey(settlement.id),
-            children: [_row(context, settlement), _divider(context)],
+            children: [
+              Expanded(
+                child: _row(
+                  settlement,
+                  _cells(context, settlement, dateFormat),
+                ),
+              ),
+              _divider(context),
+            ],
           );
         },
       ),
@@ -960,24 +1002,75 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
     ),
   );
 
-  Widget _row(BuildContext context, PaymentSettlementDto settlement) {
+  _SettlementRowCells _cells(
+    BuildContext context,
+    PaymentSettlementDto settlement,
+    DateFormat dateFormat,
+  ) {
     final source = widget.data.sourcesById[settlement.paymentSourceId];
-    final locale = Localizations.localeOf(context).toLanguageTag();
     final paymentDate = DateTime.tryParse(settlement.paymentDate);
-    final date = paymentDate == null
-        ? settlement.paymentDate
-        : DateFormat.yMMMd(locale).format(paymentDate);
-    final amount =
-        '${settlement.payment.currency.value} '
-        '${localizedTransactionAmount(context, settlement.payment.amount.toString())}';
-    final sourceLabel = Text(
-      _settlementSourceDisplayLabel(
+    return (
+      source: _settlementSourceDisplayLabel(
         context,
         source,
         settlement.paymentSourceId,
       ),
-      maxLines: source == null ? null : 1,
-      overflow: source == null ? null : TextOverflow.ellipsis,
+      sourceMissing: source == null,
+      date: paymentDate == null
+          ? settlement.paymentDate
+          : dateFormat.format(paymentDate),
+      period: '${settlement.periodStart} – ${settlement.periodEnd}',
+      amount:
+          '${settlement.payment.currency.value} '
+          '${localizedTransactionAmount(context, settlement.payment.amount.toString())}',
+      status: context.l10n.text(switch (settlement.status) {
+        PaymentSettlementStatus.open => 'paymentSettlementOpen',
+        PaymentSettlementStatus.reconciled => 'paymentSettlementReconciled',
+        PaymentSettlementStatus.needsReview => 'needsReview',
+      }),
+    );
+  }
+
+  double _rowExtent(
+    _SettlementRowTypography typography,
+    _SettlementRowCells cells,
+  ) {
+    double height(String text, double width, {int? maxLines}) =>
+        _textHeights.putIfAbsent((text, width, maxLines), () {
+          final painter = TextPainter(
+            text: TextSpan(text: text, style: typography.style),
+            textDirection: typography.direction,
+            textScaler: typography.textScaler,
+            locale: typography.locale,
+            maxLines: maxLines,
+            ellipsis: maxLines == null ? null : '…',
+            textHeightBehavior: typography.heightBehavior,
+          )..layout(maxWidth: width);
+          final height = painter.height;
+          painter.dispose();
+          return height;
+        });
+    return [
+          arrowWidth,
+          height(
+            cells.source,
+            wrappedColumnWidth,
+            maxLines: cells.sourceMissing ? null : 1,
+          ),
+          height(cells.date, dateWidth),
+          height(cells.period, wrappedColumnWidth),
+          height(cells.amount, amountWidth),
+          height(cells.status, statusWidth),
+        ].reduce(math.max).ceilToDouble() +
+        2 * ButlerlyTableTokens.rowVerticalPadding +
+        ButlerlyTableTokens.dividerThickness;
+  }
+
+  Widget _row(PaymentSettlementDto settlement, _SettlementRowCells cells) {
+    final sourceLabel = Text(
+      cells.source,
+      maxLines: cells.sourceMissing ? null : 1,
+      overflow: cells.sourceMissing ? null : TextOverflow.ellipsis,
     );
     return Material(
       type: MaterialType.transparency,
@@ -992,27 +1085,14 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
             children: [
               Expanded(
                 flex: 3,
-                child: source == null ? _wrappedCell(sourceLabel) : sourceLabel,
+                child: cells.sourceMissing
+                    ? _wrappedCell(sourceLabel)
+                    : sourceLabel,
               ),
-              SizedBox(width: dateWidth, child: Text(date)),
-              Expanded(
-                flex: 3,
-                child: _wrappedCell(
-                  Text('${settlement.periodStart} – ${settlement.periodEnd}'),
-                ),
-              ),
-              SizedBox(width: amountWidth, child: Text(amount)),
-              SizedBox(
-                width: statusWidth,
-                child: Text(
-                  context.l10n.text(switch (settlement.status) {
-                    PaymentSettlementStatus.open => 'paymentSettlementOpen',
-                    PaymentSettlementStatus.reconciled =>
-                      'paymentSettlementReconciled',
-                    PaymentSettlementStatus.needsReview => 'needsReview',
-                  }),
-                ),
-              ),
+              SizedBox(width: dateWidth, child: Text(cells.date)),
+              Expanded(flex: 3, child: _wrappedCell(Text(cells.period))),
+              SizedBox(width: amountWidth, child: Text(cells.amount)),
+              SizedBox(width: statusWidth, child: Text(cells.status)),
               const Icon(Icons.chevron_right_rounded, size: arrowWidth),
             ],
           ),
@@ -1021,6 +1101,23 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
     );
   }
 }
+
+typedef _SettlementRowTypography = ({
+  TextStyle style,
+  TextScaler textScaler,
+  TextDirection direction,
+  Locale locale,
+  TextHeightBehavior? heightBehavior,
+});
+
+typedef _SettlementRowCells = ({
+  String source,
+  bool sourceMissing,
+  String date,
+  String period,
+  String amount,
+  String status,
+});
 
 class _SettlementTableScrollAction extends ScrollAction {
   @override

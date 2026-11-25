@@ -4065,14 +4065,13 @@ void main() {
 
     Finder row(int index) =>
         find.byKey(ValueKey('desktop-payment-settlement-history-$index'));
-    final mountedRows = find.byWidgetPredicate(
-      (widget) =>
-          widget is InkWell &&
-          widget.key is ValueKey<String> &&
-          (widget.key as ValueKey<String>).value.startsWith(
-            'desktop-payment-settlement-history-',
-          ),
-    );
+    bool isSettlementRow(Widget widget) =>
+        widget is InkWell &&
+        widget.key is ValueKey<String> &&
+        (widget.key as ValueKey<String>).value.startsWith(
+          'desktop-payment-settlement-history-',
+        );
+    final mountedRows = find.byWidgetPredicate(isSettlementRow);
     for (final (locale, theme) in [
       (const Locale('en'), AppTheme.light),
       (const Locale('zh', 'CN'), AppTheme.navy),
@@ -4104,6 +4103,10 @@ void main() {
       );
       expect(find.text(missingLabel), findsOneWidget);
       expect(row(0), findsOneWidget);
+      expect(
+        tester.getSize(row(1)).height,
+        greaterThan(tester.getSize(row(0)).height),
+      );
       expect(row(4999), findsNothing);
       expect(mountedRows.evaluate().length, lessThan(50));
       expect(tester.takeException(), isNull);
@@ -4136,14 +4139,26 @@ void main() {
     await tester.pumpAndSettle();
     expect(position.pixels, greaterThan(0));
 
-    // Variable-height slivers refine their extent as more rows are measured.
-    for (
-      var attempt = 0;
-      attempt < 5 && row(4999).evaluate().isEmpty;
-      attempt++
-    ) {
-      position.jumpTo(position.maxScrollExtent);
-      await tester.pumpAndSettle();
+    var newRows = 0;
+    final previousRebuild = debugOnRebuildDirtyWidget;
+    debugOnRebuildDirtyWidget = (element, builtOnce) {
+      previousRebuild?.call(element, builtOnce);
+      if (!builtOnce && isSettlementRow(element.widget)) newRows++;
+    };
+    try {
+      // The estimated scroll extent can refine after a single thumb jump.
+      for (
+        var attempt = 0;
+        attempt < 5 && row(4999).evaluate().isEmpty;
+        attempt++
+      ) {
+        newRows = 0;
+        position.jumpTo(position.maxScrollExtent);
+        await tester.pumpAndSettle();
+        expect(newRows, inInclusiveRange(1, 50));
+      }
+    } finally {
+      debugOnRebuildDirtyWidget = previousRebuild;
     }
     expect(row(4999), findsOneWidget);
     expect(row(4998), findsOneWidget);

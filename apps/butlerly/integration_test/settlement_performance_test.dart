@@ -182,6 +182,27 @@ void main() {
       debugPrint(
         'SETTLEMENT_BENCH ${jsonEncode({'count': count, 'viewport': '${viewport.width}x${viewport.height}', 'startup_ms': start.elapsedMilliseconds, 'mounted_rows': countRows, 'rss_delta_bytes': ProcessInfo.currentRss - beforeRss, 'scroll_distance_px': position.pixels - scrollOrigin, 'scrolling_frames': timings.length, 'build_p95_ms': _p95(timings.map((frame) => frame.buildDuration)), 'raster_p95_ms': _p95(timings.map((frame) => frame.rasterDuration))})}',
       );
+      if (count == 5000) {
+        await sample(count, 'before_jump');
+        final jumpStart = developer.Timeline.now;
+        final lastRow = find.byKey(
+          const ValueKey('desktop-payment-settlement-benchmark-4999'),
+        );
+        for (
+          var attempt = 0;
+          attempt < 5 && lastRow.hitTestable().evaluate().isEmpty;
+          attempt++
+        ) {
+          position.jumpTo(position.maxScrollExtent);
+          await tester.pumpAndSettle(const Duration(milliseconds: 16));
+        }
+        final jumpEnd = developer.Timeline.now;
+        expect(lastRow.hitTestable(), findsOneWidget);
+        await sample(count, 'jump', startMicros: jumpStart, endMicros: jumpEnd);
+        debugPrint(
+          'SETTLEMENT_JUMP ${jsonEncode({'count': count, 'duration_ms': (jumpEnd - jumpStart) / 1000})}',
+        );
+      }
       expect(tester.takeException(), isNull);
     }
     await services.reset();
