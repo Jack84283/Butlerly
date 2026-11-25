@@ -4035,6 +4035,27 @@ void main() {
       matching: find.byType(Scrollable),
     );
     final position = tester.state<ScrollableState>(scrollable).position;
+    final firstSource = find.descendant(
+      of: row(0),
+      matching: find.text('History card'),
+    );
+    final firstRowFocus = Focus.of(
+      tester.element(firstSource),
+      createDependency: false,
+    );
+    for (
+      var attempt = 0;
+      attempt < 5 && !firstRowFocus.hasPrimaryFocus;
+      attempt++
+    ) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pumpAndSettle();
+    }
+    expect(firstRowFocus.hasPrimaryFocus, isTrue);
+    await tester.sendKeyEvent(LogicalKeyboardKey.pageDown);
+    await tester.pumpAndSettle();
+    expect(position.pixels, greaterThan(0));
+
     // Variable-height slivers refine their extent as more rows are measured.
     for (
       var attempt = 0;
