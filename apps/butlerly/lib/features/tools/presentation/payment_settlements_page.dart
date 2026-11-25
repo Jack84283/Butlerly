@@ -940,7 +940,7 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
       final focused = FocusManager.instance.primaryFocus;
       final rowId = _settlementForFocus(focused);
       if (rowId != null && _refreshFocus.descendants.contains(focused)) {
-        _settlementToRefocus = rowId;
+        _settlementToRefocus = _isFocusVisible(focused!) ? rowId : null;
         _refreshFocus.requestFocus();
       }
       _extentData = requestedData;
@@ -989,15 +989,12 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
         ],
       ),
     );
-    // A drag starting over a long history belongs to the row viewport.
-    // Keep pull-to-refresh reachable there on wide mobile layouts.
-    final refreshable = switch (defaultTargetPlatform) {
-      TargetPlatform.android || TargetPlatform.iOS => RefreshIndicator.adaptive(
-        onRefresh: widget.onRefresh,
-        child: list,
-      ),
-      _ => list,
-    };
+    // A touch drag starting over a long history belongs to the row viewport,
+    // including on desktops with touch input.
+    final refreshable = RefreshIndicator.adaptive(
+      onRefresh: widget.onRefresh,
+      child: list,
+    );
     final indexing = data != requestedData;
     return Stack(
       children: [
@@ -1048,6 +1045,27 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
   String? _settlementForFocus(FocusNode? node) => node?.context
       ?.findAncestorWidgetOfExactType<_SettlementFocusTarget>()
       ?.settlementId;
+
+  bool _isFocusVisible(FocusNode node) {
+    final row = node.context?.findRenderObject();
+    if (row is! RenderBox || !row.attached || !row.hasSize) return false;
+    var visible = MatrixUtils.transformRect(
+      row.getTransformTo(null),
+      row.paintBounds,
+    );
+    var ancestor = row.parent;
+    while (ancestor != null && !visible.isEmpty) {
+      if (ancestor is RenderBox && ancestor is RenderAbstractViewport) {
+        final viewport = MatrixUtils.transformRect(
+          ancestor.getTransformTo(null),
+          ancestor.paintBounds,
+        );
+        visible = visible.intersect(viewport);
+      }
+      ancestor = ancestor.parent;
+    }
+    return !visible.isEmpty;
+  }
 
   void _restoreRowFocus(
     String rowId,

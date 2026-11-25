@@ -4005,28 +4005,33 @@ void main() {
     expect(outer.pixels, 0);
   });
 
-  testWidgets('Pulling a wide iOS settlement row reloads the history', (
-    tester,
-  ) async {
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(1200, 880);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    addTearDown(tester.view.resetPhysicalSize);
-    await seedSettlementViewport(100);
-    await tester.pumpWidget(
-      const MaterialApp(home: Scaffold(body: PaymentSettlementsPage())),
-    );
-    await tester.pumpAndSettle();
-    final row = find.byKey(
-      const ValueKey('desktop-payment-settlement-viewport-0'),
-    );
-    expect(row, findsOneWidget);
-    final listCalls = paymentSettlements.listCalls;
-    await tester.drag(row, const Offset(0, 450));
-    await tester.pumpAndSettle();
-    expect(paymentSettlements.listCalls, listCalls + 1);
-    expect(row, findsOneWidget);
-  }, variant: const TargetPlatformVariant({TargetPlatform.iOS}));
+  testWidgets(
+    'Pulling a wide settlement row reloads the history',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(1200, 880);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+      await seedSettlementViewport(100);
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: PaymentSettlementsPage())),
+      );
+      await tester.pumpAndSettle();
+      final row = find.byKey(
+        const ValueKey('desktop-payment-settlement-viewport-0'),
+      );
+      expect(row, findsOneWidget);
+      final listCalls = paymentSettlements.listCalls;
+      await tester.drag(row, const Offset(0, 450));
+      await tester.pumpAndSettle();
+      expect(paymentSettlements.listCalls, listCalls + 1);
+      expect(row, findsOneWidget);
+    },
+    variant: const TargetPlatformVariant({
+      TargetPlatform.iOS,
+      TargetPlatform.windows,
+    }),
+  );
 
   testWidgets('Settlement refresh reveals a reordered keyboard focus target', (
     tester,
@@ -4070,6 +4075,47 @@ void main() {
     expect(
       find.byKey(const ValueKey('desktop-settlement-detail-viewport-0')),
       findsOneWidget,
+    );
+  });
+
+  testWidgets('Settlement refresh keeps the viewport when focus is offscreen', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1200, 880);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    await seedSettlementViewport(40);
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: PaymentSettlementsPage())),
+    );
+    await tester.pumpAndSettle();
+    final row = find.byKey(
+      const ValueKey('desktop-payment-settlement-viewport-0'),
+    );
+    final label = find.descendant(
+      of: row,
+      matching: find.text('Viewport card'),
+    );
+    final context = tester.element(label);
+    final position = Scrollable.of(context, axis: Axis.vertical).position;
+    final focus = Focus.of(context, createDependency: false);
+    focus.requestFocus();
+    await tester.pump();
+    position.jumpTo(120);
+    await tester.pumpAndSettle();
+    expect(focus.hasPrimaryFocus, isTrue);
+    expect(row.hitTestable(), findsNothing);
+
+    notifyPaymentSettlementChanged();
+    await tester.pumpAndSettle();
+    expect(position.pixels, 120);
+    expect(row.hitTestable(), findsNothing);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('desktop-settlement-detail-viewport-0')),
+      findsNothing,
     );
   });
 
