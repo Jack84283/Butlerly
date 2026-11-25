@@ -3,6 +3,7 @@ import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_action_group.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_desktop_action_card.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/transaction_change_notifier.dart';
 import 'package:butlerly/features/tools/presentation/tools_navigation.dart';
@@ -230,12 +231,18 @@ class _ToolsPageState extends State<ToolsPage> {
                           for (final tool in tools.where(
                             (item) => section.routes.contains(item.route),
                           )) ...[
-                            _ToolPanel(
-                              tool: tool,
-                              status: _statusForTool(
-                                tool,
-                                reviewStatus,
-                                settlementStatus,
+                            ButlerlyDesktopActionCard(
+                              action: ButlerlyActionItem(
+                                icon: tool.icon,
+                                title: tool.title,
+                                subtitle:
+                                    _statusForTool(
+                                      tool,
+                                      reviewStatus,
+                                      settlementStatus,
+                                    ) ??
+                                    tool.description,
+                                onTap: () => context.push(tool.route),
                               ),
                             ),
                             const SizedBox(height: ButlerlySpacing.cardGap),
@@ -280,53 +287,6 @@ class _ToolsPageState extends State<ToolsPage> {
           ],
         const SizedBox(height: ButlerlySpacing.structural),
       ],
-    );
-  }
-}
-
-class _ToolPanel extends StatelessWidget {
-  const _ToolPanel({required this.tool, this.status});
-  final ToolNavigationItem tool;
-  final String? status;
-
-  @override
-  Widget build(BuildContext context) {
-    void openTool() => context.push(tool.route);
-    return ButlerlySemanticButton(
-      label: '${tool.title}, ${status ?? tool.description}',
-      onPressed: openTool,
-      child: ButlerlyCard(
-        onTap: openTool,
-        child: SizedBox(
-          height: 148,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  ButlerlyActionIcon(icon: tool.icon),
-                  const Spacer(),
-                  const Icon(Icons.arrow_forward_rounded),
-                ],
-              ),
-              const Spacer(),
-              Text(
-                tool.title,
-                style: Theme.of(context).textTheme.titleMedium,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: ButlerlySpacing.micro),
-              Text(
-                status ?? tool.description,
-                style: Theme.of(context).textTheme.bodySmall,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
