@@ -124,18 +124,22 @@ Future<T?> showButlerlyBottomSheet<T>({
   required BuildContext context,
   required WidgetBuilder builder,
   bool isScrollControlled = true,
+  bool enableDrag = true,
+  void Function(BuildContext)? onHandleDismiss,
 }) {
   final viewport = MediaQuery.sizeOf(context);
   final maxHeight = viewport.height * ButlerlySheetTokens.maxHeightFactor;
   return showModalBottomSheet<T>(
     context: context,
     isScrollControlled: isScrollControlled,
+    enableDrag: enableDrag,
     useSafeArea: true,
     backgroundColor: Colors.transparent,
     elevation: 0,
     showDragHandle: false,
     constraints: BoxConstraints(maxHeight: maxHeight),
     builder: (sheetContext) {
+      var handleDragDistance = 0.0;
       final theme = Theme.of(sheetContext);
       final bottomSheetTheme = theme.bottomSheetTheme;
       final surfaceColor =
@@ -168,22 +172,39 @@ Future<T?> showButlerlyBottomSheet<T>({
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: ButlerlySheetTokens.dragHandleVerticalPadding,
-                  ),
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.onSurfaceVariant.withValues(
-                        alpha: .4,
-                      ),
-                      borderRadius: BorderRadius.circular(
-                        ButlerlySheetTokens.dragHandleHeight,
-                      ),
+                GestureDetector(
+                  key: const ValueKey('butlerly-bottom-sheet-drag-handle'),
+                  behavior: HitTestBehavior.opaque,
+                  onVerticalDragStart: onHandleDismiss == null
+                      ? null
+                      : (_) => handleDragDistance = 0,
+                  onVerticalDragUpdate: onHandleDismiss == null
+                      ? null
+                      : (details) => handleDragDistance += details.delta.dy,
+                  onVerticalDragEnd: onHandleDismiss == null
+                      ? null
+                      : (_) {
+                          if (handleDragDistance >= 48) {
+                            onHandleDismiss(sheetContext);
+                          }
+                        },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: ButlerlySheetTokens.dragHandleVerticalPadding,
                     ),
-                    child: const SizedBox(
-                      width: ButlerlySheetTokens.dragHandleWidth,
-                      height: ButlerlySheetTokens.dragHandleHeight,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.onSurfaceVariant.withValues(
+                          alpha: .4,
+                        ),
+                        borderRadius: BorderRadius.circular(
+                          ButlerlySheetTokens.dragHandleHeight,
+                        ),
+                      ),
+                      child: const SizedBox(
+                        width: ButlerlySheetTokens.dragHandleWidth,
+                        height: ButlerlySheetTokens.dragHandleHeight,
+                      ),
                     ),
                   ),
                 ),

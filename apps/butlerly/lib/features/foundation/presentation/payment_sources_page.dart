@@ -18,6 +18,20 @@ import 'package:file_selector/file_selector.dart' as files;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+Future<List<PaymentSource>?> _listPaymentSourcesForDuplicateCheck(
+  FinanceServices finance,
+) async {
+  try {
+    final result = await finance.listPaymentSources();
+    return switch (result) {
+      ApplicationSuccess<List<PaymentSource>>(:final value) => value,
+      ApplicationFailure<List<PaymentSource>>() => null,
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
 class PaymentSourcesPage extends StatefulWidget {
   const PaymentSourcesPage({
     this.ocrRecognizer,
@@ -35,6 +49,7 @@ class PaymentSourcesPage extends StatefulWidget {
 class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
   late Future<List<PaymentSource>> _sources;
   bool _desktopEditorOpen = false;
+  bool _desktopCommitting = false;
   PaymentSource? _desktopSelected;
   CardScanResult? _desktopScanned;
   int _editorRevision = 0;
@@ -43,6 +58,7 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
       MediaQuery.sizeOf(context).width >= 900;
 
   void _openDesktopEditor({PaymentSource? existing, CardScanResult? scanned}) {
+    if (_desktopCommitting) return;
     setState(() {
       _desktopEditorOpen = true;
       _desktopSelected = existing;
@@ -193,201 +209,261 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
         typeLabelsResult is ApplicationSuccess<Map<String, String>>
         ? typeLabelsResult.value
         : const <String, String>{};
-    final saved = await showButlerlyBottomSheet<bool>(
+    var saving = false;
+    var committing = false;
+    String? errorKey;
+    Future<void> save(BuildContext context, StateSetter setDialogState) async {
+      if (saving) return;
+      final route = ModalRoute.of(context);
+      setDialogState(() {
+        saving = true;
+        errorKey = null;
+      });
+      try {
+        final draftName = name.text;
+        if (draftName.trim().isEmpty) {
+          errorKey = 'paymentSourceNameRequired';
+          return;
+        }
+        final safeLastFour = lastFour.text.trim();
+        final validLastFour = RegExp(r'^\d{4}$').hasMatch(safeLastFour);
+        if ((paymentSourceRequiresLastFour(type) && !validLastFour) ||
+            (safeLastFour.isNotEmpty && !validLastFour)) {
+          _showMessage(context.l10n.text('invalidLastFour'));
+          return;
+        }
+        final draft = PaymentSource(
+          id:
+              existing?.id ??
+              PaymentSourceId(
+                'source-${DateTime.now().microsecondsSinceEpoch}',
+              ),
+          name: draftName,
+          type: type,
+          displayIdentity: draftName,
+          lastFour: safeLastFour.isEmpty ? null : safeLastFour,
+          issuer: issuer.text.trim().isEmpty ? null : issuer.text.trim(),
+          network: network,
+          currency: currency.text.trim().toUpperCase(),
+          note: note.text.trim().isEmpty ? null : note.text.trim(),
+          status: existing?.status ?? PaymentSourceStatus.active,
+        );
+        final listed = await _listPaymentSourcesForDuplicateCheck(finance);
+        if (!context.mounted || route?.isCurrent != true) return;
+        if (listed == null) {
+          errorKey = 'paymentSourceDuplicateCheckFailed';
+          return;
+        }
+        final hasDuplicate = listed.any(
+          (source) =>
+              source.id != existing?.id &&
+              source.status == PaymentSourceStatus.active &&
+              safeLastFour.isNotEmpty &&
+              source.lastFour == safeLastFour &&
+              source.type == draft.type &&
+              (source.issuer ?? '').trim().toLowerCase() ==
+                  (draft.issuer ?? '').toLowerCase(),
+        );
+        if (hasDuplicate) {
+          final reuse = await showButlerlyBottomSheet<bool>(
+            context: context,
+            builder: (dialogContext) => ButlerlySheet(
+              title: Text(dialogContext.l10n.text('duplicatePaymentSource')),
+              content: Text(
+                dialogContext.l10n.text('duplicatePaymentSourceBody'),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, true),
+                  child: Text(dialogContext.l10n.text('useExisting')),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: Text(dialogContext.l10n.text('createAnyway')),
+                ),
+              ],
+            ),
+          );
+          if (!context.mounted || route?.isCurrent != true) return;
+          if (reuse == true) Navigator.pop(context);
+          if (reuse != false) return;
+        }
+        final guard = _PaymentSourceCommitPopEntry();
+        route!.registerPopEntry(guard);
+        setDialogState(() => committing = true);
+        bool persisted;
+        try {
+          persisted =
+              await finance.savePaymentSource(draft)
+                  is ApplicationSuccess<PaymentSource>;
+        } catch (_) {
+          persisted = false;
+        } finally {
+          route.unregisterPopEntry(guard);
+          guard.canPopNotifier.dispose();
+        }
+        if (persisted) {
+          notifyPaymentSourceChanged();
+          if (mounted) _refresh();
+          if (context.mounted && route.isCurrent) {
+            Navigator.pop(context);
+          }
+        } else {
+          errorKey = 'paymentSourceSaveFailed';
+        }
+      } finally {
+        if (context.mounted && route?.isActive == true) {
+          setDialogState(() {
+            saving = false;
+            committing = false;
+          });
+        }
+      }
+    }
+
+    await showButlerlyBottomSheet<void>(
       context: context,
+      // Flutter's drag dismissal calls pop directly, bypassing PopScope.
+      enableDrag: false,
+      onHandleDismiss: (context) {
+        final route = ModalRoute.of(context);
+        if (!committing &&
+            route?.isCurrent == true &&
+            route?.popDisposition == RoutePopDisposition.pop) {
+          Navigator.pop(context);
+        }
+      },
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => ButlerlySheet(
-          title: Text(
-            context.l10n.text(
-              existing == null ? 'addPaymentSource' : 'editPaymentSource',
-            ),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                context.l10n.text(
+                  existing == null ? 'addPaymentSource' : 'editPaymentSource',
+                ),
+              ),
+              if (errorKey case final key?)
+                Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    context.l10n.text(key),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ),
+            ],
           ),
-          content: ButlerlyCard(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: name,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.text('name'),
-                  ),
-                ),
-                const SizedBox(height: ButlerlySpacing.small),
-                ButlerlyIssuerAutocomplete(
-                  controller: issuer,
-                  label: context.l10n.text('issuer'),
-                ),
-                const SizedBox(height: ButlerlySpacing.small),
-                TextField(
-                  controller: lastFour,
-                  keyboardType: TextInputType.number,
-                  maxLength: 4,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.text('lastFour'),
-                  ),
-                ),
-                const SizedBox(height: ButlerlySpacing.small),
-                TextField(
-                  controller: currency,
-                  textCapitalization: TextCapitalization.characters,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.text('currency'),
-                  ),
-                ),
-                const SizedBox(height: ButlerlySpacing.small),
-                TextField(
-                  controller: note,
-                  maxLines: 2,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.text('notesOptional'),
-                  ),
-                ),
-                const SizedBox(height: ButlerlySpacing.small),
-                ButlerlySelectField<PaymentSourceType>(
-                  label: context.l10n.text('type'),
-                  value: type,
-                  entries: [
-                    for (final value in PaymentSourceType.values)
-                      DropdownMenuEntry(
-                        value: value,
-                        label:
-                            typeLabels['payment_source_type.${value.name}'] ??
-                            _typeLabel(context, value),
+          content: ExcludeFocus(
+            excluding: saving,
+            child: IgnorePointer(
+              ignoring: saving,
+              child: ButlerlyCard(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: name,
+                      decoration: InputDecoration(
+                        labelText: context.l10n.text('name'),
                       ),
+                    ),
+                    const SizedBox(height: ButlerlySpacing.small),
+                    ButlerlyIssuerAutocomplete(
+                      controller: issuer,
+                      label: context.l10n.text('issuer'),
+                    ),
+                    const SizedBox(height: ButlerlySpacing.small),
+                    TextField(
+                      controller: lastFour,
+                      keyboardType: TextInputType.number,
+                      maxLength: 4,
+                      decoration: InputDecoration(
+                        labelText: context.l10n.text('lastFour'),
+                      ),
+                    ),
+                    const SizedBox(height: ButlerlySpacing.small),
+                    TextField(
+                      controller: currency,
+                      textCapitalization: TextCapitalization.characters,
+                      decoration: InputDecoration(
+                        labelText: context.l10n.text('currency'),
+                      ),
+                    ),
+                    const SizedBox(height: ButlerlySpacing.small),
+                    TextField(
+                      controller: note,
+                      maxLines: 2,
+                      decoration: InputDecoration(
+                        labelText: context.l10n.text('notesOptional'),
+                      ),
+                    ),
+                    const SizedBox(height: ButlerlySpacing.small),
+                    ButlerlySelectField<PaymentSourceType>(
+                      label: context.l10n.text('type'),
+                      value: type,
+                      entries: [
+                        for (final value in PaymentSourceType.values)
+                          DropdownMenuEntry(
+                            value: value,
+                            label:
+                                typeLabels['payment_source_type.${value.name}'] ??
+                                _typeLabel(context, value),
+                          ),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          setDialogState(() {
+                            if (value != type) network = null;
+                            type = value;
+                          });
+                        }
+                      },
+                    ),
+                    if (type == PaymentSourceType.card ||
+                        type == PaymentSourceType.debitCard ||
+                        type == PaymentSourceType.wallet) ...[
+                      const SizedBox(height: ButlerlySpacing.small),
+                      ButlerlySelectField<String>(
+                        label: context.l10n.text(
+                          type == PaymentSourceType.wallet
+                              ? 'walletProvider'
+                              : 'cardNetwork',
+                        ),
+                        value: network ?? '',
+                        leadingIcon: _selectedPaymentProviderIcon(
+                          type,
+                          network,
+                        ),
+                        entries: _paymentProviderEntries(context, type),
+                        onChanged: (value) => setDialogState(
+                          () => network = value == '' ? null : value,
+                        ),
+                      ),
+                    ],
                   ],
-                  onChanged: (value) {
-                    if (value != null) {
-                      setDialogState(() {
-                        if (value != type) network = null;
-                        type = value;
-                      });
-                    }
-                  },
                 ),
-                if (type == PaymentSourceType.card ||
-                    type == PaymentSourceType.debitCard ||
-                    type == PaymentSourceType.wallet) ...[
-                  const SizedBox(height: ButlerlySpacing.small),
-                  ButlerlySelectField<String>(
-                    label: context.l10n.text(
-                      type == PaymentSourceType.wallet
-                          ? 'walletProvider'
-                          : 'cardNetwork',
-                    ),
-                    value: network ?? '',
-                    leadingIcon: _selectedPaymentProviderIcon(type, network),
-                    entries: _paymentProviderEntries(context, type),
-                    onChanged: (value) => setDialogState(
-                      () => network = value == '' ? null : value,
-                    ),
-                  ),
-                ],
-              ],
+              ),
             ),
           ),
           actions: [
             ButlerlyCancelButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: committing
+                  ? null
+                  : () {
+                      if (!committing) Navigator.pop(context);
+                    },
               child: Text(context.l10n.text('cancel')),
             ),
             FilledButton(
-              onPressed: () async {
-                final safeLastFour = lastFour.text.trim();
-                final validLastFour = RegExp(r'^\d{4}$').hasMatch(safeLastFour);
-                if ((paymentSourceRequiresLastFour(type) && !validLastFour) ||
-                    (safeLastFour.isNotEmpty && !validLastFour)) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(context.l10n.text('invalidLastFour')),
-                    ),
-                  );
-                  return;
-                }
-                final listedSources = await finance.listPaymentSources();
-                final duplicates = switch (listedSources) {
-                  ApplicationSuccess<List<PaymentSource>>(:final value) =>
-                    value
-                        .where(
-                          (source) =>
-                              source.id != existing?.id &&
-                              source.status == PaymentSourceStatus.active &&
-                              safeLastFour.isNotEmpty &&
-                              source.lastFour == safeLastFour &&
-                              source.type == type &&
-                              (source.issuer ?? '').trim().toLowerCase() ==
-                                  issuer.text.trim().toLowerCase(),
-                        )
-                        .toList(growable: false),
-                  ApplicationFailure<List<PaymentSource>>() =>
-                    const <PaymentSource>[],
-                };
-                if (duplicates.isNotEmpty && context.mounted) {
-                  final reuse = await showButlerlyBottomSheet<bool>(
-                    context: context,
-                    builder: (dialogContext) => ButlerlySheet(
-                      title: Text(
-                        dialogContext.l10n.text('duplicatePaymentSource'),
-                      ),
-                      content: Text(
-                        dialogContext.l10n.text('duplicatePaymentSourceBody'),
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(dialogContext, true),
-                          child: Text(dialogContext.l10n.text('useExisting')),
-                        ),
-                        FilledButton(
-                          onPressed: () => Navigator.pop(dialogContext, false),
-                          child: Text(dialogContext.l10n.text('createAnyway')),
-                        ),
-                      ],
-                    ),
-                  );
-                  if (reuse == true && context.mounted) {
-                    Navigator.pop(context, false);
-                  }
-                  if (reuse == true || !context.mounted) return;
-                }
-                final result = await finance.savePaymentSource(
-                  PaymentSource(
-                    id:
-                        existing?.id ??
-                        PaymentSourceId(
-                          'source-${DateTime.now().microsecondsSinceEpoch}',
-                        ),
-                    name: name.text,
-                    type: type,
-                    displayIdentity: name.text,
-                    lastFour: safeLastFour.isEmpty ? null : safeLastFour,
-                    issuer: issuer.text.trim().isEmpty
-                        ? null
-                        : issuer.text.trim(),
-                    network: network,
-                    currency: currency.text.trim().toUpperCase(),
-                    note: note.text.trim().isEmpty ? null : note.text.trim(),
-                    status: existing?.status ?? PaymentSourceStatus.active,
-                  ),
-                );
-                if (context.mounted) {
-                  Navigator.pop(
-                    context,
-                    result is ApplicationSuccess<PaymentSource>,
-                  );
-                }
-              },
-              child: Text(context.l10n.text('save')),
+              onPressed: saving ? null : () => save(context, setDialogState),
+              child: Text(context.l10n.text(committing ? 'saving' : 'save')),
             ),
           ],
         ),
       ),
     );
-    if (saved == true) {
-      _refresh();
-    } else if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.text('paymentSourceSaveFailed'))),
-      );
-    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       name.dispose();
       issuer.dispose();
@@ -565,6 +641,9 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
             existing: _desktopSelected,
             scanned: _desktopScanned,
             onCancel: () => setState(() => _desktopEditorOpen = false),
+            onCommitChanged: (value) {
+              if (mounted) setState(() => _desktopCommitting = value);
+            },
             onSaved: () {
               setState(() => _desktopEditorOpen = false);
               _refresh();
@@ -582,12 +661,12 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
     fullWidth: _isDesktop(context),
     actions: [
       IconButton(
-        onPressed: _add,
+        onPressed: _desktopCommitting ? null : _add,
         icon: const Icon(Icons.add_card_outlined),
         tooltip: context.l10n.text('addPaymentSource'),
       ),
       IconButton(
-        onPressed: _scanCard,
+        onPressed: _desktopCommitting ? null : _scanCard,
         icon: const Icon(Icons.document_scanner_outlined),
         tooltip: context.l10n.text('scanCard'),
       ),
@@ -665,6 +744,9 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                             if (value.status == PaymentSourceStatus.active) {
                               final result = await _finance!
                                   .archivePaymentSource(value.id.value);
+                              if (result is ApplicationSuccess<PaymentSource>) {
+                                notifyPaymentSourceChanged();
+                              }
                               if (!context.mounted) return;
                               if (result is ApplicationFailure<PaymentSource>) {
                                 ScaffoldMessenger.of(context).showSnackBar(
@@ -679,7 +761,7 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                                 return;
                               }
                             } else {
-                              await _finance!.savePaymentSource(
+                              final result = await _finance!.savePaymentSource(
                                 PaymentSource(
                                   id: value.id,
                                   name: value.name,
@@ -693,6 +775,18 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
                                   note: value.note,
                                 ),
                               );
+                              if (result
+                                  is! ApplicationSuccess<PaymentSource>) {
+                                if (context.mounted) {
+                                  _showMessage(
+                                    context.l10n.text(
+                                      'paymentSourceSaveFailed',
+                                    ),
+                                  );
+                                }
+                                return;
+                              }
+                              notifyPaymentSourceChanged();
                             }
                             if (context.mounted) _refresh();
                           },
@@ -708,12 +802,18 @@ class _PaymentSourcesPageState extends State<PaymentSourcesPage> {
   );
 }
 
+class _PaymentSourceCommitPopEntry extends PopEntry<Object?> {
+  @override
+  final ValueNotifier<bool> canPopNotifier = ValueNotifier(false);
+}
+
 class _DesktopPaymentSourceEditor extends StatefulWidget {
   const _DesktopPaymentSourceEditor({
     required this.finance,
     required this.existing,
     required this.scanned,
     required this.onCancel,
+    required this.onCommitChanged,
     required this.onSaved,
     required this.onError,
     super.key,
@@ -723,6 +823,7 @@ class _DesktopPaymentSourceEditor extends StatefulWidget {
   final PaymentSource? existing;
   final CardScanResult? scanned;
   final VoidCallback onCancel;
+  final ValueChanged<bool> onCommitChanged;
   final VoidCallback onSaved;
   final ValueChanged<String> onError;
 
@@ -741,6 +842,8 @@ class _DesktopPaymentSourceEditorState
   late PaymentSourceType _type;
   String? _network;
   bool _saving = false;
+  bool _committing = false;
+  bool _cancelled = false;
   bool _active = true;
 
   @override
@@ -779,6 +882,7 @@ class _DesktopPaymentSourceEditorState
 
   Future<void> _save() async {
     if (_saving) return;
+    final route = ModalRoute.of(context);
     final safeLastFour = _lastFour.text.trim();
     final validLastFour = RegExp(r'^\d{4}$').hasMatch(safeLastFour);
     if ((paymentSourceRequiresLastFour(_type) && !validLastFour) ||
@@ -788,25 +892,23 @@ class _DesktopPaymentSourceEditorState
     }
     setState(() => _saving = true);
     try {
-      final listed = await widget.finance.listPaymentSources();
-      if (!mounted) return;
-      final List<PaymentSource> duplicates;
-      if (listed is ApplicationSuccess<List<PaymentSource>>) {
-        duplicates = listed.value
-            .where((source) {
-              return source.id != widget.existing?.id &&
-                  source.status == PaymentSourceStatus.active &&
-                  safeLastFour.isNotEmpty &&
-                  source.lastFour == safeLastFour &&
-                  source.type == _type &&
-                  (source.issuer ?? '').trim().toLowerCase() ==
-                      _issuer.text.trim().toLowerCase();
-            })
-            .toList(growable: false);
-      } else {
-        duplicates = <PaymentSource>[];
+      final listed = await _listPaymentSourcesForDuplicateCheck(widget.finance);
+      if (!mounted || _cancelled || route?.isCurrent == false) return;
+      if (listed == null) {
+        widget.onError(context.l10n.text('paymentSourceDuplicateCheckFailed'));
+        return;
       }
-      if (duplicates.isNotEmpty) {
+      final hasDuplicate = listed.any(
+        (source) =>
+            source.id != widget.existing?.id &&
+            source.status == PaymentSourceStatus.active &&
+            safeLastFour.isNotEmpty &&
+            source.lastFour == safeLastFour &&
+            source.type == _type &&
+            (source.issuer ?? '').trim().toLowerCase() ==
+                _issuer.text.trim().toLowerCase(),
+      );
+      if (hasDuplicate) {
         final createAnyway = await showButlerlyConfirmationSheet(
           context: context,
           title: context.l10n.text('duplicatePaymentSource'),
@@ -814,48 +916,55 @@ class _DesktopPaymentSourceEditorState
           cancelLabel: context.l10n.text('useExisting'),
           confirmLabel: context.l10n.text('createAnyway'),
         );
-        if (!mounted || createAnyway != true) return;
-      }
-      final result = await widget.finance.savePaymentSource(
-        PaymentSource(
-          id:
-              widget.existing?.id ??
-              PaymentSourceId(
-                'source-${DateTime.now().microsecondsSinceEpoch}',
-              ),
-          name: _name.text,
-          type: _type,
-          displayIdentity: _name.text,
-          lastFour: safeLastFour.isEmpty ? null : safeLastFour,
-          issuer: _issuer.text.trim().isEmpty ? null : _issuer.text.trim(),
-          network: _network,
-          currency: _currency.text.trim().toUpperCase(),
-          note: _note.text.trim().isEmpty ? null : _note.text.trim(),
-          status: _active
-              ? PaymentSourceStatus.active
-              : (widget.existing?.status ?? PaymentSourceStatus.active),
-        ),
-      );
-      if (!mounted) return;
-      if (result is ApplicationSuccess<PaymentSource>) {
-        if (!_active) {
-          final archived = await widget.finance.archivePaymentSource(
-            result.value.id.value,
-          );
-          if (!mounted) return;
-          if (archived is ApplicationFailure<PaymentSource>) {
-            widget.onError(context.l10n.text('paymentSourceArchiveFailed'));
-            return;
-          }
+        if (!mounted ||
+            _cancelled ||
+            route?.isCurrent == false ||
+            createAnyway != true) {
+          return;
         }
-        widget.onSaved();
-      } else {
-        widget.onError(context.l10n.text('paymentSourceSaveFailed'));
+      }
+      setState(() => _committing = true);
+      final onCommitChanged = widget.onCommitChanged;
+      onCommitChanged(true);
+      try {
+        final result = await widget.finance.savePaymentSource(
+          PaymentSource(
+            id:
+                widget.existing?.id ??
+                PaymentSourceId(
+                  'source-${DateTime.now().microsecondsSinceEpoch}',
+                ),
+            name: _name.text,
+            type: _type,
+            displayIdentity: _name.text,
+            lastFour: safeLastFour.isEmpty ? null : safeLastFour,
+            issuer: _issuer.text.trim().isEmpty ? null : _issuer.text.trim(),
+            network: _network,
+            currency: _currency.text.trim().toUpperCase(),
+            note: _note.text.trim().isEmpty ? null : _note.text.trim(),
+            status: _active
+                ? PaymentSourceStatus.active
+                : PaymentSourceStatus.archived,
+          ),
+        );
+        if (result is ApplicationSuccess<PaymentSource>) {
+          notifyPaymentSourceChanged();
+          if (mounted) widget.onSaved();
+        } else if (mounted) {
+          widget.onError(context.l10n.text('paymentSourceSaveFailed'));
+        }
+      } finally {
+        onCommitChanged(false);
       }
     } catch (_) {
       if (mounted) widget.onError(context.l10n.text('paymentSourceSaveFailed'));
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted && !_cancelled) {
+        setState(() {
+          _saving = false;
+          _committing = false;
+        });
+      }
     }
   }
 
@@ -875,96 +984,118 @@ class _DesktopPaymentSourceEditorState
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: ButlerlySpacing.small),
-          TextField(
-            controller: _name,
-            decoration: InputDecoration(labelText: context.l10n.text('name')),
-          ),
-          gap,
-          ButlerlyIssuerAutocomplete(
-            controller: _issuer,
-            label: context.l10n.text('issuer'),
-          ),
-          gap,
-          TextField(
-            controller: _lastFour,
-            maxLength: 4,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              labelText: context.l10n.text('lastFour'),
-            ),
-          ),
-          gap,
-          TextField(
-            controller: _currency,
-            textCapitalization: TextCapitalization.characters,
-            decoration: InputDecoration(
-              labelText: context.l10n.text('currency'),
-            ),
-          ),
-          gap,
-          TextField(
-            controller: _note,
-            maxLines: 2,
-            decoration: InputDecoration(
-              labelText: context.l10n.text('notesOptional'),
-            ),
-          ),
-          gap,
-          ButlerlySelectField<PaymentSourceType>(
-            label: context.l10n.text('type'),
-            value: _type,
-            entries: [
-              for (final type in PaymentSourceType.values)
-                DropdownMenuEntry(
-                  value: type,
-                  label: _typeLabel(context, type),
-                ),
-            ],
-            onChanged: (value) {
-              if (value != null) {
-                setState(() {
-                  if (_type != value) _network = null;
-                  _type = value;
-                });
-              }
-            },
-          ),
-          if (_type == PaymentSourceType.card ||
-              _type == PaymentSourceType.debitCard ||
-              _type == PaymentSourceType.wallet) ...[
-            gap,
-            ButlerlySelectField<String>(
-              label: context.l10n.text(
-                _type == PaymentSourceType.wallet
-                    ? 'walletProvider'
-                    : 'cardNetwork',
+          ExcludeFocus(
+            excluding: _saving,
+            child: IgnorePointer(
+              ignoring: _saving,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    controller: _name,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.text('name'),
+                    ),
+                  ),
+                  gap,
+                  ButlerlyIssuerAutocomplete(
+                    controller: _issuer,
+                    label: context.l10n.text('issuer'),
+                  ),
+                  gap,
+                  TextField(
+                    controller: _lastFour,
+                    maxLength: 4,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.text('lastFour'),
+                    ),
+                  ),
+                  gap,
+                  TextField(
+                    controller: _currency,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.text('currency'),
+                    ),
+                  ),
+                  gap,
+                  TextField(
+                    controller: _note,
+                    maxLines: 2,
+                    decoration: InputDecoration(
+                      labelText: context.l10n.text('notesOptional'),
+                    ),
+                  ),
+                  gap,
+                  ButlerlySelectField<PaymentSourceType>(
+                    label: context.l10n.text('type'),
+                    value: _type,
+                    entries: [
+                      for (final type in PaymentSourceType.values)
+                        DropdownMenuEntry(
+                          value: type,
+                          label: _typeLabel(context, type),
+                        ),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() {
+                          if (_type != value) _network = null;
+                          _type = value;
+                        });
+                      }
+                    },
+                  ),
+                  if (_type == PaymentSourceType.card ||
+                      _type == PaymentSourceType.debitCard ||
+                      _type == PaymentSourceType.wallet) ...[
+                    gap,
+                    ButlerlySelectField<String>(
+                      label: context.l10n.text(
+                        _type == PaymentSourceType.wallet
+                            ? 'walletProvider'
+                            : 'cardNetwork',
+                      ),
+                      value: _network ?? '',
+                      leadingIcon: _selectedPaymentProviderIcon(
+                        _type,
+                        _network,
+                      ),
+                      entries: _paymentProviderEntries(context, _type),
+                      onChanged: (value) =>
+                          setState(() => _network = value == '' ? null : value),
+                    ),
+                  ],
+                  const SizedBox(height: ButlerlySpacing.small),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(context.l10n.text('paymentSourceStatusActive')),
+                    value: _active,
+                    onChanged: (value) => setState(() => _active = value),
+                  ),
+                ],
               ),
-              value: _network ?? '',
-              leadingIcon: _selectedPaymentProviderIcon(_type, _network),
-              entries: _paymentProviderEntries(context, _type),
-              onChanged: (value) =>
-                  setState(() => _network = value == '' ? null : value),
             ),
-          ],
-          const SizedBox(height: ButlerlySpacing.small),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(context.l10n.text('paymentSourceStatusActive')),
-            value: _active,
-            onChanged: (value) => setState(() => _active = value),
           ),
           const SizedBox(height: ButlerlySpacing.small),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               ButlerlyCancelButton(
-                onPressed: widget.onCancel,
+                onPressed: _committing
+                    ? null
+                    : () {
+                        if (_committing) return;
+                        _cancelled = true;
+                        widget.onCancel();
+                      },
                 child: Text(context.l10n.text('cancel')),
               ),
               const SizedBox(width: ButlerlySpacing.compact),
               FilledButton(
                 onPressed: _saving ? null : _save,
-                child: Text(context.l10n.text('save')),
+                child: Text(context.l10n.text(_committing ? 'saving' : 'save')),
               ),
             ],
           ),

@@ -46,11 +46,15 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
   @override
   void initState() {
     super.initState();
+    paymentSettlementChanges.addListener(_refresh);
+    paymentSourceChanges.addListener(_refresh);
     workspaceRestoreChanges.addListener(_onWorkspaceRestored);
   }
 
   @override
   void dispose() {
+    paymentSettlementChanges.removeListener(_refresh);
+    paymentSourceChanges.removeListener(_refresh);
     workspaceRestoreChanges.removeListener(_onWorkspaceRestored);
     super.dispose();
   }
@@ -84,10 +88,10 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
       throw StateError('Payment settlements are unavailable.');
     }
     final settlementResult = await listSettlements();
-    final sourceResult = await finance.listPaymentSources();
     if (settlementResult case ApplicationSuccess<List<PaymentSettlementDto>>(
       value: final settlements,
     )) {
+      final sourceResult = await finance.listPaymentSources();
       if (sourceResult case ApplicationSuccess<List<PaymentSource>>(
         value: final sources,
       )) {
@@ -102,7 +106,8 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
     setState(() {
       _data = reloaded;
     });
-    await reloaded;
+    // The FutureBuilder owns the error state, including retries.
+    await reloaded.then<void>((_) {}, onError: (Object _, StackTrace _) {});
   }
 
   Future<void> _createSettlement(_SettlementListData data) async {
@@ -146,7 +151,6 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
     }
 
     _showMessage(context.l10n.text('paymentSettlementSaved'));
-    await _refresh();
   }
 
   Future<void> _openSettlement(
@@ -178,7 +182,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
       if (needsRefresh) await _refresh();
       return;
     }
-    final changed = await Navigator.of(context).push<bool>(
+    await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         builder: (_) => PaymentSettlementDetailPage(
           finance: finance,
@@ -188,7 +192,6 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
         ),
       ),
     );
-    if (changed == true && mounted) await _refresh();
   }
 
   void _showMessage(String message) {
@@ -230,10 +233,15 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
           );
         }
         final data = snapshot.requireData;
+        final activeCards = data.activeCardSources;
         final resultsPage = ButlerlyPage(
           title: context.l10n.text('paymentSettlements'),
           fullWidth: desktop,
-          subtitle: context.l10n.text('paymentSettlementsSubtitle'),
+          subtitle: context.l10n.text(
+            activeCards.isEmpty && data.settlements.isNotEmpty
+                ? 'noActiveSettlementCardsBody'
+                : 'paymentSettlementsSubtitle',
+          ),
           // This feedback must stay visible even when the results table is
           // scrolled: a blocked settlement switch otherwise looks unresponsive.
           pinnedHeader: desktop && _showDesktopEditWarning
@@ -268,17 +276,17 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
               buttonKey: const ValueKey('payment-settlements-add'),
               closeToHelp: true,
               label: context.l10n.text('addPaymentSettlement'),
-              onPressed: data.activeCardSources.isEmpty
+              onPressed: activeCards.isEmpty
                   ? null
                   : () => _createSettlement(data),
             ),
           ],
           children: [
-            if (data.settlements.isEmpty && data.activeCardSources.isEmpty)
+            if (data.settlements.isEmpty && activeCards.isEmpty)
               ButlerlyEmptyState(
                 icon: Icons.credit_card_off_outlined,
-                title: context.l10n.text('paymentSources'),
-                message: context.l10n.text('paymentSourcesSubtitle'),
+                title: context.l10n.text('noActiveSettlementCards'),
+                message: context.l10n.text('noActiveSettlementCardsBody'),
               )
             else if (data.settlements.isEmpty)
               ButlerlyEmptyState(
@@ -299,9 +307,11 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
               for (final settlement in data.settlements) ...[
                 _SettlementCard(
                   settlement: settlement,
-                  sourceName:
-                      data.sourceNames[settlement.paymentSourceId] ??
-                      settlement.paymentSourceId,
+                  sourceName: _settlementSourceLabel(
+                    context,
+                    data.sources,
+                    settlement.paymentSourceId,
+                  ),
                   onTap: () => _openSettlement(settlement, data),
                 ),
                 const SizedBox(height: ButlerlySpacing.small),
@@ -332,7 +342,6 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
                       sourceNames: data.sourceNames,
                       sources: data.sources,
                       onClose: _closeDesktopSettlement,
-                      onChanged: _refresh,
                       onTransactionSelected: (transaction) {
                         setState(() {
                           _selectedDesktopTransaction = transaction;
@@ -385,7 +394,6 @@ class PaymentSettlementDetailPage extends StatefulWidget {
     required this.sources,
     this.transactionRevision = 0,
     this.onClose,
-    this.onChanged,
     this.onTransactionSelected,
     super.key,
   });
@@ -399,7 +407,6 @@ class PaymentSettlementDetailPage extends StatefulWidget {
   final Map<String, String> sourceNames;
   final List<PaymentSource> sources;
   final VoidCallback? onClose;
-  final VoidCallback? onChanged;
   final ValueChanged<TransactionDto>? onTransactionSelected;
 
   @override
@@ -462,9 +469,12 @@ class _PaymentSettlementDetailPageState
     setState(() {
       _detail = detail;
     });
-    await detail;
+    // Keep reload failures in the FutureBuilder's retryable error state.
+    await detail.then<void>((_) {}, onError: (Object _, StackTrace _) {});
     final refreshedMasterData = await masterData;
-    if (!mounted || _loadedLanguageCode != languageCode) return;
+    if (!mounted || _detail != detail || _loadedLanguageCode != languageCode) {
+      return;
+    }
     setState(() => _masterData = refreshedMasterData);
   }
 
@@ -524,7 +534,6 @@ class _PaymentSettlementDetailPageState
     }
     _showMessage(context.l10n.text('paymentSettlementSaved'));
     await _refresh();
-    widget.onChanged?.call();
   }
 
   Future<void> _setStatus(PaymentSettlementStatus status) async {
@@ -540,7 +549,6 @@ class _PaymentSettlementDetailPageState
       return;
     }
     await _refresh();
-    widget.onChanged?.call();
   }
 
   Future<void> _showActions(BuildContext context) async {
@@ -604,7 +612,6 @@ class _PaymentSettlementDetailPageState
     _showMessage(context.l10n.text('paymentSettlementRemoved'));
     if (widget.onClose case final close?) {
       close();
-      widget.onChanged?.call();
     } else {
       Navigator.of(context).pop(true);
     }
@@ -631,14 +638,12 @@ class _PaymentSettlementDetailPageState
         if (snapshot.connectionState != ConnectionState.done &&
             !snapshot.hasData) {
           return Scaffold(
-            appBar: widget.onClose == null
-                ? null
-                : AppBar(
-                    leading: ButlerlyPanelCloseButton(
-                      onPressed: widget.onClose,
-                    ),
-                    title: Text(context.l10n.text('paymentSettlement')),
-                  ),
+            appBar: AppBar(
+              leading: widget.onClose == null
+                  ? null
+                  : ButlerlyPanelCloseButton(onPressed: widget.onClose),
+              title: Text(context.l10n.text('paymentSettlement')),
+            ),
             body: const ButlerlyLoadingState(),
           );
         }
@@ -661,9 +666,11 @@ class _PaymentSettlementDetailPageState
         }
         final detail = snapshot.requireData;
         final settlement = detail.settlement;
-        final sourceName =
-            widget.sourceNames[settlement.paymentSourceId] ??
-            settlement.paymentSourceId;
+        final sourceName = _settlementSourceLabel(
+          context,
+          widget.sources,
+          settlement.paymentSourceId,
+        );
         return Scaffold(
           bottomNavigationBar: widget.onClose == null
               ? null
@@ -911,6 +918,9 @@ class _SettlementDesktopTable extends StatelessWidget {
   );
 
   Widget _row(BuildContext context, PaymentSettlementDto settlement) {
+    final sourceUnavailable = !data.sources.any(
+      (source) => source.id.value == settlement.paymentSourceId,
+    );
     final locale = Localizations.localeOf(context).toLanguageTag();
     final paymentDate = DateTime.tryParse(settlement.paymentDate);
     final date = paymentDate == null
@@ -933,10 +943,13 @@ class _SettlementDesktopTable extends StatelessWidget {
               Expanded(
                 flex: 3,
                 child: Text(
-                  data.sourceNames[settlement.paymentSourceId] ??
-                      settlement.paymentSourceId,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  _settlementSourceLabel(
+                    context,
+                    data.sources,
+                    settlement.paymentSourceId,
+                  ),
+                  maxLines: sourceUnavailable ? null : 1,
+                  overflow: sourceUnavailable ? null : TextOverflow.ellipsis,
                 ),
               ),
               SizedBox(width: 110, child: Text(date)),
@@ -1350,9 +1363,11 @@ class _SettlementEditorSheetState extends State<_SettlementEditorSheet> {
                     ],
                     Expanded(
                       child: Text(
-                        source == null
-                            ? widget.existing!.settlement.paymentSourceId
-                            : paymentSourceDisplayLabel(source),
+                        _settlementSourceLabel(
+                          context,
+                          widget.sources,
+                          widget.existing!.settlement.paymentSourceId,
+                        ),
                       ),
                     ),
                   ],
@@ -1565,6 +1580,21 @@ final class _SettlementListData {
     for (final source in sources)
       source.id.value: paymentSourceDisplayLabel(source),
   };
+}
+
+String _settlementSourceLabel(
+  BuildContext context,
+  List<PaymentSource> sources,
+  String id,
+) {
+  final source = sources.where((source) => source.id.value == id).firstOrNull;
+  if (source == null) {
+    return context.l10n.text('missingSettlementSource', {'id': id});
+  }
+  final label = paymentSourceDisplayLabel(source);
+  return source.status == PaymentSourceStatus.archived
+      ? '$label (${context.l10n.text('archivedSettlementSource')})'
+      : label;
 }
 
 enum _SettlementAction { open, reconciled, needsReview, remove }

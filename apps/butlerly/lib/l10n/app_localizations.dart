@@ -353,6 +353,11 @@ class AppLocalizations {
           'Add or activate a credit-card payment source before creating a settlement.',
       'editPaymentSettlement': 'Edit payment settlement',
       'noPaymentSettlements': 'No payment settlements yet',
+      'noActiveSettlementCards': 'No active credit cards',
+      'noActiveSettlementCardsBody':
+          'Add or reactivate a credit card in Payment Sources to create a settlement.',
+      'missingSettlementSource': 'Payment source unavailable ({id})',
+      'archivedSettlementSource': 'Archived',
       'noPaymentSettlementsBody':
           'Add a card payment and its statement period to review the transactions it covers.',
       'paymentSettlementPeriod': 'Statement period',
@@ -758,6 +763,9 @@ class AppLocalizations {
       'paymentSourcesUnavailable':
           'Payment sources become available with local storage.',
       'noPaymentSourcesYet': 'No payment sources yet.',
+      'paymentSourceNameRequired': 'Enter a payment source name.',
+      'paymentSourceDuplicateCheckFailed':
+          'Could not check for duplicate payment sources. Try again.',
       'paymentSourceSaveFailed': 'Payment source could not be saved.',
       'archivePaymentSource': 'Archive payment source',
       'paymentSourceArchiveFailed': 'Payment source could not be archived.',
@@ -1548,6 +1556,10 @@ class AppLocalizations {
       'paymentSettlementNeedsCardSource': '请先添加或启用信用卡付款来源，再创建付款结算。',
       'editPaymentSettlement': '编辑付款结算',
       'noPaymentSettlements': '暂无付款结算',
+      'noActiveSettlementCards': '没有启用的信用卡',
+      'noActiveSettlementCardsBody': '要创建付款结算，请在付款来源中添加或重新启用信用卡。',
+      'missingSettlementSource': '付款来源不可用（{id}）',
+      'archivedSettlementSource': '已归档',
       'noPaymentSettlementsBody': '添加信用卡付款及其账单周期，以审核该周期内的交易。',
       'paymentSettlementPeriod': '账单周期',
       'paymentSettlementPeriodTransactions': '周期交易（{count}）',
@@ -1904,6 +1916,8 @@ class AppLocalizations {
       'addPaymentSource': '添加付款来源',
       'paymentSourcesUnavailable': '付款来源需在本地存储可用后使用。',
       'noPaymentSourcesYet': '暂无付款来源。',
+      'paymentSourceNameRequired': '请输入付款来源名称。',
+      'paymentSourceDuplicateCheckFailed': '无法检查是否有重复的付款来源。请重试。',
       'paymentSourceSaveFailed': '无法保存付款来源。',
       'archivePaymentSource': '归档付款来源',
       'paymentSourceArchiveFailed': '无法归档付款来源。',
@@ -2647,6 +2661,11 @@ class AppLocalizations {
           'Añade o activa una tarjeta de crédito antes de crear una liquidación.',
       'editPaymentSettlement': 'Editar liquidación de pago',
       'noPaymentSettlements': 'Aún no hay liquidaciones de pago',
+      'noActiveSettlementCards': 'No hay tarjetas de crédito activas',
+      'noActiveSettlementCardsBody':
+          'Agrega o reactiva una tarjeta de crédito en Fuentes de pago para crear una liquidación.',
+      'missingSettlementSource': 'Fuente de pago no disponible ({id})',
+      'archivedSettlementSource': 'Archivada',
       'noPaymentSettlementsBody':
           'Añade un pago de tarjeta y su período del extracto para revisar las transacciones que cubre.',
       'paymentSettlementPeriod': 'Período del extracto',
@@ -3067,6 +3086,10 @@ class AppLocalizations {
       'paymentSourcesUnavailable':
           'Las fuentes de pago estarán disponibles con el almacenamiento local.',
       'noPaymentSourcesYet': 'Aún no hay fuentes de pago.',
+      'paymentSourceNameRequired':
+          'Introduce un nombre para la fuente de pago.',
+      'paymentSourceDuplicateCheckFailed':
+          'No se pudo comprobar si hay fuentes de pago duplicadas. Inténtalo de nuevo.',
       'paymentSourceSaveFailed': 'No se pudo guardar la fuente de pago.',
       'archivePaymentSource': 'Archivar fuente de pago',
       'paymentSourceArchiveFailed': 'No se pudo archivar la fuente de pago.',
