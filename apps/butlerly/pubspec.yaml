@@ -1,7 +1,7 @@
 name: butlerly
 description: "Butlerly's local-first personal operations application."
 publish_to: 'none'
-version: 1.0.446
+version: 1.0.447
 
 environment:
   sdk: ^3.12.2
@@ -46,6 +46,7 @@ dev_dependencies:
   mocktail: ^1.0.5
   file_selector_platform_interface: ^2.7.0
   share_plus_platform_interface: ^7.2.0
+  vm_service: ^15.3.0
 
 flutter:
   assets:

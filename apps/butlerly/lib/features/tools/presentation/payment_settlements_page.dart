@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
@@ -20,8 +23,10 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:flutter/rendering.dart';
+import 'package:intl/intl.dart' show DateFormat;
 
 class PaymentSettlementsPage extends StatefulWidget {
   const PaymentSettlementsPage({super.key});
@@ -279,6 +284,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
               _SettlementDesktopTable(
                 data: data,
                 onOpen: (settlement) => _openSettlement(settlement, data),
+                onRefresh: _refresh,
               ),
             ] else ...[
               for (final settlement in data.settlements) ...[
@@ -803,13 +809,46 @@ class _SettlementCounterCard extends StatelessWidget {
   );
 }
 
-class _SettlementDesktopTable extends StatelessWidget {
-  const _SettlementDesktopTable({required this.data, required this.onOpen});
+class _SettlementDesktopTable extends StatefulWidget {
+  const _SettlementDesktopTable({
+    required this.data,
+    required this.onOpen,
+    required this.onRefresh,
+  });
 
   final _SettlementListData data;
   final ValueChanged<PaymentSettlementDto> onOpen;
+  final RefreshCallback onRefresh;
 
+  @override
+  State<_SettlementDesktopTable> createState() =>
+      _SettlementDesktopTableState();
+}
+
+class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
   static const double minimumWidth = 920;
+  static const double viewportHeightFactor = .55;
+  static const double dateWidth = 110;
+  static const double amountWidth = 145;
+  static const double statusWidth = 135;
+  static const double arrowWidth = 24;
+  static const double wrappedColumnWidth =
+      (minimumWidth - dateWidth - amountWidth - statusWidth - arrowWidth) / 2;
+
+  final _verticalController = ScrollController();
+  final _refreshFocus = FocusNode(skipTraversal: true);
+  _SettlementListData? _extentData;
+  _SettlementRowTypography? _extentTypography;
+  int _extentGeneration = 0;
+  _IndexedSettlementRows? _indexedRows;
+  String? _settlementToRefocus;
+
+  @override
+  void dispose() {
+    _verticalController.dispose();
+    _refreshFocus.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => ButlerlyCard(
@@ -824,45 +863,333 @@ class _SettlementDesktopTable extends StatelessWidget {
               Row(
                 children: [
                   Expanded(flex: 3, child: _heading(context, 'paymentSource')),
-                  SizedBox(width: 110, child: _heading(context, 'date')),
+                  SizedBox(width: dateWidth, child: _heading(context, 'date')),
                   Expanded(
                     flex: 3,
                     child: _heading(context, 'paymentSettlementPeriod'),
                   ),
                   SizedBox(
-                    width: 145,
+                    width: amountWidth,
                     child: _heading(context, 'paymentSettlementAmount'),
                   ),
-                  SizedBox(width: 135, child: _heading(context, 'status')),
-                  const SizedBox(width: 24),
+                  SizedBox(
+                    width: statusWidth,
+                    child: _heading(context, 'status'),
+                  ),
+                  const SizedBox(width: arrowWidth),
                 ],
               ),
               const SizedBox(height: ButlerlyTableTokens.headerToRowsGap),
               _divider(context),
-              for (final settlement in data.settlements) ...[
-                _row(context, settlement),
-                _divider(context),
-              ],
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight:
+                      MediaQuery.sizeOf(context).height * viewportHeightFactor,
+                ),
+                // Finite height keeps layout bounded. Shrink wrapping lets a
+                // short history use only the height its rows need.
+                child: _rows(context),
+              ),
             ],
           );
-          if (constraints.maxWidth >= minimumWidth) return table;
-          return SingleChildScrollView(
-            key: const ValueKey(
-              'desktop-payment-settlements-horizontal-scroll',
+          return Focus(
+            focusNode: _refreshFocus,
+            skipTraversal: true,
+            child: Scrollbar(
+              controller: _verticalController,
+              interactive: _indexedRows?.data == widget.data,
+              notificationPredicate: (notification) =>
+                  notification.metrics.axis == Axis.vertical,
+              child: SingleChildScrollView(
+                key: const ValueKey(
+                  'desktop-payment-settlements-horizontal-scroll',
+                ),
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: constraints.maxWidth < minimumWidth
+                      ? minimumWidth
+                      : constraints.maxWidth,
+                  child: Actions(
+                    actions: {ScrollIntent: _SettlementTableScrollAction()},
+                    child: table,
+                  ),
+                ),
+              ),
             ),
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(width: minimumWidth, child: table),
           );
         },
       ),
     ),
   );
 
+  Widget _rows(BuildContext context) {
+    final requestedData = widget.data;
+    final typography = (
+      style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+        fontWeight: MediaQuery.boldTextOf(context) ? FontWeight.bold : null,
+        height: MediaQuery.maybeLineHeightScaleFactorOverrideOf(context),
+        letterSpacing: MediaQuery.maybeLetterSpacingOverrideOf(context),
+        wordSpacing: MediaQuery.maybeWordSpacingOverrideOf(context),
+      ),
+      textScaler: MediaQuery.textScalerOf(context),
+      direction: Directionality.of(context),
+      locale: Localizations.localeOf(context),
+      heightBehavior: DefaultTextHeightBehavior.maybeOf(context),
+    );
+    if (requestedData != _extentData || typography != _extentTypography) {
+      final focused = FocusManager.instance.primaryFocus;
+      final rowId = _settlementForFocus(focused);
+      if (rowId != null && _refreshFocus.descendants.contains(focused)) {
+        _settlementToRefocus = _isFocusVisible(focused!) ? rowId : null;
+        _refreshFocus.requestFocus();
+      }
+      _extentData = requestedData;
+      if (typography != _extentTypography) _indexedRows = null;
+      _extentTypography = typography;
+      unawaited(
+        _indexRows(context, requestedData, typography, ++_extentGeneration),
+      );
+    }
+    final indexed = _indexedRows;
+    if (indexed == null) return const ButlerlyLoadingState();
+    final data = indexed.data;
+    final dateFormat = DateFormat.yMMMd(typography.locale.toLanguageTag());
+    final list = ScrollConfiguration(
+      behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+      child: CustomScrollView(
+        key: const ValueKey('desktop-payment-settlements-rows'),
+        controller: _verticalController,
+        primary: false,
+        shrinkWrap: true,
+        semanticChildCount: data.settlements.length,
+        slivers: [
+          _IndexedSettlementSliver(
+            offsets: indexed.offsets,
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final settlement = data.settlements[index];
+                return Column(
+                  key: ValueKey(settlement.id),
+                  children: [
+                    Expanded(
+                      child: _row(
+                        settlement,
+                        _cells(context, data, settlement, dateFormat),
+                      ),
+                    ),
+                    _divider(context),
+                  ],
+                );
+              },
+              childCount: data.settlements.length,
+              findChildIndexCallback: (key) =>
+                  data.settlementIndexes[(key as ValueKey<String>).value],
+            ),
+          ),
+        ],
+      ),
+    );
+    // A touch drag starting over a long history belongs to the row viewport,
+    // including on desktops with touch input.
+    final page = Scrollable.maybeOf(context, axis: Axis.vertical)?.position;
+    final refreshable = RefreshIndicator.adaptive(
+      onRefresh: widget.onRefresh,
+      triggerMode: RefreshIndicatorTriggerMode.anywhere,
+      notificationPredicate: (notification) =>
+          notification.depth == 0 &&
+          (notification is ScrollEndNotification ||
+              (page?.extentBefore ?? 0) == 0),
+      child: NotificationListener<ScrollNotification>(
+        onNotification: (notification) => _handOffRowDrag(page, notification),
+        child: list,
+      ),
+    );
+    final indexing = data != requestedData;
+    return Stack(
+      children: [
+        // Keep the controller attached across ordinary refreshes, without
+        // exposing rows or focus targets from the prior financial snapshot.
+        Visibility(visible: !indexing, maintainState: true, child: refreshable),
+        if (indexing) const ButlerlyLoadingState(),
+      ],
+    );
+  }
+
+  bool _handOffRowDrag(ScrollPosition? page, ScrollNotification notification) {
+    if (page == null ||
+        notification.depth != 0 ||
+        notification.metrics.axis != Axis.vertical) {
+      return false;
+    }
+    final metrics = notification.metrics;
+    double outside(double pixels) =>
+        math.min(0.0, pixels - metrics.minScrollExtent) +
+        math.max(0.0, pixels - metrics.maxScrollExtent);
+    final delta = switch (notification) {
+      OverscrollNotification(dragDetails: Object(), :final overscroll) =>
+        overscroll,
+      ScrollUpdateNotification(dragDetails: Object(), :final scrollDelta?) =>
+        // Bouncing physics report motion past the limit as a scroll update.
+        outside(metrics.pixels) - outside(metrics.pixels - scrollDelta),
+      _ => 0.0,
+    };
+    if (delta == 0) return false;
+    final offset = (page.pixels + delta).clamp(
+      page.minScrollExtent,
+      page.maxScrollExtent,
+    );
+    if ((offset - page.pixels).abs() <= precisionErrorTolerance) return false;
+    page.jumpTo(offset);
+    // A leading-edge drag spent moving the page must not also arm refresh.
+    return delta < 0;
+  }
+
+  Future<void> _indexRows(
+    BuildContext context,
+    _SettlementListData data,
+    _SettlementRowTypography typography,
+    int generation,
+  ) async {
+    final dateFormat = DateFormat.yMMMd(typography.locale.toLanguageTag());
+    final offsets = <double>[0];
+    final heights = <(String, double, int?), double>{};
+    const batchSize = 64;
+    for (var start = 0; start < data.settlements.length; start += batchSize) {
+      // Yield between batches so text measurement cannot block a scroll frame.
+      await Future<void>.delayed(Duration.zero);
+      if (!mounted || !context.mounted || generation != _extentGeneration) {
+        return;
+      }
+      final end = math.min(start + batchSize, data.settlements.length);
+      for (var index = start; index < end; index++) {
+        final cells = _cells(
+          context,
+          data,
+          data.settlements[index],
+          dateFormat,
+        );
+        offsets.add(offsets.last + _rowExtent(typography, heights, cells));
+      }
+    }
+    setState(() => _indexedRows = (data: data, offsets: offsets));
+    final rowId = _settlementToRefocus;
+    if (rowId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _restoreRowFocus(rowId, data, offsets, generation);
+      });
+    }
+  }
+
+  String? _settlementForFocus(FocusNode? node) => node?.context
+      ?.findAncestorWidgetOfExactType<_SettlementFocusTarget>()
+      ?.settlementId;
+
+  bool _isFocusVisible(FocusNode node) {
+    final row = node.context?.findRenderObject();
+    if (row is! RenderBox || !row.attached || !row.hasSize) return false;
+    var visible = MatrixUtils.transformRect(
+      row.getTransformTo(null),
+      row.paintBounds,
+    );
+    var ancestor = row.parent;
+    while (ancestor != null && !visible.isEmpty) {
+      if (ancestor is RenderBox && ancestor is RenderAbstractViewport) {
+        final viewport = MatrixUtils.transformRect(
+          ancestor.getTransformTo(null),
+          ancestor.paintBounds,
+        );
+        visible = visible.intersect(viewport);
+      }
+      ancestor = ancestor.parent;
+    }
+    return !visible.isEmpty;
+  }
+
+  void _restoreRowFocus(
+    String rowId,
+    _SettlementListData data,
+    List<double> offsets,
+    int generation,
+  ) {
+    if (!mounted || generation != _extentGeneration) return;
+    if (!_refreshFocus.hasPrimaryFocus) {
+      _settlementToRefocus = null;
+      return;
+    }
+    final index = data.settlementIndexes[rowId];
+    if (index == null) {
+      _settlementToRefocus = null;
+      return;
+    }
+    if (!_verticalController.hasClients) {
+      _settlementToRefocus = null;
+      return;
+    }
+    final position = _verticalController.position;
+    final start = offsets[index];
+    final end = offsets[index + 1];
+    final viewStart = position.pixels;
+    final viewEnd = viewStart + position.viewportDimension;
+    final desiredOffset =
+        start < viewStart || end - start > position.viewportDimension
+        ? start
+        : end > viewEnd
+        ? end - position.viewportDimension
+        : viewStart;
+    final offset = desiredOffset.clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+    if ((offset - viewStart).abs() > precisionErrorTolerance) {
+      position.jumpTo(offset);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _restoreRowFocus(rowId, data, offsets, generation);
+      });
+      return;
+    }
+    _settlementToRefocus = null;
+    for (final node in _refreshFocus.descendants) {
+      final rowContext = node.context;
+      if (rowContext != null &&
+          node.canRequestFocus &&
+          _settlementForFocus(node) == rowId) {
+        _revealInResultsPage(rowContext);
+        node.requestFocus();
+        return;
+      }
+    }
+  }
+
+  void _revealInResultsPage(BuildContext rowContext) {
+    final table = Scrollable.of(rowContext, axis: Axis.vertical);
+    final page = Scrollable.maybeOf(table.context, axis: Axis.vertical);
+    final row = rowContext.findRenderObject();
+    if (page == null || row == null) return;
+
+    // The enclosing page can clip the table. Find its vertical viewport
+    // without moving the independent horizontal column viewport.
+    var ancestor = RenderAbstractViewport.maybeOf(row)?.parent;
+    while (ancestor != null) {
+      if (ancestor is RenderViewportBase &&
+          axisDirectionToAxis(ancestor.axisDirection) == Axis.vertical) {
+        final position = page.position;
+        final start = ancestor.getOffsetToReveal(row, 0).offset;
+        final end = ancestor.getOffsetToReveal(row, 1).offset;
+        final offset = math
+            .min(start, math.max(position.pixels, end))
+            .clamp(position.minScrollExtent, position.maxScrollExtent);
+        if ((offset - position.pixels).abs() > precisionErrorTolerance) {
+          position.jumpTo(offset);
+        }
+        return;
+      }
+      ancestor = ancestor.parent;
+    }
+  }
+
   Widget _heading(BuildContext context, String key) => Text(
     context.l10n.text(key),
     style: ButlerlyTableTokens.headerTextStyle(context),
-    maxLines: 1,
-    overflow: TextOverflow.ellipsis,
   );
 
   Widget _divider(BuildContext context) => Divider(
@@ -871,75 +1198,260 @@ class _SettlementDesktopTable extends StatelessWidget {
     color: ButlerlyTableTokens.dividerColor(context),
   );
 
-  Widget _row(BuildContext context, PaymentSettlementDto settlement) {
-    final sourceUnavailable = !data.sources.any(
-      (source) => source.id.value == settlement.paymentSourceId,
-    );
-    final locale = Localizations.localeOf(context).toLanguageTag();
+  // Keep wrapped rows the same height when opening or closing the detail pane
+  // changes the table width. The vertical scroll position then stays anchored.
+  Widget _wrappedCell(Text text) => Align(
+    alignment: AlignmentDirectional.centerStart,
+    child: ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: wrappedColumnWidth),
+      child: text,
+    ),
+  );
+
+  _SettlementRowCells _cells(
+    BuildContext context,
+    _SettlementListData data,
+    PaymentSettlementDto settlement,
+    DateFormat dateFormat,
+  ) {
+    final source = data.sourcesById[settlement.paymentSourceId];
     final paymentDate = DateTime.tryParse(settlement.paymentDate);
-    final date = paymentDate == null
-        ? settlement.paymentDate
-        : DateFormat.yMMMd(locale).format(paymentDate);
-    final amount =
-        '${settlement.payment.currency.value} '
-        '${localizedTransactionAmount(context, settlement.payment.amount.toString())}';
-    return Material(
-      type: MaterialType.transparency,
-      child: InkWell(
-        key: ValueKey('desktop-payment-settlement-${settlement.id}'),
-        onTap: () => onOpen(settlement),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            vertical: ButlerlyTableTokens.rowVerticalPadding,
+    return (
+      source: _settlementSourceDisplayLabel(
+        context,
+        source,
+        settlement.paymentSourceId,
+      ),
+      sourceMissing: source == null,
+      date: paymentDate == null
+          ? settlement.paymentDate
+          : dateFormat.format(paymentDate),
+      period: '${settlement.periodStart} – ${settlement.periodEnd}',
+      amount:
+          '${settlement.payment.currency.value} '
+          '${localizedTransactionAmount(context, settlement.payment.amount.toString())}',
+      status: context.l10n.text(switch (settlement.status) {
+        PaymentSettlementStatus.open => 'paymentSettlementOpen',
+        PaymentSettlementStatus.reconciled => 'paymentSettlementReconciled',
+        PaymentSettlementStatus.needsReview => 'needsReview',
+      }),
+    );
+  }
+
+  double _rowExtent(
+    _SettlementRowTypography typography,
+    Map<(String, double, int?), double> heights,
+    _SettlementRowCells cells,
+  ) {
+    double height(String text, double width, {int? maxLines}) =>
+        heights.putIfAbsent((text, width, maxLines), () {
+          final painter = TextPainter(
+            text: TextSpan(text: text, style: typography.style),
+            textDirection: typography.direction,
+            textScaler: typography.textScaler,
+            locale: typography.locale,
+            maxLines: maxLines,
+            ellipsis: maxLines == null ? null : '…',
+            textHeightBehavior: typography.heightBehavior,
+          )..layout(maxWidth: width);
+          final height = painter.height;
+          painter.dispose();
+          return height;
+        });
+    return [
+          arrowWidth,
+          height(
+            cells.source,
+            wrappedColumnWidth,
+            maxLines: cells.sourceMissing ? null : 1,
           ),
-          child: Row(
-            children: [
-              Expanded(
-                flex: 3,
-                child: Text(
-                  _settlementSourceLabel(
-                    context,
-                    data.sources,
-                    settlement.paymentSourceId,
-                  ),
-                  maxLines: sourceUnavailable ? null : 1,
-                  overflow: sourceUnavailable ? null : TextOverflow.ellipsis,
+          height(cells.date, dateWidth),
+          height(cells.period, wrappedColumnWidth),
+          height(cells.amount, amountWidth),
+          height(cells.status, statusWidth),
+        ].reduce(math.max).ceilToDouble() +
+        2 * ButlerlyTableTokens.rowVerticalPadding +
+        ButlerlyTableTokens.dividerThickness;
+  }
+
+  Widget _row(PaymentSettlementDto settlement, _SettlementRowCells cells) {
+    final sourceLabel = Text(
+      cells.source,
+      maxLines: cells.sourceMissing ? null : 1,
+      overflow: cells.sourceMissing ? null : TextOverflow.ellipsis,
+    );
+    return _SettlementFocusTarget(
+      settlementId: settlement.id,
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          key: ValueKey('desktop-payment-settlement-${settlement.id}'),
+          onTap: () => widget.onOpen(settlement),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              vertical: ButlerlyTableTokens.rowVerticalPadding,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: cells.sourceMissing
+                      ? _wrappedCell(sourceLabel)
+                      : sourceLabel,
                 ),
-              ),
-              SizedBox(width: 110, child: Text(date)),
-              Expanded(
-                flex: 3,
-                child: Text(
-                  '${settlement.periodStart} – ${settlement.periodEnd}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              SizedBox(
-                width: 145,
-                child: Text(
-                  amount,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              SizedBox(
-                width: 135,
-                child: Text(
-                  context.l10n.text(switch (settlement.status) {
-                    PaymentSettlementStatus.open => 'paymentSettlementOpen',
-                    PaymentSettlementStatus.reconciled =>
-                      'paymentSettlementReconciled',
-                    PaymentSettlementStatus.needsReview => 'needsReview',
-                  }),
-                ),
-              ),
-              const Icon(Icons.chevron_right_rounded, size: 24),
-            ],
+                SizedBox(width: dateWidth, child: Text(cells.date)),
+                Expanded(flex: 3, child: _wrappedCell(Text(cells.period))),
+                SizedBox(width: amountWidth, child: Text(cells.amount)),
+                SizedBox(width: statusWidth, child: Text(cells.status)),
+                const Icon(Icons.chevron_right_rounded, size: arrowWidth),
+              ],
+            ),
           ),
         ),
       ),
     );
+  }
+}
+
+class _SettlementFocusTarget extends StatelessWidget {
+  const _SettlementFocusTarget({
+    required this.settlementId,
+    required this.child,
+  });
+
+  final String settlementId;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => child;
+}
+
+typedef _SettlementRowTypography = ({
+  TextStyle style,
+  TextScaler textScaler,
+  TextDirection direction,
+  Locale locale,
+  TextHeightBehavior? heightBehavior,
+});
+
+typedef _IndexedSettlementRows = ({
+  _SettlementListData data,
+  List<double> offsets,
+});
+
+class _IndexedSettlementSliver extends SliverVariedExtentList {
+  _IndexedSettlementSliver({required this.offsets, required super.delegate})
+    : super(
+        itemExtentBuilder: (index, _) => index + 1 < offsets.length
+            ? offsets[index + 1] - offsets[index]
+            : null,
+      );
+
+  final List<double> offsets;
+
+  @override
+  _RenderIndexedSettlementSliver createRenderObject(BuildContext context) =>
+      _RenderIndexedSettlementSliver(
+        childManager: context as SliverMultiBoxAdaptorElement,
+        itemExtentBuilder: itemExtentBuilder,
+        offsets: offsets,
+      );
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    covariant _RenderIndexedSettlementSliver renderObject,
+  ) {
+    renderObject.offsets = offsets;
+    super.updateRenderObject(context, renderObject);
+  }
+}
+
+class _RenderIndexedSettlementSliver extends RenderSliverVariedExtentList {
+  _RenderIndexedSettlementSliver({
+    required super.childManager,
+    required super.itemExtentBuilder,
+    required this.offsets,
+  });
+
+  List<double> offsets;
+
+  // The final offset is the end of the table. Each preceding offset is the
+  // start of one row, so scrolling resolves indices without scanning rows.
+  int _indexForOffset(double offset) {
+    var first = 0;
+    var last = offsets.length - 1;
+    while (first < last) {
+      final middle = (first + last) ~/ 2;
+      if (offsets[middle] < offset) {
+        first = middle + 1;
+      } else {
+        last = middle;
+      }
+    }
+    return math.max(0, first - 1);
+  }
+
+  @override
+  int getMinChildIndexForScrollOffset(double offset, double itemExtent) =>
+      _indexForOffset(offset);
+
+  @override
+  int getMaxChildIndexForScrollOffset(double offset, double itemExtent) =>
+      _indexForOffset(offset);
+
+  @override
+  double indexToLayoutOffset(double itemExtent, int index) => offsets[index];
+
+  @override
+  double computeMaxScrollOffset(
+    SliverConstraints constraints,
+    double itemExtent,
+  ) => offsets.last;
+
+  @override
+  double estimateMaxScrollOffset(
+    SliverConstraints constraints, {
+    int? firstIndex,
+    int? lastIndex,
+    double? leadingScrollOffset,
+    double? trailingScrollOffset,
+  }) => offsets.last;
+}
+
+typedef _SettlementRowCells = ({
+  String source,
+  bool sourceMissing,
+  String date,
+  String period,
+  String amount,
+  String status,
+});
+
+class _SettlementTableScrollAction extends ScrollAction {
+  @override
+  void invoke(ScrollIntent intent, [BuildContext? context]) {
+    if (context == null) return;
+    final axis = axisDirectionToAxis(intent.direction);
+    var scrollable = Scrollable.maybeOf(context, axis: axis);
+    while (scrollable != null) {
+      final position = scrollable.position;
+      final remaining = scrollable.axisDirection == intent.direction
+          ? position.extentAfter
+          : position.extentBefore;
+      if (remaining > 0 &&
+          (scrollable.resolvedPhysics?.shouldAcceptUserOffset(position) ??
+              true)) {
+        position.moveTo(
+          position.pixels +
+              ScrollAction.getDirectionalIncrement(scrollable, intent),
+          duration: const Duration(milliseconds: 100),
+          curve: Curves.easeInOut,
+        );
+        return;
+      }
+      scrollable = Scrollable.maybeOf(scrollable.context, axis: axis);
+    }
   }
 }
 
@@ -1571,10 +2083,17 @@ final class _SettlementSavePopEntry extends PopEntry<Object?> {
 }
 
 final class _SettlementListData {
-  const _SettlementListData({required this.settlements, required this.sources});
+  _SettlementListData({required this.settlements, required this.sources});
 
   final List<PaymentSettlementDto> settlements;
   final List<PaymentSource> sources;
+
+  late final sourcesById = {
+    for (final source in sources) source.id.value: source,
+  };
+  late final settlementIndexes = {
+    for (final (index, settlement) in settlements.indexed) settlement.id: index,
+  };
 
   List<PaymentSource> get activeCardSources => sources
       .where(
@@ -1596,6 +2115,14 @@ String _settlementSourceLabel(
   String id,
 ) {
   final source = sources.where((source) => source.id.value == id).firstOrNull;
+  return _settlementSourceDisplayLabel(context, source, id);
+}
+
+String _settlementSourceDisplayLabel(
+  BuildContext context,
+  PaymentSource? source,
+  String id,
+) {
   if (source == null) {
     return context.l10n.text('missingSettlementSource', {'id': id});
   }

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui' show Tristate;
 
 import 'package:butlerly/app/locale/locale_provider.dart';
+import 'package:butlerly/app/theme/app_theme.dart';
 import 'package:butlerly/core/audio/butlerly_sound_feedback.dart';
 import 'package:butlerly/core/di/finance_services.dart';
 import 'package:butlerly/core/di/service_locator.dart';
@@ -33,6 +34,7 @@ import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -3889,23 +3891,28 @@ void main() {
 
       final resultsScroll = find.descendant(
         of: find.byKey(const ValueKey('butlerly-page-canvas')),
-        matching: find.byType(CustomScrollView),
+        matching: find.byWidgetPredicate(
+          (widget) => widget is CustomScrollView && widget.key == null,
+        ),
       );
       expect(resultsScroll, findsOneWidget);
       final otherSettlement = find.byKey(
         const ValueKey('desktop-payment-settlement-scrolled-settlement-18'),
       );
-      await tester.ensureVisible(otherSettlement);
-      await tester.pumpAndSettle();
+      final tableRows = find.byKey(
+        const ValueKey('desktop-payment-settlements-rows'),
+      );
       final verticalResultsScrollable = find.descendant(
-        of: resultsScroll,
-        matching: find.byWidgetPredicate(
-          (widget) =>
-              widget is Scrollable &&
-              widget.axisDirection == AxisDirection.down,
-        ),
+        of: tableRows,
+        matching: find.byType(Scrollable),
       );
       expect(verticalResultsScrollable, findsOneWidget);
+      await tester.scrollUntilVisible(
+        otherSettlement,
+        180,
+        scrollable: verticalResultsScrollable,
+      );
+      await tester.pumpAndSettle();
       final scrollPosition = tester
           .state<ScrollableState>(verticalResultsScrollable)
           .position;
@@ -3925,7 +3932,7 @@ void main() {
 
       // Scrolling more does not move the pinned feedback out of the viewport.
       final previousOffset = scrollPosition.pixels;
-      await tester.drag(resultsScroll, const Offset(0, 110));
+      await tester.drag(tableRows, const Offset(0, 110));
       await tester.pumpAndSettle();
       expect(scrollPosition.pixels, lessThan(previousOffset));
       expect(scrollPosition.pixels, greaterThan(0));
@@ -3940,6 +3947,551 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  Future<void> seedSettlementViewport(int count) async {
+    final source = PaymentSource(
+      id: PaymentSourceId('viewport-card'),
+      name: 'Viewport card',
+      type: PaymentSourceType.card,
+    );
+    await paymentSources.save(source);
+    final date = DateTime.utc(2026, 11, 1);
+    for (var index = 0; index < count; index++) {
+      await paymentSettlements.save(
+        PaymentSettlement(
+          id: PaymentSettlementId('viewport-$index'),
+          paymentSourceId: source.id,
+          payment: Money(
+            amount: DecimalValue.parse('19.013'),
+            currency: CurrencyCode('USD'),
+          ),
+          paymentDate: '2026-11-01',
+          periodStart: '2026-10-02',
+          periodEnd: '2026-11-01',
+          status: PaymentSettlementStatus.open,
+          createdAt: date,
+          updatedAt: date,
+        ),
+      );
+    }
+  }
+
+  testWidgets('Settlement keyboard scrolls the page when short rows fit', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1500, 280);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    await seedSettlementViewport(2);
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: PaymentSettlementsPage())),
+    );
+    await tester.pumpAndSettle();
+    final row = tester.element(find.text('Viewport card').first);
+    final inner = Scrollable.of(row, axis: Axis.vertical);
+    final outer = Scrollable.of(inner.context, axis: Axis.vertical).position;
+    expect(inner.position.maxScrollExtent, 0);
+    expect(outer.maxScrollExtent, greaterThan(0));
+    final focus = Focus.of(row, createDependency: false);
+    focus.requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.pageDown);
+    await tester.pumpAndSettle();
+    expect(outer.pixels, greaterThan(0));
+    expect(focus.hasPrimaryFocus, isTrue);
+    await tester.sendKeyEvent(LogicalKeyboardKey.pageUp);
+    await tester.pumpAndSettle();
+    expect(outer.pixels, 0);
+  });
+
+  testWidgets(
+    'Pulling a wide settlement row returns to the top before refreshing',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(1300, 550);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+      await seedSettlementViewport(100);
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: PaymentSettlementsPage())),
+      );
+      await tester.pumpAndSettle();
+      final row = find.byKey(
+        const ValueKey('desktop-payment-settlement-viewport-0'),
+      );
+      expect(row, findsOneWidget);
+      final listCalls = paymentSettlements.listCalls;
+      final label = find.descendant(
+        of: row,
+        matching: find.text('Viewport card'),
+      );
+      final inner = Scrollable.of(tester.element(label), axis: Axis.vertical);
+      final page = Scrollable.of(inner.context, axis: Axis.vertical).position;
+      final pageOffset = page.maxScrollExtent;
+      expect(pageOffset, greaterThan(0));
+      page.jumpTo(pageOffset);
+      await tester.pumpAndSettle();
+      await tester.drag(row, Offset(0, pageOffset / 2 + 20));
+      await tester.pumpAndSettle();
+      expect(page.pixels, inExclusiveRange(0, pageOffset));
+      expect(paymentSettlements.listCalls, listCalls);
+
+      page.jumpTo(0);
+      await tester.pumpAndSettle();
+      await tester.drag(row, const Offset(0, 450));
+      await tester.pumpAndSettle();
+      expect(paymentSettlements.listCalls, listCalls + 1);
+      expect(row, findsOneWidget);
+    },
+    variant: const TargetPlatformVariant({
+      TargetPlatform.iOS,
+      TargetPlatform.windows,
+    }),
+  );
+
+  testWidgets(
+    'Settlement touch scrolling reaches the final row with detail open',
+    (tester) async {
+      tester.view.devicePixelRatio = 1;
+      tester.view.physicalSize = const Size(1300, 420);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPhysicalSize);
+      await seedSettlementViewport(20);
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: PaymentSettlementsPage())),
+      );
+      await tester.pumpAndSettle();
+      Finder row(int index) =>
+          find.byKey(ValueKey('desktop-payment-settlement-viewport-$index'));
+      await tester.tap(row(0).hitTestable(at: Alignment.centerLeft));
+      await tester.pumpAndSettle();
+
+      final detail = find.byKey(
+        const ValueKey('desktop-settlement-detail-viewport-0'),
+      );
+      final detailScroll = tester
+          .state<ScrollableState>(
+            find.descendant(of: detail, matching: find.byType(Scrollable)),
+          )
+          .position;
+      expect(detailScroll.maxScrollExtent, greaterThan(0));
+      detailScroll.jumpTo(detailScroll.maxScrollExtent / 2);
+      final detailOffset = detailScroll.pixels;
+
+      final rows = find.byKey(
+        const ValueKey('desktop-payment-settlements-rows'),
+      );
+      final inner = tester.state<ScrollableState>(
+        find.descendant(of: rows, matching: find.byType(Scrollable)),
+      );
+      final page = Scrollable.of(inner.context, axis: Axis.vertical).position;
+      // Reveal the top of the table while leaving its lower portion clipped.
+      page.jumpTo(page.pixels + tester.getTopLeft(rows).dy - 290);
+      await tester.pumpAndSettle();
+      final pageOffset = page.pixels;
+      inner.position.jumpTo(inner.position.maxScrollExtent);
+      await tester.pumpAndSettle();
+      final finalRow = row(19).hitTestable(at: Alignment.centerLeft);
+      expect(finalRow, findsNothing);
+      for (
+        var attempt = 0;
+        attempt < 3 && finalRow.evaluate().isEmpty;
+        attempt++
+      ) {
+        final rowsBounds = tester.getRect(rows);
+        await tester.dragFrom(
+          rowsBounds.topLeft + const Offset(34, 30),
+          const Offset(0, -220),
+        );
+        await tester.pumpAndSettle();
+      }
+      expect(page.pixels, greaterThan(pageOffset));
+      expect(detailScroll.pixels, detailOffset);
+      expect(finalRow, findsOneWidget);
+      await tester.tap(finalRow);
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const ValueKey('desktop-settlement-detail-viewport-19')),
+        findsOneWidget,
+      );
+    },
+    variant: const TargetPlatformVariant({
+      TargetPlatform.iOS,
+      TargetPlatform.windows,
+    }),
+  );
+
+  testWidgets('Settlement refresh reveals a reordered keyboard focus target', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1200, 550);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    await seedSettlementViewport(40);
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: PaymentSettlementsPage())),
+    );
+    await tester.pumpAndSettle();
+    final row = find.byKey(
+      const ValueKey('desktop-payment-settlement-viewport-0'),
+    );
+    final label = find.descendant(
+      of: row,
+      matching: find.text('Viewport card'),
+    );
+    final rowContext = tester.element(label);
+    final position = Scrollable.of(rowContext, axis: Axis.vertical).position;
+    Focus.of(rowContext, createDependency: false).requestFocus();
+    await tester.pump();
+    expect(row.hitTestable(), findsOneWidget);
+    expect(position.pixels, 0);
+
+    final focused = paymentSettlements.values.remove('viewport-0')!;
+    final others = paymentSettlements.values.entries.toList();
+    paymentSettlements.values
+      ..clear()
+      ..addEntries(others.take(6))
+      ..[focused.id.value] = focused
+      ..addEntries(others.skip(6));
+    notifyPaymentSettlementChanged();
+    await tester.pumpAndSettle();
+    expect(row.hitTestable(), findsOneWidget);
+    expect(position.pixels, greaterThan(0));
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('desktop-settlement-detail-viewport-0')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('Settlement refresh keeps the viewport when focus is offscreen', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1200, 880);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    await seedSettlementViewport(40);
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: PaymentSettlementsPage())),
+    );
+    await tester.pumpAndSettle();
+    final row = find.byKey(
+      const ValueKey('desktop-payment-settlement-viewport-0'),
+    );
+    final label = find.descendant(
+      of: row,
+      matching: find.text('Viewport card'),
+    );
+    final context = tester.element(label);
+    final position = Scrollable.of(context, axis: Axis.vertical).position;
+    final focus = Focus.of(context, createDependency: false);
+    focus.requestFocus();
+    await tester.pump();
+    position.jumpTo(120);
+    await tester.pumpAndSettle();
+    expect(focus.hasPrimaryFocus, isTrue);
+    expect(row.hitTestable(), findsNothing);
+
+    notifyPaymentSettlementChanged();
+    await tester.pumpAndSettle();
+    expect(position.pixels, 120);
+    expect(row.hitTestable(), findsNothing);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('desktop-settlement-detail-viewport-0')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('Desktop mounts bounded rows and opens a distant settlement', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1200, 880);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final source = PaymentSource(
+      id: PaymentSourceId('long-history-card'),
+      name: 'History card',
+      type: PaymentSourceType.card,
+    );
+    await paymentSources.save(source);
+    final payment = Money(
+      amount: DecimalValue.parse('19.013'),
+      currency: CurrencyCode('USD'),
+    );
+    final date = DateTime.utc(2026, 11, 1);
+    for (var index = 0; index < 5000; index++) {
+      await paymentSettlements.save(
+        PaymentSettlement(
+          id: PaymentSettlementId('history-$index'),
+          paymentSourceId: index.isEven
+              ? source.id
+              : PaymentSourceId('missing-historical-credit-card-source-$index'),
+          payment: payment,
+          paymentDate: '2026-11-01',
+          periodStart: '2026-10-02',
+          periodEnd: '2026-11-01',
+          status: PaymentSettlementStatus.open,
+          createdAt: date,
+          updatedAt: date,
+        ),
+      );
+    }
+
+    Finder row(int index) =>
+        find.byKey(ValueKey('desktop-payment-settlement-history-$index'));
+    bool isSettlementRow(Widget widget) =>
+        widget is InkWell &&
+        widget.key is ValueKey<String> &&
+        (widget.key as ValueKey<String>).value.startsWith(
+          'desktop-payment-settlement-history-',
+        );
+    final mountedRows = find.byWidgetPredicate(isSettlementRow);
+    for (final (locale, theme) in [
+      (const Locale('en'), AppTheme.light),
+      (const Locale('zh', 'CN'), AppTheme.navy),
+      (const Locale('es'), AppTheme.dark),
+    ]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: locale,
+          theme: theme,
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            ...GlobalMaterialLocalizations.delegates,
+          ],
+          home: Builder(
+            builder: (context) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: TextScaler.linear(1.5)),
+              child: const Scaffold(body: PaymentSettlementsPage()),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final missingLabel = AppLocalizations(locale).text(
+        'missingSettlementSource',
+        {'id': 'missing-historical-credit-card-source-1'},
+      );
+      expect(find.text(missingLabel), findsOneWidget);
+      expect(row(0), findsOneWidget);
+      expect(
+        tester.getSize(row(1)).height,
+        greaterThan(tester.getSize(row(0)).height),
+      );
+      expect(row(4999), findsNothing);
+      expect(mountedRows.evaluate().length, lessThan(50));
+      expect(tester.takeException(), isNull);
+    }
+    expect(paymentSettlements.transactionListCalls, 0);
+
+    final scrollable = find.descendant(
+      of: find.byKey(const ValueKey('desktop-payment-settlements-rows')),
+      matching: find.byType(Scrollable),
+    );
+    final position = tester.state<ScrollableState>(scrollable).position;
+    final firstSource = find.descendant(
+      of: row(0),
+      matching: find.text('History card'),
+    );
+    final firstRowFocus = Focus.of(
+      tester.element(firstSource),
+      createDependency: false,
+    );
+    for (
+      var attempt = 0;
+      attempt < 5 && !firstRowFocus.hasPrimaryFocus;
+      attempt++
+    ) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pumpAndSettle();
+    }
+    expect(firstRowFocus.hasPrimaryFocus, isTrue);
+    await tester.sendKeyEvent(LogicalKeyboardKey.pageDown);
+    await tester.pumpAndSettle();
+    expect(position.pixels, greaterThan(0));
+
+    var newRows = 0;
+    final previousRebuild = debugOnRebuildDirtyWidget;
+    debugOnRebuildDirtyWidget = (element, builtOnce) {
+      previousRebuild?.call(element, builtOnce);
+      if (!builtOnce && isSettlementRow(element.widget)) newRows++;
+    };
+    try {
+      // The estimated scroll extent can refine after a single thumb jump.
+      for (
+        var attempt = 0;
+        attempt < 5 && row(4999).evaluate().isEmpty;
+        attempt++
+      ) {
+        newRows = 0;
+        position.jumpTo(position.maxScrollExtent);
+        await tester.pumpAndSettle();
+        expect(newRows, inInclusiveRange(1, 50));
+      }
+    } finally {
+      debugOnRebuildDirtyWidget = previousRebuild;
+    }
+    expect(row(4999), findsOneWidget);
+    expect(row(4998), findsOneWidget);
+    expect(mountedRows.evaluate().length, lessThan(50));
+    expect(paymentSettlements.transactionListCalls, 0);
+
+    await tester.ensureVisible(row(4999));
+    await tester.pumpAndSettle();
+    final semantics = tester.ensureSemantics();
+    await tester.pump();
+    expect(
+      tester
+          .getSemantics(row(4999))
+          .getSemanticsData()
+          .hasAction(SemanticsAction.tap),
+      isTrue,
+    );
+    semantics.dispose();
+    final finalSource = find.descendant(
+      of: row(4999),
+      matching: find.textContaining(
+        'missing-historical-credit-card-source-4999',
+      ),
+    );
+    Focus.of(
+      tester.element(finalSource),
+      createDependency: false,
+    ).requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('desktop-settlement-detail-history-4999')),
+      findsOneWidget,
+    );
+    expect(row(4999), findsOneWidget);
+    expect(paymentSettlements.transactionListCalls, 1);
+
+    final table = find.byKey(
+      const ValueKey('desktop-payment-settlements-table'),
+    );
+    final horizontal = tester
+        .state<ScrollableState>(
+          find.descendant(
+            of: find.byKey(
+              const ValueKey('desktop-payment-settlements-horizontal-scroll'),
+            ),
+            matching: find.byWidgetPredicate(
+              (widget) =>
+                  widget is Scrollable &&
+                  widget.axisDirection == AxisDirection.right,
+            ),
+          ),
+        )
+        .position;
+    expect(horizontal.maxScrollExtent, greaterThan(0));
+    final amountHeading = find.descendant(
+      of: table,
+      matching: find.text(
+        const AppLocalizations(Locale('es')).text('paymentSettlementAmount'),
+      ),
+    );
+    final amountCell = find.descendant(
+      of: row(4999),
+      matching: find.textContaining('USD'),
+    );
+    expect(
+      tester.getTopLeft(amountHeading).dx,
+      tester.getTopLeft(amountCell).dx,
+    );
+    final beforeHorizontalScroll = tester.getTopLeft(amountCell).dx;
+    final beforeVerticalScroll = position.pixels;
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await tester.pumpAndSettle();
+    expect(horizontal.pixels, greaterThan(0));
+    expect(tester.getTopLeft(amountCell).dx, lessThan(beforeHorizontalScroll));
+    expect(
+      tester.getTopLeft(amountHeading).dx,
+      tester.getTopLeft(amountCell).dx,
+    );
+    expect(position.pixels, beforeVerticalScroll);
+
+    final beforeRefreshHorizontal = horizontal.pixels;
+    notifyPaymentSourceChanged();
+    await tester.pumpAndSettle();
+    expect(horizontal.pixels, beforeRefreshHorizontal);
+    expect(position.pixels, beforeVerticalScroll);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.pageUp);
+    await tester.pumpAndSettle();
+    expect(position.pixels, lessThan(beforeVerticalScroll));
+    await tester.sendKeyEvent(LogicalKeyboardKey.pageDown);
+    await tester.pumpAndSettle();
+    expect(position.pixels, beforeVerticalScroll);
+
+    await tester.tap(
+      find.byKey(const ValueKey('desktop-payment-settlement-close')),
+    );
+    await tester.pumpAndSettle();
+    expect(row(4999), findsOneWidget);
+    expect(position.pixels, beforeVerticalScroll);
+
+    Focus.of(
+      tester.element(finalSource),
+      createDependency: false,
+    ).requestFocus();
+    await tester.pump();
+    notifyPaymentSourceChanged();
+    await tester.pump();
+    await tester.pump();
+    expect(find.byType(ButlerlyLoadingState), findsOneWidget);
+    expect(row(4999), findsNothing);
+    await tester.pumpAndSettle();
+    expect(row(4999), findsOneWidget);
+    expect(tester.state<ScrollableState>(scrollable).position, same(position));
+    expect(position.pixels, beforeVerticalScroll);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    final detail = find.byKey(
+      const ValueKey('desktop-settlement-detail-history-4999'),
+    );
+    expect(detail, findsOneWidget);
+    final restored = paymentSettlements.values['history-0']!;
+    paymentSettlements.values.clear();
+    await paymentSettlements.save(restored);
+    notifyWorkspaceRestored();
+    await tester.pump();
+    await tester.pump();
+    expect(find.byType(ButlerlyLoadingState), findsOneWidget);
+    expect(row(4999).hitTestable(), findsNothing);
+    expect(detail, findsNothing);
+    await tester.pumpAndSettle();
+    expect(row(0), findsOneWidget);
+    expect(row(4999), findsNothing);
+
+    paymentSettlements.values.clear();
+    notifyWorkspaceRestored();
+    await tester.pumpAndSettle();
+    expect(detail, findsNothing);
+    expect(table, findsNothing);
+    expect(
+      find.text(
+        const AppLocalizations(Locale('es')).text('noPaymentSettlements'),
+      ),
+      findsOneWidget,
+    );
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets(
     'Archived card retains its historical settlements without enabling Add',
@@ -5816,6 +6368,8 @@ final class MemoryPaymentSettlements implements PaymentSettlementRepository {
   Future<void>? saveCompletion;
   bool savePending = false;
   int saveCalls = 0;
+  int listCalls = 0;
+  int transactionListCalls = 0;
   bool failList = false;
 
   @override
@@ -5824,6 +6378,7 @@ final class MemoryPaymentSettlements implements PaymentSettlementRepository {
 
   @override
   Future<List<PaymentSettlement>> listAll() async {
+    listCalls++;
     if (failList) {
       throw const RepositoryException(
         RepositoryFailureCode.unavailable,
@@ -5839,6 +6394,7 @@ final class MemoryPaymentSettlements implements PaymentSettlementRepository {
     DateTime? occurredAtFrom,
     DateTime? occurredAtToExclusive,
   }) async {
+    transactionListCalls++;
     final transactions = transactionRepository;
     if (transactions == null) return periodTransactions;
     return periodTransactions
