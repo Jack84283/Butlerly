@@ -5,6 +5,7 @@ import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/core/application/backup_status_service.dart';
 import 'package:butlerly/core/di/service_locator.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_local_protection_banner.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/components/butlerly_responsive_body.dart';
 import 'package:butlerly/design_system/components/butlerly_toast.dart';
@@ -1098,7 +1099,6 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
 
   Widget _desktopPrivacyPage(BuildContext context) {
     final l10n = context.l10n;
-    final dark = Theme.of(context).brightness == Brightness.dark;
     final backup = _DesktopPrivacyCard(
       key: const ValueKey('desktop-privacy-backup'),
       title: l10n.text('backupRecoveryTitle'),
@@ -1188,50 +1188,10 @@ class _PrivacyDataPageState extends ConsumerState<PrivacyDataPage> {
             context.canPop() ? context.pop() : context.go('/settings'),
       ),
       children: [
-        Container(
-          key: const ValueKey('desktop-privacy-local-banner'),
-          padding: const EdgeInsets.all(ButlerlySpacing.standard),
-          decoration: BoxDecoration(
-            color: dark ? const Color(0xFF1E342B) : const Color(0xFFE5F7ED),
-            border: Border.all(
-              color: dark ? const Color(0xFF2A4438) : const Color(0xFFCBE6D7),
-            ),
-            borderRadius: BorderRadius.circular(ButlerlyRadius.card),
-          ),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 19,
-                backgroundColor: dark
-                    ? const Color(0xFF2E875C)
-                    : const Color(0xFFB6E9CD),
-                child: Icon(
-                  Icons.shield_outlined,
-                  color: context.colors.success,
-                ),
-              ),
-              const SizedBox(width: ButlerlySpacing.standard),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      l10n.text('desktopLocalWorkspace'),
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      l10n.text('desktopPrivacyBannerBody'),
-                      style: _subtitleStyle(context),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: ButlerlySpacing.standard),
-              Icon(Icons.check_circle_rounded, color: context.colors.success),
-            ],
-          ),
+        ButlerlyLocalProtectionBanner(
+          surfaceKey: const ValueKey('desktop-privacy-local-banner'),
+          title: l10n.text('desktopLocalWorkspace'),
+          description: l10n.text('desktopPrivacyBannerBody'),
         ),
         const SizedBox(height: ButlerlySpacing.standard),
         LayoutBuilder(

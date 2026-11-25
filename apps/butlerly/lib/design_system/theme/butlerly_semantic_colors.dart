@@ -2,6 +2,23 @@ import 'package:flutter/material.dart';
 
 enum ButlerlyColorTheme { butlerRed, skyBlue, green }
 
+/// Tonal surfaces for the local-data protection status.
+abstract final class ButlerlyProtectionColors {
+  static ({Color surface, Color border, Color iconSurface}) of(
+    Brightness brightness,
+  ) => brightness == Brightness.dark
+      ? (
+          surface: const Color(0xFF1E342B),
+          border: const Color(0xFF2A4438),
+          iconSurface: const Color(0xFF2E875C),
+        )
+      : (
+          surface: const Color(0xFFE5F7ED),
+          border: const Color(0xFFCBE6D7),
+          iconSurface: const Color(0xFFB6E9CD),
+        );
+}
+
 @immutable
 class ButlerlySemanticColors extends ThemeExtension<ButlerlySemanticColors> {
   const ButlerlySemanticColors({
