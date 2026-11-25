@@ -146,8 +146,8 @@ void main() {
         tester.element(row),
         axis: Axis.vertical,
       ).position;
-      const scrollStep = 120.0;
-      const scrollSteps = 12;
+      const scrollStep = 30.0;
+      const scrollSteps = 48;
       final scrollOrigin = position.pixels;
       expect(
         position.maxScrollExtent,
@@ -163,14 +163,8 @@ void main() {
       try {
         for (var step = 1; step <= scrollSteps; step++) {
           final target = scrollOrigin + step * scrollStep;
-          unawaited(
-            position.animateTo(
-              target,
-              duration: const Duration(milliseconds: 160),
-              curve: Curves.linear,
-            ),
-          );
-          await tester.pumpAndSettle(const Duration(milliseconds: 16));
+          position.jumpTo(target);
+          await tester.pump(const Duration(milliseconds: 16));
           expect(position.pixels, closeTo(target, 0.5));
         }
         await sample(
