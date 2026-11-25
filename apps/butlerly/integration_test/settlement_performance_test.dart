@@ -16,7 +16,7 @@ import '../test/features/transactions/transaction_lifecycle_test.dart'
     as fixtures;
 
 void main() {
-  final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
   Completer<void>? resume;
   developer.registerExtension('ext.butlerly.resumeSettlementBenchmark', (
     _,

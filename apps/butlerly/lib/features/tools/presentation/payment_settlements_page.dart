@@ -891,7 +891,7 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
           );
           return Scrollbar(
             controller: _verticalController,
-            interactive: _indexedRows != null,
+            interactive: _indexedRows?.data == widget.data,
             notificationPredicate: (notification) =>
                 notification.metrics.axis == Axis.vertical,
             child: SingleChildScrollView(
@@ -978,13 +978,22 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
     );
     // A drag starting over a long history belongs to the row viewport.
     // Keep pull-to-refresh reachable there on wide mobile layouts.
-    return switch (defaultTargetPlatform) {
+    final refreshable = switch (defaultTargetPlatform) {
       TargetPlatform.android || TargetPlatform.iOS => RefreshIndicator.adaptive(
         onRefresh: widget.onRefresh,
         child: list,
       ),
       _ => list,
     };
+    final indexing = data != requestedData;
+    return Stack(
+      children: [
+        // Keep the controller attached across ordinary refreshes, without
+        // exposing rows or focus targets from the prior financial snapshot.
+        Visibility(visible: !indexing, maintainState: true, child: refreshable),
+        if (indexing) const ButlerlyLoadingState(),
+      ],
+    );
   }
 
   Future<void> _indexRows(
@@ -1000,8 +1009,9 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
     for (var start = 0; start < data.settlements.length; start += batchSize) {
       // Yield between batches so text measurement cannot block a scroll frame.
       await Future<void>.delayed(Duration.zero);
-      if (!mounted || !context.mounted || generation != _extentGeneration)
+      if (!mounted || !context.mounted || generation != _extentGeneration) {
         return;
+      }
       final end = math.min(start + batchSize, data.settlements.length);
       for (var index = start; index < end; index++) {
         final cells = _cells(

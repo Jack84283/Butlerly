@@ -4259,12 +4259,35 @@ void main() {
     expect(row(4999), findsOneWidget);
     expect(position.pixels, beforeVerticalScroll);
 
+    notifyPaymentSourceChanged();
+    await tester.pump();
+    await tester.pump();
+    expect(find.byType(ButlerlyLoadingState), findsOneWidget);
+    expect(row(4999), findsNothing);
+    await tester.pumpAndSettle();
+    expect(row(4999), findsOneWidget);
+    expect(tester.state<ScrollableState>(scrollable).position, same(position));
+    expect(position.pixels, beforeVerticalScroll);
+
     await tester.tap(row(4999).hitTestable(at: Alignment.centerLeft));
     await tester.pumpAndSettle();
     final detail = find.byKey(
       const ValueKey('desktop-settlement-detail-history-4999'),
     );
     expect(detail, findsOneWidget);
+    final restored = paymentSettlements.values['history-0']!;
+    paymentSettlements.values.clear();
+    await paymentSettlements.save(restored);
+    notifyWorkspaceRestored();
+    await tester.pump();
+    await tester.pump();
+    expect(find.byType(ButlerlyLoadingState), findsOneWidget);
+    expect(row(4999).hitTestable(), findsNothing);
+    expect(detail, findsNothing);
+    await tester.pumpAndSettle();
+    expect(row(0), findsOneWidget);
+    expect(row(4999), findsNothing);
+
     paymentSettlements.values.clear();
     notifyWorkspaceRestored();
     await tester.pumpAndSettle();
