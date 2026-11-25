@@ -231,6 +231,7 @@ abstract final class ButlerlySize {
   /// Maximum width for wide action grids that benefit from breathing room
   /// without using the full desktop workspace.
   static const wideTaskGridMaxWidth = 1280.0;
+  static const wideActionCardContentMinHeight = 148.0;
   static const stateContentWidth = 520.0;
   static const recordRowMinHeight = 68.0;
   static const standardIcon = 24.0;
