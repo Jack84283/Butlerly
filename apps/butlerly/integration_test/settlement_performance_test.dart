@@ -26,14 +26,19 @@ void main() {
     return developer.ServiceExtensionResponse.result('{}');
   });
 
-  Future<void> sample(int count, String stage, int startMicros) async {
+  Future<void> sample(
+    int count,
+    String stage, {
+    int? startMicros,
+    int? endMicros,
+  }) async {
     final signal = Completer<void>();
     resume = signal;
     developer.postEvent('butlerly.settlementBenchmark', {
       'count': count,
       'stage': stage,
-      'startMicros': startMicros,
-      'endMicros': developer.Timeline.now,
+      'startMicros': ?startMicros,
+      'endMicros': ?endMicros,
     });
     await signal.future.timeout(const Duration(seconds: 30));
     resume = null;
@@ -104,7 +109,7 @@ void main() {
       }
       await tester.pumpWidget(const SizedBox.shrink());
       await tester.pumpAndSettle();
-      await sample(count, 'before', 0);
+      await sample(count, 'before_startup');
       final beforeRss = ProcessInfo.currentRss;
       final startupStartMicros = developer.Timeline.now;
       final start = Stopwatch()..start();
@@ -113,6 +118,12 @@ void main() {
       );
       await tester.pumpAndSettle(const Duration(milliseconds: 16));
       start.stop();
+      await sample(
+        count,
+        'startup',
+        startMicros: startupStartMicros,
+        endMicros: developer.Timeline.now,
+      );
       final countRows = find
           .byWidgetPredicate(
             (widget) => widget.key.toString().contains(
@@ -131,28 +142,51 @@ void main() {
       );
       expect(table, findsOneWidget);
       expect(row, findsOneWidget);
-      final scrollPoint = tester.getCenter(row);
-      await sample(count, 'startup', startupStartMicros);
+      final position = Scrollable.of(
+        tester.element(row),
+        axis: Axis.vertical,
+      ).position;
+      const scrollStep = 120.0;
+      const scrollSteps = 12;
+      final scrollOrigin = position.pixels;
+      expect(
+        position.maxScrollExtent,
+        greaterThan(scrollOrigin + scrollStep * scrollSteps),
+      );
       // Let initial layout timings flush before collecting scroll frames.
       await Future<void>.delayed(const Duration(seconds: 2));
+      await sample(count, 'before_scroll');
       final timings = <FrameTiming>[];
       final collectTimings = timings.addAll;
       binding.addTimingsCallback(collectTimings);
       final scrollStartMicros = developer.Timeline.now;
       try {
-        for (var i = 0; i < 12; i++) {
-          await tester.flingFrom(scrollPoint, const Offset(0, -325), 1100);
-          await tester.pumpAndSettle();
+        for (var step = 1; step <= scrollSteps; step++) {
+          final target = scrollOrigin + step * scrollStep;
+          unawaited(
+            position.animateTo(
+              target,
+              duration: const Duration(milliseconds: 160),
+              curve: Curves.linear,
+            ),
+          );
+          await tester.pumpAndSettle(const Duration(milliseconds: 16));
+          expect(position.pixels, closeTo(target, 0.5));
         }
+        await sample(
+          count,
+          'scroll',
+          startMicros: scrollStartMicros,
+          endMicros: developer.Timeline.now,
+        );
         // Profile builds batch frame timings before delivering them.
         await Future<void>.delayed(const Duration(seconds: 2));
       } finally {
         binding.removeTimingsCallback(collectTimings);
       }
       expect(timings, isNotEmpty);
-      await sample(count, 'scroll', scrollStartMicros);
       debugPrint(
-        'SETTLEMENT_BENCH ${jsonEncode({'count': count, 'viewport': '${viewport.width}x${viewport.height}', 'startup_ms': start.elapsedMilliseconds, 'mounted_rows': countRows, 'rss_delta_bytes': ProcessInfo.currentRss - beforeRss, 'scrolling_frames': timings.length, 'build_p95_ms': _p95(timings.map((frame) => frame.buildDuration)), 'raster_p95_ms': _p95(timings.map((frame) => frame.rasterDuration))})}',
+        'SETTLEMENT_BENCH ${jsonEncode({'count': count, 'viewport': '${viewport.width}x${viewport.height}', 'startup_ms': start.elapsedMilliseconds, 'mounted_rows': countRows, 'rss_delta_bytes': ProcessInfo.currentRss - beforeRss, 'scroll_distance_px': position.pixels - scrollOrigin, 'scrolling_frames': timings.length, 'build_p95_ms': _p95(timings.map((frame) => frame.buildDuration)), 'raster_p95_ms': _p95(timings.map((frame) => frame.rasterDuration))})}',
       );
       expect(tester.takeException(), isNull);
     }

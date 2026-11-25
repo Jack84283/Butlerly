@@ -4115,13 +4115,23 @@ void main() {
     );
     final beforeHorizontalScroll = tester.getTopLeft(amountCell).dx;
     final beforeVerticalScroll = position.pixels;
-    horizontal.jumpTo(horizontal.maxScrollExtent);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
     await tester.pumpAndSettle();
+    expect(horizontal.pixels, greaterThan(0));
     expect(tester.getTopLeft(amountCell).dx, lessThan(beforeHorizontalScroll));
     expect(
       tester.getTopLeft(amountHeading).dx,
       tester.getTopLeft(amountCell).dx,
     );
+    expect(position.pixels, beforeVerticalScroll);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.pageUp);
+    await tester.pumpAndSettle();
+    expect(position.pixels, lessThan(beforeVerticalScroll));
+    await tester.sendKeyEvent(LogicalKeyboardKey.pageDown);
+    await tester.pumpAndSettle();
     expect(position.pixels, beforeVerticalScroll);
 
     await tester.tap(
@@ -4130,6 +4140,24 @@ void main() {
     await tester.pumpAndSettle();
     expect(row(4999), findsOneWidget);
     expect(position.pixels, beforeVerticalScroll);
+
+    await tester.tap(row(4999).hitTestable(at: Alignment.centerLeft));
+    await tester.pumpAndSettle();
+    final detail = find.byKey(
+      const ValueKey('desktop-settlement-detail-history-4999'),
+    );
+    expect(detail, findsOneWidget);
+    paymentSettlements.values.clear();
+    notifyWorkspaceRestored();
+    await tester.pumpAndSettle();
+    expect(detail, findsNothing);
+    expect(table, findsNothing);
+    expect(
+      find.text(
+        const AppLocalizations(Locale('es')).text('noPaymentSettlements'),
+      ),
+      findsOneWidget,
+    );
     expect(tester.takeException(), isNull);
   });
 

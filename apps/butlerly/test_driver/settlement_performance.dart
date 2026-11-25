@@ -9,25 +9,39 @@ Future<void> main() async {
   final service = await vmServiceConnectUri(
     endpoint.replace(scheme: 'ws', path: '${endpoint.path}ws').toString(),
   );
+  final phaseStarts = <(int, String), int>{};
   service.onExtensionEvent.listen((event) async {
     if (event.extensionKind != 'butlerly.settlementBenchmark') return;
     final data = event.extensionData!.data;
     final isolateId = event.isolate!.id!;
     try {
       final stage = data['stage'] as String;
+      final count = data['count'] as int;
+      final phaseStart = stage.startsWith('before_');
+      final phase = phaseStart ? stage.substring('before_'.length) : stage;
       final profile = await service.getAllocationProfile(isolateId);
+      final counters = profile.members!.map((member) => member.bytesCurrent);
+      if (counters.any((bytes) => bytes == null || bytes < 0)) {
+        throw StateError(
+          'Dart VM did not provide a complete allocation snapshot.',
+        );
+      }
+      final liveBytes = counters.fold(0, (sum, bytes) => sum + bytes!);
       final heap = profile.memoryUsage!;
       final stats = <String, Object?>{
-        'count': data['count'],
+        'count': count,
         'stage': stage,
         'dart_heap_bytes': heap.heapUsage,
         'dart_external_bytes': heap.externalUsage,
-        'dart_allocated_bytes': profile.members!.fold<int>(
-          0,
-          (sum, member) => sum + (member.accumulatedSize ?? 0),
-        ),
+        'live_dart_object_bytes': liveBytes,
       };
-      if (stage != 'before') {
+      if (phaseStart) {
+        phaseStarts[(count, phase)] = liveBytes;
+      } else {
+        // Current object bytes are snapshots. Their difference is the net
+        // change after GC, rather than cumulative allocation traffic.
+        stats['net_dart_object_bytes'] =
+            liveBytes - phaseStarts.remove((count, phase))!;
         final start = data['startMicros'] as int;
         final end = data['endMicros'] as int;
         final cpu = await service.getCpuSamples(isolateId, start, end - start);

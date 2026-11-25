@@ -912,7 +912,10 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
                 width: constraints.maxWidth < minimumWidth
                     ? minimumWidth
                     : constraints.maxWidth,
-                child: table,
+                child: Actions(
+                  actions: {ScrollIntent: _SettlementTableScrollAction()},
+                  child: table,
+                ),
               ),
             ),
           );
@@ -1000,6 +1003,30 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _SettlementTableScrollAction extends ScrollAction {
+  @override
+  void invoke(ScrollIntent intent, [BuildContext? context]) {
+    if (axisDirectionToAxis(intent.direction) == Axis.vertical) {
+      super.invoke(intent, context);
+      return;
+    }
+    // The focused row lives inside the vertical viewport. Route horizontal
+    // keyboard commands to the outer viewport that owns the columns.
+    final scrollable = context == null
+        ? null
+        : Scrollable.maybeOf(context, axis: Axis.horizontal);
+    if (scrollable == null) return;
+    final position = scrollable.position;
+    if (position.minScrollExtent == position.maxScrollExtent) return;
+    position.moveTo(
+      position.pixels +
+          ScrollAction.getDirectionalIncrement(scrollable, intent),
+      duration: const Duration(milliseconds: 100),
+      curve: Curves.easeInOut,
     );
   }
 }
