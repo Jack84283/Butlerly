@@ -1,6 +1,7 @@
 import 'package:butlerly/app/shell/adaptive_shell.dart';
 import 'package:butlerly/design_system/components/butlerly_action_group.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_desktop_action_card.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
 import 'package:butlerly/features/foundation/presentation/contextual_pages.dart';
 import 'package:butlerly/l10n/app_localizations.dart';
@@ -132,7 +133,7 @@ class AddPage extends StatelessWidget {
                             ),
                           ),
                           for (final action in section.actions) ...[
-                            _DesktopAddActionCard(action: action),
+                            ButlerlyDesktopActionCard(action: action),
                             const SizedBox(height: ButlerlySpacing.cardGap),
                           ],
                         ],
@@ -163,45 +164,4 @@ class AddPage extends StatelessWidget {
       ],
     );
   }
-}
-
-class _DesktopAddActionCard extends StatelessWidget {
-  const _DesktopAddActionCard({required this.action});
-
-  final ButlerlyActionItem action;
-
-  @override
-  Widget build(BuildContext context) => ButlerlyCard(
-    onTap: action.onTap,
-    semanticLabel: action.title,
-    child: SizedBox(
-      height: 148,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              ButlerlyActionIcon(icon: action.icon),
-              const Spacer(),
-              const Icon(Icons.arrow_forward_rounded),
-            ],
-          ),
-          const Spacer(),
-          Text(
-            action.title,
-            style: Theme.of(context).textTheme.titleMedium,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: ButlerlySpacing.micro),
-          Text(
-            action.subtitle,
-            style: Theme.of(context).textTheme.bodySmall,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    ),
-  );
 }
