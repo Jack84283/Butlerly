@@ -114,43 +114,20 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
     final finance = _finance;
     final save = finance?.savePaymentSettlement;
     if (finance == null || save == null) return;
-    final draft = await showButlerlyBottomSheet<_SettlementDraft>(
+    final id = 'settlement-${DateTime.now().microsecondsSinceEpoch}';
+    final saved = await showButlerlyBottomSheet<bool>(
       context: context,
-      builder: (context) =>
-          _SettlementEditorSheet(sources: data.activeCardSources),
-    );
-    if (!mounted || draft == null) return;
-
-    final token = DateTime.now().microsecondsSinceEpoch;
-    final result = await save(
-      id: 'settlement-$token',
-      paymentSourceId: draft.paymentSourceId,
-      payment: Money(
-        amount: DecimalValue.parse(draft.amount),
-        currency: CurrencyCode(draft.currency),
+      enableDrag: false,
+      onHandleDismiss: _dismissIdleSettlementEditor,
+      builder: (_) => _SettlementEditorSheet(
+        sources: data.activeCardSources,
+        save: save,
+        id: id,
       ),
-      paymentDate: draft.paymentDate,
-      periodStart: draft.periodStart,
-      periodEnd: draft.periodEnd,
-      statementBalance: draft.statementBalance == null
-          ? null
-          : Money(
-              amount: DecimalValue.parse(draft.statementBalance!),
-              currency: CurrencyCode(draft.currency),
-            ),
-      description: draft.description,
-      externalReference: draft.externalReference,
     );
-    if (result is ApplicationSuccess<PaymentSettlementDto>) {
-      notifyPaymentSettlementChanged();
+    if (mounted && saved == true) {
+      _showMessage(context.l10n.text('paymentSettlementSaved'));
     }
-    if (!mounted) return;
-    if (result is ApplicationFailure<PaymentSettlementDto>) {
-      _showMessage(context.l10n.text('paymentSettlementSaveFailed'));
-      return;
-    }
-
-    _showMessage(context.l10n.text('paymentSettlementSaved'));
   }
 
   Future<void> _openSettlement(
@@ -497,41 +474,18 @@ class _PaymentSettlementDetailPageState
   Future<void> _edit(PaymentSettlementDetailDto detail) async {
     final save = widget.finance.savePaymentSettlement;
     if (save == null) return;
-    final draft = await showButlerlyBottomSheet<_SettlementDraft>(
+    final saved = await showButlerlyBottomSheet<bool>(
       context: context,
-      builder: (context) =>
-          _SettlementEditorSheet(sources: widget.sources, existing: detail),
-    );
-    if (!mounted || draft == null) return;
-
-    final result = await save(
-      id: detail.settlement.id,
-      paymentSourceId: detail.settlement.paymentSourceId,
-      payment: Money(
-        amount: DecimalValue.parse(draft.amount),
-        currency: CurrencyCode(draft.currency),
+      enableDrag: false,
+      onHandleDismiss: _dismissIdleSettlementEditor,
+      builder: (_) => _SettlementEditorSheet(
+        sources: widget.sources,
+        existing: detail,
+        save: save,
+        id: detail.settlement.id,
       ),
-      paymentDate: draft.paymentDate,
-      periodStart: draft.periodStart,
-      periodEnd: draft.periodEnd,
-      status: detail.settlement.status,
-      statementBalance: draft.statementBalance == null
-          ? null
-          : Money(
-              amount: DecimalValue.parse(draft.statementBalance!),
-              currency: CurrencyCode(draft.currency),
-            ),
-      description: draft.description,
-      externalReference: draft.externalReference,
     );
-    if (result is ApplicationSuccess<PaymentSettlementDto>) {
-      notifyPaymentSettlementChanged();
-    }
-    if (!mounted) return;
-    if (result is ApplicationFailure<PaymentSettlementDto>) {
-      _showMessage(context.l10n.text('paymentSettlementSaveFailed'));
-      return;
-    }
+    if (!mounted || saved != true) return;
     _showMessage(context.l10n.text('paymentSettlementSaved'));
     await _refresh();
   }
@@ -1193,9 +1147,16 @@ class _SettlementStatusChip extends StatelessWidget {
 }
 
 class _SettlementEditorSheet extends StatefulWidget {
-  const _SettlementEditorSheet({required this.sources, this.existing});
+  const _SettlementEditorSheet({
+    required this.sources,
+    required this.save,
+    required this.id,
+    this.existing,
+  });
 
   final List<PaymentSource> sources;
+  final SavePaymentSettlement save;
+  final String id;
   final PaymentSettlementDetailDto? existing;
 
   @override
@@ -1213,6 +1174,8 @@ class _SettlementEditorSheetState extends State<_SettlementEditorSheet> {
   late final TextEditingController _description;
   late final TextEditingController _externalReference;
   late String? _paymentSourceId;
+  bool _saving = false;
+  String? _saveError;
 
   bool get _isEditing => widget.existing != null;
 
@@ -1266,17 +1229,15 @@ class _SettlementEditorSheetState extends State<_SettlementEditorSheet> {
     return null;
   }
 
-  String? _requiredAmount(String? value) =>
-      num.tryParse(value?.trim() ?? '') == null
-      ? context.l10n.text('invalidAmount')
-      : null;
-
-  String? _optionalAmount(String? value) {
+  String? _decimalError(String? value, String field, {bool optional = false}) {
     final text = value?.trim() ?? '';
-    if (text.isEmpty) return null;
-    return num.tryParse(text) == null
-        ? context.l10n.text('invalidAmount')
-        : null;
+    if (optional && text.isEmpty) return null;
+    try {
+      DecimalValue.parse(text);
+      return null;
+    } on DomainValidationException {
+      return '${context.l10n.text(field)}: ${context.l10n.text('invalidAmount')}';
+    }
   }
 
   String? _currencyValidator(String? value) =>
@@ -1295,41 +1256,68 @@ class _SettlementEditorSheetState extends State<_SettlementEditorSheet> {
       firstDate: DateTime(2000),
       lastDate: DateTime.now().add(const Duration(days: 366)),
     );
-    if (selected != null) controller.text = _formatDate(selected);
+    if (mounted && selected != null) controller.text = _formatDate(selected);
   }
 
-  void _submit() {
-    if (!_formKey.currentState!.validate()) return;
-    if (!_isEditing && _paymentSourceId == null) return;
-    final start = DateTime.parse(_periodStart.text);
-    final end = DateTime.parse(_periodEnd.text);
-    if (end.isBefore(start)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.text('paymentSettlementPeriod'))),
-      );
+  Future<void> _submit() async {
+    if (_saving || !_formKey.currentState!.validate()) return;
+    final route = ModalRoute.of(context);
+    if (route?.isCurrent != true) return;
+    final sourceId = _paymentSourceId;
+    if (sourceId == null) return;
+    final periodStart = _periodStart.text.trim();
+    final periodEnd = _periodEnd.text.trim();
+    if (periodEnd.compareTo(periodStart) < 0) {
+      setState(() => _saveError = 'paymentSettlementPeriod');
       return;
     }
-    Navigator.pop(
-      context,
-      _SettlementDraft(
-        paymentSourceId:
-            _paymentSourceId ?? widget.existing!.settlement.paymentSourceId,
-        amount: _amount.text.trim(),
-        currency: _currency.text.trim().toUpperCase(),
+    final guard = _SettlementSavePopEntry();
+    route!.registerPopEntry(guard);
+    setState(() {
+      _saving = true;
+      _saveError = null;
+    });
+    var saved = false;
+    try {
+      final currency = CurrencyCode(_currency.text.trim().toUpperCase());
+      final balance = _statementBalance.text.trim();
+      final description = _description.text.trim();
+      final reference = _externalReference.text.trim();
+      final result = await widget.save(
+        id: widget.id,
+        paymentSourceId: sourceId,
+        payment: Money(
+          amount: DecimalValue.parse(_amount.text),
+          currency: currency,
+        ),
         paymentDate: _paymentDate.text.trim(),
-        periodStart: _periodStart.text.trim(),
-        periodEnd: _periodEnd.text.trim(),
-        statementBalance: _statementBalance.text.trim().isEmpty
+        periodStart: periodStart,
+        periodEnd: periodEnd,
+        status:
+            widget.existing?.settlement.status ?? PaymentSettlementStatus.open,
+        statementBalance: balance.isEmpty
             ? null
-            : _statementBalance.text.trim(),
-        description: _description.text.trim().isEmpty
-            ? null
-            : _description.text.trim(),
-        externalReference: _externalReference.text.trim().isEmpty
-            ? null
-            : _externalReference.text.trim(),
-      ),
-    );
+            : Money(amount: DecimalValue.parse(balance), currency: currency),
+        description: description.isEmpty ? null : description,
+        externalReference: reference.isEmpty ? null : reference,
+      );
+      saved = result is ApplicationSuccess<PaymentSettlementDto>;
+    } catch (_) {
+      // Preserve the form if persistence throws instead of returning a result.
+    } finally {
+      route.unregisterPopEntry(guard);
+      guard.canPopNotifier.dispose();
+    }
+    if (saved) notifyPaymentSettlementChanged();
+    if (!mounted) return;
+    if (saved && route.isCurrent) {
+      Navigator.pop(context, true);
+    } else {
+      setState(() {
+        _saving = false;
+        _saveError = saved ? null : 'paymentSettlementSaveFailed';
+      });
+    }
   }
 
   @override
@@ -1340,226 +1328,246 @@ class _SettlementEditorSheetState extends State<_SettlementEditorSheet> {
               .where((value) => value.id.value == _paymentSourceId)
               .firstOrNull;
     return ButlerlySheet(
-      title: Text(
-        context.l10n.text(
-          _isEditing ? 'editPaymentSettlement' : 'addPaymentSettlement',
-        ),
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.l10n.text(
+              _isEditing ? 'editPaymentSettlement' : 'addPaymentSettlement',
+            ),
+          ),
+          if (_saveError case final error?)
+            Semantics(
+              liveRegion: true,
+              child: Text(
+                context.l10n.text(error),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: context.colors.error),
+              ),
+            ),
+        ],
       ),
       content: Form(
         key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (_isEditing)
-              InputDecorator(
-                decoration: InputDecoration(
-                  labelText: context.l10n.text('paymentSource'),
-                ),
-                child: Row(
-                  children: [
-                    if (source != null) ...[
-                      ButlerlyPaymentSourceIcon(source: source, size: 24),
-                      const SizedBox(width: ButlerlySpacing.micro),
-                    ],
-                    Expanded(
-                      child: Text(
-                        _settlementSourceLabel(
-                          context,
-                          widget.sources,
-                          widget.existing!.settlement.paymentSourceId,
-                        ),
-                      ),
+        child: ExcludeFocus(
+          excluding: _saving,
+          child: IgnorePointer(
+            ignoring: _saving,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (_isEditing)
+                  InputDecorator(
+                    decoration: InputDecoration(
+                      labelText: context.l10n.text('paymentSource'),
                     ),
-                  ],
-                ),
-              )
-            else
-              FormField<String>(
-                initialValue: _paymentSourceId,
-                validator: (value) => value == null
-                    ? context.l10n.text('choosePaymentSourceToContinue')
-                    : null,
-                builder: (field) => Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ButlerlySelectField<String>(
-                      label: context.l10n.text('paymentSource'),
-                      value: field.value,
-                      leadingIcon: paymentSourceIconForId(
-                        widget.sources,
-                        field.value,
-                      ),
-                      entries: [
-                        for (final item in widget.sources)
-                          DropdownMenuEntry(
-                            value: item.id.value,
-                            label: paymentSourceDisplayLabel(item),
-                            leadingIcon: ButlerlyPaymentSourceIcon(
-                              source: item,
-                              size: 24,
+                    child: Row(
+                      children: [
+                        if (source != null) ...[
+                          ButlerlyPaymentSourceIcon(source: source, size: 24),
+                          const SizedBox(width: ButlerlySpacing.micro),
+                        ],
+                        Expanded(
+                          child: Text(
+                            _settlementSourceLabel(
+                              context,
+                              widget.sources,
+                              widget.existing!.settlement.paymentSourceId,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  FormField<String>(
+                    initialValue: _paymentSourceId,
+                    validator: (value) => value == null
+                        ? context.l10n.text('choosePaymentSourceToContinue')
+                        : null,
+                    builder: (field) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ButlerlySelectField<String>(
+                          label: context.l10n.text('paymentSource'),
+                          value: field.value,
+                          leadingIcon: paymentSourceIconForId(
+                            widget.sources,
+                            field.value,
+                          ),
+                          entries: [
+                            for (final item in widget.sources)
+                              DropdownMenuEntry(
+                                value: item.id.value,
+                                label: paymentSourceDisplayLabel(item),
+                                leadingIcon: ButlerlyPaymentSourceIcon(
+                                  source: item,
+                                  size: 24,
+                                ),
+                              ),
+                          ],
+                          onChanged: (value) {
+                            field.didChange(value);
+                            setState(() {
+                              _paymentSourceId = value;
+                              final selected = widget.sources
+                                  .where((item) => item.id.value == value)
+                                  .firstOrNull;
+                              if (selected?.currency?.trim().isNotEmpty ==
+                                  true) {
+                                _currency.text = selected!.currency!
+                                    .toUpperCase();
+                              }
+                            });
+                          },
+                        ),
+                        if (field.hasError)
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              top: ButlerlySpacing.micro,
+                              left: ButlerlySpacing.standard,
+                            ),
+                            child: Text(
+                              field.errorText!,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
                             ),
                           ),
                       ],
-                      onChanged: (value) {
-                        field.didChange(value);
-                        setState(() {
-                          _paymentSourceId = value;
-                          final selected = widget.sources
-                              .where((item) => item.id.value == value)
-                              .firstOrNull;
-                          if (selected?.currency?.trim().isNotEmpty == true) {
-                            _currency.text = selected!.currency!.toUpperCase();
-                          }
-                        });
-                      },
                     ),
-                    if (field.hasError)
-                      Padding(
-                        padding: const EdgeInsets.only(
-                          top: ButlerlySpacing.micro,
-                          left: ButlerlySpacing.standard,
+                  ),
+                const SizedBox(height: ButlerlySpacing.standard),
+                TextFormField(
+                  controller: _amount,
+                  decoration: InputDecoration(
+                    labelText: context.l10n.text('amount'),
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  validator: (value) => _decimalError(value, 'amount'),
+                ),
+                const SizedBox(height: ButlerlySpacing.standard),
+                TextFormField(
+                  controller: _currency,
+                  decoration: InputDecoration(
+                    labelText: context.l10n.text('currency'),
+                  ),
+                  textCapitalization: TextCapitalization.characters,
+                  validator: _currencyValidator,
+                ),
+                const SizedBox(height: ButlerlySpacing.standard),
+                TextFormField(
+                  controller: _paymentDate,
+                  readOnly: true,
+                  onTap: () => _pickDate(_paymentDate),
+                  decoration: InputDecoration(
+                    labelText: context.l10n.text('paymentDate'),
+                    suffixIcon: const Icon(Icons.calendar_today_outlined),
+                  ),
+                  validator: _requiredDate,
+                ),
+                const SizedBox(height: ButlerlySpacing.section),
+                Text(
+                  context.l10n.text('paymentSettlementPeriod'),
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: ButlerlySpacing.compact),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _periodStart,
+                        readOnly: true,
+                        onTap: () => _pickDate(_periodStart),
+                        decoration: InputDecoration(
+                          labelText: context.l10n.text('fromDate'),
+                          suffixIcon: const Icon(Icons.calendar_today_outlined),
                         ),
-                        child: Text(
-                          field.errorText!,
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: Theme.of(context).colorScheme.error,
-                              ),
-                        ),
+                        validator: _requiredDate,
                       ),
+                    ),
+                    const SizedBox(width: ButlerlySpacing.standard),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _periodEnd,
+                        readOnly: true,
+                        onTap: () => _pickDate(_periodEnd),
+                        decoration: InputDecoration(
+                          labelText: context.l10n.text('toDate'),
+                          suffixIcon: const Icon(Icons.calendar_today_outlined),
+                        ),
+                        validator: _requiredDate,
+                      ),
+                    ),
                   ],
                 ),
-              ),
-            const SizedBox(height: ButlerlySpacing.standard),
-            TextFormField(
-              controller: _amount,
-              decoration: InputDecoration(
-                labelText: context.l10n.text('amount'),
-              ),
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              validator: _requiredAmount,
-            ),
-            const SizedBox(height: ButlerlySpacing.standard),
-            TextFormField(
-              controller: _currency,
-              decoration: InputDecoration(
-                labelText: context.l10n.text('currency'),
-              ),
-              textCapitalization: TextCapitalization.characters,
-              validator: _currencyValidator,
-            ),
-            const SizedBox(height: ButlerlySpacing.standard),
-            TextFormField(
-              controller: _paymentDate,
-              readOnly: true,
-              onTap: () => _pickDate(_paymentDate),
-              decoration: InputDecoration(
-                labelText: context.l10n.text('paymentDate'),
-                suffixIcon: const Icon(Icons.calendar_today_outlined),
-              ),
-              validator: _requiredDate,
-            ),
-            const SizedBox(height: ButlerlySpacing.section),
-            Text(
-              context.l10n.text('paymentSettlementPeriod'),
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
-            const SizedBox(height: ButlerlySpacing.compact),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _periodStart,
-                    readOnly: true,
-                    onTap: () => _pickDate(_periodStart),
-                    decoration: InputDecoration(
-                      labelText: context.l10n.text('fromDate'),
-                      suffixIcon: const Icon(Icons.calendar_today_outlined),
-                    ),
-                    validator: _requiredDate,
+                const SizedBox(height: ButlerlySpacing.standard),
+                TextFormField(
+                  controller: _statementBalance,
+                  decoration: InputDecoration(
+                    labelText: context.l10n.text('statementBalanceOptional'),
+                  ),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  validator: (value) => _decimalError(
+                    value,
+                    'statementBalanceOptional',
+                    optional: true,
                   ),
                 ),
-                const SizedBox(width: ButlerlySpacing.standard),
-                Expanded(
-                  child: TextFormField(
-                    controller: _periodEnd,
-                    readOnly: true,
-                    onTap: () => _pickDate(_periodEnd),
-                    decoration: InputDecoration(
-                      labelText: context.l10n.text('toDate'),
-                      suffixIcon: const Icon(Icons.calendar_today_outlined),
-                    ),
-                    validator: _requiredDate,
+                const SizedBox(height: ButlerlySpacing.standard),
+                TextFormField(
+                  controller: _description,
+                  decoration: InputDecoration(
+                    labelText: context.l10n.text('descriptionOptional'),
+                  ),
+                ),
+                const SizedBox(height: ButlerlySpacing.standard),
+                TextFormField(
+                  controller: _externalReference,
+                  decoration: InputDecoration(
+                    labelText: context.l10n.text('externalReferenceOptional'),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: ButlerlySpacing.standard),
-            TextFormField(
-              controller: _statementBalance,
-              decoration: InputDecoration(
-                labelText: context.l10n.text('statementBalanceOptional'),
-              ),
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              validator: _optionalAmount,
-            ),
-            const SizedBox(height: ButlerlySpacing.standard),
-            TextFormField(
-              controller: _description,
-              decoration: InputDecoration(
-                labelText: context.l10n.text('descriptionOptional'),
-              ),
-            ),
-            const SizedBox(height: ButlerlySpacing.standard),
-            TextFormField(
-              controller: _externalReference,
-              decoration: InputDecoration(
-                labelText: context.l10n.text('externalReferenceOptional'),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
       actions: [
         ButlerlyCancelButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: _saving
+              ? null
+              : () {
+                  if (!_saving) Navigator.pop(context);
+                },
           child: Text(context.l10n.text('cancel')),
         ),
         FilledButton(
-          onPressed: _submit,
-          child: Text(context.l10n.text('save')),
+          onPressed: _saving ? null : _submit,
+          child: Text(context.l10n.text(_saving ? 'saving' : 'save')),
         ),
       ],
     );
   }
 }
 
-final class _SettlementDraft {
-  const _SettlementDraft({
-    required this.paymentSourceId,
-    required this.amount,
-    required this.currency,
-    required this.paymentDate,
-    required this.periodStart,
-    required this.periodEnd,
-    this.statementBalance,
-    this.description,
-    this.externalReference,
-  });
+void _dismissIdleSettlementEditor(BuildContext context) {
+  final route = ModalRoute.of(context);
+  if (route?.isCurrent == true &&
+      route?.popDisposition == RoutePopDisposition.pop) {
+    Navigator.pop(context);
+  }
+}
 
-  final String paymentSourceId;
-  final String amount;
-  final String currency;
-  final String paymentDate;
-  final String periodStart;
-  final String periodEnd;
-  final String? statementBalance;
-  final String? description;
-  final String? externalReference;
+final class _SettlementSavePopEntry extends PopEntry<Object?> {
+  @override
+  final ValueNotifier<bool> canPopNotifier = ValueNotifier(false);
 }
 
 final class _SettlementListData {

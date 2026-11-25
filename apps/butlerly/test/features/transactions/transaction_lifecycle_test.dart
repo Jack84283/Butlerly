@@ -4136,12 +4136,63 @@ void main() {
       await tester.pumpAndSettle();
       final sheet = find.byType(ButlerlySheet);
       expect(sheet, findsOneWidget);
-      await tester.enterText(
-        find.descendant(of: sheet, matching: find.byType(TextFormField)).first,
-        '80.25',
+      final fields = find.descendant(
+        of: sheet,
+        matching: find.byType(TextFormField),
       );
-      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      final amount = fields.first;
+      final balance = fields.at(5);
+      final save = find.widgetWithText(FilledButton, 'Save');
+      await tester.enterText(amount, '1e3');
+      await tester.ensureVisible(balance);
+      await tester.enterText(balance, 'NaN');
+      await tester.tap(save);
       await tester.pumpAndSettle();
+      expect(find.text('Amount: Enter a valid amount.'), findsOneWidget);
+      expect(
+        find.text('Statement balance (optional): Enter a valid amount.'),
+        findsOneWidget,
+      );
+      expect(sheet, findsOneWidget);
+      expect(
+        paymentSettlements.values['compact-settlement']!.payment.amount,
+        DecimalValue.parse('75.25'),
+      );
+      await tester.enterText(amount, '80.25');
+      await tester.ensureVisible(balance);
+      await tester.enterText(balance, '100.01234567890123456789');
+      final failedWrite = Completer<void>();
+      paymentSettlements.saveCompletion = failedWrite.future;
+      final revision = paymentSettlementChanges.value;
+      final saveCalls = paymentSettlements.saveCalls;
+      await tester.tap(save);
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+      expect(find.widgetWithText(FilledButton, 'Saving…'), findsOneWidget);
+      expect(paymentSettlements.saveCalls, saveCalls + 1);
+      failedWrite.completeError(
+        const RepositoryException(
+          RepositoryFailureCode.unavailable,
+          'save payment settlement',
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(sheet, findsOneWidget);
+      expect(find.text('80.25'), findsOneWidget);
+      expect(find.text('100.01234567890123456789'), findsOneWidget);
+      expect(paymentSettlementChanges.value, revision);
+      paymentSettlements.saveCompletion = null;
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+      expect(sheet, findsNothing);
+      expect(paymentSettlementChanges.value, revision + 1);
+      expect(
+        paymentSettlements
+            .values['compact-settlement']!
+            .statementBalance!
+            .amount,
+        DecimalValue.parse('100.01234567890123456789'),
+      );
       await tester.pageBack();
       await tester.pumpAndSettle();
       expect(find.text('USD 80.25'), findsOneWidget);
@@ -5764,6 +5815,7 @@ final class MemoryPaymentSettlements implements PaymentSettlementRepository {
   MemoryTransactionRepository? transactionRepository;
   Future<void>? saveCompletion;
   bool savePending = false;
+  int saveCalls = 0;
   bool failList = false;
 
   @override
@@ -5800,6 +5852,7 @@ final class MemoryPaymentSettlements implements PaymentSettlementRepository {
 
   @override
   Future<void> save(PaymentSettlement settlement) async {
+    saveCalls++;
     final completion = saveCompletion;
     if (completion != null) {
       savePending = true;
