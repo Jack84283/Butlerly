@@ -165,7 +165,7 @@ void main() {
         phase: 'scroll',
       );
       debugPrint(
-        'SETTLEMENT_BENCH ${jsonEncode({'count': count, 'viewport': '${viewport.width}x${viewport.height}', 'startup_ms': start.elapsedMilliseconds, 'mounted_rows': countRows, 'rss_delta_bytes': ProcessInfo.currentRss - beforeRss, ...firstScroll})}',
+        'SETTLEMENT_BENCH ${jsonEncode({'count': count, 'viewport': '${viewport.width}x${viewport.height}', 'startup_ms': start.elapsedMilliseconds, 'mounted_rows': countRows, 'startup_through_scroll_rss_delta_bytes': ProcessInfo.currentRss - beforeRss, ...firstScroll})}',
       );
       if (count == 5000) {
         await sample(count, 'before_jump');

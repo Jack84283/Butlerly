@@ -4028,6 +4028,51 @@ void main() {
     expect(row, findsOneWidget);
   }, variant: const TargetPlatformVariant({TargetPlatform.iOS}));
 
+  testWidgets('Settlement refresh reveals a reordered keyboard focus target', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1200, 550);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    await seedSettlementViewport(40);
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: PaymentSettlementsPage())),
+    );
+    await tester.pumpAndSettle();
+    final row = find.byKey(
+      const ValueKey('desktop-payment-settlement-viewport-0'),
+    );
+    final label = find.descendant(
+      of: row,
+      matching: find.text('Viewport card'),
+    );
+    final rowContext = tester.element(label);
+    final position = Scrollable.of(rowContext, axis: Axis.vertical).position;
+    Focus.of(rowContext, createDependency: false).requestFocus();
+    await tester.pump();
+    expect(row.hitTestable(), findsOneWidget);
+    expect(position.pixels, 0);
+
+    final focused = paymentSettlements.values.remove('viewport-0')!;
+    final others = paymentSettlements.values.entries.toList();
+    paymentSettlements.values
+      ..clear()
+      ..addEntries(others.take(6))
+      ..[focused.id.value] = focused
+      ..addEntries(others.skip(6));
+    notifyPaymentSettlementChanged();
+    await tester.pumpAndSettle();
+    expect(row.hitTestable(), findsOneWidget);
+    expect(position.pixels, greaterThan(0));
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('desktop-settlement-detail-viewport-0')),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('Desktop mounts bounded rows and opens a distant settlement', (
     tester,
   ) async {
@@ -4243,6 +4288,12 @@ void main() {
       tester.getTopLeft(amountHeading).dx,
       tester.getTopLeft(amountCell).dx,
     );
+    expect(position.pixels, beforeVerticalScroll);
+
+    final beforeRefreshHorizontal = horizontal.pixels;
+    notifyPaymentSourceChanged();
+    await tester.pumpAndSettle();
+    expect(horizontal.pixels, beforeRefreshHorizontal);
     expect(position.pixels, beforeVerticalScroll);
 
     await tester.sendKeyEvent(LogicalKeyboardKey.pageUp);

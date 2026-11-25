@@ -1066,30 +1066,70 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
       _refreshFocus.nextFocus();
       return;
     }
-    for (final node in _refreshFocus.descendants) {
-      if (node.canRequestFocus && _settlementForFocus(node) == rowId) {
-        _settlementToRefocus = null;
-        node.requestFocus();
-        return;
-      }
-    }
     if (!_verticalController.hasClients) {
       _settlementToRefocus = null;
       return;
     }
     final position = _verticalController.position;
-    final offset = offsets[index].clamp(
+    final start = offsets[index];
+    final end = offsets[index + 1];
+    final viewStart = position.pixels;
+    final viewEnd = viewStart + position.viewportDimension;
+    final desiredOffset =
+        start < viewStart || end - start > position.viewportDimension
+        ? start
+        : end > viewEnd
+        ? end - position.viewportDimension
+        : viewStart;
+    final offset = desiredOffset.clamp(
       position.minScrollExtent,
       position.maxScrollExtent,
     );
-    if (offset == position.pixels) {
-      _settlementToRefocus = null;
+    if ((offset - viewStart).abs() > precisionErrorTolerance) {
+      position.jumpTo(offset);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _restoreRowFocus(rowId, data, offsets, generation);
+      });
       return;
     }
-    position.jumpTo(offset);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _restoreRowFocus(rowId, data, offsets, generation);
-    });
+    _settlementToRefocus = null;
+    for (final node in _refreshFocus.descendants) {
+      final rowContext = node.context;
+      if (rowContext != null &&
+          node.canRequestFocus &&
+          _settlementForFocus(node) == rowId) {
+        _revealInResultsPage(rowContext);
+        node.requestFocus();
+        return;
+      }
+    }
+  }
+
+  void _revealInResultsPage(BuildContext rowContext) {
+    final table = Scrollable.of(rowContext, axis: Axis.vertical);
+    final page = Scrollable.maybeOf(table.context, axis: Axis.vertical);
+    final row = rowContext.findRenderObject();
+    if (page == null || row == null) return;
+
+    // The enclosing page can clip the table. Find its vertical viewport
+    // without moving the independent horizontal column viewport.
+    var ancestor = RenderAbstractViewport.maybeOf(row)?.parent;
+    while (ancestor != null) {
+      if (ancestor is RenderViewportBase &&
+          axisDirectionToAxis(ancestor.axisDirection) == Axis.vertical) {
+        final position = page.position;
+        final start = ancestor.getOffsetToReveal(row, 0).offset;
+        final end = ancestor.getOffsetToReveal(row, 1).offset;
+        final offset = math
+            .min(start, math.max(position.pixels, end))
+            .clamp(position.minScrollExtent, position.maxScrollExtent);
+        if ((offset - position.pixels).abs() > precisionErrorTolerance) {
+          position.jumpTo(offset);
+        }
+        return;
+      }
+      ancestor = ancestor.parent;
+    }
   }
 
   Widget _heading(BuildContext context, String key) => Text(
