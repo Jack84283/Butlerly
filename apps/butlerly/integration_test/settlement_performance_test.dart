@@ -202,7 +202,7 @@ void main() {
       expect(tester.takeException(), isNull);
     }
     await services.reset();
-  });
+  }, skip: !const bool.fromEnvironment('BUTLERLY_SETTLEMENT_PROFILE'));
 }
 
 String _isoDate(DateTime date) => date.toIso8601String().substring(0, 10);

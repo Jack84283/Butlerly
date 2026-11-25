@@ -836,14 +836,17 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
       (minimumWidth - dateWidth - amountWidth - statusWidth - arrowWidth) / 2;
 
   final _verticalController = ScrollController();
+  final _refreshFocus = FocusNode(skipTraversal: true);
   _SettlementListData? _extentData;
   _SettlementRowTypography? _extentTypography;
   int _extentGeneration = 0;
   _IndexedSettlementRows? _indexedRows;
+  String? _settlementToRefocus;
 
   @override
   void dispose() {
     _verticalController.dispose();
+    _refreshFocus.dispose();
     super.dispose();
   }
 
@@ -889,23 +892,27 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
               ),
             ],
           );
-          return Scrollbar(
-            controller: _verticalController,
-            interactive: _indexedRows?.data == widget.data,
-            notificationPredicate: (notification) =>
-                notification.metrics.axis == Axis.vertical,
-            child: SingleChildScrollView(
-              key: const ValueKey(
-                'desktop-payment-settlements-horizontal-scroll',
-              ),
-              scrollDirection: Axis.horizontal,
-              child: SizedBox(
-                width: constraints.maxWidth < minimumWidth
-                    ? minimumWidth
-                    : constraints.maxWidth,
-                child: Actions(
-                  actions: {ScrollIntent: _SettlementTableScrollAction()},
-                  child: table,
+          return Focus(
+            focusNode: _refreshFocus,
+            skipTraversal: true,
+            child: Scrollbar(
+              controller: _verticalController,
+              interactive: _indexedRows?.data == widget.data,
+              notificationPredicate: (notification) =>
+                  notification.metrics.axis == Axis.vertical,
+              child: SingleChildScrollView(
+                key: const ValueKey(
+                  'desktop-payment-settlements-horizontal-scroll',
+                ),
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: constraints.maxWidth < minimumWidth
+                      ? minimumWidth
+                      : constraints.maxWidth,
+                  child: Actions(
+                    actions: {ScrollIntent: _SettlementTableScrollAction()},
+                    child: table,
+                  ),
                 ),
               ),
             ),
@@ -930,6 +937,12 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
       heightBehavior: DefaultTextHeightBehavior.maybeOf(context),
     );
     if (requestedData != _extentData || typography != _extentTypography) {
+      final focused = FocusManager.instance.primaryFocus;
+      final rowId = _settlementForFocus(focused);
+      if (rowId != null && _refreshFocus.descendants.contains(focused)) {
+        _settlementToRefocus = rowId;
+        _refreshFocus.requestFocus();
+      }
       _extentData = requestedData;
       if (typography != _extentTypography) _indexedRows = null;
       _extentTypography = typography;
@@ -1024,6 +1037,59 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
       }
     }
     setState(() => _indexedRows = (data: data, offsets: offsets));
+    final rowId = _settlementToRefocus;
+    if (rowId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _restoreRowFocus(rowId, data, offsets, generation);
+      });
+    }
+  }
+
+  String? _settlementForFocus(FocusNode? node) => node?.context
+      ?.findAncestorWidgetOfExactType<_SettlementFocusTarget>()
+      ?.settlementId;
+
+  void _restoreRowFocus(
+    String rowId,
+    _SettlementListData data,
+    List<double> offsets,
+    int generation,
+  ) {
+    if (!mounted || generation != _extentGeneration) return;
+    if (!_refreshFocus.hasPrimaryFocus) {
+      _settlementToRefocus = null;
+      return;
+    }
+    final index = data.settlementIndexes[rowId];
+    if (index == null) {
+      _settlementToRefocus = null;
+      _refreshFocus.nextFocus();
+      return;
+    }
+    for (final node in _refreshFocus.descendants) {
+      if (node.canRequestFocus && _settlementForFocus(node) == rowId) {
+        _settlementToRefocus = null;
+        node.requestFocus();
+        return;
+      }
+    }
+    if (!_verticalController.hasClients) {
+      _settlementToRefocus = null;
+      return;
+    }
+    final position = _verticalController.position;
+    final offset = offsets[index].clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+    if (offset == position.pixels) {
+      _settlementToRefocus = null;
+      return;
+    }
+    position.jumpTo(offset);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _restoreRowFocus(rowId, data, offsets, generation);
+    });
   }
 
   Widget _heading(BuildContext context, String key) => Text(
@@ -1119,34 +1185,50 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
       maxLines: cells.sourceMissing ? null : 1,
       overflow: cells.sourceMissing ? null : TextOverflow.ellipsis,
     );
-    return Material(
-      type: MaterialType.transparency,
-      child: InkWell(
-        key: ValueKey('desktop-payment-settlement-${settlement.id}'),
-        onTap: () => widget.onOpen(settlement),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            vertical: ButlerlyTableTokens.rowVerticalPadding,
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                flex: 3,
-                child: cells.sourceMissing
-                    ? _wrappedCell(sourceLabel)
-                    : sourceLabel,
-              ),
-              SizedBox(width: dateWidth, child: Text(cells.date)),
-              Expanded(flex: 3, child: _wrappedCell(Text(cells.period))),
-              SizedBox(width: amountWidth, child: Text(cells.amount)),
-              SizedBox(width: statusWidth, child: Text(cells.status)),
-              const Icon(Icons.chevron_right_rounded, size: arrowWidth),
-            ],
+    return _SettlementFocusTarget(
+      settlementId: settlement.id,
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          key: ValueKey('desktop-payment-settlement-${settlement.id}'),
+          onTap: () => widget.onOpen(settlement),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              vertical: ButlerlyTableTokens.rowVerticalPadding,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 3,
+                  child: cells.sourceMissing
+                      ? _wrappedCell(sourceLabel)
+                      : sourceLabel,
+                ),
+                SizedBox(width: dateWidth, child: Text(cells.date)),
+                Expanded(flex: 3, child: _wrappedCell(Text(cells.period))),
+                SizedBox(width: amountWidth, child: Text(cells.amount)),
+                SizedBox(width: statusWidth, child: Text(cells.status)),
+                const Icon(Icons.chevron_right_rounded, size: arrowWidth),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
+}
+
+class _SettlementFocusTarget extends StatelessWidget {
+  const _SettlementFocusTarget({
+    required this.settlementId,
+    required this.child,
+  });
+
+  final String settlementId;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => child;
 }
 
 typedef _SettlementRowTypography = ({
