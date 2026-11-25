@@ -23,12 +23,18 @@ final class SqlitePaymentSettlementRepository
       if (existing.isEmpty) {
         await database.connection.insert('payment_settlements', _row(value));
       } else {
-        await database.connection.update(
+        final updated = await database.connection.update(
           'payment_settlements',
-          _row(value),
-          where: 'id = ?',
-          whereArgs: [value.id.value],
+          _row(value)..remove('payment_source_id'),
+          where: 'id = ? AND payment_source_id = ?',
+          whereArgs: [value.id.value, value.paymentSourceId.value],
         );
+        if (updated != 1) {
+          throw const RepositoryException(
+            RepositoryFailureCode.constraint,
+            'update settlement with its original payment source',
+          );
+        }
       }
     } on DatabaseException catch (error) {
       throw mapDatabaseException(error, 'save payment settlement');
