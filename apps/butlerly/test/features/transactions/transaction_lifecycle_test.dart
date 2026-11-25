@@ -3946,6 +3946,86 @@ void main() {
     },
   );
 
+  Future<void> seedSettlementViewport(int count) async {
+    final source = PaymentSource(
+      id: PaymentSourceId('viewport-card'),
+      name: 'Viewport card',
+      type: PaymentSourceType.card,
+    );
+    await paymentSources.save(source);
+    final date = DateTime.utc(2026, 11, 1);
+    for (var index = 0; index < count; index++) {
+      await paymentSettlements.save(
+        PaymentSettlement(
+          id: PaymentSettlementId('viewport-$index'),
+          paymentSourceId: source.id,
+          payment: Money(
+            amount: DecimalValue.parse('19.013'),
+            currency: CurrencyCode('USD'),
+          ),
+          paymentDate: '2026-11-01',
+          periodStart: '2026-10-02',
+          periodEnd: '2026-11-01',
+          status: PaymentSettlementStatus.open,
+          createdAt: date,
+          updatedAt: date,
+        ),
+      );
+    }
+  }
+
+  testWidgets('Settlement keyboard scrolls the page when short rows fit', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1500, 280);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    await seedSettlementViewport(2);
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: PaymentSettlementsPage())),
+    );
+    await tester.pumpAndSettle();
+    final row = tester.element(find.text('Viewport card').first);
+    final inner = Scrollable.of(row, axis: Axis.vertical);
+    final outer = Scrollable.of(inner.context, axis: Axis.vertical).position;
+    expect(inner.position.maxScrollExtent, 0);
+    expect(outer.maxScrollExtent, greaterThan(0));
+    final focus = Focus.of(row, createDependency: false);
+    focus.requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.pageDown);
+    await tester.pumpAndSettle();
+    expect(outer.pixels, greaterThan(0));
+    expect(focus.hasPrimaryFocus, isTrue);
+    await tester.sendKeyEvent(LogicalKeyboardKey.pageUp);
+    await tester.pumpAndSettle();
+    expect(outer.pixels, 0);
+  });
+
+  testWidgets('Pulling a wide iOS settlement row reloads the history', (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1200, 880);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    await seedSettlementViewport(100);
+    await tester.pumpWidget(
+      const MaterialApp(home: Scaffold(body: PaymentSettlementsPage())),
+    );
+    await tester.pumpAndSettle();
+    final row = find.byKey(
+      const ValueKey('desktop-payment-settlement-viewport-0'),
+    );
+    expect(row, findsOneWidget);
+    final listCalls = paymentSettlements.listCalls;
+    await tester.drag(row, const Offset(0, 450));
+    await tester.pumpAndSettle();
+    expect(paymentSettlements.listCalls, listCalls + 1);
+    expect(row, findsOneWidget);
+  }, variant: const TargetPlatformVariant({TargetPlatform.iOS}));
+
   testWidgets('Desktop mounts bounded rows and opens a distant settlement', (
     tester,
   ) async {
@@ -6057,6 +6137,7 @@ final class MemoryPaymentSettlements implements PaymentSettlementRepository {
   Future<void>? saveCompletion;
   bool savePending = false;
   int saveCalls = 0;
+  int listCalls = 0;
   int transactionListCalls = 0;
   bool failList = false;
 
@@ -6066,6 +6147,7 @@ final class MemoryPaymentSettlements implements PaymentSettlementRepository {
 
   @override
   Future<List<PaymentSettlement>> listAll() async {
+    listCalls++;
     if (failList) {
       throw const RepositoryException(
         RepositoryFailureCode.unavailable,

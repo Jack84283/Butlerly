@@ -20,6 +20,7 @@ import 'package:butlerly/l10n/app_localizations.dart';
 import 'package:butlerly/l10n/finance_formatters.dart';
 import 'package:butlerly_finance_application/butlerly_finance_application.dart';
 import 'package:butlerly_finance_domain/butlerly_finance_domain.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -279,6 +280,7 @@ class _PaymentSettlementsPageState extends State<PaymentSettlementsPage> {
               _SettlementDesktopTable(
                 data: data,
                 onOpen: (settlement) => _openSettlement(settlement, data),
+                onRefresh: _refresh,
               ),
             ] else ...[
               for (final settlement in data.settlements) ...[
@@ -804,10 +806,15 @@ class _SettlementCounterCard extends StatelessWidget {
 }
 
 class _SettlementDesktopTable extends StatefulWidget {
-  const _SettlementDesktopTable({required this.data, required this.onOpen});
+  const _SettlementDesktopTable({
+    required this.data,
+    required this.onOpen,
+    required this.onRefresh,
+  });
 
   final _SettlementListData data;
   final ValueChanged<PaymentSettlementDto> onOpen;
+  final RefreshCallback onRefresh;
 
   @override
   State<_SettlementDesktopTable> createState() =>
@@ -838,7 +845,6 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
     child: ButlerlyDesktopInnerCard(
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final data = widget.data;
           final table = Column(
             key: const ValueKey('desktop-payment-settlements-table'),
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -871,31 +877,7 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
                 ),
                 // Finite height keeps layout bounded. Shrink wrapping lets a
                 // short history use only the height its rows need.
-                child: ScrollConfiguration(
-                  behavior: ScrollConfiguration.of(
-                    context,
-                  ).copyWith(scrollbars: false),
-                  child: ListView.builder(
-                    key: const ValueKey('desktop-payment-settlements-rows'),
-                    controller: _verticalController,
-                    primary: false,
-                    shrinkWrap: true,
-                    padding: EdgeInsets.zero,
-                    itemCount: data.settlements.length,
-                    findChildIndexCallback: (key) =>
-                        data.settlementIndexes[(key as ValueKey<String>).value],
-                    itemBuilder: (context, index) {
-                      final settlement = data.settlements[index];
-                      return Column(
-                        key: ValueKey(settlement.id),
-                        children: [
-                          _row(context, settlement),
-                          _divider(context),
-                        ],
-                      );
-                    },
-                  ),
-                ),
+                child: _rows(context),
               ),
             ],
           );
@@ -923,6 +905,39 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
       ),
     ),
   );
+
+  Widget _rows(BuildContext context) {
+    final data = widget.data;
+    final list = ScrollConfiguration(
+      behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+      child: ListView.builder(
+        key: const ValueKey('desktop-payment-settlements-rows'),
+        controller: _verticalController,
+        primary: false,
+        shrinkWrap: true,
+        padding: EdgeInsets.zero,
+        itemCount: data.settlements.length,
+        findChildIndexCallback: (key) =>
+            data.settlementIndexes[(key as ValueKey<String>).value],
+        itemBuilder: (context, index) {
+          final settlement = data.settlements[index];
+          return Column(
+            key: ValueKey(settlement.id),
+            children: [_row(context, settlement), _divider(context)],
+          );
+        },
+      ),
+    );
+    // A drag starting over a long history belongs to the row viewport.
+    // Keep pull-to-refresh reachable there on wide mobile layouts.
+    return switch (defaultTargetPlatform) {
+      TargetPlatform.android || TargetPlatform.iOS => RefreshIndicator.adaptive(
+        onRefresh: widget.onRefresh,
+        child: list,
+      ),
+      _ => list,
+    };
+  }
 
   Widget _heading(BuildContext context, String key) => Text(
     context.l10n.text(key),
@@ -1010,24 +1025,27 @@ class _SettlementDesktopTableState extends State<_SettlementDesktopTable> {
 class _SettlementTableScrollAction extends ScrollAction {
   @override
   void invoke(ScrollIntent intent, [BuildContext? context]) {
-    if (axisDirectionToAxis(intent.direction) == Axis.vertical) {
-      super.invoke(intent, context);
-      return;
+    if (context == null) return;
+    final axis = axisDirectionToAxis(intent.direction);
+    var scrollable = Scrollable.maybeOf(context, axis: axis);
+    while (scrollable != null) {
+      final position = scrollable.position;
+      final remaining = scrollable.axisDirection == intent.direction
+          ? position.extentAfter
+          : position.extentBefore;
+      if (remaining > 0 &&
+          (scrollable.resolvedPhysics?.shouldAcceptUserOffset(position) ??
+              true)) {
+        position.moveTo(
+          position.pixels +
+              ScrollAction.getDirectionalIncrement(scrollable, intent),
+          duration: const Duration(milliseconds: 100),
+          curve: Curves.easeInOut,
+        );
+        return;
+      }
+      scrollable = Scrollable.maybeOf(scrollable.context, axis: axis);
     }
-    // The focused row lives inside the vertical viewport. Route horizontal
-    // keyboard commands to the outer viewport that owns the columns.
-    final scrollable = context == null
-        ? null
-        : Scrollable.maybeOf(context, axis: Axis.horizontal);
-    if (scrollable == null) return;
-    final position = scrollable.position;
-    if (position.minScrollExtent == position.maxScrollExtent) return;
-    position.moveTo(
-      position.pixels +
-          ScrollAction.getDirectionalIncrement(scrollable, intent),
-      duration: const Duration(milliseconds: 100),
-      curve: Curves.easeInOut,
-    );
   }
 }
 
