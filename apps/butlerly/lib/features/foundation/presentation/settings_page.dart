@@ -6,6 +6,7 @@ import 'package:butlerly/app/theme/theme_mode_provider.dart';
 import 'package:butlerly/core/audio/butlerly_sound_feedback.dart';
 import 'package:butlerly/design_system/components/butlerly_brand_icon.dart';
 import 'package:butlerly/design_system/components/butlerly_components.dart';
+import 'package:butlerly/design_system/components/butlerly_local_protection_banner.dart';
 import 'package:butlerly/design_system/components/butlerly_modal_sheet.dart';
 import 'package:butlerly/design_system/theme/butlerly_semantic_colors.dart';
 import 'package:butlerly/design_system/tokens/butlerly_tokens.dart';
@@ -338,7 +339,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       subtitle: l10n.text('moreDescription'),
       fullWidth: true,
       children: [
-        const _DesktopMoreProtectionBanner(),
+        ButlerlyLocalProtectionBanner(
+          surfaceKey: const ValueKey('desktop-more-protection'),
+          title: l10n.text('localOnlyProtection'),
+          description: l10n.text('localOnlyProtectionBody'),
+          dense: true,
+        ),
         const SizedBox(height: ButlerlySpacing.standard),
         LayoutBuilder(
           builder: (context, constraints) {
@@ -740,65 +746,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ),
         const SizedBox(height: ButlerlySpacing.structural),
       ],
-    );
-  }
-}
-
-class _DesktopMoreProtectionBanner extends StatelessWidget {
-  const _DesktopMoreProtectionBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    final dark = Theme.of(context).brightness == Brightness.dark;
-    final green = context.colors.success;
-    return Container(
-      key: const ValueKey('desktop-more-protection'),
-      decoration: BoxDecoration(
-        color: dark ? const Color(0xFF1E342B) : const Color(0xFFE5F7ED),
-        borderRadius: BorderRadius.circular(ButlerlyRadius.standard),
-        border: Border.all(
-          color: dark ? const Color(0xFF2A4438) : const Color(0xFFCBE6D7),
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(
-        horizontal: ButlerlySpacing.standard,
-        vertical: ButlerlySpacing.small,
-      ),
-      child: Row(
-        children: [
-          Container(
-            height: 38,
-            width: 38,
-            decoration: BoxDecoration(
-              color: dark ? const Color(0xFF2E875C) : const Color(0xFFB6E9CD),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.shield_outlined, color: green, size: 23),
-          ),
-          const SizedBox(width: ButlerlySpacing.standard),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  context.l10n.text('localOnlyProtection'),
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-                ),
-                Text(
-                  context.l10n.text('localOnlyProtectionBody'),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: context.colors.secondaryText,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: ButlerlySpacing.standard),
-          Icon(Icons.check_circle_rounded, color: green, size: 25),
-        ],
-      ),
     );
   }
 }

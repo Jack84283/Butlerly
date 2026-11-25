@@ -236,6 +236,80 @@ void main() {
     expect(result, isA<ApplicationFailure<PaymentSettlementDto>>());
   });
 
+  test('only active credit cards can start a new settlement', () async {
+    final save = SavePaymentSettlement(settlements, sources, clock);
+    for (final type in PaymentSourceType.values) {
+      for (final status in PaymentSourceStatus.values) {
+        final id = '${type.name}-${status.name}';
+        await sources.save(
+          PaymentSource(
+            id: PaymentSourceId(id),
+            name: id,
+            type: type,
+            status: status,
+          ),
+        );
+        final result = await save(
+          id: 'settlement-$id',
+          paymentSourceId: id,
+          payment: money('10.01'),
+          paymentDate: '2026-09-20',
+          periodStart: '2026-08-15',
+          periodEnd: '2026-09-14',
+        );
+        if (type == PaymentSourceType.card &&
+            status == PaymentSourceStatus.active) {
+          expect(result, isA<ApplicationSuccess<PaymentSettlementDto>>());
+        } else {
+          expect(result, isA<ApplicationFailure<PaymentSettlementDto>>());
+        }
+      }
+    }
+    expect(settlements.values, hasLength(1));
+  });
+
+  test(
+    'a historical settlement can be edited without reassigning its source',
+    () async {
+      final save = SavePaymentSettlement(settlements, sources, clock);
+      Future<ApplicationResult<PaymentSettlementDto>> edit(
+        String source,
+        String amount,
+      ) => save(
+        id: 'settlement-1',
+        paymentSourceId: source,
+        payment: money(amount),
+        paymentDate: '2026-09-20',
+        periodStart: '2026-08-15',
+        periodEnd: '2026-09-14',
+      );
+      expect(
+        await edit('visa', '10'),
+        isA<ApplicationSuccess<PaymentSettlementDto>>(),
+      );
+      await sources.save(sources.values['visa']!.archive());
+      expect(
+        await edit('visa', '11'),
+        isA<ApplicationSuccess<PaymentSettlementDto>>(),
+      );
+      sources.values.remove('visa');
+      expect(
+        await edit('visa', '12.01234567890123456789'),
+        isA<ApplicationSuccess<PaymentSettlementDto>>(),
+      );
+      expect(
+        await edit('different', '13'),
+        isA<ApplicationFailure<PaymentSettlementDto>>(),
+      );
+      final saved = settlements.values['settlement-1']!;
+      expect(saved.paymentSourceId.value, 'visa');
+      expect(
+        saved.payment.amount,
+        DecimalValue.parse('12.01234567890123456789'),
+      );
+    },
+  );
+
   test('rejects a statement balance in another currency', () async {
     final result = await SavePaymentSettlement(settlements, sources, clock)(
       id: 'settlement-1',
