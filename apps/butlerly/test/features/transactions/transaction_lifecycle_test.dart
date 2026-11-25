@@ -3228,7 +3228,8 @@ void main() {
         paymentSources.saveCompletion = persistence.future;
         await tester.tap(find.text(action));
         await tester.pumpAndSettle();
-        expect(tester.widget<FilledButton>(save).onPressed, isNull);
+        final saving = find.widgetWithText(FilledButton, 'Saving…');
+        expect(tester.widget<FilledButton>(saving).onPressed, isNull);
         expect(paymentSources.saveCalls, 2);
         expect(paymentSources.values.values, [existing]);
         expect(paymentSourceChanges.value, revision);
@@ -3357,6 +3358,95 @@ void main() {
     expect(paymentSources.values.values.single.name, 'Draft account');
     expect(paymentSourceChanges.value, revision + 1);
   });
+
+  for (final width in [390.0, 1200.0]) {
+    testWidgets('Payment source cancellation respects save stage at $width', (
+      tester,
+    ) async {
+      tester.view.physicalSize = Size(width, 950);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: PaymentSourcesPage())),
+      );
+      await tester.pumpAndSettle();
+      final revision = paymentSourceChanges.value;
+      final add = find.byTooltip('Add payment source');
+      final save = find.widgetWithText(FilledButton, 'Save');
+      final cancel = find.widgetWithText(OutlinedButton, 'Cancel');
+      Future<void> openDraft() async {
+        await tester.tap(add);
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextField).first, 'Draft source');
+      }
+
+      await openDraft();
+      final lookup = Completer<void>();
+      paymentSources.listCompletion = lookup.future;
+      await tester.tap(save);
+      await tester.pump();
+      if (width == 390) {
+        await tester.drag(
+          find.byKey(const ValueKey('butlerly-bottom-sheet-drag-handle')),
+          const Offset(0, 150),
+        );
+      } else {
+        await tester.tap(cancel);
+      }
+      lookup.complete();
+      paymentSources.listCompletion = null;
+      await tester.pumpAndSettle();
+      expect(paymentSources.saveCalls, 0);
+      expect(paymentSourceChanges.value, revision);
+      expect(save, findsNothing);
+
+      await openDraft();
+      paymentSources.failSave = true;
+      await tester.tap(save);
+      await tester.pumpAndSettle();
+      expect(find.text('Payment source could not be saved.'), findsOneWidget);
+      expect(
+        tester.widget<TextField>(find.byType(TextField).first).controller!.text,
+        'Draft source',
+      );
+      expect(tester.widget<OutlinedButton>(cancel).onPressed, isNotNull);
+      expect(paymentSourceChanges.value, revision);
+      paymentSources.failSave = false;
+      final write = Completer<void>();
+      paymentSources.saveCompletion = write.future;
+      await tester.tap(save);
+      if (width == 390) {
+        await tester.idle();
+        expect(paymentSources.saveCalls, 2);
+        await tester.binding.handlePopRoute();
+      }
+      await tester.pumpAndSettle();
+      expect(paymentSources.saveCalls, 2);
+      expect(find.text('Saving…'), findsOneWidget);
+      expect(tester.widget<OutlinedButton>(cancel).onPressed, isNull);
+      await tester.tap(cancel);
+      if (width == 390) {
+        await tester.binding.handlePopRoute();
+        await tester.tapAt(const Offset(10, 10));
+        await tester.drag(
+          find.byKey(const ValueKey('butlerly-bottom-sheet-drag-handle')),
+          const Offset(0, 800),
+        );
+      }
+      await tester.pumpAndSettle();
+      expect(find.text('Saving…'), findsOneWidget);
+      expect(paymentSourceChanges.value, revision);
+
+      write.complete();
+      await tester.pumpAndSettle();
+      expect(find.text('Saving…'), findsNothing);
+      expect(save, findsNothing);
+      expect(paymentSources.values.values.single.name, 'Draft source');
+      expect(paymentSourceChanges.value, revision + 1);
+      expect(find.text('Draft source'), findsOneWidget);
+    });
+  }
 
   testWidgets('credit cards require and display exactly four digits', (
     tester,
