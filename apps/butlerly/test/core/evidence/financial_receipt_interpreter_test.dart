@@ -49,7 +49,12 @@ Report a Problem
         confidence: .95,
         bounds: OcrBounds(left: .04, top: .15, width: .08, height: .02),
       ),
-      for (final (index, text) in screenshot.trim().split('\n').indexed)
+      for (final (index, text)
+          in screenshot
+              .replaceFirst(' CA 94107 USA', '\nCA 94107 USA')
+              .trim()
+              .split('\n')
+              .indexed)
         if (text == 'AMOUNT_TOKEN') ...[
           const OcrObservation(
             text: r'$4',
@@ -140,6 +145,43 @@ Time
       expect(result.fieldEvidence['amount'], contains('32.47'));
     },
   );
+
+  test('omits legacy metadata for unsupported screenshot fields', () {
+    final result = ReceiptTextParser.parse(
+      screenshot.replaceFirst('AMOUNT_TOKEN', r'$4.99') +
+          r'''
+Tip $1.00
+Tax $0.50
+Credit card expiry 01/2030
+''',
+    );
+    final values = result.toExtractionValues();
+    for (final field in [
+      'tip',
+      'tax',
+      'cardNetwork',
+      'cardType',
+      'cardExpiry',
+    ]) {
+      expect(values.keys.where((key) => key.startsWith(field)), isEmpty);
+    }
+  });
+
+  test('uses native glyph evidence for a merged amount', () {
+    final text = screenshot.replaceFirst('AMOUNT_TOKEN', r'$499');
+    final observations = [
+      for (final (index, line) in text.trim().split('\n').indexed)
+        OcrObservation(
+          text: line,
+          confidence: .95,
+          top: index.toDouble(),
+          hasRaisedCents: line == r'$499',
+        ),
+    ];
+    final result = ReceiptExtractor.extract(text, observations);
+    expect(result.amount, '4.99');
+    expect(result.amountNeedsReview, isFalse);
+  });
 
   test('accepts an explicit USD currency suffix on a labeled amount', () {
     final result = ReceiptTextParser.parse(r'''
@@ -305,6 +347,7 @@ $120.00
 Posted on November 23, 2026
 ''');
     expect(result.amount, isNull);
+    expect(result.cashBackReward, '0.25');
   });
 
   test('does not treat a USPS line-item price as a verified total', () {

@@ -175,15 +175,31 @@ abstract final class FinancialReceiptInterpreter {
         ? candidates.keys.single
         : null;
     if (amount != null) evidence['amount'] = candidates[amount]!;
-    final rewards = <String>{
-      for (final line in lines)
-        if (RegExp(
-          r'cash\s*back|rewards?\s*cash',
-          caseSensitive: false,
-        ).hasMatch(line.text))
-          for (final match in _money.allMatches(line.text))
-            _normalizedMoney(match),
-    };
+    final rewards = <String>{};
+    final rewardLabel = RegExp(
+      r'cash\s*back|rewards?\s*cash',
+      caseSensitive: false,
+    );
+    for (final (index, line) in lines.indexed) {
+      if (!rewardLabel.hasMatch(line.text)) continue;
+      final matches = _money.allMatches(line.text).toList();
+      rewards.addAll(matches.map(_normalizedMoney));
+      if (matches.isNotEmpty || index + 1 == lines.length) continue;
+      final next = lines[index + 1];
+      final value = next.text.trim();
+      final match = _money.firstMatch(value);
+      if (match == null || !RegExp(r'^\+?\$[\d,.]+$').hasMatch(value)) {
+        continue;
+      }
+      final bounds = line.normalizedBounds;
+      final nextBounds = next.normalizedBounds;
+      if (line.pageIndex == next.pageIndex &&
+          (bounds.height == 0 ||
+              ((bounds.left - nextBounds.left).abs() < .12 &&
+                  nextBounds.top - bounds.top < .08))) {
+        rewards.add(_normalizedMoney(match));
+      }
+    }
 
     final description =
         _field(
@@ -284,6 +300,11 @@ abstract final class FinancialReceiptInterpreter {
     List<OcrObservation> observations,
   ) {
     final whole = RegExp(r'^\s*\$\s*(\d{1,6})\s*$').firstMatch(dollars.text);
+    final digits = whole?.group(1);
+    if (dollars.hasRaisedCents && digits != null && digits.length >= 3) {
+      final split = digits.length - 2;
+      return wholeMoney(digits.substring(0, split), digits.substring(split));
+    }
     if (whole == null ||
         dollars.normalizedBounds.height <= 0 ||
         dollars.normalizedBounds.width <= 0) {
@@ -394,7 +415,7 @@ abstract final class FinancialReceiptInterpreter {
       }
       if (value.isEmpty) continue;
       if (RegExp(
-            r'^merchant\b',
+            r'^(?:merchant|(?:appears )?on your statement as)\b',
             caseSensitive: false,
           ).hasMatch(anchor.text.trim()) &&
           index + 1 < lines.length) {
@@ -408,6 +429,7 @@ abstract final class FinancialReceiptInterpreter {
         if (position >= 0 && position + 1 < lines.length) {
           final continuation = lines[position + 1];
           final aligned =
+              first.pageIndex == continuation.pageIndex &&
               first.normalizedBounds.height > 0 &&
               continuation.normalizedBounds.height > 0 &&
               (continuation.normalizedBounds.left - first.normalizedBounds.left)
@@ -416,8 +438,15 @@ abstract final class FinancialReceiptInterpreter {
               continuation.normalizedBounds.top > first.normalizedBounds.top &&
               continuation.normalizedBounds.top - first.normalizedBounds.top <
                   .10;
-          if (aligned && !_label.hasMatch(continuation.text.trim())) {
-            value += ' ${continuation.text.trim()}';
+          final continuationText = continuation.text.trim();
+          final startsAnotherField = RegExp(
+            r'^(?:made on|purchased on|posted on|purchase date|transaction date|posting date|call merchant|report a problem|learn more|merchant details|spend category)\b',
+            caseSensitive: false,
+          ).hasMatch(continuationText);
+          if (aligned &&
+              !startsAnotherField &&
+              !_label.hasMatch(continuationText)) {
+            value += ' $continuationText';
           }
         }
       }

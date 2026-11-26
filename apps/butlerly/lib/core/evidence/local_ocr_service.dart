@@ -113,6 +113,7 @@ final class ReceiptOcrResult {
                text: redactPanLikeText(value.text),
                confidence: value.confidence,
                bounds: value.bounds,
+               hasRaisedCents: value.hasRaisedCents,
                left: value.left,
                top: value.top,
                width: value.width,
@@ -387,7 +388,17 @@ abstract final class ReceiptExtractor {
     // A screenshot without a defensible total must not inherit a reward or
     // other incidental amount from the legacy receipt heuristic.
     if (screenshot) {
-      for (final key in ['amount', 'merchant', 'date', 'cardLast4']) {
+      for (final key in [
+        'amount',
+        'merchant',
+        'date',
+        'cardLast4',
+        'tax',
+        'tip',
+        'cardNetwork',
+        'cardType',
+        'cardExpiry',
+      ]) {
         fieldConfidence.remove(key);
         ocrConfidence.remove(key);
         extractionConfidence.remove(key);
