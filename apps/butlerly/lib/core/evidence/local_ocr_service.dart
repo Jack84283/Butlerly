@@ -424,10 +424,7 @@ abstract final class ReceiptExtractor {
       amountNeedsReview: interpreted.amountNeedsReview,
       dateNeedsReview: interpreted.dateNeedsReview,
       currency: screenshot ? interpreted.currency : values.currency,
-      currencyNeedsReview:
-          screenshot &&
-          interpreted.amount != null &&
-          interpreted.currency == null,
+      currencyNeedsReview: interpreted.currencyNeedsReview,
       date: screenshot ? interpreted.transactionDate : values.date,
       postingDate: interpreted.postingDate,
       originalMerchantDescription: interpreted.originalMerchantDescription,

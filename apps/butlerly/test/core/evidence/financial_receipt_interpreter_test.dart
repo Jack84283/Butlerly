@@ -203,6 +203,10 @@ Credit card expiry 01/2030
   test('uses explicit currency and flags conflicting currency evidence', () {
     const details = 'Transaction Details\nCurrency: CAD\nAmount: ';
     expect(ReceiptTextParser.parse(details + r'$4.99').currency, 'CAD');
+    final ambiguous = ReceiptTextParser.parse(details + r'$499');
+    expect(ambiguous.amount, isNull);
+    expect(ambiguous.currency, 'CAD');
+    expect(ambiguous.amountNeedsReview, isTrue);
     for (final values in [
       r'$4.99 USD',
       r'US$4.99'

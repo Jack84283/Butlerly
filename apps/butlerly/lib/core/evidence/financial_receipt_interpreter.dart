@@ -8,6 +8,7 @@ final class FinancialReceiptInterpretation {
     this.isScreenshot = false,
     this.amount,
     this.currency,
+    this.currencyNeedsReview = false,
     this.cashBackReward,
     this.amountNeedsReview = false,
     this.dateNeedsReview = false,
@@ -24,6 +25,7 @@ final class FinancialReceiptInterpretation {
   final bool isScreenshot;
   final String? amount;
   final String? currency;
+  final bool currencyNeedsReview;
   final String? cashBackReward;
   final bool amountNeedsReview, dateNeedsReview;
   final String? merchant;
@@ -173,8 +175,9 @@ abstract final class FinancialReceiptInterpreter {
     for (final line
         in labeledAmounts.isEmpty ? header : const <OcrObservation>[]) {
       final value = line.text.trim();
-      if (_excludeMoney.hasMatch(value) || excludedValues.contains(line))
+      if (_excludeMoney.hasMatch(value) || excludedValues.contains(line)) {
         continue;
+      }
       final decimal = _purchaseMoney.firstMatch(value);
       if (decimal != null) {
         recordDecimal(decimal, value);
@@ -189,8 +192,9 @@ abstract final class FinancialReceiptInterpreter {
     }
     for (final (labeledAmount, source) in labeledAmounts) {
       if (_excludeMoney.hasMatch(labeledAmount) ||
-          excludedValues.contains(source))
+          excludedValues.contains(source)) {
         continue;
+      }
       final match = _purchaseMoney.firstMatch(labeledAmount);
       if (match != null) {
         recordDecimal(match, labeledAmount);
@@ -223,10 +227,8 @@ abstract final class FinancialReceiptInterpreter {
     final explicitCurrency = explicitCurrencies.length == 1
         ? explicitCurrencies.single
         : null;
-    final currency = amount == null
-        ? null
-        : explicitCurrencies.isEmpty
-        ? 'USD'
+    final currency = explicitCurrencies.isEmpty
+        ? (amount == null ? null : 'USD')
         : explicitCurrency != null &&
               RegExp(r'^[A-Z]{3}$').hasMatch(explicitCurrency)
         ? explicitCurrency
@@ -304,6 +306,7 @@ abstract final class FinancialReceiptInterpreter {
       isScreenshot: true,
       amount: amount,
       currency: currency,
+      currencyNeedsReview: currency == null && explicitCurrencies.isNotEmpty,
       cashBackReward: rewards.length == 1 ? rewards.single : null,
       amountNeedsReview: amountNeedsReview,
       dateNeedsReview:
