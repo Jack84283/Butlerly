@@ -410,6 +410,19 @@ Posted on November 23, 2026
     },
   );
 
+  test('excludes separated rewards in every supported USD format', () {
+    for (final reward in [r'$0.25 USD', r'US$0.25', r'+US$0.25']) {
+      final result = ReceiptTextParser.parse('''
+Transaction Details
+Cash back earned
+$reward
+Posted on November 23, 2026
+''');
+      expect(result.amount, isNull);
+      expect(result.cashBackReward, '0.25');
+    }
+  });
+
   test('does not promote a reward or balance separated from its label', () {
     for (final label in ['5% cash back', 'Cash back earned']) {
       final result = ReceiptTextParser.parse('''

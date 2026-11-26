@@ -323,7 +323,12 @@ abstract final class FinancialReceiptInterpreter {
   static OcrObservation? _adjacentMoney(List<OcrObservation> lines, int index) {
     final anchor = lines[index];
     final bounds = anchor.normalizedBounds;
-    final money = RegExp(r'^\+?\$\s*\d[\d,. ]*$');
+    final whole = RegExp(r'^\$\s*\d[\d, ]*$');
+    bool isMoney(String text) {
+      final value = text.trim().replaceFirst(RegExp(r'^\+\s*'), '');
+      return _purchaseMoney.hasMatch(value) || whole.hasMatch(value);
+    }
+
     if (bounds.height > 0) {
       final sameRow = lines.where((line) {
         final candidate = line.normalizedBounds;
@@ -336,7 +341,7 @@ abstract final class FinancialReceiptInterpreter {
                         bounds.height / 2)
                     .abs() <=
                 bounds.height * .65 &&
-            money.hasMatch(line.text.trim());
+            isMoney(line.text);
       }).toList();
       if (sameRow.length == 1) return sameRow.single;
       if (sameRow.isNotEmpty) return null;
@@ -345,7 +350,7 @@ abstract final class FinancialReceiptInterpreter {
     final next = lines[index + 1];
     final nextBounds = next.normalizedBounds;
     if (next.pageIndex == anchor.pageIndex &&
-        money.hasMatch(next.text.trim()) &&
+        isMoney(next.text) &&
         (bounds.height == 0 ||
             ((bounds.left - nextBounds.left).abs() < .12 &&
                 nextBounds.top - bounds.top < .08))) {
