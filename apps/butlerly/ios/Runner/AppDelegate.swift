@@ -178,9 +178,9 @@ import Vision
         options: [.regularExpression, .caseInsensitive]
       ) != nil
     }
-    let pattern = #"^\$[0-9]{3,6}$"#
+    let pattern = #"^(?:Amount\s*:?\s*)?\$[0-9]{3,6}$"#
     guard isTransaction, strings.contains(where: {
-      $0.range(of: pattern, options: .regularExpression) != nil
+      $0.range(of: pattern, options: [.regularExpression, .caseInsensitive]) != nil
     }) else { return }
 
     let request = configuredRequest()
@@ -190,7 +190,7 @@ import Vision
 
     for result in request.results ?? [] {
       guard let candidate = result.topCandidates(1).first,
-            candidate.string.range(of: pattern, options: .regularExpression) != nil,
+            candidate.string.range(of: pattern, options: [.regularExpression, .caseInsensitive]) != nil,
             hasRaisedCents(candidate) else { continue }
       let box = result.boundingBox
       let positions = rows.indices.filter { index in
@@ -212,7 +212,8 @@ import Vision
   private static func hasRaisedCents(_ candidate: VNRecognizedText) -> Bool {
     let value = candidate.string
     var digits: [CGRect] = []
-    for index in value.indices.dropFirst() {
+    guard let currencySign = value.firstIndex(of: "$") else { return false }
+    for index in value.indices where index > currencySign {
       let end = value.index(after: index)
       guard let glyph = try? candidate.boundingBox(for: index..<end),
             glyph.boundingBox.height > 0 else { return false }

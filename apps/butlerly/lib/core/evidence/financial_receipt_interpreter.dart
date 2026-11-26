@@ -43,7 +43,7 @@ abstract final class FinancialReceiptInterpreter {
   );
   static final _money = RegExp(r'\$\s*(\d+(?:,\d{3})*)\.(\d{2})(?!\d)');
   static final _purchaseMoney = RegExp(
-    r'^\$\s*(\d+(?:,\d{3})*)\.(\d{2})(?:\s+USD)?$',
+    r'^(?:US)?\$\s*(\d+(?:,\d{3})*)\.(\d{2})(?:\s+USD)?$',
     caseSensitive: false,
   );
   static final _label = RegExp(
@@ -157,11 +157,24 @@ abstract final class FinancialReceiptInterpreter {
       if (match != null) {
         candidates[_normalizedMoney(match)] = labeledAmount;
       } else if (whole.hasMatch(labeledAmount)) {
-        final resolved = lines
-            .where((line) => line.text.trim() == labeledAmount)
-            .map((line) => _raisedCents(line, lines))
-            .whereType<String>()
-            .toSet();
+        final resolved = <String>{
+          if (_raisedCents(
+                OcrObservation(text: labeledAmount, confidence: 0),
+                const [],
+              )
+              case final amount?)
+            amount,
+          for (final line in lines)
+            if (line.text.trim() == labeledAmount ||
+                (line.hasRaisedCents &&
+                    RegExp(
+                          r'^amount\s*:?\s*',
+                          caseSensitive: false,
+                        ).stringMatch(line.text.trim()) !=
+                        null &&
+                    line.text.trim().endsWith(labeledAmount)))
+              if (_raisedCents(line, lines) case final amount?) amount,
+        };
         if (resolved.length == 1) {
           candidates[resolved.single] = '$labeledAmount + raised cents';
         } else {
@@ -306,7 +319,10 @@ abstract final class FinancialReceiptInterpreter {
     OcrObservation dollars,
     List<OcrObservation> observations,
   ) {
-    final whole = RegExp(r'^\s*\$\s*(\d{1,6})\s*$').firstMatch(dollars.text);
+    final whole = RegExp(
+      r'^\s*(?:amount\s*:?\s*)?\$\s*(\d{1,6})\s*$',
+      caseSensitive: false,
+    ).firstMatch(dollars.text);
     final digits = whole?.group(1);
     if (dollars.hasRaisedCents && digits != null && digits.length >= 3) {
       final split = digits.length - 2;

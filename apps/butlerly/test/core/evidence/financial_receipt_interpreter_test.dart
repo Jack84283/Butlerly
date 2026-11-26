@@ -168,19 +168,21 @@ Credit card expiry 01/2030
   });
 
   test('uses native glyph evidence for a merged amount', () {
-    final text = screenshot.replaceFirst('AMOUNT_TOKEN', r'$499');
-    final observations = [
-      for (final (index, line) in text.trim().split('\n').indexed)
-        OcrObservation(
-          text: line,
-          confidence: .95,
-          top: index.toDouble(),
-          hasRaisedCents: line == r'$499',
-        ),
-    ];
-    final result = ReceiptExtractor.extract(text, observations);
-    expect(result.amount, '4.99');
-    expect(result.amountNeedsReview, isFalse);
+    for (final amountToken in [r'$499', r'Amount: $499']) {
+      final text = screenshot.replaceFirst('AMOUNT_TOKEN', amountToken);
+      final observations = [
+        for (final (index, line) in text.trim().split('\n').indexed)
+          OcrObservation(
+            text: line,
+            confidence: .95,
+            top: index.toDouble(),
+            hasRaisedCents: line == amountToken,
+          ),
+      ];
+      final result = ReceiptExtractor.extract(text, observations);
+      expect(result.amount, '4.99');
+      expect(result.amountNeedsReview, isFalse);
+    }
   });
 
   test('accepts a USD suffix on a standalone header amount', () {
@@ -196,6 +198,7 @@ Credit card expiry 01/2030
 Transaction Details
 $120
 Amount: $4.99 USD
+Account balance €30.00
 ''');
     expect(result.amount, '4.99');
     expect(result.currency, 'USD');

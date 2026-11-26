@@ -420,7 +420,9 @@ abstract final class ReceiptExtractor {
       cashBackReward: interpreted.cashBackReward,
       amountNeedsReview: interpreted.amountNeedsReview,
       dateNeedsReview: interpreted.dateNeedsReview,
-      currency: values.currency,
+      currency: screenshot
+          ? (interpreted.amount == null ? null : 'USD')
+          : values.currency,
       date: screenshot ? interpreted.transactionDate : values.date,
       postingDate: interpreted.postingDate,
       originalMerchantDescription: interpreted.originalMerchantDescription,
