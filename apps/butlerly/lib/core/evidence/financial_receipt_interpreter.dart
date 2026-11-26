@@ -132,6 +132,16 @@ abstract final class FinancialReceiptInterpreter {
       ).hasMatch(line.text.trim()),
     );
     final candidates = <String, String>{};
+    final explicitUsdAmounts = <String>{};
+    void recordDecimal(RegExpMatch match, String value) {
+      final amount = _normalizedMoney(match);
+      candidates[amount] = value;
+      final upper = value.toUpperCase();
+      if (upper.startsWith(r'US$') || upper.endsWith(' USD')) {
+        explicitUsdAmounts.add(amount);
+      }
+    }
+
     var unresolved = false;
     final whole = RegExp(r'^\s*\$\s*\d[\d, ]*\s*$');
     var previousExcludedLabel = false;
@@ -149,7 +159,7 @@ abstract final class FinancialReceiptInterpreter {
       if (_excludeMoney.hasMatch(value) || belongsToExcludedLabel) continue;
       final decimal = _purchaseMoney.firstMatch(value);
       if (decimal != null) {
-        candidates[_normalizedMoney(decimal)] = value;
+        recordDecimal(decimal, value);
       } else if (whole.hasMatch(value)) {
         final raised = _raisedCents(line, lines);
         if (raised == null) {
@@ -163,14 +173,16 @@ abstract final class FinancialReceiptInterpreter {
       if (_excludeMoney.hasMatch(labeledAmount)) continue;
       final match = _purchaseMoney.firstMatch(labeledAmount);
       if (match != null) {
-        candidates[_normalizedMoney(match)] = labeledAmount;
+        recordDecimal(match, labeledAmount);
       } else if (whole.hasMatch(labeledAmount)) {
         final resolved =
             _raisedCents(source, lines) ??
-            _raisedCents(
-              OcrObservation(text: labeledAmount, confidence: 0),
-              const [],
-            );
+            (source.text.trim().endsWith(labeledAmount)
+                ? _raisedCents(
+                    OcrObservation(text: labeledAmount, confidence: 0),
+                    const [],
+                  )
+                : null);
         if (resolved != null) {
           candidates[resolved] = '$labeledAmount + raised cents';
         } else {
@@ -187,12 +199,7 @@ abstract final class FinancialReceiptInterpreter {
       lines,
       RegExp(r'^currency\b\s*:?\s*', caseSensitive: false),
     ).map((value) => value.trim().toUpperCase()).toSet();
-    final amountEvidence = evidence['amount']?.toUpperCase();
-    if (amountEvidence != null &&
-        (amountEvidence.startsWith(r'US$') ||
-            amountEvidence.endsWith(' USD'))) {
-      explicitCurrencies.add('USD');
-    }
+    if (explicitUsdAmounts.contains(amount)) explicitCurrencies.add('USD');
     final explicitCurrency = explicitCurrencies.length == 1
         ? explicitCurrencies.single
         : null;

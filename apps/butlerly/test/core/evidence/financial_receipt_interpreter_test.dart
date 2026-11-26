@@ -203,10 +203,20 @@ Credit card expiry 01/2030
   test('uses explicit currency and flags conflicting currency evidence', () {
     const details = 'Transaction Details\nCurrency: CAD\nAmount: ';
     expect(ReceiptTextParser.parse(details + r'$4.99').currency, 'CAD');
-    final conflict = ReceiptTextParser.parse(details + r'$4.99 USD');
-    expect(conflict.amount, '4.99');
-    expect(conflict.currency, isNull);
-    expect(conflict.currencyNeedsReview, isTrue);
+    for (final values in [
+      r'$4.99 USD',
+      r'US$4.99'
+          '\nAmount: '
+          r'$4.99',
+      r'$4.99'
+          '\nAmount: '
+          r'US$4.99',
+    ]) {
+      final conflict = ReceiptTextParser.parse(details + values);
+      expect(conflict.amount, '4.99');
+      expect(conflict.currency, isNull);
+      expect(conflict.currencyNeedsReview, isTrue);
+    }
   });
 
   test('accepts an explicit USD currency suffix on a labeled amount', () {
