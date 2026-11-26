@@ -2,6 +2,115 @@ import 'package:butlerly/core/evidence/local_ocr_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  const screenshot = r'''
+Transaction Details
+AMOUNT_TOKEN
+5% cash back
++$0.25 rewards cash
+Posted on Monday, November 23, 2026
+DoorDash
+Learn more about this merchant
+DOORDASH
+Appears on your statement as:
+DD *DOORDASHDASHPASS 6505550100 CA 94107 USA
+Made on Sunday, November 22, 2026
+Call Merchant
+Report a Problem
+''';
+
+  test('extracts a bank screenshot and preserves separate evidence', () {
+    for (final amount in [r'$4.99', r'$4 99']) {
+      final result = ReceiptTextParser.parse(
+        screenshot.replaceFirst('AMOUNT_TOKEN', amount),
+      );
+      expect(result.merchant, 'DoorDash');
+      expect(result.amount, '4.99');
+      expect(result.currency, 'USD');
+      expect(result.date, DateTime(2026, 11, 22));
+      expect(result.postingDate, DateTime(2026, 11, 23));
+      expect(
+        result.toExtractionValues(),
+        containsPair('cashBackReward', '0.25'),
+      );
+      expect(
+        result.originalMerchantDescription,
+        'DD *DOORDASHDASHPASS 6505550100 CA 94107 USA',
+      );
+      expect(result.cardLast4, isNull);
+      expect(result.tax, isNull);
+      expect(result.tip, isNull);
+    }
+  });
+
+  test('uses the screenshot geometry when cents are separate observations', () {
+    final lines = [
+      for (final (index, text) in screenshot.trim().split('\n').indexed)
+        if (text == 'AMOUNT_TOKEN') ...[
+          const OcrObservation(
+            text: r'$4',
+            confidence: .95,
+            bounds: OcrBounds(left: .04, top: .19, width: .08, height: .05),
+          ),
+          const OcrObservation(
+            text: '99',
+            confidence: .95,
+            bounds: OcrBounds(left: .12, top: .19, width: .06, height: .026),
+          ),
+        ] else
+          OcrObservation(
+            text: text,
+            confidence: .95,
+            bounds: OcrBounds(
+              left: text == 'DOORDASH' ? .75 : .04,
+              top: .12 + index * .068,
+              width: .8,
+              height: .025,
+            ),
+          ),
+    ];
+    final result = ReceiptExtractor.extract(
+      lines.map((line) => line.text).join('\n'),
+      lines,
+    );
+    expect(result.amount, '4.99');
+    expect(result.merchant, 'DoorDash');
+    expect(result.cashBackReward, '0.25');
+  });
+
+  test(
+    'flags a merged amount and never replaces purchase date with posting date',
+    () {
+      final result = ReceiptTextParser.parse(
+        screenshot
+            .replaceFirst('AMOUNT_TOKEN', r'$499')
+            .replaceFirst('Made on Sunday, November 22, 2026', ''),
+      );
+      expect(result.amount, isNull);
+      expect(result.amountNeedsReview, isTrue);
+      expect(result.date, isNull);
+      expect(result.dateNeedsReview, isTrue);
+      expect(result.postingDate, DateTime(2026, 11, 23));
+    },
+  );
+
+  test(
+    'flags conflicting purchase dates and excludes an unlabeled later amount',
+    () {
+      final result = ReceiptTextParser.parse(
+        screenshot.replaceFirst('AMOUNT_TOKEN', '').replaceFirst(
+          'Call Merchant',
+          r'''
+Purchased on November 21, 2026
+$57.00
+Call Merchant''',
+        ),
+      );
+      expect(result.amount, isNull);
+      expect(result.date, isNull);
+      expect(result.dateNeedsReview, isTrue);
+    },
+  );
+
   test(
     'extracts labeled transaction notification without a merchant profile',
     () {
@@ -172,6 +281,18 @@ Made on Friday, August 16, 2026
     expect(result.amount, isNull);
   });
 
+  test('does not promote a reward or balance separated from its label', () {
+    final result = ReceiptTextParser.parse(r'''
+Transaction Details
+5% cash back
+$0.25
+Available balance
+$120.00
+Posted on November 23, 2026
+''');
+    expect(result.amount, isNull);
+  });
+
   test('does not treat a USPS line-item price as a verified total', () {
     final result = ReceiptTextParser.parse(r'''
 UNITED STATES POSTAL SERVICE
@@ -189,7 +310,7 @@ USPS Ground Advantage 1 $21.50
   test('retains conventional explicit total parsing', () {
     final result = ReceiptTextParser.parse(r'''
 GROCERY MART
-08/15/2026
+Purchase Date: 08/15/2026
 SUBTOTAL 40.00
 TAX 3.56
 TOTAL $43.56

@@ -90,6 +90,9 @@ final class ReceiptOcrResult {
     this.fieldEvidence = const {},
     this.merchant,
     this.amount,
+    this.cashBackReward,
+    this.amountNeedsReview = false,
+    this.dateNeedsReview = false,
     this.currency,
     this.date,
     this.postingDate,
@@ -129,6 +132,8 @@ final class ReceiptOcrResult {
   final Map<String, String> fieldEvidence;
   final String? merchant;
   final String? amount;
+  final String? cashBackReward;
+  final bool amountNeedsReview, dateNeedsReview;
   final String? currency;
   final DateTime? date;
   final DateTime? postingDate;
@@ -164,6 +169,7 @@ final class ReceiptOcrResult {
     }
     if (merchant case final value?) values['merchant'] = value;
     if (amount case final value?) values['amount'] = value;
+    if (cashBackReward case final value?) values['cashBackReward'] = value;
     if (currency case final value?) values['currency'] = value;
     if (date case final value?) values['date'] = _iso(value);
     if (postingDate case final value?) values['postingDate'] = _iso(value);
@@ -232,6 +238,9 @@ final class LocalOcrService {
       fieldEvidence: extracted.fieldEvidence,
       merchant: extracted.merchant,
       amount: extracted.amount,
+      cashBackReward: extracted.cashBackReward,
+      amountNeedsReview: extracted.amountNeedsReview,
+      dateNeedsReview: extracted.dateNeedsReview,
       currency: extracted.currency,
       date: extracted.date,
       postingDate: extracted.postingDate,
@@ -397,18 +406,21 @@ abstract final class ReceiptExtractor {
       fieldEvidence: fieldEvidence,
       merchant: screenshot ? interpreted.merchant : values.merchant,
       amount: screenshot ? interpreted.amount : values.amount,
+      cashBackReward: interpreted.cashBackReward,
+      amountNeedsReview: interpreted.amountNeedsReview,
+      dateNeedsReview: interpreted.dateNeedsReview,
       currency: values.currency,
       date: screenshot ? interpreted.transactionDate : values.date,
       postingDate: interpreted.postingDate,
       originalMerchantDescription: interpreted.originalMerchantDescription,
       transactionTimeText: interpreted.transactionTimeText,
       issuerCategory: interpreted.issuerCategory,
-      tax: values.tax,
-      tip: values.tip,
+      tax: screenshot ? null : values.tax,
+      tip: screenshot ? null : values.tip,
       cardLast4: screenshot ? interpreted.cardLast4 : values.cardLast4,
-      cardNetwork: values.cardNetwork,
-      cardType: values.cardType,
-      cardExpiry: values.cardExpiry,
+      cardNetwork: screenshot ? null : values.cardNetwork,
+      cardType: screenshot ? null : values.cardType,
+      cardExpiry: screenshot ? null : values.cardExpiry,
     );
   }
 

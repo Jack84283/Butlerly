@@ -7,6 +7,9 @@ final class FinancialReceiptInterpretation {
   const FinancialReceiptInterpretation({
     this.isScreenshot = false,
     this.amount,
+    this.cashBackReward,
+    this.amountNeedsReview = false,
+    this.dateNeedsReview = false,
     this.merchant,
     this.transactionDate,
     this.postingDate,
@@ -19,6 +22,8 @@ final class FinancialReceiptInterpretation {
 
   final bool isScreenshot;
   final String? amount;
+  final String? cashBackReward;
+  final bool amountNeedsReview, dateNeedsReview;
   final String? merchant;
   final DateTime? transactionDate;
   final DateTime? postingDate;
@@ -31,7 +36,7 @@ final class FinancialReceiptInterpretation {
 
 abstract final class FinancialReceiptInterpreter {
   static final _screenshotHints = RegExp(
-    r'transaction details|purchased on|posted on|made on|'
+    r'\b(?:transaction details|purchased on|posted on|made on)\b|'
     r'appears on your statement as|on your statement as|'
     r'card ending\s+in|transaction alert',
     caseSensitive: false,
@@ -39,14 +44,14 @@ abstract final class FinancialReceiptInterpreter {
   static final _money = RegExp(r'\$\s*(\d+(?:,\d{3})*)\.(\d{2})(?!\d)');
   static final _label = RegExp(
     r'^(?:amount|merchant|date|time|card ending in|purchased on|'
-    r'posted on|made on|on your statement as|appears on your statement as)'
+    r'posted on|made on|purchase date|posting date|transaction date|on your statement as|appears on your statement as)'
     r'\s*:?\s*$',
     caseSensitive: false,
   );
   static final _excludeMoney = RegExp(
     r'cash\s*back|rewards?\s*cash|points?\s*earned|'
     r'reward|savings|subtotal|sales?\s*tax|tip|'
-    r'available\s*balance|credit\s*limit|account\s*balance',
+    r'balance|credit\s*limit|%',
     caseSensitive: false,
   );
   static final _months = <String, int>{
@@ -85,8 +90,12 @@ abstract final class FinancialReceiptInterpreter {
           ..sort((a, b) {
             final page = a.pageIndex.compareTo(b.pageIndex);
             if (page != 0) return page;
-            final vertical = a.top.compareTo(b.top);
-            return vertical != 0 ? vertical : a.left.compareTo(b.left);
+            final vertical = a.normalizedBounds.top.compareTo(
+              b.normalizedBounds.top,
+            );
+            return vertical != 0
+                ? vertical
+                : a.normalizedBounds.left.compareTo(b.normalizedBounds.left);
           });
 
     final evidence = <String, String>{};
@@ -94,32 +103,61 @@ abstract final class FinancialReceiptInterpreter {
       lines,
       RegExp(r'^amount\s*:?\s*', caseSensitive: false),
     );
-    final amountMatch = labeledAmount == null
-        ? null
-        : _money.firstMatch(labeledAmount);
-    String? amount;
-    if (amountMatch != null) {
-      amount = _normalizedMoney(amountMatch);
-      evidence['amount'] = labeledAmount!;
-    } else {
-      // A transaction-detail header often has an unlabeled, prominent amount.
-      // Do not use rewards, balances, taxes or incidental dollar figures.
-      for (final line in lines) {
-        if (_excludeMoney.hasMatch(line.text)) continue;
-        final match = _money.firstMatch(line.text);
-        if (match != null) {
-          amount = _normalizedMoney(match);
-          evidence['amount'] = line.text;
-          break;
-        }
+    final header = lines.takeWhile(
+      (line) => !RegExp(
+        r'^(?:posted on|posting date|appears on your statement as|on your statement as|merchant details)\b',
+        caseSensitive: false,
+      ).hasMatch(line.text.trim()),
+    );
+    final candidates = <String, String>{};
+    var unresolved = false;
+    final whole = RegExp(r'^\s*\$\s*\d[\d, ]*\s*$');
+    var previousExcludedLabel = false;
+    for (final line in header) {
+      final value = line.text.trim();
+      if (value.isEmpty) continue;
+      final belongsToExcludedLabel = previousExcludedLabel;
+      previousExcludedLabel =
+          _excludeMoney.hasMatch(value) && !_money.hasMatch(value);
+      if (_excludeMoney.hasMatch(value) || belongsToExcludedLabel) continue;
+      final decimal = _money.firstMatch(value);
+      if (decimal != null &&
+          decimal.start == 0 &&
+          decimal.end == value.length) {
+        candidates[_normalizedMoney(decimal)] = value;
+      } else if (whole.hasMatch(value)) {
         final raised = _raisedCents(line, lines);
-        if (raised != null) {
-          amount = raised;
-          evidence['amount'] = '${line.text} + raised cents';
-          break;
+        if (raised == null) {
+          unresolved = true;
+        } else {
+          candidates[raised] = '${line.text} + raised cents';
         }
       }
     }
+    if (labeledAmount != null && !_excludeMoney.hasMatch(labeledAmount)) {
+      final match = _money.firstMatch(labeledAmount);
+      if (match != null &&
+          match.start == 0 &&
+          match.end == labeledAmount.length) {
+        candidates[_normalizedMoney(match)] = labeledAmount;
+      } else if (whole.hasMatch(labeledAmount)) {
+        unresolved = true;
+      }
+    }
+    final amountNeedsReview = unresolved || candidates.length > 1;
+    final amount = !amountNeedsReview && candidates.length == 1
+        ? candidates.keys.single
+        : null;
+    if (amount != null) evidence['amount'] = candidates[amount]!;
+    final rewards = <String>{
+      for (final line in lines)
+        if (RegExp(
+          r'cash\s*back|rewards?\s*cash',
+          caseSensitive: false,
+        ).hasMatch(line.text))
+          for (final match in _money.allMatches(line.text))
+            _normalizedMoney(match),
+    };
 
     final description =
         _field(
@@ -144,32 +182,30 @@ abstract final class FinancialReceiptInterpreter {
       evidence['merchant'] = merchantText;
     }
 
-    final purchased = _field(
+    final purchaseTexts = _fields(
       lines,
-      RegExp(r'^purchased on\s*:?\s*', caseSensitive: false),
-    );
-    final made = _field(
-      lines,
-      RegExp(r'^made on\s*:?\s*', caseSensitive: false),
-    );
-    final date = _field(lines, RegExp(r'^date\s*:?\s*', caseSensitive: false));
-    final posted = _field(
-      lines,
-      RegExp(r'^posted on\s*:?\s*', caseSensitive: false),
-    );
-    final transactionText = made ?? purchased ?? date ?? posted;
-    final transactionDate = transactionText == null
-        ? null
-        : _parseDate(transactionText);
-    if (transactionDate != null) {
-      evidence['date'] = transactionText!;
+      RegExp(
+        r'^(?:made on|purchased on|purchase date|transaction date)\b\s*:?\s*',
+        caseSensitive: false,
+      ),
+    ).toList();
+    if (purchaseTexts.isEmpty) {
+      purchaseTexts.addAll(
+        _fields(lines, RegExp(r'^date\b\s*:?\s*', caseSensitive: false)),
+      );
     }
-    final postingDate = posted == null ? null : _parseDate(posted);
+    final postingTexts = _fields(
+      lines,
+      RegExp(r'^(?:posted on|posting date)\b\s*:?\s*', caseSensitive: false),
+    ).toList();
+    final transactionDate = _uniqueDate(purchaseTexts);
+    final postingDate = _uniqueDate(postingTexts);
+    if (transactionDate != null) evidence['date'] = purchaseTexts.first;
     final timeLabel = _field(
       lines,
       RegExp(r'^time\s*:?\s*', caseSensitive: false),
     );
-    final timeSource = timeLabel ?? purchased ?? made;
+    final timeSource = timeLabel ?? purchaseTexts.firstOrNull;
     final transactionTimeText = timeSource == null
         ? null
         : RegExp(
@@ -184,10 +220,10 @@ abstract final class FinancialReceiptInterpreter {
 
     // Restrict last-four matching to explicit card context. Store IDs,
     // phone numbers, ZIP codes, and USPS tracking numbers are not cards.
-    final cardContext = text.replaceAll(RegExp(r'\s+'), ' ');
+    final cardContext = lines.map((line) => line.text.trim()).join('\n');
     final card = RegExp(
       r'(?:card\s+ending\s+in|visa|mastercard|amex|discover)'
-      r'[^\d]{0,24}(\d{4})(?!\d)',
+      r'(?:[ \t]*[.*•x]+)?[ \t]*(?:\n[ \t]*)?(\d{4})(?![\d-])',
       caseSensitive: false,
     ).firstMatch(cardContext)?.group(1);
     if (card != null) evidence['cardLast4'] = 'card ending $card';
@@ -195,6 +231,11 @@ abstract final class FinancialReceiptInterpreter {
     return FinancialReceiptInterpretation(
       isScreenshot: true,
       amount: amount,
+      cashBackReward: rewards.length == 1 ? rewards.single : null,
+      amountNeedsReview: amountNeedsReview,
+      dateNeedsReview:
+          transactionDate == null ||
+          (postingTexts.isNotEmpty && postingDate == null),
       merchant: merchant,
       transactionDate: transactionDate,
       postingDate: postingDate,
@@ -217,7 +258,9 @@ abstract final class FinancialReceiptInterpreter {
     List<OcrObservation> observations,
   ) {
     final whole = RegExp(r'^\s*\$\s*(\d{1,6})\s*$').firstMatch(dollars.text);
-    if (whole == null || dollars.height <= 0 || dollars.width <= 0) {
+    if (whole == null ||
+        dollars.normalizedBounds.height <= 0 ||
+        dollars.normalizedBounds.width <= 0) {
       // A single OCR line with an explicit gap is unambiguous enough to
       // reconstruct, even if character-level bounds are unavailable.
       final spaced = RegExp(
@@ -227,34 +270,47 @@ abstract final class FinancialReceiptInterpreter {
           ? null
           : wholeMoney(spaced.group(1)!, spaced.group(2)!);
     }
+    final amounts = <String>[];
+    final wholeBounds = dollars.normalizedBounds;
     for (final cents in observations) {
+      final fraction = cents.normalizedBounds;
       if (identical(dollars, cents) ||
           dollars.pageIndex != cents.pageIndex ||
           !RegExp(r'^\.?\d{2}$').hasMatch(cents.text.trim()) ||
-          cents.height <= 0 ||
-          cents.height > dollars.height * .84) {
+          fraction.height <= 0 ||
+          fraction.height > wholeBounds.height * .84) {
         continue;
       }
-      final right = dollars.left + dollars.width;
-      final horizontalGap = cents.left - right;
-      final verticalGap = (cents.top - dollars.top).abs();
+      final horizontalGap =
+          fraction.left - (wholeBounds.left + wholeBounds.width);
+      final verticalGap = (fraction.top - wholeBounds.top).abs();
+      final bottomGap =
+          wholeBounds.top +
+          wholeBounds.height -
+          (fraction.top + fraction.height);
       if (horizontalGap >= -.02 &&
           horizontalGap <= .06 &&
-          verticalGap <= dollars.height * .9) {
-        return wholeMoney(
-          whole.group(1)!,
-          cents.text.trim().replaceFirst('.', ''),
+          verticalGap <= wholeBounds.height * .9 &&
+          bottomGap >= wholeBounds.height * .08) {
+        amounts.add(
+          wholeMoney(whole.group(1)!, cents.text.trim().replaceFirst('.', '')),
         );
       }
     }
-    return null;
+    return amounts.length == 1 ? amounts.single : null;
   }
 
   static String wholeMoney(String dollars, String cents) => '$dollars.$cents';
 
   /// Relates labels to values on the same line, the same visual row, or the
   /// following visual line. In multi-column layouts the value can wrap.
-  static String? _field(List<OcrObservation> lines, RegExp label) {
+  static String? _field(List<OcrObservation> lines, RegExp label) =>
+      _fields(lines, label).firstOrNull;
+
+  static Iterable<String> _fields(
+    List<OcrObservation> lines,
+    RegExp label,
+  ) sync* {
     for (var index = 0; index < lines.length; index++) {
       final anchor = lines[index];
       // 'Merchant details' is a section heading, not a Merchant field.
@@ -275,19 +331,27 @@ abstract final class FinancialReceiptInterpreter {
                   (candidate) =>
                       !identical(candidate, anchor) &&
                       candidate.pageIndex == anchor.pageIndex &&
-                      anchor.height > 0 &&
-                      candidate.height > 0 &&
-                      candidate.left >= anchor.left + anchor.width * .8 &&
-                      ((candidate.top + candidate.height / 2) -
-                                  (anchor.top + anchor.height / 2))
+                      anchor.normalizedBounds.height > 0 &&
+                      candidate.normalizedBounds.height > 0 &&
+                      candidate.normalizedBounds.left >=
+                          anchor.normalizedBounds.left +
+                              anchor.normalizedBounds.width * .8 &&
+                      ((candidate.normalizedBounds.top +
+                                      candidate.normalizedBounds.height / 2) -
+                                  (anchor.normalizedBounds.top +
+                                      anchor.normalizedBounds.height / 2))
                               .abs() <=
-                          (anchor.height > candidate.height
-                                  ? anchor.height
-                                  : candidate.height) *
+                          (anchor.normalizedBounds.height >
+                                      candidate.normalizedBounds.height
+                                  ? anchor.normalizedBounds.height
+                                  : candidate.normalizedBounds.height) *
                               .8,
                 )
                 .toList()
-              ..sort((a, b) => a.left.compareTo(b.left));
+              ..sort(
+                (a, b) =>
+                    a.normalizedBounds.left.compareTo(b.normalizedBounds.left),
+              );
         if (adjacent.isNotEmpty) {
           value = adjacent.map((item) => item.text.trim()).join(' ');
         }
@@ -304,7 +368,7 @@ abstract final class FinancialReceiptInterpreter {
       }
       if (value.isEmpty) continue;
       if (RegExp(
-            r'^(?:merchant|spend category|on your statement as|appears on your statement as)\b',
+            r'^merchant\b',
             caseSensitive: false,
           ).hasMatch(anchor.text.trim()) &&
           index + 1 < lines.length) {
@@ -318,41 +382,56 @@ abstract final class FinancialReceiptInterpreter {
         if (position >= 0 && position + 1 < lines.length) {
           final continuation = lines[position + 1];
           final aligned =
-              first.height > 0 &&
-              continuation.height > 0 &&
-              (continuation.left - first.left).abs() < .06 &&
-              continuation.top > first.top &&
-              continuation.top - first.top < .10;
+              first.normalizedBounds.height > 0 &&
+              continuation.normalizedBounds.height > 0 &&
+              (continuation.normalizedBounds.left - first.normalizedBounds.left)
+                      .abs() <
+                  .06 &&
+              continuation.normalizedBounds.top > first.normalizedBounds.top &&
+              continuation.normalizedBounds.top - first.normalizedBounds.top <
+                  .10;
           if (aligned && !_label.hasMatch(continuation.text.trim())) {
             value += ' ${continuation.text.trim()}';
           }
         }
       }
-      return value;
+      yield value;
     }
-    return null;
   }
 
   static String? _summaryMerchant(List<OcrObservation> lines) {
     final start = lines.indexWhere(
       (line) => RegExp(
-        r'^posted on\b',
+        r'^(?:posted on|posting date)\b',
         caseSensitive: false,
       ).hasMatch(line.text.trim()),
     );
     final end = lines.indexWhere(
       (line) => RegExp(
-        r'^appears on your statement as\b',
+        r'^(?:appears )?on your statement as\b',
         caseSensitive: false,
       ).hasMatch(line.text.trim()),
     );
     if (start >= 0 && end > start) {
-      final candidate = lines
+      final candidates = lines
           .sublist(start + 1, end)
+          .takeWhile(
+            (line) => !RegExp(
+              r'^learn more|^call merchant|^report a problem',
+              caseSensitive: false,
+            ).hasMatch(line.text.trim()),
+          )
+          .where(
+            (line) =>
+                line.normalizedBounds.height <= 0 ||
+                (line.normalizedBounds.left - lines[end].left).abs() < .15,
+          )
           .map((l) => l.text.trim())
           .where(_merchantCandidate)
-          .lastOrNull;
-      if (candidate != null) return candidate;
+          .toList();
+      if (candidates.map((value) => value.toLowerCase()).toSet().length == 1) {
+        return candidates.first;
+      }
     }
     final purchased = lines.indexWhere(
       (line) => RegExp(
@@ -376,7 +455,7 @@ abstract final class FinancialReceiptInterpreter {
     if (RegExp(
       r'^\$|^\d|credit card|transaction '
       r'details|rewards|cash back|visa\.{2,}|posted on|card ending|'
-      r'purchase|^\+|merchant details',
+      r'purchase|^\+|merchant details|learn more|call merchant|report a problem',
       caseSensitive: false,
     ).hasMatch(value)) {
       return false;
@@ -396,6 +475,11 @@ abstract final class FinancialReceiptInterpreter {
     return location?.group(1)?.trim() ?? text;
   }
 
+  static DateTime? _uniqueDate(List<String> texts) {
+    final dates = texts.map(_parseDate).toSet();
+    return dates.length == 1 ? dates.single : null;
+  }
+
   static DateTime? _parseDate(String text) {
     final month = RegExp(
       r'\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|'
@@ -412,15 +496,22 @@ abstract final class FinancialReceiptInterpreter {
         int.parse(month.group(2)!),
       );
     }
+    final iso = RegExp(r'\b(20\d{2})-(\d{2})-(\d{2})\b').firstMatch(text);
+    if (iso != null) {
+      return _checkedDate(
+        int.parse(iso.group(1)!),
+        int.parse(iso.group(2)!),
+        int.parse(iso.group(3)!),
+      );
+    }
     final numeric = RegExp(
       r'\b(\d{1,2})/(\d{1,2})/(20\d{2})\b',
     ).firstMatch(text);
     if (numeric == null) return null;
-    return _checkedDate(
-      int.parse(numeric.group(3)!),
-      int.parse(numeric.group(1)!),
-      int.parse(numeric.group(2)!),
-    );
+    final monthNumber = int.parse(numeric.group(1)!);
+    final day = int.parse(numeric.group(2)!);
+    if (monthNumber != day && monthNumber <= 12 && day <= 12) return null;
+    return _checkedDate(int.parse(numeric.group(3)!), monthNumber, day);
   }
 
   static DateTime? _checkedDate(int y, int m, int d) {

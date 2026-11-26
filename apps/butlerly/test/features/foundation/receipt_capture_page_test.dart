@@ -28,6 +28,73 @@ import '../transactions/transaction_lifecycle_test.dart'
         MemoryUserPreferences;
 
 void main() {
+  for (final (failure, message) in <(OcrFailureCode?, String)>[
+    (null, 'Amount needs review'),
+    (
+      OcrFailureCode.unreadableSource,
+      'The saved image could not be opened. You can enter the fields manually.',
+    ),
+    (
+      OcrFailureCode.technicalFailure,
+      'On-device text recognition failed. The image is saved and you can enter the fields manually.',
+    ),
+  ]) {
+    testWidgets(
+      'keeps preserved receipt editable after ${failure?.name ?? 'ambiguous OCR'}',
+      (tester) async {
+        final finance = _finance(_ReceiptTransactionRepository());
+        final path = _fixturePath();
+        var prepared = false;
+        var discarded = false;
+        _resetView(tester);
+        await tester.pumpWidget(
+          _localizedApp(
+            ReceiptCapturePage(
+              finance: finance,
+              evidenceStore: _evidenceStore(finance),
+              pickImage: (_) async => XFile(path, name: 'receipt.png'),
+              preserveEvidence: (_) async => _preservedReceipt,
+              fileForPreserved: (_) async => File(path),
+              preparePendingReceipt: (_, _) async {
+                prepared = true;
+              },
+              discardPreserved: (_) async {
+                discarded = true;
+              },
+              completePendingReceipt: (_) async => true,
+              ocr: (_) async {
+                if (failure != null) {
+                  throw OcrException(code: failure, stage: 'fixture');
+                }
+                return ReceiptTextParser.parse(r'''
+Transaction Details
+$499
+Posted on November 23, 2026
+DoorDash
+Appears on your statement as:
+DD *DOORDASHDASHPASS
+Made on November 22, 2026
+''');
+              },
+              loadInitialData: _emptyInitialData,
+            ),
+          ),
+        );
+        await tester.pump();
+        await _captureAndAcceptReceipt(tester);
+        expect(find.text(message), findsOneWidget);
+        expect(find.text('499'), findsNothing);
+        expect(prepared, isTrue);
+        expect(discarded, isFalse);
+        expect(File(path).existsSync(), isTrue);
+        final amount = find.widgetWithText(TextFormField, 'Amount');
+        await tester.ensureVisible(amount);
+        await tester.enterText(amount, '4.99');
+        expect(find.text('4.99'), findsOneWidget);
+      },
+    );
+  }
+
   testWidgets('shows aligned OCR text using image coordinates on iPhone', (
     tester,
   ) async {
