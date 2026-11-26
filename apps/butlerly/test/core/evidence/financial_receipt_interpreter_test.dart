@@ -464,6 +464,17 @@ Posted on November 23, 2026
     }
   });
 
+  test('does not promote a stacked balance to a purchase', () {
+    final result = ReceiptTextParser.parse(r'''
+Transaction Details
+Merchant: Example
+Purchased on: November 22, 2026
+Current balance
+$900.00
+''');
+    expect(result.amount, isNull);
+  });
+
   test('does not mistake total balance for a retail total', () {
     final result = ReceiptTextParser.parse(r'''
 Transaction Details

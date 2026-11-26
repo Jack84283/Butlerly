@@ -134,7 +134,7 @@ abstract final class FinancialReceiptInterpreter {
       ).hasMatch(line.text.trim()),
     );
     final balances = RegExp(
-      r'^(?:(?:available|account)?\s*balance|credit\s*limit)\s*:?$',
+      r'^(?:(?:(?:total|current|available|account|statement|remaining|outstanding)\s+)*balance|credit\s*limit)\s*:?$',
       caseSensitive: false,
     );
     final rewardLabel = RegExp(
@@ -161,8 +161,7 @@ abstract final class FinancialReceiptInterpreter {
     }
     final candidates = <String, String>{};
     final currencyByAmount = <String, Set<String>>{};
-    void recordDecimal(RegExpMatch match, String value, OcrObservation source) {
-      final amount = _normalizedMoney(match);
+    void recordAmount(String amount, String value, OcrObservation source) {
       candidates[amount] = value;
       final upper = value.toUpperCase();
       final currencies = currencyByAmount.putIfAbsent(amount, () => <String>{});
@@ -197,7 +196,7 @@ abstract final class FinancialReceiptInterpreter {
       }
       final decimal = _purchaseMoney.firstMatch(value);
       if (decimal != null) {
-        recordDecimal(decimal, value, line);
+        recordAmount(_normalizedMoney(decimal), value, line);
       } else if (whole.hasMatch(value)) {
         final raised = _raisedCents(line, lines);
         if (raised == null) {
@@ -214,7 +213,7 @@ abstract final class FinancialReceiptInterpreter {
       }
       final match = _purchaseMoney.firstMatch(labeledAmount);
       if (match != null) {
-        recordDecimal(match, labeledAmount, source);
+        recordAmount(_normalizedMoney(match), labeledAmount, source);
       } else if (whole.hasMatch(labeledAmount)) {
         final resolved =
             _raisedCents(source, lines) ??
@@ -225,7 +224,7 @@ abstract final class FinancialReceiptInterpreter {
                   )
                 : null);
         if (resolved != null) {
-          candidates[resolved] = '$labeledAmount + raised cents';
+          recordAmount(resolved, '$labeledAmount + raised cents', source);
         } else {
           unresolved = true;
         }
