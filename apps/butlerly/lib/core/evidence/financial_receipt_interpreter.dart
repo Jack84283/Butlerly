@@ -337,7 +337,10 @@ abstract final class FinancialReceiptInterpreter {
         final candidate = line.normalizedBounds;
         return line.pageIndex == anchor.pageIndex &&
             candidate.height > 0 &&
-            candidate.left >= bounds.left + bounds.width * .8 &&
+            (candidate.left >= bounds.left + bounds.width * .8 ||
+                (!anchor.text.contains('%') &&
+                    candidate.left + candidate.width <=
+                        bounds.left + bounds.width * .2)) &&
             (candidate.top +
                         candidate.height / 2 -
                         bounds.top -

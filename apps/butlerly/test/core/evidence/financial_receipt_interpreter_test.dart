@@ -391,7 +391,7 @@ Posted on November 23, 2026
   });
 
   test(
-    'associates a split reward when its value precedes the label vertically',
+    'associates a split reward when the value box is above and to the left of the label',
     () {
       final result = ReceiptExtractor.extract(
         r'Transaction Details Cash back earned $0.25',
@@ -400,12 +400,12 @@ Posted on November 23, 2026
           OcrObservation(
             text: 'Cash back earned',
             confidence: .9,
-            bounds: OcrBounds(left: .05, top: .16, width: .45, height: .04),
+            bounds: OcrBounds(left: .45, top: .16, width: .45, height: .04),
           ),
           OcrObservation(
             text: r'$0.25',
             confidence: .9,
-            bounds: OcrBounds(left: .65, top: .155, width: .22, height: .04),
+            bounds: OcrBounds(left: .10, top: .155, width: .22, height: .04),
           ),
         ],
       );
