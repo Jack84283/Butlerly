@@ -89,7 +89,7 @@ abstract final class FinancialReceiptInterpreter {
       return const FinancialReceiptInterpretation();
     }
     final retailTotal = RegExp(
-      r'^[ \t]*(?:grand[ \t]+)?total\b(?:[^\r\n]*\d|[ \t]*:?[ \t]*\r?\n[ \t]*\$?[ \t]*\d)',
+      r'^[ \t]*(?:grand[ \t]+)?total(?:[ \t]+(?:amount|due))?\b[ \t]*:?[ \t]*(?:\r?\n[ \t]*)?(?:USD[ \t]*)?[$€£¥]?[ \t]*\d',
       multiLine: true,
       caseSensitive: false,
     );

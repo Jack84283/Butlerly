@@ -464,6 +464,15 @@ Posted on November 23, 2026
     }
   });
 
+  test('does not mistake total balance for a retail total', () {
+    final result = ReceiptTextParser.parse(r'''
+Transaction Details
+Total available balance: $120.00
+Made on November 23, 2026
+''');
+    expect(result.amount, isNull);
+  });
+
   test('does not promote a reward or balance separated from its label', () {
     for (final label in ['5% cash back', 'Cash back earned']) {
       final result = ReceiptTextParser.parse('''
