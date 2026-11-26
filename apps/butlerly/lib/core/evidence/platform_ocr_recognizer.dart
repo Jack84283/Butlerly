@@ -58,7 +58,9 @@ final class PlatformOcrRecognizer implements OcrRecognizer {
       payload = await _channel
           .invokeMapMethod<Object?, Object?>('recognizeText', {
             'path': request.source.path,
-            if (request.intent == OcrIntent.receipt) 'receiptGeometry': true,
+            if (defaultTargetPlatform == TargetPlatform.iOS &&
+                request.intent == OcrIntent.receipt)
+              'receiptGeometry': true,
             if (request.source.kind == OcrSourceKind.pdf)
               'sourceKind': request.source.kind.name,
           });
