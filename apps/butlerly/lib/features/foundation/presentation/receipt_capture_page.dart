@@ -126,6 +126,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   final _formKey = GlobalKey<FormState>();
   final _amount = TextEditingController();
   final _currency = TextEditingController(text: 'USD');
+  String _baseCurrency = 'USD';
   final _merchantRaw = TextEditingController();
   final _notes = TextEditingController();
 
@@ -296,7 +297,8 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       _tags = initial.snapshot.tags;
       _sources = initial.snapshot.paymentSources;
       if (initial.preference != null) {
-        _currency.text = initial.preference!.baseCurrency.value;
+        _baseCurrency = initial.preference!.baseCurrency.value;
+        if (_source == null) _currency.text = _baseCurrency;
       }
     });
   }
@@ -502,6 +504,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       _ocrNotice = null;
       _merchantRaw.clear();
       _amount.clear();
+      _currency.text = _baseCurrency;
       _date = null;
       _merchantId = null;
       _paymentSourceId = null;
