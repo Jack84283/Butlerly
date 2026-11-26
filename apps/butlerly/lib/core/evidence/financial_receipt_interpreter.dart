@@ -158,12 +158,10 @@ abstract final class FinancialReceiptInterpreter {
         candidates[_normalizedMoney(match)] = labeledAmount;
       } else if (whole.hasMatch(labeledAmount)) {
         final resolved = <String>{
-          if (_raisedCents(
-                OcrObservation(text: labeledAmount, confidence: 0),
-                const [],
-              )
-              case final amount?)
-            amount,
+          ?_raisedCents(
+            OcrObservation(text: labeledAmount, confidence: 0),
+            const [],
+          ),
           for (final line in lines)
             if (line.text.trim() == labeledAmount ||
                 (line.hasRaisedCents &&
@@ -173,7 +171,7 @@ abstract final class FinancialReceiptInterpreter {
                         ).stringMatch(line.text.trim()) !=
                         null &&
                     line.text.trim().endsWith(labeledAmount)))
-              if (_raisedCents(line, lines) case final amount?) amount,
+              ?_raisedCents(line, lines),
         };
         if (resolved.length == 1) {
           candidates[resolved.single] = '$labeledAmount + raised cents';
