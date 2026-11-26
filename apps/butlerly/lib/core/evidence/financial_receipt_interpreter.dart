@@ -42,6 +42,10 @@ abstract final class FinancialReceiptInterpreter {
     caseSensitive: false,
   );
   static final _money = RegExp(r'\$\s*(\d+(?:,\d{3})*)\.(\d{2})(?!\d)');
+  static final _purchaseMoney = RegExp(
+    r'^\$\s*(\d+(?:,\d{3})*)\.(\d{2})(?:\s+USD)?$',
+    caseSensitive: false,
+  );
   static final _label = RegExp(
     r'^(?:amount|merchant|date|time|card ending in|purchased on|'
     r'posted on|made on|purchase date|posting date|transaction date|on your statement as|appears on your statement as)'
@@ -135,10 +139,8 @@ abstract final class FinancialReceiptInterpreter {
         caseSensitive: false,
       ).hasMatch(value);
       if (_excludeMoney.hasMatch(value) || belongsToExcludedLabel) continue;
-      final decimal = _money.firstMatch(value);
-      if (decimal != null &&
-          decimal.start == 0 &&
-          decimal.end == value.length) {
+      final decimal = _purchaseMoney.firstMatch(value);
+      if (decimal != null) {
         candidates[_normalizedMoney(decimal)] = value;
       } else if (whole.hasMatch(value)) {
         final raised = _raisedCents(line, lines);
@@ -151,13 +153,8 @@ abstract final class FinancialReceiptInterpreter {
     }
     for (final labeledAmount in labeledAmounts) {
       if (_excludeMoney.hasMatch(labeledAmount)) continue;
-      final match = _money.firstMatch(labeledAmount);
-      if (match != null &&
-          match.start == 0 &&
-          RegExp(
-            r'^(?:\s+USD)?$',
-            caseSensitive: false,
-          ).hasMatch(labeledAmount.substring(match.end))) {
+      final match = _purchaseMoney.firstMatch(labeledAmount);
+      if (match != null) {
         candidates[_normalizedMoney(match)] = labeledAmount;
       } else if (whole.hasMatch(labeledAmount)) {
         final resolved = lines

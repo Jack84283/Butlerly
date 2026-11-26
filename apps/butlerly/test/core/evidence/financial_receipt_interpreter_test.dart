@@ -183,6 +183,14 @@ Credit card expiry 01/2030
     expect(result.amountNeedsReview, isFalse);
   });
 
+  test('accepts a USD suffix on a standalone header amount', () {
+    final result = ReceiptTextParser.parse(
+      screenshot.replaceFirst('AMOUNT_TOKEN', r'$4.99 USD'),
+    );
+    expect(result.amount, '4.99');
+    expect(result.currency, 'USD');
+  });
+
   test('accepts an explicit USD currency suffix on a labeled amount', () {
     final result = ReceiptTextParser.parse(r'''
 Transaction Details
