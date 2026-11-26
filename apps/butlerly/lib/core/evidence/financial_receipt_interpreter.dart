@@ -170,7 +170,15 @@ abstract final class FinancialReceiptInterpreter {
       }
       final index = lines.indexOf(source);
       if (index >= 0 && index + 1 < lines.length) {
-        final next = lines[index + 1];
+        final afterAmount = index + 1;
+        final nextIndex =
+            value.endsWith(' + raised cents') &&
+                lines[afterAmount].text.trim().replaceFirst('.', '') ==
+                    amount.split('.').last
+            ? afterAmount + 1
+            : afterAmount;
+        if (nextIndex >= lines.length) return;
+        final next = lines[nextIndex];
         final code = next.text.trim().toUpperCase();
         final bounds = source.normalizedBounds;
         final adjacent = next.normalizedBounds;
@@ -202,7 +210,7 @@ abstract final class FinancialReceiptInterpreter {
         if (raised == null) {
           unresolved = true;
         } else {
-          candidates[raised] = '${line.text} + raised cents';
+          recordAmount(raised, '${line.text} + raised cents', line);
         }
       }
     }
