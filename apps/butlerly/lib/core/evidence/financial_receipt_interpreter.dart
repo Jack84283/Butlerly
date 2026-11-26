@@ -7,6 +7,7 @@ final class FinancialReceiptInterpretation {
   const FinancialReceiptInterpretation({
     this.isScreenshot = false,
     this.amount,
+    this.currency,
     this.cashBackReward,
     this.amountNeedsReview = false,
     this.dateNeedsReview = false,
@@ -22,6 +23,7 @@ final class FinancialReceiptInterpretation {
 
   final bool isScreenshot;
   final String? amount;
+  final String? currency;
   final String? cashBackReward;
   final bool amountNeedsReview, dateNeedsReview;
   final String? merchant;
@@ -191,6 +193,27 @@ abstract final class FinancialReceiptInterpreter {
         ? candidates.keys.single
         : null;
     if (amount != null) evidence['amount'] = candidates[amount]!;
+    final explicitCurrencies = _fields(
+      lines,
+      RegExp(r'^currency\b\s*:?\s*', caseSensitive: false),
+    ).map((value) => value.trim().toUpperCase()).toSet();
+    final amountEvidence = evidence['amount']?.toUpperCase();
+    if (amountEvidence != null &&
+        (amountEvidence.startsWith(r'US$') ||
+            amountEvidence.endsWith(' USD'))) {
+      explicitCurrencies.add('USD');
+    }
+    final explicitCurrency = explicitCurrencies.length == 1
+        ? explicitCurrencies.single
+        : null;
+    final currency = amount == null
+        ? null
+        : explicitCurrencies.isEmpty
+        ? 'USD'
+        : explicitCurrency != null &&
+              RegExp(r'^[A-Z]{3}$').hasMatch(explicitCurrency)
+        ? explicitCurrency
+        : null;
     final rewards = <String>{};
     final rewardLabel = RegExp(
       r'cash\s*back|rewards?\s*cash',
@@ -285,7 +308,7 @@ abstract final class FinancialReceiptInterpreter {
     final cardContext = lines.map((line) => line.text.trim()).join('\n');
     final card = RegExp(
       r'(?:card\s+ending\s+in|visa|mastercard|amex|discover)'
-      r'(?:[ \t]*[.*•x]+)?[ \t]*(?:\n[ \t]*)?(\d{4})(?![\d-])',
+      r'[ \t]*:?(?:[ \t]*[.*•x]+)?[ \t]*(?:\n[ \t]*)?(\d{4})(?![\d-])',
       caseSensitive: false,
     ).firstMatch(cardContext)?.group(1);
     if (card != null) evidence['cardLast4'] = 'card ending $card';
@@ -293,6 +316,7 @@ abstract final class FinancialReceiptInterpreter {
     return FinancialReceiptInterpretation(
       isScreenshot: true,
       amount: amount,
+      currency: currency,
       cashBackReward: rewards.length == 1 ? rewards.single : null,
       amountNeedsReview: amountNeedsReview,
       dateNeedsReview:

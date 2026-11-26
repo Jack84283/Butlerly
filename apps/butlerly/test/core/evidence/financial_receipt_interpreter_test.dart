@@ -193,6 +193,22 @@ Credit card expiry 01/2030
     expect(result.currency, 'USD');
   });
 
+  test('recognizes explicitly labeled masked card suffixes', () {
+    final result = ReceiptTextParser.parse(
+      'Transaction Details\nCard ending in: •••• 1234',
+    );
+    expect(result.cardLast4, '1234');
+  });
+
+  test('uses explicit currency and flags conflicting currency evidence', () {
+    const details = 'Transaction Details\nCurrency: CAD\nAmount: ';
+    expect(ReceiptTextParser.parse(details + r'$4.99').currency, 'CAD');
+    final conflict = ReceiptTextParser.parse(details + r'$4.99 USD');
+    expect(conflict.amount, '4.99');
+    expect(conflict.currency, isNull);
+    expect(conflict.currencyNeedsReview, isTrue);
+  });
+
   test('accepts an explicit USD currency suffix on a labeled amount', () {
     final result = ReceiptTextParser.parse(r'''
 Transaction Details

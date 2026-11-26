@@ -92,6 +92,7 @@ final class ReceiptOcrResult {
     this.amount,
     this.cashBackReward,
     this.amountNeedsReview = false,
+    this.currencyNeedsReview = false,
     this.dateNeedsReview = false,
     this.currency,
     this.date,
@@ -134,7 +135,7 @@ final class ReceiptOcrResult {
   final String? merchant;
   final String? amount;
   final String? cashBackReward;
-  final bool amountNeedsReview, dateNeedsReview;
+  final bool amountNeedsReview, currencyNeedsReview, dateNeedsReview;
   final String? currency;
   final DateTime? date;
   final DateTime? postingDate;
@@ -241,6 +242,7 @@ final class LocalOcrService {
       amount: extracted.amount,
       cashBackReward: extracted.cashBackReward,
       amountNeedsReview: extracted.amountNeedsReview,
+      currencyNeedsReview: extracted.currencyNeedsReview,
       dateNeedsReview: extracted.dateNeedsReview,
       currency: extracted.currency,
       date: extracted.date,
@@ -393,6 +395,7 @@ abstract final class ReceiptExtractor {
         'merchant',
         'date',
         'cardLast4',
+        'currency',
         'tax',
         'tip',
         'cardNetwork',
@@ -420,9 +423,11 @@ abstract final class ReceiptExtractor {
       cashBackReward: interpreted.cashBackReward,
       amountNeedsReview: interpreted.amountNeedsReview,
       dateNeedsReview: interpreted.dateNeedsReview,
-      currency: screenshot
-          ? (interpreted.amount == null ? null : 'USD')
-          : values.currency,
+      currency: screenshot ? interpreted.currency : values.currency,
+      currencyNeedsReview:
+          screenshot &&
+          interpreted.amount != null &&
+          interpreted.currency == null,
       date: screenshot ? interpreted.transactionDate : values.date,
       postingDate: interpreted.postingDate,
       originalMerchantDescription: interpreted.originalMerchantDescription,

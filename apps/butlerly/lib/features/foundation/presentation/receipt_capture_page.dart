@@ -517,11 +517,14 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         _ocrResult = result;
         _merchantRaw.text = result.merchant ?? '';
         _amount.text = result.amount ?? '';
+        if (result.currencyNeedsReview) _currency.clear();
         if (result.currency != null) _currency.text = result.currency!;
         _date = result.date;
         _dateNeedsReview = result.dateNeedsReview;
         _ocrNotice = result.amountNeedsReview
             ? 'amountNeedsReview'
+            : result.currencyNeedsReview
+            ? 'currencyNeedsReview'
             : result.amount == null ||
                   result.merchant == null ||
                   result.date == null
