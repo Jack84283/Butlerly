@@ -412,7 +412,8 @@ GROCERY MART
 Purchased on August 15, 2026
 SUBTOTAL 40.00
 TAX 3.56
-TOTAL $43.56
+TOTAL
+$43.56
 VISA **** 2468
 ''');
     expect(result.amount, '43.56');

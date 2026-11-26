@@ -87,7 +87,7 @@ abstract final class FinancialReceiptInterpreter {
       return const FinancialReceiptInterpretation();
     }
     final retailTotal = RegExp(
-      r'^\s*(?:grand\s+)?total\b.*\d',
+      r'^[ \t]*(?:grand[ \t]+)?total\b(?:[^\r\n]*\d|[ \t]*:?[ \t]*\r?\n[ \t]*\$?[ \t]*\d)',
       multiLine: true,
       caseSensitive: false,
     );
@@ -121,7 +121,7 @@ abstract final class FinancialReceiptInterpreter {
           });
 
     final evidence = <String, String>{};
-    final labeledAmounts = _fields(
+    final labeledAmounts = _observedFields(
       lines,
       RegExp(r'^amount\b\s*:?\s*', caseSensitive: false),
     ).toList();
@@ -159,30 +159,20 @@ abstract final class FinancialReceiptInterpreter {
         }
       }
     }
-    for (final labeledAmount in labeledAmounts) {
+    for (final (labeledAmount, source) in labeledAmounts) {
       if (_excludeMoney.hasMatch(labeledAmount)) continue;
       final match = _purchaseMoney.firstMatch(labeledAmount);
       if (match != null) {
         candidates[_normalizedMoney(match)] = labeledAmount;
       } else if (whole.hasMatch(labeledAmount)) {
-        final resolved = <String>{
-          ?_raisedCents(
-            OcrObservation(text: labeledAmount, confidence: 0),
-            const [],
-          ),
-          for (final line in lines)
-            if (line.text.trim() == labeledAmount ||
-                (line.hasRaisedCents &&
-                    RegExp(
-                          r'^amount\s*:?\s*',
-                          caseSensitive: false,
-                        ).stringMatch(line.text.trim()) !=
-                        null &&
-                    line.text.trim().endsWith(labeledAmount)))
-              ?_raisedCents(line, lines),
-        };
-        if (resolved.length == 1) {
-          candidates[resolved.single] = '$labeledAmount + raised cents';
+        final resolved =
+            _raisedCents(source, lines) ??
+            _raisedCents(
+              OcrObservation(text: labeledAmount, confidence: 0),
+              const [],
+            );
+        if (resolved != null) {
+          candidates[resolved] = '$labeledAmount + raised cents';
         } else {
           unresolved = true;
         }
@@ -401,7 +391,10 @@ abstract final class FinancialReceiptInterpreter {
   static String? _field(List<OcrObservation> lines, RegExp label) =>
       _fields(lines, label).firstOrNull;
 
-  static Iterable<String> _fields(
+  static Iterable<String> _fields(List<OcrObservation> lines, RegExp label) =>
+      _observedFields(lines, label).map((field) => field.$1);
+
+  static Iterable<(String, OcrObservation)> _observedFields(
     List<OcrObservation> lines,
     RegExp label,
   ) sync* {
@@ -417,6 +410,7 @@ abstract final class FinancialReceiptInterpreter {
       final match = label.firstMatch(anchor.text.trim());
       if (match == null) continue;
       var value = anchor.text.trim().substring(match.end).trim();
+      var source = anchor;
       if (value.isEmpty) {
         // Values right of a label share its visual row.
         final adjacent =
@@ -447,6 +441,7 @@ abstract final class FinancialReceiptInterpreter {
                     a.normalizedBounds.left.compareTo(b.normalizedBounds.left),
               );
         if (adjacent.isNotEmpty) {
+          source = adjacent.first;
           value = adjacent.map((item) => item.text.trim()).join(' ');
         }
       }
@@ -457,6 +452,7 @@ abstract final class FinancialReceiptInterpreter {
               r'^merchant details$',
               caseSensitive: false,
             ).hasMatch(next.text.trim())) {
+          source = next;
           value = next.text.trim();
         }
       }
@@ -497,7 +493,7 @@ abstract final class FinancialReceiptInterpreter {
           }
         }
       }
-      yield value;
+      yield (value, source);
     }
   }
 
