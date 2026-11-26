@@ -160,13 +160,30 @@ abstract final class FinancialReceiptInterpreter {
       }
     }
     final candidates = <String, String>{};
-    final explicitUsdAmounts = <String>{};
-    void recordDecimal(RegExpMatch match, String value) {
+    final currencyByAmount = <String, Set<String>>{};
+    void recordDecimal(RegExpMatch match, String value, OcrObservation source) {
       final amount = _normalizedMoney(match);
       candidates[amount] = value;
       final upper = value.toUpperCase();
+      final currencies = currencyByAmount.putIfAbsent(amount, () => <String>{});
       if (upper.startsWith(r'US$') || upper.endsWith(' USD')) {
-        explicitUsdAmounts.add(amount);
+        currencies.add('USD');
+      }
+      final index = lines.indexOf(source);
+      if (index >= 0 && index + 1 < lines.length) {
+        final next = lines[index + 1];
+        final code = next.text.trim().toUpperCase();
+        final bounds = source.normalizedBounds;
+        final adjacent = next.normalizedBounds;
+        if (next.pageIndex == source.pageIndex &&
+            RegExp(
+              r'^(?:USD|CAD|AUD|NZD|HKD|SGD|EUR|GBP|CNY|JPY)$',
+            ).hasMatch(code) &&
+            (bounds.height == 0 ||
+                (adjacent.top - bounds.top < .08 &&
+                    (adjacent.left - bounds.left).abs() < .12))) {
+          currencies.add(code);
+        }
       }
     }
 
@@ -180,7 +197,7 @@ abstract final class FinancialReceiptInterpreter {
       }
       final decimal = _purchaseMoney.firstMatch(value);
       if (decimal != null) {
-        recordDecimal(decimal, value);
+        recordDecimal(decimal, value, line);
       } else if (whole.hasMatch(value)) {
         final raised = _raisedCents(line, lines);
         if (raised == null) {
@@ -197,7 +214,7 @@ abstract final class FinancialReceiptInterpreter {
       }
       final match = _purchaseMoney.firstMatch(labeledAmount);
       if (match != null) {
-        recordDecimal(match, labeledAmount);
+        recordDecimal(match, labeledAmount, source);
       } else if (whole.hasMatch(labeledAmount)) {
         final resolved =
             _raisedCents(source, lines) ??
@@ -223,7 +240,7 @@ abstract final class FinancialReceiptInterpreter {
       lines,
       RegExp(r'^currency\b\s*:?\s*', caseSensitive: false),
     ).map((value) => value.trim().toUpperCase()).toSet();
-    if (explicitUsdAmounts.contains(amount)) explicitCurrencies.add('USD');
+    explicitCurrencies.addAll(currencyByAmount[amount] ?? const {});
     final explicitCurrency = explicitCurrencies.length == 1
         ? explicitCurrencies.single
         : null;
