@@ -44,6 +44,11 @@ Report a Problem
 
   test('uses the screenshot geometry when cents are separate observations', () {
     final lines = [
+      const OcrObservation(
+        text: 'Amount',
+        confidence: .95,
+        bounds: OcrBounds(left: .04, top: .15, width: .08, height: .02),
+      ),
       for (final (index, text) in screenshot.trim().split('\n').indexed)
         if (text == 'AMOUNT_TOKEN') ...[
           const OcrObservation(
@@ -135,6 +140,15 @@ Time
       expect(result.fieldEvidence['amount'], contains('32.47'));
     },
   );
+
+  test('accepts an explicit USD currency suffix on a labeled amount', () {
+    final result = ReceiptTextParser.parse(r'''
+Transaction Details
+Amount: $4.99 USD
+''');
+    expect(result.amount, '4.99');
+    expect(result.currency, 'USD');
+  });
 
   test('separates payment-card product from merchant and posting date', () {
     final result = ReceiptTextParser.parse(r'''
@@ -309,8 +323,9 @@ USPS Ground Advantage 1 $21.50
 
   test('retains conventional explicit total parsing', () {
     final result = ReceiptTextParser.parse(r'''
+Transaction Details
 GROCERY MART
-Purchase Date: 08/15/2026
+Purchased on August 15, 2026
 SUBTOTAL 40.00
 TAX 3.56
 TOTAL $43.56
@@ -318,6 +333,7 @@ VISA **** 2468
 ''');
     expect(result.amount, '43.56');
     expect(result.cardLast4, '2468');
+    expect(result.tax, '3.56');
     expect(result.date, DateTime(2026, 8, 15));
   });
 

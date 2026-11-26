@@ -76,6 +76,18 @@ abstract final class FinancialReceiptInterpreter {
     if (!_screenshotHints.hasMatch(text.replaceAll(RegExp(r'\s+'), ' '))) {
       return const FinancialReceiptInterpretation();
     }
+    final retailTotal = RegExp(
+      r'^\s*(?:grand\s+)?total\b.*\d',
+      multiLine: true,
+      caseSensitive: false,
+    );
+    final bankContext = RegExp(
+      r'posted on|posting date|on your statement as|transaction alert',
+      caseSensitive: false,
+    );
+    if (retailTotal.hasMatch(text) && !bankContext.hasMatch(text)) {
+      return const FinancialReceiptInterpretation();
+    }
     final lines =
         observations.isEmpty
               ? text.split(RegExp(r'\r?\n')).asMap().entries.map((entry) {
@@ -117,8 +129,10 @@ abstract final class FinancialReceiptInterpreter {
       final value = line.text.trim();
       if (value.isEmpty) continue;
       final belongsToExcludedLabel = previousExcludedLabel;
-      previousExcludedLabel =
-          _excludeMoney.hasMatch(value) && !_money.hasMatch(value);
+      previousExcludedLabel = RegExp(
+        r'^(?:(?:[\d.]+%\s*)?cash\s*back|rewards?\s*cash|(?:available|account)?\s*balance|credit\s*limit)\s*:?$',
+        caseSensitive: false,
+      ).hasMatch(value);
       if (_excludeMoney.hasMatch(value) || belongsToExcludedLabel) continue;
       final decimal = _money.firstMatch(value);
       if (decimal != null &&
@@ -138,10 +152,22 @@ abstract final class FinancialReceiptInterpreter {
       final match = _money.firstMatch(labeledAmount);
       if (match != null &&
           match.start == 0 &&
-          match.end == labeledAmount.length) {
+          RegExp(
+            r'^(?:\s+USD)?$',
+            caseSensitive: false,
+          ).hasMatch(labeledAmount.substring(match.end))) {
         candidates[_normalizedMoney(match)] = labeledAmount;
       } else if (whole.hasMatch(labeledAmount)) {
-        unresolved = true;
+        final resolved = lines
+            .where((line) => line.text.trim() == labeledAmount)
+            .map((line) => _raisedCents(line, lines))
+            .whereType<String>()
+            .toSet();
+        if (resolved.length == 1) {
+          candidates[resolved.single] = '$labeledAmount + raised cents';
+        } else {
+          unresolved = true;
+        }
       }
     }
     final amountNeedsReview = unresolved || candidates.length > 1;
