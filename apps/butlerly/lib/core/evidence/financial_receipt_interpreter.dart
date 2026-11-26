@@ -332,15 +332,27 @@ abstract final class FinancialReceiptInterpreter {
       return _purchaseMoney.hasMatch(value) || whole.hasMatch(value);
     }
 
+    if (index + 1 < lines.length) {
+      final next = lines[index + 1];
+      final nextBounds = next.normalizedBounds;
+      if (next.pageIndex == anchor.pageIndex &&
+          isMoney(next.text) &&
+          (bounds.height == 0 ||
+              ((bounds.left - nextBounds.left).abs() < .12 &&
+                  nextBounds.top - bounds.top < .08))) {
+        return next;
+      }
+    }
     if (bounds.height > 0) {
       final sameRow = lines.where((line) {
         final candidate = line.normalizedBounds;
+        final leftGap = bounds.left - (candidate.left + candidate.width);
         return line.pageIndex == anchor.pageIndex &&
             candidate.height > 0 &&
             (candidate.left >= bounds.left + bounds.width * .8 ||
                 (!anchor.text.contains('%') &&
-                    candidate.left + candidate.width <=
-                        bounds.left + bounds.width * .2)) &&
+                    leftGap >= 0 &&
+                    leftGap < .15)) &&
             (candidate.top +
                         candidate.height / 2 -
                         bounds.top -
@@ -350,17 +362,6 @@ abstract final class FinancialReceiptInterpreter {
             isMoney(line.text);
       }).toList();
       if (sameRow.length == 1) return sameRow.single;
-      if (sameRow.isNotEmpty) return null;
-    }
-    if (index + 1 >= lines.length) return null;
-    final next = lines[index + 1];
-    final nextBounds = next.normalizedBounds;
-    if (next.pageIndex == anchor.pageIndex &&
-        isMoney(next.text) &&
-        (bounds.height == 0 ||
-            ((bounds.left - nextBounds.left).abs() < .12 &&
-                nextBounds.top - bounds.top < .08))) {
-      return next;
     }
     return null;
   }

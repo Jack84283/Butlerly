@@ -414,6 +414,32 @@ Posted on November 23, 2026
     },
   );
 
+  test('pairs a stacked reward without excluding a purchase to its left', () {
+    final result = ReceiptExtractor.extract(
+      r'Transaction Details $4.99 Cash back earned $0.25',
+      const [
+        OcrObservation(text: 'Transaction Details', confidence: .9),
+        OcrObservation(
+          text: r'$4.99',
+          confidence: .9,
+          bounds: OcrBounds(left: .06, top: .15, width: .13, height: .04),
+        ),
+        OcrObservation(
+          text: 'Cash back earned',
+          confidence: .9,
+          bounds: OcrBounds(left: .6, top: .15, width: .3, height: .04),
+        ),
+        OcrObservation(
+          text: r'$0.25',
+          confidence: .9,
+          bounds: OcrBounds(left: .6, top: .20, width: .15, height: .04),
+        ),
+      ],
+    );
+    expect(result.amount, '4.99');
+    expect(result.cashBackReward, '0.25');
+  });
+
   test('excludes separated rewards in every supported USD format', () {
     for (final reward in [r'$0.25 USD', r'US$0.25', r'+US$0.25']) {
       final result = ReceiptTextParser.parse('''
