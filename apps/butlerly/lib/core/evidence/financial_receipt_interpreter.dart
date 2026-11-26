@@ -111,10 +111,10 @@ abstract final class FinancialReceiptInterpreter {
           });
 
     final evidence = <String, String>{};
-    final labeledAmount = _field(
+    final labeledAmounts = _fields(
       lines,
-      RegExp(r'^amount\s*:?\s*', caseSensitive: false),
-    );
+      RegExp(r'^amount\b\s*:?\s*', caseSensitive: false),
+    ).toList();
     final header = lines.takeWhile(
       (line) => !RegExp(
         r'^(?:posted on|posting date|appears on your statement as|on your statement as|merchant details)\b',
@@ -125,7 +125,8 @@ abstract final class FinancialReceiptInterpreter {
     var unresolved = false;
     final whole = RegExp(r'^\s*\$\s*\d[\d, ]*\s*$');
     var previousExcludedLabel = false;
-    for (final line in header) {
+    for (final line
+        in labeledAmounts.isEmpty ? header : const <OcrObservation>[]) {
       final value = line.text.trim();
       if (value.isEmpty) continue;
       final belongsToExcludedLabel = previousExcludedLabel;
@@ -148,7 +149,8 @@ abstract final class FinancialReceiptInterpreter {
         }
       }
     }
-    if (labeledAmount != null && !_excludeMoney.hasMatch(labeledAmount)) {
+    for (final labeledAmount in labeledAmounts) {
+      if (_excludeMoney.hasMatch(labeledAmount)) continue;
       final match = _money.firstMatch(labeledAmount);
       if (match != null &&
           match.start == 0 &&
@@ -176,6 +178,10 @@ abstract final class FinancialReceiptInterpreter {
         : null;
     if (amount != null) evidence['amount'] = candidates[amount]!;
     final rewards = <String>{};
+    final separateRewardLabel = RegExp(
+      r'^(?:(?:[\d.]+%\s*)?cash\s*back|rewards?\s*cash)\s*:?$',
+      caseSensitive: false,
+    );
     final rewardLabel = RegExp(
       r'cash\s*back|rewards?\s*cash',
       caseSensitive: false,
@@ -184,7 +190,11 @@ abstract final class FinancialReceiptInterpreter {
       if (!rewardLabel.hasMatch(line.text)) continue;
       final matches = _money.allMatches(line.text).toList();
       rewards.addAll(matches.map(_normalizedMoney));
-      if (matches.isNotEmpty || index + 1 == lines.length) continue;
+      if (matches.isNotEmpty ||
+          !separateRewardLabel.hasMatch(line.text.trim()) ||
+          index + 1 == lines.length) {
+        continue;
+      }
       final next = lines[index + 1];
       final value = next.text.trim();
       final match = _money.firstMatch(value);

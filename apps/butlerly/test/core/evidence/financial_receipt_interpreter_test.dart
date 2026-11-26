@@ -186,6 +186,7 @@ Credit card expiry 01/2030
   test('accepts an explicit USD currency suffix on a labeled amount', () {
     final result = ReceiptTextParser.parse(r'''
 Transaction Details
+$120
 Amount: $4.99 USD
 ''');
     expect(result.amount, '4.99');
@@ -335,6 +336,17 @@ Mobile Service
 Made on Friday, August 16, 2026
 ''');
     expect(result.amount, isNull);
+  });
+
+  test('does not use marketing copy as a cash-back value label', () {
+    final result = ReceiptTextParser.parse(r'''
+Transaction Details
+Earn 5% cash back
+$4.99
+Posted on November 23, 2026
+''');
+    expect(result.amount, '4.99');
+    expect(result.cashBackReward, isNull);
   });
 
   test('does not promote a reward or balance separated from its label', () {
