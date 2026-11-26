@@ -78,7 +78,7 @@ import Vision
 
   static func recognizeText(
     at path: String,
-    receiptGeometry: Bool,
+    receiptGeometry: Bool = false,
     result: @escaping FlutterResult
   ) {
     let url = URL(fileURLWithPath: path)
