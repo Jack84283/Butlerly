@@ -361,16 +361,18 @@ Posted on November 23, 2026
   });
 
   test('does not promote a reward or balance separated from its label', () {
-    final result = ReceiptTextParser.parse(r'''
+    for (final label in ['5% cash back', 'Cash back earned']) {
+      final result = ReceiptTextParser.parse('''
 Transaction Details
-5% cash back
-$0.25
+$label
+\$0.25
 Available balance
-$120.00
+\$120.00
 Posted on November 23, 2026
 ''');
-    expect(result.amount, isNull);
-    expect(result.cashBackReward, '0.25');
+      expect(result.amount, isNull);
+      expect(result.cashBackReward, '0.25');
+    }
   });
 
   test('does not treat a USPS line-item price as a verified total', () {

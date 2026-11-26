@@ -52,6 +52,10 @@ abstract final class FinancialReceiptInterpreter {
     r'\s*:?\s*$',
     caseSensitive: false,
   );
+  static final _separateRewardLabel = RegExp(
+    r'^(?:(?:[\d.]+%\s*)?cash\s*back(?:\s+earned)?|rewards?\s*cash(?:\s+earned)?)\s*:?$',
+    caseSensitive: false,
+  );
   static final _excludeMoney = RegExp(
     r'cash\s*back|rewards?\s*cash|points?\s*earned|'
     r'reward|savings|subtotal|sales?\s*tax|tip|'
@@ -134,10 +138,12 @@ abstract final class FinancialReceiptInterpreter {
       final value = line.text.trim();
       if (value.isEmpty) continue;
       final belongsToExcludedLabel = previousExcludedLabel;
-      previousExcludedLabel = RegExp(
-        r'^(?:(?:[\d.]+%\s*)?cash\s*back|rewards?\s*cash|(?:available|account)?\s*balance|credit\s*limit)\s*:?$',
-        caseSensitive: false,
-      ).hasMatch(value);
+      previousExcludedLabel =
+          _separateRewardLabel.hasMatch(value) ||
+          RegExp(
+            r'^(?:(?:available|account)?\s*balance|credit\s*limit)\s*:?$',
+            caseSensitive: false,
+          ).hasMatch(value);
       if (_excludeMoney.hasMatch(value) || belongsToExcludedLabel) continue;
       final decimal = _purchaseMoney.firstMatch(value);
       if (decimal != null) {
@@ -186,10 +192,6 @@ abstract final class FinancialReceiptInterpreter {
         : null;
     if (amount != null) evidence['amount'] = candidates[amount]!;
     final rewards = <String>{};
-    final separateRewardLabel = RegExp(
-      r'^(?:(?:[\d.]+%\s*)?cash\s*back|rewards?\s*cash)\s*:?$',
-      caseSensitive: false,
-    );
     final rewardLabel = RegExp(
       r'cash\s*back|rewards?\s*cash',
       caseSensitive: false,
@@ -199,7 +201,7 @@ abstract final class FinancialReceiptInterpreter {
       final matches = _money.allMatches(line.text).toList();
       rewards.addAll(matches.map(_normalizedMoney));
       if (matches.isNotEmpty ||
-          !separateRewardLabel.hasMatch(line.text.trim()) ||
+          !_separateRewardLabel.hasMatch(line.text.trim()) ||
           index + 1 == lines.length) {
         continue;
       }
