@@ -386,6 +386,30 @@ Posted on November 23, 2026
     expect(result.cashBackReward, isNull);
   });
 
+  test(
+    'associates a split reward when its value precedes the label vertically',
+    () {
+      final result = ReceiptExtractor.extract(
+        r'Transaction Details Cash back earned $0.25',
+        const [
+          OcrObservation(text: 'Transaction Details', confidence: .9),
+          OcrObservation(
+            text: 'Cash back earned',
+            confidence: .9,
+            bounds: OcrBounds(left: .05, top: .16, width: .45, height: .04),
+          ),
+          OcrObservation(
+            text: r'$0.25',
+            confidence: .9,
+            bounds: OcrBounds(left: .65, top: .155, width: .22, height: .04),
+          ),
+        ],
+      );
+      expect(result.amount, isNull);
+      expect(result.cashBackReward, '0.25');
+    },
+  );
+
   test('does not promote a reward or balance separated from its label', () {
     for (final label in ['5% cash back', 'Cash back earned']) {
       final result = ReceiptTextParser.parse('''

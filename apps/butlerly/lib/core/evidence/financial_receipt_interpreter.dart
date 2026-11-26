@@ -131,6 +131,32 @@ abstract final class FinancialReceiptInterpreter {
         caseSensitive: false,
       ).hasMatch(line.text.trim()),
     );
+    final balances = RegExp(
+      r'^(?:(?:available|account)?\s*balance|credit\s*limit)\s*:?$',
+      caseSensitive: false,
+    );
+    final rewardLabel = RegExp(
+      r'cash\s*back|rewards?\s*cash',
+      caseSensitive: false,
+    );
+    final excludedValues = <OcrObservation>{};
+    final rewards = <String>{};
+    for (final (index, line) in lines.indexed) {
+      final value = line.text.trim();
+      final isReward = _separateRewardLabel.hasMatch(value);
+      if (isReward || balances.hasMatch(value)) {
+        final paired = _adjacentMoney(lines, index);
+        if (paired != null) {
+          excludedValues.add(paired);
+          if (isReward) {
+            final match = _money.firstMatch(paired.text);
+            if (match != null) rewards.add(_normalizedMoney(match));
+          }
+        }
+      } else if (rewardLabel.hasMatch(value)) {
+        rewards.addAll(_money.allMatches(value).map(_normalizedMoney));
+      }
+    }
     final candidates = <String, String>{};
     final explicitUsdAmounts = <String>{};
     void recordDecimal(RegExpMatch match, String value) {
@@ -144,19 +170,11 @@ abstract final class FinancialReceiptInterpreter {
 
     var unresolved = false;
     final whole = RegExp(r'^\s*\$\s*\d[\d, ]*\s*$');
-    var previousExcludedLabel = false;
     for (final line
         in labeledAmounts.isEmpty ? header : const <OcrObservation>[]) {
       final value = line.text.trim();
-      if (value.isEmpty) continue;
-      final belongsToExcludedLabel = previousExcludedLabel;
-      previousExcludedLabel =
-          _separateRewardLabel.hasMatch(value) ||
-          RegExp(
-            r'^(?:(?:available|account)?\s*balance|credit\s*limit)\s*:?$',
-            caseSensitive: false,
-          ).hasMatch(value);
-      if (_excludeMoney.hasMatch(value) || belongsToExcludedLabel) continue;
+      if (_excludeMoney.hasMatch(value) || excludedValues.contains(line))
+        continue;
       final decimal = _purchaseMoney.firstMatch(value);
       if (decimal != null) {
         recordDecimal(decimal, value);
@@ -170,7 +188,9 @@ abstract final class FinancialReceiptInterpreter {
       }
     }
     for (final (labeledAmount, source) in labeledAmounts) {
-      if (_excludeMoney.hasMatch(labeledAmount)) continue;
+      if (_excludeMoney.hasMatch(labeledAmount) ||
+          excludedValues.contains(source))
+        continue;
       final match = _purchaseMoney.firstMatch(labeledAmount);
       if (match != null) {
         recordDecimal(match, labeledAmount);
@@ -211,36 +231,6 @@ abstract final class FinancialReceiptInterpreter {
               RegExp(r'^[A-Z]{3}$').hasMatch(explicitCurrency)
         ? explicitCurrency
         : null;
-    final rewards = <String>{};
-    final rewardLabel = RegExp(
-      r'cash\s*back|rewards?\s*cash',
-      caseSensitive: false,
-    );
-    for (final (index, line) in lines.indexed) {
-      if (!rewardLabel.hasMatch(line.text)) continue;
-      final matches = _money.allMatches(line.text).toList();
-      rewards.addAll(matches.map(_normalizedMoney));
-      if (matches.isNotEmpty ||
-          !_separateRewardLabel.hasMatch(line.text.trim()) ||
-          index + 1 == lines.length) {
-        continue;
-      }
-      final next = lines[index + 1];
-      final value = next.text.trim();
-      final match = _money.firstMatch(value);
-      if (match == null || !RegExp(r'^\+?\$[\d,.]+$').hasMatch(value)) {
-        continue;
-      }
-      final bounds = line.normalizedBounds;
-      final nextBounds = next.normalizedBounds;
-      if (line.pageIndex == next.pageIndex &&
-          (bounds.height == 0 ||
-              ((bounds.left - nextBounds.left).abs() < .12 &&
-                  nextBounds.top - bounds.top < .08))) {
-        rewards.add(_normalizedMoney(match));
-      }
-    }
-
     final description =
         _field(
           lines,
@@ -328,6 +318,40 @@ abstract final class FinancialReceiptInterpreter {
       issuerCategory: issuerCategory,
       evidence: evidence,
     );
+  }
+
+  static OcrObservation? _adjacentMoney(List<OcrObservation> lines, int index) {
+    final anchor = lines[index];
+    final bounds = anchor.normalizedBounds;
+    final money = RegExp(r'^\+?\$\s*\d[\d,. ]*$');
+    if (bounds.height > 0) {
+      final sameRow = lines.where((line) {
+        final candidate = line.normalizedBounds;
+        return line.pageIndex == anchor.pageIndex &&
+            candidate.height > 0 &&
+            candidate.left >= bounds.left + bounds.width * .8 &&
+            (candidate.top +
+                        candidate.height / 2 -
+                        bounds.top -
+                        bounds.height / 2)
+                    .abs() <=
+                bounds.height * .65 &&
+            money.hasMatch(line.text.trim());
+      }).toList();
+      if (sameRow.length == 1) return sameRow.single;
+      if (sameRow.isNotEmpty) return null;
+    }
+    if (index + 1 >= lines.length) return null;
+    final next = lines[index + 1];
+    final nextBounds = next.normalizedBounds;
+    if (next.pageIndex == anchor.pageIndex &&
+        money.hasMatch(next.text.trim()) &&
+        (bounds.height == 0 ||
+            ((bounds.left - nextBounds.left).abs() < .12 &&
+                nextBounds.top - bounds.top < .08))) {
+      return next;
+    }
+    return null;
   }
 
   static String _normalizedMoney(RegExpMatch match) =>
