@@ -47,7 +47,7 @@ abstract final class FinancialReceiptInterpreter {
   );
   static final _money = RegExp(r'\$\s*(\d+(?:,\d{3})*)\.(\d{2})(?!\d)');
   static final _purchaseMoney = RegExp(
-    r'^(?:US)?\$\s*(\d+(?:,\d{3})*)\.(\d{2})(?:\s+USD)?$',
+    r'^(?:US)?\$\s*(\d+(?:,\d{3})*)\.(\d{2})(?:\s+(USD|CAD|AUD|NZD|HKD|SGD|EUR|GBP|CNY|JPY))?$',
     caseSensitive: false,
   );
   static final _label = RegExp(
@@ -165,8 +165,9 @@ abstract final class FinancialReceiptInterpreter {
       candidates[amount] = value;
       final upper = value.toUpperCase();
       final currencies = currencyByAmount.putIfAbsent(amount, () => <String>{});
-      if (upper.startsWith(r'US$') || upper.endsWith(' USD')) {
-        currencies.add('USD');
+      if (upper.startsWith(r'US$')) currencies.add('USD');
+      if (_purchaseMoney.firstMatch(value)?.group(3) case final code?) {
+        currencies.add(code.toUpperCase());
       }
       final index = lines.indexOf(source);
       if (index >= 0 && index + 1 < lines.length) {

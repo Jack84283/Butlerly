@@ -200,15 +200,18 @@ Credit card expiry 01/2030
     expect(result.cardLast4, '1234');
   });
 
-  test('honors a separate currency observation linked to the purchase', () {
-    final result = ReceiptTextParser.parse(r'''
-Transaction Details
-Amount: $4.99
-EUR
-Made on November 23, 2026
-''');
-    expect(result.amount, '4.99');
-    expect(result.currency, 'EUR');
+  test('honors currency on the same or separate purchase observation', () {
+    for (final amount in [
+      r'$4.99 EUR',
+      r'$4.99'
+          '\nEUR',
+    ]) {
+      final result = ReceiptTextParser.parse(
+        'Transaction Details\nAmount: $amount\nMade on November 23, 2026',
+      );
+      expect(result.amount, '4.99');
+      expect(result.currency, 'EUR');
+    }
   });
 
   test('uses explicit currency and flags conflicting currency evidence', () {
