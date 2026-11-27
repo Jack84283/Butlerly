@@ -413,6 +413,21 @@ Amount: $4.99 XYZ
     expect(result.date, DateTime(2026, 11, 23));
   });
 
+  test('finds merchant when Made on follows the statement description', () {
+    final result = ReceiptTextParser.parse(
+      'Transaction Details\n'
+      '\$12.50\n'
+      'Coffee Shop\n'
+      'Learn more about this merchant\n'
+      'Appears on your statement as:\n'
+      'COFFEE SHOP CA\n'
+      'Made on November 23, 2026',
+    );
+    expect(result.merchant, 'Coffee Shop');
+    expect(result.date, DateTime(2026, 11, 23));
+    expect(result.originalMerchantDescription, 'COFFEE SHOP CA');
+  });
+
   test('never treats the original statement description as the merchant', () {
     final result = ReceiptTextParser.parse(
       'Transaction Details\n'

@@ -661,6 +661,9 @@ abstract final class FinancialReceiptInterpreter {
     if (purchaseAnchor >= 0) {
       final boundary = end >= 0 ? end : lines.length;
       final segments = <List<OcrObservation>>[
+        // Some banks put "Made on" after the statement descriptor. The
+        // merchant then appears before the descriptor, not before the date.
+        if (purchaseAnchor > boundary) lines.sublist(0, boundary),
         if (purchaseAnchor <= boundary) lines.sublist(0, purchaseAnchor),
         if (purchaseAnchor + 1 < boundary)
           lines.sublist(purchaseAnchor + 1, boundary),
