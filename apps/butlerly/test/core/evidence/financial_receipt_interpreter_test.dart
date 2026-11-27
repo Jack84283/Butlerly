@@ -380,23 +380,26 @@ Amount: $4.99 XYZ
     expect(result.currency, 'EUR');
   });
 
-  test('recognizes a merchant before the purchase date without posting date', () {
-    for (final label in ['Made on', 'Purchase date', 'Transaction date']) {
-      final result = ReceiptTextParser.parse(
-        'Transaction Details\n'
-        '\$12.50\n'
-        'Coffee Shop\n'
-        '$label November 23, 2026\n'
-        'Appears on your statement as:\n'
-        'COFFEE SHOP CA\n'
-        'Call Merchant',
-      );
-      expect(result.amount, '12.50', reason: label);
-      expect(result.merchant, 'Coffee Shop', reason: label);
-      expect(result.date, DateTime(2026, 11, 23), reason: label);
-      expect(result.originalMerchantDescription, 'COFFEE SHOP CA');
-    }
-  });
+  test(
+    'recognizes a merchant before the purchase date without posting date',
+    () {
+      for (final label in ['Made on', 'Purchase date', 'Transaction date']) {
+        final result = ReceiptTextParser.parse(
+          'Transaction Details\n'
+          '\$12.50\n'
+          'Coffee Shop\n'
+          '$label November 23, 2026\n'
+          'Appears on your statement as:\n'
+          'COFFEE SHOP CA\n'
+          'Call Merchant',
+        );
+        expect(result.amount, '12.50', reason: label);
+        expect(result.merchant, 'Coffee Shop', reason: label);
+        expect(result.date, DateTime(2026, 11, 23), reason: label);
+        expect(result.originalMerchantDescription, 'COFFEE SHOP CA');
+      }
+    },
+  );
 
   test('recognizes a merchant after a split purchase-date label', () {
     final result = ReceiptTextParser.parse(

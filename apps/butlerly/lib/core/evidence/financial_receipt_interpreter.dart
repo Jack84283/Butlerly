@@ -674,7 +674,8 @@ abstract final class FinancialReceiptInterpreter {
             .where(_merchantCandidate)
             .toList(growable: false);
         if (candidates.isNotEmpty &&
-            candidates.map((value) => value.toLowerCase()).toSet().length == 1) {
+            candidates.map((value) => value.toLowerCase()).toSet().length ==
+                1) {
           return candidates.first;
         }
       }
