@@ -201,11 +201,23 @@ abstract final class FinancialReceiptInterpreter {
         final code = next.text.trim().toUpperCase();
         final bounds = source.normalizedBounds;
         final adjacent = next.normalizedBounds;
+        final rightGap = adjacent.left - bounds.left - bounds.width;
+        final centerGap =
+            (adjacent.top +
+                    adjacent.height / 2 -
+                    bounds.top -
+                    bounds.height / 2)
+                .abs();
+        final sameRow =
+            rightGap >= -.01 &&
+            rightGap < .08 &&
+            centerGap <= bounds.height * .65;
+        final directlyBelow =
+            adjacent.top - bounds.top < .08 &&
+            (adjacent.left - bounds.left).abs() < .12;
         if (next.pageIndex == source.pageIndex &&
             _currencyToken.hasMatch(next.text.trim()) &&
-            (bounds.height == 0 ||
-                (adjacent.top - bounds.top < .08 &&
-                    (adjacent.left - bounds.left).abs() < .12))) {
+            (bounds.height == 0 || sameRow || directlyBelow)) {
           currencies.add(_recognizedCurrencyCodes.contains(code) ? code : '?');
         }
       }

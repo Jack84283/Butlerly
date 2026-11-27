@@ -215,19 +215,38 @@ Credit card expiry 01/2030
   });
 
   test('flags unknown currency-like tokens and recognizes MXN', () {
-    const prefix = 'Transaction Details\nAmount: ';
-    expect(
-      ReceiptTextParser.parse(
-        prefix +
-            r'$4.99'
-                '\nMXN',
-      ).currency,
-      'MXN',
-    );
-    final unknown = ReceiptTextParser.parse(prefix + r'$4.99 XYZ');
+    final mxn = ReceiptTextParser.parse(r'''
+Transaction Details
+Amount: $4.99
+MXN
+''');
+    expect(mxn.currency, 'MXN');
+    final unknown = ReceiptTextParser.parse(r'''
+Transaction Details
+Amount: $4.99 XYZ
+''');
     expect(unknown.amount, '4.99');
     expect(unknown.currency, isNull);
     expect(unknown.currencyNeedsReview, isTrue);
+  });
+
+  test('recognizes a currency label beside a wide amount box', () {
+    final result =
+        ReceiptExtractor.extract(r'Transaction Details $4.99 EUR', const [
+          OcrObservation(text: 'Transaction Details', confidence: .9),
+          OcrObservation(
+            text: r'$4.99',
+            confidence: .9,
+            bounds: OcrBounds(left: .1, top: .2, width: .2, height: .04),
+          ),
+          OcrObservation(
+            text: 'EUR',
+            confidence: .9,
+            bounds: OcrBounds(left: .31, top: .2, width: .08, height: .04),
+          ),
+        ]);
+    expect(result.amount, '4.99');
+    expect(result.currency, 'EUR');
   });
 
   test('does not substitute the posting date for a missing merchant', () {
