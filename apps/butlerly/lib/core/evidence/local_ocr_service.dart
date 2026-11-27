@@ -447,7 +447,9 @@ abstract final class ReceiptExtractor {
     final amount = _rankedAmount(ordered);
     final tax = _keyword(ordered, const ['sales tax', 'tax']);
     final tip = _keyword(ordered, const ['tip', 'gratuity']);
-    final date = _date(_normalize(text));
+    // Preserve OCR line boundaries so context labels like Date of Birth
+    // cannot suppress an actual purchase date on the following line.
+    final date = _date(text);
     final currency = _currency(text);
     final payment = _paymentRegion(ordered);
     final cardLast4 = payment.lastFour;
@@ -888,6 +890,19 @@ abstract final class ReceiptExtractor {
       r'date\s+of\s+birth|birth\s*date|\bdob\b',
     ).hasMatch(precedingOnLine)) {
       return true;
+    }
+    // Vision can split the birth-date label from its value. Exclude the
+    // numeric line only when the preceding line is precisely that label.
+    if (lineStart > 0) {
+      final previousEnd = lineStart - 1;
+      final previousStart = text.lastIndexOf('\n', previousEnd - 1) + 1;
+      final previousLine = text.substring(previousStart, previousEnd).trim();
+      if (RegExp(
+        r'^(?:date\s+of\s+birth|birth\s*date|dob)\s*[:=]?\s*$',
+        caseSensitive: false,
+      ).hasMatch(previousLine)) {
+        return true;
+      }
     }
     final context = text
         .substring(start > 32 ? start - 32 : 0, start)
