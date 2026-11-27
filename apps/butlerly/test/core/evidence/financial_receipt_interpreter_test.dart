@@ -242,7 +242,7 @@ Amount: $4.99 XYZ
           OcrObservation(
             text: 'EUR',
             confidence: .9,
-            bounds: OcrBounds(left: .31, top: .2, width: .08, height: .04),
+            bounds: OcrBounds(left: .31, top: .19, width: .08, height: .03),
           ),
         ]);
     expect(result.amount, '4.99');

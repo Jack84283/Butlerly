@@ -187,8 +187,40 @@ abstract final class FinancialReceiptInterpreter {
               : '?',
         );
       }
-      final index = lines.indexOf(source);
-      if (index >= 0 && index + 1 < lines.length) {
+      final bounds = source.normalizedBounds;
+      if (bounds.height > 0) {
+        for (final observation in lines) {
+          final text = observation.text.trim();
+          if (observation.pageIndex != source.pageIndex ||
+              !_currencyToken.hasMatch(text)) {
+            continue;
+          }
+          final adjacent = observation.normalizedBounds;
+          final rightGap = adjacent.left - bounds.left - bounds.width;
+          final centerGap =
+              (adjacent.top +
+                      adjacent.height / 2 -
+                      bounds.top -
+                      bounds.height / 2)
+                  .abs();
+          final belowGap = adjacent.top - bounds.top;
+          final sameRow =
+              rightGap >= -.01 &&
+              rightGap < .08 &&
+              centerGap <= bounds.height * .65;
+          final directlyBelow =
+              belowGap > 0 &&
+              belowGap < .08 &&
+              (adjacent.left - bounds.left).abs() < .12;
+          if (adjacent.height > 0 && (sameRow || directlyBelow)) {
+            currencies.add(
+              _recognizedCurrencyCodes.contains(text) ? text : '?',
+            );
+          }
+        }
+      } else {
+        final index = lines.indexOf(source);
+        if (index < 0 || index + 1 >= lines.length) return;
         final afterAmount = index + 1;
         final nextIndex =
             value.endsWith(' + raised cents') &&
@@ -198,27 +230,10 @@ abstract final class FinancialReceiptInterpreter {
             : afterAmount;
         if (nextIndex >= lines.length) return;
         final next = lines[nextIndex];
-        final code = next.text.trim().toUpperCase();
-        final bounds = source.normalizedBounds;
-        final adjacent = next.normalizedBounds;
-        final rightGap = adjacent.left - bounds.left - bounds.width;
-        final centerGap =
-            (adjacent.top +
-                    adjacent.height / 2 -
-                    bounds.top -
-                    bounds.height / 2)
-                .abs();
-        final sameRow =
-            rightGap >= -.01 &&
-            rightGap < .08 &&
-            centerGap <= bounds.height * .65;
-        final directlyBelow =
-            adjacent.top - bounds.top < .08 &&
-            (adjacent.left - bounds.left).abs() < .12;
+        final text = next.text.trim();
         if (next.pageIndex == source.pageIndex &&
-            _currencyToken.hasMatch(next.text.trim()) &&
-            (bounds.height == 0 || sameRow || directlyBelow)) {
-          currencies.add(_recognizedCurrencyCodes.contains(code) ? code : '?');
+            _currencyToken.hasMatch(text)) {
+          currencies.add(_recognizedCurrencyCodes.contains(text) ? text : '?');
         }
       }
     }
