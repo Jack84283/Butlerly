@@ -26,6 +26,85 @@ VISA **** 1234
     },
   );
 
+  test('Costco itemized receipt preserves verified total without a date', () {
+    // Sanitized reproduction of an actual sideways Costco photo: never store
+    // membership, card or customer details from the original image as a fixture.
+    const text = '''
+COSTCO WHOLESALE
+Mountain View #143
+5P Member [redacted]
+E 545345 KS PISTACHIO 19.99
+E 1652577 KS UNSLT NUT 17.49
+E 61575 SWEET POTATO 5.99
+E 7145 10LB BAKERS 4.99
+E 120413 ORGANIC TOFU 6.99
+E 1116045 PRAWN HACAO 15.39
+E 0000397637 / 1116045 4.60-
+E 638854 MINI WONTONS 9.99
+E 0000395645 / 638854 2.50-
+E 50302 BACARDI LGHT 16.89 A
+Date of Birth = 08/21/2005 KEYED
+5400000000 CA REDEMP VA 0.10 A
+E 1068080 PASTURE EGGS 8.99
+SUBTOTAL 141.02
+TAX 1.66
+**** TOTAL 142.68
+''';
+    final result = ReceiptTextParser.parse(text);
+    expect(result.merchant, 'COSTCO WHOLESALE');
+    expect(result.amount, '142.68');
+    expect(result.tax, '1.66');
+    expect(result.date, isNull);
+    expect(result.cardLast4, isNull);
+    expect(result.amountNeedsReview, isFalse);
+    expect(result.isScreenshot, isFalse);
+  });
+
+  test('Costco dark total box can be split from the TOTAL label', () {
+    const text = '''
+COSTCO WHOLESALE
+E 545345 KS PISTACHIO 19.99
+E 1652577 KS UNSLT NUT 17.49
+SUBTOTAL 141.02
+TAX 1.66
+**** TOTAL
+142.68
+''';
+    final result = ReceiptTextParser.parse(text);
+    expect(result.amount, '142.68');
+    expect(result.merchant, 'COSTCO WHOLESALE');
+  });
+
+  test('missing total on an itemized receipt never selects an item price', () {
+    const text = '''
+COSTCO WHOLESALE
+E 545345 KS PISTACHIO 19.99
+E 1652577 KS UNSLT NUT 17.49
+E 120413 ORGANIC TOFU 6.99
+SUBTOTAL 44.47
+TAX 1.66
+''';
+    final result = ReceiptTextParser.parse(text);
+    expect(result.merchant, 'COSTCO WHOLESALE');
+    expect(result.amount, isNull);
+  });
+
+  test('date of birth is not a transaction date even when not redacted', () {
+    final withoutPurchase = ReceiptTextParser.parse('''
+COSTCO WHOLESALE
+Date of Birth = 08/21/2005 KEYED
+TOTAL 22.00
+''');
+    expect(withoutPurchase.date, isNull);
+    final withPurchase = ReceiptTextParser.parse('''
+COSTCO WHOLESALE
+Date of Birth = 08/21/2005 KEYED
+11/27/2026
+TOTAL 22.00
+''');
+    expect(withPurchase.date, DateTime(2026, 11, 27));
+  });
+
   test('prefers labeled total over unrelated larger values', () {
     const text = '''
 STORE
