@@ -708,11 +708,13 @@ abstract final class ReceiptExtractor {
         if (!isolatedLabel || index + 1 >= lines.length) continue;
         final next = lines[index + 1];
         final valueText = _normalize(next.text);
-        if (!RegExp(r'^(?:USD\s*|\$\s*)?\d{1,6}(?:,\d{3})*\.\d{2}$')
-            .hasMatch(valueText)) {
+        if (!RegExp(
+          r'^(?:USD\s*|\$\s*)?\d{1,6}(?:,\d{3})*\.\d{2}$',
+        ).hasMatch(valueText)) {
           continue;
         }
-        final nearby = line.height <= 0 ||
+        final nearby =
+            line.height <= 0 ||
             next.height <= 0 ||
             (next.top - line.top).abs() < .075;
         if (nearby) {
@@ -882,8 +884,9 @@ abstract final class ReceiptExtractor {
     // the *next* line remains eligible.
     final lineStart = text.lastIndexOf('\n', start - 1) + 1;
     final precedingOnLine = text.substring(lineStart, start).toLowerCase();
-    if (RegExp(r'date\s+of\s+birth|birth\s*date|\bdob\b')
-        .hasMatch(precedingOnLine)) {
+    if (RegExp(
+      r'date\s+of\s+birth|birth\s*date|\bdob\b',
+    ).hasMatch(precedingOnLine)) {
       return true;
     }
     final context = text
