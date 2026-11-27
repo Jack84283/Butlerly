@@ -95,6 +95,13 @@ Date of Birth = 08/21/2005 KEYED
 TOTAL 22.00
 ''');
     expect(withoutPurchase.date, isNull);
+    final splitBirthDate = ReceiptTextParser.parse('''
+COSTCO WHOLESALE
+Date of Birth =
+08/21/2005 KEYED
+TOTAL 22.00
+''');
+    expect(splitBirthDate.date, isNull);
     final withPurchase = ReceiptTextParser.parse('''
 COSTCO WHOLESALE
 Date of Birth = 08/21/2005 KEYED
