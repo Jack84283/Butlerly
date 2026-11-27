@@ -64,52 +64,110 @@ class AndroidMlKitOcrRecognizer(private val activity: Activity) {
         val orientationTransform = exifTransform(readExifOrientation(path))
         val orientedBitmap = transform(bitmap, orientationTransform)
         if (orientedBitmap !== bitmap) bitmap.recycle()
-        val width = orientedBitmap.width
-        val height = orientedBitmap.height
         val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-        try {
-            // The original evidence file is never modified; this bounded bitmap
-            // exists only for the duration of this recognition request.
-            recognizer.process(InputImage.fromBitmap(orientedBitmap, 0))
-                .addOnSuccessListener { text ->
-                    if (text.text.isBlank()) {
-                        result.error("no_text", "No readable text was found.", mapOf("stage" to "mlKitRecognition"))
-                        orientedBitmap.recycle()
-                        recognizer.close()
-                        return@addOnSuccessListener
-                    }
-                    var order = 0
-                    val observations = text.textBlocks.flatMap { block ->
-                        block.lines.map { line -> observation(line, width, height, order++) }
-                    }
-                    val diagnostics = mapOf(
-                        "sourceKind" to "image",
-                        "sourceOpened" to true,
-                        "pageCount" to 1,
-                        "observationCount" to observations.size,
-                        "recognizedLineCount" to observations.count { (it["text"] as String).isNotBlank() },
-                        "observationsWithBounds" to observations.count { (it["width"] as Double) > 0 && (it["height"] as Double) > 0 },
-                        "visionObservationCount" to observations.size,
-                        "confidenceMinimum" to observations.minOfOrNull { it["confidence"] as Double },
-                        "confidenceAverage" to observations.map { it["confidence"] as Double }.average(),
-                        "confidenceMaximum" to observations.maxOfOrNull { it["confidence"] as Double },
-                        "pixelWidth" to width,
-                        "pixelHeight" to height,
-                    )
-                    result.success(mapOf("text" to text.text, "observations" to observations, "diagnostics" to diagnostics))
-                    orientedBitmap.recycle()
-                    recognizer.close()
+        data class Candidate(val text: Text, val rotation: Int, val score: Double)
+        var best: Candidate? = null
+
+        fun finishRecognition() {
+            try {
+                val chosen = best
+                if (chosen == null || chosen.text.text.isBlank()) {
+                    result.error("no_text", "No readable text was found.", mapOf("stage" to "mlKitRecognition"))
+                    return
                 }
-                .addOnFailureListener { error ->
-                    result.error("ocr_failed", "Local text recognition failed.", mapOf("stage" to "mlKitRecognition", "type" to error.javaClass.simpleName))
-                    orientedBitmap.recycle()
-                    recognizer.close()
+                val width = if (chosen.rotation % 180 == 0) orientedBitmap.width else orientedBitmap.height
+                val height = if (chosen.rotation % 180 == 0) orientedBitmap.height else orientedBitmap.width
+                var order = 0
+                val observations = chosen.text.textBlocks.flatMap { block ->
+                    block.lines.map { line -> observation(line, width, height, order++) }
                 }
-        } catch (error: Exception) {
-            orientedBitmap.recycle()
-            recognizer.close()
-            result.error("ocr_failed", "Local text recognition failed.", mapOf("stage" to "mlKitSetup", "type" to error.javaClass.simpleName))
+                val confidences = observations.map { it["confidence"] as Double }
+                val diagnostics = mapOf(
+                    "sourceKind" to "image",
+                    "sourceOpened" to true,
+                    "pageCount" to 1,
+                    "observationCount" to observations.size,
+                    "recognizedLineCount" to observations.count { (it["text"] as String).isNotBlank() },
+                    "observationsWithBounds" to observations.count {
+                        (it["width"] as Double) > 0 && (it["height"] as Double) > 0
+                    },
+                    "visionObservationCount" to observations.size,
+                    "confidenceMinimum" to confidences.minOrNull(),
+                    "confidenceAverage" to confidences.takeIf { it.isNotEmpty() }?.average(),
+                    "confidenceMaximum" to confidences.maxOrNull(),
+                    "pixelWidth" to width,
+                    "pixelHeight" to height,
+                    "orientation" to "exif+quarterTurn" + (chosen.rotation / 90),
+                )
+                result.success(mapOf(
+                    "text" to chosen.text.text,
+                    "observations" to observations,
+                    "diagnostics" to diagnostics,
+                ))
+            } catch (error: Exception) {
+                result.error("ocr_failed", "Local text recognition failed.", mapOf(
+                    "stage" to "mlKitResult",
+                    "type" to error.javaClass.simpleName,
+                ))
+            } finally {
+                orientedBitmap.recycle()
+                recognizer.close()
+            }
         }
+
+        // EXIF may say upright even when receipt lettering is sideways. ML
+        // Kit applies the requested rotation virtually to the bounded bitmap,
+        // so the preserved evidence file and bitmap pixels remain unchanged.
+        // Scan other quarter-turns only if the first pass lacks strong receipt
+        // evidence. Keep the result with the best readable receipt evidence.
+        fun scan(turn: Int) {
+            if (turn >= 4) {
+                finishRecognition()
+                return
+            }
+            val degrees = turn * 90
+            try {
+                recognizer.process(InputImage.fromBitmap(orientedBitmap, degrees))
+                    .addOnSuccessListener { text ->
+                        if (text.text.isNotBlank()) {
+                            val candidate = Candidate(text, degrees, receiptRecognitionScore(text))
+                            if (best == null || candidate.score > best!!.score) best = candidate
+                        }
+                        if (turn == 0 && hasStrongReceiptEvidence(text)) {
+                            finishRecognition()
+                        } else {
+                            scan(turn + 1)
+                        }
+                    }
+                    .addOnFailureListener { scan(turn + 1) }
+            } catch (_: Exception) {
+                scan(turn + 1)
+            }
+        }
+        scan(0)
+    }
+
+    private fun receiptRecognitionScore(text: Text): Double {
+        val lines = text.textBlocks.flatMap { it.lines }
+        val lower = text.text.lowercase()
+        var score = lines.count { line -> line.text.count { it.isLetter() } >= 3 } * 3.0
+        score += lines.sumOf { (it.confidence ?: 0f).toDouble() }
+        if (Regex("""\b(?:grand\s+)?total\b""").containsMatchIn(lower)) score += 35
+        if (Regex("""\bsubtotal\b""").containsMatchIn(lower)) score += 12
+        if (Regex("""\b(?:tax|costco|wholesale|transaction details)\b""").containsMatchIn(lower)) score += 10
+        if (Regex("""\b\d+[.,]\d{2}\b""").containsMatchIn(lower)) score += 8
+        return score
+    }
+
+    private fun hasStrongReceiptEvidence(text: Text): Boolean {
+        val lines = text.textBlocks.flatMap { it.lines }
+        if (lines.size < 5) return false
+        val lower = text.text.lowercase()
+        val hasAmount = Regex("""\b\d+[.,]\d{2}\b""").containsMatchIn(lower)
+        val itemized = lower.contains("total") && lower.contains("subtotal")
+        val bankScreenshot = lower.contains("transaction details") ||
+            lower.contains("appears on your statement as")
+        return hasAmount && (itemized || bankScreenshot)
     }
 
     private fun decodeBounded(path: String): Bitmap? {
