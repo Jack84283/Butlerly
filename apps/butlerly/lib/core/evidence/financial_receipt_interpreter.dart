@@ -46,8 +46,22 @@ abstract final class FinancialReceiptInterpreter {
     caseSensitive: false,
   );
   static final _money = RegExp(r'\$\s*(\d+(?:,\d{3})*)\.(\d{2})(?!\d)');
+  static final _currencyToken = RegExp(r'^[A-Z]{3}$');
+  static const _recognizedCurrencyCodes = {
+    'USD',
+    'CAD',
+    'AUD',
+    'NZD',
+    'HKD',
+    'SGD',
+    'EUR',
+    'GBP',
+    'CNY',
+    'JPY',
+    'MXN',
+  };
   static final _purchaseMoney = RegExp(
-    r'^(?:US)?\$\s*(\d+(?:,\d{3})*)\.(\d{2})(?:\s+(USD|CAD|AUD|NZD|HKD|SGD|EUR|GBP|CNY|JPY))?$',
+    r'^(?:US)?\$\s*(\d+(?:,\d{3})*)\.(\d{2})(?:\s+([A-Z]{3}))?$',
     caseSensitive: false,
   );
   static final _label = RegExp(
@@ -167,7 +181,11 @@ abstract final class FinancialReceiptInterpreter {
       final currencies = currencyByAmount.putIfAbsent(amount, () => <String>{});
       if (upper.startsWith(r'US$')) currencies.add('USD');
       if (_purchaseMoney.firstMatch(value)?.group(3) case final code?) {
-        currencies.add(code.toUpperCase());
+        currencies.add(
+          _recognizedCurrencyCodes.contains(code.toUpperCase())
+              ? code.toUpperCase()
+              : '?',
+        );
       }
       final index = lines.indexOf(source);
       if (index >= 0 && index + 1 < lines.length) {
@@ -184,13 +202,11 @@ abstract final class FinancialReceiptInterpreter {
         final bounds = source.normalizedBounds;
         final adjacent = next.normalizedBounds;
         if (next.pageIndex == source.pageIndex &&
-            RegExp(
-              r'^(?:USD|CAD|AUD|NZD|HKD|SGD|EUR|GBP|CNY|JPY)$',
-            ).hasMatch(code) &&
+            _currencyToken.hasMatch(next.text.trim()) &&
             (bounds.height == 0 ||
                 (adjacent.top - bounds.top < .08 &&
                     (adjacent.left - bounds.left).abs() < .12))) {
-          currencies.add(code);
+          currencies.add(_recognizedCurrencyCodes.contains(code) ? code : '?');
         }
       }
     }
@@ -617,7 +633,9 @@ abstract final class FinancialReceiptInterpreter {
   }
 
   static bool _merchantCandidate(String value) {
-    if (value.length < 2 || value.length > 65) return false;
+    if (value.length < 2 || value.length > 65 || _parseDate(value) != null) {
+      return false;
+    }
     if (RegExp(
       r'^\$|^\d|credit card|transaction '
       r'details|rewards|cash back|visa\.{2,}|posted on|card ending|'

@@ -214,6 +214,35 @@ Credit card expiry 01/2030
     }
   });
 
+  test('flags unknown currency-like tokens and recognizes MXN', () {
+    const prefix = 'Transaction Details\nAmount: ';
+    expect(
+      ReceiptTextParser.parse(
+        prefix +
+            r'$4.99'
+                '\nMXN',
+      ).currency,
+      'MXN',
+    );
+    final unknown = ReceiptTextParser.parse(prefix + r'$4.99 XYZ');
+    expect(unknown.amount, '4.99');
+    expect(unknown.currency, isNull);
+    expect(unknown.currencyNeedsReview, isTrue);
+  });
+
+  test('does not substitute the posting date for a missing merchant', () {
+    final result = ReceiptTextParser.parse(r'''
+Transaction Details
+$4.99
+Posting date
+November 24, 2026
+Appears on your statement as: EXAMPLE*ONLINE
+Made on November 23, 2026
+''');
+    expect(result.merchant, isNull);
+    expect(result.postingDate, DateTime(2026, 11, 24));
+  });
+
   test('uses explicit currency and flags conflicting currency evidence', () {
     const details = 'Transaction Details\nCurrency: CAD\nAmount: ';
     expect(ReceiptTextParser.parse(details + r'$4.99').currency, 'CAD');
