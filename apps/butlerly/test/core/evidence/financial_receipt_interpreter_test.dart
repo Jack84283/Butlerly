@@ -2,6 +2,125 @@ import 'package:butlerly/core/evidence/local_ocr_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  const screenshot = r'''
+Transaction Details
+AMOUNT_TOKEN
+5% cash back
++$0.25 rewards cash
+Posted on Monday, November 23, 2026
+DoorDash
+Learn more about this merchant
+DOORDASH
+Appears on your statement as:
+DD *DOORDASHDASHPASS 6505550100 CA 94107 USA
+Made on Sunday, November 22, 2026
+Call Merchant
+Report a Problem
+''';
+
+  test('extracts a bank screenshot and preserves separate evidence', () {
+    for (final amount in [r'$4.99', r'$4 99']) {
+      final result = ReceiptTextParser.parse(
+        screenshot.replaceFirst('AMOUNT_TOKEN', amount),
+      );
+      expect(result.merchant, 'DoorDash');
+      expect(result.amount, '4.99');
+      expect(result.currency, 'USD');
+      expect(result.date, DateTime(2026, 11, 22));
+      expect(result.postingDate, DateTime(2026, 11, 23));
+      expect(
+        result.toExtractionValues(),
+        containsPair('cashBackReward', '0.25'),
+      );
+      expect(
+        result.originalMerchantDescription,
+        'DD *DOORDASHDASHPASS 6505550100 CA 94107 USA',
+      );
+      expect(result.cardLast4, isNull);
+      expect(result.tax, isNull);
+      expect(result.tip, isNull);
+    }
+  });
+
+  test('uses the screenshot geometry when cents are separate observations', () {
+    final lines = [
+      const OcrObservation(
+        text: 'Amount',
+        confidence: .95,
+        bounds: OcrBounds(left: .04, top: .15, width: .08, height: .02),
+      ),
+      for (final (index, text)
+          in screenshot
+              .replaceFirst(' CA 94107 USA', '\nCA 94107 USA')
+              .trim()
+              .split('\n')
+              .indexed)
+        if (text == 'AMOUNT_TOKEN') ...[
+          const OcrObservation(
+            text: r'$4',
+            confidence: .95,
+            bounds: OcrBounds(left: .04, top: .19, width: .08, height: .05),
+          ),
+          const OcrObservation(
+            text: '99',
+            confidence: .95,
+            bounds: OcrBounds(left: .12, top: .19, width: .06, height: .026),
+          ),
+        ] else
+          OcrObservation(
+            text: text,
+            confidence: .95,
+            bounds: OcrBounds(
+              left: text == 'DOORDASH' ? .75 : .04,
+              top: .12 + index * .068,
+              width: .8,
+              height: .025,
+            ),
+          ),
+    ];
+    final result = ReceiptExtractor.extract(
+      lines.map((line) => line.text).join('\n'),
+      lines,
+    );
+    expect(result.amount, '4.99');
+    expect(result.merchant, 'DoorDash');
+    expect(result.cashBackReward, '0.25');
+  });
+
+  test(
+    'flags a merged amount and never replaces purchase date with posting date',
+    () {
+      final result = ReceiptTextParser.parse(
+        screenshot
+            .replaceFirst('AMOUNT_TOKEN', r'$499')
+            .replaceFirst('Made on Sunday, November 22, 2026', ''),
+      );
+      expect(result.amount, isNull);
+      expect(result.amountNeedsReview, isTrue);
+      expect(result.date, isNull);
+      expect(result.dateNeedsReview, isTrue);
+      expect(result.postingDate, DateTime(2026, 11, 23));
+    },
+  );
+
+  test(
+    'flags conflicting purchase dates and excludes an unlabeled later amount',
+    () {
+      final result = ReceiptTextParser.parse(
+        screenshot.replaceFirst('AMOUNT_TOKEN', '').replaceFirst(
+          'Call Merchant',
+          r'''
+Purchased on November 21, 2026
+$57.00
+Call Merchant''',
+        ),
+      );
+      expect(result.amount, isNull);
+      expect(result.date, isNull);
+      expect(result.dateNeedsReview, isTrue);
+    },
+  );
+
   test(
     'extracts labeled transaction notification without a merchant profile',
     () {
@@ -26,6 +145,350 @@ Time
       expect(result.fieldEvidence['amount'], contains('32.47'));
     },
   );
+
+  test('omits legacy metadata for unsupported screenshot fields', () {
+    final result = ReceiptTextParser.parse(
+      screenshot.replaceFirst('AMOUNT_TOKEN', r'$4.99') +
+          r'''
+Tip $1.00
+Tax $0.50
+Credit card expiry 01/2030
+''',
+    );
+    final values = result.toExtractionValues();
+    for (final field in [
+      'tip',
+      'tax',
+      'cardNetwork',
+      'cardType',
+      'cardExpiry',
+    ]) {
+      expect(values.keys.where((key) => key.startsWith(field)), isEmpty);
+    }
+  });
+
+  test('uses native glyph evidence for a merged amount', () {
+    for (final amountToken in [r'$499', r'Amount: $499']) {
+      final text = screenshot.replaceFirst('AMOUNT_TOKEN', amountToken);
+      final observations = [
+        for (final (index, line) in text.trim().split('\n').indexed)
+          OcrObservation(
+            text: line,
+            confidence: .95,
+            top: index.toDouble(),
+            hasRaisedCents: line == amountToken,
+          ),
+      ];
+      final result = ReceiptExtractor.extract(text, observations);
+      expect(result.amount, '4.99');
+      expect(result.amountNeedsReview, isFalse);
+    }
+  });
+
+  test('accepts a USD suffix on a standalone header amount', () {
+    final result = ReceiptTextParser.parse(
+      screenshot.replaceFirst('AMOUNT_TOKEN', r'$4.99 USD'),
+    );
+    expect(result.amount, '4.99');
+    expect(result.currency, 'USD');
+  });
+
+  test('recognizes explicitly labeled masked card suffixes', () {
+    final result = ReceiptTextParser.parse(
+      'Transaction Details\nCard ending in: •••• 1234',
+    );
+    expect(result.cardLast4, '1234');
+  });
+
+  test('recognizes a currency immediately left of an amount observation', () {
+    const observations = <OcrObservation>[
+      OcrObservation(
+        text: 'Transaction Details',
+        confidence: .95,
+        left: .25,
+        top: .02,
+        width: .5,
+        height: .04,
+      ),
+      OcrObservation(
+        text: 'CAD',
+        confidence: .95,
+        left: .06,
+        top: .18,
+        width: .09,
+        height: .035,
+      ),
+      OcrObservation(
+        text: r'$4.99',
+        confidence: .95,
+        left: .17,
+        top: .18,
+        width: .18,
+        height: .04,
+      ),
+      OcrObservation(
+        text: 'Made on November 23, 2026',
+        confidence: .95,
+        left: .06,
+        top: .30,
+        width: .70,
+        height: .04,
+      ),
+    ];
+    final result = ReceiptExtractor.extract(
+      observations.map((line) => line.text).join('\n'),
+      observations,
+    );
+    expect(result.amount, '4.99');
+    expect(result.currency, 'CAD');
+    expect(result.currencyNeedsReview, isFalse);
+  });
+
+  test('honors currency tokens preceding the purchase in text-only OCR', () {
+    final result = ReceiptTextParser.parse(
+      'Transaction Details\nCAD\n\$4.99\nMade on November 23, 2026',
+    );
+    expect(result.amount, '4.99');
+    expect(result.currency, 'CAD');
+  });
+
+  test('does not associate a distant currency token with an amount', () {
+    const observations = <OcrObservation>[
+      OcrObservation(
+        text: 'Transaction Details',
+        confidence: .95,
+        left: .2,
+        top: .02,
+        width: .55,
+        height: .04,
+      ),
+      OcrObservation(
+        text: 'CAD',
+        confidence: .95,
+        left: .06,
+        top: .68,
+        width: .09,
+        height: .035,
+      ),
+      OcrObservation(
+        text: r'$4.99',
+        confidence: .95,
+        left: .17,
+        top: .18,
+        width: .18,
+        height: .04,
+      ),
+    ];
+    final result = ReceiptExtractor.extract(
+      observations.map((line) => line.text).join('\n'),
+      observations,
+    );
+    expect(result.amount, '4.99');
+    expect(result.currency, 'USD');
+  });
+
+  test('flags conflicting currency tokens on both sides of the amount', () {
+    const observations = <OcrObservation>[
+      OcrObservation(
+        text: 'Transaction Details',
+        confidence: .95,
+        left: .25,
+        top: .02,
+        width: .5,
+        height: .04,
+      ),
+      OcrObservation(
+        text: 'CAD',
+        confidence: .95,
+        left: .06,
+        top: .18,
+        width: .09,
+        height: .035,
+      ),
+      OcrObservation(
+        text: r'$4.99',
+        confidence: .95,
+        left: .17,
+        top: .18,
+        width: .18,
+        height: .04,
+      ),
+      OcrObservation(
+        text: 'EUR',
+        confidence: .95,
+        left: .36,
+        top: .18,
+        width: .09,
+        height: .035,
+      ),
+    ];
+    final result = ReceiptExtractor.extract(
+      observations.map((line) => line.text).join('\n'),
+      observations,
+    );
+    expect(result.amount, '4.99');
+    expect(result.currency, isNull);
+    expect(result.currencyNeedsReview, isTrue);
+  });
+
+  test('honors currency on the same or separate purchase observation', () {
+    for (final amount in [
+      r'$4.99 EUR',
+      r'$4.99'
+          '\nEUR',
+    ]) {
+      final result = ReceiptTextParser.parse(
+        'Transaction Details\nAmount: $amount\nMade on November 23, 2026',
+      );
+      expect(result.amount, '4.99');
+      expect(result.currency, 'EUR');
+    }
+  });
+
+  test('flags unknown currency-like tokens and recognizes MXN', () {
+    final mxn = ReceiptTextParser.parse(r'''
+Transaction Details
+Amount: $4.99
+MXN
+''');
+    expect(mxn.currency, 'MXN');
+    final unknown = ReceiptTextParser.parse(r'''
+Transaction Details
+Amount: $4.99 XYZ
+''');
+    expect(unknown.amount, '4.99');
+    expect(unknown.currency, isNull);
+    expect(unknown.currencyNeedsReview, isTrue);
+  });
+
+  test('recognizes a currency label beside a wide amount box', () {
+    final result =
+        ReceiptExtractor.extract(r'Transaction Details $4.99 EUR', const [
+          OcrObservation(text: 'Transaction Details', confidence: .9),
+          OcrObservation(
+            text: r'$4.99',
+            confidence: .9,
+            bounds: OcrBounds(left: .1, top: .2, width: .2, height: .04),
+          ),
+          OcrObservation(
+            text: 'EUR',
+            confidence: .9,
+            bounds: OcrBounds(left: .31, top: .19, width: .08, height: .03),
+          ),
+        ]);
+    expect(result.amount, '4.99');
+    expect(result.currency, 'EUR');
+  });
+
+  test(
+    'recognizes a merchant before the purchase date without posting date',
+    () {
+      for (final label in ['Made on', 'Purchase date', 'Transaction date']) {
+        final result = ReceiptTextParser.parse(
+          'Transaction Details\n'
+          '\$12.50\n'
+          'Coffee Shop\n'
+          '$label November 23, 2026\n'
+          'Appears on your statement as:\n'
+          'COFFEE SHOP CA\n'
+          'Call Merchant',
+        );
+        expect(result.amount, '12.50', reason: label);
+        expect(result.merchant, 'Coffee Shop', reason: label);
+        expect(result.date, DateTime(2026, 11, 23), reason: label);
+        expect(result.originalMerchantDescription, 'COFFEE SHOP CA');
+      }
+    },
+  );
+
+  test('recognizes a merchant after a split purchase-date label', () {
+    final result = ReceiptTextParser.parse(
+      'Transaction Details\n'
+      '\$12.50\n'
+      'Purchase date\n'
+      'November 23, 2026\n'
+      'Coffee Shop\n'
+      'Appears on your statement as:\n'
+      'COFFEE SHOP CA\n',
+    );
+    expect(result.amount, '12.50');
+    expect(result.merchant, 'Coffee Shop');
+    expect(result.date, DateTime(2026, 11, 23));
+  });
+
+  test('finds merchant when Made on follows the statement description', () {
+    final result = ReceiptTextParser.parse(
+      'Transaction Details\n'
+      '\$12.50\n'
+      'Coffee Shop\n'
+      'Learn more about this merchant\n'
+      'Appears on your statement as:\n'
+      'COFFEE SHOP CA\n'
+      'Made on November 23, 2026',
+    );
+    expect(result.merchant, 'Coffee Shop');
+    expect(result.date, DateTime(2026, 11, 23));
+    expect(result.originalMerchantDescription, 'COFFEE SHOP CA');
+  });
+
+  test('never treats the original statement description as the merchant', () {
+    final result = ReceiptTextParser.parse(
+      'Transaction Details\n'
+      '\$12.50\n'
+      'Appears on your statement as:\n'
+      'COFFEE SHOP CA\n'
+      'Made on November 23, 2026',
+    );
+    expect(result.merchant, isNull);
+    expect(result.originalMerchantDescription, 'COFFEE SHOP CA');
+  });
+
+  test('does not substitute the posting date for a missing merchant', () {
+    final result = ReceiptTextParser.parse(r'''
+Transaction Details
+$4.99
+Posting date
+November 24, 2026
+Appears on your statement as: EXAMPLE*ONLINE
+Made on November 23, 2026
+''');
+    expect(result.merchant, isNull);
+    expect(result.postingDate, DateTime(2026, 11, 24));
+  });
+
+  test('uses explicit currency and flags conflicting currency evidence', () {
+    const details = 'Transaction Details\nCurrency: CAD\nAmount: ';
+    expect(ReceiptTextParser.parse(details + r'$4.99').currency, 'CAD');
+    final ambiguous = ReceiptTextParser.parse(details + r'$499');
+    expect(ambiguous.amount, isNull);
+    expect(ambiguous.currency, 'CAD');
+    expect(ambiguous.amountNeedsReview, isTrue);
+    for (final values in [
+      r'$4.99 USD',
+      r'US$4.99'
+          '\nAmount: '
+          r'$4.99',
+      r'$4.99'
+          '\nAmount: '
+          r'US$4.99',
+    ]) {
+      final conflict = ReceiptTextParser.parse(details + values);
+      expect(conflict.amount, '4.99');
+      expect(conflict.currency, isNull);
+      expect(conflict.currencyNeedsReview, isTrue);
+    }
+  });
+
+  test('accepts an explicit USD currency suffix on a labeled amount', () {
+    final result = ReceiptTextParser.parse(r'''
+Transaction Details
+$120
+Amount: $4.99 USD
+Account balance €30.00
+''');
+    expect(result.amount, '4.99');
+    expect(result.currency, 'USD');
+  });
 
   test('separates payment-card product from merchant and posting date', () {
     final result = ReceiptTextParser.parse(r'''
@@ -172,6 +635,115 @@ Made on Friday, August 16, 2026
     expect(result.amount, isNull);
   });
 
+  test('does not use marketing copy as a cash-back value label', () {
+    final result = ReceiptTextParser.parse(r'''
+Transaction Details
+Earn 5% cash back
+$4.99
+Posted on November 23, 2026
+''');
+    expect(result.amount, '4.99');
+    expect(result.cashBackReward, isNull);
+  });
+
+  test(
+    'associates a split reward when the value box is above and to the left of the label',
+    () {
+      final result = ReceiptExtractor.extract(
+        r'Transaction Details Cash back earned $0.25',
+        const [
+          OcrObservation(text: 'Transaction Details', confidence: .9),
+          OcrObservation(
+            text: 'Cash back earned',
+            confidence: .9,
+            bounds: OcrBounds(left: .45, top: .16, width: .45, height: .04),
+          ),
+          OcrObservation(
+            text: r'$0.25',
+            confidence: .9,
+            bounds: OcrBounds(left: .10, top: .155, width: .22, height: .04),
+          ),
+        ],
+      );
+      expect(result.amount, isNull);
+      expect(result.cashBackReward, '0.25');
+    },
+  );
+
+  test('pairs a stacked reward without excluding a purchase to its left', () {
+    final result = ReceiptExtractor.extract(
+      r'Transaction Details $4.99 Cash back earned $0.25',
+      const [
+        OcrObservation(text: 'Transaction Details', confidence: .9),
+        OcrObservation(
+          text: r'$4.99',
+          confidence: .9,
+          bounds: OcrBounds(left: .06, top: .15, width: .13, height: .04),
+        ),
+        OcrObservation(
+          text: 'Cash back earned',
+          confidence: .9,
+          bounds: OcrBounds(left: .6, top: .15, width: .3, height: .04),
+        ),
+        OcrObservation(
+          text: r'$0.25',
+          confidence: .9,
+          bounds: OcrBounds(left: .6, top: .20, width: .15, height: .04),
+        ),
+      ],
+    );
+    expect(result.amount, '4.99');
+    expect(result.cashBackReward, '0.25');
+  });
+
+  test('excludes separated rewards in every supported USD format', () {
+    for (final reward in [r'$0.25 USD', r'US$0.25', r'+US$0.25']) {
+      final result = ReceiptTextParser.parse('''
+Transaction Details
+Cash back earned
+$reward
+Posted on November 23, 2026
+''');
+      expect(result.amount, isNull);
+      expect(result.cashBackReward, '0.25');
+    }
+  });
+
+  test('does not promote a stacked balance to a purchase', () {
+    final result = ReceiptTextParser.parse(r'''
+Transaction Details
+Merchant: Example
+Purchased on: November 22, 2026
+Current balance
+$900.00
+''');
+    expect(result.amount, isNull);
+  });
+
+  test('does not mistake total balance for a retail total', () {
+    final result = ReceiptTextParser.parse(r'''
+Transaction Details
+Total available balance: $120.00
+Made on November 23, 2026
+''');
+    expect(result.amount, isNull);
+  });
+
+  test('does not promote a reward or balance separated from its label', () {
+    for (final label in ['5% cash back', 'Cash back earned']) {
+      final result = ReceiptTextParser.parse('''
+Transaction Details
+$label
+\$0.25
+Available balance
+\$120.00
+Posted on November 23, 2026
+''');
+      expect(result.amount, isNull);
+      expect(result.cashBackReward, '0.25');
+    }
+  });
+
   test('does not treat a USPS line-item price as a verified total', () {
     final result = ReceiptTextParser.parse(r'''
 UNITED STATES POSTAL SERVICE
@@ -188,15 +760,18 @@ USPS Ground Advantage 1 $21.50
 
   test('retains conventional explicit total parsing', () {
     final result = ReceiptTextParser.parse(r'''
+Transaction Details
 GROCERY MART
-08/15/2026
+Purchased on August 15, 2026
 SUBTOTAL 40.00
 TAX 3.56
-TOTAL $43.56
+TOTAL
+$43.56
 VISA **** 2468
 ''');
     expect(result.amount, '43.56');
     expect(result.cardLast4, '2468');
+    expect(result.tax, '3.56');
     expect(result.date, DateTime(2026, 8, 15));
   });
 

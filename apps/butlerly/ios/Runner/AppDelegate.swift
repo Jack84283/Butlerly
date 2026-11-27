@@ -68,11 +68,19 @@ import Vision
       guard let arguments = call.arguments as? [String: Any], let path = arguments["path"] as? String else {
         result(FlutterError(code: "invalid_arguments", message: "A local image path is required.", details: nil)); return
       }
-      Self.recognizeText(at: path, result: result)
+      Self.recognizeText(
+        at: path,
+        receiptGeometry: arguments["receiptGeometry"] as? Bool == true,
+        result: result
+      )
     }
   }
 
-  static func recognizeText(at path: String, result: @escaping FlutterResult) {
+  static func recognizeText(
+    at path: String,
+    receiptGeometry: Bool = false,
+    result: @escaping FlutterResult
+  ) {
     let url = URL(fileURLWithPath: path)
     let extensionName = url.pathExtension.lowercased()
     let safeFormat = ["jpg", "jpeg", "png", "heic", "heif", "pdf"].contains(extensionName)
@@ -133,7 +141,10 @@ import Vision
           orientation: orientation,
           options: [:]
         ).perform([request])
-        let observations = structuredObservations(request.results ?? [], pageIndex: 0)
+        var observations = structuredObservations(request.results ?? [], pageIndex: 0)
+        if receiptGeometry {
+          annotateRaisedCents(in: &observations, image: cgImage, orientation: orientation)
+        }
         finish(
           result,
           payload: payload(
@@ -150,6 +161,77 @@ import Vision
       } catch {
         fail(result, code: "ocr_failed", stage: "visionRecognition")
       }
+    }
+  }
+
+  /// Vision's accurate mode can merge superscript cents into the dollar token.
+  /// Compare the same token in fast mode, which provides glyph-level bounds.
+  private static func annotateRaisedCents(
+    in rows: inout [[String: Any]],
+    image: CGImage,
+    orientation: CGImagePropertyOrientation
+  ) {
+    let strings = rows.compactMap { $0["text"] as? String }
+    let isTransaction = strings.contains {
+      $0.range(
+        of: #"transaction details|posted on|on your statement as"#,
+        options: [.regularExpression, .caseInsensitive]
+      ) != nil
+    }
+    let pattern = #"^(?:Amount\s*:?\s*)?\$[0-9]{3,6}$"#
+    guard isTransaction, strings.contains(where: {
+      $0.range(of: pattern, options: [.regularExpression, .caseInsensitive]) != nil
+    }) else { return }
+
+    let request = configuredRequest()
+    request.recognitionLevel = .fast
+    let handler = VNImageRequestHandler(cgImage: image, orientation: orientation, options: [:])
+    guard (try? handler.perform([request])) != nil else { return }
+
+    for result in request.results ?? [] {
+      guard let candidate = result.topCandidates(1).first,
+            candidate.string.range(of: pattern, options: [.regularExpression, .caseInsensitive]) != nil,
+            hasRaisedCents(candidate) else { continue }
+      let box = result.boundingBox
+      let positions = rows.indices.filter { index in
+        guard rows[index]["text"] as? String == candidate.string,
+              let left = rows[index]["left"] as? Double,
+              let top = rows[index]["top"] as? Double,
+              let width = rows[index]["width"] as? Double,
+              let height = rows[index]["height"] as? Double else { return false }
+        let original = CGRect(x: left, y: 1 - top - height, width: width, height: height)
+        let overlap = original.intersection(box)
+        return overlap.width * overlap.height > original.width * original.height * 0.6
+      }
+      if positions.count == 1 {
+        rows[positions[0]]["hasRaisedCents"] = true
+      }
+    }
+  }
+
+  private static func hasRaisedCents(_ candidate: VNRecognizedText) -> Bool {
+    let value = candidate.string
+    var digits: [CGRect] = []
+    guard let currencySign = value.firstIndex(of: "$") else { return false }
+    for index in value.indices where index > currencySign {
+      let end = value.index(after: index)
+      guard let glyph = try? candidate.boundingBox(for: index..<end),
+            glyph.boundingBox.height > 0 else { return false }
+      digits.append(glyph.boundingBox)
+    }
+    let dollars = digits.dropLast(2)
+    let cents = digits.suffix(2)
+    guard let shortestDollar = dollars.map(\.height).min(),
+          let highestDollarBaseline = dollars.map(\.minY).max(),
+          let firstCent = cents.first,
+          let lastCent = cents.last,
+          firstCent.maxX <= lastCent.minX,
+          abs(firstCent.minY - lastCent.minY) <= shortestDollar * 0.15 else {
+      return false
+    }
+    return cents.allSatisfy {
+      $0.height <= shortestDollar * 0.8 &&
+      $0.minY >= highestDollarBaseline + shortestDollar * 0.15
     }
   }
 

@@ -126,6 +126,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   final _formKey = GlobalKey<FormState>();
   final _amount = TextEditingController();
   final _currency = TextEditingController(text: 'USD');
+  String _baseCurrency = 'USD';
   final _merchantRaw = TextEditingController();
   final _notes = TextEditingController();
 
@@ -134,6 +135,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
   ReceiptOcrResult? _ocrResult;
   DateTime? _date;
   bool _dateNeedsReview = false;
+  String? _ocrNotice;
   bool _processing = false;
   bool _captureInFlight = false;
   bool _saving = false;
@@ -295,7 +297,8 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       _tags = initial.snapshot.tags;
       _sources = initial.snapshot.paymentSources;
       if (initial.preference != null) {
-        _currency.text = initial.preference!.baseCurrency.value;
+        _baseCurrency = initial.preference!.baseCurrency.value;
+        if (_source == null) _currency.text = _baseCurrency;
       }
     });
   }
@@ -498,6 +501,13 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
       _preserved = captured;
       _source = stableSource;
       _ocrResult = null;
+      _ocrNotice = null;
+      _merchantRaw.clear();
+      _amount.clear();
+      _currency.text = _baseCurrency;
+      _date = null;
+      _merchantId = null;
+      _paymentSourceId = null;
       _dateNeedsReview = false;
     });
 
@@ -510,17 +520,40 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
         _ocrResult = result;
         _merchantRaw.text = result.merchant ?? '';
         _amount.text = result.amount ?? '';
+        if (result.currencyNeedsReview) _currency.clear();
         if (result.currency != null) _currency.text = result.currency!;
         _date = result.date;
+        _dateNeedsReview = result.dateNeedsReview;
+        _ocrNotice = result.amountNeedsReview
+            ? 'amountNeedsReview'
+            : result.currencyNeedsReview
+            ? 'currencyNeedsReview'
+            : result.amount == null ||
+                  result.merchant == null ||
+                  result.date == null
+            ? 'receiptExtractionIncomplete'
+            : null;
         _merchantId = _match(result.merchant);
         _paymentSourceId = paymentSourceId;
         _processing = false;
       });
       await _refreshClassification();
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
-      setState(() => _processing = false);
-      _showSaveMessage('receiptTextReadFailed');
+      final notice = switch (error) {
+        OcrException(
+          code: OcrFailureCode.unreadableSource ||
+              OcrFailureCode.unsupportedSource,
+        ) =>
+          'receiptImageUnreadable',
+        OcrException(code: OcrFailureCode.noReadableText) ||
+        FormatException() => 'receiptTextReadFailed',
+        _ => 'receiptOcrEngineFailed',
+      };
+      setState(() {
+        _processing = false;
+        _ocrNotice = notice;
+      });
     }
   }
 
@@ -1545,6 +1578,7 @@ class _ReceiptCapturePageState extends State<ReceiptCapturePage> {
             trailing: const Icon(Icons.calendar_today_outlined),
             onTap: _saving ? null : _pickDate,
           ),
+          if (_ocrNotice case final notice?) Text(context.l10n.text(notice)),
           if (_dateNeedsReview)
             Align(
               alignment: AlignmentDirectional.centerStart,

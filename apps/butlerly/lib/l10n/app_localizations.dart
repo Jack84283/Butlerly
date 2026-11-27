@@ -668,6 +668,12 @@ class AppLocalizations {
       'amountNeedsReview': 'Amount needs review',
       'directionNeedsReview': 'Direction needs review',
       'receiptImages': 'Receipt images',
+      'receiptImageUnreadable':
+          'The saved image could not be opened. You can enter the fields manually.',
+      'receiptOcrEngineFailed':
+          'On-device text recognition failed. The image is saved and you can enter the fields manually.',
+      'receiptExtractionIncomplete':
+          'Some receipt fields could not be extracted. Fill in the missing fields.',
       'receiptTextReadFailed':
           'Receipt was saved locally, but its text could not be read. You can retry or enter the fields manually.',
       'archiveTitle': 'Archive this transaction?',
@@ -1834,6 +1840,9 @@ class AppLocalizations {
       'amountNeedsReview': '金额需要审核',
       'directionNeedsReview': '方向需要审核',
       'receiptImages': '收据图片',
+      'receiptImageUnreadable': '无法打开已保存的图片。您可以手动填写字段。',
+      'receiptOcrEngineFailed': '设备端文字识别失败。图片已保存，您可以手动填写字段。',
+      'receiptExtractionIncomplete': '部分收据字段无法提取。请补充缺失字段。',
       'receiptTextReadFailed': '收据已保存在本地，但无法读取其文本。您可以重试或手动填写字段。',
       'archiveTitle': '要归档此交易吗？',
       'archiveBody': '您可以稍后恢复。',
@@ -2990,6 +2999,12 @@ class AppLocalizations {
       'amountNeedsReview': 'El importe necesita revisión',
       'directionNeedsReview': 'La dirección necesita revisión',
       'receiptImages': 'Imágenes de recibos',
+      'receiptImageUnreadable':
+          'No se pudo abrir la imagen guardada. Puedes introducir los campos manualmente.',
+      'receiptOcrEngineFailed':
+          'Falló el reconocimiento de texto en el dispositivo. La imagen está guardada y puedes introducir los campos manualmente.',
+      'receiptExtractionIncomplete':
+          'No se pudieron extraer algunos campos del recibo. Completa los campos que faltan.',
       'receiptTextReadFailed':
           'El recibo se guardó localmente, pero no se pudo leer su texto. Puedes reintentarlo o introducir los campos manualmente.',
       'archiveTitle': '¿Archivar esta transacción?',

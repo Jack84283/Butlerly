@@ -58,6 +58,9 @@ final class PlatformOcrRecognizer implements OcrRecognizer {
       payload = await _channel
           .invokeMapMethod<Object?, Object?>('recognizeText', {
             'path': request.source.path,
+            if (defaultTargetPlatform == TargetPlatform.iOS &&
+                request.intent == OcrIntent.receipt)
+              'receiptGeometry': true,
             if (request.source.kind == OcrSourceKind.pdf)
               'sourceKind': request.source.kind.name,
           });
@@ -122,6 +125,7 @@ final class PlatformOcrRecognizer implements OcrRecognizer {
           final order = (item['order'] as num?)?.toInt() ?? index;
           return OcrObservation(
             text: item['text'] as String? ?? '',
+            hasRaisedCents: item['hasRaisedCents'] == true,
             confidence: (item['confidence'] as num?)?.toDouble() ?? 0,
             left: (item['left'] as num?)?.toDouble() ?? 0,
             top: (item['top'] as num?)?.toDouble() ?? 0,

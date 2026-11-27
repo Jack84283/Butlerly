@@ -95,6 +95,27 @@ void main() {
     );
   });
 
+  test('iOS receipt requests and maps native glyph evidence', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      expect(call.arguments, {'path': 'receipt.jpg', 'receiptGeometry': true});
+      return {
+        'text': r'$499',
+        'observations': [
+          {'text': r'$499', 'hasRaisedCents': true},
+        ],
+      };
+    });
+    final document = await const PlatformOcrRecognizer().recognize(
+      const OcrRequest(
+        source: OcrSource(path: 'receipt.jpg', kind: OcrSourceKind.image),
+        intent: OcrIntent.receipt,
+      ),
+    );
+    expect(document.observations.single.hasRaisedCents, isTrue);
+    expect(document.text, r'$499');
+  });
+
   test('Android-shaped native payload maps to the neutral contract', () async {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     messenger.setMockMethodCallHandler(channel, (call) async {

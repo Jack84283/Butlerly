@@ -35,6 +35,7 @@ final class OcrObservation {
     required this.text,
     required this.confidence,
     this.bounds,
+    this.hasRaisedCents = false,
     this.left = 0,
     this.top = 0,
     this.width = 0,
@@ -46,6 +47,9 @@ final class OcrObservation {
   final String text;
   final double confidence;
   final OcrBounds? bounds;
+
+  /// True only when native character bounds corroborate two raised digits.
+  final bool hasRaisedCents;
   final double left, top, width, height;
   final int pageIndex;
   final int order;
