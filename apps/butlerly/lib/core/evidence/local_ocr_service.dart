@@ -523,6 +523,13 @@ abstract final class ReceiptExtractor {
   }
 
   static String? _merchant(List<OcrObservation> observations) {
+    // A stylized retailer logo may have lower confidence than an address.
+    // Match an actually recognized merchant name, never the store number.
+    for (final line in observations.take(8)) {
+      if (RegExp(r'\bCOSTCO\b', caseSensitive: false).hasMatch(line.text)) {
+        return 'COSTCO WHOLESALE';
+      }
+    }
     String? best;
     var bestScore = 0.0;
     for (final line in observations.take(6)) {
@@ -561,12 +568,19 @@ abstract final class ReceiptExtractor {
 
     // On a partially captured itemized receipt, an individual item price is
     // not evidence of the final amount paid. Leave it for user review.
-    final itemized = lines.any(
-      (line) => RegExp(
-        r'\b(?:unit\s+price|qty|quantity)\b',
-        caseSensitive: false,
-      ).hasMatch(line.text),
+    final skuPriceLine = RegExp(
+      r'^\s*[A-Z]?\s*\d{4,9}\s+.+?\d+[.,]\d{2}\s*[A-Z-]?\s*$',
+      caseSensitive: false,
     );
+    final itemized =
+        lines.any(
+          (line) => RegExp(
+            r'\b(?:unit\s+price|qty|quantity)\b',
+            caseSensitive: false,
+          ).hasMatch(line.text),
+        ) ||
+        lines.where((line) => skuPriceLine.hasMatch(line.text)).length >= 2;
+    // An item price cannot substitute for a lost receipt total.
     if (itemized) return null;
 
     const positive = [
@@ -679,6 +693,27 @@ abstract final class ReceiptExtractor {
               ..sort((a, b) => a.left.compareTo(b.left));
         final values = row.expand((value) => _money(value.text)).toList();
         if (values.isNotEmpty) return values.last;
+
+        // Some receipts split "**** TOTAL" and its dark amount rectangle
+        // into separate observations. Never accept a SKU or another label.
+        final isolatedLabel = RegExp(
+          r'^\s*\**\s*(?:grand total|total due|amount due|amount paid|purchase total|payment amount|amount|balance|total|sale)\s*:?\s*$',
+          caseSensitive: false,
+        ).hasMatch(line.text);
+        if (!isolatedLabel || index + 1 >= lines.length) continue;
+        final next = lines[index + 1];
+        final valueText = _normalize(next.text);
+        if (!RegExp(r'^(?:USD\s*|\$\s*)?\d{1,6}(?:,\d{3})*\.\d{2}$')
+            .hasMatch(valueText)) {
+          continue;
+        }
+        final nearby = line.height <= 0 ||
+            next.height <= 0 ||
+            (next.top - line.top).abs() < .075;
+        if (nearby) {
+          final value = _money(valueText);
+          if (value.length == 1) return value.single;
+        }
       }
     }
     return null;
@@ -841,7 +876,7 @@ abstract final class ReceiptExtractor {
         .substring(start > 32 ? start - 32 : 0, start)
         .toLowerCase();
     return RegExp(
-      r'return\s+by|expires?|expiration|valid\s+through|membership\s+ends?|promo',
+      r'return\s+by|expires?|expiration|valid\s+through|membership\s+ends?|promo|date\s+of\s+birth|birth\s*date|\bdob\b',
     ).hasMatch(context);
   }
 
