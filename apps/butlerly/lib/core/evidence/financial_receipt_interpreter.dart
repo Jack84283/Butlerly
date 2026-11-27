@@ -197,6 +197,7 @@ abstract final class FinancialReceiptInterpreter {
           }
           final adjacent = observation.normalizedBounds;
           final rightGap = adjacent.left - bounds.left - bounds.width;
+          final leftGap = bounds.left - adjacent.left - adjacent.width;
           final centerGap =
               (adjacent.top +
                       adjacent.height / 2 -
@@ -205,8 +206,8 @@ abstract final class FinancialReceiptInterpreter {
                   .abs();
           final belowGap = adjacent.top - bounds.top;
           final sameRow =
-              rightGap >= -.01 &&
-              rightGap < .08 &&
+              ((rightGap >= -.01 && rightGap < .08) ||
+                  (leftGap >= -.01 && leftGap < .08)) &&
               centerGap <= bounds.height * .65;
           final directlyBelow =
               belowGap > 0 &&
@@ -228,12 +229,18 @@ abstract final class FinancialReceiptInterpreter {
                     amount.split('.').last
             ? afterAmount + 1
             : afterAmount;
-        if (nextIndex >= lines.length) return;
-        final next = lines[nextIndex];
-        final text = next.text.trim();
-        if (next.pageIndex == source.pageIndex &&
-            _currencyToken.hasMatch(text)) {
-          currencies.add(_recognizedCurrencyCodes.contains(text) ? text : '?');
+        // Without geometry, a token immediately before or after the amount
+        // may be its currency. Do not scan unrelated rewards or balances.
+        for (final candidateIndex in [index - 1, nextIndex]) {
+          if (candidateIndex < 0 || candidateIndex >= lines.length) continue;
+          final neighbor = lines[candidateIndex];
+          final text = neighbor.text.trim().toUpperCase();
+          if (neighbor.pageIndex == source.pageIndex &&
+              _currencyToken.hasMatch(text)) {
+            currencies.add(
+              _recognizedCurrencyCodes.contains(text) ? text : '?',
+            );
+          }
         }
       }
     }
@@ -642,6 +649,33 @@ abstract final class FinancialReceiptInterpreter {
         return candidates.first;
       }
     }
+    // Some bank screenshots have a purchase-date label but no posting date.
+    // Look for a unique merchant before or after that label, never crossing
+    // the original statement-description boundary.
+    final purchaseAnchor = lines.indexWhere(
+      (line) => RegExp(
+        r'^(?:made on|purchased on|purchase date|transaction date)\b',
+        caseSensitive: false,
+      ).hasMatch(line.text.trim()),
+    );
+    if (purchaseAnchor >= 0) {
+      final boundary = end >= 0 ? end : lines.length;
+      final segments = <List<OcrObservation>>[
+        if (purchaseAnchor <= boundary) lines.sublist(0, purchaseAnchor),
+        if (purchaseAnchor + 1 < boundary)
+          lines.sublist(purchaseAnchor + 1, boundary),
+      ];
+      for (final segment in segments) {
+        final candidates = segment
+            .map((line) => line.text.trim())
+            .where(_merchantCandidate)
+            .toList(growable: false);
+        if (candidates.isNotEmpty &&
+            candidates.map((value) => value.toLowerCase()).toSet().length == 1) {
+          return candidates.first;
+        }
+      }
+    }
     final purchased = lines.indexWhere(
       (line) => RegExp(
         r'^purchased on\b',
@@ -660,13 +694,17 @@ abstract final class FinancialReceiptInterpreter {
   }
 
   static bool _merchantCandidate(String value) {
-    if (value.length < 2 || value.length > 65 || _parseDate(value) != null) {
+    if (value.length < 2 ||
+        value.length > 65 ||
+        _parseDate(value) != null ||
+        _recognizedCurrencyCodes.contains(value.toUpperCase())) {
       return false;
     }
     if (RegExp(
       r'^\$|^\d|credit card|transaction '
       r'details|rewards|cash back|visa\.{2,}|posted on|card ending|'
-      r'purchase|^\+|merchant details|learn more|call merchant|report a problem',
+      r'purchase|^\+|merchant details|learn more|call merchant|report a problem|'
+      r'^made on\b|^transaction date\b|^posting date\b|^currency\b|^amount\b|^time\b|^merchant$',
       caseSensitive: false,
     ).hasMatch(value)) {
       return false;
