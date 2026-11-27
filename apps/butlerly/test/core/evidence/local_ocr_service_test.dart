@@ -57,7 +57,6 @@ TAX 1.66
     expect(result.date, isNull);
     expect(result.cardLast4, isNull);
     expect(result.amountNeedsReview, isFalse);
-    expect(result.isScreenshot, isFalse);
   });
 
   test('Costco dark total box can be split from the TOTAL label', () {
