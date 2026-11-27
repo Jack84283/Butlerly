@@ -80,7 +80,9 @@ void main() {
     );
   });
 
-  test('all bundled issuer SVGs decode and contain only local artwork', () async {
+  testWidgets('all bundled issuer SVGs decode and contain only local artwork', (
+    tester,
+  ) async {
     for (final issuer in issuerInstitutions.where(
       (issuer) => issuer.asset != null,
     )) {
@@ -98,9 +100,19 @@ void main() {
         ),
         reason: issuer.assetPath,
       );
-      final picture = await vg.loadPicture(SvgStringLoader(source), null);
-      addTearDown(picture.picture.dispose);
-      expect(picture.size.isEmpty, isFalse, reason: issuer.assetPath);
+      // Exercise the same flutter_svg decoder used by the production icon.
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SvgPicture.string(source, width: 30, height: 30),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull, reason: issuer.assetPath);
+      expect(find.byType(SvgPicture), findsOneWidget);
     }
   });
 
