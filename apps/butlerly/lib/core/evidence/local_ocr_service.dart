@@ -572,6 +572,10 @@ abstract final class ReceiptExtractor {
       r'^\s*[A-Z]?\s*\d{4,9}\s+.+?\d+[.,]\d{2}\s*[A-Z-]?\s*$',
       caseSensitive: false,
     );
+    final skuNumberLine = RegExp(
+      r'^\s*[A-Z]?\s*\d{4,9}\b',
+      caseSensitive: false,
+    );
     final itemized =
         lines.any(
           (line) => RegExp(
@@ -579,7 +583,8 @@ abstract final class ReceiptExtractor {
             caseSensitive: false,
           ).hasMatch(line.text),
         ) ||
-        lines.where((line) => skuPriceLine.hasMatch(line.text)).length >= 2;
+        lines.where((line) => skuPriceLine.hasMatch(line.text)).length >= 2 ||
+        lines.where((line) => skuNumberLine.hasMatch(line.text)).length >= 2;
     // An item price cannot substitute for a lost receipt total.
     if (itemized) return null;
 
@@ -872,11 +877,20 @@ abstract final class ReceiptExtractor {
   }
 
   static bool _dateIsExcluded(String text, int start) {
+    // Demographic dates on a receipt are not transaction dates. Restrict the
+    // birth-date marker to the current OCR line so a real purchase date on
+    // the *next* line remains eligible.
+    final lineStart = text.lastIndexOf('\n', start - 1) + 1;
+    final precedingOnLine = text.substring(lineStart, start).toLowerCase();
+    if (RegExp(r'date\s+of\s+birth|birth\s*date|\bdob\b')
+        .hasMatch(precedingOnLine)) {
+      return true;
+    }
     final context = text
         .substring(start > 32 ? start - 32 : 0, start)
         .toLowerCase();
     return RegExp(
-      r'return\s+by|expires?|expiration|valid\s+through|membership\s+ends?|promo|date\s+of\s+birth|birth\s*date|\bdob\b',
+      r'return\s+by|expires?|expiration|valid\s+through|membership\s+ends?|promo',
     ).hasMatch(context);
   }
 
