@@ -525,6 +525,19 @@ abstract final class ReceiptExtractor {
   }
 
   static String? _merchant(List<OcrObservation> observations) {
+    // Distinct Costco services have distinct seeded merchant classifications.
+    // Preserve explicit receipt evidence before applying the broad fallback.
+    for (final line in observations.take(8)) {
+      final specific = RegExp(
+        r'^\s*costco(?:\s+wholesale)?\s+(gas|pharmacy)\b',
+        caseSensitive: false,
+      ).firstMatch(line.text);
+      if (specific != null) {
+        return specific.group(1)!.toLowerCase() == 'gas'
+            ? 'Costco Gas'
+            : 'Costco Pharmacy';
+      }
+    }
     // A stylized retailer logo may have lower confidence than an address.
     // Match an actually recognized merchant name, never the store number.
     for (final line in observations.take(8)) {
