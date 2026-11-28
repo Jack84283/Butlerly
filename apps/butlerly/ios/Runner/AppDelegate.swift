@@ -71,6 +71,7 @@ import Vision
       Self.recognizeText(
         at: path,
         receiptGeometry: arguments["receiptGeometry"] as? Bool == true,
+        receiptIntent: arguments["intent"] as? String == "receipt",
         result: result
       )
     }
@@ -79,6 +80,7 @@ import Vision
   static func recognizeText(
     at path: String,
     receiptGeometry: Bool = false,
+    receiptIntent: Bool = false,
     result: @escaping FlutterResult
   ) {
     let url = URL(fileURLWithPath: path)
@@ -144,7 +146,7 @@ import Vision
         var bestScore = -Double.infinity
         var completedPass = false
         var attemptedOrientation = orientation
-        for turn in 0..<4 {
+        for turn in 0..<(receiptIntent ? 4 : 1) {
           let candidateRequest = configuredRequest()
           do {
             try VNImageRequestHandler(
@@ -165,8 +167,9 @@ import Vision
             bestOrientation = attemptedOrientation
             bestTurn = turn
           }
-          // Do not pay the latency of four full scans for a readable image.
-          if turn == 0 && hasStrongReceiptEvidence(candidateResults) { break }
+          // Payment cards and statements retain the original single-pass
+          // path; receipt photos retry only when the first pass is weak.
+          if !receiptIntent || (turn == 0 && hasStrongReceiptEvidence(candidateResults)) { break }
           attemptedOrientation = quarterTurn(attemptedOrientation)
         }
         guard completedPass else {
