@@ -183,7 +183,7 @@ void main() {
 
   for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
     for (final intent in [OcrIntent.paymentCard, OcrIntent.statement]) {
-      test('$platform $intent sends non-receipt intent without receipt flags', () async {
+      test('$platform $intent routes non-receipt OCR', () async {
         debugDefaultTargetPlatformOverride = platform;
         messenger.setMockMethodCallHandler(channel, (call) async {
           expect(call.method, 'recognizeText');
