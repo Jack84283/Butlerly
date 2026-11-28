@@ -124,7 +124,10 @@ void main() {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     messenger.setMockMethodCallHandler(channel, (call) async {
       expect(call.method, 'recognizeText');
-      expect(call.arguments, {'path': '/private/receipt.jpg', 'intent': 'receipt'});
+      expect(call.arguments, {
+        'path': '/private/receipt.jpg',
+        'intent': 'receipt',
+      });
       return {
         'text': 'CAFE\nTOTAL 10.00',
         'observations': [
