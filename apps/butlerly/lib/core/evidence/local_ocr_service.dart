@@ -447,7 +447,9 @@ abstract final class ReceiptExtractor {
     final amount = _rankedAmount(ordered);
     final tax = _keyword(ordered, const ['sales tax', 'tax']);
     final tip = _keyword(ordered, const ['tip', 'gratuity']);
-    final date = _date(_normalize(text));
+    // Preserve OCR line boundaries so context labels like Date of Birth
+    // cannot suppress an actual purchase date on the following line.
+    final date = _date(text);
     final currency = _currency(text);
     final payment = _paymentRegion(ordered);
     final cardLast4 = payment.lastFour;
@@ -523,6 +525,26 @@ abstract final class ReceiptExtractor {
   }
 
   static String? _merchant(List<OcrObservation> observations) {
+    // Distinct Costco services have distinct seeded merchant classifications.
+    // Preserve explicit receipt evidence before applying the broad fallback.
+    for (final line in observations.take(8)) {
+      final specific = RegExp(
+        r'^\s*costco(?:\s+wholesale)?\s+(gas|pharmacy)\b',
+        caseSensitive: false,
+      ).firstMatch(line.text);
+      if (specific != null) {
+        return specific.group(1)!.toLowerCase() == 'gas'
+            ? 'Costco Gas'
+            : 'Costco Pharmacy';
+      }
+    }
+    // A stylized retailer logo may have lower confidence than an address.
+    // Match an actually recognized merchant name, never the store number.
+    for (final line in observations.take(8)) {
+      if (RegExp(r'\bCOSTCO\b', caseSensitive: false).hasMatch(line.text)) {
+        return 'COSTCO WHOLESALE';
+      }
+    }
     String? best;
     var bestScore = 0.0;
     for (final line in observations.take(6)) {
@@ -561,12 +583,24 @@ abstract final class ReceiptExtractor {
 
     // On a partially captured itemized receipt, an individual item price is
     // not evidence of the final amount paid. Leave it for user review.
-    final itemized = lines.any(
-      (line) => RegExp(
-        r'\b(?:unit\s+price|qty|quantity)\b',
-        caseSensitive: false,
-      ).hasMatch(line.text),
+    final skuPriceLine = RegExp(
+      r'^\s*[A-Z]?\s*\d{4,9}\s+.+?\d+[.,]\d{2}\s*[A-Z-]?\s*$',
+      caseSensitive: false,
     );
+    final skuNumberLine = RegExp(
+      r'^\s*[A-Z]?\s*\d{4,9}\b',
+      caseSensitive: false,
+    );
+    final itemized =
+        lines.any(
+          (line) => RegExp(
+            r'\b(?:unit\s+price|qty|quantity)\b',
+            caseSensitive: false,
+          ).hasMatch(line.text),
+        ) ||
+        lines.where((line) => skuPriceLine.hasMatch(line.text)).length >= 2 ||
+        lines.where((line) => skuNumberLine.hasMatch(line.text)).length >= 2;
+    // An item price cannot substitute for a lost receipt total.
     if (itemized) return null;
 
     const positive = [
@@ -679,6 +713,29 @@ abstract final class ReceiptExtractor {
               ..sort((a, b) => a.left.compareTo(b.left));
         final values = row.expand((value) => _money(value.text)).toList();
         if (values.isNotEmpty) return values.last;
+
+        // Some receipts split "**** TOTAL" and its dark amount rectangle
+        // into separate observations. Never accept a SKU or another label.
+        final isolatedLabel = RegExp(
+          r'^\s*\**\s*(?:grand total|total due|amount due|amount paid|purchase total|payment amount|amount|balance|total|sale)\s*:?\s*$',
+          caseSensitive: false,
+        ).hasMatch(line.text);
+        if (!isolatedLabel || index + 1 >= lines.length) continue;
+        final next = lines[index + 1];
+        final valueText = _normalize(next.text);
+        if (!RegExp(
+          r'^(?:USD\s*|\$\s*)?\d{1,6}(?:,\d{3})*\.\d{2}$',
+        ).hasMatch(valueText)) {
+          continue;
+        }
+        final nearby =
+            line.height <= 0 ||
+            next.height <= 0 ||
+            (next.top - line.top).abs() < .075;
+        if (nearby) {
+          final value = _money(valueText);
+          if (value.length == 1) return value.single;
+        }
       }
     }
     return null;
@@ -837,6 +894,29 @@ abstract final class ReceiptExtractor {
   }
 
   static bool _dateIsExcluded(String text, int start) {
+    // Demographic dates on a receipt are not transaction dates. Restrict the
+    // birth-date marker to the current OCR line so a real purchase date on
+    // the *next* line remains eligible.
+    final lineStart = text.lastIndexOf('\n', start - 1) + 1;
+    final precedingOnLine = text.substring(lineStart, start).toLowerCase();
+    if (RegExp(
+      r'date\s+of\s+birth|birth\s*date|\bdob\b',
+    ).hasMatch(precedingOnLine)) {
+      return true;
+    }
+    // Vision can split the birth-date label from its value. Exclude the
+    // numeric line only when the preceding line is precisely that label.
+    if (lineStart > 0) {
+      final previousEnd = lineStart - 1;
+      final previousStart = text.lastIndexOf('\n', previousEnd - 1) + 1;
+      final previousLine = text.substring(previousStart, previousEnd).trim();
+      if (RegExp(
+        r'^(?:date\s+of\s+birth|birth\s*date|dob)\s*[:=]?\s*$',
+        caseSensitive: false,
+      ).hasMatch(previousLine)) {
+        return true;
+      }
+    }
     final context = text
         .substring(start > 32 ? start - 32 : 0, start)
         .toLowerCase();

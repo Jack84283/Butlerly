@@ -17,7 +17,10 @@ void main() {
       const rawText = '2026-08-12 PRIVATE MERCHANT 18.25';
       messenger.setMockMethodCallHandler(channel, (call) async {
         expect(call.method, 'recognizeText');
-        expect(call.arguments, {'path': '/local/statement.heic'});
+        expect(call.arguments, {
+          'path': '/local/statement.heic',
+          'intent': 'statement',
+        });
         return {
           'text': rawText,
           'observations': [

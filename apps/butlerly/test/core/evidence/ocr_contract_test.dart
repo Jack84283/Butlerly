@@ -98,7 +98,11 @@ void main() {
   test('iOS receipt requests and maps native glyph evidence', () async {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     messenger.setMockMethodCallHandler(channel, (call) async {
-      expect(call.arguments, {'path': 'receipt.jpg', 'receiptGeometry': true});
+      expect(call.arguments, {
+        'path': 'receipt.jpg',
+        'intent': 'receipt',
+        'receiptGeometry': true,
+      });
       return {
         'text': r'$499',
         'observations': [
@@ -120,7 +124,10 @@ void main() {
     debugDefaultTargetPlatformOverride = TargetPlatform.android;
     messenger.setMockMethodCallHandler(channel, (call) async {
       expect(call.method, 'recognizeText');
-      expect(call.arguments, {'path': '/private/receipt.jpg'});
+      expect(call.arguments, {
+        'path': '/private/receipt.jpg',
+        'intent': 'receipt',
+      });
       return {
         'text': 'CAFE\nTOTAL 10.00',
         'observations': [
@@ -176,6 +183,37 @@ void main() {
     expect(document.observations.last.order, 1);
     expect(document.diagnostics.pixelWidth, 2048);
   });
+
+  for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
+    for (final intent in [OcrIntent.paymentCard, OcrIntent.statement]) {
+      test('$platform $intent routes non-receipt OCR', () async {
+        debugDefaultTargetPlatformOverride = platform;
+        messenger.setMockMethodCallHandler(channel, (call) async {
+          expect(call.method, 'recognizeText');
+          expect(call.arguments, {
+            'path': '/private/card.jpg',
+            'intent': intent.name,
+          });
+          return {
+            'text': 'VISA',
+            'observations': [
+              {'text': 'VISA', 'confidence': .9},
+            ],
+          };
+        });
+        final result = await const PlatformOcrRecognizer().recognize(
+          OcrRequest(
+            source: const OcrSource(
+              path: '/private/card.jpg',
+              kind: OcrSourceKind.image,
+            ),
+            intent: intent,
+          ),
+        );
+        expect(result.text, 'VISA');
+      });
+    }
+  }
 
   test(
     'Android PDF requests fail with a typed unsupported-source outcome',

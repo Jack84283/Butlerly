@@ -71,6 +71,7 @@ import Vision
       Self.recognizeText(
         at: path,
         receiptGeometry: arguments["receiptGeometry"] as? Bool == true,
+        receiptIntent: arguments["intent"] as? String == "receipt",
         result: result
       )
     }
@@ -79,6 +80,7 @@ import Vision
   static func recognizeText(
     at path: String,
     receiptGeometry: Bool = false,
+    receiptIntent: Bool = false,
     result: @escaping FlutterResult
   ) {
     let url = URL(fileURLWithPath: path)
@@ -134,16 +136,50 @@ import Vision
       debugLog(
         "imageOpened pixels=\(cgImage.width)x\(cgImage.height) orientation=\(orientationName(image.imageOrientation))"
       )
-      let request = configuredRequest()
       do {
-        try VNImageRequestHandler(
-          cgImage: cgImage,
-          orientation: orientation,
-          options: [:]
-        ).perform([request])
-        var observations = structuredObservations(request.results ?? [], pageIndex: 0)
+        // EXIF orientation is not always reliable: a sideways paper receipt
+        // may be stored as "up". Keep the original file untouched and retry
+        // quarter-turns only when the first OCR pass lacks receipt evidence.
+        var bestResults = [VNRecognizedTextObservation]()
+        var bestOrientation = orientation
+        var bestTurn = 0
+        var bestScore = -Double.infinity
+        var completedPass = false
+        var attemptedOrientation = orientation
+        for turn in 0..<(receiptIntent ? 4 : 1) {
+          let candidateRequest = configuredRequest()
+          do {
+            try VNImageRequestHandler(
+              cgImage: cgImage,
+              orientation: attemptedOrientation,
+              options: [:]
+            ).perform([candidateRequest])
+          } catch {
+            attemptedOrientation = quarterTurn(attemptedOrientation)
+            continue
+          }
+          completedPass = true
+          let candidateResults = candidateRequest.results ?? []
+          let score = receiptRecognitionScore(candidateResults)
+          if score > bestScore {
+            bestScore = score
+            bestResults = candidateResults
+            bestOrientation = attemptedOrientation
+            bestTurn = turn
+          }
+          // Payment cards and statements retain the original single-pass
+          // path; receipt photos retry only when the first pass is weak.
+          if !receiptIntent || (turn == 0 && hasStrongReceiptEvidence(candidateResults)) { break }
+          attemptedOrientation = quarterTurn(attemptedOrientation)
+        }
+        guard completedPass else {
+          fail(result, code: "ocr_failed", stage: "visionRecognition")
+          return
+        }
+        debugLog("selectedOrientation quarterTurns=\(bestTurn)")
+        var observations = structuredObservations(bestResults, pageIndex: 0)
         if receiptGeometry {
-          annotateRaisedCents(in: &observations, image: cgImage, orientation: orientation)
+          annotateRaisedCents(in: &observations, image: cgImage, orientation: bestOrientation)
         }
         finish(
           result,
@@ -152,10 +188,10 @@ import Vision
             sourceKind: "image",
             sourceOpened: true,
             pageCount: 1,
-            visionObservationCount: request.results?.count ?? 0,
-            pixelWidth: cgImage.width,
-            pixelHeight: cgImage.height,
-            orientation: orientationName(image.imageOrientation)
+            visionObservationCount: bestResults.count,
+            pixelWidth: bestTurn % 2 == 0 ? cgImage.width : cgImage.height,
+            pixelHeight: bestTurn % 2 == 0 ? cgImage.height : cgImage.width,
+            orientation: "\(orientationName(image.imageOrientation))+quarterTurn\(bestTurn)"
           )
         )
       } catch {
@@ -233,6 +269,65 @@ import Vision
       $0.height <= shortestDollar * 0.8 &&
       $0.minY >= highestDollarBaseline + shortestDollar * 0.15
     }
+  }
+
+  /// Relative 90-degree turn of all EXIF orientations, including mirrors.
+  private static func quarterTurn(
+    _ orientation: CGImagePropertyOrientation
+  ) -> CGImagePropertyOrientation {
+    switch orientation {
+    case .up: return .right
+    case .right: return .down
+    case .down: return .left
+    case .left: return .up
+    case .upMirrored: return .rightMirrored
+    case .rightMirrored: return .downMirrored
+    case .downMirrored: return .leftMirrored
+    case .leftMirrored: return .upMirrored
+    @unknown default: return .right
+    }
+  }
+
+  private static func receiptRecognitionScore(
+    _ rows: [VNRecognizedTextObservation]
+  ) -> Double {
+    let candidates = rows.compactMap { $0.topCandidates(1).first }
+    let lines = candidates.map(\.string)
+    let recognized = lines.joined(separator: "\n")
+    let readable = lines.filter { $0.filter(\.isLetter).count >= 3 }.count
+    var score = Double(readable) * 3.0
+    score += candidates.reduce(0.0) { $0 + Double($1.confidence) }
+    if recognized.range(of: #"\b(?:grand\s+)?total\b"#,
+                        options: [.regularExpression, .caseInsensitive]) != nil {
+      score += 35
+    }
+    if recognized.range(of: #"\bsubtotal\b"#,
+                        options: [.regularExpression, .caseInsensitive]) != nil {
+      score += 12
+    }
+    if recognized.range(of: #"\b(?:tax|costco|wholesale|transaction details)\b"#,
+                        options: [.regularExpression, .caseInsensitive]) != nil {
+      score += 10
+    }
+    if recognized.range(of: #"\b\d+[.,]\d{2}\b"#,
+                        options: [.regularExpression]) != nil {
+      score += 8
+    }
+    return score
+  }
+
+  private static func hasStrongReceiptEvidence(
+    _ rows: [VNRecognizedTextObservation]
+  ) -> Bool {
+    let lines = rows.compactMap { $0.topCandidates(1).first?.string }
+    guard lines.count >= 5 else { return false }
+    let text = lines.joined(separator: "\n").lowercased()
+    let hasAmount = text.range(of: #"\b\d+[.,]\d{2}\b"#,
+                               options: .regularExpression) != nil
+    let itemized = text.contains("total") && text.contains("subtotal")
+    let transaction = text.contains("transaction details") ||
+      text.contains("appears on your statement as")
+    return hasAmount && (itemized || transaction)
   }
 
   private static func configuredRequest() -> VNRecognizeTextRequest {

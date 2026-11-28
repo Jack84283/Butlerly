@@ -21,6 +21,20 @@ class AndroidMlKitOcrRecognizerTest {
         assertTransform(ExifInterface.ORIENTATION_TRANSVERSE, 270, mirrorX = true, mirrorY = false)
     }
 
+    @Test
+    fun onlyReceiptsRetryQuarterTurnRecognition() {
+        assertEquals(4, AndroidMlKitOcrRecognizer.recognitionPassLimit("receipt"))
+        assertEquals(1, AndroidMlKitOcrRecognizer.recognitionPassLimit("paymentCard"))
+        assertEquals(1, AndroidMlKitOcrRecognizer.recognitionPassLimit("statement"))
+        assertEquals(1, AndroidMlKitOcrRecognizer.recognitionPassLimit(null))
+    }
+
+    @Test
+    fun technicalOcrFailureDoesNotMasqueradeAsUnreadableText() {
+        assertEquals("ocr_failed", AndroidMlKitOcrRecognizer.terminalRecognitionErrorCode(false))
+        assertEquals("no_text", AndroidMlKitOcrRecognizer.terminalRecognitionErrorCode(true))
+    }
+
     private fun assertTransform(
         orientation: Int,
         rotationDegrees: Int,
