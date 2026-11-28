@@ -21,6 +21,13 @@ class AndroidMlKitOcrRecognizer(private val activity: Activity) {
         // including on supported devices with 3–4 GiB of RAM.
         const val MAX_OCR_DIMENSION = 2048
 
+        // Keep non-receipt scanning at the preexisting single-pass cost.
+        fun recognitionPassLimit(intent: String?): Int = if (intent == "receipt") 4 else 1
+
+        // A recognizer failure is not the same as successfully seeing no text.
+        fun terminalRecognitionErrorCode(hadSuccessfulPass: Boolean): String =
+            if (hadSuccessfulPass) "no_text" else "ocr_failed"
+
         data class ExifTransform(
             val rotationDegrees: Int,
             val mirrorX: Boolean,
@@ -65,6 +72,9 @@ class AndroidMlKitOcrRecognizer(private val activity: Activity) {
         val orientedBitmap = transform(bitmap, orientationTransform)
         if (orientedBitmap !== bitmap) bitmap.recycle()
         val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+        val passLimit = recognitionPassLimit(call.argument<String>("intent"))
+        var hadSuccessfulPass = false
+        var lastFailureType: String? = null
         data class Candidate(val text: Text, val rotation: Int, val score: Double)
         var best: Candidate? = null
 
@@ -72,7 +82,16 @@ class AndroidMlKitOcrRecognizer(private val activity: Activity) {
             try {
                 val chosen = best
                 if (chosen == null || chosen.text.text.isBlank()) {
-                    result.error("no_text", "No readable text was found.", mapOf("stage" to "mlKitRecognition"))
+                    val code = terminalRecognitionErrorCode(hadSuccessfulPass)
+                    val details = mutableMapOf<String, Any>("stage" to "mlKitRecognition")
+                    if (code == "ocr_failed" && lastFailureType != null) {
+                        details["type"] = lastFailureType!!
+                    }
+                    result.error(
+                        code,
+                        if (code == "no_text") "No readable text was found." else "Local text recognition failed.",
+                        details,
+                    )
                     return
                 }
                 val width = if (chosen.rotation % 180 == 0) orientedBitmap.width else orientedBitmap.height
@@ -121,7 +140,7 @@ class AndroidMlKitOcrRecognizer(private val activity: Activity) {
         // Scan other quarter-turns only if the first pass lacks strong receipt
         // evidence. Keep the result with the best readable receipt evidence.
         fun scan(turn: Int) {
-            if (turn >= 4) {
+            if (turn >= passLimit) {
                 finishRecognition()
                 return
             }
@@ -129,6 +148,7 @@ class AndroidMlKitOcrRecognizer(private val activity: Activity) {
             try {
                 recognizer.process(InputImage.fromBitmap(orientedBitmap, degrees))
                     .addOnSuccessListener { text ->
+                        hadSuccessfulPass = true
                         if (text.text.isNotBlank()) {
                             val candidate = Candidate(text, degrees, receiptRecognitionScore(text))
                             if (best == null || candidate.score > best!!.score) best = candidate
@@ -139,8 +159,12 @@ class AndroidMlKitOcrRecognizer(private val activity: Activity) {
                             scan(turn + 1)
                         }
                     }
-                    .addOnFailureListener { scan(turn + 1) }
-            } catch (_: Exception) {
+                    .addOnFailureListener { error ->
+                        lastFailureType = error.javaClass.simpleName
+                        scan(turn + 1)
+                    }
+            } catch (error: Exception) {
+                lastFailureType = error.javaClass.simpleName
                 scan(turn + 1)
             }
         }
