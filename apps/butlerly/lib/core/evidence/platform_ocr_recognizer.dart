@@ -58,6 +58,9 @@ final class PlatformOcrRecognizer implements OcrRecognizer {
       payload = await _channel
           .invokeMapMethod<Object?, Object?>('recognizeText', {
             'path': request.source.path,
+            // Native adapters use the intent to confine expensive receipt
+            // orientation recovery to receipt photos only.
+            'intent': request.intent.name,
             if (defaultTargetPlatform == TargetPlatform.iOS &&
                 request.intent == OcrIntent.receipt)
               'receiptGeometry': true,
