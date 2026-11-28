@@ -59,6 +59,33 @@ TAX 1.66
     expect(result.amountNeedsReview, isFalse);
   });
 
+  test('preserves explicitly recognized Costco service merchants', () {
+    const cases = [
+      ('COSTCO GAS', 'Costco Gas'),
+      ('Costco Pharmacy', 'Costco Pharmacy'),
+      ('Costco Wholesale Gas', 'Costco Gas'),
+      ('COSTCO WHOLESALE PHARMACY', 'Costco Pharmacy'),
+    ];
+    for (final (header, expectedMerchant) in cases) {
+      final receipt = ReceiptTextParser.parse('''
+$header
+Mountain View #143
+TOTAL 42.18
+''');
+      expect(receipt.merchant, expectedMerchant, reason: header);
+      expect(receipt.amount, '42.18', reason: header);
+    }
+  });
+
+  test('general Costco receipt does not infer a service from item text', () {
+    final receipt = ReceiptTextParser.parse('''
+COSTCO WHOLESALE
+E 123456 GAS CAN 12.99
+TOTAL 12.99
+''');
+    expect(receipt.merchant, 'COSTCO WHOLESALE');
+  });
+
   test('Costco dark total box can be split from the TOTAL label', () {
     const text = '''
 COSTCO WHOLESALE
